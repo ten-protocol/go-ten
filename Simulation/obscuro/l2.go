@@ -259,7 +259,7 @@ type IncludedRollup struct {
 	l1 L1RootHash // the block where it was included
 }
 
-// the state is dependent on the L1/l2?
+// the state is dependent on the L1 block alone
 var globalDb = make(map[L1RootHash]BlockState)
 var dbMutex = &sync.RWMutex{}
 
@@ -309,14 +309,14 @@ func (a L2Agg) calculateL2State(b *Block, l1Head *Block) BlockState {
 			}
 		}
 
+		s := copyState(parentState.state)
+		s = processDeposits(b, s)
+
+		// only apply transactions if there is a new l2 head
 		if newHead == nil {
 			newHead = parentState.head
+			s = a.calculateState(newHead.txs, s)
 		}
-
-		s := copyState(parentState.state)
-
-		s = processDeposits(b, s)
-		s = a.calculateState(newHead.txs, s)
 
 		bs := BlockState{
 			head:  newHead,
