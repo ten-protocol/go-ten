@@ -1,7 +1,6 @@
 package obscuro
 
 import (
-	"os"
 	"sync"
 )
 
@@ -11,9 +10,6 @@ type NetworkCfg struct {
 	allAgg    []L2Agg
 	delay     Latency // the latency
 	stats     *Stats
-
-	// todo - this does not belong here
-	f *os.File
 }
 
 var statsMu = &sync.RWMutex{}
@@ -62,7 +58,7 @@ func (c *NetworkCfg) broadcastL1Tx(tx *L1Tx) {
 		statsMu.Lock()
 		c.stats.l2Height = Max(c.stats.l2Height, tx.rollup.height)
 		c.stats.totalL2++
-		c.stats.avgTxsPerRollup += len(tx.rollup.txs)
+		c.stats.totalL2Txs += len(tx.rollup.txs)
 		statsMu.Unlock()
 	}
 }

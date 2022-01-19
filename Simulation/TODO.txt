@@ -1,6 +1,5 @@
 This is not in any particular order
 
-- encapsulate state, and move it behind an api
 - make the state in the rollup smarter and check it against the transactions
 - execute transactions as they come in, so that if we're the winner, happy days
 - create the L1Node and L2Node types, and mining is a boolean which starts the mining actor

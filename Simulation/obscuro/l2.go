@@ -119,20 +119,13 @@ var GenesisRollup = Rollup{-1,
 func (a L2Agg) Start() {
 	go a.startGossip()
 
-	var l1Head = &GenesisBlock
-
 	for {
 		select {
 		// Main loop
 		// Listen for notifications from the L1 node and process them
 		// Note that during processing, more recent notifications can be received
 		case b := <-a.rpcCh:
-			{
-				// make a copy of the head to pass to the processor
-				headCopy := *l1Head
-				l1Head = b
-				go a.processBlock(b, &headCopy)
-			}
+			go a.processBlock(b)
 		case _ = <-a.runCh1:
 			return
 		}
@@ -194,12 +187,12 @@ func (a L2Agg) L2P2PReceiveTx(tx *L2Tx) {
 }
 
 // main block processing logic
-func (a L2Agg) processBlock(b *Block, l1Head *Block) {
+func (a L2Agg) processBlock(b *Block) {
 	// A Pobi round starts when a new canonical L1 block was produced
 
 	// Find the new canonical L2 chain and calculate the state
 	// Note that the previous L1 head is passed in as well, so that the logic can recognize L1 reorgs and replay the state from the forking block
-	bs := a.calculateL2State(b, l1Head)
+	bs := a.calculateL2State(b)
 	newL2Head := bs.head
 
 	a.canonicalCh <- newL2Head
@@ -235,7 +228,7 @@ func (a L2Agg) processBlock(b *Block, l1Head *Block) {
 
 		// we are the winner
 		if winner.agg.id == a.id {
-			a.network.f.WriteString(fmt.Sprintf("-   Agg%d rollup=r%d(height=%d)[r%d] No Txs: %d. State=%v\n", a.id, winner.rootHash.ID(), winner.height, winner.parent.rootHash.ID(), len(winner.txs), winner.state))
+			log(fmt.Sprintf("-   Agg%d rollup=r%d(height=%d)[r%d] No Txs: %d. State=%v\n", a.id, winner.rootHash.ID(), winner.height, winner.parent.rootHash.ID(), len(winner.txs), winner.state))
 			// build a L1 tx with the rollup
 			a.network.broadcastL1Tx(&L1Tx{id: uuid.New(), txType: RollupTx, rollup: winner})
 		}
@@ -253,7 +246,7 @@ func (a L2Agg) currentTxs(head *Rollup) []*L2Tx {
 
 // Complex logic to determine the new canonical head and to calculate the state
 // Uses cache-ing to map the head rollup and the state to each l1 block in case of rollbacks.
-func (a L2Agg) calculateL2State(b *Block, l1Head *Block) BlockState {
+func (a L2Agg) calculateL2State(b *Block) BlockState {
 	val, found := a.db.fetch(b.rootHash)
 	if found {
 		return val
@@ -269,82 +262,50 @@ func (a L2Agg) calculateL2State(b *Block, l1Head *Block) BlockState {
 		return bs
 	}
 
-	// There was no fork
-	if l1Head.parent == nil || b.parent == l1Head {
-		var newHead *Rollup = nil
-		parentState, parentFound := a.db.fetch(b.parent.rootHash)
+	parentState, parentFound := a.db.fetch(b.parent.rootHash)
+	if !parentFound {
+		// go back and calculate the state of the parent
+		parentState = a.calculateL2State(b.parent)
+	}
 
-		if !parentFound {
-			// this is called when for some reason the parent was not cached.
-			parentState = a.calculateL2State(b.parent, l1Head)
-		}
+	bs := calculateBlockState(b, parentState)
 
-		// find the head rollup according to the rules
-		for _, t := range b.txs {
-			if t.txType == RollupTx {
-				r := t.rollup
-				if parentState.head.height < r.height {
-					if newHead == nil || r.height > newHead.height || r.l1Proof.height > newHead.l1Proof.height || (r.l1Proof.height == newHead.l1Proof.height && r.nonce < newHead.nonce) {
-						newHead = r
-					}
+	a.db.set(b.rootHash, bs)
+
+	return bs
+}
+
+func calculateBlockState(b *Block, parentState BlockState) BlockState {
+	var newHead *Rollup = nil
+
+	// find the head rollup according to the rules
+	for _, t := range b.txs {
+		// go through all rollup transactions
+		if t.txType == RollupTx {
+			r := t.rollup
+			// only consider rollups if they advance the chain
+			if r.height > parentState.head.height {
+				if newHead == nil || r.height > newHead.height || r.l1Proof.height > newHead.l1Proof.height || (r.l1Proof.height == newHead.l1Proof.height && r.nonce < newHead.nonce) {
+					newHead = r
 				}
 			}
 		}
-
-		s := copyState(parentState.state)
-		s = processDeposits(b, s)
-
-		// only apply transactions if there is a new l2 head
-		if newHead == nil {
-			newHead = parentState.head
-			s = calculateState(newHead.txs, s)
-		}
-
-		bs := BlockState{
-			head:  newHead,
-			state: s,
-		}
-
-		a.db.set(b.rootHash, bs)
-
-		return bs
 	}
 
-	// Reorg
-	fork := lca(b, l1Head)
+	s := copyState(parentState.state)
+	s = processDeposits(b, s)
 
-	if !IsAncestor(l1Head, b) {
-		statsMu.Lock()
-		a.network.stats.noReorgs++
-		statsMu.Unlock()
-
-		// There was a fork
-		a.network.f.WriteString(fmt.Sprintf("Agg%d :Reorg new=%d(%d), old=%d(%d), fork=%d(%d)\n", a.id, b.rootHash.ID(), b.height, l1Head.rootHash.ID(), l1Head.height, fork.rootHash.ID(), fork.height))
+	// only apply transactions if there is a new l2 head
+	if newHead == nil {
+		newHead = parentState.head
+		s = calculateState(newHead.txs, s)
 	}
 
-	forkL2, forkFound := a.db.fetch(fork.rootHash)
-
-	if !forkFound {
-		panic("wtf2")
+	bs := BlockState{
+		head:  newHead,
+		state: s,
 	}
-	// walk back to the fork and find the new canonical chain
-	rerun := make([]*Block, 0)
-	c := b
-	for {
-		if c.rootHash == fork.rootHash {
-			break
-		}
-		rerun = append(rerun, c)
-		c = c.parent
-	}
-
-	var l2 = forkL2
-	for i := len(rerun) - 1; i >= 0; i-- {
-		l1 := rerun[i]
-		l2 = a.calculateL2State(l1, l1.parent)
-	}
-	a.db.set(b.rootHash, l2)
-	return l2
+	return bs
 }
 
 func processDeposits(b *Block, s State) State {

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"log"
 	"math/rand"
 	"os"
 	"simulation/obscuro"
@@ -33,11 +32,12 @@ func main() {
 
 	f, err := os.Create("simulation_result.txt")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer f.Close()
+	obscuro.SetLog(f)
 
-	blockDuration := 20_000
-	stats := obscuro.RunSimulation(10, 20, 30, blockDuration, blockDuration/12, blockDuration/3, f)
+	blockDuration := 10_000
+	stats := obscuro.RunSimulation(10, 10, 30, blockDuration, blockDuration/12, blockDuration/3)
 	fmt.Printf("%#v\n", stats)
 }

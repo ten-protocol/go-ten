@@ -74,13 +74,20 @@ func (m L1Miner) Start() {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
 			if p2pb.height > head.height {
+				if !IsAncestor(head, p2pb) {
+					statsMu.Lock()
+					m.network.stats.noReorgs[m.id]++
+					statsMu.Unlock()
+					fork := lca(head, p2pb)
+					log(fmt.Sprintf("M%d :Reorg new=%d(%d), old=%d(%d), fork=%d(%d)\n", m.id, p2pb.rootHash.ID(), p2pb.height, head.rootHash.ID(), head.height, fork.rootHash.ID(), fork.height))
+				}
 				head = m.setHead(p2pb)
 			}
 		case mb := <-m.miningCh: // Received from the local mining
 			if mb.height > head.height { // Ignore the locally produced block if someone else found one already
 				head = m.setHead(mb)
 				m.network.broadcastBlockL1(mb)
-				m.network.f.WriteString(m.printBlock(mb))
+				log(m.printBlock(mb))
 			}
 		case _ = <-m.runCh1:
 			return
