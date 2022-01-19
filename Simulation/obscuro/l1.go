@@ -124,11 +124,14 @@ func (m L1Miner) P2PReceiveBlock(b *Block) {
 func (m L1Miner) startMining() {
 
 	// stores all rollups seen from the beginning of time.
-	var mempool = make(map[int][]*L1Tx) // rollup height to list of rollups of that height
+	// store rollups grouped by height, to optimize the algorithm that determines what needs to be included in a block
+	// todo - move this out into some state processing
+	var mempool = make(map[int][]*L1Tx)
+
 	var deposits = make([]*L1Tx, 0)
 	var mut = &sync.RWMutex{}
 
-	var latestGen = -1
+	var currentHeight = -1
 
 	for {
 		select {
@@ -138,7 +141,7 @@ func (m L1Miner) startMining() {
 			mut.Lock()
 			if tx.txType == RollupTx {
 				r := tx.rollup
-				latestGen = Max(latestGen, r.height)
+				currentHeight = Max(currentHeight, r.height)
 				val, found := mempool[r.height]
 				if found {
 					mempool[r.height] = append(val, tx)
@@ -159,10 +162,11 @@ func (m L1Miner) startMining() {
 			Schedule(nonce, func() {
 				var rollups = make([]*L1Tx, 0)
 				mut.RLock()
-				// Go back 10 rollups - this is an ugly hack
+
+				// only look back 10 rollups - this is an ugly hack for performance
+				// todo - move this out
 				for i := 0; i < 10; i++ {
-					// todo - incorrect
-					v, f := mempool[latestGen-i]
+					v, f := mempool[currentHeight-i]
 					if f {
 						rollups = append(rollups, v...)
 					}

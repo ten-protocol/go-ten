@@ -38,6 +38,6 @@ func main() {
 	defer f.Close()
 
 	blockDuration := 20_000
-	stats := obscuro.RunSimulation(10, 10, 15, blockDuration, blockDuration/12, blockDuration/3, f)
+	stats := obscuro.RunSimulation(10, 20, 30, blockDuration, blockDuration/12, blockDuration/3, f)
 	fmt.Printf("%#v\n", stats)
 }

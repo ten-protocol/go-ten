@@ -1,7 +1,6 @@
 package obscuro
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
 	"time"
@@ -57,15 +56,8 @@ func Schedule(delay int, fun ScheduledFunc) {
 	}()
 }
 
-// Todo - there must be a better way
-func Duration(ms int) time.Duration {
-	dur := fmt.Sprintf("%dus", ms)
-	d, e := time.ParseDuration(dur)
-	if e == nil {
-		return d
-	} else {
-		panic(e)
-	}
+func Duration(us int) time.Duration {
+	return time.Duration(us) * time.Microsecond
 }
 
 func generateNonce() Nonce {

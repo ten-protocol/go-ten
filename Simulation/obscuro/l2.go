@@ -3,7 +3,6 @@ package obscuro
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"sync"
 	"time"
 )
 
@@ -17,15 +16,28 @@ type L2Agg struct {
 	cfg     L2Cfg
 	network *NetworkCfg
 
-	runCh1      chan bool      // add false when the aggregator has to stop
-	runCh2      chan bool      // add false when the aggregator has to stop
-	p2pChRollup chan *Rollup   // this is where Rollups received from peers are dropped
-	p2pChTx     chan *L2Tx     // this is where Transactions received from peers are dropped
-	rpcCh       chan *Block    // this is where Blocks received from the L1 node are added
-	rollupIntCh chan int       // internal channel
-	rollupOutCh chan []*Rollup // internal channel
-	txsIntCh    chan bool      // internal channel
-	txsOutCh    chan []*L2Tx   // internal channel
+	// control the lifecycle
+	runCh1 chan bool
+	runCh2 chan bool
+
+	// where rollups and transactions are gossipped from peers
+	p2pChRollup chan *Rollup
+	p2pChTx     chan *L2Tx
+
+	// where the connected L1 node drops new blocks
+	rpcCh chan *Block
+
+	// used for internal communication between the gossi agent and the processing agent
+	// todo - probably can use a single channel
+	rollupIntCh chan int
+	rollupOutCh chan []*Rollup
+
+	// used for internal communication between the gossi agent and the processing agent
+	txsIntCh chan bool
+	txsOutCh chan []*L2Tx
+
+	// when a new rollup is discovered
+	canonicalCh chan *Rollup
 }
 
 func NewAgg(id int, cfg L2Cfg, l1 *L1Miner, network *NetworkCfg) L2Agg {
@@ -43,6 +55,7 @@ func NewAgg(id int, cfg L2Cfg, l1 *L1Miner, network *NetworkCfg) L2Agg {
 		rollupOutCh: make(chan []*Rollup),
 		txsIntCh:    make(chan bool),
 		txsOutCh:    make(chan []*L2Tx),
+		canonicalCh: make(chan *Rollup),
 	}
 }
 
@@ -59,6 +72,12 @@ type Rollup struct {
 	nonce        Nonce
 	txs          []*L2Tx
 	state        StateRoot
+}
+
+// Data structure to be used once a rollup was included in a block
+type IncludedRollup struct {
+	l2 *Rollup // the rollup
+	l1 *Block  // the block where it was included
 }
 
 // Transfers and Withdrawals for now
@@ -114,16 +133,21 @@ func (a L2Agg) Start() {
 	}
 }
 
-// dumb actor that participates in gossip and responds will all the rollups for a certain generation
+// dumb actor that participates in gossip and responds will all the rollups for a certain height
 func (a L2Agg) startGossip() {
+
+	// Rollups grouped by height
 	var allRollups = make(map[int][]*Rollup)
+
+	// transactions
 	var allTxs = make([]*L2Tx, 0)
+
 	for {
 		select {
+
 		case tx := <-a.p2pChTx:
 			allTxs = append(allTxs, tx)
-		case _ = <-a.txsIntCh:
-			a.txsOutCh <- allTxs
+
 		case r := <-a.p2pChRollup:
 			val, found := allRollups[r.height]
 			if found {
@@ -131,8 +155,16 @@ func (a L2Agg) startGossip() {
 			} else {
 				allRollups[r.height] = []*Rollup{r}
 			}
-		case gen := <-a.rollupIntCh:
-			a.rollupOutCh <- allRollups[gen]
+
+		case requestedHeight := <-a.rollupIntCh:
+			a.rollupOutCh <- allRollups[requestedHeight]
+		case _ = <-a.txsIntCh:
+			a.txsOutCh <- allTxs
+
+		case r := <-a.canonicalCh:
+			//todo - optimize here the rollup storage
+			fmt.Println(r.height)
+
 		case _ = <-a.runCh2:
 			return
 		}
@@ -154,8 +186,6 @@ func (a L2Agg) L2P2PReceiveTx(tx *L2Tx) {
 	a.p2pChTx <- tx
 }
 
-type State = map[Address]int
-
 // main block processing logic
 func (a L2Agg) processBlock(b *Block, l1Head *Block) {
 	// round starts when a new canonical L1 block was produced
@@ -166,6 +196,8 @@ func (a L2Agg) processBlock(b *Block, l1Head *Block) {
 	// Also calculates the state
 	bs := a.calculateL2State(b, l1Head)
 	newL2Head := bs.head
+
+	a.canonicalCh <- newL2Head
 
 	// determine the transactions to be included
 	txs := a.currentTxs(newL2Head)
@@ -205,65 +237,16 @@ func (a L2Agg) processBlock(b *Block, l1Head *Block) {
 	})
 }
 
-func copyState(state State) State {
-	s := make(State)
-	for address, balance := range state {
-		s[address] = balance
-	}
-	return s
-}
-
-func serialize(state State) StateRoot {
-	s := make([]string, 0)
-	for add, bal := range state {
-		s = append(s, fmt.Sprintf("%d=%d", add.ID(), bal))
-	}
-	return fmt.Sprintf("%v", s)
-}
-
-// todo - we have a list of received transactions
-// todo - and a list of included transactions
-// to include is the difference
-// there needs to be a much more efficient way
+// Calculate transactions to be included in the current rollup
 func (a L2Agg) currentTxs(head *Rollup) []*L2Tx {
+	// Requests all l2 transactions received over gossip
 	a.txsIntCh <- true
 	txs := <-a.txsOutCh
+	// and return only the ones not included in any rollup so far
 	return FindNotIncludedTxs(head, txs)
 }
 
-// State
-type BlockState struct {
-	head  *Rollup
-	state State
-}
-
-// returns a modified copy of the state
-func (a L2Agg) calculateState(txs []*L2Tx, state State) State {
-	s := copyState(state)
-	for _, tx := range txs {
-		executeTx(s, tx)
-	}
-	return s
-}
-
-func executeTx(s State, tx *L2Tx) {
-	bal, _ := s[tx.from]
-	if bal >= tx.amount {
-		s[tx.from] -= tx.amount
-		s[tx.dest] += tx.amount
-	}
-}
-
-type IncludedRollup struct {
-	l2 L2RootHash // the rollup id
-	l1 L1RootHash // the block where it was included
-}
-
-// the state is dependent on the L1 block alone
-var globalDb = make(map[L1RootHash]BlockState)
-var dbMutex = &sync.RWMutex{}
-
-// Complex logic to determine the new canonical head
+// Complex logic to determine the new canonical head and to calculate the state
 // Uses cache-ing to map the head rollup for each block in case of rollbacks.
 func (a L2Agg) calculateL2State(b *Block, l1Head *Block) BlockState {
 	dbMutex.RLock()

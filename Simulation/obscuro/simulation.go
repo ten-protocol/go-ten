@@ -24,7 +24,6 @@ type Stats struct {
 	avgTxsPerRollup int
 	noReorgs        int
 	// todo - actual avg block Duration
-	// todo -
 }
 
 func RunSimulation(nrUsers int, nrMiners int, simulationTime int, avgBlockDuration int, avgLatency int, gossipPeriod int, f *os.File) Stats {
@@ -45,7 +44,6 @@ func RunSimulation(nrUsers int, nrMiners int, simulationTime int, avgBlockDurati
 		return RndBtw(avgBlockDuration/nrMiners, nrMiners*avgBlockDuration)
 	}}
 
-	// todo - play with this number
 	l2Cfg := L2Cfg{gossipPeriodMs: gossipPeriod}
 
 	for i := 1; i <= nrMiners; i++ {
