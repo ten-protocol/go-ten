@@ -11,7 +11,9 @@ type NetworkCfg struct {
 	allAgg    []L2Agg
 	delay     Latency // the latency
 	stats     *Stats
-	f         *os.File
+
+	// todo - this does not belong here
+	f *os.File
 }
 
 var statsMu = &sync.RWMutex{}
