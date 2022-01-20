@@ -11,8 +11,9 @@ type L1MiningConfig struct {
 	powTime Latency
 }
 
+type NodeId int
 type L1Miner struct {
-	id         int
+	id         NodeId
 	cfg        L1MiningConfig
 	aggregator *L2Agg
 	network    *NetworkCfg
@@ -43,7 +44,7 @@ type L1Tx struct {
 	dest   Address
 }
 
-func NewMiner(id int, cfg L1MiningConfig, agg *L2Agg, network *NetworkCfg) L1Miner {
+func NewMiner(id NodeId, cfg L1MiningConfig, agg *L2Agg, network *NetworkCfg) L1Miner {
 	return L1Miner{id: id, cfg: cfg, aggregator: agg, network: network, runCh1: make(chan bool), p2pCh: make(chan *Block), miningCh: make(chan *Block), canonicalCh: make(chan *Block), runCh2: make(chan bool), mempoolCh: make(chan *L1Tx)}
 }
 
@@ -76,7 +77,7 @@ func (m L1Miner) Start() {
 			if p2pb.height > head.height {
 				if !IsAncestor(head, p2pb) {
 					statsMu.Lock()
-					m.network.stats.noReorgs[m.id]++
+					m.network.stats.noL1Reorgs[m.id]++
 					statsMu.Unlock()
 					fork := lca(head, p2pb)
 					log(fmt.Sprintf("M%d :Reorg new=%d(%d), old=%d(%d), fork=%d(%d)\n", m.id, p2pb.rootHash.ID(), p2pb.height, head.rootHash.ID(), head.height, fork.rootHash.ID(), fork.height))

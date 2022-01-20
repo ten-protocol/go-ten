@@ -11,7 +11,7 @@ type L2Cfg struct {
 }
 
 type L2Agg struct {
-	id      int
+	id      NodeId
 	l1      *L1Miner
 	cfg     L2Cfg
 	network *NetworkCfg
@@ -36,14 +36,18 @@ type L2Agg struct {
 	txsIntCh chan bool
 	txsOutCh chan []*L2Tx
 
-	// when a new rollup is discovered
-	canonicalCh chan *Rollup
+	// todo
+	progIntCh chan bool
+	progOutCh chan currentWork
+
+	// when a round finishes and a winner is discovered. Notifies the gossip actor to start processing new transactions.
+	canonicalCh chan BlockState
 
 	// a database of work already executed
 	db Db
 }
 
-func NewAgg(id int, cfg L2Cfg, l1 *L1Miner, network *NetworkCfg) L2Agg {
+func NewAgg(id NodeId, cfg L2Cfg, l1 *L1Miner, network *NetworkCfg) L2Agg {
 	return L2Agg{
 		id:          id,
 		cfg:         cfg,
@@ -58,7 +62,9 @@ func NewAgg(id int, cfg L2Cfg, l1 *L1Miner, network *NetworkCfg) L2Agg {
 		rollupOutCh: make(chan []*Rollup),
 		txsIntCh:    make(chan bool),
 		txsOutCh:    make(chan []*L2Tx),
-		canonicalCh: make(chan *Rollup),
+		canonicalCh: make(chan BlockState),
+		progIntCh:   make(chan bool),
+		progOutCh:   make(chan currentWork),
 		db:          NewInMemoryDb(),
 	}
 }
@@ -132,6 +138,12 @@ func (a L2Agg) Start() {
 	}
 }
 
+type currentWork struct {
+	r   *Rollup
+	s   State
+	txs []*L2Tx
+}
+
 // actor that participates in rollup and transaction gossip
 // processes transactions
 func (a L2Agg) startGossip() {
@@ -142,11 +154,37 @@ func (a L2Agg) startGossip() {
 	// transactions
 	var allTxs = make([]*L2Tx, 0)
 
+	// Process transactions on the fly
+	var currentHead = &GenesisRollup
+	var currentState = emptyState()
+	var currentProcessedTxs = make([]*L2Tx, 0)
+
 	for {
 		select {
+		case r := <-a.canonicalCh:
+			currentHead = r.head
+			currentState = r.state
+
+			// determine the transactions that were not included in the previous head
+			// this is terribly inefficient
+			txs := FindNotIncludedTxs(currentHead, allTxs)
+
+			// calculate the state after executing them
+			currentState = calculateState(txs, currentState)
 
 		case tx := <-a.p2pChTx:
 			allTxs = append(allTxs, tx)
+			currentProcessedTxs = append(currentProcessedTxs, tx)
+			executeTx(currentState, tx)
+
+		case _ = <-a.progIntCh:
+			b := make([]*L2Tx, len(currentProcessedTxs))
+			copy(b, currentProcessedTxs)
+			a.progOutCh <- currentWork{
+				r:   currentHead,
+				s:   copyState(currentState),
+				txs: b,
+			}
 
 		case r := <-a.p2pChRollup:
 			val, found := allRollups[r.height]
@@ -160,10 +198,6 @@ func (a L2Agg) startGossip() {
 			a.rollupOutCh <- allRollups[requestedHeight]
 		case _ = <-a.txsIntCh:
 			a.txsOutCh <- allTxs
-
-		case r := <-a.canonicalCh:
-			//todo - optimize here the rollup storage
-			fmt.Println(r.height)
 
 		case _ = <-a.runCh2:
 			return
@@ -195,13 +229,25 @@ func (a L2Agg) processBlock(b *Block) {
 	bs := a.calculateL2State(b)
 	newL2Head := bs.head
 
-	a.canonicalCh <- newL2Head
+	a.progIntCh <- true
+	current := <-a.progOutCh
 
-	// determine the transactions to be included
-	txs := a.currentTxs(newL2Head)
+	txs := current.txs
+	stateAfter := current.s
 
-	// calculate the state after executing them
-	stateAfter := calculateState(txs, bs.state)
+	if current.r.rootHash != newL2Head.rootHash {
+		statsMu.Lock()
+		a.network.stats.noL2Reorgs[a.id]++
+		statsMu.Unlock()
+
+		// we were working on the wrong winner
+		log(fmt.Sprintf("-   Agg%d current=r%d actual=r%d\n", a.id, current.r.rootHash.ID(), newL2Head.rootHash.ID()))
+		// determine the transactions to be included
+		txs = a.currentTxs(newL2Head)
+
+		// calculate the state after executing them
+		stateAfter = calculateState(txs, bs.state)
+	}
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
 	r := Rollup{newL2Head.height + 1, uuid.New(), &a, newL2Head, time.Now(), b, generateNonce(), txs, copyState(stateAfter)}
@@ -228,9 +274,19 @@ func (a L2Agg) processBlock(b *Block) {
 
 		// we are the winner
 		if winner.agg.id == a.id {
+			a.canonicalCh <- BlockState{
+				head:  winner,
+				state: copyState(winner.state), // todo - it has to be a calculated state from some cache
+			}
+
 			log(fmt.Sprintf("-   Agg%d rollup=r%d(height=%d)[r%d] No Txs: %d. State=%v\n", a.id, winner.rootHash.ID(), winner.height, winner.parent.rootHash.ID(), len(winner.txs), winner.state))
 			// build a L1 tx with the rollup
 			a.network.broadcastL1Tx(&L1Tx{id: uuid.New(), txType: RollupTx, rollup: winner})
+		} else {
+			a.canonicalCh <- BlockState{
+				head:  winner,
+				state: copyState(winner.state), // todo - it has to be a calculated state from some cache
+			}
 		}
 	})
 }

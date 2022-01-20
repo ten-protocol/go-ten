@@ -3,6 +3,7 @@ This is not in any particular order
 - make the state in the rollup smarter and check it against the transactions
 - execute transactions as they come in, so that if we're the winner, happy days
 - create the L1Node and L2Node types, and mining is a boolean which starts the mining actor
+- write a checker to make sure that the state in each rollup matches the transactions
 
 - integrate rlp serialisation
 - instead of passing pointers to rollups/blocks/transactions, pass the serialised object

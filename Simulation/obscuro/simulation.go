@@ -21,7 +21,8 @@ type Stats struct {
 	nrEmptyBlocks      int
 
 	totalL2Txs int
-	noReorgs   map[int]int
+	noL1Reorgs map[NodeId]int
+	noL2Reorgs map[NodeId]int
 	// todo - actual avg block Duration
 }
 
@@ -33,7 +34,8 @@ func RunSimulation(nrUsers int, nrMiners int, simulationTime int, avgBlockDurati
 		avgBlockDuration: avgBlockDuration,
 		avgLatency:       avgLatency,
 		gossipPeriod:     gossipPeriod,
-		noReorgs:         map[int]int{},
+		noL1Reorgs:       map[NodeId]int{},
+		noL2Reorgs:       map[NodeId]int{},
 	}
 
 	var network = NetworkCfg{delay: func() int {
@@ -47,9 +49,9 @@ func RunSimulation(nrUsers int, nrMiners int, simulationTime int, avgBlockDurati
 	l2Cfg := L2Cfg{gossipPeriodMs: gossipPeriod}
 
 	for i := 1; i <= nrMiners; i++ {
-		agg := NewAgg(i, l2Cfg, nil, &network)
-		miner := NewMiner(i, l1Config, &agg, &network)
-		stats.noReorgs[i] = 0
+		agg := NewAgg(NodeId(i), l2Cfg, nil, &network)
+		miner := NewMiner(NodeId(i), l1Config, &agg, &network)
+		stats.noL1Reorgs[NodeId(i)] = 0
 		agg.l1 = &miner
 		network.allAgg = append(network.allAgg, agg)
 		network.allMiners = append(network.allMiners, miner)
