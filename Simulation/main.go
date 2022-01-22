@@ -38,6 +38,6 @@ func main() {
 	obscuro.SetLog(f)
 
 	blockDuration := 15_000
-	stats := obscuro.RunSimulation(5, 10, 30, blockDuration, blockDuration/20, blockDuration/3)
-	fmt.Printf("%#v\n", stats)
+	netw := obscuro.RunSimulation(5, 10, 30, blockDuration, blockDuration/20, blockDuration/3)
+	fmt.Printf("%#v\n", *netw.Stats)
 }

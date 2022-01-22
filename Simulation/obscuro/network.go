@@ -9,7 +9,7 @@ type NetworkCfg struct {
 	allMiners []L1Miner
 	allAgg    []L2Agg
 	delay     Latency // the latency
-	stats     *Stats
+	Stats     *Stats
 }
 
 var statsMu = &sync.RWMutex{}
@@ -23,11 +23,11 @@ func (c *NetworkCfg) broadcastBlockL1(b *Block) {
 		}
 	}
 	statsMu.Lock()
-	c.stats.l1Height = Max(c.stats.l1Height, b.height)
-	c.stats.totalL1++
-	c.stats.maxRollupsPerBlock = Max(c.stats.maxRollupsPerBlock, len(b.txs))
+	c.Stats.l1Height = Max(c.Stats.l1Height, b.height)
+	c.Stats.totalL1++
+	c.Stats.maxRollupsPerBlock = Max(c.Stats.maxRollupsPerBlock, len(b.txs))
 	if len(b.txs) == 0 {
-		c.stats.nrEmptyBlocks++
+		c.Stats.nrEmptyBlocks++
 	}
 	statsMu.Unlock()
 }
@@ -54,13 +54,13 @@ func (c *NetworkCfg) broadcastL1Tx(tx *L1Tx) {
 		Schedule(d, func() { t.L1P2PGossipTx(tx) })
 	}
 
-	// collect stats
+	// collect Stats
 	if tx.txType == RollupTx {
 		statsMu.Lock()
-		c.stats.l2Height = Max(c.stats.l2Height, tx.rollup.height)
-		c.stats.l2Head = tx.rollup
-		c.stats.totalL2++
-		c.stats.totalL2Txs += len(tx.rollup.txs)
+		c.Stats.l2Height = Max(c.Stats.l2Height, tx.rollup.height)
+		c.Stats.l2Head = tx.rollup
+		c.Stats.totalL2++
+		c.Stats.totalL2Txs += len(tx.rollup.txs)
 		statsMu.Unlock()
 	}
 }

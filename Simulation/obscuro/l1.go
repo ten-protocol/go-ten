@@ -77,7 +77,7 @@ func (m L1Miner) Start() {
 			if p2pb.height > head.height {
 				if !IsAncestor(head, p2pb) {
 					statsMu.Lock()
-					m.network.stats.noL1Reorgs[m.id]++
+					m.network.Stats.noL1Reorgs[m.id]++
 					statsMu.Unlock()
 					fork := lca(head, p2pb)
 					log(fmt.Sprintf("> M%d: Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.id, p2pb.rootHash.ID(), p2pb.height, head.rootHash.ID(), head.height, fork.rootHash.ID(), fork.height))

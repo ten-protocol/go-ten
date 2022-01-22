@@ -254,7 +254,7 @@ func (a L2Agg) processBlock(b *Block, doneCh *chan bool) {
 			if !IsRlpAncestor(newL2Head, bs.head) && !IsRlpAncestor(bs.head, newL2Head) {
 				log(fmt.Sprintf(">   Agg%d: Reorg. published=r_%d(%d), existing=r_%d(%d)", a.id, newL2Head.rootHash.ID(), newL2Head.height, bs.head.rootHash.ID(), bs.head.height))
 				statsMu.Lock()
-				a.network.stats.noL2Reorgs[a.id]++
+				a.network.Stats.noL2Reorgs[a.id]++
 				statsMu.Unlock()
 			}
 
