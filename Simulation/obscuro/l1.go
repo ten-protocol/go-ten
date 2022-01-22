@@ -19,7 +19,7 @@ type L1Miner struct {
 	network    *NetworkCfg
 
 	// Channels
-	runCh1      chan bool   // add false when the miner has to stop
+	runCh1      chan bool   // add false when the miner has to stop - todo - rename to done
 	runCh2      chan bool   // the mining loop is notified to stop
 	p2pCh       chan *Block // this is where blocks received from peers are dropped
 	miningCh    chan *Block // this is where blocks created by the mining setup of the current node are dropped
@@ -64,7 +64,7 @@ type Block struct {
 var GenesisBlock = Block{height: -1, rootHash: uuid.New(), nonce: 0, creationTime: time.Now(), txs: []*L1Tx{{id: uuid.New(), txType: RollupTx, rollup: &GenesisRollup}}}
 
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
-// it outputs the winning blocks to the canonicalCh channel
+// it outputs the winning blocks to the roundWinnerCh channel
 func (m L1Miner) Start() {
 	// This starts the mining
 	go m.startMining()
@@ -80,15 +80,15 @@ func (m L1Miner) Start() {
 					m.network.stats.noL1Reorgs[m.id]++
 					statsMu.Unlock()
 					fork := lca(head, p2pb)
-					log(fmt.Sprintf("M%d :Reorg new=%d(%d), old=%d(%d), fork=%d(%d)\n", m.id, p2pb.rootHash.ID(), p2pb.height, head.rootHash.ID(), head.height, fork.rootHash.ID(), fork.height))
+					log(fmt.Sprintf("> M%d: Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.id, p2pb.rootHash.ID(), p2pb.height, head.rootHash.ID(), head.height, fork.rootHash.ID(), fork.height))
 				}
 				head = m.setHead(p2pb)
 			}
 		case mb := <-m.miningCh: // Received from the local mining
 			if mb.height > head.height { // Ignore the locally produced block if someone else found one already
+				log(m.printBlock(mb))
 				head = m.setHead(mb)
 				m.network.broadcastBlockL1(mb)
-				log(m.printBlock(mb))
 			}
 		case _ = <-m.runCh1:
 			return
@@ -101,12 +101,12 @@ func (m L1Miner) printBlock(mb *Block) string {
 	var txs []string
 	for _, tx := range mb.txs {
 		if tx.txType == RollupTx {
-			txs = append(txs, fmt.Sprintf("r%d", tx.rollup.rootHash.ID()))
+			txs = append(txs, fmt.Sprintf("r_%d", tx.rollup.rootHash.ID()))
 		} else {
-			txs = append(txs, fmt.Sprintf("d%d=%d", tx.dest.ID(), tx.amount))
+			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.dest, tx.amount))
 		}
 	}
-	return fmt.Sprintf("> M%d create b%d(height=%d, nonce=%d)[p=b%d]. Txs: %v\n", m.id, mb.rootHash.ID(), mb.height, mb.nonce, mb.parent.rootHash.ID(), txs)
+	return fmt.Sprintf("> M%d: create b_%d(height=%d, nonce=%d)[p=b_%d]. Txs: %v", m.id, mb.rootHash.ID(), mb.height, mb.nonce, mb.parent.rootHash.ID(), txs)
 }
 
 // Notifies the miner to start mining on the new block and the aggregtor to produce rollups
@@ -141,6 +141,8 @@ func (m L1Miner) startMining() {
 
 	var currentHeight = -1
 
+	var doneCh *chan bool = nil
+
 	for {
 		select {
 		case _ = <-m.runCh2:
@@ -164,10 +166,17 @@ func (m L1Miner) startMining() {
 		case cb := <-m.canonicalCh:
 			// A new canonical block was found. Start a new round based on that block.
 
+			//notify the existing mining thread to stop mining
+			if doneCh != nil {
+				*doneCh <- true
+			}
+
+			c := make(chan bool)
+			doneCh = &c
 			// Generate a random number, and wait for that number of ms. Equivalent to PoW
 			// Include all rollups received during this period.
 			nonce := m.cfg.powTime()
-			Schedule(nonce, func() {
+			ScheduleInterrupt(nonce, doneCh, func() {
 				var rollups = make([]*L1Tx, 0)
 				mut.RLock()
 
@@ -180,7 +189,10 @@ func (m L1Miner) startMining() {
 					}
 				}
 				mut.RUnlock()
-				var toInclude = FindNotIncludedL1Txs(cb, append(deposits, rollups...))
+				all := make([]*L1Tx, 0)
+				all = append(all, rollups...)
+				all = append(all, deposits...)
+				var toInclude = FindNotIncludedL1Txs(cb, all)
 				m.miningCh <- &Block{height: cb.height + 1, rootHash: uuid.New(), nonce: nonce, miner: &m, parent: cb, creationTime: time.Now(), txs: toInclude}
 			})
 		}

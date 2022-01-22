@@ -52,11 +52,7 @@ func copyState(state State) State {
 }
 
 func serialize(state State) string {
-	s := make([]string, 0)
-	for add, bal := range state {
-		s = append(s, fmt.Sprintf("%d=%d", add.ID(), bal))
-	}
-	return fmt.Sprintf("%v", s)
+	return fmt.Sprintf("%v", state)
 }
 
 // returns a modified copy of the state
@@ -74,6 +70,8 @@ func executeTx(s State, tx *L2Tx) {
 	if bal >= tx.amount {
 		s[tx.from] -= tx.amount
 		s[tx.dest] += tx.amount
+		//} else {
+		//fmt.Printf("--%d\n", tx.id.ID())
 	}
 }
 

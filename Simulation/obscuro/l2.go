@@ -41,7 +41,7 @@ type L2Agg struct {
 	progOutCh chan currentWork
 
 	// when a round finishes and a winner is discovered. Notifies the gossip actor to start processing new transactions.
-	canonicalCh chan BlockState
+	roundWinnerCh chan BlockState
 
 	// a database of work already executed
 	db Db
@@ -49,30 +49,30 @@ type L2Agg struct {
 
 func NewAgg(id NodeId, cfg L2Cfg, l1 *L1Miner, network *NetworkCfg) L2Agg {
 	return L2Agg{
-		id:          id,
-		cfg:         cfg,
-		network:     network,
-		l1:          l1,
-		runCh1:      make(chan bool),
-		runCh2:      make(chan bool),
-		p2pChRollup: make(chan *Rollup),
-		p2pChTx:     make(chan *L2Tx),
-		rpcCh:       make(chan *Block),
-		rollupIntCh: make(chan int),
-		rollupOutCh: make(chan []*Rollup),
-		txsIntCh:    make(chan bool),
-		txsOutCh:    make(chan []*L2Tx),
-		canonicalCh: make(chan BlockState),
-		progIntCh:   make(chan bool),
-		progOutCh:   make(chan currentWork),
-		db:          NewInMemoryDb(),
+		id:            id,
+		cfg:           cfg,
+		network:       network,
+		l1:            l1,
+		runCh1:        make(chan bool),
+		runCh2:        make(chan bool),
+		p2pChRollup:   make(chan *Rollup),
+		p2pChTx:       make(chan *L2Tx),
+		rpcCh:         make(chan *Block),
+		rollupIntCh:   make(chan int),
+		rollupOutCh:   make(chan []*Rollup),
+		txsIntCh:      make(chan bool),
+		txsOutCh:      make(chan []*L2Tx),
+		roundWinnerCh: make(chan BlockState),
+		progIntCh:     make(chan bool),
+		progOutCh:     make(chan currentWork),
+		db:            NewInMemoryDb(),
 	}
 }
 
 type L2RootHash = uuid.UUID
 
-// Todo - this has to be a merkle root eventually
-type StateRoot = State
+// Todo - this has to be a trie root eventually
+type StateRoot = string
 
 type Rollup struct {
 	height       int
@@ -84,12 +84,6 @@ type Rollup struct {
 	nonce        Nonce
 	txs          []*L2Tx
 	state        StateRoot
-}
-
-// Data structure to be used once a rollup was included in a block
-type IncludedRollup struct {
-	l2 *Rollup // the rollup
-	l1 *Block  // the block where it was included
 }
 
 // Transfers and Withdrawals for now
@@ -119,11 +113,12 @@ var GenesisRollup = Rollup{-1,
 	nil,
 	0,
 	[]*L2Tx{},
-	emptyState(),
+	serialize(emptyState()),
 }
 
 func (a L2Agg) Start() {
 	go a.startGossip()
+	var doneCh *chan bool = nil
 
 	for {
 		select {
@@ -131,7 +126,14 @@ func (a L2Agg) Start() {
 		// Listen for notifications from the L1 node and process them
 		// Note that during processing, more recent notifications can be received
 		case b := <-a.rpcCh:
-			go a.processBlock(b)
+			if doneCh != nil {
+				*doneCh <- true
+			}
+
+			c := make(chan bool)
+			doneCh = &c
+
+			go a.processBlock(b, doneCh)
 		case _ = <-a.runCh1:
 			return
 		}
@@ -161,9 +163,10 @@ func (a L2Agg) startGossip() {
 
 	for {
 		select {
-		case r := <-a.canonicalCh:
+		case r := <-a.roundWinnerCh:
 			currentHead = r.head
 			currentState = r.state
+			currentProcessedTxs = make([]*L2Tx, 0)
 
 			// determine the transactions that were not included in the previous head
 			// this is terribly inefficient
@@ -220,42 +223,57 @@ func (a L2Agg) L2P2PReceiveTx(tx *L2Tx) {
 	a.p2pChTx <- tx
 }
 
-// main block processing logic
-func (a L2Agg) processBlock(b *Block) {
+// main L1 block processing logic - the POBI protocol
+func (a L2Agg) processBlock(b *Block, doneCh *chan bool) {
 	// A Pobi round starts when a new canonical L1 block was produced
 
 	// Find the new canonical L2 chain and calculate the state
-	// Note that the previous L1 head is passed in as well, so that the logic can recognize L1 reorgs and replay the state from the forking block
 	bs := a.calculateL2State(b)
+
+	// retrieve the calculated state based on the previous winner and the incoming transactions
+	//a.progIntCh <- true
+	//current := <-a.progOutCh
+
+	// the transactions and the state as calculated during the round
+	//txs := current.txs
+	//stateAfter := current.s
+	//newL2Head := current.r
+
+	/*** this here toremove */
+	//avoid using the precalculated stuff
 	newL2Head := bs.head
+	stateAfter := processDeposits(b, copyState(bs.state))
+	txs := a.currentTxs(newL2Head)
+	stateAfter = calculateState(txs, stateAfter)
 
-	a.progIntCh <- true
-	current := <-a.progOutCh
+	/***/
 
-	txs := current.txs
-	stateAfter := current.s
+	// the transactions were processed on a wrong rollup
+	// we were working on the wrong winner
+	/*	if newL2Head.rootHash != bs.head.rootHash {
+			if !IsRlpAncestor(newL2Head, bs.head) && !IsRlpAncestor(bs.head, newL2Head) {
+				log(fmt.Sprintf(">   Agg%d: Reorg. published=r_%d(%d), existing=r_%d(%d)", a.id, newL2Head.rootHash.ID(), newL2Head.height, bs.head.rootHash.ID(), bs.head.height))
+				statsMu.Lock()
+				a.network.stats.noL2Reorgs[a.id]++
+				statsMu.Unlock()
+			}
 
-	if current.r.rootHash != newL2Head.rootHash {
-		statsMu.Lock()
-		a.network.stats.noL2Reorgs[a.id]++
-		statsMu.Unlock()
+			newL2Head = bs.head
+			stateAfter = processDeposits(b, bs.state)
 
-		// we were working on the wrong winner
-		log(fmt.Sprintf("-   Agg%d current=r%d actual=r%d\n", a.id, current.r.rootHash.ID(), newL2Head.rootHash.ID()))
-		// determine the transactions to be included
-		txs = a.currentTxs(newL2Head)
-
-		// calculate the state after executing them
-		stateAfter = calculateState(txs, bs.state)
-	}
-
+			// determine the transactions to be included on the actual winner
+			// and calculate the state after executing them
+			txs = a.currentTxs(newL2Head)
+			stateAfter = calculateState(txs, stateAfter)
+		}
+	*/
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := Rollup{newL2Head.height + 1, uuid.New(), &a, newL2Head, time.Now(), b, generateNonce(), txs, copyState(stateAfter)}
+	r := Rollup{newL2Head.height + 1, uuid.New(), &a, newL2Head, time.Now(), b, generateNonce(), txs, serialize(stateAfter)}
 	a.network.broadcastRollupL2(&r)
 
 	// wait to receive rollups from peers
 	// todo - make this smarter. e.g: if 90% of the peers have sent rollups, proceed. Or if a nonce is very low and probabilistically there is no chance, etc
-	Schedule(a.cfg.gossipPeriodMs, func() {
+	ScheduleInterrupt(a.cfg.gossipPeriodMs, doneCh, func() {
 
 		// request the new generation rolllups
 		a.rollupIntCh <- newL2Head.height + 1
@@ -270,24 +288,24 @@ func (a L2Agg) processBlock(b *Block) {
 		}
 
 		// determine the winner of the round
-		winner := a.findRoundWinner(usefulRollups, newL2Head)
+		winner := a.findRoundWinner(usefulRollups, newL2Head, bs.state, b)
 
 		// we are the winner
-		if winner.agg.id == a.id {
-			a.canonicalCh <- BlockState{
-				head:  winner,
-				state: copyState(winner.state), // todo - it has to be a calculated state from some cache
+		if winner.head.agg.id == a.id {
+			var txsString []string
+			for _, t := range winner.head.txs {
+				txsString = append(txsString, fmt.Sprintf("%v->%v(%d)", t.from, t.dest, t.amount))
 			}
-
-			log(fmt.Sprintf("-   Agg%d rollup=r%d(height=%d)[r%d] No Txs: %d. State=%v\n", a.id, winner.rootHash.ID(), winner.height, winner.parent.rootHash.ID(), len(winner.txs), winner.state))
+			sum := 0
+			for _, bal := range winner.state {
+				sum += bal
+			}
+			log(fmt.Sprintf(">   Agg%d: (b_%d)create rollup=r_%d(%d)[r_%d]{poof=b_%d}. Txs: %v. State=%v. Total=%d", a.id, b.rootHash.ID(), winner.head.rootHash.ID(), winner.head.height, winner.head.parent.rootHash.ID(), winner.head.l1Proof.rootHash.ID(), txsString, winner.state, sum))
 			// build a L1 tx with the rollup
-			a.network.broadcastL1Tx(&L1Tx{id: uuid.New(), txType: RollupTx, rollup: winner})
-		} else {
-			a.canonicalCh <- BlockState{
-				head:  winner,
-				state: copyState(winner.state), // todo - it has to be a calculated state from some cache
-			}
+			a.network.broadcastL1Tx(&L1Tx{id: uuid.New(), txType: RollupTx, rollup: winner.head})
 		}
+
+		a.roundWinnerCh <- winner
 	})
 }
 
@@ -331,8 +349,14 @@ func (a L2Agg) calculateL2State(b *Block) BlockState {
 	return bs
 }
 
+// given a new L1 block, and the state as it was in the parent block, calculates the state after the current block
 func calculateBlockState(b *Block, parentState BlockState) BlockState {
 	var newHead *Rollup = nil
+
+	s := copyState(parentState.state)
+
+	// always process deposits of the parent block
+	s = processDeposits(b.parent, s)
 
 	// find the head rollup according to the rules
 	for _, t := range b.txs {
@@ -348,13 +372,11 @@ func calculateBlockState(b *Block, parentState BlockState) BlockState {
 		}
 	}
 
-	s := copyState(parentState.state)
-	s = processDeposits(b, s)
-
 	// only apply transactions if there is a new l2 head
-	if newHead == nil {
-		newHead = parentState.head
+	if newHead != nil {
 		s = calculateState(newHead.txs, s)
+	} else {
+		newHead = parentState.head
 	}
 
 	bs := BlockState{
@@ -365,11 +387,14 @@ func calculateBlockState(b *Block, parentState BlockState) BlockState {
 }
 
 func processDeposits(b *Block, s State) State {
+	if b == nil {
+		return emptyState()
+	}
 	for _, tx := range b.txs {
 		if tx.txType == DepositTx {
-			_, f := s[tx.dest]
-			if !f {
-				s[tx.dest] += tx.amount
+			v, f := s[tx.dest]
+			if f {
+				s[tx.dest] = v + tx.amount
 			} else {
 				s[tx.dest] = tx.amount
 			}
@@ -378,7 +403,7 @@ func processDeposits(b *Block, s State) State {
 	return s
 }
 
-func (a L2Agg) findRoundWinner(receivedRollups []*Rollup, head *Rollup) *Rollup {
+func (a L2Agg) findRoundWinner(receivedRollups []*Rollup, head *Rollup, state State, b *Block) BlockState {
 	var win *Rollup
 	for _, r := range receivedRollups {
 		if r.parent.rootHash != head.rootHash {
@@ -388,7 +413,15 @@ func (a L2Agg) findRoundWinner(receivedRollups []*Rollup, head *Rollup) *Rollup 
 			win = r
 		}
 	}
-	return win
+
+	s := copyState(state)
+	s = processDeposits(b, s)
+	s = calculateState(win.txs, s)
+	// todo - check that s is valid against the state in the rollup, if not - call the function again with this tx excluded
+	return BlockState{
+		head:  win,
+		state: s,
+	}
 }
 
 func (a L2Agg) Stop() {

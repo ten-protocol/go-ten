@@ -41,17 +41,43 @@ func IsAncestor(a *Block, b *Block) bool {
 	return IsAncestor(a, b.parent)
 }
 
+// IsRlpAncestor return true if a is the ancestor of b
+func IsRlpAncestor(a *Rollup, b *Rollup) bool {
+	if a.rootHash == b.rootHash {
+		return true
+	}
+	if a.height >= b.height {
+		return false
+	}
+	return IsRlpAncestor(a, b.parent)
+}
+
+// ScheduleInterrupt runs the function after the delay
+func ScheduleInterrupt(delay int, doneCh *chan bool, fun ScheduledFunc) {
+	ticker := time.NewTicker(Duration(delay))
+	go func() {
+		executed := false
+		select {
+		case <-*doneCh:
+		case <-ticker.C:
+			executed = true
+			fun()
+		}
+		if executed {
+			<-*doneCh
+		}
+		ticker.Stop()
+	}()
+}
+
 // Schedule runs the function after the delay
 func Schedule(delay int, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				ticker.Stop()
-				fun()
-				return
-			}
+		select {
+		case <-ticker.C:
+			ticker.Stop()
+			fun()
 		}
 	}()
 }

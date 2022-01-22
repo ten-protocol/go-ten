@@ -50,13 +50,15 @@ func (c *NetworkCfg) broadcastL1Tx(tx *L1Tx) {
 		t := m
 		// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 		// todo - find a better way to express this
-		Schedule(c.delay()/2, func() { t.L1P2PGossipTx(tx) })
+		d := Max(c.delay()/2, 1)
+		Schedule(d, func() { t.L1P2PGossipTx(tx) })
 	}
 
 	// collect stats
 	if tx.txType == RollupTx {
 		statsMu.Lock()
 		c.stats.l2Height = Max(c.stats.l2Height, tx.rollup.height)
+		c.stats.l2Head = tx.rollup
 		c.stats.totalL2++
 		c.stats.totalL2Txs += len(tx.rollup.txs)
 		statsMu.Unlock()
