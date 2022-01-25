@@ -39,6 +39,7 @@ func main() {
 	common.SetLog(f)
 
 	blockDuration := 15_000
-	netw := simulation.RunSimulation(5, 10, 30, blockDuration, blockDuration/20, blockDuration/3)
-	fmt.Printf("%#v\n", *netw.Stats)
+	l1netw, l2netw := simulation.RunSimulation(5, 10, 30, blockDuration, blockDuration/20, blockDuration/3)
+	fmt.Printf("%#v\n", l1netw.Stats)
+	fmt.Printf("%#v\n", l2netw.Stats)
 }

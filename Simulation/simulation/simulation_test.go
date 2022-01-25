@@ -14,7 +14,7 @@ func TestSimulation(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
-	// todo - create a folder specific for the test
+	// create a folder specific for the test
 	d, err := os.MkdirTemp("..", "simulation_result")
 	if err != nil {
 		panic(err)
@@ -27,16 +27,16 @@ func TestSimulation(t *testing.T) {
 	common.SetLog(f)
 
 	blockDuration := 15_000
-	netw := RunSimulation(5, 10, 20, blockDuration, blockDuration/20, blockDuration/3)
-	checkBlockchainValidity(t, netw)
+	l1netw, l2netw := RunSimulation(5, 10, 20, blockDuration, blockDuration/20, blockDuration/3)
+	checkBlockchainValidity(t, l1netw, l2netw)
 }
 
 // Checks that there are no duplicated transactions in the L1 or L2
 //TODO check that all injected transactions were included
 //TODO Check that the total amount of money in user accounts matches the amount injected as deposits
 //TODO Check that processing transactions in the order specified in the list results in the same balances
-func checkBlockchainValidity(t *testing.T, network NetworkCfg) {
-	r := network.Stats.l2Head
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg) {
+	r := l2Network.Stats.l2Head
 
 	// check that there are no duplicate transactions on the L1
 	deposits := make([]uuid.UUID, 0)
@@ -89,7 +89,7 @@ func checkBlockchainValidity(t *testing.T, network NetworkCfg) {
 
 	//fmt.Printf("Deposits: total_in=%d; total_txs=%d\n", total, totalTx)
 
-	bl := network.Stats.l2Head.L1Proof
+	bl := l2Network.Stats.l2Head.L1Proof
 
 	nrDeposits := 0
 	totalDeposits := 0
@@ -101,7 +101,7 @@ func checkBlockchainValidity(t *testing.T, network NetworkCfg) {
 			break
 		}
 
-		s, _ := network.allAgg[0].Db.Fetch(bl.RootHash())
+		s, _ := l2Network.nodes[0].Db.Fetch(bl.RootHash())
 		tot := 0
 		for _, bal := range s.State {
 			tot += bal

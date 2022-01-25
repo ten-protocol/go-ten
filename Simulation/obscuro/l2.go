@@ -12,12 +12,13 @@ type L2Cfg struct {
 }
 
 // this will become the Obscuro "Node" type
-type L2Agg struct {
+type L2Node struct {
 	Id        common.NodeId
-	L1        *ethereum_mock.L1Miner
+	L1        *ethereum_mock.L1Node
 	cfg       L2Cfg
 	l1Network common.L1Network
 	l2Network common.L2Network
+	mining    bool
 
 	// control the lifecycle
 	runCh1 chan bool
@@ -50,13 +51,14 @@ type L2Agg struct {
 	Db Db
 }
 
-func NewAgg(id common.NodeId, cfg L2Cfg, l1 *ethereum_mock.L1Miner, l1Network common.L1Network, l2Network common.L2Network) L2Agg {
-	return L2Agg{
+func NewAgg(id common.NodeId, cfg L2Cfg, l1 *ethereum_mock.L1Node, l1Network common.L1Network, l2Network common.L2Network) L2Node {
+	return L2Node{
 		Id:            id,
 		cfg:           cfg,
 		l1Network:     l1Network,
 		l2Network:     l2Network,
 		L1:            l1,
+		mining:        true,
 		runCh1:        make(chan bool),
 		runCh2:        make(chan bool),
 		p2pChRollup:   make(chan *common.Rollup),
@@ -73,7 +75,7 @@ func NewAgg(id common.NodeId, cfg L2Cfg, l1 *ethereum_mock.L1Miner, l1Network co
 	}
 }
 
-func (a L2Agg) Start() {
+func (a L2Node) Start() {
 	go a.startGossip()
 	var doneCh *chan bool = nil
 
@@ -105,7 +107,7 @@ type currentWork struct {
 
 // actor that participates in rollup and transaction gossip
 // processes transactions
-func (a L2Agg) startGossip() {
+func (a L2Node) startGossip() {
 
 	// Rollups grouped by Height
 	var allRollups = make(map[int][]*common.Rollup)
@@ -176,22 +178,22 @@ func (a L2Agg) startGossip() {
 }
 
 // RPCNewHead Receive notifications From the L1 Node when there's a new block
-func (a L2Agg) RPCNewHead(b common.Block) {
+func (a L2Node) RPCNewHead(b common.Block) {
 	a.rpcCh <- &b
 }
 
 // L2P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
 // All it does is drop the Rollups in a channel for processing.
-func (a L2Agg) L2P2PGossipRollup(r *common.Rollup) {
+func (a L2Node) L2P2PGossipRollup(r *common.Rollup) {
 	a.p2pChRollup <- r
 }
 
-func (a L2Agg) L2P2PReceiveTx(tx common.L2Tx) {
+func (a L2Node) L2P2PReceiveTx(tx common.L2Tx) {
 	a.p2pChTx <- tx
 }
 
 // main L1 block processing logic - the POBI protocol
-func (a L2Agg) processBlock(b *common.Block, doneCh *chan bool) {
+func (a L2Node) processBlock(b *common.Block, doneCh *chan bool) {
 	// A Pobi round starts when a new canonical L1 block was produced
 
 	// Find the new canonical L2 chain and calculate the State
@@ -219,7 +221,7 @@ func (a L2Agg) processBlock(b *common.Block, doneCh *chan bool) {
 	// we were working on the wrong winner
 	/*	if newL2Head.RootHash != bs.Head.RootHash {
 			if !IsRlpAncestor(newL2Head, bs.Head) && !IsRlpAncestor(bs.Head, newL2Head) {
-				log(fmt.Sprintf(">   Agg%d: Reorg. published=r_%d(%d), existing=r_%d(%d)", a.Id, newL2Head.RootHash.ID(), newL2Head.Height, bs.Head.RootHash.ID(), bs.Head.Height))
+				log(fmt.Sprintf(">   Agg%d: L1Reorg. published=r_%d(%d), existing=r_%d(%d)", a.Id, newL2Head.RootHash.ID(), newL2Head.Height, bs.Head.RootHash.ID(), bs.Head.Height))
 				statsMu.Lock()
 				a.network.Stats.noL2Reorgs[a.Id]++
 				statsMu.Unlock()
@@ -278,7 +280,7 @@ func (a L2Agg) processBlock(b *common.Block, doneCh *chan bool) {
 }
 
 // Calculate transactions to be included in the current rollup
-func (a L2Agg) currentTxs(head *common.Rollup) []common.L2Tx {
+func (a L2Node) currentTxs(head *common.Rollup) []common.L2Tx {
 	// Requests all l2 transactions received over gossip
 	a.txsIntCh <- true
 	txs := <-a.txsOutCh
@@ -299,7 +301,7 @@ func (a L2Agg) currentTxs(head *common.Rollup) []common.L2Tx {
 
 // Complex logic to determine the new canonical Head and to calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1 block in case of rollbacks.
-func (a L2Agg) calculateL2State(b *common.Block) BlockState {
+func (a L2Node) calculateL2State(b *common.Block) BlockState {
 	val, found := a.Db.Fetch(b.RootHash())
 	if found {
 		return val
@@ -382,7 +384,7 @@ func processDeposits(b *common.Block, s State) State {
 	return s
 }
 
-func (a L2Agg) findRoundWinner(receivedRollups []*common.Rollup, head *common.Rollup, state State, b *common.Block) BlockState {
+func (a L2Node) findRoundWinner(receivedRollups []*common.Rollup, head *common.Rollup, state State, b *common.Block) BlockState {
 	var win *common.Rollup
 	for _, r := range receivedRollups {
 		if r.Parent().RootHash() != head.RootHash() {
@@ -403,7 +405,7 @@ func (a L2Agg) findRoundWinner(receivedRollups []*common.Rollup, head *common.Ro
 	}
 }
 
-func (a L2Agg) Stop() {
+func (a L2Node) Stop() {
 	a.runCh1 <- false
 	a.runCh2 <- false
 }

@@ -17,5 +17,7 @@ type NotifyNewBlock interface {
 }
 
 type StatsCollector interface {
-	Reorg(id NodeId)
+	L1Reorg(id NodeId)
+	NewBlock(block Block)
+	NewRollup(rollup Rollup)
 }

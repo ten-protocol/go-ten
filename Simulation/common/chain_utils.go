@@ -19,6 +19,10 @@ type Tx interface {
 	Hash() TxHash
 }
 
+type Batch interface {
+	Hash() TxHash
+}
+
 //LCA - returns the least common ancestor of the 2 blocks
 func LCA(a ChainNode, b ChainNode) ChainNode {
 	if a.Height() == -1 || b.Height() == -1 {
