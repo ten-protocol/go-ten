@@ -36,11 +36,9 @@ func ScheduleInterrupt(delay int, doneCh *chan bool, fun ScheduledFunc) {
 func Schedule(delay int, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
 	go func() {
-		select {
-		case <-ticker.C:
-			ticker.Stop()
-			fun()
-		}
+		<-ticker.C
+		ticker.Stop()
+		fun()
 	}()
 }
 

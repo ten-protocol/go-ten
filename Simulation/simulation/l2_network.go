@@ -8,9 +8,8 @@ import (
 
 // NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
-	nodes []obscuro.L2Node
+	nodes []*obscuro.Node
 	delay common.Latency // the latency
-	Stats *Stats
 }
 
 // Broadcasts the rollup to all L2 peers

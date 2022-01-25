@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Just two types of relevant L1 transactions: Deposits and Rollups
+// L1TxType - Just two types of relevant L1 transactions: Deposits and Rollups
 type L1TxType int64
 
 const (
@@ -66,6 +66,6 @@ func (b Block) L1Txs() []L1Tx {
 
 var GenesisBlock = Block{h: -1, root: uuid.New(), Nonce: 0, CreationTime: time.Now(), txs: []L1Tx{{Id: uuid.New(), TxType: RollupTx, Rollup: GenesisRollup}}}
 
-func NewBlock(cb *Block, nonce int, m NodeId, txsCopy []L1Tx) *Block {
-	return &Block{h: cb.Height() + 1, root: uuid.New(), Nonce: nonce, Miner: m, p: cb, CreationTime: time.Now(), txs: txsCopy}
+func NewBlock(cb *Block, nonce int, m NodeId, txsCopy []L1Tx) Block {
+	return Block{h: cb.Height() + 1, root: uuid.New(), Nonce: nonce, Miner: m, p: cb, CreationTime: time.Now(), txs: txsCopy}
 }

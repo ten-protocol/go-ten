@@ -50,6 +50,12 @@ func (s *Stats) L1Reorg(id common.NodeId) {
 	statsMu.Unlock()
 }
 
+func (s *Stats) L2Reorg(id common.NodeId) {
+	statsMu.Lock()
+	s.noL2Reorgs[id]++
+	statsMu.Unlock()
+}
+
 func (s *Stats) NewBlock(b common.Block) {
 	statsMu.Lock()
 	s.l1Height = common.Max(s.l1Height, b.Height())

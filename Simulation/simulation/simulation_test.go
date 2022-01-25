@@ -36,7 +36,7 @@ func TestSimulation(t *testing.T) {
 //TODO Check that the total amount of money in user accounts matches the amount injected as deposits
 //TODO Check that processing transactions in the order specified in the list results in the same balances
 func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg) {
-	r := l2Network.Stats.l2Head
+	r := l1Network.Stats.l2Head
 
 	// check that there are no duplicate transactions on the L1
 	deposits := make([]uuid.UUID, 0)
@@ -89,7 +89,7 @@ func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2N
 
 	//fmt.Printf("Deposits: total_in=%d; total_txs=%d\n", total, totalTx)
 
-	bl := l2Network.Stats.l2Head.L1Proof
+	bl := l1Network.Stats.l2Head.L1Proof
 
 	nrDeposits := 0
 	totalDeposits := 0
