@@ -78,7 +78,11 @@ func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l1Netwo
 }
 
 func (a Node) Start() {
-	go a.startGossip()
+	if a.mining {
+		go a.startGossip()
+	}
+
+	// used as a signaling mechanism to start processing on the old block if a new L1 block arrives earlier
 	var doneCh *chan bool = nil
 
 	for {

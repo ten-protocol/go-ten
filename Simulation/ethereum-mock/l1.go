@@ -45,8 +45,10 @@ func NewMiner(id common.NodeId, cfg MiningConfig, client common.NotifyNewBlock, 
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
 // it outputs the winning blocks to the roundWinnerCh channel
 func (m *Node) Start() {
-	// This starts the mining
-	go m.startMining()
+	if m.mining {
+		// This starts the mining
+		go m.startMining()
+	}
 
 	var head = m.setHead(common.GenesisBlock)
 
