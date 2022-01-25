@@ -1,4 +1,4 @@
-package obscuro
+package common
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ func SetLog(f *os.File) {
 	logFile = f
 }
 
-func log(msg string) {
+func Log(msg string) {
 	_, err := logFile.WriteString(fmt.Sprintf("%d %s\n", makeTimestamp(), msg))
 	if err != nil {
 		panic("could not write to file")

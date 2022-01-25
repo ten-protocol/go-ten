@@ -1,10 +1,11 @@
-package obscuro
+package simulation
 
 import (
 	"fmt"
 	"github.com/google/uuid"
 	"math/rand"
 	"os"
+	"simulation/common"
 	"testing"
 	"time"
 )
@@ -23,39 +24,39 @@ func TestSimulation(t *testing.T) {
 		panic(err)
 	}
 	defer f.Close()
-	SetLog(f)
+	common.SetLog(f)
 
 	blockDuration := 15_000
 	netw := RunSimulation(5, 10, 20, blockDuration, blockDuration/20, blockDuration/3)
-	checkBlockchainValidity(netw, t)
+	checkBlockchainValidity(t, netw)
 }
 
 // Checks that there are no duplicated transactions in the L1 or L2
 //TODO check that all injected transactions were included
 //TODO Check that the total amount of money in user accounts matches the amount injected as deposits
 //TODO Check that processing transactions in the order specified in the list results in the same balances
-func checkBlockchainValidity(network NetworkCfg, t *testing.T) {
+func checkBlockchainValidity(t *testing.T, network NetworkCfg) {
 	r := network.Stats.l2Head
 
 	// check that there are no duplicate transactions on the L1
 	deposits := make([]uuid.UUID, 0)
 	rollups := make([]uuid.UUID, 0)
-	b := r.l1Proof
+	b := r.L1Proof
 	totalTx := 0
 
 	for {
-		if b.rootHash == GenesisBlock.rootHash {
+		if b.Height() == -1 {
 			break
 		}
-		for _, tx := range b.txs {
-			if tx.txType == DepositTx {
-				deposits = append(deposits, tx.id)
-				totalTx += tx.amount
+		for _, tx := range b.L1Txs() {
+			if tx.TxType == common.DepositTx {
+				deposits = append(deposits, tx.Id)
+				totalTx += tx.Amount
 			} else {
-				rollups = append(rollups, tx.rollup.rootHash)
+				rollups = append(rollups, tx.Rollup.RootHash())
 			}
 		}
-		b = b.parent
+		b = b.ParentBlock()
 	}
 
 	if len(findDups(deposits)) > 0 {
@@ -69,16 +70,16 @@ func checkBlockchainValidity(network NetworkCfg, t *testing.T) {
 
 	transfers := make([]uuid.UUID, 0)
 	for {
-		if r.rootHash == GenesisRollup.rootHash {
+		if r.Height() == -1 {
 			break
 		}
-		for _, tx := range r.txs {
-			if tx.txType == TransferTx {
-				transfers = append(transfers, tx.id)
-				//totalTx += tx.amount
+		for _, tx := range r.L2Txs() {
+			if tx.TxType == common.TransferTx {
+				transfers = append(transfers, tx.Id)
+				//totalTx += tx.Amount
 			}
 		}
-		r = r.parent
+		r = r.ParentRollup()
 	}
 
 	if len(findDups(transfers)) > 0 {
@@ -88,7 +89,7 @@ func checkBlockchainValidity(network NetworkCfg, t *testing.T) {
 
 	//fmt.Printf("Deposits: total_in=%d; total_txs=%d\n", total, totalTx)
 
-	bl := network.Stats.l2Head.l1Proof
+	bl := network.Stats.l2Head.L1Proof
 
 	nrDeposits := 0
 	totalDeposits := 0
@@ -96,26 +97,26 @@ func checkBlockchainValidity(network NetworkCfg, t *testing.T) {
 	// walk the L1 blocks and
 	for {
 
-		if bl.rootHash == GenesisBlock.rootHash {
+		if bl.Height() == -1 {
 			break
 		}
 
-		s, _ := network.allAgg[0].db.fetch(bl.rootHash)
+		s, _ := network.allAgg[0].Db.Fetch(bl.RootHash())
 		tot := 0
-		for _, bal := range s.state {
+		for _, bal := range s.State {
 			tot += bal
 		}
 		nrDeposits = 0
-		for _, tx := range bl.txs {
-			if tx.txType == DepositTx {
+		for _, tx := range bl.L1Txs() {
+			if tx.TxType == common.DepositTx {
 				nrDeposits++
 			}
 		}
 		totalDeposits += nrDeposits
 
-		fmt.Printf("%d=%d (%d of %d)\n", bl.rootHash.ID(), tot, nrDeposits, totalDeposits)
+		fmt.Printf("%d=%d (%d of %d)\n", bl.RootHash().ID(), tot, nrDeposits, totalDeposits)
 		//lastTotal = t
-		bl = bl.parent
+		bl = bl.ParentBlock()
 	}
 
 }

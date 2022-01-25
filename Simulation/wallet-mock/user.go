@@ -1,4 +1,4 @@
-package obscuro
+package wallet_mock
 
 import "github.com/google/uuid"
 
@@ -6,5 +6,5 @@ import "github.com/google/uuid"
 type Address = uuid.UUID
 
 type Wallet struct {
-	address Address
+	Address Address
 }

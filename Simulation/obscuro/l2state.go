@@ -2,42 +2,44 @@ package obscuro
 
 import (
 	"fmt"
+	"simulation/common"
+	"simulation/wallet-mock"
 	"sync"
 )
 
-type State = map[Address]int
+type State = map[wallet_mock.Address]int
 
 type BlockState struct {
-	head  *Rollup
-	state State
+	Head  *common.Rollup
+	State State
 }
 
 type Db interface {
-	fetch(hash L1RootHash) (BlockState, bool)
-	set(hash L1RootHash, state BlockState)
+	Fetch(hash common.RootHash) (BlockState, bool)
+	Set(hash common.RootHash, state BlockState)
 }
 
 type InMemoryDb struct {
-	// the state is dependent on the L1 block alone
-	cache map[L1RootHash]BlockState
+	// the State is dependent on the L1 block alone
+	cache map[common.RootHash]BlockState
 	mutex sync.RWMutex
 }
 
 func NewInMemoryDb() *InMemoryDb {
 	return &InMemoryDb{
-		cache: make(map[L1RootHash]BlockState),
+		cache: make(map[common.RootHash]BlockState),
 		mutex: sync.RWMutex{},
 	}
 }
 
-func (db *InMemoryDb) fetch(hash L1RootHash) (BlockState, bool) {
+func (db *InMemoryDb) Fetch(hash common.RootHash) (BlockState, bool) {
 	db.mutex.RLock()
 	defer db.mutex.RUnlock()
 	val, found := db.cache[hash]
 	return val, found
 }
 
-func (db *InMemoryDb) set(hash L1RootHash, state BlockState) {
+func (db *InMemoryDb) Set(hash common.RootHash, state BlockState) {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 	db.cache[hash] = state
@@ -55,8 +57,8 @@ func serialize(state State) string {
 	return fmt.Sprintf("%v", state)
 }
 
-// returns a modified copy of the state
-func calculateState(txs []*L2Tx, state State) State {
+// returns a modified copy of the State
+func calculateState(txs []common.L2Tx, state State) State {
 	s := copyState(state)
 	for _, tx := range txs {
 		executeTx(s, tx)
@@ -64,14 +66,14 @@ func calculateState(txs []*L2Tx, state State) State {
 	return s
 }
 
-// mutates the state
-func executeTx(s State, tx *L2Tx) {
-	bal, _ := s[tx.from]
-	if bal >= tx.amount {
-		s[tx.from] -= tx.amount
-		s[tx.dest] += tx.amount
+// mutates the State
+func executeTx(s State, tx common.L2Tx) {
+	bal, _ := s[tx.From]
+	if bal >= tx.Amount {
+		s[tx.From] -= tx.Amount
+		s[tx.Dest] += tx.Amount
 		//} else {
-		//fmt.Printf("--%d\n", tx.id.ID())
+		//fmt.Printf("--%d\n", tx.Id.Id())
 	}
 }
 

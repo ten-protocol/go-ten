@@ -1,9 +1,25 @@
-This is not in any particular order
+This is not in any particular order:
 
-- write a checker to make sure that the state in each rollup matches the transactions
-- make the state in the rollup smarter and check it against the transactions
+- process deposits from the proof of inclusion of the parent rollup to the proof of inclusion of the current rollup
+
+P- Create a unit test with a checker for the final state of the simulation:
+    - all injected transactions were included, and there are no duplicates
+    - the state in each rollup matches the transactions. (deposits + L1)
+    - L1 height, L2 height, how many reorgs, etc - if the efficiency is below a threashold then something could have happened
+
+
+- split up code in packages
+    - ethereum-mock
+    - obscuro
+    - wallet-mock
+    - simulation
+    - utils
+
 
 - create the L1Node and L2Node types, and mining is a boolean which starts the mining actor
+- create a common interface for Block and Rollup ( parent, root, height), to reuse the utility methods
+
+- split block and rollup in header and payload
 
 - integrate rlp serialisation
 - instead of passing pointers to rollups/blocks/transactions, pass the serialised object
