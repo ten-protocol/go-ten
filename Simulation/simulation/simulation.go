@@ -12,11 +12,14 @@ import (
 
 func RunSimulation(nrUsers int, nrNodes int, simulationTime int, avgBlockDuration int, avgLatency int, gossipPeriod int) (L1NetworkCfg, L2NetworkCfg) {
 
+	//todo - add observer nodes
+	//todo read balance
+
 	stats := NewStats(nrNodes, simulationTime, avgBlockDuration, avgLatency, gossipPeriod)
 
 	l1Network := L1NetworkCfg{delay: func() int {
 		return common.RndBtw(avgLatency/10, 2*avgLatency)
-	}, Stats: &stats}
+	}, Stats: &stats, interrupt: new(int32)}
 	l1Cfg := ethereum_mock.MiningConfig{PowTime: func() int {
 		return common.RndBtw(avgBlockDuration/nrNodes, nrNodes*avgBlockDuration)
 	}}
@@ -28,26 +31,20 @@ func RunSimulation(nrUsers int, nrNodes int, simulationTime int, avgBlockDuratio
 
 	for i := 1; i <= nrNodes; i++ {
 		// create a layer 2 node
-		agg := obscuro.NewAgg(common.NodeId(i), l2Cfg, nil, &l1Network, &l2Network, &stats)
+		agg := obscuro.NewAgg(common.NodeId(i), l2Cfg, nil, &l2Network, &stats)
 		l2Network.nodes = append(l2Network.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
 		miner := ethereum_mock.NewMiner(common.NodeId(i), l1Cfg, &agg, &l1Network, &stats)
 		l1Network.nodes = append(l1Network.nodes, &miner)
 		agg.L1Node = &miner
-
-		// initialize stats
-		stats.noL1Reorgs[common.NodeId(i)] = 0
-		stats.noL2Reorgs[common.NodeId(i)] = 0
 	}
 
 	common.Log(fmt.Sprintf("Genesis block: b_%d.", common.GenesisBlock.RootHash().ID()))
 	common.Log(fmt.Sprintf("Genesis rollup: r_%d.", common.GenesisRollup.RootHash().ID()))
 
 	l1Network.Start(common.Duration(avgBlockDuration / 4))
-	defer l1Network.Stop()
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
-	defer l2Network.Stop()
 
 	// Create a bunch of users and inject transactions
 	var users = make([]wallet_mock.Wallet, 0)
@@ -55,36 +52,41 @@ func RunSimulation(nrUsers int, nrNodes int, simulationTime int, avgBlockDuratio
 		users = append(users, wallet_mock.Wallet{Address: uuid.New()})
 	}
 
-	go injectUserTxs(users, &l1Network, &l2Network, avgBlockDuration, simulationTime)
+	timeInUs := simulationTime * 1000 * 1000
+	go injectUserTxs(users, &l1Network, &l2Network, avgBlockDuration, timeInUs, &stats)
 
 	// Wait for the simulation time
-	time.Sleep(common.Duration(simulationTime * 1000 * 1000))
+	time.Sleep(common.Duration(timeInUs))
+
+	// stop L2 first and then L1
+	defer l1Network.Stop()
+	defer l2Network.Stop()
 
 	return l1Network, l2Network
 }
 
 const INITIAL_BALANCE = 5000
 
-func injectUserTxs(users []wallet_mock.Wallet, l1Network common.L1Network, l2Network common.L2Network, avgBlockDuration int, simulationTime int) {
+func injectUserTxs(users []wallet_mock.Wallet, l1Network ethereum_mock.L1Network, l2Network obscuro.L2Network, avgBlockDuration int, simulationTime int, s *Stats) {
 	// deposit some initial amount into every user
-	initialiseWallets(users, l1Network, avgBlockDuration)
+	initialiseWallets(users, l1Network, avgBlockDuration, s)
 
-	go injectRandomDeposits(users, l1Network, avgBlockDuration, simulationTime)
-
-	// generate random L2 transfers
-	injectRandomTransfers(users, l2Network, avgBlockDuration, simulationTime)
+	// inject numbers of transactions proportional to the simulation time, such that they can be processed
+	go injectRandomDeposits(users, l1Network, avgBlockDuration, simulationTime, s)
+	injectRandomTransfers(users, l2Network, avgBlockDuration, simulationTime, s)
 }
 
-func initialiseWallets(users []wallet_mock.Wallet, l1Network common.L1Network, avgBlockDuration int) {
+func initialiseWallets(users []wallet_mock.Wallet, l1Network ethereum_mock.L1Network, avgBlockDuration int, s *Stats) {
 	for _, u := range users {
 		tx := deposit(u, INITIAL_BALANCE)
-		l1Network.BroadcastL1Tx(tx)
+		l1Network.BroadcastTx(tx)
+		s.Deposit(INITIAL_BALANCE)
 		time.Sleep(common.Duration(avgBlockDuration / 3))
 	}
 }
 
-func injectRandomTransfers(users []wallet_mock.Wallet, l2Network common.L2Network, avgBlockDuration int, simulationTime int) {
-	n := simulationTime * 2 / avgBlockDuration
+func injectRandomTransfers(users []wallet_mock.Wallet, l2Network obscuro.L2Network, avgBlockDuration int, simulationTime int, s *Stats) {
+	n := simulationTime / (avgBlockDuration)
 	i := 0
 	for {
 		if i == n {
@@ -102,24 +104,24 @@ func injectRandomTransfers(users []wallet_mock.Wallet, l2Network common.L2Networ
 			From:   f,
 			Dest:   t,
 		}
-		l2Network.BroadcastL2Tx(tx)
+		s.Transfer()
+		l2Network.BroadcastTx(tx)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration/4, avgBlockDuration)))
 		i++
 	}
 }
 
-func injectRandomDeposits(users []wallet_mock.Wallet, network common.L1Network, avgBlockDuration int, simulationTime int) {
-	n := simulationTime / (avgBlockDuration * 2)
+func injectRandomDeposits(users []wallet_mock.Wallet, network ethereum_mock.L1Network, avgBlockDuration int, simulationTime int, s *Stats) {
+	n := simulationTime / (avgBlockDuration * 3)
 	i := 0
 	for {
 		if i == n {
 			break
 		}
 		v := common.RndBtw(1, 100)
-		//v := INITIAL_BALANCE
-		//total += v
 		tx := deposit(rndUser(users), v)
-		network.BroadcastL1Tx(tx)
+		network.BroadcastTx(tx)
+		s.Deposit(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
 	}

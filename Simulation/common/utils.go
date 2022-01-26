@@ -14,13 +14,14 @@ func RndBtw(min int, max int) int {
 	return rand.Intn(max-min) + min
 }
 
-// ScheduleInterrupt runs the function after the delay
+// ScheduleInterrupt runs the function after the delay and can be interrupted using the channel
 func ScheduleInterrupt(delay int, doneCh *chan bool, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
 	go func() {
 		executed := false
 		select {
 		case <-*doneCh:
+			break
 		case <-ticker.C:
 			executed = true
 			fun()

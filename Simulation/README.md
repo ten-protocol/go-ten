@@ -2,19 +2,19 @@
 This project is a breadth-first pass through the functionality of a full obscuro system.
 
 ## Usage
-Run main.go, and configure parameters inside.
-There might be command line support in the future
+1. Run main.go, and configure parameters inside.
+
+2. Run simulation_test.go 
 
 ## High level overview
 
 There are four main actors:
-- L1 nodes (Miners)
-- L2 nodes (Aggregators). Each L2 node has to be connected to an L1 node via RPC.
+- L1 nodes (Miners). All of which are configured in a L1Network
+- L2 nodes (Aggregators), configured in a L2Network. Each L2 node has to be connected to an L1 node via RPC.
 - Users (Wallets)
 - The Network
 
-The network knows about all the L1 and L2 nodes, and also handles all communication between them. 
-To simulate reality, it introduces a random latency. 
+The networks handle the communication between nodes, and, to simulate reality, it introduces a random latency. 
 
 
 ### L1

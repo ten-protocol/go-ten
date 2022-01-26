@@ -3,7 +3,18 @@ package ethereum_mock
 import (
 	"fmt"
 	"simulation/common"
+	"sync/atomic"
+	"time"
 )
+
+type L1Network interface {
+	BroadcastBlock(b common.Block)
+	BroadcastTx(tx common.L1Tx)
+}
+
+type NotifyNewBlock interface {
+	RPCNewHead(b common.Block)
+}
 
 type MiningConfig struct {
 	PowTime common.Latency
@@ -12,30 +23,33 @@ type MiningConfig struct {
 type Node struct {
 	Id             common.NodeId
 	cfg            MiningConfig
-	clients        []common.NotifyNewBlock
-	network        common.L1Network
+	clients        []NotifyNewBlock
+	network        L1Network
 	mining         bool
 	statsCollector common.StatsCollector
 
 	// Channels
-	exitCh       chan bool         // add false when the Node has to stop
-	exitMiningCh chan bool         // the mining loop is notified to stop
-	p2pCh        chan common.Block // this is where blocks received from peers are dropped
-	miningCh     chan common.Block // this is where blocks created by the mining setup of the current node are dropped
-	canonicalCh  chan common.Block // this is where the main processing routine drops blocks that are canonical
-	mempoolCh    chan common.L1Tx  // where l1 transactions to be published in the next block are added
+	exitCh       chan bool // the Node stops
+	exitMiningCh chan bool // the mining loop is notified to stop
+	interrupt    *int32
+
+	p2pCh       chan common.Block // this is where blocks received from peers are dropped
+	miningCh    chan common.Block // this is where blocks created by the mining setup of the current node are dropped
+	canonicalCh chan common.Block // this is where the main processing routine drops blocks that are canonical
+	mempoolCh   chan common.L1Tx  // where l1 transactions to be published in the next block are added
 }
 
-func NewMiner(id common.NodeId, cfg MiningConfig, client common.NotifyNewBlock, network common.L1Network, statsCollector common.StatsCollector) Node {
+func NewMiner(id common.NodeId, cfg MiningConfig, client NotifyNewBlock, network L1Network, statsCollector common.StatsCollector) Node {
 	return Node{
 		Id:             id,
 		mining:         true,
 		cfg:            cfg,
 		statsCollector: statsCollector,
-		clients:        []common.NotifyNewBlock{client},
+		clients:        []NotifyNewBlock{client},
 		network:        network,
 		exitCh:         make(chan bool),
 		exitMiningCh:   make(chan bool),
+		interrupt:      new(int32),
 		p2pCh:          make(chan common.Block),
 		miningCh:       make(chan common.Block),
 		canonicalCh:    make(chan common.Block),
@@ -68,7 +82,7 @@ func (m *Node) Start() {
 			if mb.Height() > head.Height() { // Ignore the locally produced block if someone else found one already
 				common.Log(m.printBlock(mb))
 				head = m.setHead(mb)
-				m.network.BroadcastBlockL1(mb)
+				m.network.BroadcastBlock(mb)
 			}
 		case <-m.exitCh:
 			return
@@ -91,6 +105,10 @@ func (m *Node) printBlock(mb common.Block) string {
 
 // Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
 func (m *Node) setHead(b common.Block) common.Block {
+	if atomic.LoadInt32(m.interrupt) == 1 {
+		return b
+	}
+
 	// notify the clients
 	for _, c := range m.clients {
 		c.RPCNewHead(b)
@@ -99,31 +117,20 @@ func (m *Node) setHead(b common.Block) common.Block {
 	return b
 }
 
-func (m *Node) Stop() {
-	m.exitCh <- false
-	m.exitMiningCh <- false
-}
-
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
 // All it does is drop the blocks in a channel for processing.
 func (m *Node) P2PReceiveBlock(b common.Block) {
-	//fmt.Printf("%d receive %s\n", m.Id, b.Id)
+	if atomic.LoadInt32(m.interrupt) == 1 {
+		return
+	}
 	m.p2pCh <- b
 }
 
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it on the miningCh channel
 func (m *Node) startMining() {
 
-	// stores all rollups seen from the beginning of time.
-	// store rollups grouped by Height, to optimize the algorithm that determines what needs to be included in a block
-	// todo - move this out into some state processing
-	//var mempool = make(map[int][]*L1Tx)
-	//var deposits = make([]*L1Tx, 0)
-	//var mut = &sync.RWMutex{}
-	var txs = make([]common.Tx, 0)
-
-	//var currentHeight = -1
-
+	// stores all transactions seen from the beginning of time.
+	var mempool = make([]common.Tx, 0)
 	var doneCh *chan bool = nil
 
 	for {
@@ -131,24 +138,13 @@ func (m *Node) startMining() {
 		case <-m.exitMiningCh:
 			return
 		case tx := <-m.mempoolCh:
-			txs = append(txs, tx)
-			//mut.Lock()
-			//if tx.TxType == RollupTx {
-			//	r := tx.Rollup
-			//	currentHeight = common.Max(currentHeight, r.Height())
-			//	val, found := mempool[r.Height()]
-			//	if found {
-			//		mempool[r.Height()] = append(val, tx)
-			//	} else {
-			//		mempool[r.Height()] = []*L1Tx{tx}
-			//	}
-			//} else if tx.TxType == DepositTx {
-			//	deposits = append(deposits, tx)
-			//}
-			//mut.Unlock()
+			mempool = append(mempool, tx)
 
 		case cb := <-m.canonicalCh:
 			// A new canonical block was found. Start a new round based on that block.
+
+			// remove transactions that are already considered committed
+			mempool = common.RemoveCommittedTransactions(cb, mempool)
 
 			//notify the existing mining go routine to stop mining
 			if doneCh != nil {
@@ -161,25 +157,14 @@ func (m *Node) startMining() {
 			// Include all rollups received during this period.
 			nonce := m.cfg.PowTime()
 			common.ScheduleInterrupt(nonce, doneCh, func() {
-				//var rollups = make([]*L1Tx, 0)
-				//mut.RLock()
-				//
-				//// only look back 10 rollups - this is an ugly hack for performance
-				//// todo - move this out
-				//for i := 0; i < 10; i++ {
-				//	v, f := mempool[currentHeight-i]
-				//	if f {
-				//		rollups = append(rollups, v...)
-				//	}
-				//}
-				//mut.RUnlock()
-				//all := make([]*L1Tx, 0)
-				//all = append(all, rollups...)
-				//all = append(all, deposits...)
-				toInclude := common.FindNotIncludedTxs(cb, txs)
+				toInclude := common.FindNotIncludedTxs(cb, mempool)
 				txsCopy := make([]common.L1Tx, len(toInclude))
 				for i, tx := range toInclude {
 					txsCopy[i] = tx.(common.L1Tx)
+				}
+				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
+				if atomic.LoadInt32(m.interrupt) == 1 {
+					return
 				}
 				m.miningCh <- common.NewBlock(&cb, nonce, m.Id, txsCopy)
 			})
@@ -187,7 +172,23 @@ func (m *Node) startMining() {
 	}
 }
 
-// L1P2PGossipTx receive rollups to publish from the linked aggregators
-func (m *Node) L1P2PGossipTx(tx common.L1Tx) {
+// P2PGossipTx receive rollups to publish from the linked aggregators
+func (m *Node) P2PGossipTx(tx common.L1Tx) {
+	if atomic.LoadInt32(m.interrupt) == 1 {
+		return
+	}
 	m.mempoolCh <- tx
+}
+
+func (m *Node) BroadcastTx(tx common.L1Tx) {
+	m.network.BroadcastTx(tx)
+}
+
+func (m *Node) Stop() {
+	//block all requests
+	atomic.StoreInt32(m.interrupt, 1)
+	time.Sleep(time.Millisecond * 100)
+
+	m.exitMiningCh <- true
+	m.exitCh <- true
 }

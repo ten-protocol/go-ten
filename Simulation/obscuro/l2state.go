@@ -9,20 +9,26 @@ import (
 
 type State = map[wallet_mock.Address]int
 
-type BlockState struct {
-	Head  *common.Rollup
-	State State
-}
-
 type Db interface {
 	Fetch(hash common.RootHash) (BlockState, bool)
 	Set(hash common.RootHash, state BlockState)
+	Head() BlockState
+	Balance(address wallet_mock.Address) int
 }
 
 type InMemoryDb struct {
 	// the State is dependent on the L1 block alone
 	cache map[common.RootHash]BlockState
+	head  common.RootHash
 	mutex sync.RWMutex
+}
+
+// BlockState - Represents the state after an L1 block was processed.
+type BlockState struct {
+	Block          common.Block
+	Head           common.Rollup
+	State          State
+	foundNewRollup bool
 }
 
 func NewInMemoryDb() *InMemoryDb {
@@ -43,6 +49,18 @@ func (db *InMemoryDb) Set(hash common.RootHash, state BlockState) {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 	db.cache[hash] = state
+
+	// todo - is there any other logic here?
+	db.head = hash
+}
+
+func (db *InMemoryDb) Head() BlockState {
+	val, _ := db.Fetch(db.head)
+	return val
+}
+
+func (db *InMemoryDb) Balance(address wallet_mock.Address) int {
+	return db.Head().State[address]
 }
 
 func copyState(state State) State {
@@ -58,7 +76,7 @@ func serialize(state State) string {
 }
 
 // returns a modified copy of the State
-func calculateState(txs []common.L2Tx, state State) State {
+func executeTransactions(txs []common.L2Tx, state State) State {
 	s := copyState(state)
 	for _, tx := range txs {
 		executeTx(s, tx)
@@ -68,16 +86,11 @@ func calculateState(txs []common.L2Tx, state State) State {
 
 // mutates the State
 func executeTx(s State, tx common.L2Tx) {
-	bal, _ := s[tx.From]
+	bal := s[tx.From]
 	if bal >= tx.Amount {
 		s[tx.From] -= tx.Amount
 		s[tx.Dest] += tx.Amount
-		//} else {
-		//fmt.Printf("--%d\n", tx.Id.Id())
 	}
-}
-
-type RollupStorage struct {
 }
 
 func emptyState() State {

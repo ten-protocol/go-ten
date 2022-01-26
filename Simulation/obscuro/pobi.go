@@ -1,0 +1,303 @@
+package obscuro
+
+import (
+	"fmt"
+	"github.com/google/uuid"
+	"simulation/common"
+	"sync/atomic"
+)
+
+func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
+	// A Pobi round starts when a new canonical L1 block was produced
+
+	// Find the new canonical L2 chain and calculate the State
+	blockState := a.updateState(b)
+
+	r := a.produceRollup(b, blockState)
+	a.l2Network.BroadcastRollup(r)
+
+	// wait to receive rollups From peers
+	// todo - make this smarter. e.g: if 90% of the peers have sent rollups, proceed. Or if a Nonce is very low and probabilistically there is no chance, etc
+	common.ScheduleInterrupt(a.cfg.GossipPeriod, doneCh, func() {
+		if atomic.LoadInt32(a.interrupt) == 1 {
+			return
+		}
+
+		// request the new generation rollups
+		a.rollupInCh <- blockState.Head.Height() + 1
+		rollups := <-a.rollupOutCh
+
+		// filter out rollups with a different Parent
+		var usefulRollups = []*common.Rollup{&r}
+		for _, rol := range rollups {
+			if rol.Parent().RootHash() == blockState.Head.RootHash() {
+				usefulRollups = append(usefulRollups, rol)
+			}
+		}
+
+		// determine the winner of the round
+		winnerRollup, winnerState := a.findRoundWinner(usefulRollups, &blockState.Head, blockState.State)
+
+		// we are the winner
+		if winnerRollup.Agg == a.Id {
+			var txsString []string
+			for _, t := range winnerRollup.Txs() {
+				t1 := t.(common.L2Tx)
+				txsString = append(txsString, fmt.Sprintf("%v->%v(%d)", t1.From, t1.Dest, t1.Amount))
+			}
+			common.Log(fmt.Sprintf(">   Agg%d: (b_%d) create rollup=r_%d(%d)[r_%d]{poof=b_%d}. Txs: %v. State=%v.", a.Id, b.RootHash().ID(), winnerRollup.RootHash().ID(), winnerRollup.Height(), winnerRollup.Parent().RootHash().ID(), winnerRollup.L1Proof.RootHash().ID(), txsString, winnerRollup.State))
+			// build a L1 tx with the rollup and send it to the L1 node for further broadcase
+			a.L1Node.BroadcastTx(common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup})
+		}
+
+		a.roundWinnerCh <- winner{winnerRollup, winnerState}
+	})
+}
+
+func (a Node) produceRollup(b common.Block, bs BlockState) common.Rollup {
+	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
+	a.speculativeWorkInCh <- true
+	speculativeRollup := <-a.speculativeWorkOutCh
+
+	// the transactions and the State as calculated during the round
+
+	// Create the new rollup
+	newRollupTxs := speculativeRollup.txs
+	newRollupState := speculativeRollup.s
+
+	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip
+	if speculativeRollup.r.RootHash() != bs.Head.RootHash() {
+		common.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)", a.Id, speculativeRollup.r.RootHash().ID(), speculativeRollup.r.Height(), bs.Head.RootHash().ID(), bs.Head.Height()))
+		a.statsCollector.L2Recalc(a.Id)
+
+		// determine transactions to include in new rollup and process them
+		newRollupTxs = a.currentTxs(bs.Head)
+		newRollupState = executeTransactions(newRollupTxs, bs.State)
+	}
+
+	// always process deposits last
+	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
+	newRollupState = processDeposits(bs.Head.L1Proof, b, copyState(newRollupState))
+
+	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
+	return common.NewRollup(&b, &bs.Head, a.Id, newRollupTxs, serialize(newRollupState))
+}
+
+// actor that participates in rollup and transaction gossip
+// processes transactions
+func (a Node) startAggregating() {
+
+	// Rollups grouped by Height
+	var allRollups = make(map[int][]*common.Rollup)
+
+	// transactions
+	var mempool = make([]common.Tx, 0)
+
+	// Process transactions on the fly
+	var currentHead = common.GenesisRollup
+	var currentState = emptyState()
+	var currentProcessedTxs = make([]common.L2Tx, 0)
+
+	for {
+		select {
+
+		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
+		case winnerRollup := <-a.roundWinnerCh:
+			// housekeeping - remove transactions that are already considered committed
+			mempool = common.RemoveCommittedTransactions(currentHead, mempool)
+
+			currentHead = winnerRollup.r
+			currentState = winnerRollup.s
+
+			// determine the transactions that were not yet included
+			txs := common.FindNotIncludedTxs(currentHead, mempool)
+
+			currentProcessedTxs = make([]common.L2Tx, len(txs))
+			for i, tx := range txs {
+				currentProcessedTxs[i] = tx.(common.L2Tx)
+			}
+
+			// calculate the State after executing them
+			currentState = executeTransactions(currentProcessedTxs, currentState)
+
+		case tx := <-a.p2pChTx:
+			mempool = append(mempool, tx)
+			currentProcessedTxs = append(currentProcessedTxs, tx)
+			executeTx(currentState, tx)
+
+		case <-a.speculativeWorkInCh:
+			b := make([]common.L2Tx, len(currentProcessedTxs))
+			copy(b, currentProcessedTxs)
+			a.speculativeWorkOutCh <- currentWork{
+				r:   currentHead,
+				s:   copyState(currentState),
+				txs: b,
+			}
+
+		case r := <-a.p2pChRollup:
+			val, found := allRollups[r.Height()]
+			if found {
+				allRollups[r.Height()] = append(val, r)
+			} else {
+				allRollups[r.Height()] = []*common.Rollup{r}
+			}
+
+		case requestedHeight := <-a.rollupInCh:
+			a.rollupOutCh <- allRollups[requestedHeight]
+
+		case <-a.txsInCh:
+			a.txsOutCh <- mempool
+
+		case <-a.exitAggregatingCh:
+			return
+		}
+	}
+}
+
+// Determine the new canonical L2 head and calculate the State
+// Uses cache-ing to map the Head rollup and the State to each L1Node block.
+func (a Node) updateState(b common.Block) BlockState {
+
+	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
+	val, found := a.Db.Fetch(b.RootHash())
+	if found {
+		return val
+	}
+
+	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
+	if b.RootHash() == common.GenesisBlock.RootHash() {
+		bs := BlockState{
+			Block: b,
+			Head:  common.GenesisRollup,
+			State: emptyState(),
+		}
+		a.Db.Set(b.RootHash(), bs)
+		return bs
+	}
+
+	// To calculate the state after the curren block, we need the state after the parent.
+	parentState, parentFound := a.Db.Fetch(b.Parent().RootHash())
+	if !parentFound {
+		// go back and calculate the State of the Parent
+		parentState = a.updateState(*b.ParentBlock())
+	}
+
+	bs := calculateBlockState(b, parentState)
+
+	a.Db.Set(b.RootHash(), bs)
+
+	return bs
+}
+
+// given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
+func calculateBlockState(b common.Block, parentState BlockState) BlockState {
+	var newHead *common.Rollup = nil
+
+	// find the Head rollup according to the rules
+	for _, t := range b.L1Txs() {
+		// go through all rollup transactions
+		if t.TxType == common.RollupTx {
+			r := t.Rollup
+			// only consider rollups if they advance the chain
+			if (r.Height() > parentState.Head.Height()) && common.IsAncestor(r.L1Proof, b) {
+				if newHead == nil || r.Height() > newHead.Height() || r.L1Proof.Height() > newHead.L1Proof.Height() || (r.L1Proof.Height() == newHead.L1Proof.Height() && r.Nonce < newHead.Nonce) {
+					newHead = &r
+				}
+			}
+		}
+	}
+
+	s := copyState(parentState.State)
+
+	found := true
+	// only change the state if there is a new l2 Head in the current block
+	if newHead != nil {
+		s = processDeposits(newHead.ParentRollup().L1Proof, *newHead.L1Proof, s)
+		s = executeTransactions(newHead.L2Txs(), s)
+		found = true
+	} else {
+		newHead = &parentState.Head
+		found = false
+	}
+
+	bs := BlockState{
+		Block:          b,
+		Head:           *newHead,
+		State:          s,
+		foundNewRollup: found,
+	}
+	return bs
+}
+
+// mutates the state
+// process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
+func processDeposits(fromBlock *common.Block, toBlock common.Block, s State) State {
+	from := common.GenesisBlock.RootHash()
+	height := -1
+	if fromBlock != nil {
+		from = fromBlock.RootHash()
+		height = fromBlock.Height()
+		if !common.IsAncestor(fromBlock, toBlock) {
+			panic("wtf")
+		}
+
+	}
+
+	b := &toBlock
+	for {
+		if b.RootHash() == from {
+			break
+		}
+		for _, tx := range b.L1Txs() {
+			// transactions to a hardcoded bridge address
+			if tx.TxType == common.DepositTx {
+				v, f := s[tx.Dest]
+				if f {
+					s[tx.Dest] = v + tx.Amount
+				} else {
+					s[tx.Dest] = tx.Amount
+				}
+			}
+		}
+		if b.Height() < height {
+			panic("something went wrong")
+		}
+		b = b.ParentBlock()
+	}
+	return s
+}
+
+func (a Node) findRoundWinner(receivedRollups []*common.Rollup, parent *common.Rollup, parentState State) (common.Rollup, State) {
+	var win *common.Rollup
+	for _, r := range receivedRollups {
+		if r.Parent().RootHash() != parent.RootHash() {
+			continue
+		}
+		if win == nil || r.L1Proof.Height() > win.L1Proof.Height() || (r.L1Proof.Height() == win.L1Proof.Height() && r.Nonce < win.Nonce) {
+			win = r
+		}
+	}
+
+	// calculate the state to compare with what is in the Rollup
+	s := copyState(parentState)
+	s = processDeposits(win.ParentRollup().L1Proof, *win.L1Proof, s)
+	s = executeTransactions(win.L2Txs(), s)
+	// todo - check that s is valid against the State in the rollup, if not - call the function again with this tx excluded
+	return *win, s
+}
+
+// Calculate transactions to be included in the current rollup
+func (a Node) currentTxs(head common.Rollup) []common.L2Tx {
+	// Requests all l2 transactions received over gossip
+	a.txsInCh <- true
+	txs := <-a.txsOutCh
+
+	resultTxs := common.FindNotIncludedTxs(head, txs)
+	txsCopy := make([]common.L2Tx, len(resultTxs))
+	for i, tx := range resultTxs {
+		txsCopy[i] = tx.(common.L2Tx)
+	}
+
+	// and return only the ones not included in any rollup so far
+	return txsCopy
+}

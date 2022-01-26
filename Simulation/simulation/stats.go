@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// Stats - collects information during the simulation. It can be checked programmatically.
 type Stats struct {
 	nrMiners         int
 	simulationTime   int
@@ -21,9 +22,9 @@ type Stats struct {
 	maxRollupsPerBlock int
 	nrEmptyBlocks      int
 
-	totalL2Txs int
-	noL1Reorgs map[common.NodeId]int
-	noL2Reorgs map[common.NodeId]int
+	totalL2Txs  int
+	noL1Reorgs  map[common.NodeId]int
+	noL2Recalcs map[common.NodeId]int
 	// todo - actual avg block Duration
 
 	totalDepositedAmount   int
@@ -40,7 +41,7 @@ func NewStats(nrMiners int, simulationTime int, avgBlockDuration int, avgLatency
 		avgLatency:       avgLatency,
 		gossipPeriod:     gossipPeriod,
 		noL1Reorgs:       map[common.NodeId]int{},
-		noL2Reorgs:       map[common.NodeId]int{},
+		noL2Recalcs:      map[common.NodeId]int{},
 	}
 }
 
@@ -50,9 +51,9 @@ func (s *Stats) L1Reorg(id common.NodeId) {
 	statsMu.Unlock()
 }
 
-func (s *Stats) L2Reorg(id common.NodeId) {
+func (s *Stats) L2Recalc(id common.NodeId) {
 	statsMu.Lock()
-	s.noL2Reorgs[id]++
+	s.noL2Recalcs[id]++
 	statsMu.Unlock()
 }
 
@@ -73,5 +74,17 @@ func (s *Stats) NewRollup(r common.Rollup) {
 	s.l2Head = &r
 	s.totalL2++
 	s.totalL2Txs += len(r.L2Txs())
+	statsMu.Unlock()
+}
+
+func (s *Stats) Deposit(v int) {
+	statsMu.Lock()
+	s.totalDepositedAmount += v
+	statsMu.Unlock()
+}
+
+func (s *Stats) Transfer() {
+	statsMu.Lock()
+	s.nrTransferTransactions++
 	statsMu.Unlock()
 }

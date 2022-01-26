@@ -61,6 +61,31 @@ func FindNotIncludedTxs(head ChainNode, txs []Tx) []Tx {
 	return removeExisting(txs, included)
 }
 
+const commitedBlocks = 20
+
+func RemoveCommittedTransactions(cb ChainNode, mempool []Tx) []Tx {
+	if cb.Height() <= commitedBlocks {
+		return mempool
+	}
+
+	b := cb
+	i := 0
+	for {
+		if i == commitedBlocks {
+			break
+		}
+		b = b.Parent()
+		i++
+	}
+	rpbcM.RLock()
+	val, found := transactionsPerBlockCache[b.RootHash()]
+	rpbcM.RUnlock()
+	if !found {
+		panic("This isn't right")
+	}
+	return removeExisting(mempool, val)
+}
+
 func makeMap(txs []Tx) map[TxHash]Tx {
 	m := make(map[TxHash]Tx)
 	for _, tx := range txs {

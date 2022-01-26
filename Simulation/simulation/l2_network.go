@@ -13,23 +13,23 @@ type L2NetworkCfg struct {
 }
 
 // Broadcasts the rollup to all L2 peers
-func (c L2NetworkCfg) BroadcastRollupL2(r common.Rollup) {
+func (c *L2NetworkCfg) BroadcastRollup(r common.Rollup) {
 	for _, a := range c.nodes {
 		if a.Id != r.Agg {
 			t := a
-			common.Schedule(c.delay(), func() { t.L2P2PGossipRollup(&r) })
+			common.Schedule(c.delay(), func() { t.P2PGossipRollup(&r) })
 		}
 	}
 }
 
-func (c L2NetworkCfg) BroadcastL2Tx(tx common.L2Tx) {
+func (c *L2NetworkCfg) BroadcastTx(tx common.L2Tx) {
 	for _, a := range c.nodes {
 		t := a
-		common.Schedule(c.delay()/2, func() { t.L2P2PReceiveTx(tx) })
+		common.Schedule(c.delay()/2, func() { t.P2PReceiveTx(tx) })
 	}
 }
 
-func (n L2NetworkCfg) Start(delay time.Duration) {
+func (n *L2NetworkCfg) Start(delay time.Duration) {
 	// Start l1 nodes
 	for _, m := range n.nodes {
 		t := m
@@ -39,9 +39,9 @@ func (n L2NetworkCfg) Start(delay time.Duration) {
 	}
 }
 
-func (n L2NetworkCfg) Stop() {
-	// Start l1 nodes
+func (n *L2NetworkCfg) Stop() {
 	for _, m := range n.nodes {
 		m.Stop()
+		//fmt.Printf("Stopped L2 node: %d\n", m.Id)
 	}
 }

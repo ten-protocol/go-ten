@@ -39,6 +39,6 @@ func main() {
 	common.SetLog(f)
 
 	blockDuration := 15_000
-	l1netw, _ := simulation.RunSimulation(5, 10, 30, blockDuration, blockDuration/20, blockDuration/3)
+	l1netw, _ := simulation.RunSimulation(5, 10, 15, blockDuration, blockDuration/20, blockDuration/3)
 	fmt.Printf("%#v\n", l1netw.Stats)
 }
