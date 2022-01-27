@@ -13,11 +13,11 @@ type Stats struct {
 	avgLatency       int
 	gossipPeriod     int
 
-	l1Height int
-	totalL1  int
+	l1Height      int
+	totalL1Blocks int
 
 	l2Height           int
-	totalL2            int
+	totalL2Blocks      int
 	l2Head             *common.Rollup
 	maxRollupsPerBlock int
 	nrEmptyBlocks      int
@@ -28,6 +28,7 @@ type Stats struct {
 	// todo - actual avg block Duration
 
 	totalDepositedAmount   int
+	totalWithdrawnAmount   int
 	nrTransferTransactions int
 }
 
@@ -60,7 +61,7 @@ func (s *Stats) L2Recalc(id common.NodeId) {
 func (s *Stats) NewBlock(b common.Block) {
 	statsMu.Lock()
 	s.l1Height = common.Max(s.l1Height, b.Height())
-	s.totalL1++
+	s.totalL1Blocks++
 	s.maxRollupsPerBlock = common.Max(s.maxRollupsPerBlock, len(b.Txs()))
 	if len(b.Txs()) == 0 {
 		s.nrEmptyBlocks++
@@ -72,7 +73,7 @@ func (s *Stats) NewRollup(r common.Rollup) {
 	statsMu.Lock()
 	s.l2Height = common.Max(s.l2Height, r.Height())
 	s.l2Head = &r
-	s.totalL2++
+	s.totalL2Blocks++
 	s.totalL2Txs += len(r.L2Txs())
 	statsMu.Unlock()
 }
@@ -86,5 +87,11 @@ func (s *Stats) Deposit(v int) {
 func (s *Stats) Transfer() {
 	statsMu.Lock()
 	s.nrTransferTransactions++
+	statsMu.Unlock()
+}
+
+func (s *Stats) Withdrawal(v int) {
+	statsMu.Lock()
+	s.totalWithdrawnAmount += v
 	statsMu.Unlock()
 }

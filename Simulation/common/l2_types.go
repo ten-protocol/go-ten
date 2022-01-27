@@ -10,6 +10,7 @@ import (
 type StateRoot = string
 
 type Rollup struct {
+	// header
 	h            int
 	root         RootHash
 	Agg          NodeId
@@ -17,8 +18,10 @@ type Rollup struct {
 	CreationTime time.Time
 	L1Proof      *Block // the L1 block where the Parent was published
 	Nonce        Nonce
-	txs          []L2Tx
 	State        StateRoot
+	Withdrawals  []Withdrawal
+	// payload
+	txs []L2Tx
 }
 
 func (r Rollup) ParentRollup() *Rollup {
@@ -45,8 +48,19 @@ func (r Rollup) L2Txs() []L2Tx {
 	return r.txs
 }
 
-func NewRollup(b *Block, newL2Head *Rollup, a NodeId, txs []L2Tx, state StateRoot) Rollup {
-	return Rollup{newL2Head.Height() + 1, uuid.New(), a, newL2Head, time.Now(), b, GenerateNonce(), txs, state}
+func NewRollup(b *Block, newL2Head *Rollup, a NodeId, txs []L2Tx, withdrawals []Withdrawal, state StateRoot) Rollup {
+	return Rollup{
+		h:            newL2Head.Height() + 1,
+		root:         uuid.New(),
+		Agg:          a,
+		p:            newL2Head,
+		CreationTime: time.Now(),
+		L1Proof:      b,
+		Nonce:        GenerateNonce(),
+		State:        state,
+		Withdrawals:  withdrawals,
+		txs:          txs,
+	}
 }
 
 // Transfers and Withdrawals for now
@@ -56,6 +70,11 @@ const (
 	TransferTx L2TxType = iota
 	WithdrawalTx
 )
+
+type Withdrawal struct {
+	Amount  int
+	Address wallet_mock.Address
+}
 
 // no signing for now
 type L2Tx struct {
@@ -70,13 +89,11 @@ func (tx L2Tx) Hash() TxHash {
 	return tx.Id
 }
 
-var GenesisRollup = Rollup{-1,
-	uuid.New(),
-	-1,
-	nil,
-	time.Now(),
-	nil,
-	0,
-	[]L2Tx{},
-	"",
+var GenesisRollup = Rollup{
+	h:            GenesisHeight,
+	root:         uuid.New(),
+	Agg:          -1,
+	CreationTime: time.Now(),
+	Withdrawals:  []Withdrawal{},
+	txs:          []L2Tx{},
 }

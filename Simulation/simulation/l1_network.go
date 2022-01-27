@@ -9,9 +9,11 @@ import (
 
 // L1NetworkCfg - models a full network including artificial random latencies
 type L1NetworkCfg struct {
-	nodes     []*ethereum_mock.Node
-	delay     common.Latency // the latency
-	Stats     *Stats
+	nodes []*ethereum_mock.Node
+	delay common.Latency // the latency
+	Stats *Stats
+	// used as a signal to stop all network communication.
+	// This helps prevent deadlocks when stopping nodes
 	interrupt *int32
 }
 

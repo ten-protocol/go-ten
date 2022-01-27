@@ -68,7 +68,7 @@ type Node struct {
 // internal structure to pass information
 type currentWork struct {
 	r   common.Rollup
-	s   State
+	s   ProcessedState
 	txs []common.L2Tx
 }
 

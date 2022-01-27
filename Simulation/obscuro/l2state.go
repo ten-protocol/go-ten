@@ -31,6 +31,18 @@ type BlockState struct {
 	foundNewRollup bool
 }
 
+type ProcessedState struct {
+	s State
+	w []common.Withdrawal
+}
+
+func newProcessedState(s State) ProcessedState {
+	return ProcessedState{
+		s: copyState(s),
+		w: []common.Withdrawal{},
+	}
+}
+
 func NewInMemoryDb() *InMemoryDb {
 	return &InMemoryDb{
 		cache: make(map[common.RootHash]BlockState),
@@ -71,25 +83,56 @@ func copyState(state State) State {
 	return s
 }
 
+func copyProcessedState(s ProcessedState) ProcessedState {
+	return ProcessedState{
+		s: copyState(s.s),
+		w: s.w,
+	}
+}
+
 func serialize(state State) string {
 	return fmt.Sprintf("%v", state)
 }
 
 // returns a modified copy of the State
-func executeTransactions(txs []common.L2Tx, state State) State {
-	s := copyState(state)
+func executeTransactions(txs []common.L2Tx, state ProcessedState) ProcessedState {
+	is := copyProcessedState(state)
 	for _, tx := range txs {
-		executeTx(s, tx)
+		executeTx(&is, tx)
 	}
-	return s
+	//fmt.Printf("w1: %v\n", is.w)
+	return is
 }
 
 // mutates the State
-func executeTx(s State, tx common.L2Tx) {
-	bal := s[tx.From]
+func executeTx(s *ProcessedState, tx common.L2Tx) {
+	switch tx.TxType {
+	case common.TransferTx:
+		executeTransfer(s, tx)
+	case common.WithdrawalTx:
+		executeWithdrawal(s, tx)
+	default:
+		panic("Invalid transaction type")
+	}
+}
+
+func executeWithdrawal(s *ProcessedState, tx common.L2Tx) {
+	bal := s.s[tx.From]
 	if bal >= tx.Amount {
-		s[tx.From] -= tx.Amount
-		s[tx.Dest] += tx.Amount
+		s.s[tx.From] -= tx.Amount
+		s.w = append(s.w, common.Withdrawal{
+			Amount:  tx.Amount,
+			Address: tx.From,
+		})
+		//fmt.Printf("w: %v\n", s.w)
+	}
+}
+
+func executeTransfer(s *ProcessedState, tx common.L2Tx) {
+	bal := s.s[tx.From]
+	if bal >= tx.Amount {
+		s.s[tx.From] -= tx.Amount
+		s.s[tx.Dest] += tx.Amount
 	}
 }
 

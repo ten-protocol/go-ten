@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+const GenesisHeight = 0
+
 type RootHash = uuid.UUID
 type TxHash = uuid.UUID
 
@@ -25,7 +27,7 @@ type Batch interface {
 
 //LCA - returns the least common ancestor of the 2 blocks
 func LCA(a ChainNode, b ChainNode) ChainNode {
-	if a.Height() == -1 || b.Height() == -1 {
+	if a.Height() == GenesisHeight || b.Height() == GenesisHeight {
 		return a
 	}
 	if a.RootHash() == b.RootHash() {
@@ -101,7 +103,7 @@ func allIncludedTransactions(b ChainNode) map[TxHash]Tx {
 	if found {
 		return val
 	}
-	if b.Height() == -1 {
+	if b.Height() == GenesisHeight {
 		return makeMap(b.Txs())
 	}
 	var newMap = make(map[TxHash]Tx)

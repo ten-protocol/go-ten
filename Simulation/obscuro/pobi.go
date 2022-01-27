@@ -7,10 +7,12 @@ import (
 	"sync/atomic"
 )
 
+// called when a new L1 block was mined
 func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 	// A Pobi round starts when a new canonical L1 block was produced
 
 	// Find the new canonical L2 chain and calculate the State
+	// todo - a bit inefficient - cache per rollup?. The state might have been calculated already in the previous round
 	blockState := a.updateState(b)
 
 	r := a.produceRollup(b, blockState)
@@ -25,11 +27,11 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 
 		// request the new generation rollups
 		a.rollupInCh <- blockState.Head.Height() + 1
-		rollups := <-a.rollupOutCh
+		rollupsReceivedFromPeers := <-a.rollupOutCh
 
 		// filter out rollups with a different Parent
 		var usefulRollups = []*common.Rollup{&r}
-		for _, rol := range rollups {
+		for _, rol := range rollupsReceivedFromPeers {
 			if rol.Parent().RootHash() == blockState.Head.RootHash() {
 				usefulRollups = append(usefulRollups, rol)
 			}
@@ -54,14 +56,12 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 	})
 }
 
+//
 func (a Node) produceRollup(b common.Block, bs BlockState) common.Rollup {
 	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
 	a.speculativeWorkInCh <- true
 	speculativeRollup := <-a.speculativeWorkOutCh
 
-	// the transactions and the State as calculated during the round
-
-	// Create the new rollup
 	newRollupTxs := speculativeRollup.txs
 	newRollupState := speculativeRollup.s
 
@@ -72,15 +72,15 @@ func (a Node) produceRollup(b common.Block, bs BlockState) common.Rollup {
 
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = a.currentTxs(bs.Head)
-		newRollupState = executeTransactions(newRollupTxs, bs.State)
+		newRollupState = executeTransactions(newRollupTxs, newProcessedState(bs.State))
 	}
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
-	newRollupState = processDeposits(bs.Head.L1Proof, b, copyState(newRollupState))
+	newRollupState = processDeposits(bs.Head.L1Proof, b, copyProcessedState(newRollupState))
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	return common.NewRollup(&b, &bs.Head, a.Id, newRollupTxs, serialize(newRollupState))
+	return common.NewRollup(&b, &bs.Head, a.Id, newRollupTxs, newRollupState.w, serialize(newRollupState.s))
 }
 
 // actor that participates in rollup and transaction gossip
@@ -95,7 +95,7 @@ func (a Node) startAggregating() {
 
 	// Process transactions on the fly
 	var currentHead = common.GenesisRollup
-	var currentState = emptyState()
+	var currentState = newProcessedState(emptyState())
 	var currentProcessedTxs = make([]common.L2Tx, 0)
 
 	for {
@@ -107,7 +107,7 @@ func (a Node) startAggregating() {
 			mempool = common.RemoveCommittedTransactions(currentHead, mempool)
 
 			currentHead = winnerRollup.r
-			currentState = winnerRollup.s
+			currentState = newProcessedState(winnerRollup.s)
 
 			// determine the transactions that were not yet included
 			txs := common.FindNotIncludedTxs(currentHead, mempool)
@@ -123,14 +123,14 @@ func (a Node) startAggregating() {
 		case tx := <-a.p2pChTx:
 			mempool = append(mempool, tx)
 			currentProcessedTxs = append(currentProcessedTxs, tx)
-			executeTx(currentState, tx)
+			executeTx(&currentState, tx)
 
 		case <-a.speculativeWorkInCh:
 			b := make([]common.L2Tx, len(currentProcessedTxs))
 			copy(b, currentProcessedTxs)
 			a.speculativeWorkOutCh <- currentWork{
 				r:   currentHead,
-				s:   copyState(currentState),
+				s:   copyProcessedState(currentState),
 				txs: b,
 			}
 
@@ -207,13 +207,13 @@ func calculateBlockState(b common.Block, parentState BlockState) BlockState {
 		}
 	}
 
-	s := copyState(parentState.State)
+	s := newProcessedState(parentState.State)
 
 	found := true
 	// only change the state if there is a new l2 Head in the current block
 	if newHead != nil {
-		s = processDeposits(newHead.ParentRollup().L1Proof, *newHead.L1Proof, s)
 		s = executeTransactions(newHead.L2Txs(), s)
+		s = processDeposits(newHead.ParentRollup().L1Proof, *newHead.L1Proof, s)
 		found = true
 	} else {
 		newHead = &parentState.Head
@@ -223,7 +223,7 @@ func calculateBlockState(b common.Block, parentState BlockState) BlockState {
 	bs := BlockState{
 		Block:          b,
 		Head:           *newHead,
-		State:          s,
+		State:          s.s,
 		foundNewRollup: found,
 	}
 	return bs
@@ -231,9 +231,9 @@ func calculateBlockState(b common.Block, parentState BlockState) BlockState {
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *common.Block, toBlock common.Block, s State) State {
+func processDeposits(fromBlock *common.Block, toBlock common.Block, s ProcessedState) ProcessedState {
 	from := common.GenesisBlock.RootHash()
-	height := -1
+	height := common.GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.RootHash()
 		height = fromBlock.Height()
@@ -251,11 +251,11 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s State) Sta
 		for _, tx := range b.L1Txs() {
 			// transactions to a hardcoded bridge address
 			if tx.TxType == common.DepositTx {
-				v, f := s[tx.Dest]
+				v, f := s.s[tx.Dest]
 				if f {
-					s[tx.Dest] = v + tx.Amount
+					s.s[tx.Dest] = v + tx.Amount
 				} else {
-					s[tx.Dest] = tx.Amount
+					s.s[tx.Dest] = tx.Amount
 				}
 			}
 		}
@@ -279,11 +279,11 @@ func (a Node) findRoundWinner(receivedRollups []*common.Rollup, parent *common.R
 	}
 
 	// calculate the state to compare with what is in the Rollup
-	s := copyState(parentState)
+	s := newProcessedState(parentState)
 	s = processDeposits(win.ParentRollup().L1Proof, *win.L1Proof, s)
 	s = executeTransactions(win.L2Txs(), s)
 	// todo - check that s is valid against the State in the rollup, if not - call the function again with this tx excluded
-	return *win, s
+	return *win, s.s
 }
 
 // Calculate transactions to be included in the current rollup

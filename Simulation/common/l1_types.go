@@ -64,7 +64,7 @@ func (b Block) L1Txs() []L1Tx {
 	return b.txs
 }
 
-var GenesisBlock = Block{h: -1, root: uuid.New(), Nonce: 0, CreationTime: time.Now(), txs: []L1Tx{{Id: uuid.New(), TxType: RollupTx, Rollup: GenesisRollup}}}
+var GenesisBlock = Block{h: GenesisHeight, root: uuid.New(), Nonce: 0, CreationTime: time.Now(), txs: []L1Tx{{Id: uuid.New(), TxType: RollupTx, Rollup: GenesisRollup}}}
 
 func NewBlock(cb *Block, nonce int, m NodeId, txsCopy []L1Tx) Block {
 	return Block{h: cb.Height() + 1, root: uuid.New(), Nonce: nonce, Miner: m, p: cb, CreationTime: time.Now(), txs: txsCopy}
