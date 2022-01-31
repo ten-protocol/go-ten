@@ -30,7 +30,7 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 		rollupsReceivedFromPeers := <-a.rollupOutCh
 
 		// filter out rollups with a different Parent
-		var usefulRollups = []*common.Rollup{&r}
+		var usefulRollups []*common.Rollup
 		for _, rol := range rollupsReceivedFromPeers {
 			if rol.Parent().RootHash() == blockState.Head.RootHash() {
 				usefulRollups = append(usefulRollups, rol)
@@ -38,7 +38,7 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 		}
 
 		// determine the winner of the round
-		winnerRollup, winnerState := a.findRoundWinner(usefulRollups, &blockState.Head, blockState.State)
+		winnerRollup, winnerState := a.findRoundWinner(&r, usefulRollups, &blockState.Head, blockState.State)
 
 		// we are the winner
 		if winnerRollup.Agg == a.Id {
@@ -267,13 +267,13 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s ProcessedS
 	return s
 }
 
-func (a Node) findRoundWinner(receivedRollups []*common.Rollup, parent *common.Rollup, parentState State) (common.Rollup, State) {
-	var win *common.Rollup
+func (a Node) findRoundWinner(ourRollup *common.Rollup, receivedRollups []*common.Rollup, parent *common.Rollup, parentState State) (common.Rollup, State) {
+	var win = ourRollup
 	for _, r := range receivedRollups {
 		if r.Parent().RootHash() != parent.RootHash() {
 			continue
 		}
-		if win == nil || r.L1Proof.Height() > win.L1Proof.Height() || (r.L1Proof.Height() == win.L1Proof.Height() && r.Nonce < win.Nonce) {
+		if r.L1Proof.Height() > win.L1Proof.Height() || (r.L1Proof.Height() == win.L1Proof.Height() && r.Nonce < win.Nonce) {
 			win = r
 		}
 	}
