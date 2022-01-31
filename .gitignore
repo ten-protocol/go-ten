@@ -13,3 +13,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# GoLand files
+.idea/
+
+# Simulation run outputs
+Simulation/.build/
+Simulation/simulation_result.txt
