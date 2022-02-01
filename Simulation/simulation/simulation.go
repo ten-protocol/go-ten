@@ -22,7 +22,7 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 
 	l1Network := L1NetworkCfg{delay: func() uint64 {
 		return common.RndBtw(uint64(avgLatency/10), uint64(2*avgLatency))
-	}, Stats: &stats, interrupt: new(int32)}
+	}, Stats: &stats, interrupt: 0}
 	l1Cfg := ethereum_mock.MiningConfig{PowTime: func() uint64 {
 		// This formula might feel counter-intuitive, but it is a good approximation for Proof of Work.
 		// It creates a uniform distribution up to nrMiners*avgDuration

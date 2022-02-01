@@ -3,7 +3,6 @@ package ethereum_mock
 import (
 	"fmt"
 	"simulation/common"
-	"sync/atomic"
 	"time"
 )
 
@@ -31,7 +30,7 @@ type Node struct {
 	// Channels
 	exitCh       chan bool // the Node stops
 	exitMiningCh chan bool // the mining loop is notified to stop
-	interrupt    *int32
+	interrupt    int32
 
 	p2pCh       chan common.Block // this is where blocks received from peers are dropped
 	miningCh    chan common.Block // this is where blocks created by the mining setup of the current node are dropped
@@ -49,7 +48,7 @@ func NewMiner(id common.NodeId, cfg MiningConfig, client NotifyNewBlock, network
 		network:        network,
 		exitCh:         make(chan bool),
 		exitMiningCh:   make(chan bool),
-		interrupt:      new(int32),
+		interrupt:      0,
 		p2pCh:          make(chan common.Block),
 		miningCh:       make(chan common.Block),
 		canonicalCh:    make(chan common.Block),
@@ -105,7 +104,7 @@ func (m *Node) printBlock(mb common.Block) string {
 
 // Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
 func (m *Node) setHead(b common.Block) common.Block {
-	if atomic.LoadInt32(m.interrupt) == 1 {
+	if m.interrupt == 1 {
 		return b
 	}
 
@@ -121,7 +120,7 @@ func (m *Node) setHead(b common.Block) common.Block {
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
 // All it does is drop the blocks in a channel for processing.
 func (m *Node) P2PReceiveBlock(b common.EncodedBlock) {
-	if atomic.LoadInt32(m.interrupt) == 1 {
+	if m.interrupt == 1 {
 		return
 	}
 	bl := decodeBlock(b)
@@ -165,7 +164,7 @@ func (m *Node) startMining() {
 					txsCopy[i] = tx.(common.L1Tx)
 				}
 				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
-				if atomic.LoadInt32(m.interrupt) == 1 {
+				if m.interrupt == 1 {
 					return
 				}
 				m.miningCh <- common.NewBlock(&cb, nonce, m.Id, txsCopy)
@@ -176,7 +175,7 @@ func (m *Node) startMining() {
 
 // P2PGossipTx receive rollups to publish from the linked aggregators
 func (m *Node) P2PGossipTx(tx common.EncodedL1Tx) {
-	if atomic.LoadInt32(m.interrupt) == 1 {
+	if m.interrupt == 1 {
 		return
 	}
 	t, err := tx.Decode()
@@ -193,7 +192,7 @@ func (m *Node) BroadcastTx(tx common.EncodedL1Tx) {
 
 func (m *Node) Stop() {
 	//block all requests
-	atomic.StoreInt32(m.interrupt, 1)
+	m.interrupt = 1
 	time.Sleep(time.Millisecond * 100)
 
 	m.exitMiningCh <- true

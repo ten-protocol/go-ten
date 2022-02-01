@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"simulation/common"
-	"sync/atomic"
 )
 
 // called when a new L1 block was mined
@@ -21,7 +20,7 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 	// wait to receive rollups From peers
 	// todo - make this smarter. e.g: if 90% of the peers have sent rollups, proceed. Or if a Nonce is very low and probabilistically there is no chance, etc
 	common.ScheduleInterrupt(a.cfg.GossipPeriod, doneCh, func() {
-		if atomic.LoadInt32(a.interrupt) == 1 {
+		if a.interrupt == 1 {
 			return
 		}
 

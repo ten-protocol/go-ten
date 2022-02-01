@@ -3,7 +3,6 @@ package simulation
 import (
 	"simulation/common"
 	"simulation/ethereum-mock"
-	"sync/atomic"
 	"time"
 )
 
@@ -14,12 +13,12 @@ type L1NetworkCfg struct {
 	Stats *Stats
 	// used as a signal to stop all network communication.
 	// This helps prevent deadlocks when stopping nodes
-	interrupt *int32
+	interrupt int32
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
 func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock) {
-	if atomic.LoadInt32(n.interrupt) == 1 {
+	if n.interrupt == 1 {
 		return
 	}
 	bl, _ := b.Decode()
@@ -34,7 +33,7 @@ func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock) {
 
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
 func (n *L1NetworkCfg) BroadcastTx(tx common.EncodedL1Tx) {
-	if atomic.LoadInt32(n.interrupt) == 1 {
+	if n.interrupt == 1 {
 		return
 	}
 	for _, m := range n.nodes {
@@ -62,7 +61,7 @@ func (n *L1NetworkCfg) Start(delay time.Duration) {
 	}
 }
 func (n *L1NetworkCfg) Stop() {
-	atomic.StoreInt32(n.interrupt, 1)
+	n.interrupt = 1
 	for _, m := range n.nodes {
 		t := m
 		go t.Stop()

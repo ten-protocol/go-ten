@@ -4,7 +4,6 @@ import (
 	"simulation/common"
 	"simulation/ethereum-mock"
 	wallet_mock "simulation/wallet-mock"
-	"sync/atomic"
 	"time"
 )
 
@@ -32,7 +31,7 @@ type Node struct {
 	// control the lifecycle
 	exitNodeCh        chan bool
 	exitAggregatingCh chan bool
-	interrupt         *int32
+	interrupt         int32
 
 	// where rollups and transactions are gossipped From peers
 	p2pChRollup chan common.Rollup
@@ -88,7 +87,7 @@ func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Netwo
 		mining:            true,
 		exitNodeCh:        make(chan bool),
 		exitAggregatingCh: make(chan bool),
-		interrupt:         new(int32),
+		interrupt:         0,
 		p2pChRollup:       make(chan common.Rollup),
 		p2pChTx:           make(chan common.L2Tx),
 		blockRpcCh:        make(chan common.Block),
@@ -142,7 +141,7 @@ func (a Node) Start() {
 
 // RPCNewHead Receive notifications From the L1Node Node when there's a new block
 func (a Node) RPCNewHead(b common.EncodedBlock) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
+	if a.interrupt == 1 {
 		return
 	}
 	bl, err := b.Decode()
@@ -155,14 +154,14 @@ func (a Node) RPCNewHead(b common.EncodedBlock) {
 // P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
 // All it does is drop the Rollups in a channel for processing.
 func (a Node) P2PGossipRollup(r common.EncodedRollup) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
+	if a.interrupt == 1 {
 		return
 	}
 	a.p2pChRollup <- decodeRollup(r)
 }
 
 func (a Node) P2PReceiveTx(tx common.EncodedL2Tx) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
+	if a.interrupt == 1 {
 		return
 	}
 	t, err := tx.DecodeBytes()
@@ -178,7 +177,7 @@ func (a Node) RPCBalance(address wallet_mock.Address) uint64 {
 
 func (a Node) Stop() {
 	// block all requests
-	atomic.StoreInt32(a.interrupt, 1)
+	a.interrupt = 1
 	time.Sleep(time.Millisecond * 10)
 	a.exitAggregatingCh <- true
 	a.exitNodeCh <- true
