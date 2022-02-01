@@ -140,6 +140,77 @@ func (a Node) Start() {
 	}
 }
 
+// actor that participates in rollup and transaction gossip
+// processes transactions
+func (a Node) startAggregating() {
+
+	// Rollups grouped by Height
+	var allRollups = make(map[uint32][]*common.Rollup)
+
+	// transactions
+	var mempool = make([]common.Tx, 0)
+
+	// Process transactions on the fly
+	var currentHead = common.GenesisRollup
+	var currentState = newProcessedState(emptyState())
+	var currentProcessedTxs = make([]common.L2Tx, 0)
+
+	for {
+		select {
+
+		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
+		case winnerRollup := <-a.roundWinnerCh:
+			// housekeeping - remove transactions that are already considered committed
+			mempool = common.RemoveCommittedTransactions(currentHead, mempool)
+
+			currentHead = winnerRollup.r
+			currentState = newProcessedState(winnerRollup.s)
+
+			// determine the transactions that were not yet included
+			txs := common.FindNotIncludedTxs(currentHead, mempool)
+
+			currentProcessedTxs = make([]common.L2Tx, len(txs))
+			for i, tx := range txs {
+				currentProcessedTxs[i] = tx.(common.L2Tx)
+			}
+
+			// calculate the State after executing them
+			currentState = executeTransactions(currentProcessedTxs, currentState)
+
+		case tx := <-a.p2pChTx:
+			mempool = append(mempool, tx)
+			currentProcessedTxs = append(currentProcessedTxs, tx)
+			executeTx(&currentState, tx)
+
+		case <-a.speculativeWorkInCh:
+			b := make([]common.L2Tx, len(currentProcessedTxs))
+			copy(b, currentProcessedTxs)
+			a.speculativeWorkOutCh <- currentWork{
+				r:   currentHead,
+				s:   copyProcessedState(currentState),
+				txs: b,
+			}
+
+		case r := <-a.p2pChRollup:
+			val, found := allRollups[r.Height()]
+			if found {
+				allRollups[r.Height()] = append(val, &r)
+			} else {
+				allRollups[r.Height()] = []*common.Rollup{&r}
+			}
+
+		case requestedHeight := <-a.rollupInCh:
+			a.rollupOutCh <- allRollups[requestedHeight]
+
+		case <-a.txsInCh:
+			a.txsOutCh <- mempool
+
+		case <-a.exitAggregatingCh:
+			return
+		}
+	}
+}
+
 // RPCNewHead Receive notifications From the L1Node Node when there's a new block
 func (a Node) RPCNewHead(b common.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {

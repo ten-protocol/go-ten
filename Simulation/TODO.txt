@@ -5,16 +5,15 @@ P - Create a unit test with a checker for the final state of the simulation:
     - the state in each rollup matches the transactions. (deposits + L1)
     - L1 height, L2 height, how many reorgs, etc - if the efficiency is below a threashold then something could have happened
 
+P - split up code that must run inside an enclave
+
 - bring in core ethereum structures so that the l2 node can understand them
-- integrate rlp serialisation
-- split up code that must run inside an enclave
 - implement a very basic secret sharing protocol
 
 ----
 - analyse the pobi round - some inefficient state recalculation for the rollups
 - split block and rollup in header and payload
 
-- instead of passing pointers to rollups/blocks/transactions, pass the serialised object
 - create an API,
 - integrate crypto
 - replace the state and transaction execution with code from geth
