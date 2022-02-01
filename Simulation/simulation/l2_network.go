@@ -6,23 +6,24 @@ import (
 	"time"
 )
 
-// NetworkCfg - models a full network including artificial random latencies
+// L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
 	nodes []*obscuro.Node
 	delay common.Latency // the latency
 }
 
-// Broadcasts the rollup to all L2 peers
-func (c *L2NetworkCfg) BroadcastRollup(r common.Rollup) {
+// BroadcastRollup Broadcasts the rollup to all L2 peers
+func (c *L2NetworkCfg) BroadcastRollup(r common.EncodedRollup) {
 	for _, a := range c.nodes {
-		if a.Id != r.Agg {
+		rol, _ := r.Decode()
+		if a.Id != rol.Agg {
 			t := a
-			common.Schedule(c.delay(), func() { t.P2PGossipRollup(&r) })
+			common.Schedule(c.delay(), func() { t.P2PGossipRollup(r) })
 		}
 	}
 }
 
-func (c *L2NetworkCfg) BroadcastTx(tx common.L2Tx) {
+func (c *L2NetworkCfg) BroadcastTx(tx common.EncodedL2Tx) {
 	for _, a := range c.nodes {
 		t := a
 		common.Schedule(c.delay()/2, func() { t.P2PReceiveTx(tx) })

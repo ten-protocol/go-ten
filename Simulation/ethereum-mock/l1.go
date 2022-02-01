@@ -8,12 +8,12 @@ import (
 )
 
 type L1Network interface {
-	BroadcastBlock(b common.Block)
-	BroadcastTx(tx common.L1Tx)
+	BroadcastBlock(b common.EncodedBlock)
+	BroadcastTx(tx common.EncodedL1Tx)
 }
 
 type NotifyNewBlock interface {
-	RPCNewHead(b common.Block)
+	RPCNewHead(b common.EncodedBlock)
 }
 
 type MiningConfig struct {
@@ -74,7 +74,7 @@ func (m *Node) Start() {
 				if !common.IsAncestor(head, p2pb) {
 					m.statsCollector.L1Reorg(m.Id)
 					fork := common.LCA(head, p2pb)
-					common.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.Id, p2pb.RootHash().ID(), p2pb.Height(), head.RootHash().ID(), head.Height(), fork.RootHash().ID(), fork.Height()))
+					common.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.Id, p2pb.RootHash.ID(), p2pb.Height(), head.RootHash.ID(), head.Height(), fork.Root().ID(), fork.Height()))
 				}
 				head = m.setHead(p2pb)
 			}
@@ -82,7 +82,7 @@ func (m *Node) Start() {
 			if mb.Height() > head.Height() { // Ignore the locally produced block if someone else found one already
 				common.Log(m.printBlock(mb))
 				head = m.setHead(mb)
-				m.network.BroadcastBlock(mb)
+				m.network.BroadcastBlock(encodeBlock(mb))
 			}
 		case <-m.exitCh:
 			return
@@ -95,12 +95,12 @@ func (m *Node) printBlock(mb common.Block) string {
 	var txs []string
 	for _, tx := range mb.L1Txs() {
 		if tx.TxType == common.RollupTx {
-			txs = append(txs, fmt.Sprintf("r_%d", tx.Rollup.RootHash().ID()))
+			txs = append(txs, fmt.Sprintf("r_%d", tx.Rollup.Root().ID()))
 		} else {
 			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.Dest, tx.Amount))
 		}
 	}
-	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[p=b_%d]. Txs: %v", m.Id, mb.RootHash().ID(), mb.Height(), mb.Nonce, mb.Parent().RootHash().ID(), txs)
+	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[p=b_%d]. Txs: %v", m.Id, mb.RootHash.ID(), mb.Height(), mb.Nonce, mb.Parent().Root().ID(), txs)
 }
 
 // Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
@@ -111,7 +111,8 @@ func (m *Node) setHead(b common.Block) common.Block {
 
 	// notify the clients
 	for _, c := range m.clients {
-		c.RPCNewHead(b)
+		ser := encodeBlock(b)
+		c.RPCNewHead(ser)
 	}
 	m.canonicalCh <- b
 	return b
@@ -119,11 +120,12 @@ func (m *Node) setHead(b common.Block) common.Block {
 
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
 // All it does is drop the blocks in a channel for processing.
-func (m *Node) P2PReceiveBlock(b common.Block) {
+func (m *Node) P2PReceiveBlock(b common.EncodedBlock) {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return
 	}
-	m.p2pCh <- b
+	bl := decodeBlock(b)
+	m.p2pCh <- bl
 }
 
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it on the miningCh channel
@@ -173,14 +175,19 @@ func (m *Node) startMining() {
 }
 
 // P2PGossipTx receive rollups to publish from the linked aggregators
-func (m *Node) P2PGossipTx(tx common.L1Tx) {
+func (m *Node) P2PGossipTx(tx common.EncodedL1Tx) {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return
 	}
-	m.mempoolCh <- tx
+	t, err := tx.Decode()
+	if err != nil {
+		panic(err)
+	}
+
+	m.mempoolCh <- t
 }
 
-func (m *Node) BroadcastTx(tx common.L1Tx) {
+func (m *Node) BroadcastTx(tx common.EncodedL1Tx) {
 	m.network.BroadcastTx(tx)
 }
 
@@ -191,4 +198,19 @@ func (m *Node) Stop() {
 
 	m.exitMiningCh <- true
 	m.exitCh <- true
+}
+
+func decodeBlock(b common.EncodedBlock) common.Block {
+	bl, err := b.Decode()
+	if err != nil {
+		panic(err)
+	}
+	return bl
+}
+func encodeBlock(b common.Block) common.EncodedBlock {
+	ser, err := b.Encode()
+	if err != nil {
+		panic(err)
+	}
+	return ser
 }

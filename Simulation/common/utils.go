@@ -6,16 +6,17 @@ import (
 	"time"
 )
 
-type Nonce = int
-type Latency func() int
+type Nonce = uint64
+type Latency func() uint64
 type ScheduledFunc func()
 
-func RndBtw(min int, max int) int {
-	return rand.Intn(max-min) + min
+func RndBtw(min uint64, max uint64) uint64 {
+	r := uint64(rand.Int63n(int64(max-min))) + min
+	return r
 }
 
 // ScheduleInterrupt runs the function after the delay and can be interrupted using the channel
-func ScheduleInterrupt(delay int, doneCh *chan bool, fun ScheduledFunc) {
+func ScheduleInterrupt(delay uint64, doneCh *chan bool, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
 	go func() {
 		executed := false
@@ -34,7 +35,7 @@ func ScheduleInterrupt(delay int, doneCh *chan bool, fun ScheduledFunc) {
 }
 
 // Schedule runs the function after the delay
-func Schedule(delay int, fun ScheduledFunc) {
+func Schedule(delay uint64, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
 	go func() {
 		<-ticker.C
@@ -43,15 +44,22 @@ func Schedule(delay int, fun ScheduledFunc) {
 	}()
 }
 
-func Duration(us int) time.Duration {
+func Duration(us uint64) time.Duration {
 	return time.Duration(us) * time.Microsecond
 }
 
 func GenerateNonce() Nonce {
-	return RndBtw(0, math.MaxInt)
+	return uint64(rand.Int63n(math.MaxInt))
 }
 
-func Max(x, y int) int {
+func Max(x, y uint64) uint64 {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+func MaxInt(x, y uint32) uint32 {
 	if x < y {
 		return y
 	}

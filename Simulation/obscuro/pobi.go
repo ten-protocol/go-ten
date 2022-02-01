@@ -16,7 +16,7 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 	blockState := a.updateState(b)
 
 	r := a.produceRollup(b, blockState)
-	a.l2Network.BroadcastRollup(r)
+	a.l2Network.BroadcastRollup(encodeRollup(r))
 
 	// wait to receive rollups From peers
 	// todo - make this smarter. e.g: if 90% of the peers have sent rollups, proceed. Or if a Nonce is very low and probabilistically there is no chance, etc
@@ -32,7 +32,7 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 		// filter out rollups with a different Parent
 		var usefulRollups = []*common.Rollup{&r}
 		for _, rol := range rollupsReceivedFromPeers {
-			if rol.Parent().RootHash() == blockState.Head.RootHash() {
+			if rol.Parent().Root() == blockState.Head.Root() {
 				usefulRollups = append(usefulRollups, rol)
 			}
 		}
@@ -47,9 +47,14 @@ func (a Node) newPobiRound(b common.Block, doneCh *chan bool) {
 				t1 := t.(common.L2Tx)
 				txsString = append(txsString, fmt.Sprintf("%v->%v(%d)", t1.From, t1.Dest, t1.Amount))
 			}
-			common.Log(fmt.Sprintf(">   Agg%d: (b_%d) create rollup=r_%d(%d)[r_%d]{poof=b_%d}. Txs: %v. State=%v.", a.Id, b.RootHash().ID(), winnerRollup.RootHash().ID(), winnerRollup.Height(), winnerRollup.Parent().RootHash().ID(), winnerRollup.L1Proof.RootHash().ID(), txsString, winnerRollup.State))
+			common.Log(fmt.Sprintf(">   Agg%d: (b_%d) create rollup=r_%d(%d)[r_%d]{poof=b_%d}. Txs: %v. State=%v.", a.Id, b.RootHash.ID(), winnerRollup.Root().ID(), winnerRollup.Height(), winnerRollup.Parent().Root().ID(), winnerRollup.Proof().RootHash.ID(), txsString, winnerRollup.State))
 			// build a L1 tx with the rollup and send it to the L1 node for further broadcase
-			a.L1Node.BroadcastTx(common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup})
+			tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup}
+			t, err := tx.Encode()
+			if err != nil {
+				panic(err)
+			}
+			a.L1Node.BroadcastTx(t)
 		}
 
 		a.roundWinnerCh <- winner{winnerRollup, winnerState}
@@ -66,8 +71,8 @@ func (a Node) produceRollup(b common.Block, bs BlockState) common.Rollup {
 	newRollupState := speculativeRollup.s
 
 	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip
-	if speculativeRollup.r.RootHash() != bs.Head.RootHash() {
-		common.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)", a.Id, speculativeRollup.r.RootHash().ID(), speculativeRollup.r.Height(), bs.Head.RootHash().ID(), bs.Head.Height()))
+	if speculativeRollup.r.Root() != bs.Head.Root() {
+		common.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)", a.Id, speculativeRollup.r.Root().ID(), speculativeRollup.r.Height(), bs.Head.Root().ID(), bs.Head.Height()))
 		a.statsCollector.L2Recalc(a.Id)
 
 		// determine transactions to include in new rollup and process them
@@ -77,7 +82,8 @@ func (a Node) produceRollup(b common.Block, bs BlockState) common.Rollup {
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
-	newRollupState = processDeposits(bs.Head.L1Proof, b, copyProcessedState(newRollupState))
+	proof := bs.Head.Proof()
+	newRollupState = processDeposits(&proof, b, copyProcessedState(newRollupState))
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
 	return common.NewRollup(&b, &bs.Head, a.Id, newRollupTxs, newRollupState.w, serialize(newRollupState.s))
@@ -88,7 +94,7 @@ func (a Node) produceRollup(b common.Block, bs BlockState) common.Rollup {
 func (a Node) startAggregating() {
 
 	// Rollups grouped by Height
-	var allRollups = make(map[int][]*common.Rollup)
+	var allRollups = make(map[uint32][]*common.Rollup)
 
 	// transactions
 	var mempool = make([]common.Tx, 0)
@@ -137,9 +143,9 @@ func (a Node) startAggregating() {
 		case r := <-a.p2pChRollup:
 			val, found := allRollups[r.Height()]
 			if found {
-				allRollups[r.Height()] = append(val, r)
+				allRollups[r.Height()] = append(val, &r)
 			} else {
-				allRollups[r.Height()] = []*common.Rollup{r}
+				allRollups[r.Height()] = []*common.Rollup{&r}
 			}
 
 		case requestedHeight := <-a.rollupInCh:
@@ -159,24 +165,24 @@ func (a Node) startAggregating() {
 func (a Node) updateState(b common.Block) BlockState {
 
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
-	val, found := a.Db.Fetch(b.RootHash())
+	val, found := a.Db.Fetch(b.RootHash)
 	if found {
 		return val
 	}
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if b.RootHash() == common.GenesisBlock.RootHash() {
+	if b.RootHash == common.GenesisBlock.RootHash {
 		bs := BlockState{
 			Block: b,
 			Head:  common.GenesisRollup,
 			State: emptyState(),
 		}
-		a.Db.Set(b.RootHash(), bs)
+		a.Db.Set(b.RootHash, bs)
 		return bs
 	}
 
-	// To calculate the state after the curren block, we need the state after the parent.
-	parentState, parentFound := a.Db.Fetch(b.Parent().RootHash())
+	// To calculate the state after the current block, we need the state after the parent.
+	parentState, parentFound := a.Db.Fetch(b.Parent().Root())
 	if !parentFound {
 		// go back and calculate the State of the Parent
 		parentState = a.updateState(*b.ParentBlock())
@@ -184,7 +190,7 @@ func (a Node) updateState(b common.Block) BlockState {
 
 	bs := calculateBlockState(b, parentState)
 
-	a.Db.Set(b.RootHash(), bs)
+	a.Db.Set(b.RootHash, bs)
 
 	return bs
 }
@@ -199,8 +205,8 @@ func calculateBlockState(b common.Block, parentState BlockState) BlockState {
 		if t.TxType == common.RollupTx {
 			r := t.Rollup
 			// only consider rollups if they advance the chain
-			if (r.Height() > parentState.Head.Height()) && common.IsAncestor(r.L1Proof, b) {
-				if newHead == nil || r.Height() > newHead.Height() || r.L1Proof.Height() > newHead.L1Proof.Height() || (r.L1Proof.Height() == newHead.L1Proof.Height() && r.Nonce < newHead.Nonce) {
+			if (r.Height() > parentState.Head.Height()) && common.IsAncestor(r.Proof(), b) {
+				if newHead == nil || r.Height() > newHead.Height() || r.Proof().Height() > newHead.Proof().Height() || (r.Proof().Height() == newHead.Proof().Height() && r.Nonce < newHead.Nonce) {
 					newHead = &r
 				}
 			}
@@ -209,11 +215,12 @@ func calculateBlockState(b common.Block, parentState BlockState) BlockState {
 
 	s := newProcessedState(parentState.State)
 
-	found := true
+	var found bool
 	// only change the state if there is a new l2 Head in the current block
 	if newHead != nil {
 		s = executeTransactions(newHead.L2Txs(), s)
-		s = processDeposits(newHead.ParentRollup().L1Proof, *newHead.L1Proof, s)
+		p := newHead.ParentRollup().Proof()
+		s = processDeposits(&p, newHead.Proof(), s)
 		found = true
 	} else {
 		newHead = &parentState.Head
@@ -232,10 +239,10 @@ func calculateBlockState(b common.Block, parentState BlockState) BlockState {
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
 func processDeposits(fromBlock *common.Block, toBlock common.Block, s ProcessedState) ProcessedState {
-	from := common.GenesisBlock.RootHash()
+	from := common.GenesisBlock.RootHash
 	height := common.GenesisHeight
 	if fromBlock != nil {
-		from = fromBlock.RootHash()
+		from = fromBlock.RootHash
 		height = fromBlock.Height()
 		if !common.IsAncestor(fromBlock, toBlock) {
 			panic("wtf")
@@ -245,7 +252,7 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s ProcessedS
 
 	b := &toBlock
 	for {
-		if b.RootHash() == from {
+		if b.RootHash == from {
 			break
 		}
 		for _, tx := range b.L1Txs() {
@@ -270,17 +277,18 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s ProcessedS
 func (a Node) findRoundWinner(receivedRollups []*common.Rollup, parent *common.Rollup, parentState State) (common.Rollup, State) {
 	var win *common.Rollup
 	for _, r := range receivedRollups {
-		if r.Parent().RootHash() != parent.RootHash() {
+		if r.Parent().Root() != parent.Root() {
 			continue
 		}
-		if win == nil || r.L1Proof.Height() > win.L1Proof.Height() || (r.L1Proof.Height() == win.L1Proof.Height() && r.Nonce < win.Nonce) {
+		if win == nil || r.Proof().Height() > win.Proof().Height() || (r.Proof().Height() == win.Proof().Height() && r.Nonce < win.Nonce) {
 			win = r
 		}
 	}
 
 	// calculate the state to compare with what is in the Rollup
 	s := newProcessedState(parentState)
-	s = processDeposits(win.ParentRollup().L1Proof, *win.L1Proof, s)
+	p := win.ParentRollup().Proof()
+	s = processDeposits(&p, win.Proof(), s)
 	s = executeTransactions(win.L2Txs(), s)
 	// todo - check that s is valid against the State in the rollup, if not - call the function again with this tx excluded
 	return *win, s.s

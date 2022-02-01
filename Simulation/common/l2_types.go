@@ -1,70 +1,105 @@
 package common
 
 import (
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
 	"simulation/wallet-mock"
+	"sync"
 	"time"
 )
 
 // Todo - this has to be a trie root eventually
 type StateRoot = string
+type EncodedL2Tx []byte
+type EncodedRollup []byte
 
 type Rollup struct {
 	// header
-	h            int
-	root         RootHash
+	H            uint32
+	RootHash     RootHash
 	Agg          NodeId
-	p            *Rollup
+	ParentHash   RootHash
 	CreationTime time.Time
-	L1Proof      *Block // the L1 block where the Parent was published
+	L1Proof      RootHash // the L1 block where the Parent was published
 	Nonce        Nonce
 	State        StateRoot
 	Withdrawals  []Withdrawal
-	// payload
-	txs []L2Tx
+
+	// payload - move to body
+	Transactions []L2Tx
 }
 
+var rollupCache = make(map[RootHash]Rollup)
+var rcm = sync.RWMutex{}
+
 func (r Rollup) ParentRollup() *Rollup {
-	return r.p
+	rcm.RLock()
+	defer rcm.RUnlock()
+	rollup, found := rollupCache[r.ParentHash]
+	if !found {
+		panic("could not find rollup")
+	}
+	return &rollup
 }
 func (r Rollup) Parent() ChainNode {
-	return r.p
+	return r.ParentRollup()
 }
-func (r Rollup) Height() int {
-	return r.h
+func (r Rollup) Height() uint32 {
+	return r.H
 }
-func (r Rollup) RootHash() RootHash {
-	return r.root
+func (r Rollup) Root() RootHash {
+	return r.RootHash
 }
 func (r Rollup) Txs() []Tx {
-	txs := make([]Tx, len(r.txs))
+	txs := make([]Tx, len(r.Transactions))
 	// todo - inefficient
-	for i, tx := range r.txs {
+	for i, tx := range r.Transactions {
 		txs[i] = Tx(tx)
 	}
 	return txs
 }
 func (r Rollup) L2Txs() []L2Tx {
-	return r.txs
+	return r.Transactions
 }
 
-func NewRollup(b *Block, newL2Head *Rollup, a NodeId, txs []L2Tx, withdrawals []Withdrawal, state StateRoot) Rollup {
-	return Rollup{
-		h:            newL2Head.Height() + 1,
-		root:         uuid.New(),
+func (r Rollup) Proof() Block {
+	rbm.RLock()
+	defer rbm.RUnlock()
+	block, f := blockCache[r.L1Proof]
+	if !f {
+		panic("Couldn't find block")
+	}
+	return block
+}
+
+func NewRollup(b *Block, parent *Rollup, a NodeId, txs []L2Tx, withdrawals []Withdrawal, state StateRoot) Rollup {
+	rootHash := uuid.New()
+	parentHash := rootHash
+	height := GenesisHeight
+	if parent != nil {
+		parentHash = parent.RootHash
+		height = parent.H + 1
+	}
+	r := Rollup{
+		H:            height,
+		RootHash:     rootHash,
 		Agg:          a,
-		p:            newL2Head,
+		ParentHash:   parentHash,
 		CreationTime: time.Now(),
-		L1Proof:      b,
+		L1Proof:      b.RootHash,
 		Nonce:        GenerateNonce(),
 		State:        state,
 		Withdrawals:  withdrawals,
-		txs:          txs,
+		Transactions: txs,
 	}
+	rcm.Lock()
+	rollupCache[rootHash] = r
+	rcm.Unlock()
+	return r
 }
 
 // Transfers and Withdrawals for now
-type L2TxType int64
+type L2TxType uint64
 
 const (
 	TransferTx L2TxType = iota
@@ -72,7 +107,7 @@ const (
 )
 
 type Withdrawal struct {
-	Amount  int
+	Amount  uint64
 	Address wallet_mock.Address
 }
 
@@ -80,7 +115,7 @@ type Withdrawal struct {
 type L2Tx struct {
 	Id     TxHash
 	TxType L2TxType
-	Amount int
+	Amount uint64
 	From   wallet_mock.Address
 	Dest   wallet_mock.Address
 }
@@ -89,11 +124,25 @@ func (tx L2Tx) Hash() TxHash {
 	return tx.Id
 }
 
-var GenesisRollup = Rollup{
-	h:            GenesisHeight,
-	root:         uuid.New(),
-	Agg:          -1,
-	CreationTime: time.Now(),
-	Withdrawals:  []Withdrawal{},
-	txs:          []L2Tx{},
+var GenesisRollup = NewRollup(&GenesisBlock, nil, 0, []L2Tx{}, []Withdrawal{}, "")
+var GenesisTx = L1Tx{Id: uuid.New(), TxType: RollupTx, Rollup: GenesisRollup}
+
+func (r Rollup) Encode() (EncodedRollup, error) {
+	return rlp.EncodeToBytes(r)
+}
+
+func (r EncodedRollup) Decode() (Rollup, error) {
+	bl := Rollup{}
+	err := rlp.DecodeBytes(r, &bl)
+	return bl, err
+}
+
+func (tx L2Tx) EncodeBytes() (EncodedL2Tx, error) {
+	return rlp.EncodeToBytes(tx)
+}
+
+func (tx EncodedL2Tx) DecodeBytes() (L2Tx, error) {
+	tx1 := L2Tx{}
+	err := rlp.DecodeBytes(tx, &tx1)
+	return tx1, err
 }

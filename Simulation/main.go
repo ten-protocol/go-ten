@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-// DEFAULT_AVERAGE_LATENCY_TO_BLOCK_RATIO is relative to the block time
+// DefaultAverageLatencyToBlockRatio is relative to the block time
 // Average eth Block duration=12s, and average eth block latency = 1s
 // Determines the broadcast powTime. The lower, the more powTime.
-const DEFAULT_AVERAGE_LATENCY_TO_BLOCK_RATIO = 12
+const DefaultAverageLatencyToBlockRatio = 12
 
-// DEFAULT_AVERAGE_GOSSIP_PERIOD_TO_BLOCK_RATIO - how long to wait for gossip in L2.
-const DEFAULT_AVERAGE_GOSSIP_PERIOD_TO_BLOCK_RATIO = 3
+// DefaultAverageGossipPeriodToBlockRatio - how long to wait for gossip in L2.
+const DefaultAverageGossipPeriodToBlockRatio = 3
 
 func main() {
 	//f, err := os.Create("cpu.prof")
@@ -38,7 +38,7 @@ func main() {
 	defer f.Close()
 	common.SetLog(f)
 
-	blockDuration := 15_000
-	l1netw, _ := simulation.RunSimulation(5, 10, 15, blockDuration, blockDuration/20, blockDuration/3)
+	blockDuration := uint64(15_000)
+	l1netw, _ := simulation.RunSimulation(5, 10, 15, blockDuration, blockDuration/DefaultAverageLatencyToBlockRatio, blockDuration/DefaultAverageGossipPeriodToBlockRatio)
 	fmt.Printf("%#v\n", l1netw.Stats)
 }

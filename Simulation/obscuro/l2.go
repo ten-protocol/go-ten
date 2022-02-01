@@ -9,12 +9,12 @@ import (
 )
 
 type AggregatorCfg struct {
-	GossipPeriod int
+	GossipPeriod uint64
 }
 
 type L2Network interface {
-	BroadcastRollup(r common.Rollup)
-	BroadcastTx(tx common.L2Tx)
+	BroadcastRollup(r common.EncodedRollup)
+	BroadcastTx(tx common.EncodedL2Tx)
 }
 
 // Node this will become the Obscuro "Node" type
@@ -35,7 +35,7 @@ type Node struct {
 	interrupt         *int32
 
 	// where rollups and transactions are gossipped From peers
-	p2pChRollup chan *common.Rollup
+	p2pChRollup chan common.Rollup
 	p2pChTx     chan common.L2Tx
 
 	// where the connected L1Node node drops new blocks
@@ -47,7 +47,7 @@ type Node struct {
 
 	// used for internal communication between the gossi agent and the processing agent
 	// todo - probably can use a single channel
-	rollupInCh  chan int
+	rollupInCh  chan uint32
 	rollupOutCh chan []*common.Rollup
 
 	// used for internal communication between the gossip agent and the processing agent
@@ -89,12 +89,12 @@ func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Netwo
 		exitNodeCh:        make(chan bool),
 		exitAggregatingCh: make(chan bool),
 		interrupt:         new(int32),
-		p2pChRollup:       make(chan *common.Rollup),
+		p2pChRollup:       make(chan common.Rollup),
 		p2pChTx:           make(chan common.L2Tx),
 		blockRpcCh:        make(chan common.Block),
 		//balanceRpcInCh:    make(chan wallet_mock.Address),
 		//balanceRpcOutCh:   make(chan int),
-		rollupInCh:           make(chan int),
+		rollupInCh:           make(chan uint32),
 		rollupOutCh:          make(chan []*common.Rollup),
 		txsInCh:              make(chan bool),
 		txsOutCh:             make(chan []common.Tx),
@@ -141,30 +141,38 @@ func (a Node) Start() {
 }
 
 // RPCNewHead Receive notifications From the L1Node Node when there's a new block
-func (a Node) RPCNewHead(b common.Block) {
+func (a Node) RPCNewHead(b common.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.blockRpcCh <- b
+	bl, err := b.Decode()
+	if err != nil {
+		panic(err)
+	}
+	a.blockRpcCh <- bl
 }
 
 // P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
 // All it does is drop the Rollups in a channel for processing.
-func (a Node) P2PGossipRollup(r *common.Rollup) {
+func (a Node) P2PGossipRollup(r common.EncodedRollup) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.p2pChRollup <- r
+	a.p2pChRollup <- decodeRollup(r)
 }
 
-func (a Node) P2PReceiveTx(tx common.L2Tx) {
+func (a Node) P2PReceiveTx(tx common.EncodedL2Tx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.p2pChTx <- tx
+	t, err := tx.DecodeBytes()
+	if err != nil {
+		panic(err)
+	}
+	a.p2pChTx <- t
 }
 
-func (a Node) RPCBalance(address wallet_mock.Address) int {
+func (a Node) RPCBalance(address wallet_mock.Address) uint64 {
 	return a.Db.Balance(address)
 }
 
@@ -174,4 +182,19 @@ func (a Node) Stop() {
 	time.Sleep(time.Millisecond * 10)
 	a.exitAggregatingCh <- true
 	a.exitNodeCh <- true
+}
+
+func decodeRollup(b common.EncodedRollup) common.Rollup {
+	bl, err := b.Decode()
+	if err != nil {
+		panic(err)
+	}
+	return bl
+}
+func encodeRollup(b common.Rollup) common.EncodedRollup {
+	ser, err := b.Encode()
+	if err != nil {
+		panic(err)
+	}
+	return ser
 }

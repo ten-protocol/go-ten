@@ -1,6 +1,6 @@
 package common
 
-type NodeId int
+type NodeId uint64
 
 type StatsCollector interface {
 	L1Reorg(id NodeId)

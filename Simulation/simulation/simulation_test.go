@@ -27,7 +27,7 @@ func TestSimulation(t *testing.T) {
 	defer f.Close()
 	common.SetLog(f)
 
-	blockDuration := 20_000
+	blockDuration := uint64(20_000)
 	l1netw, l2netw := RunSimulation(5, 10, 30, blockDuration, blockDuration/20, blockDuration/4)
 	checkBlockchainValidity(t, l1netw, l2netw)
 }
@@ -37,7 +37,8 @@ func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2N
 	stats := l1Network.Stats
 	fmt.Printf("%#v\n", stats)
 
-	validateL1(t, r.L1Proof, stats)
+	p := r.Proof()
+	validateL1(t, &p, stats)
 	totalWithdrawn := validateL2(t, r, stats)
 	validateL2State(t, l1Network, l2Network, stats, totalWithdrawn)
 }
@@ -52,7 +53,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats) {
 	deposits := make([]uuid.UUID, 0)
 	rollups := make([]uuid.UUID, 0)
 
-	totalDeposited := 0
+	totalDeposited := uint64(0)
 
 	for {
 		if b.Height() == common.GenesisHeight {
@@ -64,7 +65,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats) {
 				deposits = append(deposits, tx.Id)
 				totalDeposited += tx.Amount
 			case common.RollupTx:
-				rollups = append(rollups, tx.Rollup.RootHash())
+				rollups = append(rollups, tx.Rollup.Root())
 			default:
 				panic("unknown transaction type")
 			}
@@ -84,7 +85,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats) {
 		t.Errorf("Deposit amounts don't match. Found %d , expected %d", totalDeposited, s.totalDepositedAmount)
 	}
 
-	efficiency := float64(s.totalL1Blocks-s.l1Height) / float64(s.totalL1Blocks)
+	efficiency := float64(uint32(s.totalL1Blocks)-s.l1Height) / float64(s.totalL1Blocks)
 	if efficiency > L1EfficiencyThreashold {
 		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, L1EfficiencyThreashold)
 	}
@@ -98,7 +99,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats) {
 	}
 }
 
-func validateL2(t *testing.T, r *common.Rollup, s *Stats) int {
+func validateL2(t *testing.T, r *common.Rollup, s *Stats) uint64 {
 	transfers := make([]uuid.UUID, 0)
 	withdrawalTxs := make([]common.L2Tx, 0)
 	withdrawalRequests := make([]common.Withdrawal, 0)
@@ -137,23 +138,23 @@ func validateL2(t *testing.T, r *common.Rollup, s *Stats) int {
 	return sumWithdrawals(withdrawalRequests)
 }
 
-func sumWithdrawals(w []common.Withdrawal) int {
-	sum := 0
+func sumWithdrawals(w []common.Withdrawal) uint64 {
+	sum := uint64(0)
 	for _, r := range w {
 		sum += r.Amount
 	}
 	return sum
 }
 
-func sumWithdrawalTxs(t []common.L2Tx) int {
-	sum := 0
+func sumWithdrawalTxs(t []common.L2Tx) uint64 {
+	sum := uint64(0)
 	for _, r := range t {
 		sum += r.Amount
 	}
 	return sum
 }
 
-func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, s *Stats, totalWithdrawn int) {
+func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, s *Stats, totalWithdrawn uint64) {
 
 	finalAmount := s.totalDepositedAmount - totalWithdrawn
 	// Check that the state on all nodes is valid
@@ -170,8 +171,8 @@ func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCf
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
 }
 
-func totalBalance(s obscuro.BlockState) int {
-	tot := 0
+func totalBalance(s obscuro.BlockState) uint64 {
+	tot := uint64(0)
 	for _, bal := range s.State {
 		tot += bal
 	}

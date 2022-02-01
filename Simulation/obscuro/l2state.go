@@ -7,13 +7,13 @@ import (
 	"sync"
 )
 
-type State = map[wallet_mock.Address]int
+type State = map[wallet_mock.Address]uint64
 
 type Db interface {
 	Fetch(hash common.RootHash) (BlockState, bool)
 	Set(hash common.RootHash, state BlockState)
 	Head() BlockState
-	Balance(address wallet_mock.Address) int
+	Balance(address wallet_mock.Address) uint64
 }
 
 type InMemoryDb struct {
@@ -71,7 +71,7 @@ func (db *InMemoryDb) Head() BlockState {
 	return val
 }
 
-func (db *InMemoryDb) Balance(address wallet_mock.Address) int {
+func (db *InMemoryDb) Balance(address wallet_mock.Address) uint64 {
 	return db.Head().State[address]
 }
 

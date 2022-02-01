@@ -18,21 +18,22 @@ type L1NetworkCfg struct {
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
-func (n *L1NetworkCfg) BroadcastBlock(b common.Block) {
+func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
+	bl, _ := b.Decode()
 	for _, m := range n.nodes {
-		if m.Id != b.Miner {
+		if m.Id != bl.Miner {
 			t := m
 			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b) })
 		}
 	}
-	n.Stats.NewBlock(b)
+	n.Stats.NewBlock(bl)
 }
 
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
-func (n *L1NetworkCfg) BroadcastTx(tx common.L1Tx) {
+func (n *L1NetworkCfg) BroadcastTx(tx common.EncodedL1Tx) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
@@ -44,9 +45,10 @@ func (n *L1NetworkCfg) BroadcastTx(tx common.L1Tx) {
 		common.Schedule(d, func() { t.P2PGossipTx(tx) })
 	}
 
+	t, _ := tx.Decode()
 	// collect Stats
-	if tx.TxType == common.RollupTx {
-		n.Stats.NewRollup(tx.Rollup)
+	if t.TxType == common.RollupTx {
+		n.Stats.NewRollup(t.Rollup)
 	}
 }
 

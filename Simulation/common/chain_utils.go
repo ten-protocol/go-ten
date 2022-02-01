@@ -5,15 +5,15 @@ import (
 	"sync"
 )
 
-const GenesisHeight = 0
+const GenesisHeight uint32 = 0
 
 type RootHash = uuid.UUID
 type TxHash = uuid.UUID
 
 type ChainNode interface {
 	Parent() ChainNode
-	Height() int
-	RootHash() RootHash
+	Height() uint32
+	Root() RootHash
 	Txs() []Tx
 }
 
@@ -30,7 +30,7 @@ func LCA(a ChainNode, b ChainNode) ChainNode {
 	if a.Height() == GenesisHeight || b.Height() == GenesisHeight {
 		return a
 	}
-	if a.RootHash() == b.RootHash() {
+	if a.Root() == b.Root() {
 		return a
 	}
 	if a.Height() > b.Height() {
@@ -44,7 +44,7 @@ func LCA(a ChainNode, b ChainNode) ChainNode {
 
 // IsAncestor return true if a is the ancestor of b
 func IsAncestor(a ChainNode, b ChainNode) bool {
-	if a.RootHash() == b.RootHash() {
+	if a.Root() == b.Root() {
 		return true
 	}
 	if a.Height() >= b.Height() {
@@ -80,7 +80,7 @@ func RemoveCommittedTransactions(cb ChainNode, mempool []Tx) []Tx {
 		i++
 	}
 	rpbcM.RLock()
-	val, found := transactionsPerBlockCache[b.RootHash()]
+	val, found := transactionsPerBlockCache[b.Root()]
 	rpbcM.RUnlock()
 	if !found {
 		panic("This isn't right")
@@ -98,7 +98,7 @@ func makeMap(txs []Tx) map[TxHash]Tx {
 
 func allIncludedTransactions(b ChainNode) map[TxHash]Tx {
 	rpbcM.RLock()
-	val, found := transactionsPerBlockCache[b.RootHash()]
+	val, found := transactionsPerBlockCache[b.Root()]
 	rpbcM.RUnlock()
 	if found {
 		return val
@@ -114,7 +114,7 @@ func allIncludedTransactions(b ChainNode) map[TxHash]Tx {
 		newMap[tx.Hash()] = tx
 	}
 	rpbcM.Lock()
-	transactionsPerBlockCache[b.RootHash()] = newMap
+	transactionsPerBlockCache[b.Root()] = newMap
 	rpbcM.Unlock()
 	return newMap
 }
