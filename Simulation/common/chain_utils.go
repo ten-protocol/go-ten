@@ -63,17 +63,20 @@ func FindNotIncludedTxs(head ChainNode, txs []Tx) []Tx {
 	return removeExisting(txs, included)
 }
 
-const commitedBlocks = 20
+// Number of blocks deep a transaction must be before being considered safe from reorganisations.
+const committedBlocks = 20
 
+// RemoveCommittedTransactions returns a copy of `mempool` where all transactions that are exactly `committedBlocks`
+// deep have been removed.
 func RemoveCommittedTransactions(cb ChainNode, mempool []Tx) []Tx {
-	if cb.Height() <= commitedBlocks {
+	if cb.Height() <= committedBlocks {
 		return mempool
 	}
 
 	b := cb
 	i := 0
 	for {
-		if i == commitedBlocks {
+		if i == committedBlocks {
 			break
 		}
 		b = b.Parent()
