@@ -16,7 +16,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 		TxType: TransferTx,
 		Amount: 100,
 		From:   wallet_mock.New().Address,
-		Dest:   wallet_mock.New().Address,
+		To:     wallet_mock.New().Address,
 	}
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestSerialiseRollup(t *testing.T) {
 		TxType: TransferTx,
 		Amount: 100,
 		From:   wallet_mock.New().Address,
-		Dest:   wallet_mock.New().Address,
+		To:     wallet_mock.New().Address,
 	}
 	rollup := Rollup{
 		H:            1,

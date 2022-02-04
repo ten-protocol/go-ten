@@ -117,7 +117,7 @@ type L2Tx struct {
 	TxType L2TxType
 	Amount uint64
 	From   wallet_mock.Address
-	Dest   wallet_mock.Address
+	To     wallet_mock.Address
 }
 
 func (tx L2Tx) Hash() TxHash {
@@ -125,24 +125,31 @@ func (tx L2Tx) Hash() TxHash {
 }
 
 var GenesisRollup = NewRollup(&GenesisBlock, nil, 0, []L2Tx{}, []Withdrawal{}, "")
-var GenesisTx = L1Tx{Id: uuid.New(), TxType: RollupTx, Rollup: GenesisRollup}
+var encodedGenesis, _ = GenesisRollup.Encode()
+var GenesisTx = L1Tx{Id: uuid.New(), TxType: RollupTx, Rollup: encodedGenesis}
 
 func (r Rollup) Encode() (EncodedRollup, error) {
 	return rlp.EncodeToBytes(r)
 }
 
-func (r EncodedRollup) Decode() (Rollup, error) {
-	bl := Rollup{}
-	err := rlp.DecodeBytes(r, &bl)
-	return bl, err
+func (encoded EncodedRollup) Decode() (r Rollup, err error) {
+	err = rlp.DecodeBytes(encoded, &r)
+	return
 }
 
 func (tx L2Tx) EncodeBytes() (EncodedL2Tx, error) {
 	return rlp.EncodeToBytes(tx)
 }
 
-func (tx EncodedL2Tx) DecodeBytes() (L2Tx, error) {
-	tx1 := L2Tx{}
-	err := rlp.DecodeBytes(tx, &tx1)
-	return tx1, err
+func (encoded EncodedL2Tx) DecodeBytes() (tx L2Tx, err error) {
+	err = rlp.DecodeBytes(encoded, &tx)
+	return
+}
+
+func ToMap(txs []L2Tx) map[TxHash]TxHash {
+	m := make(map[TxHash]TxHash, len(txs))
+	for _, tx := range txs {
+		m[tx.Id] = tx.Id
+	}
+	return m
 }

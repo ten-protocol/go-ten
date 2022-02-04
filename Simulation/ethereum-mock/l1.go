@@ -95,7 +95,7 @@ func (m *Node) printBlock(mb common.Block) string {
 	var txs []string
 	for _, tx := range mb.L1Txs() {
 		if tx.TxType == common.RollupTx {
-			txs = append(txs, fmt.Sprintf("r_%d", tx.Rollup.Root().ID()))
+			txs = append(txs, fmt.Sprintf("r_%d", common.DecodeRollup(tx.Rollup).Root().ID()))
 		} else {
 			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.Dest, tx.Amount))
 		}
@@ -111,8 +111,7 @@ func (m *Node) setHead(b common.Block) common.Block {
 
 	// notify the clients
 	for _, c := range m.clients {
-		ser := encodeBlock(b)
-		c.RPCNewHead(ser)
+		c.RPCNewHead(encodeBlock(b))
 	}
 	m.canonicalCh <- b
 	return b

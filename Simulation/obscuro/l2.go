@@ -1,6 +1,7 @@
 package obscuro
 
 import (
+	"github.com/google/uuid"
 	"simulation/common"
 	"simulation/ethereum-mock"
 	wallet_mock "simulation/wallet-mock"
@@ -24,248 +25,129 @@ type Node struct {
 	l2Network L2Network
 	L1Node    *ethereum_mock.Node
 
-	mining bool
+	mining bool // true -if this is an aggregator, false if it is a validator
 	cfg    AggregatorCfg
 
 	statsCollector common.StatsCollector
 
 	// control the lifecycle
-	exitNodeCh        chan bool
-	exitAggregatingCh chan bool
-	interrupt         *int32
-
-	// where rollups and transactions are gossipped From peers
-	p2pChRollup chan common.Rollup
-	p2pChTx     chan common.L2Tx
+	exitNodeCh chan bool
+	interrupt  *int32
 
 	// where the connected L1Node node drops new blocks
-	blockRpcCh chan common.Block
+	blockRpcCh chan common.EncodedBlock
 
-	// responds to balance requests
-	//balanceRpcInCh  chan wallet_mock.Address
-	//balanceRpcOutCh chan int
-
-	// used for internal communication between the gossi agent and the processing agent
-	// todo - probably can use a single channel
-	rollupInCh  chan uint32
-	rollupOutCh chan []*common.Rollup
-
-	// used for internal communication between the gossip agent and the processing agent
-	txsInCh  chan bool
-	txsOutCh chan []common.Tx
-
-	// communicate the speculative work done during a pobi round
-	speculativeWorkInCh  chan bool
-	speculativeWorkOutCh chan currentWork
-
-	// when a POBI round finishes and a winner is discovered. Notifies the gossip actor to start eagerly processing transactions on top of this state.
-	roundWinnerCh chan winner
-
-	// a database of work already executed
-	Db Db
-}
-
-// internal structure to pass information
-type currentWork struct {
-	r   common.Rollup
-	s   ProcessedState
-	txs []common.L2Tx
-}
-
-// internal structure to pass information
-type winner struct {
-	r common.Rollup
-	s State
+	Enclave Enclave
 }
 
 func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Network L2Network, collector common.StatsCollector) Node {
 	return Node{
-		Id:                id,
-		cfg:               cfg,
-		l2Network:         l2Network,
-		statsCollector:    collector,
-		L1Node:            l1,
-		mining:            true,
-		exitNodeCh:        make(chan bool),
-		exitAggregatingCh: make(chan bool),
-		interrupt:         new(int32),
-		p2pChRollup:       make(chan common.Rollup),
-		p2pChTx:           make(chan common.L2Tx),
-		blockRpcCh:        make(chan common.Block),
-		//balanceRpcInCh:    make(chan wallet_mock.Address),
-		//balanceRpcOutCh:   make(chan int),
-		rollupInCh:           make(chan uint32),
-		rollupOutCh:          make(chan []*common.Rollup),
-		txsInCh:              make(chan bool),
-		txsOutCh:             make(chan []common.Tx),
-		roundWinnerCh:        make(chan winner),
-		speculativeWorkInCh:  make(chan bool),
-		speculativeWorkOutCh: make(chan currentWork),
-		Db:                   NewInMemoryDb(),
+		// config
+		Id:        id,
+		cfg:       cfg,
+		mining:    true,
+		L1Node:    l1,
+		l2Network: l2Network,
+
+		statsCollector: collector,
+
+		// lifecycle channels
+		exitNodeCh: make(chan bool),
+		interrupt:  new(int32),
+
+		// incoming data
+		blockRpcCh: make(chan common.EncodedBlock),
+
+		// State processing
+		Enclave: NewEnclave(id, true, collector),
 	}
 }
 
-func (a Node) Start() {
-	if a.mining {
-		go a.startAggregating()
-	}
-
+func (a *Node) Start() {
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
-	var doneCh *chan bool = nil
+	var stopProcessingOldBlock *chan bool = nil
 
+	go a.Enclave.Start()
+
+	var currentHead common.RootHash
 	// Main loop - Listen for notifications From the L1 node and process them
 	// Note that during processing, more recent notifications can be received.
 	for {
 		select {
 		case b := <-a.blockRpcCh:
 			if a.mining {
-				if doneCh != nil {
-					*doneCh <- true
+				if stopProcessingOldBlock != nil {
+					*stopProcessingOldBlock <- true
 				}
 
 				c := make(chan bool)
-				doneCh = &c
-
-				go a.newPobiRound(b, doneCh)
-			} else {
-				// Observer L2 nodes only calculate the state
-				go a.updateState(b)
+				stopProcessingOldBlock = &c
 			}
+
+			//common.Log(fmt.Sprintf(">   Agg%d: receive b_%d .", a.Id, common.DecodeBlock(b).RootHash.ID()))
+			var rollup common.EncodedRollup
+			rollup, currentHead = a.Enclave.SubmitBlock(b)
+			//common.Log(fmt.Sprintf(">   Agg%d: produce r_%d .", a.Id, common.DecodeRollup(rollup).RootHash.ID()))
+
+			if a.mining {
+				a.l2Network.BroadcastRollup(rollup)
+
+				common.ScheduleInterrupt(a.cfg.GossipPeriod, stopProcessingOldBlock, func() {
+					if atomic.LoadInt32(a.interrupt) == 1 {
+						return
+					}
+					// Request the round winner for the current head
+					winnerRollup, submit := a.Enclave.RoundWinner(currentHead)
+					if submit {
+						tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup}
+						t, err := tx.Encode()
+						if err != nil {
+							panic(err)
+						}
+						a.L1Node.BroadcastTx(t)
+					}
+				})
+			}
+
 		case <-a.exitNodeCh:
-			if doneCh != nil {
-				*doneCh <- true
-			}
-			return
-		}
-	}
-}
-
-// actor that participates in rollup and transaction gossip
-// processes transactions
-func (a Node) startAggregating() {
-
-	// Rollups grouped by Height
-	var allRollups = make(map[uint32][]*common.Rollup)
-
-	// transactions
-	var mempool = make([]common.Tx, 0)
-
-	// Process transactions on the fly
-	var currentHead = common.GenesisRollup
-	var currentState = newProcessedState(emptyState())
-	var currentProcessedTxs = make([]common.L2Tx, 0)
-
-	for {
-		select {
-
-		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
-		case winnerRollup := <-a.roundWinnerCh:
-			// housekeeping - remove transactions that are already considered committed
-			mempool = common.RemoveCommittedTransactions(currentHead, mempool)
-
-			currentHead = winnerRollup.r
-			currentState = newProcessedState(winnerRollup.s)
-
-			// determine the transactions that were not yet included
-			txs := common.FindNotIncludedTxs(currentHead, mempool)
-
-			currentProcessedTxs = make([]common.L2Tx, len(txs))
-			for i, tx := range txs {
-				currentProcessedTxs[i] = tx.(common.L2Tx)
-			}
-
-			// calculate the State after executing them
-			currentState = executeTransactions(currentProcessedTxs, currentState)
-
-		case tx := <-a.p2pChTx:
-			mempool = append(mempool, tx)
-			currentProcessedTxs = append(currentProcessedTxs, tx)
-			executeTx(&currentState, tx)
-
-		case <-a.speculativeWorkInCh:
-			b := make([]common.L2Tx, len(currentProcessedTxs))
-			copy(b, currentProcessedTxs)
-			a.speculativeWorkOutCh <- currentWork{
-				r:   currentHead,
-				s:   copyProcessedState(currentState),
-				txs: b,
-			}
-
-		case r := <-a.p2pChRollup:
-			val, found := allRollups[r.Height()]
-			if found {
-				allRollups[r.Height()] = append(val, &r)
-			} else {
-				allRollups[r.Height()] = []*common.Rollup{&r}
-			}
-
-		case requestedHeight := <-a.rollupInCh:
-			a.rollupOutCh <- allRollups[requestedHeight]
-
-		case <-a.txsInCh:
-			a.txsOutCh <- mempool
-
-		case <-a.exitAggregatingCh:
+			a.Enclave.Stop()
 			return
 		}
 	}
 }
 
 // RPCNewHead Receive notifications From the L1Node Node when there's a new block
-func (a Node) RPCNewHead(b common.EncodedBlock) {
+func (a *Node) RPCNewHead(b common.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	bl, err := b.Decode()
-	if err != nil {
-		panic(err)
-	}
-	a.blockRpcCh <- bl
+	a.blockRpcCh <- b
 }
 
 // P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
-// All it does is drop the Rollups in a channel for processing.
-func (a Node) P2PGossipRollup(r common.EncodedRollup) {
+// All it does is forward the rollup for processing to the enclave
+func (a *Node) P2PGossipRollup(r common.EncodedRollup) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.p2pChRollup <- decodeRollup(r)
+	go a.Enclave.SubmitRollup(r)
 }
 
-func (a Node) P2PReceiveTx(tx common.EncodedL2Tx) {
+func (a *Node) P2PReceiveTx(tx common.EncodedL2Tx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	t, err := tx.DecodeBytes()
-	if err != nil {
-		panic(err)
-	}
-	a.p2pChTx <- t
+	go a.Enclave.SubmitTx(tx)
 }
 
-func (a Node) RPCBalance(address wallet_mock.Address) uint64 {
-	return a.Db.Balance(address)
+func (a *Node) RPCBalance(address wallet_mock.Address) uint64 {
+	return a.Enclave.Balance(address)
 }
 
-func (a Node) Stop() {
+func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.interrupt, 1)
+	a.Enclave.Stop()
 	time.Sleep(time.Millisecond * 10)
-	a.exitAggregatingCh <- true
 	a.exitNodeCh <- true
-}
-
-func decodeRollup(b common.EncodedRollup) common.Rollup {
-	bl, err := b.Decode()
-	if err != nil {
-		panic(err)
-	}
-	return bl
-}
-func encodeRollup(b common.Rollup) common.EncodedRollup {
-	ser, err := b.Encode()
-	if err != nil {
-		panic(err)
-	}
-	return ser
 }

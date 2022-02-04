@@ -27,8 +27,8 @@ func TestSimulation(t *testing.T) {
 	defer f.Close()
 	common.SetLog(f)
 
-	blockDuration := uint64(20_000)
-	l1netw, l2netw := RunSimulation(5, 10, 30, blockDuration, blockDuration/20, blockDuration/4)
+	blockDuration := uint64(10_000)
+	l1netw, l2netw := RunSimulation(5, 20, 30, blockDuration, blockDuration/15, blockDuration/3)
 	checkBlockchainValidity(t, l1netw, l2netw)
 }
 
@@ -65,7 +65,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats) {
 				deposits = append(deposits, tx.Id)
 				totalDeposited += tx.Amount
 			case common.RollupTx:
-				rollups = append(rollups, tx.Rollup.Root())
+				rollups = append(rollups, common.DecodeRollup(tx.Rollup).Root())
 			default:
 				panic("unknown transaction type")
 			}
@@ -160,7 +160,7 @@ func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCf
 	// Check that the state on all nodes is valid
 	for _, observer := range l2Network.nodes {
 		// read the last state
-		lastState := observer.Db.Head()
+		lastState := observer.Enclave.PeekHead()
 		total := totalBalance(lastState)
 		if total != finalAmount {
 			t.Errorf("The amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", observer.Id, total, finalAmount)

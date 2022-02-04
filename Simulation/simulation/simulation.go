@@ -60,9 +60,9 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
 
 	// Create a bunch of users and inject transactions
-	var wallets = make([]wallet_mock.Wallet, 0)
-	for i := 1; i <= nrWallets; i++ {
-		wallets = append(wallets, wallet_mock.Wallet{Address: uuid.New()})
+	var wallets = make([]wallet_mock.Wallet, nrWallets)
+	for i := 0; i < nrWallets; i++ {
+		wallets[i] = wallet_mock.Wallet{Address: uuid.New()}
 	}
 
 	timeInUs := simulationTime * 1000 * 1000
@@ -117,12 +117,15 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro.L2Net
 			TxType: common.TransferTx,
 			Amount: common.RndBtw(1, 500),
 			From:   f,
-			Dest:   t,
+			To:     t,
 		}
 		s.Transfer()
-		tx1, _ := tx.EncodeBytes()
-		l2Network.BroadcastTx(tx1)
-		time.Sleep(common.Duration(common.RndBtw(uint64(avgBlockDuration/4), uint64(avgBlockDuration))))
+		encoded, err := tx.EncodeBytes()
+		if err != nil {
+			panic(err)
+		}
+		l2Network.BroadcastTx(encoded)
+		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration/4, avgBlockDuration)))
 		i++
 	}
 }

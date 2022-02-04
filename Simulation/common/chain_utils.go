@@ -7,6 +7,9 @@ import (
 
 const GenesisHeight uint32 = 0
 
+// Number of blocks deep a transaction must be before being considered safe from reorganisations.
+const HeightCommittedBlocks = 20
+
 type RootHash = uuid.UUID
 type TxHash = uuid.UUID
 
@@ -63,20 +66,17 @@ func FindNotIncludedTxs(head ChainNode, txs []Tx) []Tx {
 	return removeExisting(txs, included)
 }
 
-// Number of blocks deep a transaction must be before being considered safe from reorganisations.
-const committedBlocks = 20
-
 // RemoveCommittedTransactions returns a copy of `mempool` where all transactions that are exactly `committedBlocks`
 // deep have been removed.
 func RemoveCommittedTransactions(cb ChainNode, mempool []Tx) []Tx {
-	if cb.Height() <= committedBlocks {
+	if cb.Height() <= HeightCommittedBlocks {
 		return mempool
 	}
 
 	b := cb
 	i := 0
 	for {
-		if i == committedBlocks {
+		if i == HeightCommittedBlocks {
 			break
 		}
 		b = b.Parent()

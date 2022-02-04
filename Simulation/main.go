@@ -28,17 +28,18 @@ func main() {
 	//	log.Fatal("could not start CPU profile: ", err)
 	//}
 	//defer pprof.StopCPUProfile()
+
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
-	f, err := os.Create("simulation_result.txt")
+	f1, err := os.Create("simulation_result.txt")
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
-	common.SetLog(f)
+	defer f1.Close()
+	common.SetLog(f1)
 
-	blockDuration := uint64(15_000)
-	l1netw, _ := simulation.RunSimulation(5, 10, 15, blockDuration, blockDuration/DefaultAverageLatencyToBlockRatio, blockDuration/DefaultAverageGossipPeriodToBlockRatio)
+	blockDuration := uint64(25_000)
+	l1netw, _ := simulation.RunSimulation(5, 2, 55, blockDuration, blockDuration/DefaultAverageLatencyToBlockRatio, blockDuration/DefaultAverageGossipPeriodToBlockRatio)
 	fmt.Printf("%#v\n", l1netw.Stats)
 }

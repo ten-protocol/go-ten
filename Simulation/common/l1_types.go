@@ -25,7 +25,8 @@ type L1Tx struct {
 	TxType L1TxType
 
 	// if the type is rollup
-	Rollup Rollup //interface{} // todo - make it a serialised data structure
+	//todo -payload
+	Rollup EncodedRollup
 
 	// if the type is deposit
 	Amount uint64

@@ -65,3 +65,41 @@ func MaxInt(x, y uint32) uint32 {
 	}
 	return x
 }
+
+func EncodeRollup(r Rollup) EncodedRollup {
+	encoded, err := r.Encode()
+	if err != nil {
+		panic(err)
+	}
+	return encoded
+}
+func DecodeRollup(rollup EncodedRollup) Rollup {
+	r, err := rollup.Decode()
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func EncodeBlock(b Block) EncodedBlock {
+	encoded, err := b.Encode()
+	if err != nil {
+		panic(err)
+	}
+	return encoded
+}
+func DecodeBlock(block EncodedBlock) Block {
+	b, err := block.Decode()
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+func DecodeTx(tx EncodedL2Tx) L2Tx {
+	r, err := tx.DecodeBytes()
+	if err != nil {
+		panic(err)
+	}
+	return r
+}

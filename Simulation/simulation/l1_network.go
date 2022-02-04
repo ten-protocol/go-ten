@@ -48,7 +48,7 @@ func (n *L1NetworkCfg) BroadcastTx(tx common.EncodedL1Tx) {
 	t, _ := tx.Decode()
 	// collect Stats
 	if t.TxType == common.RollupTx {
-		n.Stats.NewRollup(t.Rollup)
+		n.Stats.NewRollup(common.DecodeRollup(t.Rollup))
 	}
 }
 
