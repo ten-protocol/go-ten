@@ -7,6 +7,7 @@ P - Create a unit test with a checker for the final state of the simulation:
 
 P - split up code that must run inside an enclave
 
+- make publishing to L1 more random (to simulate aggregators failng to publish)
 - bring in core ethereum structures so that the l2 node can understand them
 - implement a very basic secret sharing protocol
 

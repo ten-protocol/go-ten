@@ -3,7 +3,6 @@ package common
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
-	wallet_mock "simulation/wallet-mock"
 	"sync"
 	"time"
 )
@@ -30,7 +29,7 @@ type L1Tx struct {
 
 	// if the type is deposit
 	Amount uint64
-	Dest   wallet_mock.Address
+	Dest   Address
 }
 
 func (tx L1Tx) Hash() TxHash {

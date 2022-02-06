@@ -3,7 +3,6 @@ package obscuro
 import (
 	"fmt"
 	"simulation/common"
-	wallet_mock "simulation/wallet-mock"
 )
 
 // Enclave - The actual implementation of this interface will call an rpc service
@@ -24,7 +23,7 @@ type Enclave interface {
 	SubmitTx(tx common.EncodedL2Tx)
 
 	// Balance
-	Balance(address wallet_mock.Address) uint64
+	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(parent common.RootHash) (common.EncodedRollup, bool)
@@ -64,6 +63,7 @@ func (e *enclaveImpl) Start() {
 	var currentHead common.Rollup
 	var currentState ProcessedState
 	var currentProcessedTxs []common.L2Tx
+	var currentProcessedTxsMap map[common.TxHash]common.L2Tx
 
 	//start the speculative rollup execution loop
 	for {
@@ -76,22 +76,30 @@ func (e *enclaveImpl) Start() {
 
 			// determine the transactions that were not yet included
 			currentProcessedTxs = currentTxs(winnerRollup, e.db.FetchTxs())
+			currentProcessedTxsMap = makeMap(currentProcessedTxs)
 
 			// calculate the State after executing them
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			currentProcessedTxs = append(currentProcessedTxs, tx)
-			executeTx(&currentState, tx)
+			_, f := currentProcessedTxsMap[tx.Id]
+			if !f {
+				currentProcessedTxsMap[tx.Id] = tx
+				currentProcessedTxs = append(currentProcessedTxs, tx)
+				executeTx(&currentState, tx)
+			}
 
 		case <-e.speculativeWorkInCh:
-			b := make([]common.L2Tx, len(currentProcessedTxs))
-			copy(b, currentProcessedTxs)
+			b := make([]common.L2Tx, 0)
+			for _, tx := range currentProcessedTxs {
+				b = append(b, tx)
+			}
 			e.speculativeWorkOutCh <- currentWork{
 				r:   currentHead,
 				s:   copyProcessedState(currentState),
 				txs: b,
 			}
+
 		case <-e.exitCh:
 			return
 		}
@@ -129,10 +137,10 @@ func (e *enclaveImpl) SubmitTx(tx common.EncodedL2Tx) {
 func (e *enclaveImpl) RoundWinner(parent common.RootHash) (common.EncodedRollup, bool) {
 
 	head := e.db.FetchRollup(parent)
+
 	rollupsReceivedFromPeers := e.db.FetchRollups(head.H + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []common.Rollup
-
 	for _, rol := range rollupsReceivedFromPeers {
 		if rol.Parent().Root() == head.Root() {
 			usefulRollups = append(usefulRollups, rol)
@@ -145,18 +153,21 @@ func (e *enclaveImpl) RoundWinner(parent common.RootHash) (common.EncodedRollup,
 	//common.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(), winnerRollup.Root().ID(), winnerRollup.Height(), winnerRollup.Parent().Root().ID(), winnerRollup.Proof().RootHash.ID()))
 
 	e.db.SetRollupState(winnerRollup.RootHash, s)
+	go e.notifySpeculative(winnerRollup)
 
 	// we are the winner
 	if winnerRollup.Agg == e.node {
 		common.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.", e.node, winnerRollup.Root().ID(), winnerRollup.Height(), winnerRollup.Parent().Root().ID(), winnerRollup.Proof().RootHash.ID(), printTxs(winnerRollup.Transactions), winnerRollup.State))
-		result := common.EncodeRollup(winnerRollup)
-		return result, true
+		return common.EncodeRollup(winnerRollup), true
 	}
-	e.roundWinnerCh <- winnerRollup
 	return nil, false
 }
 
-func (e *enclaveImpl) Balance(address wallet_mock.Address) uint64 {
+func (e *enclaveImpl) notifySpeculative(winnerRollup common.Rollup) {
+	e.roundWinnerCh <- winnerRollup
+}
+
+func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	//todo
 	return 0
 }
@@ -170,7 +181,8 @@ func (e *enclaveImpl) produceRollup(b common.Block, bs BlockState) common.Rollup
 	newRollupTxs := speculativeRollup.txs
 	newRollupState := speculativeRollup.s
 
-	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip
+	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
+	//if true {
 	if speculativeRollup.r.Root() != bs.Head.Root() {
 		common.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)", e.node, speculativeRollup.r.Root().ID(), speculativeRollup.r.Height(), bs.Head.Root().ID(), bs.Head.Height()))
 		e.statsCollector.L2Recalc(e.node)
@@ -186,7 +198,7 @@ func (e *enclaveImpl) produceRollup(b common.Block, bs BlockState) common.Rollup
 	newRollupState = processDeposits(&proof, b, copyProcessedState(newRollupState))
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	return common.NewRollup(&b, &bs.Head, e.node, newRollupTxs, newRollupState.w, serialize(newRollupState.s))
+	return common.NewRollup(&b, &bs.Head, e.node, newRollupTxs, newRollupState.w, common.GenerateNonce(), serialize(newRollupState.s))
 }
 
 func (e *enclaveImpl) PeekHead() BlockState {
@@ -198,13 +210,18 @@ func (e *enclaveImpl) Stop() {
 }
 
 func printTxs(txs []common.L2Tx) (txsString []string) {
-	for _, t1 := range txs {
-		switch t1.TxType {
-		case common.TransferTx:
-			txsString = append(txsString, fmt.Sprintf("%v->%v(%d)", t1.From, t1.To, t1.Amount))
-		case common.WithdrawalTx:
-			txsString = append(txsString, fmt.Sprintf("%v->*(%d)", t1.From, t1.Amount))
-		}
+	for _, t := range txs {
+		txsString = printTx(t, txsString)
+	}
+	return txsString
+}
+
+func printTx(t common.L2Tx, txsString []string) []string {
+	switch t.TxType {
+	case common.TransferTx:
+		txsString = append(txsString, fmt.Sprintf("%v->%v(%d){%d}", t.From, t.To, t.Amount, t.Id.ID()))
+	case common.WithdrawalTx:
+		txsString = append(txsString, fmt.Sprintf("%v->*(%d){%d}", t.From, t.Amount, t.Id.ID()))
 	}
 	return txsString
 }

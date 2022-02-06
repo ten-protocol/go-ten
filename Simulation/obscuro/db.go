@@ -2,7 +2,6 @@ package obscuro
 
 import (
 	"simulation/common"
-	wallet_mock "simulation/wallet-mock"
 	"sync"
 )
 
@@ -16,7 +15,7 @@ type Db interface {
 	SetRollupState(hash common.RootHash, state State)
 
 	Head() BlockState
-	Balance(address wallet_mock.Address) uint64
+	Balance(address common.Address) uint64
 
 	FetchRollups(height uint32) []common.Rollup
 	StoreRollup(height uint32, rollup common.Rollup)
@@ -24,9 +23,6 @@ type Db interface {
 	FetchTxs() []common.L2Tx
 	StoreTx(tx common.L2Tx)
 	PruneTxs(remove map[common.TxHash]common.TxHash)
-
-	FetchSpeculativeRollup() currentWork
-	SetSpeculativeRollup(currentWork)
 }
 
 type InMemoryDb struct {
@@ -39,7 +35,7 @@ type InMemoryDb struct {
 	rollupsByHeight map[uint32][]common.Rollup // todo encoded
 	rollups         map[common.RootHash]common.Rollup
 
-	mempool []common.L2Tx
+	mempool map[common.TxHash]common.L2Tx
 	mpMutex sync.RWMutex
 
 	speculativeRollup currentWork
@@ -67,8 +63,11 @@ func (db *InMemoryDb) SetState(hash common.RootHash, state BlockState) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 	db.statePerBlock[hash] = state
-	db.rollups[state.Head.RootHash] = state.Head
-	db.statePerRollup[state.Head.RootHash] = state.State
+	// todo - move this logic outside
+	if state.foundNewRollup {
+		db.rollups[state.Head.RootHash] = state.Head
+		db.statePerRollup[state.Head.RootHash] = state.State
+	}
 
 	// todo - is there any other logic here?
 	db.headBlock = hash
@@ -85,7 +84,7 @@ func (db *InMemoryDb) Head() BlockState {
 	return val
 }
 
-func (db *InMemoryDb) Balance(address wallet_mock.Address) uint64 {
+func (db *InMemoryDb) Balance(address common.Address) uint64 {
 	return db.Head().State[address]
 }
 
@@ -112,46 +111,41 @@ func (db *InMemoryDb) FetchRollups(height uint32) []common.Rollup {
 	return db.rollupsByHeight[height]
 }
 
+func (db *InMemoryDb) FetchRollupState(hash common.RootHash) State {
+	db.stateMutex.RLock()
+	defer db.stateMutex.RUnlock()
+	return db.statePerRollup[hash]
+}
+
 func (db *InMemoryDb) StoreTx(tx common.L2Tx) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	db.mempool = append(db.mempool, tx)
+	db.mempool[tx.Id] = tx
 }
 
 func (db *InMemoryDb) FetchTxs() []common.L2Tx {
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
-	mpCopy := make([]common.L2Tx, len(db.mempool))
-	for i, tx := range db.mempool {
-		mpCopy[i] = tx
+	//txStr := make([]common.TxHash, 0)
+	mpCopy := make([]common.L2Tx, 0)
+	for _, tx := range db.mempool {
+		mpCopy = append(mpCopy, tx)
+		//txStr = append(txStr, tx.Id)
 	}
+	//common.Log(fmt.Sprintf(">>> %v <<<", txStr))
 	return mpCopy
 }
 
 func (db *InMemoryDb) PruneTxs(toRemove map[common.TxHash]common.TxHash) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	r := make([]common.L2Tx, 0)
-	for _, t := range db.mempool {
-		_, f := toRemove[t.Id]
+	r := make(map[common.TxHash]common.L2Tx, 0)
+	for id, t := range db.mempool {
+		_, f := toRemove[id]
 		if !f {
-			r = append(r, t)
+			r[id] = t
 		}
 	}
-	//fmt.Printf("mempool:=%d\n", len(r))
+	//fmt.Printf("len(mempool) := %d\n", len(r))
 	db.mempool = r
-}
-
-func (db *InMemoryDb) FetchSpeculativeRollup() currentWork {
-	return db.speculativeRollup
-}
-
-func (db *InMemoryDb) SetSpeculativeRollup(r currentWork) {
-	db.speculativeRollup = r
-}
-
-func (db *InMemoryDb) FetchRollupState(hash common.RootHash) State {
-	db.stateMutex.RLock()
-	defer db.stateMutex.RUnlock()
-	return db.statePerRollup[hash]
 }

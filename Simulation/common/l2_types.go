@@ -3,7 +3,6 @@ package common
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
-	"simulation/wallet-mock"
 	"sync"
 	"time"
 )
@@ -72,7 +71,7 @@ func (r Rollup) Proof() Block {
 	return block
 }
 
-func NewRollup(b *Block, parent *Rollup, a NodeId, txs []L2Tx, withdrawals []Withdrawal, state StateRoot) Rollup {
+func NewRollup(b *Block, parent *Rollup, a NodeId, txs []L2Tx, withdrawals []Withdrawal, nonce Nonce, state StateRoot) Rollup {
 	rootHash := uuid.New()
 	parentHash := rootHash
 	height := GenesisHeight
@@ -87,7 +86,7 @@ func NewRollup(b *Block, parent *Rollup, a NodeId, txs []L2Tx, withdrawals []Wit
 		ParentHash:   parentHash,
 		CreationTime: time.Now(),
 		L1Proof:      b.RootHash,
-		Nonce:        GenerateNonce(),
+		Nonce:        nonce,
 		State:        state,
 		Withdrawals:  withdrawals,
 		Transactions: txs,
@@ -108,7 +107,7 @@ const (
 
 type Withdrawal struct {
 	Amount  uint64
-	Address wallet_mock.Address
+	Address Address
 }
 
 // no signing for now
@@ -116,15 +115,15 @@ type L2Tx struct {
 	Id     TxHash
 	TxType L2TxType
 	Amount uint64
-	From   wallet_mock.Address
-	To     wallet_mock.Address
+	From   Address
+	To     Address
 }
 
 func (tx L2Tx) Hash() TxHash {
 	return tx.Id
 }
 
-var GenesisRollup = NewRollup(&GenesisBlock, nil, 0, []L2Tx{}, []Withdrawal{}, "")
+var GenesisRollup = NewRollup(&GenesisBlock, nil, 0, []L2Tx{}, []Withdrawal{}, GenerateNonce(), "")
 var encodedGenesis, _ = GenesisRollup.Encode()
 var GenesisTx = L1Tx{Id: uuid.New(), TxType: RollupTx, Rollup: encodedGenesis}
 

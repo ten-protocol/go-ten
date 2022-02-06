@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 	"simulation/common"
 	"simulation/ethereum-mock"
-	wallet_mock "simulation/wallet-mock"
 	"sync/atomic"
 	"time"
 )
@@ -140,7 +139,7 @@ func (a *Node) P2PReceiveTx(tx common.EncodedL2Tx) {
 	go a.Enclave.SubmitTx(tx)
 }
 
-func (a *Node) RPCBalance(address wallet_mock.Address) uint64 {
+func (a *Node) RPCBalance(address common.Address) uint64 {
 	return a.Enclave.Balance(address)
 }
 

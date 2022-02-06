@@ -28,7 +28,7 @@ func TestSimulation(t *testing.T) {
 	common.SetLog(f)
 
 	blockDuration := uint64(10_000)
-	l1netw, l2netw := RunSimulation(5, 20, 30, blockDuration, blockDuration/15, blockDuration/3)
+	l1netw, l2netw := RunSimulation(5, 25, 30, blockDuration, blockDuration/15, blockDuration/3)
 	checkBlockchainValidity(t, l1netw, l2netw)
 }
 
@@ -73,12 +73,12 @@ func validateL1(t *testing.T, b *common.Block, s *Stats) {
 		b = b.ParentBlock()
 	}
 
-	if len(findDups(deposits)) > 0 {
-		dups := findDups(deposits)
+	if len(common.FindDups(deposits)) > 0 {
+		dups := common.FindDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
-	if len(findDups(rollups)) > 0 {
-		dups := findDups(rollups)
+	if len(common.FindDups(rollups)) > 0 {
+		dups := common.FindDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
 	if totalDeposited != s.totalDepositedAmount {
@@ -122,8 +122,8 @@ func validateL2(t *testing.T, r *common.Rollup, s *Stats) uint64 {
 	}
 	//todo - check that proofs are on the canonical chain
 
-	if len(findDups(transfers)) > 0 {
-		dups := findDups(transfers)
+	if len(common.FindDups(transfers)) > 0 {
+		dups := common.FindDups(transfers)
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
 	if len(transfers) != s.nrTransferTransactions {

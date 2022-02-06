@@ -1,14 +1,15 @@
 package wallet_mock
 
-import "github.com/google/uuid"
-
-// todo - use proper crypto
-type Address = uuid.UUID
+import (
+	"github.com/google/uuid"
+	"simulation/common"
+)
 
 type Wallet struct {
-	Address Address
+	Address common.Address
 }
 
 func New() Wallet {
-	return Wallet{Address: uuid.New()}
+	//return Wallet{Address: uuid.New()}
+	return Wallet{Address: uuid.New().ID()}
 }

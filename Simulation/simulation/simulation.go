@@ -62,7 +62,7 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	// Create a bunch of users and inject transactions
 	var wallets = make([]wallet_mock.Wallet, nrWallets)
 	for i := 0; i < nrWallets; i++ {
-		wallets[i] = wallet_mock.Wallet{Address: uuid.New()}
+		wallets[i] = wallet_mock.Wallet{Address: uuid.New().ID()}
 	}
 
 	timeInUs := simulationTime * 1000 * 1000
@@ -71,9 +71,13 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	// Wait for the simulation time
 	time.Sleep(common.Duration(uint64(timeInUs)))
 
+	fmt.Println("Stopping..")
+
 	// stop L2 first and then L1
-	defer l1Network.Stop()
-	defer l2Network.Stop()
+	go l2Network.Stop()
+	go l1Network.Stop()
+
+	time.Sleep(time.Second)
 
 	return l1Network, l2Network
 }

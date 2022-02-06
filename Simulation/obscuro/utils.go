@@ -14,3 +14,11 @@ func historicTxs(r common.Rollup) map[common.TxHash]common.TxHash {
 		c = c.ParentRollup()
 	}
 }
+
+func makeMap(txs []common.L2Tx) map[common.TxHash]common.L2Tx {
+	m := make(map[common.TxHash]common.L2Tx)
+	for _, tx := range txs {
+		m[tx.Hash()] = tx
+	}
+	return m
+}
