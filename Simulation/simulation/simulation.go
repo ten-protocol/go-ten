@@ -49,12 +49,12 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	}
 
 	common.Log(fmt.Sprintf("Genesis block: b_%d.", common.GenesisBlock.RootHash.ID()))
-	common.Log(fmt.Sprintf("Genesis rollup: r_%d.", common.GenesisRollup.Root().ID()))
+	common.Log(fmt.Sprintf("Genesis rollup: r_%d.", obscuro.GenesisRollup.RootHash.ID()))
 
 	l1Network.Start(common.Duration(avgBlockDuration / 4))
 
 	// publish the genesis rollup before the l2 nodes are started
-	tx, _ := common.GenesisTx.Encode()
+	tx, _ := obscuro.GenesisTx.Encode()
 	l1Network.BroadcastTx(tx)
 
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
@@ -116,15 +116,15 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro.L2Net
 		if f == t {
 			continue
 		}
-		tx := common.L2Tx{
+		tx := obscuro.L2Tx{
 			Id:     uuid.New(),
-			TxType: common.TransferTx,
+			TxType: obscuro.TransferTx,
 			Amount: common.RndBtw(1, 500),
 			From:   f,
 			To:     t,
 		}
 		s.Transfer()
-		encoded, err := tx.EncodeBytes()
+		encoded, err := tx.Encode()
 		if err != nil {
 			panic(err)
 		}
@@ -160,7 +160,7 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro.L2Net
 		}
 		v := common.RndBtw(1, 100)
 		tx := withdrawal(rndWallet(wallets), v)
-		t, _ := tx.EncodeBytes()
+		t, _ := tx.Encode()
 		network.BroadcastTx(t)
 		s.Withdrawal(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
@@ -168,10 +168,10 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro.L2Net
 	}
 }
 
-func withdrawal(wallet wallet_mock.Wallet, amount uint64) common.L2Tx {
-	return common.L2Tx{
+func withdrawal(wallet wallet_mock.Wallet, amount uint64) obscuro.L2Tx {
+	return obscuro.L2Tx{
 		Id:     uuid.New(),
-		TxType: common.WithdrawalTx,
+		TxType: obscuro.WithdrawalTx,
 		Amount: amount,
 		From:   wallet.Address,
 	}

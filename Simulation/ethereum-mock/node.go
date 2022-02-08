@@ -8,25 +8,39 @@ import (
 )
 
 type L1Network interface {
-	BroadcastBlock(b common.EncodedBlock)
+
+	// BroadcastBlock - send the block and the parent to make sure there are no gaps
+	BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock)
 	BroadcastTx(tx common.EncodedL1Tx)
 }
 
 type NotifyNewBlock interface {
 	RPCNewHead(b common.EncodedBlock)
+	RPCNewFork(b []common.EncodedBlock)
 }
 
 type MiningConfig struct {
 	PowTime common.Latency
 }
 
+type TxDb interface {
+	Txs(block common.Block) (map[common.TxHash]common.L1Tx, bool)
+	AddTxs(common.Block, map[common.TxHash]common.L1Tx)
+}
+
+type StatsCollector interface {
+	L1Reorg(id common.NodeId)
+}
+
 type Node struct {
-	Id             common.NodeId
-	cfg            MiningConfig
-	clients        []NotifyNewBlock
-	network        L1Network
-	mining         bool
-	statsCollector common.StatsCollector
+	Id       common.NodeId
+	cfg      MiningConfig
+	clients  []NotifyNewBlock
+	network  L1Network
+	mining   bool
+	stats    StatsCollector
+	Resolver common.BlockResolver
+	db       TxDb
 
 	// Channels
 	exitCh       chan bool // the Node stops
@@ -39,23 +53,6 @@ type Node struct {
 	mempoolCh   chan common.L1Tx  // where l1 transactions to be published in the next block are added
 }
 
-func NewMiner(id common.NodeId, cfg MiningConfig, client NotifyNewBlock, network L1Network, statsCollector common.StatsCollector) Node {
-	return Node{
-		Id:             id,
-		mining:         true,
-		cfg:            cfg,
-		statsCollector: statsCollector,
-		clients:        []NotifyNewBlock{client},
-		network:        network,
-		exitCh:         make(chan bool),
-		exitMiningCh:   make(chan bool),
-		interrupt:      new(int32),
-		p2pCh:          make(chan common.Block),
-		miningCh:       make(chan common.Block),
-		canonicalCh:    make(chan common.Block),
-		mempoolCh:      make(chan common.L1Tx)}
-}
-
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
 // it outputs the winning blocks to the roundWinnerCh channel
 func (m *Node) Start() {
@@ -65,42 +62,44 @@ func (m *Node) Start() {
 	}
 
 	var head = m.setHead(common.GenesisBlock)
+	m.Resolver.Store(common.GenesisBlock)
 
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			if p2pb.Height() > head.Height() {
-				// Check for Reorgs
-				if !common.IsAncestor(head, p2pb) {
-					m.statsCollector.L1Reorg(m.Id)
-					fork := common.LCA(head, p2pb)
-					common.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.Id, p2pb.RootHash.ID(), p2pb.Height(), head.RootHash.ID(), head.Height(), fork.Root().ID(), fork.Height()))
+			_, proc := m.Resolver.Resolve(p2pb.RootHash)
+			if !proc {
+				m.Resolver.Store(p2pb)
+				_, f := m.Resolver.Resolve(p2pb.ParentHash)
+				if f {
+					// only proceed if the parent is available
+					if p2pb.Height > head.Height {
+						// Check for Reorgs
+						if !common.IsAncestor(head, p2pb, m.Resolver) {
+							m.stats.L1Reorg(m.Id)
+							fork := LCA(head, p2pb, m.Resolver)
+							common.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.Id, p2pb.RootHash.ID(), p2pb.Height, head.RootHash.ID(), head.Height, fork.RootHash.ID(), fork.Height))
+							head = m.setFork(blocksBetween(fork, p2pb, m.Resolver))
+						} else {
+							head = m.setHead(p2pb)
+						}
+					}
+				} else {
+					common.Log(fmt.Sprintf("> M%d: Not found=b_%d", m.Id, p2pb.ParentHash.ID()))
 				}
-				head = m.setHead(p2pb)
 			}
+
 		case mb := <-m.miningCh: // Received from the local mining
-			if mb.Height() > head.Height() { // Ignore the locally produced block if someone else found one already
-				common.Log(m.printBlock(mb))
+			m.Resolver.Store(mb)
+			if mb.Height > head.Height { // Ignore the locally produced block if someone else found one already
 				head = m.setHead(mb)
-				m.network.BroadcastBlock(encodeBlock(mb))
+				p, _ := mb.Parent(m.Resolver)
+				m.network.BroadcastBlock(mb.EncodeBlock(), p.EncodeBlock())
 			}
 		case <-m.exitCh:
 			return
 		}
 	}
-}
-
-func (m *Node) printBlock(mb common.Block) string {
-	// This is just for printing
-	var txs []string
-	for _, tx := range mb.L1Txs() {
-		if tx.TxType == common.RollupTx {
-			txs = append(txs, fmt.Sprintf("r_%d", common.DecodeRollup(tx.Rollup).Root().ID()))
-		} else {
-			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.Dest, tx.Amount))
-		}
-	}
-	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[p=b_%d]. Txs: %v", m.Id, mb.RootHash.ID(), mb.Height(), mb.Nonce, mb.Parent().Root().ID(), txs)
 }
 
 // Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
@@ -111,28 +110,46 @@ func (m *Node) setHead(b common.Block) common.Block {
 
 	// notify the clients
 	for _, c := range m.clients {
-		c.RPCNewHead(encodeBlock(b))
+		c.RPCNewHead(b.EncodeBlock())
 	}
 	m.canonicalCh <- b
 	return b
 }
 
+func (m *Node) setFork(blocks []common.Block) common.Block {
+	h := blocks[len(blocks)-1]
+	if atomic.LoadInt32(m.interrupt) == 1 {
+		return h
+	}
+	encoded := make([]common.EncodedBlock, len(blocks))
+	for i, block := range blocks {
+		encoded[i] = block.EncodeBlock()
+	}
+	// notify the clients
+	for _, c := range m.clients {
+		c.RPCNewFork(encoded)
+	}
+	m.canonicalCh <- h
+	return h
+}
+
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
 // All it does is drop the blocks in a channel for processing.
-func (m *Node) P2PReceiveBlock(b common.EncodedBlock) {
+func (m *Node) P2PReceiveBlock(b common.EncodedBlock, p common.EncodedBlock) {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return
 	}
-	bl := decodeBlock(b)
-	m.p2pCh <- bl
+	m.p2pCh <- p.DecodeBlock()
+	m.p2pCh <- b.DecodeBlock()
 }
 
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it on the miningCh channel
 func (m *Node) startMining() {
 
 	// stores all transactions seen from the beginning of time.
-	var mempool = make([]common.Tx, 0)
-	var doneCh *chan bool = nil
+	var mempool = make([]common.L1Tx, 0)
+	z := int32(0)
+	var interrupt = &z
 
 	for {
 		select {
@@ -145,29 +162,23 @@ func (m *Node) startMining() {
 			// A new canonical block was found. Start a new round based on that block.
 
 			// remove transactions that are already considered committed
-			mempool = common.RemoveCommittedTransactions(cb, mempool)
+			mempool = removeCommittedTransactions(cb, mempool, m.Resolver, m.db)
 
 			//notify the existing mining go routine to stop mining
-			if doneCh != nil {
-				*doneCh <- true
-			}
+			atomic.StoreInt32(interrupt, 1)
+			c := int32(0)
+			interrupt = &c
 
-			c := make(chan bool)
-			doneCh = &c
 			// Generate a random number, and wait for that number of ms. Equivalent to PoW
 			// Include all rollups received during this period.
 			nonce := m.cfg.PowTime()
-			common.ScheduleInterrupt(nonce, doneCh, func() {
-				toInclude := common.FindNotIncludedTxs(cb, mempool)
-				txsCopy := make([]common.L1Tx, len(toInclude))
-				for i, tx := range toInclude {
-					txsCopy[i] = tx.(common.L1Tx)
-				}
+			common.ScheduleInterrupt(nonce, interrupt, func() {
+				toInclude := findNotIncludedTxs(cb, mempool, m.Resolver, m.db)
 				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				m.miningCh <- common.NewBlock(&cb, nonce, m.Id, txsCopy)
+				m.miningCh <- common.NewBlock(&cb, nonce, m.Id, toInclude)
 			})
 		}
 	}
@@ -199,17 +210,21 @@ func (m *Node) Stop() {
 	m.exitCh <- true
 }
 
-func decodeBlock(b common.EncodedBlock) common.Block {
-	bl, err := b.Decode()
-	if err != nil {
-		panic(err)
-	}
-	return bl
-}
-func encodeBlock(b common.Block) common.EncodedBlock {
-	ser, err := b.Encode()
-	if err != nil {
-		panic(err)
-	}
-	return ser
+func NewMiner(id common.NodeId, cfg MiningConfig, client NotifyNewBlock, network L1Network, statsCollector StatsCollector) Node {
+	return Node{
+		Id:           id,
+		mining:       true,
+		cfg:          cfg,
+		stats:        statsCollector,
+		Resolver:     NewResolver(),
+		db:           NewTxDb(),
+		clients:      []NotifyNewBlock{client},
+		network:      network,
+		exitCh:       make(chan bool),
+		exitMiningCh: make(chan bool),
+		interrupt:    new(int32),
+		p2pCh:        make(chan common.Block),
+		miningCh:     make(chan common.Block),
+		canonicalCh:  make(chan common.Block),
+		mempoolCh:    make(chan common.L1Tx)}
 }

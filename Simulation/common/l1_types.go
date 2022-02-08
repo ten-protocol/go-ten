@@ -1,18 +1,13 @@
 package common
 
 import (
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
-	"sync"
 	"time"
 )
 
 // L1TxType - Just two types of relevant L1 transactions: Deposits and Rollups
 // this does not actually exist in the real implementation
 type L1TxType uint8
-
-type EncodedL1Tx []byte
-type EncodedBlock []byte
 
 const (
 	DepositTx L1TxType = iota
@@ -31,13 +26,11 @@ type L1Tx struct {
 	Amount uint64
 	Dest   Address
 }
+type EncodedL1Tx []byte
 
-func (tx L1Tx) Hash() TxHash {
-	return tx.Id
-}
-
+// todo - split into header and payload
 type Block struct {
-	H            uint32
+	Height       uint32
 	RootHash     RootHash
 	Nonce        Nonce
 	Miner        NodeId
@@ -45,60 +38,7 @@ type Block struct {
 	CreationTime time.Time
 	Transactions []L1Tx
 }
-
-var blockCache = make(map[RootHash]Block)
-var rbm = sync.RWMutex{}
-
-func (b Block) ParentBlock() *Block {
-	rbm.RLock()
-	defer rbm.RUnlock()
-	block, found := blockCache[b.ParentHash]
-	if !found {
-		panic("could not find block")
-	}
-	return &block
-}
-func (b Block) Parent() ChainNode {
-	return b.ParentBlock()
-}
-func (b Block) Height() uint32 {
-	return b.H
-}
-func (r Block) Root() RootHash {
-	return r.RootHash
-}
-
-func (b Block) Txs() []Tx {
-	txs := make([]Tx, len(b.Transactions))
-	// todo - inefficient
-	for i, tx := range b.Transactions {
-		txs[i] = Tx(tx)
-	}
-	return txs
-}
-func (b Block) L1Txs() []L1Tx {
-	return b.Transactions
-}
-
-func (b Block) Encode() (EncodedBlock, error) {
-	return rlp.EncodeToBytes(b)
-}
-
-func (b EncodedBlock) Decode() (Block, error) {
-	bl := Block{}
-	err := rlp.DecodeBytes(b, &bl)
-	return bl, err
-}
-
-func (tx L1Tx) Encode() (EncodedL1Tx, error) {
-	return rlp.EncodeToBytes(tx)
-}
-
-func (tx EncodedL1Tx) Decode() (L1Tx, error) {
-	tx1 := L1Tx{}
-	err := rlp.DecodeBytes(tx, &tx1)
-	return tx1, err
-}
+type EncodedBlock []byte
 
 func NewBlock(parent *Block, nonce uint64, m NodeId, txs []L1Tx) Block {
 	rootHash := uuid.New()
@@ -106,10 +46,10 @@ func NewBlock(parent *Block, nonce uint64, m NodeId, txs []L1Tx) Block {
 	height := GenesisHeight
 	if parent != nil {
 		parentHash = parent.RootHash
-		height = parent.H + 1
+		height = parent.Height + 1
 	}
 	b := Block{
-		H:            height,
+		Height:       height,
 		RootHash:     rootHash,
 		Nonce:        nonce,
 		Miner:        m,
@@ -117,9 +57,6 @@ func NewBlock(parent *Block, nonce uint64, m NodeId, txs []L1Tx) Block {
 		CreationTime: time.Now(),
 		Transactions: txs,
 	}
-	rbm.Lock()
-	blockCache[rootHash] = b
-	rbm.Unlock()
 	return b
 }
 

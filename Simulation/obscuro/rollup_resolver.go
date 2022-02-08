@@ -1,0 +1,12 @@
+package obscuro
+
+import "simulation/common"
+
+// RollupResolver -database of rollups indexed by the root hash
+type RollupResolver interface {
+	FetchRollup(hash common.RootHash) Rollup
+}
+
+func (r Rollup) Parent(db RollupResolver) Rollup {
+	return db.FetchRollup(r.ParentHash)
+}

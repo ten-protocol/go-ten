@@ -7,30 +7,24 @@ import (
 
 type State = map[common.Address]uint64
 
-// internal structure to pass information. todo - prob not necessary
-type currentWork struct {
-	r   common.Rollup
-	s   ProcessedState
-	txs []common.L2Tx
-}
-
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
 	Block          common.Block
-	Head           common.Rollup
+	Head           Rollup
 	State          State
 	foundNewRollup bool
 }
 
-type ProcessedState struct {
+// RollupState - state after an L2 rollups was processed
+type RollupState struct {
 	s State
-	w []common.Withdrawal
+	w []Withdrawal
 }
 
-func newProcessedState(s State) ProcessedState {
-	return ProcessedState{
+func newProcessedState(s State) RollupState {
+	return RollupState{
 		s: copyState(s),
-		w: []common.Withdrawal{},
+		w: []Withdrawal{},
 	}
 }
 
@@ -42,8 +36,8 @@ func copyState(state State) State {
 	return s
 }
 
-func copyProcessedState(s ProcessedState) ProcessedState {
-	return ProcessedState{
+func copyProcessedState(s RollupState) RollupState {
+	return RollupState{
 		s: copyState(s.s),
 		w: s.w,
 	}
@@ -54,7 +48,7 @@ func serialize(state State) string {
 }
 
 // returns a modified copy of the State
-func executeTransactions(txs []common.L2Tx, state ProcessedState) ProcessedState {
+func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 	ps := copyProcessedState(state)
 	for _, tx := range txs {
 		executeTx(&ps, tx)
@@ -64,22 +58,22 @@ func executeTransactions(txs []common.L2Tx, state ProcessedState) ProcessedState
 }
 
 // mutates the State
-func executeTx(s *ProcessedState, tx common.L2Tx) {
+func executeTx(s *RollupState, tx L2Tx) {
 	switch tx.TxType {
-	case common.TransferTx:
+	case TransferTx:
 		executeTransfer(s, tx)
-	case common.WithdrawalTx:
+	case WithdrawalTx:
 		executeWithdrawal(s, tx)
 	default:
 		panic("Invalid transaction type")
 	}
 }
 
-func executeWithdrawal(s *ProcessedState, tx common.L2Tx) {
+func executeWithdrawal(s *RollupState, tx L2Tx) {
 	bal := s.s[tx.From]
 	if bal >= tx.Amount {
 		s.s[tx.From] -= tx.Amount
-		s.w = append(s.w, common.Withdrawal{
+		s.w = append(s.w, Withdrawal{
 			Amount:  tx.Amount,
 			Address: tx.From,
 		})
@@ -87,7 +81,7 @@ func executeWithdrawal(s *ProcessedState, tx common.L2Tx) {
 	}
 }
 
-func executeTransfer(s *ProcessedState, tx common.L2Tx) {
+func executeTransfer(s *RollupState, tx L2Tx) {
 	bal := s.s[tx.From]
 	if bal >= tx.Amount {
 		s.s[tx.From] -= tx.Amount
@@ -113,7 +107,7 @@ func updateState(b common.Block, db Db) BlockState {
 	if b.RootHash == common.GenesisBlock.RootHash {
 		bs := BlockState{
 			Block:          b,
-			Head:           common.GenesisRollup,
+			Head:           GenesisRollup,
 			State:          emptyState(),
 			foundNewRollup: true,
 		}
@@ -122,13 +116,17 @@ func updateState(b common.Block, db Db) BlockState {
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
-	parentState, parentFound := db.FetchState(b.Parent().Root())
+	parentState, parentFound := db.FetchState(b.ParentHash)
 	if !parentFound {
 		// go back and calculate the State of the Parent
-		parentState = updateState(*b.ParentBlock(), db)
+		p, f := b.Parent(db)
+		if !f {
+			panic("wtf")
+		}
+		parentState = updateState(p, db)
 	}
 
-	bs := calculateBlockState(b, parentState)
+	bs := calculateBlockState(b, parentState, db)
 
 	db.SetState(b.RootHash, bs)
 
@@ -136,30 +134,21 @@ func updateState(b common.Block, db Db) BlockState {
 }
 
 // Calculate transactions to be included in the current rollup
-func currentTxs(head common.Rollup, mempool []common.L2Tx) []common.L2Tx {
-	mempoolCopy := make([]common.Tx, len(mempool))
-	for i, tx := range mempool {
-		mempoolCopy[i] = tx
-	}
-	toInclude := common.FindNotIncludedTxs(head, mempoolCopy)
-	txsCopy := make([]common.L2Tx, len(toInclude))
-	for i, tx := range toInclude {
-		txsCopy[i] = tx.(common.L2Tx)
-	}
-	return txsCopy
+func currentTxs(head Rollup, mempool []L2Tx, db Db) []L2Tx {
+	return findTxsNotIncluded(head, mempool, db)
 }
 
-func findWinner(parent common.Rollup, rollups []common.Rollup) (*common.Rollup, bool) {
+func findWinner(parent Rollup, rollups []Rollup, db Db) (*Rollup, bool) {
 	var win = -1
 
 	for i, r := range rollups {
 		switch {
-		case r.Parent().Root() != parent.Root(): // ignore rollups from L2 forks
-		case r.Height() <= parent.Height(): // ignore rollups that are older than the parent
+		case r.Parent(db).RootHash != parent.RootHash: // ignore rollups from L2 forks
+		case r.Height <= parent.Height: // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
-		case r.Proof().Height() < rollups[win].Proof().Height(): // ignore rollups generated with an older proof
-		case r.Proof().Height() > rollups[win].Proof().Height(): // newer rollups win
+		case r.ProofHeight(db) < rollups[win].ProofHeight(db): // ignore rollups generated with an older proof
+		case r.ProofHeight(db) > rollups[win].ProofHeight(db): // newer rollups win
 			win = i
 		case r.Nonce < rollups[win].Nonce: // for rollups with the same proof, base on the nonce
 			win = i
@@ -171,21 +160,21 @@ func findWinner(parent common.Rollup, rollups []common.Rollup) (*common.Rollup, 
 	return &rollups[win], true
 }
 
-func findRoundWinner(receivedRollups []common.Rollup, parent common.Rollup, parentState State) (common.Rollup, State) {
-	win, found := findWinner(parent, receivedRollups)
+func findRoundWinner(receivedRollups []Rollup, parent Rollup, parentState State, db Db) (Rollup, State) {
+	win, found := findWinner(parent, receivedRollups, db)
 	if !found {
 		panic("This should not happen for gossip rounds.")
 	}
 	// calculate the state to compare with what is in the Rollup
 	s := newProcessedState(parentState)
-	s = executeTransactions(win.L2Txs(), s)
+	s = executeTransactions(win.Transactions, s)
 
-	p := win.ParentRollup().Proof()
-	s = processDeposits(&p, win.Proof(), s)
+	p := win.Parent(db).Proof(db)
+	s = processDeposits(&p, win.Proof(db), s, db)
 
 	rootState := serialize(s.s)
 	if rootState != win.State {
-		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v", rootState, win.State, parentState, parent.State, printTxs(win.L2Txs())))
+		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v", rootState, win.State, parentState, parent.State, printTxs(win.Transactions)))
 	}
 	//todo - we need another root hash for withdrawals
 
@@ -194,24 +183,24 @@ func findRoundWinner(receivedRollups []common.Rollup, parent common.Rollup, pare
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *common.Block, toBlock common.Block, s ProcessedState) ProcessedState {
+func processDeposits(fromBlock *common.Block, toBlock common.Block, s RollupState, db Db) RollupState {
 	from := common.GenesisBlock.RootHash
 	height := common.GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.RootHash
-		height = fromBlock.Height()
-		if !common.IsAncestor(fromBlock, toBlock) {
+		height = fromBlock.Height
+		if !common.IsAncestor(*fromBlock, toBlock, db) {
 			panic("wtf")
 		}
 
 	}
 
-	b := &toBlock
+	b := toBlock
 	for {
 		if b.RootHash == from {
 			break
 		}
-		for _, tx := range b.L1Txs() {
+		for _, tx := range b.Transactions {
 			// transactions to a hardcoded bridge address
 			if tx.TxType == common.DepositTx {
 				v, f := s.s[tx.Dest]
@@ -222,26 +211,30 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s ProcessedS
 				}
 			}
 		}
-		if b.Height() < height {
+		if b.Height < height {
 			panic("something went wrong")
 		}
-		b = b.ParentBlock()
+		p, f := b.Parent(db)
+		if !f {
+			panic("wtf")
+		}
+		b = p
 	}
 	return s
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b common.Block, parentState BlockState) BlockState {
-	rollups := extractRollups(b)
-	newHead, found := findWinner(parentState.Head, rollups)
+func calculateBlockState(b common.Block, parentState BlockState, db Db) BlockState {
+	rollups := extractRollups(b, db)
+	newHead, found := findWinner(parentState.Head, rollups, db)
 
 	s := newProcessedState(parentState.State)
 
 	// only change the state if there is a new l2 Head in the current block
 	if found {
-		s = executeTransactions(newHead.L2Txs(), s)
-		p := newHead.ParentRollup().Proof()
-		s = processDeposits(&p, newHead.Proof(), s)
+		s = executeTransactions(newHead.Transactions, s)
+		p := newHead.Parent(db).Proof(db)
+		s = processDeposits(&p, newHead.Proof(db), s, db)
 	} else {
 		newHead = &parentState.Head
 	}
@@ -255,16 +248,16 @@ func calculateBlockState(b common.Block, parentState BlockState) BlockState {
 	return bs
 }
 
-func extractRollups(b common.Block) []common.Rollup {
-	rollups := make([]common.Rollup, 0)
-	for _, t := range b.L1Txs() {
+func extractRollups(b common.Block, db Db) []Rollup {
+	rollups := make([]Rollup, 0)
+	for _, t := range b.Transactions {
 		// go through all rollup transactions
 		if t.TxType == common.RollupTx {
-			r := common.DecodeRollup(t.Rollup)
+			r := DecodeRollup(t.Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
-			if common.IsAncestor(r.Proof(), b) {
+			if common.IsBlockAncestor(r.L1Proof, b, db) {
 				rollups = append(rollups, r)
 			}
 		}

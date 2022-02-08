@@ -5,10 +5,10 @@ import (
 	"github.com/google/uuid"
 	"math"
 	"math/rand"
+	"sync/atomic"
 	"time"
 )
 
-type Nonce = uint64
 type Latency func() uint64
 type ScheduledFunc func()
 
@@ -18,19 +18,15 @@ func RndBtw(min uint64, max uint64) uint64 {
 }
 
 // ScheduleInterrupt runs the function after the delay and can be interrupted using the channel
-func ScheduleInterrupt(delay uint64, doneCh *chan bool, fun ScheduledFunc) {
+func ScheduleInterrupt(delay uint64, interrupt *int32, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
 	go func() {
-		executed := false
 		select {
-		case <-*doneCh:
-			break
 		case <-ticker.C:
-			executed = true
+			if atomic.LoadInt32(interrupt) == 1 {
+				return
+			}
 			fun()
-		}
-		if executed {
-			<-*doneCh
 		}
 		ticker.Stop()
 	}()
@@ -68,44 +64,6 @@ func MaxInt(x, y uint32) uint32 {
 	return x
 }
 
-func EncodeRollup(r Rollup) EncodedRollup {
-	encoded, err := r.Encode()
-	if err != nil {
-		panic(err)
-	}
-	return encoded
-}
-func DecodeRollup(rollup EncodedRollup) Rollup {
-	r, err := rollup.Decode()
-	if err != nil {
-		panic(err)
-	}
-	return r
-}
-
-func EncodeBlock(b Block) EncodedBlock {
-	encoded, err := b.Encode()
-	if err != nil {
-		panic(err)
-	}
-	return encoded
-}
-func DecodeBlock(block EncodedBlock) Block {
-	b, err := block.Decode()
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-func DecodeTx(tx EncodedL2Tx) L2Tx {
-	r, err := tx.DecodeBytes()
-	if err != nil {
-		panic(err)
-	}
-	return r
-}
-
 // FindDups - returns a map of all elements that appear multiple times, and how many times
 func FindDups(list []uuid.UUID) map[uuid.UUID]int {
 
@@ -125,6 +83,29 @@ func FindDups(list []uuid.UUID) map[uuid.UUID]int {
 		if i > 1 {
 			dups[u] = i
 			fmt.Printf("Dup: %d\n", u.ID())
+		}
+	}
+	return dups
+}
+
+func FindTxDups(list []L1Tx) map[TxHash]int {
+
+	elementCount := make(map[TxHash]int)
+
+	for _, item := range list {
+		// check if the item/element exist in the duplicate_frequency map
+		_, exist := elementCount[item.Id]
+		if exist {
+			elementCount[item.Id] += 1 // increase counter by 1 if already in the map
+		} else {
+			elementCount[item.Id] = 1 // else start counting from 1
+		}
+	}
+	dups := make(map[TxHash]int)
+	for u, i := range elementCount {
+		if i > 1 {
+			dups[u] = i
+			fmt.Printf(">>Dup: %d\n", u.ID())
 		}
 	}
 	return dups

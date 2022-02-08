@@ -3,17 +3,16 @@ package common
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
+	"simulation/obscuro"
 	wallet_mock "simulation/wallet-mock"
 	"testing"
 	"time"
 )
 
-// This test is copied from geth
-
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := L2Tx{
+	tx := obscuro.L2Tx{
 		Id:     uuid.New(),
-		TxType: TransferTx,
+		TxType: obscuro.TransferTx,
 		Amount: 100,
 		From:   wallet_mock.New().Address,
 		To:     wallet_mock.New().Address,
@@ -22,7 +21,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	tx1 := L2Tx{}
+	tx1 := obscuro.L2Tx{}
 	err2 := rlp.DecodeBytes(bytes, &tx1)
 	if err2 != nil {
 		panic(err2)
@@ -33,15 +32,15 @@ func TestSerialiseL2Tx(t *testing.T) {
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := L2Tx{
+	tx := obscuro.L2Tx{
 		Id:     uuid.New(),
-		TxType: TransferTx,
+		TxType: obscuro.TransferTx,
 		Amount: 100,
 		From:   wallet_mock.New().Address,
 		To:     wallet_mock.New().Address,
 	}
-	rollup := Rollup{
-		H:            1,
+	rollup := obscuro.Rollup{
+		Height:       1,
 		RootHash:     uuid.New(),
 		Agg:          1,
 		ParentHash:   uuid.New(),
@@ -50,13 +49,13 @@ func TestSerialiseRollup(t *testing.T) {
 		Nonce:        100,
 		State:        "",
 		Withdrawals:  nil,
-		Transactions: []L2Tx{tx},
+		Transactions: []obscuro.L2Tx{tx},
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
 		panic(err)
 	}
-	r1 := Rollup{}
+	r1 := obscuro.Rollup{}
 
 	err2 := rlp.Decode(read, &r1)
 
@@ -79,7 +78,7 @@ func TestSerialiseBlock(t *testing.T) {
 		Dest:   wallet_mock.New().Address,
 	}
 	block := Block{
-		H:            1,
+		Height:       1,
 		RootHash:     uuid.New(),
 		Miner:        1,
 		ParentHash:   uuid.New(),
@@ -112,7 +111,7 @@ func TestPlay(t *testing.T) {
 		Dest:   wallet_mock.New().Address,
 	}
 	block := Block{
-		H:            1,
+		Height:       1,
 		RootHash:     uuid.New(),
 		Miner:        1,
 		ParentHash:   uuid.New(),
