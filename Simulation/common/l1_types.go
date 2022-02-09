@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// Todo - replace these data structures with the actual Ethereum structures from geth
+
 // L1TxType - Just two types of relevant L1 transactions: Deposits and Rollups
 // this does not actually exist in the real implementation
 type L1TxType uint8

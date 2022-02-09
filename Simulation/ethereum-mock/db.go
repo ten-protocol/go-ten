@@ -5,27 +5,16 @@ import (
 	"sync"
 )
 
+// Received blocks ar stored here
 type blockResolverInMem struct {
 	blockCache map[common.RootHash]common.Block
 	m          sync.RWMutex
-}
-
-type txDbInMem struct {
-	transactionsPerBlockCache map[common.RootHash]map[common.TxHash]common.L1Tx
-	rpbcM                     *sync.RWMutex
 }
 
 func NewResolver() common.BlockResolver {
 	return &blockResolverInMem{
 		blockCache: map[common.RootHash]common.Block{},
 		m:          sync.RWMutex{},
-	}
-}
-
-func NewTxDb() TxDb {
-	return &txDbInMem{
-		transactionsPerBlockCache: make(map[common.RootHash]map[common.TxHash]common.L1Tx),
-		rpbcM:                     &sync.RWMutex{},
 	}
 }
 
@@ -40,6 +29,19 @@ func (n *blockResolverInMem) Resolve(hash common.RootHash) (common.Block, bool) 
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
 	return block, f
+}
+
+// The cache of included transactions
+type txDbInMem struct {
+	transactionsPerBlockCache map[common.RootHash]map[common.TxHash]common.L1Tx
+	rpbcM                     *sync.RWMutex
+}
+
+func NewTxDb() TxDb {
+	return &txDbInMem{
+		transactionsPerBlockCache: make(map[common.RootHash]map[common.TxHash]common.L1Tx),
+		rpbcM:                     &sync.RWMutex{},
+	}
 }
 
 func (n *txDbInMem) Txs(b common.Block) (map[common.TxHash]common.L1Tx, bool) {

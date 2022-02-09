@@ -138,9 +138,9 @@ func currentTxs(head Rollup, mempool []L2Tx, db Db) []L2Tx {
 	return findTxsNotIncluded(head, mempool, db)
 }
 
-func findWinner(parent Rollup, rollups []Rollup, db Db) (*Rollup, bool) {
+func FindWinner(parent Rollup, rollups []Rollup, db Db) (*Rollup, bool) {
 	var win = -1
-
+	// todo - add statistics to determine why there are conflicts.
 	for i, r := range rollups {
 		switch {
 		case r.Parent(db).RootHash != parent.RootHash: // ignore rollups from L2 forks
@@ -161,7 +161,7 @@ func findWinner(parent Rollup, rollups []Rollup, db Db) (*Rollup, bool) {
 }
 
 func findRoundWinner(receivedRollups []Rollup, parent Rollup, parentState State, db Db) (Rollup, State) {
-	win, found := findWinner(parent, receivedRollups, db)
+	win, found := FindWinner(parent, receivedRollups, db)
 	if !found {
 		panic("This should not happen for gossip rounds.")
 	}
@@ -226,7 +226,7 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s RollupStat
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func calculateBlockState(b common.Block, parentState BlockState, db Db) BlockState {
 	rollups := extractRollups(b, db)
-	newHead, found := findWinner(parentState.Head, rollups, db)
+	newHead, found := FindWinner(parentState.Head, rollups, db)
 
 	s := newProcessedState(parentState.State)
 

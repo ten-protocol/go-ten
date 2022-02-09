@@ -10,7 +10,8 @@ import (
 )
 
 type AggregatorCfg struct {
-	GossipPeriod uint64
+	// duration of the gossip round
+	GossipRoundDuration uint64
 }
 
 type L2Network interface {
@@ -19,9 +20,11 @@ type L2Network interface {
 }
 
 type StatsCollector interface {
+	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.NodeId)
 	NewBlock(block common.Block)
 	NewRollup(rollup Rollup)
+	RollupWithMoreRecentProof()
 }
 
 // Node this will become the Obscuro "Node" type
@@ -44,13 +47,14 @@ type Node struct {
 	blockRpcCh chan common.EncodedBlock
 	forkRpcCh  chan []common.EncodedBlock
 
+	// Interface to the logic running inside the TEE
 	Enclave Enclave
 }
 
 func (a *Node) Start() {
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
-	z := int32(0)
-	var interrupt = &z
+	i := int32(0)
+	var interrupt = &i
 
 	go a.Enclave.Start()
 
@@ -59,83 +63,56 @@ func (a *Node) Start() {
 	for {
 		select {
 		case b := <-a.blockRpcCh:
-			if a.mining {
-				atomic.StoreInt32(interrupt, 1)
-				c := int32(0)
-				interrupt = &c
-			}
+			interrupt = sendInterrupt(interrupt)
+			a.processBlocks([]common.EncodedBlock{b}, interrupt)
 
-			result := a.Enclave.SubmitBlock(b)
-
-			if result.processed {
-				if a.mining {
-					a.l2Network.BroadcastRollup(result.rollup)
-
-					common.ScheduleInterrupt(a.cfg.GossipPeriod, interrupt, func() {
-						if atomic.LoadInt32(a.interrupt) == 1 {
-							return
-						}
-						// Request the round winner for the current head
-						winnerRollup, submit := a.Enclave.RoundWinner(result.root)
-						if submit {
-							tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup}
-							t, err := tx.Encode()
-							if err != nil {
-								panic(err)
-							}
-							a.L1Node.BroadcastTx(t)
-							// collect Stats
-							a.stats.NewRollup(DecodeRollup(winnerRollup))
-						}
-					})
-				}
-			} else {
-				common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", a.Id, b.DecodeBlock().RootHash.ID()))
-			}
-
-		case b := <-a.forkRpcCh:
-			if a.mining {
-				atomic.StoreInt32(interrupt, 1)
-				c := int32(0)
-				interrupt = &c
-			}
-
-			var result SubmitBlockResponse
-			for _, block := range b {
-				result = a.Enclave.SubmitBlock(block)
-			}
-
-			if result.processed {
-				if a.mining {
-					a.l2Network.BroadcastRollup(result.rollup)
-
-					common.ScheduleInterrupt(a.cfg.GossipPeriod, interrupt, func() {
-						if atomic.LoadInt32(a.interrupt) == 1 {
-							return
-						}
-						// Request the round winner for the current head
-						winnerRollup, submit := a.Enclave.RoundWinner(result.root)
-						if submit {
-							tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup}
-							t, err := tx.Encode()
-							if err != nil {
-								panic(err)
-							}
-							a.L1Node.BroadcastTx(t)
-							// collect Stats
-							a.stats.NewRollup(DecodeRollup(winnerRollup))
-						}
-					})
-				}
-			} else {
-				common.Log(fmt.Sprintf(">   Agg%d: Could not process fork ", a.Id))
-			}
+		case f := <-a.forkRpcCh:
+			interrupt = sendInterrupt(interrupt)
+			a.processBlocks(f, interrupt)
 
 		case <-a.exitNodeCh:
 			a.Enclave.Stop()
 			return
 		}
 	}
+}
+
+func sendInterrupt(interrupt *int32) *int32 {
+	// Notify the previous round to stop work
+	atomic.StoreInt32(interrupt, 1)
+	i := int32(0)
+	return &i
+}
+
+func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
+	var result SubmitBlockResponse
+	for _, block := range blocks {
+		result = a.Enclave.SubmitBlock(block)
+	}
+
+	if !result.processed {
+		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", a.Id, blocks[len(blocks)-1].DecodeBlock().RootHash.ID()))
+		return
+	}
+	a.l2Network.BroadcastRollup(result.rollup)
+
+	common.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
+		if atomic.LoadInt32(a.interrupt) == 1 {
+			return
+		}
+		// Request the round winner for the current head
+		winnerRollup, submit := a.Enclave.RoundWinner(result.root)
+		if submit {
+			tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup}
+			t, err := tx.Encode()
+			if err != nil {
+				panic(err)
+			}
+			a.L1Node.BroadcastTx(t)
+			// collect Stats
+			//a.stats.NewRollup(DecodeRollup(winnerRollup))
+		}
+	})
 }
 
 // RPCNewHead Receive notifications From the L1Node Node when there's a new block

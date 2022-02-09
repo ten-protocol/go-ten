@@ -1,6 +1,6 @@
 package common
 
-// BlockResolver -database ob blocks indexed by the root hash
+// BlockResolver -database of blocks indexed by the root hash
 type BlockResolver interface {
 	Resolve(hash RootHash) (Block, bool)
 	Store(node Block)
@@ -25,7 +25,7 @@ func IsAncestor(a Block, b Block, r BlockResolver) bool {
 	return IsAncestor(a, p, r)
 }
 
-// IsBlockAncestor - takes into conssideration that the block to verify might be on a branch we haven't recevied yet
+// IsBlockAncestor - takes into consideration that the block to verify might be on a branch we haven't received yet
 func IsBlockAncestor(a RootHash, b Block, r BlockResolver) bool {
 	if a == b.RootHash {
 		return true

@@ -35,7 +35,7 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	l2Network := L2NetworkCfg{delay: func() uint64 {
 		return common.RndBtw(uint64(avgLatency/10), uint64(2*avgLatency))
 	}}
-	l2Cfg := obscuro.AggregatorCfg{GossipPeriod: gossipPeriod}
+	l2Cfg := obscuro.AggregatorCfg{GossipRoundDuration: gossipPeriod}
 
 	for i := 1; i <= nrNodes; i++ {
 		// create a layer 2 node

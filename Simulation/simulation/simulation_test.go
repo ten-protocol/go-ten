@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"simulation/common"
+	ethereum_mock "simulation/ethereum-mock"
 	"simulation/obscuro"
 	"testing"
 	"time"
@@ -27,13 +28,14 @@ func TestSimulation(t *testing.T) {
 	defer f.Close()
 	common.SetLog(f)
 
-	blockDuration := uint64(30_000)
-	l1netw, l2netw := RunSimulation(5, 30, 30, blockDuration, blockDuration/15, blockDuration/4)
-	stats := l1netw.Stats
-	fmt.Printf("%+v\n", stats)
+	blockDuration := uint64(20_000)
+	l1netw, l2netw := RunSimulation(5, 50, 15, blockDuration, blockDuration/15, blockDuration/3)
 	firstNode := l2netw.nodes[0]
 	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.Db(), firstNode.Enclave.PeekHead().Head)
+	stats := l1netw.Stats
+	fmt.Printf("%+v\n", stats)
 	//pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+
 }
 
 func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db obscuro.Db, r obscuro.Rollup) {
@@ -57,27 +59,33 @@ func validateL1(t *testing.T, b common.Block, s *Stats, db obscuro.Db) {
 
 	totalDeposited := uint64(0)
 
-	for {
-		if b.Height == common.GenesisHeight {
-			break
-		}
-		for _, tx := range b.Transactions {
+	blockchain := ethereum_mock.BlocksBetween(common.GenesisBlock, b, db)
+	headRollup := obscuro.GenesisRollup
+	for _, block := range blockchain {
+		for _, tx := range block.Transactions {
+			currentRollups := make([]obscuro.Rollup, 0)
 			switch tx.TxType {
 			case common.DepositTx:
 				deposits = append(deposits, tx.Id)
 				totalDeposited += tx.Amount
 			case common.RollupTx:
-				rollups = append(rollups, obscuro.DecodeRollup(tx.Rollup).RootHash)
+				r := obscuro.DecodeRollup(tx.Rollup)
+				rollups = append(rollups, r.RootHash)
+				if common.IsBlockAncestor(r.L1Proof, b, db) {
+					// only count the rollup if it is published in the right branch
+					// todo - once logic is added to the l1 - this can be made into a check
+					currentRollups = append(currentRollups, r)
+					s.NewRollup(r)
+				}
 			default:
 				panic("unknown transaction type")
 			}
-		}
-		p, f := b.Parent(db)
-		if !f {
-			panic("wtf")
+			r, _ := obscuro.FindWinner(headRollup, currentRollups, db)
+			if r != nil {
+				headRollup = *r
+			}
 		}
 
-		b = p
 	}
 
 	if len(common.FindDups(deposits)) > 0 {
@@ -144,7 +152,7 @@ func validateL2(t *testing.T, r obscuro.Rollup, s *Stats, db obscuro.Db) uint64 
 	}
 	efficiency := float64(uint32(s.totalL2Blocks)-s.l2Height) / float64(s.totalL2Blocks)
 	if efficiency > L2EfficiencyThreashold {
-		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L1EfficiencyThreashold)
+		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreashold)
 	}
 
 	return sumWithdrawals(withdrawalRequests)

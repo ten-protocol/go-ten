@@ -17,7 +17,7 @@ func RndBtw(min uint64, max uint64) uint64 {
 	return r
 }
 
-// ScheduleInterrupt runs the function after the delay and can be interrupted using the channel
+// ScheduleInterrupt runs the function after the delay and can be interrupted
 func ScheduleInterrupt(delay uint64, interrupt *int32, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
 	go func() {

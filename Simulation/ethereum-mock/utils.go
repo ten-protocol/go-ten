@@ -88,7 +88,7 @@ func makeMap(txs []common.L1Tx) map[common.TxHash]common.L1Tx {
 }
 
 // excludes a
-func blocksBetween(a common.Block, b common.Block, r common.BlockResolver) []common.Block {
+func BlocksBetween(a common.Block, b common.Block, r common.BlockResolver) []common.Block {
 	blocks := make([]common.Block, 0)
 	c := b
 	f := false

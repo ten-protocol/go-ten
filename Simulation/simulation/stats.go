@@ -28,10 +28,11 @@ type Stats struct {
 	noL2Recalcs map[common.NodeId]int
 	// todo - actual avg block Duration
 
-	totalDepositedAmount   uint64
-	totalWithdrawnAmount   uint64
-	nrTransferTransactions int
-	statsMu                *sync.RWMutex
+	totalDepositedAmount      uint64
+	totalWithdrawnAmount      uint64
+	rollupWithMoreRecentProof uint64
+	nrTransferTransactions    int
+	statsMu                   *sync.RWMutex
 }
 
 func NewStats(nrMiners int, simulationTime int, avgBlockDuration uint64, avgLatency uint64, gossipPeriod uint64) Stats {
@@ -94,5 +95,11 @@ func (s *Stats) Transfer() {
 func (s *Stats) Withdrawal(v uint64) {
 	s.statsMu.Lock()
 	s.totalWithdrawnAmount += v
+	s.statsMu.Unlock()
+}
+
+func (s *Stats) RollupWithMoreRecentProof() {
+	s.statsMu.Lock()
+	s.rollupWithMoreRecentProof++
 	s.statsMu.Unlock()
 }

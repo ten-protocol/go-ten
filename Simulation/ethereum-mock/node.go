@@ -29,6 +29,7 @@ type TxDb interface {
 }
 
 type StatsCollector interface {
+	// Register when a miner has to process a reorg (a winning block from a fork)
 	L1Reorg(id common.NodeId)
 }
 
@@ -67,8 +68,8 @@ func (m *Node) Start() {
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, proc := m.Resolver.Resolve(p2pb.RootHash)
-			if !proc {
+			_, received := m.Resolver.Resolve(p2pb.RootHash)
+			if !received {
 				m.Resolver.Store(p2pb)
 				_, f := m.Resolver.Resolve(p2pb.ParentHash)
 				if f {
@@ -79,7 +80,7 @@ func (m *Node) Start() {
 							m.stats.L1Reorg(m.Id)
 							fork := LCA(head, p2pb, m.Resolver)
 							common.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.Id, p2pb.RootHash.ID(), p2pb.Height, head.RootHash.ID(), head.Height, fork.RootHash.ID(), fork.Height))
-							head = m.setFork(blocksBetween(fork, p2pb, m.Resolver))
+							head = m.setFork(BlocksBetween(fork, p2pb, m.Resolver))
 						} else {
 							head = m.setHead(p2pb)
 						}
