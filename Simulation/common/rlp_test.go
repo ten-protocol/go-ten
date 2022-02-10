@@ -82,7 +82,7 @@ func TestSerialiseBlock(t *testing.T) {
 		RootHash:     uuid.New(),
 		Miner:        1,
 		ParentHash:   uuid.New(),
-		CreationTime: time.Now(),
+		ReceiveTime:  time.Now(),
 		Nonce:        100,
 		Transactions: []L1Tx{tx},
 	}
@@ -115,7 +115,7 @@ func TestPlay(t *testing.T) {
 		RootHash:     uuid.New(),
 		Miner:        1,
 		ParentHash:   uuid.New(),
-		CreationTime: time.Now(),
+		ReceiveTime:  time.Now(),
 		Nonce:        100,
 		Transactions: []L1Tx{tx},
 	}

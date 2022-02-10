@@ -17,7 +17,7 @@ func allIncludedTransactions(b Rollup, db Db) map[common.TxHash]L2Tx {
 	if found {
 		return val
 	}
-	if b.Height == common.GenesisHeight {
+	if b.Height == common.L2GenesisHeight {
 		return makeMap(b.Transactions)
 	}
 	var newMap = make(map[common.TxHash]L2Tx)
@@ -46,7 +46,7 @@ func historicTxs(r Rollup, db Db) map[common.TxHash]common.TxHash {
 	i := common.HeightCommittedBlocks
 	c := r
 	for {
-		if i == 0 || c.Height == common.GenesisHeight {
+		if i == 0 || c.Height == common.L2GenesisHeight {
 			return toMap(c.Transactions)
 		}
 		i--

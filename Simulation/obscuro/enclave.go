@@ -6,7 +6,7 @@ import (
 )
 
 type SubmitBlockResponse struct {
-	root      common.RootHash
+	root      common.L2RootHash
 	rollup    common.EncodedRollup
 	processed bool
 }
@@ -28,11 +28,11 @@ type Enclave interface {
 	// SubmitTx - user transactions
 	SubmitTx(tx EncodedL2Tx)
 
-	// Balance
+	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round
-	RoundWinner(parent common.RootHash) (common.EncodedRollup, bool)
+	RoundWinner(parent common.L2RootHash) (common.EncodedRollup, bool)
 
 	// PeekHead - only availble for testing purposes
 	PeekHead() BlockState
@@ -104,9 +104,11 @@ func (e *enclaveImpl) Start() {
 func (e *enclaveImpl) SubmitBlock(block common.EncodedBlock) SubmitBlockResponse {
 	b := block.DecodeBlock()
 	e.db.Store(b)
+	// this is where much more will actually happen.
+	// the "blockchain" logic from geth has to be executed here, to determine the total proof of work, to verify some key aspects, etc
 
-	_, f := e.db.Resolve(b.ParentHash)
-	if !f {
+	_, f := e.db.Resolve(b.Header.ParentHash)
+	if !f && b.Height(e.db) > common.L1GenesisHeight {
 		return SubmitBlockResponse{processed: false}
 	}
 	blockState := updateState(b, e.db)
@@ -141,7 +143,7 @@ func (e *enclaveImpl) SubmitTx(tx EncodedL2Tx) {
 	e.txCh <- t
 }
 
-func (e *enclaveImpl) RoundWinner(parent common.RootHash) (common.EncodedRollup, bool) {
+func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.EncodedRollup, bool) {
 
 	head := e.db.FetchRollup(parent)
 
@@ -157,7 +159,7 @@ func (e *enclaveImpl) RoundWinner(parent common.RootHash) (common.EncodedRollup,
 	parentState := e.db.FetchRollupState(head.RootHash)
 	// determine the winner of the round
 	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.db)
-	//common.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(), winnerRollup.RootHash.ID(), winnerRollup.Height(), winnerRollup.Parent().RootHash.ID(), winnerRollup.Proof().RootHash.ID()))
+	//common.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(), winnerRollup.L2RootHash.ID(), winnerRollup.Height(), winnerRollup.Parent().L2RootHash.ID(), winnerRollup.Proof().L2RootHash.ID()))
 
 	e.db.SetRollupState(winnerRollup.RootHash, s)
 	go e.notifySpeculative(winnerRollup)
@@ -165,7 +167,7 @@ func (e *enclaveImpl) RoundWinner(parent common.RootHash) (common.EncodedRollup,
 	// we are the winner
 	if winnerRollup.Agg == e.node {
 		v := winnerRollup.Proof(e.db)
-		common.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.", e.node, winnerRollup.RootHash.ID(), winnerRollup.Height, winnerRollup.Parent(e.db).RootHash.ID(), v.RootHash.ID(), printTxs(winnerRollup.Transactions), winnerRollup.State))
+		common.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%s}. Txs: %v. State=%v.", e.node, winnerRollup.RootHash.ID(), winnerRollup.Height, winnerRollup.Parent(e.db).RootHash.ID(), common.Str(v.Hash()), printTxs(winnerRollup.Transactions), winnerRollup.State))
 		return EncodeRollup(winnerRollup), true
 	}
 	return nil, false

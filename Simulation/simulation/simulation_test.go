@@ -29,7 +29,7 @@ func TestSimulation(t *testing.T) {
 	common.SetLog(f)
 
 	blockDuration := uint64(20_000)
-	l1netw, l2netw := RunSimulation(5, 50, 15, blockDuration, blockDuration/15, blockDuration/3)
+	l1netw, l2netw := RunSimulation(5, 10, 15, blockDuration, blockDuration/15, blockDuration/3)
 	firstNode := l2netw.nodes[0]
 	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.Db(), firstNode.Enclave.PeekHead().Head)
 	stats := l1netw.Stats
@@ -56,7 +56,7 @@ const L2EfficiencyThreashold = 0.3
 func validateL1(t *testing.T, b common.Block, s *Stats, db obscuro.Db) {
 	deposits := make([]uuid.UUID, 0)
 	rollups := make([]uuid.UUID, 0)
-
+	s.l1Height = b.Height(db)
 	totalDeposited := uint64(0)
 
 	blockchain := ethereum_mock.BlocksBetween(common.GenesisBlock, b, db)
@@ -100,7 +100,7 @@ func validateL1(t *testing.T, b common.Block, s *Stats, db obscuro.Db) {
 		t.Errorf("Deposit amounts don't match. Found %d , expected %d", totalDeposited, s.totalDepositedAmount)
 	}
 
-	efficiency := float64(uint32(s.totalL1Blocks)-s.l1Height) / float64(s.totalL1Blocks)
+	efficiency := float64(s.totalL1Blocks-s.l1Height) / float64(s.totalL1Blocks)
 	if efficiency > L1EfficiencyThreashold {
 		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, L1EfficiencyThreashold)
 	}
@@ -119,7 +119,7 @@ func validateL2(t *testing.T, r obscuro.Rollup, s *Stats, db obscuro.Db) uint64 
 	withdrawalTxs := make([]obscuro.L2Tx, 0)
 	withdrawalRequests := make([]obscuro.Withdrawal, 0)
 	for {
-		if r.Height == common.GenesisHeight {
+		if r.Height == common.L2GenesisHeight {
 			break
 		}
 		for _, tx := range r.Transactions {

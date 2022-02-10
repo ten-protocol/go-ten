@@ -24,8 +24,8 @@ type MiningConfig struct {
 }
 
 type TxDb interface {
-	Txs(block common.Block) (map[common.TxHash]common.L1Tx, bool)
-	AddTxs(common.Block, map[common.TxHash]common.L1Tx)
+	Txs(block common.Block) (map[common.TxHash]*common.L1Tx, bool)
+	AddTxs(common.Block, map[common.TxHash]*common.L1Tx)
 }
 
 type StatsCollector interface {
@@ -68,31 +68,15 @@ func (m *Node) Start() {
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, received := m.Resolver.Resolve(p2pb.RootHash)
+			_, received := m.Resolver.Resolve(p2pb.Hash())
+			// only process blocks if they haven't been processed before
 			if !received {
-				m.Resolver.Store(p2pb)
-				_, f := m.Resolver.Resolve(p2pb.ParentHash)
-				if f {
-					// only proceed if the parent is available
-					if p2pb.Height > head.Height {
-						// Check for Reorgs
-						if !common.IsAncestor(head, p2pb, m.Resolver) {
-							m.stats.L1Reorg(m.Id)
-							fork := LCA(head, p2pb, m.Resolver)
-							common.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.Id, p2pb.RootHash.ID(), p2pb.Height, head.RootHash.ID(), head.Height, fork.RootHash.ID(), fork.Height))
-							head = m.setFork(BlocksBetween(fork, p2pb, m.Resolver))
-						} else {
-							head = m.setHead(p2pb)
-						}
-					}
-				} else {
-					common.Log(fmt.Sprintf("> M%d: Not found=b_%d", m.Id, p2pb.ParentHash.ID()))
-				}
+				head = m.processBlock(p2pb, head)
 			}
 
 		case mb := <-m.miningCh: // Received from the local mining
 			m.Resolver.Store(mb)
-			if mb.Height > head.Height { // Ignore the locally produced block if someone else found one already
+			if mb.Height(m.Resolver) > head.Height(m.Resolver) { // Ignore the locally produced block if someone else found one already
 				head = m.setHead(mb)
 				p, _ := mb.Parent(m.Resolver)
 				m.network.BroadcastBlock(mb.EncodeBlock(), p.EncodeBlock())
@@ -101,6 +85,28 @@ func (m *Node) Start() {
 			return
 		}
 	}
+}
+
+func (m *Node) processBlock(b common.Block, head common.Block) common.Block {
+	m.Resolver.Store(b)
+	_, f := m.Resolver.Resolve(b.Header.ParentHash)
+	// only proceed if the parent is available
+	if f {
+		if b.Height(m.Resolver) > head.Height(m.Resolver) {
+			// Check for Reorgs
+			if !common.IsAncestor(head, b, m.Resolver) {
+				m.stats.L1Reorg(m.Id)
+				fork := LCA(head, b, m.Resolver)
+				common.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.Id, common.Str(b.Hash()), b.Height(m.Resolver), common.Str(head.Hash()), head.Height(m.Resolver), common.Str(fork.Hash()), fork.Height(m.Resolver)))
+				head = m.setFork(BlocksBetween(fork, b, m.Resolver))
+			} else {
+				head = m.setHead(b)
+			}
+		}
+	} else {
+		common.Log(fmt.Sprintf("> M%d: Not found=b_%s", m.Id, common.Str(b.Header.ParentHash)))
+	}
+	return head
 }
 
 // Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
@@ -148,7 +154,7 @@ func (m *Node) P2PReceiveBlock(b common.EncodedBlock, p common.EncodedBlock) {
 func (m *Node) startMining() {
 
 	// stores all transactions seen from the beginning of time.
-	var mempool = make([]common.L1Tx, 0)
+	var mempool = make([]*common.L1Tx, 0)
 	z := int32(0)
 	var interrupt = &z
 
@@ -157,7 +163,7 @@ func (m *Node) startMining() {
 		case <-m.exitMiningCh:
 			return
 		case tx := <-m.mempoolCh:
-			mempool = append(mempool, tx)
+			mempool = append(mempool, &tx)
 
 		case cb := <-m.canonicalCh:
 			// A new canonical block was found. Start a new round based on that block.

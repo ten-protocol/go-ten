@@ -48,7 +48,7 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 		agg.L1Node = &miner
 	}
 
-	common.Log(fmt.Sprintf("Genesis block: b_%d.", common.GenesisBlock.RootHash.ID()))
+	common.Log(fmt.Sprintf("Genesis block: b_%s.", common.Str(common.GenesisBlock.Hash())))
 	common.Log(fmt.Sprintf("Genesis rollup: r_%d.", obscuro.GenesisRollup.RootHash.ID()))
 
 	l1Network.Start(common.Duration(avgBlockDuration / 4))

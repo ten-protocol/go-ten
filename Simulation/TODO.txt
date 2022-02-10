@@ -5,11 +5,16 @@ P - Create a unit test with a checker for the final state of the simulation:
     - the state in each rollup matches the transactions. (deposits + L1)
     - L1 height, L2 height, how many reorgs, etc - if the efficiency is below a threashold then something could have happened
 
-P - split up code that must run inside an enclave
+P - split blocks into header&payload
+-split rollups into header&payload
 
 - make publishing to L1 more random (to simulate aggregators failng to publish)
 - bring in core ethereum structures so that the l2 node can understand them
 - implement a very basic secret sharing protocol
+
+- use "gauge" instead of stats
+- introduce event feeds
+- create a Blockchain structure
 
 ----
 - analyse the pobi round - some inefficient state recalculation for the rollups

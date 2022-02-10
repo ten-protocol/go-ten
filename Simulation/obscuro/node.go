@@ -91,7 +91,8 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	}
 
 	if !result.processed {
-		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", a.Id, blocks[len(blocks)-1].DecodeBlock().RootHash.ID()))
+		b := blocks[len(blocks)-1].DecodeBlock()
+		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%s", a.Id, common.Str(b.Hash())))
 		return
 	}
 	a.l2Network.BroadcastRollup(result.rollup)

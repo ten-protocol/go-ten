@@ -21,5 +21,5 @@ func printBlock(b common.Block, m ethereum_mock.Node) string {
 	if !f {
 		panic("wtf")
 	}
-	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[p=b_%d]. Txs: %v", m.Id, b.RootHash.ID(), b.Height, b.Nonce, p.RootHash.ID(), txs)
+	return fmt.Sprintf("> M%d: create b_%s(Height=%d, Nonce=%d)[p=b_%s]. Txs: %v", m.Id, common.Str(b.Hash()), b.Height(m.Resolver), b.Header.Nonce, common.Str(p.Hash()), txs)
 }

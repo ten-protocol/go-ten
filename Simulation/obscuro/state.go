@@ -98,25 +98,25 @@ func emptyState() State {
 func updateState(b common.Block, db Db) BlockState {
 
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
-	val, found := db.FetchState(b.RootHash)
+	val, found := db.FetchState(b.Hash())
 	if found {
 		return val
 	}
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if b.RootHash == common.GenesisBlock.RootHash {
+	if b.Hash() == common.GenesisBlock.Hash() {
 		bs := BlockState{
 			Block:          b,
 			Head:           GenesisRollup,
 			State:          emptyState(),
 			foundNewRollup: true,
 		}
-		db.SetState(b.RootHash, bs)
+		db.SetState(b.Hash(), bs)
 		return bs
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
-	parentState, parentFound := db.FetchState(b.ParentHash)
+	parentState, parentFound := db.FetchState(b.Header.ParentHash)
 	if !parentFound {
 		// go back and calculate the State of the Parent
 		p, f := b.Parent(db)
@@ -128,7 +128,7 @@ func updateState(b common.Block, db Db) BlockState {
 
 	bs := calculateBlockState(b, parentState, db)
 
-	db.SetState(b.RootHash, bs)
+	db.SetState(b.Hash(), bs)
 
 	return bs
 }
@@ -184,11 +184,11 @@ func findRoundWinner(receivedRollups []Rollup, parent Rollup, parentState State,
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
 func processDeposits(fromBlock *common.Block, toBlock common.Block, s RollupState, db Db) RollupState {
-	from := common.GenesisBlock.RootHash
-	height := common.GenesisHeight
+	from := common.GenesisBlock.Hash()
+	height := common.L1GenesisHeight
 	if fromBlock != nil {
-		from = fromBlock.RootHash
-		height = fromBlock.Height
+		from = fromBlock.Hash()
+		height = fromBlock.Height(db)
 		if !common.IsAncestor(*fromBlock, toBlock, db) {
 			panic("wtf")
 		}
@@ -197,7 +197,7 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s RollupStat
 
 	b := toBlock
 	for {
-		if b.RootHash == from {
+		if b.Hash() == from {
 			break
 		}
 		for _, tx := range b.Transactions {
@@ -211,7 +211,7 @@ func processDeposits(fromBlock *common.Block, toBlock common.Block, s RollupStat
 				}
 			}
 		}
-		if b.Height < height {
+		if b.Height(db) < height {
 			panic("something went wrong")
 		}
 		p, f := b.Parent(db)

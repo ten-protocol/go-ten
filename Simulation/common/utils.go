@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/google/uuid"
 	"math"
@@ -109,4 +110,8 @@ func FindTxDups(list []L1Tx) map[TxHash]int {
 		}
 	}
 	return dups
+}
+
+func Str(hash L1RootHash) string {
+	return hex.EncodeToString(hash.Bytes())
 }

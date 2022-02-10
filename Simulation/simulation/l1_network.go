@@ -24,7 +24,7 @@ func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlo
 	}
 	bl, _ := b.Decode()
 	for _, m := range n.nodes {
-		if m.Id != bl.Miner {
+		if m.Id != bl.Header.Miner {
 			t := m
 			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {

@@ -14,7 +14,7 @@ type Stats struct {
 	avgLatency       uint64
 	gossipPeriod     uint64
 
-	l1Height      uint32
+	l1Height      int
 	totalL1Blocks int
 
 	l2Height           uint32
@@ -62,7 +62,7 @@ func (s *Stats) L2Recalc(id common.NodeId) {
 
 func (s *Stats) NewBlock(b common.Block) {
 	s.statsMu.Lock()
-	s.l1Height = common.MaxInt(s.l1Height, b.Height)
+	//s.l1Height = common.MaxInt(s.l1Height, b.Height)
 	s.totalL1Blocks++
 	s.maxRollupsPerBlock = common.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions)))
 	if len(b.Transactions) == 0 {

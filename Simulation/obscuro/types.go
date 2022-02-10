@@ -13,11 +13,11 @@ type EncodedL2Tx []byte
 type Rollup struct {
 	// header
 	Height       uint32
-	RootHash     common.RootHash
+	RootHash     common.L2RootHash
 	Agg          common.NodeId
-	ParentHash   common.RootHash
+	ParentHash   common.L2RootHash
 	CreationTime time.Time
-	L1Proof      common.RootHash // the L1 block where the Parent was published
+	L1Proof      common.L1RootHash // the L1 block where the Parent was published
 	Nonce        common.Nonce
 	State        StateRoot
 	Withdrawals  []Withdrawal
@@ -62,18 +62,18 @@ func (r Rollup) Proof(l1BlockResolver common.BlockResolver) common.Block {
 
 // ProofHeight - return the height of the L1 proof, or 0 - if the block is not known
 //todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r Rollup) ProofHeight(l1BlockResolver common.BlockResolver) uint32 {
+func (r Rollup) ProofHeight(l1BlockResolver common.BlockResolver) int {
 	v, f := l1BlockResolver.Resolve(r.L1Proof)
 	if !f {
 		return 0
 	}
-	return v.Height
+	return v.Height(l1BlockResolver)
 }
 
 func NewRollup(b *common.Block, parent *Rollup, a common.NodeId, txs []L2Tx, withdrawals []Withdrawal, nonce common.Nonce, state StateRoot) Rollup {
 	rootHash := uuid.New()
 	parentHash := rootHash
-	height := common.GenesisHeight
+	height := common.L2GenesisHeight
 	if parent != nil {
 		parentHash = parent.RootHash
 		height = parent.Height + 1
@@ -84,7 +84,7 @@ func NewRollup(b *common.Block, parent *Rollup, a common.NodeId, txs []L2Tx, wit
 		Agg:          a,
 		ParentHash:   parentHash,
 		CreationTime: time.Now(),
-		L1Proof:      b.RootHash,
+		L1Proof:      b.Hash(),
 		Nonce:        nonce,
 		State:        state,
 		Withdrawals:  withdrawals,
