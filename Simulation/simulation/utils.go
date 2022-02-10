@@ -7,12 +7,13 @@ import (
 	"simulation/obscuro"
 )
 
-func printBlock(b common.Block, m ethereum_mock.Node) string {
+func printBlock(b *common.Block, m ethereum_mock.Node) string {
 	// This is just for printing
 	var txs []string
 	for _, tx := range b.Transactions {
 		if tx.TxType == common.RollupTx {
-			txs = append(txs, fmt.Sprintf("r_%d", obscuro.DecodeRollup(tx.Rollup).RootHash.ID()))
+			r := obscuro.DecodeRollup(tx.Rollup)
+			txs = append(txs, fmt.Sprintf("r_%s", common.Str(r.Hash())))
 		} else {
 			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.Dest, tx.Amount))
 		}

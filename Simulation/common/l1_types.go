@@ -63,7 +63,6 @@ type EncodedBlock []byte
 const GenesisHash = "0000000000000000000000000000000000000000000000000000000000000000"
 
 func NewBlock(parent *Block, nonce uint64, m NodeId, txs []*L1Tx) Block {
-	//rootHash := uuid.New()
 	var parentHash = common.HexToHash(GenesisHash)
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -145,14 +144,14 @@ func (b Block) EncodeRLP(w io.Writer) error {
 }
 
 func (b *Block) Height(resolver BlockResolver) int {
-	if b.Hash() == GenesisBlock.Hash() {
-		b.height.Store(L1GenesisHeight)
-		return 0
-	}
-
 	if height := b.height.Load(); height != nil {
 		return height.(int)
 	}
+	if b.Hash() == GenesisBlock.Hash() {
+		b.height.Store(L1GenesisHeight)
+		return L1GenesisHeight
+	}
+
 	p, f := b.Parent(resolver)
 	if !f {
 		panic("wtf")

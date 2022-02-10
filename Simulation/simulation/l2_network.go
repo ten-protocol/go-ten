@@ -16,7 +16,7 @@ type L2NetworkCfg struct {
 func (c *L2NetworkCfg) BroadcastRollup(r common.EncodedRollup) {
 	for _, a := range c.nodes {
 		rol := obscuro.DecodeRollup(r)
-		if a.Id != rol.Agg {
+		if a.Id != rol.Header.Agg {
 			t := a
 			common.Schedule(c.delay(), func() { t.P2PGossipRollup(r) })
 		}

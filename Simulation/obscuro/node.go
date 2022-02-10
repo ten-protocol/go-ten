@@ -22,8 +22,8 @@ type L2Network interface {
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.NodeId)
-	NewBlock(block common.Block)
-	NewRollup(rollup Rollup)
+	NewBlock(block *common.Block)
+	NewRollup(rollup *Rollup)
 	RollupWithMoreRecentProof()
 }
 
@@ -47,6 +47,8 @@ type Node struct {
 	blockRpcCh chan common.EncodedBlock
 	forkRpcCh  chan []common.EncodedBlock
 
+	rollupsP2pCh chan common.EncodedRollup
+
 	// Interface to the logic running inside the TEE
 	Enclave Enclave
 }
@@ -56,6 +58,7 @@ func (a *Node) Start() {
 	i := int32(0)
 	var interrupt = &i
 
+	a.Enclave.SubmitRollup(encodedGenesis)
 	go a.Enclave.Start()
 
 	// Main loop - Listen for notifications From the L1 node and process them
@@ -69,6 +72,9 @@ func (a *Node) Start() {
 		case f := <-a.forkRpcCh:
 			interrupt = sendInterrupt(interrupt)
 			a.processBlocks(f, interrupt)
+
+		case r := <-a.rollupsP2pCh:
+			go a.Enclave.SubmitRollup(r)
 
 		case <-a.exitNodeCh:
 			a.Enclave.Stop()
@@ -137,7 +143,7 @@ func (a *Node) P2PGossipRollup(r common.EncodedRollup) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	go a.Enclave.SubmitRollup(r)
+	a.rollupsP2pCh <- r
 }
 
 func (a *Node) P2PReceiveTx(tx EncodedL2Tx) {
@@ -175,8 +181,9 @@ func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Netwo
 		interrupt:  new(int32),
 
 		// incoming data
-		blockRpcCh: make(chan common.EncodedBlock),
-		forkRpcCh:  make(chan []common.EncodedBlock),
+		blockRpcCh:   make(chan common.EncodedBlock),
+		forkRpcCh:    make(chan []common.EncodedBlock),
+		rollupsP2pCh: make(chan common.EncodedRollup),
 
 		// State processing
 		Enclave: NewEnclave(id, true, collector),

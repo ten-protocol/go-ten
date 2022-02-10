@@ -17,7 +17,7 @@ type Stats struct {
 	l1Height      int
 	totalL1Blocks int
 
-	l2Height           uint32
+	l2Height           int
 	totalL2Blocks      int
 	l2Head             *obscuro.Rollup
 	maxRollupsPerBlock uint32
@@ -60,7 +60,7 @@ func (s *Stats) L2Recalc(id common.NodeId) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewBlock(b common.Block) {
+func (s *Stats) NewBlock(b *common.Block) {
 	s.statsMu.Lock()
 	//s.l1Height = common.MaxInt(s.l1Height, b.Height)
 	s.totalL1Blocks++
@@ -71,10 +71,9 @@ func (s *Stats) NewBlock(b common.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(r obscuro.Rollup) {
+func (s *Stats) NewRollup(r *obscuro.Rollup) {
 	s.statsMu.Lock()
-	s.l2Height = common.MaxInt(s.l2Height, r.Height)
-	s.l2Head = &r
+	s.l2Head = r
 	s.totalL2Blocks++
 	s.totalL2Txs += len(r.Transactions)
 	s.statsMu.Unlock()

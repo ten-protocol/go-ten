@@ -6,10 +6,10 @@ func (b Block) Encode() (EncodedBlock, error) {
 	return rlp.EncodeToBytes(b)
 }
 
-func (b EncodedBlock) Decode() (Block, error) {
+func (b EncodedBlock) Decode() (*Block, error) {
 	bl := Block{}
 	err := rlp.DecodeBytes(b, &bl)
-	return bl, err
+	return &bl, err
 }
 
 func (b Block) EncodeBlock() EncodedBlock {
@@ -20,7 +20,7 @@ func (b Block) EncodeBlock() EncodedBlock {
 	return encoded
 }
 
-func (block EncodedBlock) DecodeBlock() Block {
+func (block EncodedBlock) DecodeBlock() *Block {
 	b, err := block.Decode()
 	if err != nil {
 		panic(err)

@@ -24,8 +24,8 @@ type MiningConfig struct {
 }
 
 type TxDb interface {
-	Txs(block common.Block) (map[common.TxHash]*common.L1Tx, bool)
-	AddTxs(common.Block, map[common.TxHash]*common.L1Tx)
+	Txs(block *common.Block) (map[common.TxHash]*common.L1Tx, bool)
+	AddTxs(*common.Block, map[common.TxHash]*common.L1Tx)
 }
 
 type StatsCollector interface {
@@ -48,10 +48,10 @@ type Node struct {
 	exitMiningCh chan bool // the mining loop is notified to stop
 	interrupt    *int32
 
-	p2pCh       chan common.Block // this is where blocks received from peers are dropped
-	miningCh    chan common.Block // this is where blocks created by the mining setup of the current node are dropped
-	canonicalCh chan common.Block // this is where the main processing routine drops blocks that are canonical
-	mempoolCh   chan common.L1Tx  // where l1 transactions to be published in the next block are added
+	p2pCh       chan *common.Block // this is where blocks received from peers are dropped
+	miningCh    chan *common.Block // this is where blocks created by the mining setup of the current node are dropped
+	canonicalCh chan *common.Block // this is where the main processing routine drops blocks that are canonical
+	mempoolCh   chan common.L1Tx   // where l1 transactions to be published in the next block are added
 }
 
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
@@ -62,8 +62,8 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	var head = m.setHead(common.GenesisBlock)
-	m.Resolver.Store(common.GenesisBlock)
+	var head = m.setHead(&common.GenesisBlock)
+	m.Resolver.Store(&common.GenesisBlock)
 
 	for {
 		select {
@@ -87,7 +87,7 @@ func (m *Node) Start() {
 	}
 }
 
-func (m *Node) processBlock(b common.Block, head common.Block) common.Block {
+func (m *Node) processBlock(b *common.Block, head *common.Block) *common.Block {
 	m.Resolver.Store(b)
 	_, f := m.Resolver.Resolve(b.Header.ParentHash)
 	// only proceed if the parent is available
@@ -110,7 +110,7 @@ func (m *Node) processBlock(b common.Block, head common.Block) common.Block {
 }
 
 // Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
-func (m *Node) setHead(b common.Block) common.Block {
+func (m *Node) setHead(b *common.Block) *common.Block {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return b
 	}
@@ -123,7 +123,7 @@ func (m *Node) setHead(b common.Block) common.Block {
 	return b
 }
 
-func (m *Node) setFork(blocks []common.Block) common.Block {
+func (m *Node) setFork(blocks []*common.Block) *common.Block {
 	h := blocks[len(blocks)-1]
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return h
@@ -185,7 +185,8 @@ func (m *Node) startMining() {
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				m.miningCh <- common.NewBlock(&cb, nonce, m.Id, toInclude)
+				b := common.NewBlock(cb, nonce, m.Id, toInclude)
+				m.miningCh <- &b
 			})
 		}
 	}
@@ -230,8 +231,8 @@ func NewMiner(id common.NodeId, cfg MiningConfig, client NotifyNewBlock, network
 		exitCh:       make(chan bool),
 		exitMiningCh: make(chan bool),
 		interrupt:    new(int32),
-		p2pCh:        make(chan common.Block),
-		miningCh:     make(chan common.Block),
-		canonicalCh:  make(chan common.Block),
+		p2pCh:        make(chan *common.Block),
+		miningCh:     make(chan *common.Block),
+		canonicalCh:  make(chan *common.Block),
 		mempoolCh:    make(chan common.L1Tx)}
 }

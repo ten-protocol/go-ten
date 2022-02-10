@@ -62,7 +62,7 @@ func TestSerialiseRollup(t *testing.T) {
 	if err2 != nil {
 		panic(err2)
 	}
-	if r1.RootHash != rollup.RootHash {
+	if r1.Hash() != rollup.Hash() {
 		t.Errorf("rollup deserialized incorrectly\n")
 	}
 	if r1.Transactions[0].Id != rollup.Transactions[0].Id {
@@ -95,7 +95,7 @@ func TestSerialiseBlock(t *testing.T) {
 	if err2 != nil {
 		panic(err2)
 	}
-	if b1.RootHash != block.RootHash {
+	if b1.Hash() != block.Hash() {
 		t.Errorf("block deserialized incorrectly\n")
 	}
 	if b1.Transactions[0].Id != block.Transactions[0].Id {
@@ -128,7 +128,7 @@ func TestPlay(t *testing.T) {
 	if err2 != nil {
 		panic(err2)
 	}
-	if b1.RootHash != block.RootHash {
+	if b1.Hash() != block.Hash() {
 		t.Errorf("block deserialized incorrectly\n")
 	}
 	if b1.Transactions[0].Id != block.Transactions[0].Id {

@@ -10,25 +10,25 @@ type Db interface {
 	FetchState(hash common.L1RootHash) (BlockState, bool)
 	SetState(hash common.L1RootHash, state BlockState)
 
-	FetchRollup(hash common.L2RootHash) Rollup
+	FetchRollup(hash common.L2RootHash) *Rollup
 	FetchRollupState(hash common.L2RootHash) State
 	SetRollupState(hash common.L2RootHash, state State)
 
 	Head() BlockState
 	Balance(address common.Address) uint64
 
-	FetchRollups(height uint32) []Rollup
-	StoreRollup(height uint32, rollup Rollup)
+	FetchRollups(height int) []*Rollup
+	StoreRollup(rollup *Rollup)
 
 	FetchTxs() []L2Tx
 	StoreTx(tx L2Tx)
 	PruneTxs(remove map[common.TxHash]common.TxHash)
 
-	Resolve(hash common.L1RootHash) (common.Block, bool)
-	Store(node common.Block)
+	Resolve(hash common.L1RootHash) (*common.Block, bool)
+	Store(node *common.Block)
 
-	Txs(block Rollup) (map[common.TxHash]L2Tx, bool)
-	AddTxs(Rollup, map[common.TxHash]L2Tx)
+	Txs(r *Rollup) (map[common.TxHash]L2Tx, bool)
+	AddTxs(*Rollup, map[common.TxHash]L2Tx)
 }
 
 type InMemoryDb struct {
@@ -38,13 +38,13 @@ type InMemoryDb struct {
 	headBlock      common.L1RootHash
 	stateMutex     sync.RWMutex
 
-	rollupsByHeight map[uint32][]Rollup // todo encoded
-	rollups         map[common.L2RootHash]Rollup
+	rollupsByHeight map[int][]*Rollup // todo encoded
+	rollups         map[common.L2RootHash]*Rollup
 
 	mempool map[common.TxHash]L2Tx
 	mpMutex sync.RWMutex
 
-	blockCache map[common.L1RootHash]common.Block
+	blockCache map[common.L1RootHash]*common.Block
 	blockM     sync.RWMutex
 
 	transactionsPerBlockCache map[common.L2RootHash]map[common.TxHash]L2Tx
@@ -55,12 +55,12 @@ func NewInMemoryDb() Db {
 	return &InMemoryDb{
 		statePerBlock:             make(map[common.L1RootHash]BlockState),
 		stateMutex:                sync.RWMutex{},
-		rollupsByHeight:           make(map[uint32][]Rollup),
-		rollups:                   make(map[common.TxHash]Rollup),
+		rollupsByHeight:           make(map[int][]*Rollup),
+		rollups:                   make(map[common.L2RootHash]*Rollup),
 		mempool:                   make(map[common.TxHash]L2Tx),
 		mpMutex:                   sync.RWMutex{},
 		statePerRollup:            make(map[common.L2RootHash]State),
-		blockCache:                map[common.L1RootHash]common.Block{},
+		blockCache:                map[common.L1RootHash]*common.Block{},
 		blockM:                    sync.RWMutex{},
 		transactionsPerBlockCache: make(map[common.L2RootHash]map[common.TxHash]L2Tx),
 		txM:                       sync.RWMutex{},
@@ -80,8 +80,8 @@ func (db *InMemoryDb) SetState(hash common.L1RootHash, state BlockState) {
 	db.statePerBlock[hash] = state
 	// todo - move this logic outside
 	if state.foundNewRollup {
-		db.rollups[state.Head.RootHash] = state.Head
-		db.statePerRollup[state.Head.RootHash] = state.State
+		db.rollups[state.Head.Hash()] = state.Head
+		db.statePerRollup[state.Head.Hash()] = state.State
 	}
 
 	// todo - is there any other logic here?
@@ -103,24 +103,30 @@ func (db *InMemoryDb) Balance(address common.Address) uint64 {
 	return db.Head().State[address]
 }
 
-func (db *InMemoryDb) StoreRollup(height uint32, rollup Rollup) {
+func (db *InMemoryDb) StoreRollup(rollup *Rollup) {
+	height := rollup.Height(db)
+
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
-	db.rollups[rollup.RootHash] = rollup
+	db.rollups[rollup.Hash()] = rollup
 	val, found := db.rollupsByHeight[height]
 	if found {
 		db.rollupsByHeight[height] = append(val, rollup)
 	} else {
-		db.rollupsByHeight[height] = []Rollup{rollup}
+		db.rollupsByHeight[height] = []*Rollup{rollup}
 	}
 }
-func (db *InMemoryDb) FetchRollup(hash common.L2RootHash) Rollup {
+func (db *InMemoryDb) FetchRollup(hash common.L2RootHash) *Rollup {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
-	return db.rollups[hash]
+	r, f := db.rollups[hash]
+	if !f {
+		panic("wtf")
+	}
+	return r
 }
 
-func (db *InMemoryDb) FetchRollups(height uint32) []Rollup {
+func (db *InMemoryDb) FetchRollups(height int) []*Rollup {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	return db.rollupsByHeight[height]
@@ -165,28 +171,28 @@ func (db *InMemoryDb) PruneTxs(toRemove map[common.TxHash]common.TxHash) {
 	db.mempool = r
 }
 
-func (db *InMemoryDb) Store(node common.Block) {
+func (db *InMemoryDb) Store(node *common.Block) {
 	db.blockM.Lock()
 	db.blockCache[node.Hash()] = node
 	db.blockM.Unlock()
 }
 
-func (db *InMemoryDb) Resolve(hash common.L1RootHash) (common.Block, bool) {
+func (db *InMemoryDb) Resolve(hash common.L1RootHash) (*common.Block, bool) {
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	v, f := db.blockCache[hash]
 	return v, f
 }
 
-func (db *InMemoryDb) Txs(b Rollup) (map[common.TxHash]L2Tx, bool) {
+func (db *InMemoryDb) Txs(r *Rollup) (map[common.TxHash]L2Tx, bool) {
 	db.txM.RLock()
-	val, found := db.transactionsPerBlockCache[b.RootHash]
+	val, found := db.transactionsPerBlockCache[r.Hash()]
 	db.txM.RUnlock()
 	return val, found
 }
 
-func (db *InMemoryDb) AddTxs(b Rollup, newMap map[common.TxHash]L2Tx) {
+func (db *InMemoryDb) AddTxs(r *Rollup, newMap map[common.TxHash]L2Tx) {
 	db.txM.Lock()
-	db.transactionsPerBlockCache[b.RootHash] = newMap
+	db.transactionsPerBlockCache[r.Hash()] = newMap
 	db.txM.Unlock()
 }

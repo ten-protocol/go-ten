@@ -89,6 +89,30 @@ func FindDups(list []uuid.UUID) map[uuid.UUID]int {
 	return dups
 }
 
+// FindDups - returns a map of all elements that appear multiple times, and how many times
+func FindRollupDups(list []L2RootHash) map[L2RootHash]int {
+
+	elementCount := make(map[L2RootHash]int)
+
+	for _, item := range list {
+		// check if the item/element exist in the duplicate_frequency map
+		_, exist := elementCount[item]
+		if exist {
+			elementCount[item] += 1 // increase counter by 1 if already in the map
+		} else {
+			elementCount[item] = 1 // else start counting from 1
+		}
+	}
+	dups := make(map[L2RootHash]int)
+	for u, i := range elementCount {
+		if i > 1 {
+			dups[u] = i
+			fmt.Printf("Dup: %d\n", u)
+		}
+	}
+	return dups
+}
+
 func FindTxDups(list []L1Tx) map[TxHash]int {
 
 	elementCount := make(map[TxHash]int)

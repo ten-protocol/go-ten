@@ -5,7 +5,7 @@ import (
 )
 
 //LCA - returns the least common ancestor of the 2 blocks
-func LCA(a common.Block, b common.Block, r common.BlockResolver) common.Block {
+func LCA(a *common.Block, b *common.Block, r common.BlockResolver) *common.Block {
 	if a.Height(r) == common.L1GenesisHeight || b.Height(r) == common.L1GenesisHeight {
 		return a
 	}
@@ -41,12 +41,12 @@ func LCA(a common.Block, b common.Block, r common.BlockResolver) common.Block {
 
 //findNotIncludedTxs - given a list of transactions, it keeps only the ones that were not included in the block
 //todo - inefficient
-func findNotIncludedTxs(head common.Block, txs []*common.L1Tx, r common.BlockResolver, db TxDb) []*common.L1Tx {
+func findNotIncludedTxs(head *common.Block, txs []*common.L1Tx, r common.BlockResolver, db TxDb) []*common.L1Tx {
 	included := allIncludedTransactions(head, r, db)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b common.Block, r common.BlockResolver, db TxDb) map[common.TxHash]*common.L1Tx {
+func allIncludedTransactions(b *common.Block, r common.BlockResolver, db TxDb) map[common.TxHash]*common.L1Tx {
 	val, found := db.Txs(b)
 	if found {
 		return val
@@ -88,8 +88,8 @@ func makeMap(txs []*common.L1Tx) map[common.TxHash]*common.L1Tx {
 }
 
 // excludes a
-func BlocksBetween(a common.Block, b common.Block, r common.BlockResolver) []common.Block {
-	blocks := make([]common.Block, 0)
+func BlocksBetween(a *common.Block, b *common.Block, r common.BlockResolver) []*common.Block {
+	blocks := make([]*common.Block, 0)
 	c := b
 	f := false
 	for {
@@ -103,7 +103,7 @@ func BlocksBetween(a common.Block, b common.Block, r common.BlockResolver) []com
 		}
 	}
 	n := len(blocks)
-	result := make([]common.Block, n)
+	result := make([]*common.Block, n)
 	for i, block := range blocks {
 		result[n-i-1] = block
 	}
