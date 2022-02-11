@@ -1,4 +1,4 @@
-package enclave
+package common
 
 import (
 	c "github.com/ethereum/go-ethereum/common"
@@ -36,7 +36,7 @@ type Rollup struct {
 	Header *Header
 
 	hash   atomic.Value
-	height atomic.Value
+	Height atomic.Value
 	size   atomic.Value
 
 	Transactions Transactions
@@ -187,17 +187,4 @@ func (b *Rollup) DecodeRLP(s *rlp.Stream) error {
 // EncodeRLP serializes b into the Ethereum RLP block format.
 func (b Rollup) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, b.ToExtRollup())
-}
-
-func (b *Rollup) Height(db Db) int {
-	if height := b.height.Load(); height != nil {
-		return height.(int)
-	}
-	if b.Hash() == GenesisRollup.Hash() {
-		b.height.Store(common.L2GenesisHeight)
-		return common.L2GenesisHeight
-	}
-	v := b.Parent(db).Height(db) + 1
-	b.height.Store(v)
-	return v
 }

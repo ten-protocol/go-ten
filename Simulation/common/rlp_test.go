@@ -3,16 +3,16 @@ package common
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
-	"simulation/obscuro/enclave"
+	"simulation/obscuro/common"
 	wallet_mock "simulation/wallet-mock"
 	"testing"
 	"time"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := enclave.L2Tx{
+	tx := common.L2Tx{
 		Id:     uuid.New(),
-		TxType: enclave.TransferTx,
+		TxType: common.TransferTx,
 		Amount: 100,
 		From:   wallet_mock.New().Address,
 		To:     wallet_mock.New().Address,
@@ -21,7 +21,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	tx1 := enclave.L2Tx{}
+	tx1 := common.L2Tx{}
 	err2 := rlp.DecodeBytes(bytes, &tx1)
 	if err2 != nil {
 		panic(err2)
@@ -32,14 +32,14 @@ func TestSerialiseL2Tx(t *testing.T) {
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := enclave.L2Tx{
+	tx := common.L2Tx{
 		Id:     uuid.New(),
-		TxType: enclave.TransferTx,
+		TxType: common.TransferTx,
 		Amount: 100,
 		From:   wallet_mock.New().Address,
 		To:     wallet_mock.New().Address,
 	}
-	rollup := enclave.Rollup{
+	rollup := common.Rollup{
 		Height:       1,
 		RootHash:     uuid.New(),
 		Agg:          1,
@@ -49,13 +49,13 @@ func TestSerialiseRollup(t *testing.T) {
 		Nonce:        100,
 		State:        "",
 		Withdrawals:  nil,
-		Transactions: []enclave.L2Tx{tx},
+		Transactions: []common.L2Tx{tx},
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
 		panic(err)
 	}
-	r1 := enclave.Rollup{}
+	r1 := common.Rollup{}
 
 	err2 := rlp.Decode(read, &r1)
 

@@ -7,7 +7,7 @@ import (
 	"simulation/common"
 	"simulation/ethereum-mock"
 	"simulation/obscuro"
-	"simulation/obscuro/enclave"
+	common2 "simulation/obscuro/common"
 	"simulation/wallet-mock"
 	"time"
 )
@@ -50,12 +50,12 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	}
 
 	common.Log(fmt.Sprintf("Genesis block: b_%s.", common.Str(common.GenesisBlock.Hash())))
-	common.Log(fmt.Sprintf("Genesis rollup: r_%s.", common.Str(enclave.GenesisRollup.Hash())))
+	common.Log(fmt.Sprintf("Genesis rollup: r_%s.", common.Str(common2.GenesisRollup.Hash())))
 
 	l1Network.Start(common.Duration(avgBlockDuration / 4))
 
 	// publish the genesis rollup before the l2 nodes are started
-	tx, _ := enclave.GenesisTx.Encode()
+	tx, _ := common2.GenesisTx.Encode()
 	l1Network.BroadcastTx(tx)
 
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
@@ -117,9 +117,9 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro.L2Net
 		if f == t {
 			continue
 		}
-		tx := enclave.L2Tx{
+		tx := common2.L2Tx{
 			Id:     uuid.New(),
-			TxType: enclave.TransferTx,
+			TxType: common2.TransferTx,
 			Amount: common.RndBtw(1, 500),
 			From:   f,
 			To:     t,
@@ -169,10 +169,10 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro.L2Net
 	}
 }
 
-func withdrawal(wallet wallet_mock.Wallet, amount uint64) enclave.L2Tx {
-	return enclave.L2Tx{
+func withdrawal(wallet wallet_mock.Wallet, amount uint64) common2.L2Tx {
+	return common2.L2Tx{
 		Id:     uuid.New(),
-		TxType: enclave.WithdrawalTx,
+		TxType: common2.WithdrawalTx,
 		Amount: amount,
 		From:   wallet.Address,
 	}

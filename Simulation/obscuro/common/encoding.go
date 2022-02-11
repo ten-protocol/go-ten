@@ -1,4 +1,4 @@
-package enclave
+package common
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"

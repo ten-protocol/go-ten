@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"simulation/common"
 	ethereum_mock "simulation/ethereum-mock"
-	"simulation/obscuro/enclave"
+	common2 "simulation/obscuro/common"
 )
 
 func printBlock(b *common.Block, m ethereum_mock.Node) string {
@@ -12,7 +12,7 @@ func printBlock(b *common.Block, m ethereum_mock.Node) string {
 	var txs []string
 	for _, tx := range b.Transactions {
 		if tx.TxType == common.RollupTx {
-			r := enclave.DecodeRollup(tx.Rollup)
+			r := common2.DecodeRollup(tx.Rollup)
 			txs = append(txs, fmt.Sprintf("r_%s", common.Str(r.Hash())))
 		} else {
 			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.Dest, tx.Amount))

@@ -2,7 +2,7 @@ package simulation
 
 import (
 	"simulation/common"
-	"simulation/obscuro/enclave"
+	common2 "simulation/obscuro/common"
 	"sync"
 )
 
@@ -19,7 +19,7 @@ type Stats struct {
 
 	l2Height           int
 	totalL2Blocks      int
-	l2Head             *enclave.Rollup
+	l2Head             *common2.Rollup
 	maxRollupsPerBlock uint32
 	nrEmptyBlocks      int
 
@@ -71,7 +71,7 @@ func (s *Stats) NewBlock(b *common.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(r *enclave.Rollup) {
+func (s *Stats) NewRollup(r *common2.Rollup) {
 	s.statsMu.Lock()
 	s.l2Head = r
 	s.totalL2Blocks++
