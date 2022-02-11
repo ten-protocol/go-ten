@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"simulation/common"
 	"simulation/ethereum-mock"
+	"simulation/obscuro/enclave"
 	"sync/atomic"
 	"time"
 )
@@ -16,14 +17,14 @@ type AggregatorCfg struct {
 
 type L2Network interface {
 	BroadcastRollup(r common.EncodedRollup)
-	BroadcastTx(tx EncodedL2Tx)
+	BroadcastTx(tx enclave.EncodedL2Tx)
 }
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.NodeId)
 	NewBlock(block *common.Block)
-	NewRollup(rollup *Rollup)
+	NewRollup(rollup *enclave.Rollup)
 	RollupWithMoreRecentProof()
 }
 
@@ -50,7 +51,7 @@ type Node struct {
 	rollupsP2pCh chan common.EncodedRollup
 
 	// Interface to the logic running inside the TEE
-	Enclave Enclave
+	Enclave enclave.Enclave
 }
 
 func (a *Node) Start() {
@@ -58,7 +59,12 @@ func (a *Node) Start() {
 	i := int32(0)
 	var interrupt = &i
 
-	a.Enclave.SubmitRollup(encodedGenesis)
+	// todo - get rid of this
+	a.Enclave.SubmitRollup(enclave.ExtRollup{
+		Header: enclave.GenesisRollup.Header,
+		Txs:    enclave.GenesisRollup.Transactions,
+	})
+
 	go a.Enclave.Start()
 
 	// Main loop - Listen for notifications From the L1 node and process them
@@ -74,7 +80,11 @@ func (a *Node) Start() {
 			a.processBlocks(f, interrupt)
 
 		case r := <-a.rollupsP2pCh:
-			go a.Enclave.SubmitRollup(r)
+			rol, _ := enclave.Decode(r)
+			go a.Enclave.SubmitRollup(enclave.ExtRollup{
+				Header: rol.Header,
+				Txs:    rol.Transactions,
+			})
 
 		case <-a.exitNodeCh:
 			a.Enclave.Stop()
@@ -91,26 +101,26 @@ func sendInterrupt(interrupt *int32) *int32 {
 }
 
 func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
-	var result SubmitBlockResponse
+	var result enclave.SubmitBlockResponse
 	for _, block := range blocks {
-		result = a.Enclave.SubmitBlock(block)
+		result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
 	}
 
-	if !result.processed {
+	if !result.Processed {
 		b := blocks[len(blocks)-1].DecodeBlock()
 		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%s", a.Id, common.Str(b.Hash())))
 		return
 	}
-	a.l2Network.BroadcastRollup(result.rollup)
+	a.l2Network.BroadcastRollup(enclave.EncodeRollup(result.Rollup.ToRollup()))
 
 	common.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
 			return
 		}
 		// Request the round winner for the current head
-		winnerRollup, submit := a.Enclave.RoundWinner(result.root)
+		winnerRollup, submit := a.Enclave.RoundWinner(result.Hash)
 		if submit {
-			tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: winnerRollup}
+			tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: enclave.EncodeRollup(winnerRollup.ToRollup())}
 			t, err := tx.Encode()
 			if err != nil {
 				panic(err)
@@ -146,7 +156,7 @@ func (a *Node) P2PGossipRollup(r common.EncodedRollup) {
 	a.rollupsP2pCh <- r
 }
 
-func (a *Node) P2PReceiveTx(tx EncodedL2Tx) {
+func (a *Node) P2PReceiveTx(tx enclave.EncodedL2Tx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
@@ -186,6 +196,6 @@ func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Netwo
 		rollupsP2pCh: make(chan common.EncodedRollup),
 
 		// State processing
-		Enclave: NewEnclave(id, true, collector),
+		Enclave: enclave.NewEnclave(id, true, collector),
 	}
 }

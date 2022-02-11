@@ -1,4 +1,4 @@
-package obscuro
+package enclave
 
 import (
 	"fmt"

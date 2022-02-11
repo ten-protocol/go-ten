@@ -1,6 +1,8 @@
-package obscuro
+package enclave
 
-import "simulation/common"
+import (
+	"simulation/common"
+)
 
 // RollupResolver -database of rollups indexed by the root hash
 type RollupResolver interface {

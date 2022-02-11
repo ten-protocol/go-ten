@@ -3,6 +3,7 @@ package simulation
 import (
 	"simulation/common"
 	"simulation/obscuro"
+	"simulation/obscuro/enclave"
 	"time"
 )
 
@@ -15,7 +16,7 @@ type L2NetworkCfg struct {
 // BroadcastRollup Broadcasts the rollup to all L2 peers
 func (c *L2NetworkCfg) BroadcastRollup(r common.EncodedRollup) {
 	for _, a := range c.nodes {
-		rol := obscuro.DecodeRollup(r)
+		rol := enclave.DecodeRollup(r)
 		if a.Id != rol.Header.Agg {
 			t := a
 			common.Schedule(c.delay(), func() { t.P2PGossipRollup(r) })
@@ -23,7 +24,7 @@ func (c *L2NetworkCfg) BroadcastRollup(r common.EncodedRollup) {
 	}
 }
 
-func (c *L2NetworkCfg) BroadcastTx(tx obscuro.EncodedL2Tx) {
+func (c *L2NetworkCfg) BroadcastTx(tx enclave.EncodedL2Tx) {
 	for _, a := range c.nodes {
 		t := a
 		common.Schedule(c.delay()/2, func() { t.P2PReceiveTx(tx) })

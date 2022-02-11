@@ -8,7 +8,6 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 // Todo - replace these data structures with the actual Ethereum structures from geth
@@ -49,15 +48,14 @@ type Block struct {
 	Header       *Header
 	Transactions Transactions
 
-	// these are actually cached values
-	ReceiveTime time.Time
+	//ReceiveTime time.Time
 
 	hash   atomic.Value
 	height atomic.Value
 	size   atomic.Value
 }
 
-// the encoded version of an extblock
+// the encoded version of an ExtBlock
 type EncodedBlock []byte
 
 const GenesisHash = "0000000000000000000000000000000000000000000000000000000000000000"
@@ -74,7 +72,6 @@ func NewBlock(parent *Block, nonce uint64, m NodeId, txs []*L1Tx) Block {
 	}
 	b := Block{
 		Header:       &h,
-		ReceiveTime:  time.Now(),
 		Transactions: txs,
 	}
 	return b
@@ -83,7 +80,7 @@ func NewBlock(parent *Block, nonce uint64, m NodeId, txs []*L1Tx) Block {
 var GenesisBlock = NewBlock(nil, 0, 0, []*L1Tx{})
 
 // "external" block encoding. used for eth protocol, etc.
-type extblock struct {
+type ExtBlock struct {
 	Header *Header
 	Txs    []*L1Tx
 }
@@ -123,9 +120,22 @@ var hasherPool = sync.Pool{
 	New: func() interface{} { return sha3.NewLegacyKeccak256() },
 }
 
+func (eb ExtBlock) ToBlock() *Block {
+	return &Block{
+		Header:       eb.Header,
+		Transactions: eb.Txs,
+	}
+}
+func (b Block) ToExtBlock() ExtBlock {
+	return ExtBlock{
+		Header: b.Header,
+		Txs:    b.Transactions,
+	}
+}
+
 // DecodeRLP decodes the Ethereum
 func (b *Block) DecodeRLP(s *rlp.Stream) error {
-	var eb extblock
+	var eb ExtBlock
 	_, size, _ := s.Kind()
 	if err := s.Decode(&eb); err != nil {
 		return err
@@ -137,7 +147,7 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 
 // EncodeRLP serializes b into the Ethereum RLP block format.
 func (b Block) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, extblock{
+	return rlp.Encode(w, ExtBlock{
 		Header: b.Header,
 		Txs:    b.Transactions,
 	})

@@ -7,7 +7,7 @@ import (
 	"os"
 	"simulation/common"
 	ethereum_mock "simulation/ethereum-mock"
-	"simulation/obscuro"
+	"simulation/obscuro/enclave"
 	"testing"
 	"time"
 )
@@ -31,14 +31,14 @@ func TestSimulation(t *testing.T) {
 	blockDuration := uint64(20_000)
 	l1netw, l2netw := RunSimulation(5, 15, 15, blockDuration, blockDuration/15, blockDuration/3)
 	firstNode := l2netw.nodes[0]
-	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.Db(), firstNode.Enclave.PeekHead().Head)
+	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.TestDb(), firstNode.Enclave.TestPeekHead().Head)
 	stats := l1netw.Stats
 	fmt.Printf("%+v\n", stats)
 	//pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 
 }
 
-func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db obscuro.Db, r *obscuro.Rollup) {
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave.Db, r *enclave.Rollup) {
 	stats := l1Network.Stats
 	p := r.Proof(db)
 	validateL1(t, p, stats, db)
@@ -53,23 +53,23 @@ const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
 // Sanity check
-func validateL1(t *testing.T, b *common.Block, s *Stats, db obscuro.Db) {
+func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
 	deposits := make([]uuid.UUID, 0)
 	rollups := make([]common.L2RootHash, 0)
 	s.l1Height = b.Height(db)
 	totalDeposited := uint64(0)
 
 	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, b, db)
-	headRollup := &obscuro.GenesisRollup
+	headRollup := &enclave.GenesisRollup
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions {
-			currentRollups := make([]*obscuro.Rollup, 0)
+			currentRollups := make([]*enclave.Rollup, 0)
 			switch tx.TxType {
 			case common.DepositTx:
 				deposits = append(deposits, tx.Id)
 				totalDeposited += tx.Amount
 			case common.RollupTx:
-				r := obscuro.DecodeRollup(tx.Rollup)
+				r := enclave.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if common.IsBlockAncestor(r.Header.L1Proof, b, db) {
 					// only count the rollup if it is published in the right branch
@@ -80,7 +80,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db obscuro.Db) {
 			default:
 				panic("unknown transaction type")
 			}
-			r, _ := obscuro.FindWinner(headRollup, currentRollups, db)
+			r, _ := enclave.FindWinner(headRollup, currentRollups, db)
 			if r != nil {
 				headRollup = r
 			}
@@ -114,20 +114,20 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db obscuro.Db) {
 	}
 }
 
-func validateL2(t *testing.T, r *obscuro.Rollup, s *Stats, db obscuro.Db) uint64 {
+func validateL2(t *testing.T, r *enclave.Rollup, s *Stats, db enclave.Db) uint64 {
 	s.l2Height = r.Height(db)
 	transfers := make([]uuid.UUID, 0)
-	withdrawalTxs := make([]obscuro.L2Tx, 0)
-	withdrawalRequests := make([]obscuro.Withdrawal, 0)
+	withdrawalTxs := make([]enclave.L2Tx, 0)
+	withdrawalRequests := make([]enclave.Withdrawal, 0)
 	for {
 		if r.Height(db) == common.L2GenesisHeight {
 			break
 		}
 		for _, tx := range r.Transactions {
 			switch tx.TxType {
-			case obscuro.TransferTx:
+			case enclave.TransferTx:
 				transfers = append(transfers, tx.Id)
-			case obscuro.WithdrawalTx:
+			case enclave.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
 				panic("Invalid tx type")
@@ -159,7 +159,7 @@ func validateL2(t *testing.T, r *obscuro.Rollup, s *Stats, db obscuro.Db) uint64
 	return sumWithdrawals(withdrawalRequests)
 }
 
-func sumWithdrawals(w []obscuro.Withdrawal) uint64 {
+func sumWithdrawals(w []enclave.Withdrawal) uint64 {
 	sum := uint64(0)
 	for _, r := range w {
 		sum += r.Amount
@@ -167,7 +167,7 @@ func sumWithdrawals(w []obscuro.Withdrawal) uint64 {
 	return sum
 }
 
-func sumWithdrawalTxs(t []obscuro.L2Tx) uint64 {
+func sumWithdrawalTxs(t []enclave.L2Tx) uint64 {
 	sum := uint64(0)
 	for _, r := range t {
 		sum += r.Amount
@@ -181,7 +181,7 @@ func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCf
 	// Check that the state on all nodes is valid
 	for _, observer := range l2Network.nodes {
 		// read the last state
-		lastState := observer.Enclave.PeekHead()
+		lastState := observer.Enclave.TestPeekHead()
 		total := totalBalance(lastState)
 		if total != finalAmount {
 			t.Errorf("The amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", observer.Id, total, finalAmount)
@@ -192,7 +192,7 @@ func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCf
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
 }
 
-func totalBalance(s obscuro.BlockState) uint64 {
+func totalBalance(s enclave.BlockState) uint64 {
 	tot := uint64(0)
 	for _, bal := range s.State {
 		tot += bal

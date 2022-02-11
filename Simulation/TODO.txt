@@ -10,6 +10,8 @@ P - split blocks into header&payload
 
 - introduce basic crypto for transactions
 
+- update the readme
+
 - make publishing to L1 more random (to simulate aggregators failng to publish)
 - bring in core ethereum structures so that the l2 node can understand them
 - implement a very basic secret sharing protocol

@@ -1,4 +1,4 @@
-package obscuro
+package enclave
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
@@ -31,6 +31,7 @@ func EncodeRollup(r *Rollup) common.EncodedRollup {
 	}
 	return encoded
 }
+
 func DecodeRollup(rollup common.EncodedRollup) *Rollup {
 	r, err := Decode(rollup)
 	if err != nil {

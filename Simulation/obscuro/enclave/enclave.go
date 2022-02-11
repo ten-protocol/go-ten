@@ -1,14 +1,21 @@
-package obscuro
+package enclave
 
 import (
 	"fmt"
 	"simulation/common"
 )
 
+type StatsCollector interface {
+	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
+	L2Recalc(id common.NodeId)
+	RollupWithMoreRecentProof()
+}
+
+// The response sent back to the node
 type SubmitBlockResponse struct {
-	root      common.L2RootHash
-	rollup    common.EncodedRollup
-	processed bool
+	Hash      common.L2RootHash
+	Rollup    ExtRollup
+	Processed bool
 }
 
 // Enclave - The actual implementation of this interface will call an rpc service
@@ -17,13 +24,13 @@ type Enclave interface {
 
 	// SubmitBlock - When a new round starts, the host submits a block to the enclave, which responds with a rollup
 	// it is the responsibility of the host to gossip the rollup
-	SubmitBlock(block common.EncodedBlock) SubmitBlockResponse
+	SubmitBlock(block common.ExtBlock) SubmitBlockResponse
 
 	Stop()
 	Start()
 
 	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup common.EncodedRollup)
+	SubmitRollup(rollup ExtRollup)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncodedL2Tx)
@@ -32,13 +39,13 @@ type Enclave interface {
 	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round
-	RoundWinner(parent common.L2RootHash) (common.EncodedRollup, bool)
+	RoundWinner(parent common.L2RootHash) (ExtRollup, bool)
 
-	// PeekHead - only availble for testing purposes
-	PeekHead() BlockState
+	// TestPeekHead - only availble for testing purposes
+	TestPeekHead() BlockState
 
-	// Db - only availble for testing purposes
-	Db() Db
+	// TestDb - only availble for testing purposes
+	TestDb() Db
 }
 
 type enclaveImpl struct {
@@ -102,15 +109,15 @@ func (e *enclaveImpl) Start() {
 	}
 }
 
-func (e *enclaveImpl) SubmitBlock(block common.EncodedBlock) SubmitBlockResponse {
-	b := block.DecodeBlock()
+func (e *enclaveImpl) SubmitBlock(block common.ExtBlock) SubmitBlockResponse {
+	b := block.ToBlock()
 	e.db.Store(b)
 	// this is where much more will actually happen.
 	// the "blockchain" logic from geth has to be executed here, to determine the total proof of work, to verify some key aspects, etc
 
 	_, f := e.db.Resolve(b.Header.ParentHash)
 	if !f && b.Height(e.db) > common.L1GenesisHeight {
-		return SubmitBlockResponse{processed: false}
+		return SubmitBlockResponse{Processed: false}
 	}
 	blockState := updateState(b, e.db)
 
@@ -121,21 +128,24 @@ func (e *enclaveImpl) SubmitBlock(block common.EncodedBlock) SubmitBlockResponse
 		e.db.StoreRollup(r)
 
 		return SubmitBlockResponse{
-			root:      blockState.Head.Hash(),
-			rollup:    EncodeRollup(r),
-			processed: true,
+			Hash:      blockState.Head.Hash(),
+			Rollup:    r.ToExtRollup(),
+			Processed: true,
 		}
 	}
 
 	return SubmitBlockResponse{
-		root:      blockState.Head.Hash(),
-		processed: true,
+		Hash:      blockState.Head.Hash(),
+		Processed: true,
 	}
 }
 
-func (e *enclaveImpl) SubmitRollup(rollup common.EncodedRollup) {
-	r := DecodeRollup(rollup)
-	e.db.StoreRollup(r)
+func (e *enclaveImpl) SubmitRollup(rollup ExtRollup) {
+	r := Rollup{
+		Header:       rollup.Header,
+		Transactions: rollup.Txs,
+	}
+	e.db.StoreRollup(&r)
 }
 
 func (e *enclaveImpl) SubmitTx(tx EncodedL2Tx) {
@@ -144,7 +154,7 @@ func (e *enclaveImpl) SubmitTx(tx EncodedL2Tx) {
 	e.txCh <- t
 }
 
-func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.EncodedRollup, bool) {
+func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (ExtRollup, bool) {
 
 	head := e.db.FetchRollup(parent)
 
@@ -171,9 +181,9 @@ func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.EncodedRollu
 		v := winnerRollup.Proof(e.db)
 		w := winnerRollup.Parent(e.db)
 		common.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.", e.node, common.Str(winnerRollup.Hash()), winnerRollup.Height, common.Str(w.Hash()), common.Str(v.Hash()), printTxs(winnerRollup.Transactions), winnerRollup.Header.State))
-		return EncodeRollup(winnerRollup), true
+		return winnerRollup.ToExtRollup(), true
 	}
-	return nil, false
+	return ExtRollup{}, false
 }
 
 func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
@@ -222,11 +232,11 @@ func (e *enclaveImpl) produceRollup(b *common.Block, bs BlockState) *Rollup {
 	return &r
 }
 
-func (e *enclaveImpl) PeekHead() BlockState {
+func (e *enclaveImpl) TestPeekHead() BlockState {
 	return e.db.Head()
 }
 
-func (e *enclaveImpl) Db() Db {
+func (e *enclaveImpl) TestDb() Db {
 	return e.db
 }
 
