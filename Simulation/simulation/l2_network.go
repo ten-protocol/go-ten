@@ -24,7 +24,7 @@ func (c *L2NetworkCfg) BroadcastRollup(r common.EncodedRollup) {
 	}
 }
 
-func (c *L2NetworkCfg) BroadcastTx(tx common2.EncodedL2Tx) {
+func (c *L2NetworkCfg) BroadcastTx(tx common2.EncryptedTx) {
 	for _, a := range c.nodes {
 		t := a
 		common.Schedule(c.delay()/2, func() { t.P2PReceiveTx(tx) })

@@ -52,6 +52,10 @@ type Node struct {
 	miningCh    chan *common.Block // this is where blocks created by the mining setup of the current node are dropped
 	canonicalCh chan *common.Block // this is where the main processing routine drops blocks that are canonical
 	mempoolCh   chan common.L1Tx   // where l1 transactions to be published in the next block are added
+
+	//internal
+	headInCh  chan bool
+	headOutCh chan *common.Block
 }
 
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
@@ -81,6 +85,8 @@ func (m *Node) Start() {
 				p, _ := mb.Parent(m.Resolver)
 				m.network.BroadcastBlock(mb.EncodeBlock(), p.EncodeBlock())
 			}
+		case <-m.headInCh:
+			m.headOutCh <- head
 		case <-m.exitCh:
 			return
 		}
@@ -117,7 +123,8 @@ func (m *Node) setHead(b *common.Block) *common.Block {
 
 	// notify the clients
 	for _, c := range m.clients {
-		c.RPCNewHead(b.EncodeBlock())
+		t := c
+		go t.RPCNewHead(b.EncodeBlock())
 	}
 	m.canonicalCh <- b
 	return b
@@ -209,6 +216,12 @@ func (m *Node) BroadcastTx(tx common.EncodedL1Tx) {
 	m.network.BroadcastTx(tx)
 }
 
+func (m *Node) RPCBlockchainFeed() []*common.Block {
+	m.headInCh <- true
+	h := <-m.headOutCh
+	return BlocksBetween(&common.GenesisBlock, h, m.Resolver)
+}
+
 func (m *Node) Stop() {
 	//block all requests
 	atomic.StoreInt32(m.interrupt, 1)
@@ -234,5 +247,8 @@ func NewMiner(id common.NodeId, cfg MiningConfig, client NotifyNewBlock, network
 		p2pCh:        make(chan *common.Block),
 		miningCh:     make(chan *common.Block),
 		canonicalCh:  make(chan *common.Block),
-		mempoolCh:    make(chan common.L1Tx)}
+		mempoolCh:    make(chan common.L1Tx),
+		headInCh:     make(chan bool),
+		headOutCh:    make(chan *common.Block),
+	}
 }

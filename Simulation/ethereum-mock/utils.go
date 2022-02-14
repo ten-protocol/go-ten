@@ -87,19 +87,21 @@ func makeMap(txs []*common.L1Tx) map[common.TxHash]*common.L1Tx {
 	return m
 }
 
-// excludes a
 func BlocksBetween(a *common.Block, b *common.Block, r common.BlockResolver) []*common.Block {
+	if a.Hash() == b.Hash() {
+		return []*common.Block{a}
+	}
 	blocks := make([]*common.Block, 0)
 	c := b
 	f := false
 	for {
 		blocks = append(blocks, c)
+		if c.Hash() == a.Hash() {
+			break
+		}
 		c, f = c.Parent(r)
 		if !f {
 			panic("should not happen")
-		}
-		if c.Hash() == a.Hash() {
-			break
 		}
 	}
 	n := len(blocks)

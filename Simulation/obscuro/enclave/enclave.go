@@ -23,24 +23,28 @@ type SubmitBlockResponse struct {
 type Enclave interface {
 	// Todo - attestation, secret generation, etc
 
+	ProduceGenesis() SubmitBlockResponse
+	IngestBlocks(blocks []common.ExtBlock)
+
+	Start(block common.ExtBlock)
+
 	// SubmitBlock - When a new round starts, the host submits a block to the enclave, which responds with a rollup
 	// it is the responsibility of the host to gossip the rollup
 	SubmitBlock(block common.ExtBlock) SubmitBlockResponse
-
-	Stop()
-	Start()
 
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(rollup common2.ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx common2.EncodedL2Tx)
+	SubmitTx(tx common2.EncryptedTx)
 
 	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(parent common.L2RootHash) (common2.ExtRollup, bool)
+
+	Stop()
 
 	// TestPeekHead - only availble for testing purposes
 	TestPeekHead() BlockState
@@ -62,9 +66,14 @@ type enclaveImpl struct {
 	speculativeWorkOutCh chan speculativeWork
 }
 
-func (e *enclaveImpl) Start() {
-	var currentHead *common2.Rollup
-	var currentState RollupState
+func (e *enclaveImpl) Start(block common.ExtBlock) {
+	s, f := e.db.FetchState(block.Header.Hash())
+	if !f {
+		panic("state should be calculated")
+	}
+
+	var currentHead = s.Head
+	var currentState = newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
 	var currentProcessedTxs []common2.L2Tx
 	var currentProcessedTxsMap = make(map[common.TxHash]common2.L2Tx)
 
@@ -110,6 +119,23 @@ func (e *enclaveImpl) Start() {
 	}
 }
 
+func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
+	r := GenesisRollup
+	return SubmitBlockResponse{
+		Hash:      r.Header.Hash(),
+		Rollup:    r.ToExtRollup(),
+		Processed: true,
+	}
+}
+
+func (e *enclaveImpl) IngestBlocks(blocks []common.ExtBlock) {
+	for _, block := range blocks {
+		b := block.ToBlock()
+		e.db.Store(b)
+		updateState(b, e.db)
+	}
+}
+
 func (e *enclaveImpl) SubmitBlock(block common.ExtBlock) SubmitBlockResponse {
 	b := block.ToBlock()
 	e.db.Store(b)
@@ -149,7 +175,7 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	e.db.StoreRollup(&r)
 }
 
-func (e *enclaveImpl) SubmitTx(tx common2.EncodedL2Tx) {
+func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
 	t := common2.DecodeTx(tx)
 	e.db.StoreTx(t)
 	e.txCh <- t
@@ -227,7 +253,7 @@ func (e *enclaveImpl) produceRollup(b *common.Block, bs BlockState) *common2.Rol
 	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.db)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := common2.NewRollup(b, bs.Head, e.node, newRollupTxs, newRollupState.w, common.GenerateNonce(), serialize(newRollupState.s))
+	r := NewRollup(b, bs.Head, e.node, newRollupTxs, newRollupState.w, common.GenerateNonce(), serialize(newRollupState.s))
 	//h := r.Height(e.db)
 	//fmt.Printf("h:=%d\n", h)
 	return &r

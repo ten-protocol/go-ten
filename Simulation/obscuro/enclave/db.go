@@ -217,7 +217,7 @@ func (db *inMemoryDb) Height(r *common2.Rollup) int {
 	if height := r.Height.Load(); height != nil {
 		return height.(int)
 	}
-	if r.Hash() == common2.GenesisRollup.Hash() {
+	if r.Hash() == GenesisRollup.Hash() {
 		r.Height.Store(common.L2GenesisHeight)
 		return common.L2GenesisHeight
 	}

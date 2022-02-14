@@ -58,10 +58,10 @@ type Block struct {
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-const GenesisHash = "0000000000000000000000000000000000000000000000000000000000000000"
+var GenesisHash = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
 
 func NewBlock(parent *Block, nonce uint64, m NodeId, txs []*L1Tx) Block {
-	var parentHash = common.HexToHash(GenesisHash)
+	var parentHash = GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
 	}

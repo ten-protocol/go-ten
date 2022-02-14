@@ -15,11 +15,11 @@ func Decode(encoded common.EncodedRollup) (*Rollup, error) {
 	return &r, err
 }
 
-func (tx L2Tx) Encode() (EncodedL2Tx, error) {
+func (tx L2Tx) Encode() (EncryptedTx, error) {
 	return rlp.EncodeToBytes(tx)
 }
 
-func (encoded EncodedL2Tx) Decode() (tx L2Tx, err error) {
+func (encoded EncryptedTx) Decode() (tx L2Tx, err error) {
 	err = rlp.DecodeBytes(encoded, &tx)
 	return
 }
@@ -40,7 +40,7 @@ func DecodeRollup(rollup common.EncodedRollup) *Rollup {
 	return r
 }
 
-func DecodeTx(tx EncodedL2Tx) L2Tx {
+func DecodeTx(tx EncryptedTx) L2Tx {
 	r, err := tx.Decode()
 	if err != nil {
 		panic(err)

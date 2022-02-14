@@ -18,7 +18,7 @@ type AggregatorCfg struct {
 
 type L2Network interface {
 	BroadcastRollup(r common.EncodedRollup)
-	BroadcastTx(tx common2.EncodedL2Tx)
+	BroadcastTx(tx common2.EncryptedTx)
 }
 
 type StatsCollector interface {
@@ -36,8 +36,9 @@ type Node struct {
 	l2Network L2Network
 	L1Node    *ethereum_mock.Node
 
-	mining bool // true -if this is an aggregator, false if it is a validator
-	cfg    AggregatorCfg
+	mining  bool // true -if this is an aggregator, false if it is a validator
+	genesis bool // true - if this is the first Obscuro node which has to initialize the network
+	cfg     AggregatorCfg
 
 	stats StatsCollector
 
@@ -56,17 +57,24 @@ type Node struct {
 }
 
 func (a *Node) Start() {
+	// Todo: This is a naive implementation.
+	// It feeds the entire L1 blockchain into the enclave when it starts
+	allblocks := a.L1Node.RPCBlockchainFeed()
+	extblocks := make([]common.ExtBlock, len(allblocks))
+	for i, b := range allblocks {
+		extblocks[i] = b.ToExtBlock()
+	}
+	a.Enclave.IngestBlocks(extblocks)
+	//todo - what happens with the blocks received while processing ?
+	go a.Enclave.Start(extblocks[len(extblocks)-1])
+
+	if a.genesis {
+		a.initialiseProtocol()
+	}
+
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
 	i := int32(0)
 	var interrupt = &i
-
-	// todo - get rid of this
-	a.Enclave.SubmitRollup(common2.ExtRollup{
-		Header: common2.GenesisRollup.Header,
-		Txs:    common2.GenesisRollup.Transactions,
-	})
-
-	go a.Enclave.Start()
 
 	// Main loop - Listen for notifications From the L1 node and process them
 	// Note that during processing, more recent notifications can be received.
@@ -157,7 +165,7 @@ func (a *Node) P2PGossipRollup(r common.EncodedRollup) {
 	a.rollupsP2pCh <- r
 }
 
-func (a *Node) P2PReceiveTx(tx common2.EncodedL2Tx) {
+func (a *Node) P2PReceiveTx(tx common2.EncryptedTx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
@@ -176,12 +184,26 @@ func (a *Node) Stop() {
 	a.exitNodeCh <- true
 }
 
-func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Network L2Network, collector StatsCollector) Node {
+// Called only by the first enclave to bootstrap the network
+func (a *Node) initialiseProtocol() common.L2RootHash {
+	//todo shared secret
+	genesis := a.Enclave.ProduceGenesis()
+	tx := common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: common2.EncodeRollup(genesis.Rollup.ToRollup())}
+	t, err := tx.Encode()
+	if err != nil {
+		panic(err)
+	}
+	a.L1Node.BroadcastTx(t)
+	return genesis.Hash
+}
+
+func NewAgg(id common.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Network L2Network, collector StatsCollector, genesis bool) Node {
 	return Node{
 		// config
 		Id:        id,
 		cfg:       cfg,
 		mining:    true,
+		genesis:   genesis,
 		L1Node:    l1,
 		l2Network: l2Network,
 

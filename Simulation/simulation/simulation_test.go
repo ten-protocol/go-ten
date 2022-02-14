@@ -30,7 +30,7 @@ func TestSimulation(t *testing.T) {
 	common.SetLog(f)
 
 	blockDuration := uint64(20_000)
-	l1netw, l2netw := RunSimulation(5, 15, 15, blockDuration, blockDuration/15, blockDuration/3)
+	l1netw, l2netw := RunSimulation(5, 20, 15, blockDuration, blockDuration/15, blockDuration/3)
 	firstNode := l2netw.nodes[0]
 	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.TestDb(), firstNode.Enclave.TestPeekHead().Head)
 	stats := l1netw.Stats
@@ -61,7 +61,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
 	totalDeposited := uint64(0)
 
 	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, b, db)
-	headRollup := &common2.GenesisRollup
+	headRollup := &enclave.GenesisRollup
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions {
 			currentRollups := make([]*common2.Rollup, 0)

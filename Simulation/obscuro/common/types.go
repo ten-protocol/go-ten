@@ -4,7 +4,6 @@ import (
 	c "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/sha3"
 	"io"
 	"simulation/common"
@@ -14,13 +13,9 @@ import (
 
 // Todo - this has to be a trie root eventually
 type StateRoot = string
-type EncodedL2Tx []byte
+type EncryptedTx []byte
 
 type EncryptedTransactionBlob []byte
-type Transactions []L2Tx
-
-// todo - this should become an elaborate data structure
-type EnclaveSecret []byte
 
 // The header is in plaintext
 type Header struct {
@@ -32,6 +27,11 @@ type Header struct {
 	Withdrawals []Withdrawal
 }
 
+type Withdrawal struct {
+	Amount  uint64
+	Address common.Address
+}
+
 type Rollup struct {
 	Header *Header
 
@@ -39,10 +39,8 @@ type Rollup struct {
 	Height atomic.Value
 	size   atomic.Value
 
-	Transactions Transactions
-
-	// cache of the unencrypted transactions
-	//txs atomic.Value
+	//Transactions EncryptedTransactionBlob
+	Transactions []L2Tx
 }
 
 //func (r *Rollup) Txs() Transactions {
@@ -59,7 +57,7 @@ type Rollup struct {
 type ExtRollup struct {
 	Header *Header
 	//Txs    EncryptedTransactionBlob
-	Txs Transactions
+	Txs []L2Tx
 }
 
 func (eb ExtRollup) ToRollup() *Rollup {
@@ -83,11 +81,6 @@ const (
 	WithdrawalTx
 )
 
-type Withdrawal struct {
-	Amount  uint64
-	Address common.Address
-}
-
 // todo - signing
 type L2Tx struct {
 	Id     common.TxHash
@@ -98,10 +91,6 @@ type L2Tx struct {
 }
 
 const GenesisHash = "1000000000000000000000000000000000000000000000000000000000000000"
-
-var GenesisRollup = NewRollup(&common.GenesisBlock, nil, 0, []L2Tx{}, []Withdrawal{}, common.GenerateNonce(), "")
-var EncodedGenesis, _ = GenesisRollup.Encode()
-var GenesisTx = common.L1Tx{Id: uuid.New(), TxType: common.RollupTx, Rollup: EncodedGenesis}
 
 func (r Rollup) Proof(l1BlockResolver common.BlockResolver) *common.Block {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
@@ -119,26 +108,6 @@ func (r Rollup) ProofHeight(l1BlockResolver common.BlockResolver) int {
 		return -1
 	}
 	return v.Height(l1BlockResolver)
-}
-
-func NewRollup(b *common.Block, parent *Rollup, a common.NodeId, txs []L2Tx, withdrawals []Withdrawal, nonce common.Nonce, state StateRoot) Rollup {
-	parentHash := c.HexToHash(GenesisHash)
-	if parent != nil {
-		parentHash = parent.Hash()
-	}
-	h := Header{
-		Agg:         a,
-		ParentHash:  parentHash,
-		L1Proof:     b.Hash(),
-		Nonce:       nonce,
-		State:       state,
-		Withdrawals: withdrawals,
-	}
-	r := Rollup{
-		Header:       &h,
-		Transactions: txs,
-	}
-	return r
 }
 
 // Hash returns the keccak256 hash of b's header.

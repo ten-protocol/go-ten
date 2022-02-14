@@ -39,8 +39,12 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	l2Cfg := obscuro.AggregatorCfg{GossipRoundDuration: gossipPeriod}
 
 	for i := 1; i <= nrNodes; i++ {
+		genesis := false
+		if i == 1 {
+			genesis = true
+		}
 		// create a layer 2 node
-		agg := obscuro.NewAgg(common.NodeId(i), l2Cfg, nil, &l2Network, &stats)
+		agg := obscuro.NewAgg(common.NodeId(i), l2Cfg, nil, &l2Network, &stats, genesis)
 		l2Network.nodes = append(l2Network.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
@@ -50,14 +54,8 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	}
 
 	common.Log(fmt.Sprintf("Genesis block: b_%s.", common.Str(common.GenesisBlock.Hash())))
-	common.Log(fmt.Sprintf("Genesis rollup: r_%s.", common.Str(common2.GenesisRollup.Hash())))
 
 	l1Network.Start(common.Duration(avgBlockDuration / 4))
-
-	// publish the genesis rollup before the l2 nodes are started
-	tx, _ := common2.GenesisTx.Encode()
-	l1Network.BroadcastTx(tx)
-
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
 
 	// Create a bunch of users and inject transactions

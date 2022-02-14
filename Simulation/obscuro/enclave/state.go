@@ -108,7 +108,7 @@ func updateState(b *common.Block, db Db) BlockState {
 	if b.Hash() == common.GenesisBlock.Hash() {
 		bs := BlockState{
 			Block:          b,
-			Head:           &common2.GenesisRollup,
+			Head:           &GenesisRollup,
 			State:          emptyState(),
 			foundNewRollup: true,
 		}
