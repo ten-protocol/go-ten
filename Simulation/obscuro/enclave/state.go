@@ -11,7 +11,7 @@ type State = map[common.Address]uint64
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
 	Block          *common.Block
-	Head           *common2.Rollup
+	Head           *EnclaveRollup
 	State          State
 	foundNewRollup bool
 }
@@ -49,7 +49,7 @@ func serialize(state State) string {
 }
 
 // returns a modified copy of the State
-func executeTransactions(txs []common2.L2Tx, state RollupState) RollupState {
+func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 	ps := copyProcessedState(state)
 	for _, tx := range txs {
 		executeTx(&ps, tx)
@@ -59,18 +59,18 @@ func executeTransactions(txs []common2.L2Tx, state RollupState) RollupState {
 }
 
 // mutates the State
-func executeTx(s *RollupState, tx common2.L2Tx) {
+func executeTx(s *RollupState, tx L2Tx) {
 	switch tx.TxType {
-	case common2.TransferTx:
+	case TransferTx:
 		executeTransfer(s, tx)
-	case common2.WithdrawalTx:
+	case WithdrawalTx:
 		executeWithdrawal(s, tx)
 	default:
 		panic("Invalid transaction type")
 	}
 }
 
-func executeWithdrawal(s *RollupState, tx common2.L2Tx) {
+func executeWithdrawal(s *RollupState, tx L2Tx) {
 	bal := s.s[tx.From]
 	if bal >= tx.Amount {
 		s.s[tx.From] -= tx.Amount
@@ -82,7 +82,7 @@ func executeWithdrawal(s *RollupState, tx common2.L2Tx) {
 	}
 }
 
-func executeTransfer(s *RollupState, tx common2.L2Tx) {
+func executeTransfer(s *RollupState, tx L2Tx) {
 	bal := s.s[tx.From]
 	if bal >= tx.Amount {
 		s.s[tx.From] -= tx.Amount
@@ -135,11 +135,11 @@ func updateState(b *common.Block, db Db) BlockState {
 }
 
 // Calculate transactions to be included in the current rollup
-func currentTxs(head *common2.Rollup, mempool []common2.L2Tx, db Db) []common2.L2Tx {
+func currentTxs(head *EnclaveRollup, mempool []L2Tx, db Db) []L2Tx {
 	return findTxsNotIncluded(head, mempool, db)
 }
 
-func FindWinner(parent *common2.Rollup, rollups []*common2.Rollup, db Db) (*common2.Rollup, bool) {
+func FindWinner(parent *EnclaveRollup, rollups []*EnclaveRollup, db Db) (*EnclaveRollup, bool) {
 	var win = -1
 	// todo - add statistics to determine why there are conflicts.
 	for i, r := range rollups {
@@ -161,7 +161,7 @@ func FindWinner(parent *common2.Rollup, rollups []*common2.Rollup, db Db) (*comm
 	return rollups[win], true
 }
 
-func findRoundWinner(receivedRollups []*common2.Rollup, parent *common2.Rollup, parentState State, db Db) (*common2.Rollup, State) {
+func findRoundWinner(receivedRollups []*EnclaveRollup, parent *EnclaveRollup, parentState State, db Db) (*EnclaveRollup, State) {
 	win, found := FindWinner(parent, receivedRollups, db)
 	if !found {
 		panic("This should not happen for gossip rounds.")
@@ -249,8 +249,8 @@ func calculateBlockState(b *common.Block, parentState BlockState, db Db) BlockSt
 	return bs
 }
 
-func extractRollups(b *common.Block, db Db) []*common2.Rollup {
-	rollups := make([]*common2.Rollup, 0)
+func extractRollups(b *common.Block, db Db) []*EnclaveRollup {
+	rollups := make([]*EnclaveRollup, 0)
 	for _, t := range b.Transactions {
 		// go through all rollup transactions
 		if t.TxType == common.RollupTx {
@@ -259,9 +259,16 @@ func extractRollups(b *common.Block, db Db) []*common2.Rollup {
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if common.IsBlockAncestor(r.Header.L1Proof, b, db) {
-				rollups = append(rollups, r)
+				rollups = append(rollups, toEnclaveRollup(r))
 			}
 		}
 	}
 	return rollups
+}
+
+func toEnclaveRollup(r *common2.Rollup) *EnclaveRollup {
+	return &EnclaveRollup{
+		Header:       r.Header,
+		Transactions: decryptTransactions(r.Transactions),
+	}
 }

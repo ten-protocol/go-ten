@@ -11,13 +11,15 @@ import (
 	"sync/atomic"
 )
 
+var GenesisHash = c.HexToHash("1000000000000000000000000000000000000000000000000000000000000000")
+
 // Todo - this has to be a trie root eventually
 type StateRoot = string
 type EncryptedTx []byte
 
-type EncryptedTransactionBlob []byte
+type EncryptedTransactions []EncryptedTx
 
-// The header is in plaintext
+// Header is in plaintext
 type Header struct {
 	ParentHash  common.L2RootHash
 	Agg         common.NodeId
@@ -39,25 +41,13 @@ type Rollup struct {
 	Height atomic.Value
 	size   atomic.Value
 
-	//Transactions EncryptedTransactionBlob
-	Transactions []L2Tx
+	Transactions EncryptedTransactions
 }
 
-//func (r *Rollup) Txs() Transactions {
-//	if txs := r.txs.Load(); txs != nil {
-//		return txs.(Transactions)
-//	}
-//	v := decrypt(r.Transactions, key)
-//	r.txs.Store(v)
-//	return v
-//
-//}
-
-// Data structure that is used to communicate between the enclave and the outside world
+// ExtRollup Data structure that is used to communicate between the enclave and the outside world
 type ExtRollup struct {
 	Header *Header
-	//Txs    EncryptedTransactionBlob
-	Txs []L2Tx
+	Txs    EncryptedTransactions
 }
 
 func (eb ExtRollup) ToRollup() *Rollup {
@@ -72,25 +62,6 @@ func (b Rollup) ToExtRollup() ExtRollup {
 		Txs:    b.Transactions,
 	}
 }
-
-// Transfers and Withdrawals for now
-type L2TxType uint64
-
-const (
-	TransferTx L2TxType = iota
-	WithdrawalTx
-)
-
-// todo - signing
-type L2Tx struct {
-	Id     common.TxHash
-	TxType L2TxType
-	Amount uint64
-	From   common.Address
-	To     common.Address
-}
-
-const GenesisHash = "1000000000000000000000000000000000000000000000000000000000000000"
 
 func (r Rollup) Proof(l1BlockResolver common.BlockResolver) *common.Block {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)

@@ -2,15 +2,14 @@ package enclave
 
 import (
 	"simulation/common"
-	common2 "simulation/obscuro/common"
 	"sync"
 )
 
 // RollupResolver -database of rollups indexed by the root hash
 type RollupResolver interface {
-	FetchRollup(hash common.L2RootHash) *common2.Rollup
-	Parent(r common2.Rollup) *common2.Rollup
-	Height(r common2.Rollup) int
+	FetchRollup(hash common.L2RootHash) *EnclaveRollup
+	Parent(r EnclaveRollup) *EnclaveRollup
+	Height(r EnclaveRollup) int
 }
 
 // This database lives purely in the memory space of an encrypted enclave
@@ -18,28 +17,28 @@ type Db interface {
 	FetchState(hash common.L1RootHash) (BlockState, bool)
 	SetState(hash common.L1RootHash, state BlockState)
 
-	FetchRollup(hash common.L2RootHash) *common2.Rollup
+	FetchRollup(hash common.L2RootHash) *EnclaveRollup
 	FetchRollupState(hash common.L2RootHash) State
 	SetRollupState(hash common.L2RootHash, state State)
 
 	Head() BlockState
 	Balance(address common.Address) uint64
 
-	FetchRollups(height int) []*common2.Rollup
-	StoreRollup(rollup *common2.Rollup)
+	FetchRollups(height int) []*EnclaveRollup
+	StoreRollup(rollup *EnclaveRollup)
 
-	FetchTxs() []common2.L2Tx
-	StoreTx(tx common2.L2Tx)
+	FetchTxs() []L2Tx
+	StoreTx(tx L2Tx)
 	PruneTxs(remove map[common.TxHash]common.TxHash)
 
 	Resolve(hash common.L1RootHash) (*common.Block, bool)
 	Store(node *common.Block)
 
-	Txs(r *common2.Rollup) (map[common.TxHash]common2.L2Tx, bool)
-	AddTxs(*common2.Rollup, map[common.TxHash]common2.L2Tx)
+	Txs(r *EnclaveRollup) (map[common.TxHash]L2Tx, bool)
+	AddTxs(*EnclaveRollup, map[common.TxHash]L2Tx)
 
-	Height(*common2.Rollup) int
-	Parent(*common2.Rollup) *common2.Rollup
+	Height(*EnclaveRollup) int
+	Parent(*EnclaveRollup) *EnclaveRollup
 }
 
 type inMemoryDb struct {
@@ -49,16 +48,16 @@ type inMemoryDb struct {
 	headBlock      common.L1RootHash
 	stateMutex     sync.RWMutex
 
-	rollupsByHeight map[int][]*common2.Rollup // todo encoded
-	rollups         map[common.L2RootHash]*common2.Rollup
+	rollupsByHeight map[int][]*EnclaveRollup // todo encoded
+	rollups         map[common.L2RootHash]*EnclaveRollup
 
-	mempool map[common.TxHash]common2.L2Tx
+	mempool map[common.TxHash]L2Tx
 	mpMutex sync.RWMutex
 
 	blockCache map[common.L1RootHash]*common.Block
 	blockM     sync.RWMutex
 
-	transactionsPerBlockCache map[common.L2RootHash]map[common.TxHash]common2.L2Tx
+	transactionsPerBlockCache map[common.L2RootHash]map[common.TxHash]L2Tx
 	txM                       sync.RWMutex
 }
 
@@ -66,14 +65,14 @@ func NewInMemoryDb() Db {
 	return &inMemoryDb{
 		statePerBlock:             make(map[common.L1RootHash]BlockState),
 		stateMutex:                sync.RWMutex{},
-		rollupsByHeight:           make(map[int][]*common2.Rollup),
-		rollups:                   make(map[common.L2RootHash]*common2.Rollup),
-		mempool:                   make(map[common.TxHash]common2.L2Tx),
+		rollupsByHeight:           make(map[int][]*EnclaveRollup),
+		rollups:                   make(map[common.L2RootHash]*EnclaveRollup),
+		mempool:                   make(map[common.TxHash]L2Tx),
 		mpMutex:                   sync.RWMutex{},
 		statePerRollup:            make(map[common.L2RootHash]State),
 		blockCache:                map[common.L1RootHash]*common.Block{},
 		blockM:                    sync.RWMutex{},
-		transactionsPerBlockCache: make(map[common.L2RootHash]map[common.TxHash]common2.L2Tx),
+		transactionsPerBlockCache: make(map[common.L2RootHash]map[common.TxHash]L2Tx),
 		txM:                       sync.RWMutex{},
 	}
 }
@@ -114,7 +113,7 @@ func (db *inMemoryDb) Balance(address common.Address) uint64 {
 	return db.Head().State[address]
 }
 
-func (db *inMemoryDb) StoreRollup(rollup *common2.Rollup) {
+func (db *inMemoryDb) StoreRollup(rollup *EnclaveRollup) {
 	height := db.Height(rollup)
 
 	db.stateMutex.Lock()
@@ -124,11 +123,11 @@ func (db *inMemoryDb) StoreRollup(rollup *common2.Rollup) {
 	if found {
 		db.rollupsByHeight[height] = append(val, rollup)
 	} else {
-		db.rollupsByHeight[height] = []*common2.Rollup{rollup}
+		db.rollupsByHeight[height] = []*EnclaveRollup{rollup}
 	}
 }
 
-func (db *inMemoryDb) FetchRollup(hash common.L2RootHash) *common2.Rollup {
+func (db *inMemoryDb) FetchRollup(hash common.L2RootHash) *EnclaveRollup {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	r, f := db.rollups[hash]
@@ -138,7 +137,7 @@ func (db *inMemoryDb) FetchRollup(hash common.L2RootHash) *common2.Rollup {
 	return r
 }
 
-func (db *inMemoryDb) FetchRollups(height int) []*common2.Rollup {
+func (db *inMemoryDb) FetchRollups(height int) []*EnclaveRollup {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	return db.rollupsByHeight[height]
@@ -150,17 +149,17 @@ func (db *inMemoryDb) FetchRollupState(hash common.L2RootHash) State {
 	return db.statePerRollup[hash]
 }
 
-func (db *inMemoryDb) StoreTx(tx common2.L2Tx) {
+func (db *inMemoryDb) StoreTx(tx L2Tx) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 	db.mempool[tx.Id] = tx
 }
 
-func (db *inMemoryDb) FetchTxs() []common2.L2Tx {
+func (db *inMemoryDb) FetchTxs() []L2Tx {
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
 	//txStr := make([]common.TxHash, 0)
-	mpCopy := make([]common2.L2Tx, 0)
+	mpCopy := make([]L2Tx, 0)
 	for _, tx := range db.mempool {
 		mpCopy = append(mpCopy, tx)
 		//txStr = append(txStr, tx.Id)
@@ -172,7 +171,7 @@ func (db *inMemoryDb) FetchTxs() []common2.L2Tx {
 func (db *inMemoryDb) PruneTxs(toRemove map[common.TxHash]common.TxHash) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	r := make(map[common.TxHash]common2.L2Tx, 0)
+	r := make(map[common.TxHash]L2Tx, 0)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
 		if !f {
@@ -196,24 +195,24 @@ func (db *inMemoryDb) Resolve(hash common.L1RootHash) (*common.Block, bool) {
 	return v, f
 }
 
-func (db *inMemoryDb) Txs(r *common2.Rollup) (map[common.TxHash]common2.L2Tx, bool) {
+func (db *inMemoryDb) Txs(r *EnclaveRollup) (map[common.TxHash]L2Tx, bool) {
 	db.txM.RLock()
 	val, found := db.transactionsPerBlockCache[r.Hash()]
 	db.txM.RUnlock()
 	return val, found
 }
 
-func (db *inMemoryDb) AddTxs(r *common2.Rollup, newMap map[common.TxHash]common2.L2Tx) {
+func (db *inMemoryDb) AddTxs(r *EnclaveRollup, newMap map[common.TxHash]L2Tx) {
 	db.txM.Lock()
 	db.transactionsPerBlockCache[r.Hash()] = newMap
 	db.txM.Unlock()
 }
 
-func (db *inMemoryDb) Parent(r *common2.Rollup) *common2.Rollup {
+func (db *inMemoryDb) Parent(r *EnclaveRollup) *EnclaveRollup {
 	return db.FetchRollup(r.Header.ParentHash)
 }
 
-func (db *inMemoryDb) Height(r *common2.Rollup) int {
+func (db *inMemoryDb) Height(r *EnclaveRollup) int {
 	if height := r.Height.Load(); height != nil {
 		return height.(int)
 	}

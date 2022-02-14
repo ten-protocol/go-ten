@@ -30,7 +30,7 @@ func TestSimulation(t *testing.T) {
 	common.SetLog(f)
 
 	blockDuration := uint64(20_000)
-	l1netw, l2netw := RunSimulation(5, 20, 15, blockDuration, blockDuration/15, blockDuration/3)
+	l1netw, l2netw := RunSimulation(5, 10, 15, blockDuration, blockDuration/15, blockDuration/3)
 	firstNode := l2netw.nodes[0]
 	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.TestDb(), firstNode.Enclave.TestPeekHead().Head)
 	stats := l1netw.Stats
@@ -39,7 +39,7 @@ func TestSimulation(t *testing.T) {
 
 }
 
-func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave.Db, r *common2.Rollup) {
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave.Db, r *enclave.EnclaveRollup) {
 	stats := l1Network.Stats
 	p := r.Proof(db)
 	validateL1(t, p, stats, db)
@@ -64,7 +64,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
 	headRollup := &enclave.GenesisRollup
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions {
-			currentRollups := make([]*common2.Rollup, 0)
+			currentRollups := make([]*enclave.EnclaveRollup, 0)
 			switch tx.TxType {
 			case common.DepositTx:
 				deposits = append(deposits, tx.Id)
@@ -75,7 +75,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
 				if common.IsBlockAncestor(r.Header.L1Proof, b, db) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					currentRollups = append(currentRollups, r)
+					currentRollups = append(currentRollups, enclave.DecryptRollup(r))
 					s.NewRollup(r)
 				}
 			default:
@@ -86,7 +86,6 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
 				headRollup = r
 			}
 		}
-
 	}
 
 	if len(common.FindDups(deposits)) > 0 {
@@ -115,10 +114,10 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
 	}
 }
 
-func validateL2(t *testing.T, r *common2.Rollup, s *Stats, db enclave.Db) uint64 {
+func validateL2(t *testing.T, r *enclave.EnclaveRollup, s *Stats, db enclave.Db) uint64 {
 	s.l2Height = db.Height(r)
 	transfers := make([]uuid.UUID, 0)
-	withdrawalTxs := make([]common2.L2Tx, 0)
+	withdrawalTxs := make([]enclave.L2Tx, 0)
 	withdrawalRequests := make([]common2.Withdrawal, 0)
 	for {
 		if db.Height(r) == common.L2GenesisHeight {
@@ -126,9 +125,9 @@ func validateL2(t *testing.T, r *common2.Rollup, s *Stats, db enclave.Db) uint64
 		}
 		for _, tx := range r.Transactions {
 			switch tx.TxType {
-			case common2.TransferTx:
+			case enclave.TransferTx:
 				transfers = append(transfers, tx.Id)
-			case common2.WithdrawalTx:
+			case enclave.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
 				panic("Invalid tx type")
@@ -168,7 +167,7 @@ func sumWithdrawals(w []common2.Withdrawal) uint64 {
 	return sum
 }
 
-func sumWithdrawalTxs(t []common2.L2Tx) uint64 {
+func sumWithdrawalTxs(t []enclave.L2Tx) uint64 {
 	sum := uint64(0)
 	for _, r := range t {
 		sum += r.Amount

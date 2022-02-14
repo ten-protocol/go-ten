@@ -59,8 +59,8 @@ type enclaveImpl struct {
 	db             Db
 	statsCollector StatsCollector
 
-	txCh                 chan common2.L2Tx
-	roundWinnerCh        chan *common2.Rollup
+	txCh                 chan L2Tx
+	roundWinnerCh        chan *EnclaveRollup
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
@@ -74,8 +74,8 @@ func (e *enclaveImpl) Start(block common.ExtBlock) {
 
 	var currentHead = s.Head
 	var currentState = newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
-	var currentProcessedTxs []common2.L2Tx
-	var currentProcessedTxsMap = make(map[common.TxHash]common2.L2Tx)
+	var currentProcessedTxs []L2Tx
+	var currentProcessedTxsMap = make(map[common.TxHash]L2Tx)
 
 	//start the speculative rollup execution loop
 	for {
@@ -102,7 +102,7 @@ func (e *enclaveImpl) Start(block common.ExtBlock) {
 			}
 
 		case <-e.speculativeWorkInCh:
-			b := make([]common2.L2Tx, 0)
+			b := make([]L2Tx, 0)
 			for _, tx := range currentProcessedTxs {
 				b = append(b, tx)
 			}
@@ -168,15 +168,15 @@ func (e *enclaveImpl) SubmitBlock(block common.ExtBlock) SubmitBlockResponse {
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
-	r := common2.Rollup{
+	r := EnclaveRollup{
 		Header:       rollup.Header,
-		Transactions: rollup.Txs,
+		Transactions: decryptTransactions(rollup.Txs),
 	}
 	e.db.StoreRollup(&r)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
-	t := common2.DecodeTx(tx)
+	t := DecryptTx(tx)
 	e.db.StoreTx(t)
 	e.txCh <- t
 }
@@ -187,7 +187,7 @@ func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common2.ExtRollup, 
 
 	rollupsReceivedFromPeers := e.db.FetchRollups(e.db.Height(head) + 1)
 	// filter out rollups with a different Parent
-	var usefulRollups []*common2.Rollup
+	var usefulRollups []*EnclaveRollup
 	for _, rol := range rollupsReceivedFromPeers {
 		p := e.db.Parent(rol)
 		if p.Hash() == head.Hash() {
@@ -213,7 +213,7 @@ func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common2.ExtRollup, 
 	return common2.ExtRollup{}, false
 }
 
-func (e *enclaveImpl) notifySpeculative(winnerRollup *common2.Rollup) {
+func (e *enclaveImpl) notifySpeculative(winnerRollup *EnclaveRollup) {
 	//if atomic.LoadInt32(e.interrupt) == 1 {
 	//	return
 	//}
@@ -225,7 +225,7 @@ func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	return 0
 }
 
-func (e *enclaveImpl) produceRollup(b *common.Block, bs BlockState) *common2.Rollup {
+func (e *enclaveImpl) produceRollup(b *common.Block, bs BlockState) *EnclaveRollup {
 
 	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
 	e.speculativeWorkInCh <- true
@@ -273,9 +273,9 @@ func (e *enclaveImpl) Stop() {
 
 // internal structure to pass information.
 type speculativeWork struct {
-	r   *common2.Rollup
+	r   *EnclaveRollup
 	s   *RollupState
-	txs []common2.L2Tx
+	txs []L2Tx
 }
 
 func NewEnclave(id common.NodeId, mining bool, collector StatsCollector) Enclave {
@@ -283,8 +283,8 @@ func NewEnclave(id common.NodeId, mining bool, collector StatsCollector) Enclave
 		node:                 id,
 		db:                   NewInMemoryDb(),
 		mining:               mining,
-		txCh:                 make(chan common2.L2Tx),
-		roundWinnerCh:        make(chan *common2.Rollup),
+		txCh:                 make(chan L2Tx),
+		roundWinnerCh:        make(chan *EnclaveRollup),
 		exitCh:               make(chan bool),
 		speculativeWorkInCh:  make(chan bool),
 		speculativeWorkOutCh: make(chan speculativeWork),

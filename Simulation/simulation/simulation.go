@@ -7,7 +7,7 @@ import (
 	"simulation/common"
 	"simulation/ethereum-mock"
 	"simulation/obscuro"
-	common2 "simulation/obscuro/common"
+	"simulation/obscuro/enclave"
 	"simulation/wallet-mock"
 	"time"
 )
@@ -34,7 +34,7 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	}}
 
 	l2Network := L2NetworkCfg{delay: func() uint64 {
-		return common.RndBtw(uint64(avgLatency/10), uint64(2*avgLatency))
+		return common.RndBtw(avgLatency/10, 2*avgLatency)
 	}}
 	l2Cfg := obscuro.AggregatorCfg{GossipRoundDuration: gossipPeriod}
 
@@ -115,18 +115,15 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro.L2Net
 		if f == t {
 			continue
 		}
-		tx := common2.L2Tx{
+		tx := enclave.L2Tx{
 			Id:     uuid.New(),
-			TxType: common2.TransferTx,
+			TxType: enclave.TransferTx,
 			Amount: common.RndBtw(1, 500),
 			From:   f,
 			To:     t,
 		}
 		s.Transfer()
-		encoded, err := tx.Encode()
-		if err != nil {
-			panic(err)
-		}
+		encoded := enclave.EncryptTx(tx)
 		l2Network.BroadcastTx(encoded)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration/4, avgBlockDuration)))
 		i++
@@ -159,7 +156,7 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro.L2Net
 		}
 		v := common.RndBtw(1, 100)
 		tx := withdrawal(rndWallet(wallets), v)
-		t, _ := tx.Encode()
+		t := enclave.EncryptTx(tx)
 		network.BroadcastTx(t)
 		s.Withdrawal(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
@@ -167,10 +164,10 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro.L2Net
 	}
 }
 
-func withdrawal(wallet wallet_mock.Wallet, amount uint64) common2.L2Tx {
-	return common2.L2Tx{
+func withdrawal(wallet wallet_mock.Wallet, amount uint64) enclave.L2Tx {
+	return enclave.L2Tx{
 		Id:     uuid.New(),
-		TxType: common2.WithdrawalTx,
+		TxType: enclave.WithdrawalTx,
 		Amount: amount,
 		From:   wallet.Address,
 	}
