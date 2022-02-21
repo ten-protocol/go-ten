@@ -18,6 +18,6 @@
 .idea/
 
 # Simulation ignore files
-Simulation/.build/
-Simulation/simulation_result.txt
+.build/
+simulation_result.txt
 
