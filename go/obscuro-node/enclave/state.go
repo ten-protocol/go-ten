@@ -2,16 +2,15 @@ package enclave
 
 import (
 	"fmt"
-
-	"github.com/otherview/obscuro-playground/common"
-	common2 "github.com/otherview/obscuro-playground/obscuro/common"
+	common3 "github.com/otherview/obscuro-playground/go/common"
+	"github.com/otherview/obscuro-playground/go/obscuro-node/common"
 )
 
-type State = map[common.Address]uint64
+type State = map[common3.Address]uint64
 
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
-	Block          *common.Block
+	Block          *common3.Block
 	Head           *EnclaveRollup
 	State          State
 	foundNewRollup bool
@@ -20,13 +19,13 @@ type BlockState struct {
 // RollupState - state after an L2 rollups was processed
 type RollupState struct {
 	s State
-	w []common2.Withdrawal
+	w []common.Withdrawal
 }
 
 func newProcessedState(s State) RollupState {
 	return RollupState{
 		s: copyState(s),
-		w: []common2.Withdrawal{},
+		w: []common.Withdrawal{},
 	}
 }
 
@@ -75,7 +74,7 @@ func executeWithdrawal(s *RollupState, tx L2Tx) {
 	bal := s.s[tx.From]
 	if bal >= tx.Amount {
 		s.s[tx.From] -= tx.Amount
-		s.w = append(s.w, common2.Withdrawal{
+		s.w = append(s.w, common.Withdrawal{
 			Amount:  tx.Amount,
 			Address: tx.From,
 		})
@@ -97,7 +96,7 @@ func emptyState() State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *common.Block, db Db) BlockState {
+func updateState(b *common3.Block, db Db) BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := db.FetchState(b.Hash())
 	if found {
@@ -105,7 +104,7 @@ func updateState(b *common.Block, db Db) BlockState {
 	}
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if b.Hash() == common.GenesisBlock.Hash() {
+	if b.Hash() == common3.GenesisBlock.Hash() {
 		bs := BlockState{
 			Block:          b,
 			Head:           &GenesisRollup,
@@ -184,13 +183,13 @@ func findRoundWinner(receivedRollups []*EnclaveRollup, parent *EnclaveRollup, pa
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *common.Block, toBlock *common.Block, s RollupState, db Db) RollupState {
-	from := common.GenesisBlock.Hash()
-	height := common.L1GenesisHeight
+func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupState, db Db) RollupState {
+	from := common3.GenesisBlock.Hash()
+	height := common3.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
 		height = fromBlock.Height(db)
-		if !common.IsAncestor(fromBlock, toBlock, db) {
+		if !common3.IsAncestor(fromBlock, toBlock, db) {
 			panic("wtf")
 		}
 
@@ -203,7 +202,7 @@ func processDeposits(fromBlock *common.Block, toBlock *common.Block, s RollupSta
 		}
 		for _, tx := range b.Transactions {
 			// transactions to a hardcoded bridge address
-			if tx.TxType == common.DepositTx {
+			if tx.TxType == common3.DepositTx {
 				v, f := s.s[tx.Dest]
 				if f {
 					s.s[tx.Dest] = v + tx.Amount
@@ -225,7 +224,7 @@ func processDeposits(fromBlock *common.Block, toBlock *common.Block, s RollupSta
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *common.Block, parentState BlockState, db Db) BlockState {
+func calculateBlockState(b *common3.Block, parentState BlockState, db Db) BlockState {
 	rollups := extractRollups(b, db)
 	newHead, found := FindWinner(parentState.Head, rollups, db)
 
@@ -249,16 +248,16 @@ func calculateBlockState(b *common.Block, parentState BlockState, db Db) BlockSt
 	return bs
 }
 
-func extractRollups(b *common.Block, db Db) []*EnclaveRollup {
+func extractRollups(b *common3.Block, db Db) []*EnclaveRollup {
 	rollups := make([]*EnclaveRollup, 0)
 	for _, t := range b.Transactions {
 		// go through all rollup transactions
-		if t.TxType == common.RollupTx {
-			r := common2.DecodeRollup(t.Rollup)
+		if t.TxType == common3.RollupTx {
+			r := common.DecodeRollup(t.Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
-			if common.IsBlockAncestor(r.Header.L1Proof, b, db) {
+			if common3.IsBlockAncestor(r.Header.L1Proof, b, db) {
 				rollups = append(rollups, toEnclaveRollup(r))
 			}
 		}
@@ -266,7 +265,7 @@ func extractRollups(b *common.Block, db Db) []*EnclaveRollup {
 	return rollups
 }
 
-func toEnclaveRollup(r *common2.Rollup) *EnclaveRollup {
+func toEnclaveRollup(r *common.Rollup) *EnclaveRollup {
 	return &EnclaveRollup{
 		Header:       r.Header,
 		Transactions: decryptTransactions(r.Transactions),

@@ -1,17 +1,16 @@
 package simulation
 
 import (
+	common2 "github.com/otherview/obscuro-playground/go/common"
+	"github.com/otherview/obscuro-playground/integration/ethereum-mock"
 	"sync/atomic"
 	"time"
-
-	"github.com/otherview/obscuro-playground/common"
-	"github.com/otherview/obscuro-playground/ethereum-mock"
 )
 
 // L1NetworkCfg - models a full network including artificial random latencies
 type L1NetworkCfg struct {
 	nodes []*ethereum_mock.Node
-	delay common.Latency // the latency
+	delay common2.Latency // the latency
 	Stats *Stats
 	// used as a signal to stop all network communication.
 	// This helps prevent deadlocks when stopping nodes
@@ -19,7 +18,7 @@ type L1NetworkCfg struct {
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
-func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock) {
+func (n *L1NetworkCfg) BroadcastBlock(b common2.EncodedBlock, p common2.EncodedBlock) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
@@ -27,16 +26,16 @@ func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlo
 	for _, m := range n.nodes {
 		if m.Id != bl.Header.Miner {
 			t := m
-			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
+			common2.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
-			common.Log(printBlock(bl, *m))
+			common2.Log(printBlock(bl, *m))
 		}
 	}
 	n.Stats.NewBlock(bl)
 }
 
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
-func (n *L1NetworkCfg) BroadcastTx(tx common.EncodedL1Tx) {
+func (n *L1NetworkCfg) BroadcastTx(tx common2.EncodedL1Tx) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
@@ -44,8 +43,8 @@ func (n *L1NetworkCfg) BroadcastTx(tx common.EncodedL1Tx) {
 		t := m
 		// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 		// todo - find a better way to express this
-		d := common.Max(n.delay()/2, 1)
-		common.Schedule(d, func() { t.P2PGossipTx(tx) })
+		d := common2.Max(n.delay()/2, 1)
+		common2.Schedule(d, func() { t.P2PGossipTx(tx) })
 	}
 }
 

@@ -1,6 +1,7 @@
 package common
 
 import (
+	common2 "github.com/otherview/obscuro-playground/go/common"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -8,7 +9,6 @@ import (
 	c "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/otherview/obscuro-playground/common"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -22,17 +22,17 @@ type EncryptedTransactions []EncryptedTx
 
 // Header is in plaintext
 type Header struct {
-	ParentHash  common.L2RootHash
-	Agg         common.NodeId
-	Nonce       common.Nonce
-	L1Proof     common.L1RootHash // the L1 block where the Parent was published
+	ParentHash  common2.L2RootHash
+	Agg         common2.NodeId
+	Nonce       common2.Nonce
+	L1Proof     common2.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
 	Withdrawals []Withdrawal
 }
 
 type Withdrawal struct {
 	Amount  uint64
-	Address common.Address
+	Address common2.Address
 }
 
 type Rollup struct {
@@ -65,7 +65,7 @@ func (b Rollup) ToExtRollup() ExtRollup {
 	}
 }
 
-func (r Rollup) Proof(l1BlockResolver common.BlockResolver) *common.Block {
+func (r Rollup) Proof(l1BlockResolver common2.BlockResolver) *common2.Block {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
@@ -75,7 +75,7 @@ func (r Rollup) Proof(l1BlockResolver common.BlockResolver) *common.Block {
 
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r Rollup) ProofHeight(l1BlockResolver common.BlockResolver) int {
+func (r Rollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
 	if !f {
 		return -1
@@ -85,9 +85,9 @@ func (r Rollup) ProofHeight(l1BlockResolver common.BlockResolver) int {
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *Rollup) Hash() common.L2RootHash {
+func (r *Rollup) Hash() common2.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
-		return hash.(common.L2RootHash)
+		return hash.(common2.L2RootHash)
 	}
 	v := r.Header.Hash()
 	r.hash.Store(v)
@@ -96,12 +96,12 @@ func (r *Rollup) Hash() common.L2RootHash {
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
-func (h *Header) Hash() common.L2RootHash {
+func (h *Header) Hash() common2.L2RootHash {
 	return rlpHash(h)
 }
 
 // rlpHash encodes x and hashes the encoded bytes.
-func rlpHash(x interface{}) (h common.L2RootHash) {
+func rlpHash(x interface{}) (h common2.L2RootHash) {
 	sha := hasherPool.Get().(crypto.KeccakState)
 	defer hasherPool.Put(sha)
 	sha.Reset()

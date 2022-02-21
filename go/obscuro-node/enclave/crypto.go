@@ -2,7 +2,7 @@ package enclave
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	common2 "github.com/otherview/obscuro-playground/obscuro/common"
+	common2 "github.com/otherview/obscuro-playground/go/obscuro-node/common"
 )
 
 func decryptTransactions(txs common2.EncryptedTransactions) Transactions {

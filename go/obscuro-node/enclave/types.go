@@ -1,10 +1,9 @@
 package enclave
 
 import (
+	common2 "github.com/otherview/obscuro-playground/go/common"
+	oc "github.com/otherview/obscuro-playground/go/obscuro-node/common"
 	"sync/atomic"
-
-	"github.com/otherview/obscuro-playground/common"
-	oc "github.com/otherview/obscuro-playground/obscuro/common"
 )
 
 // Transfers and Withdrawals for now
@@ -17,14 +16,14 @@ const (
 
 // L2Tx Only in clear inside the enclave
 type L2Tx struct {
-	Id     common.TxHash
+	Id     common2.TxHash
 	TxType L2TxType
 	Amount uint64
-	From   common.Address
-	To     common.Address
+	From   common2.Address
+	To     common2.Address
 }
 
-var GenesisRollup = NewRollup(&common.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common.GenerateNonce(), "")
+var GenesisRollup = NewRollup(&common2.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")
 
 type Transactions []L2Tx
 
@@ -44,16 +43,16 @@ type EnclaveRollup struct {
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *EnclaveRollup) Hash() common.L2RootHash {
+func (r *EnclaveRollup) Hash() common2.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
-		return hash.(common.L2RootHash)
+		return hash.(common2.L2RootHash)
 	}
 	v := r.Header.Hash()
 	r.hash.Store(v)
 	return v
 }
 
-func NewRollup(b *common.Block, parent *EnclaveRollup, a common.NodeId, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common.Nonce, state oc.StateRoot) EnclaveRollup {
+func NewRollup(b *common2.Block, parent *EnclaveRollup, a common2.NodeId, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common2.Nonce, state oc.StateRoot) EnclaveRollup {
 	parentHash := oc.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -75,7 +74,7 @@ func NewRollup(b *common.Block, parent *EnclaveRollup, a common.NodeId, txs []L2
 
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r *EnclaveRollup) ProofHeight(l1BlockResolver common.BlockResolver) int {
+func (r *EnclaveRollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
 	if !f {
 		return -1
@@ -90,7 +89,7 @@ func (r *EnclaveRollup) ToExtRollup() oc.ExtRollup {
 	}
 }
 
-func (r *EnclaveRollup) Proof(l1BlockResolver common.BlockResolver) *common.Block {
+func (r *EnclaveRollup) Proof(l1BlockResolver common2.BlockResolver) *common2.Block {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")

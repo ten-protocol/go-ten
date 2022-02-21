@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/otherview/obscuro-playground/go/common"
+	"github.com/otherview/obscuro-playground/integration/simulation"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/otherview/obscuro-playground/common"
-	"github.com/otherview/obscuro-playground/simulation"
 )
 
 // DefaultAverageLatencyToBlockRatio is relative to the block time

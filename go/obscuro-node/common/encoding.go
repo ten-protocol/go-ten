@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/otherview/obscuro-playground/common"
+	"github.com/otherview/obscuro-playground/go/common"
 )
 
 func (r Rollup) Encode() (common.EncodedRollup, error) {

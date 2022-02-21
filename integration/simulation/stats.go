@@ -1,10 +1,9 @@
 package simulation
 
 import (
+	common3 "github.com/otherview/obscuro-playground/go/common"
+	common2 "github.com/otherview/obscuro-playground/go/obscuro-node/common"
 	"sync"
-
-	"github.com/otherview/obscuro-playground/common"
-	common2 "github.com/otherview/obscuro-playground/obscuro/common"
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.
@@ -25,8 +24,8 @@ type Stats struct {
 	nrEmptyBlocks      int
 
 	totalL2Txs  int
-	noL1Reorgs  map[common.NodeId]int
-	noL2Recalcs map[common.NodeId]int
+	noL1Reorgs  map[common3.NodeId]int
+	noL2Recalcs map[common3.NodeId]int
 	// todo - actual avg block Duration
 
 	totalDepositedAmount      uint64
@@ -43,29 +42,29 @@ func NewStats(nrMiners int, simulationTime int, avgBlockDuration uint64, avgLate
 		avgBlockDuration: avgBlockDuration,
 		avgLatency:       avgLatency,
 		gossipPeriod:     gossipPeriod,
-		noL1Reorgs:       map[common.NodeId]int{},
-		noL2Recalcs:      map[common.NodeId]int{},
+		noL1Reorgs:       map[common3.NodeId]int{},
+		noL2Recalcs:      map[common3.NodeId]int{},
 		statsMu:          &sync.RWMutex{},
 	}
 }
 
-func (s *Stats) L1Reorg(id common.NodeId) {
+func (s *Stats) L1Reorg(id common3.NodeId) {
 	s.statsMu.Lock()
 	s.noL1Reorgs[id]++
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) L2Recalc(id common.NodeId) {
+func (s *Stats) L2Recalc(id common3.NodeId) {
 	s.statsMu.Lock()
 	s.noL2Recalcs[id]++
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewBlock(b *common.Block) {
+func (s *Stats) NewBlock(b *common3.Block) {
 	s.statsMu.Lock()
 	// s.l1Height = common.MaxInt(s.l1Height, b.Height)
 	s.totalL1Blocks++
-	s.maxRollupsPerBlock = common.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions)))
+	s.maxRollupsPerBlock = common3.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions)))
 	if len(b.Transactions) == 0 {
 		s.nrEmptyBlocks++
 	}

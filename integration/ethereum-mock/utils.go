@@ -1,12 +1,12 @@
 package ethereum_mock
 
 import (
-	"github.com/otherview/obscuro-playground/common"
+	common2 "github.com/otherview/obscuro-playground/go/common"
 )
 
 // LCA - returns the least common ancestor of the 2 blocks
-func LCA(a *common.Block, b *common.Block, r common.BlockResolver) *common.Block {
-	if a.Height(r) == common.L1GenesisHeight || b.Height(r) == common.L1GenesisHeight {
+func LCA(a *common2.Block, b *common2.Block, r common2.BlockResolver) *common2.Block {
+	if a.Height(r) == common2.L1GenesisHeight || b.Height(r) == common2.L1GenesisHeight {
 		return a
 	}
 	if a.Hash() == b.Hash() {
@@ -41,20 +41,20 @@ func LCA(a *common.Block, b *common.Block, r common.BlockResolver) *common.Block
 
 // findNotIncludedTxs - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findNotIncludedTxs(head *common.Block, txs []*common.L1Tx, r common.BlockResolver, db TxDb) []*common.L1Tx {
+func findNotIncludedTxs(head *common2.Block, txs []*common2.L1Tx, r common2.BlockResolver, db TxDb) []*common2.L1Tx {
 	included := allIncludedTransactions(head, r, db)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *common.Block, r common.BlockResolver, db TxDb) map[common.TxHash]*common.L1Tx {
+func allIncludedTransactions(b *common2.Block, r common2.BlockResolver, db TxDb) map[common2.TxHash]*common2.L1Tx {
 	val, found := db.Txs(b)
 	if found {
 		return val
 	}
-	if b.Height(r) == common.L1GenesisHeight {
+	if b.Height(r) == common2.L1GenesisHeight {
 		return makeMap(b.Transactions)
 	}
-	newMap := make(map[common.TxHash]*common.L1Tx)
+	newMap := make(map[common2.TxHash]*common2.L1Tx)
 	p, f := b.Parent(r)
 	if !f {
 		panic("wtf")
@@ -69,7 +69,7 @@ func allIncludedTransactions(b *common.Block, r common.BlockResolver, db TxDb) m
 	return newMap
 }
 
-func removeExisting(base []*common.L1Tx, toRemove map[common.TxHash]*common.L1Tx) (r []*common.L1Tx) {
+func removeExisting(base []*common2.L1Tx, toRemove map[common2.TxHash]*common2.L1Tx) (r []*common2.L1Tx) {
 	for _, t := range base {
 		_, f := toRemove[t.Id]
 		if !f {
@@ -79,19 +79,19 @@ func removeExisting(base []*common.L1Tx, toRemove map[common.TxHash]*common.L1Tx
 	return
 }
 
-func makeMap(txs []*common.L1Tx) map[common.TxHash]*common.L1Tx {
-	m := make(map[common.TxHash]*common.L1Tx)
+func makeMap(txs []*common2.L1Tx) map[common2.TxHash]*common2.L1Tx {
+	m := make(map[common2.TxHash]*common2.L1Tx)
 	for _, tx := range txs {
 		m[tx.Id] = tx
 	}
 	return m
 }
 
-func BlocksBetween(a *common.Block, b *common.Block, r common.BlockResolver) []*common.Block {
+func BlocksBetween(a *common2.Block, b *common2.Block, r common2.BlockResolver) []*common2.Block {
 	if a.Hash() == b.Hash() {
-		return []*common.Block{a}
+		return []*common2.Block{a}
 	}
-	blocks := make([]*common.Block, 0)
+	blocks := make([]*common2.Block, 0)
 	c := b
 	f := false
 	for {
@@ -105,7 +105,7 @@ func BlocksBetween(a *common.Block, b *common.Block, r common.BlockResolver) []*
 		}
 	}
 	n := len(blocks)
-	result := make([]*common.Block, n)
+	result := make([]*common2.Block, n)
 	for i, block := range blocks {
 		result[n-i-1] = block
 	}

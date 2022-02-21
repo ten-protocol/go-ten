@@ -1,13 +1,14 @@
 package common
 
 import (
+	common2 "github.com/otherview/obscuro-playground/go/obscuro-node/common"
+	"github.com/otherview/obscuro-playground/integration/wallet-mock"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
 	"github.com/otherview/obscuro-playground/obscuro/common"
-	wallet_mock "github.com/otherview/obscuro-playground/wallet-mock"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
@@ -40,7 +41,7 @@ func TestSerialiseRollup(t *testing.T) {
 		From:   wallet_mock.New().Address,
 		To:     wallet_mock.New().Address,
 	}
-	rollup := common.Rollup{
+	rollup := common2.Rollup{
 		Height:       1,
 		RootHash:     uuid.New(),
 		Agg:          1,
@@ -56,7 +57,7 @@ func TestSerialiseRollup(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	r1 := common.Rollup{}
+	r1 := common2.Rollup{}
 
 	err2 := rlp.Decode(read, &r1)
 

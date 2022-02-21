@@ -2,16 +2,16 @@ package simulation
 
 import (
 	"fmt"
+	common3 "github.com/otherview/obscuro-playground/go/common"
+	"github.com/otherview/obscuro-playground/go/obscuro-node/common"
+	enclave2 "github.com/otherview/obscuro-playground/go/obscuro-node/enclave"
+	"github.com/otherview/obscuro-playground/integration/ethereum-mock"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/otherview/obscuro-playground/common"
-	ethereum_mock "github.com/otherview/obscuro-playground/ethereum-mock"
-	common2 "github.com/otherview/obscuro-playground/obscuro/common"
-	"github.com/otherview/obscuro-playground/obscuro/enclave"
 )
 
 func TestSimulation(t *testing.T) {
@@ -28,7 +28,7 @@ func TestSimulation(t *testing.T) {
 		panic(err)
 	}
 	defer f.Close()
-	common.SetLog(f)
+	common3.SetLog(f)
 
 	blockDuration := uint64(20_000)
 	l1netw, l2netw := RunSimulation(5, 10, 15, blockDuration, blockDuration/15, blockDuration/3)
@@ -39,7 +39,7 @@ func TestSimulation(t *testing.T) {
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
-func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave.Db, r *enclave.EnclaveRollup) {
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave2.Db, r *enclave2.EnclaveRollup) {
 	stats := l1Network.Stats
 	p := r.Proof(db)
 	validateL1(t, p, stats, db)
@@ -54,46 +54,46 @@ const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
 // Sanity check
-func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
+func validateL1(t *testing.T, b *common3.Block, s *Stats, db enclave2.Db) {
 	deposits := make([]uuid.UUID, 0)
-	rollups := make([]common.L2RootHash, 0)
+	rollups := make([]common3.L2RootHash, 0)
 	s.l1Height = b.Height(db)
 	totalDeposited := uint64(0)
 
-	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, b, db)
-	headRollup := &enclave.GenesisRollup
+	blockchain := ethereum_mock.BlocksBetween(&common3.GenesisBlock, b, db)
+	headRollup := &enclave2.GenesisRollup
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions {
-			currentRollups := make([]*enclave.EnclaveRollup, 0)
+			currentRollups := make([]*enclave2.EnclaveRollup, 0)
 			switch tx.TxType {
-			case common.DepositTx:
+			case common3.DepositTx:
 				deposits = append(deposits, tx.Id)
 				totalDeposited += tx.Amount
-			case common.RollupTx:
-				r := common2.DecodeRollup(tx.Rollup)
+			case common3.RollupTx:
+				r := common.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if common.IsBlockAncestor(r.Header.L1Proof, b, db) {
+				if common3.IsBlockAncestor(r.Header.L1Proof, b, db) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					currentRollups = append(currentRollups, enclave.DecryptRollup(r))
+					currentRollups = append(currentRollups, enclave2.DecryptRollup(r))
 					s.NewRollup(r)
 				}
 			default:
 				panic("unknown transaction type")
 			}
-			r, _ := enclave.FindWinner(headRollup, currentRollups, db)
+			r, _ := enclave2.FindWinner(headRollup, currentRollups, db)
 			if r != nil {
 				headRollup = r
 			}
 		}
 	}
 
-	if len(common.FindDups(deposits)) > 0 {
-		dups := common.FindDups(deposits)
+	if len(common3.FindDups(deposits)) > 0 {
+		dups := common3.FindDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
-	if len(common.FindRollupDups(rollups)) > 0 {
-		dups := common.FindRollupDups(rollups)
+	if len(common3.FindRollupDups(rollups)) > 0 {
+		dups := common3.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
 	if totalDeposited != s.totalDepositedAmount {
@@ -114,20 +114,20 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave.Db) {
 	}
 }
 
-func validateL2(t *testing.T, r *enclave.EnclaveRollup, s *Stats, db enclave.Db) uint64 {
+func validateL2(t *testing.T, r *enclave2.EnclaveRollup, s *Stats, db enclave2.Db) uint64 {
 	s.l2Height = db.Height(r)
 	transfers := make([]uuid.UUID, 0)
-	withdrawalTxs := make([]enclave.L2Tx, 0)
-	withdrawalRequests := make([]common2.Withdrawal, 0)
+	withdrawalTxs := make([]enclave2.L2Tx, 0)
+	withdrawalRequests := make([]common.Withdrawal, 0)
 	for {
-		if db.Height(r) == common.L2GenesisHeight {
+		if db.Height(r) == common3.L2GenesisHeight {
 			break
 		}
 		for _, tx := range r.Transactions {
 			switch tx.TxType {
-			case enclave.TransferTx:
+			case enclave2.TransferTx:
 				transfers = append(transfers, tx.Id)
-			case enclave.WithdrawalTx:
+			case enclave2.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
 				panic("Invalid tx type")
@@ -138,8 +138,8 @@ func validateL2(t *testing.T, r *enclave.EnclaveRollup, s *Stats, db enclave.Db)
 	}
 	// todo - check that proofs are on the canonical chain
 
-	if len(common.FindDups(transfers)) > 0 {
-		dups := common.FindDups(transfers)
+	if len(common3.FindDups(transfers)) > 0 {
+		dups := common3.FindDups(transfers)
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
 	if len(transfers) != s.nrTransferTransactions {
@@ -159,7 +159,7 @@ func validateL2(t *testing.T, r *enclave.EnclaveRollup, s *Stats, db enclave.Db)
 	return sumWithdrawals(withdrawalRequests)
 }
 
-func sumWithdrawals(w []common2.Withdrawal) uint64 {
+func sumWithdrawals(w []common.Withdrawal) uint64 {
 	sum := uint64(0)
 	for _, r := range w {
 		sum += r.Amount
@@ -167,7 +167,7 @@ func sumWithdrawals(w []common2.Withdrawal) uint64 {
 	return sum
 }
 
-func sumWithdrawalTxs(t []enclave.L2Tx) uint64 {
+func sumWithdrawalTxs(t []enclave2.L2Tx) uint64 {
 	sum := uint64(0)
 	for _, r := range t {
 		sum += r.Amount
@@ -191,7 +191,7 @@ func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCf
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
 }
 
-func totalBalance(s enclave.BlockState) uint64 {
+func totalBalance(s enclave2.BlockState) uint64 {
 	tot := uint64(0)
 	for _, bal := range s.State {
 		tot += bal
