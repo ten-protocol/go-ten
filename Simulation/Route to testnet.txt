@@ -13,7 +13,7 @@ Testnet high level goals
 Non-goals:
 - Performance
 - Stability
-- Bullet proof security
+- Bulletproof security
 - Privacy/Encryption?
 - tokens? paying for transactions?
 

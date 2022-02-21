@@ -21,7 +21,7 @@ P - split blocks into header&payload
 - create a Blockchain structure
 
 ----
-- analyse the pobi round - some inefficient state recalculation for the rollups
+- analyse the POBI round - some inefficient state recalculation for the rollups
 - split block and rollup in header and payload
 
 - create an API,

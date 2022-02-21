@@ -12,11 +12,12 @@
 *.out
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+.vendor/
 
 # GoLand files
 .idea/
 
-# Simulation run outputs
+# Simulation ignore files
 Simulation/.build/
 Simulation/simulation_result.txt
+
