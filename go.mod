@@ -1,4 +1,4 @@
-module github.com/otherview/obscuro-playground
+module github.com/obscuronet/obscuro-playground
 
 go 1.17
 

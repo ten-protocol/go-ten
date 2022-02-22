@@ -2,7 +2,7 @@ package enclave
 
 import (
 	"fmt"
-	"github.com/otherview/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block

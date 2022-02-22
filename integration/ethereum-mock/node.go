@@ -2,7 +2,7 @@ package ethereum_mock
 
 import (
 	"fmt"
-	common2 "github.com/otherview/obscuro-playground/go/common"
+	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	"sync/atomic"
 	"time"
 )

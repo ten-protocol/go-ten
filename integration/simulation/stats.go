@@ -1,8 +1,8 @@
 package simulation
 
 import (
-	common3 "github.com/otherview/obscuro-playground/go/common"
-	common2 "github.com/otherview/obscuro-playground/go/obscuro-node/common"
+	common3 "github.com/obscuronet/obscuro-playground/go/common"
+	common2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
 	"sync"
 )
 

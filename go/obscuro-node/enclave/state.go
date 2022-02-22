@@ -2,8 +2,8 @@ package enclave
 
 import (
 	"fmt"
-	common3 "github.com/otherview/obscuro-playground/go/common"
-	"github.com/otherview/obscuro-playground/go/obscuro-node/common"
+	common3 "github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
 )
 
 type State = map[common3.Address]uint64

@@ -2,7 +2,7 @@ package wallet_mock
 
 import (
 	"github.com/google/uuid"
-	"github.com/otherview/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 type Wallet struct {

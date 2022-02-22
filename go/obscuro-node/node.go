@@ -2,10 +2,10 @@ package obscuro_node
 
 import (
 	"fmt"
-	common3 "github.com/otherview/obscuro-playground/go/common"
-	"github.com/otherview/obscuro-playground/go/obscuro-node/common"
-	"github.com/otherview/obscuro-playground/go/obscuro-node/enclave"
-	"github.com/otherview/obscuro-playground/integration/ethereum-mock"
+	common3 "github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuro-node/enclave"
+	"github.com/obscuronet/obscuro-playground/integration/ethereum-mock"
 	"sync/atomic"
 	"time"
 

@@ -3,8 +3,8 @@ package enclave
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
-	common2 "github.com/otherview/obscuro-playground/go/obscuro-node/common"
-	wallet_mock "github.com/otherview/obscuro-playground/integration/wallet-mock"
+	common2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
+	wallet_mock "github.com/obscuronet/obscuro-playground/integration/wallet-mock"
 	"sync/atomic"
 	"testing"
 )

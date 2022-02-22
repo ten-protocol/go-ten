@@ -1,8 +1,8 @@
 package simulation
 
 import (
-	common2 "github.com/otherview/obscuro-playground/go/common"
-	"github.com/otherview/obscuro-playground/integration/ethereum-mock"
+	common2 "github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/integration/ethereum-mock"
 	"sync/atomic"
 	"time"
 )

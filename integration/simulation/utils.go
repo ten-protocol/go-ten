@@ -2,9 +2,9 @@ package simulation
 
 import (
 	"fmt"
-	common3 "github.com/otherview/obscuro-playground/go/common"
-	common2 "github.com/otherview/obscuro-playground/go/obscuro-node/common"
-	"github.com/otherview/obscuro-playground/integration/ethereum-mock"
+	common3 "github.com/obscuronet/obscuro-playground/go/common"
+	common2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
+	"github.com/obscuronet/obscuro-playground/integration/ethereum-mock"
 )
 
 func printBlock(b *common3.Block, m ethereum_mock.Node) string {

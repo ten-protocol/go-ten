@@ -2,11 +2,11 @@ package simulation
 
 import (
 	"fmt"
-	common2 "github.com/otherview/obscuro-playground/go/common"
-	"github.com/otherview/obscuro-playground/go/obscuro-node"
-	enclave2 "github.com/otherview/obscuro-playground/go/obscuro-node/enclave"
-	"github.com/otherview/obscuro-playground/integration/ethereum-mock"
-	"github.com/otherview/obscuro-playground/integration/wallet-mock"
+	common2 "github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuro-node"
+	enclave2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/enclave"
+	"github.com/obscuronet/obscuro-playground/integration/ethereum-mock"
+	"github.com/obscuronet/obscuro-playground/integration/wallet-mock"
 	"math/rand"
 	"time"
 

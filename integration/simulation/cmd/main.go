@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/otherview/obscuro-playground/go/common"
-	"github.com/otherview/obscuro-playground/integration/simulation"
+	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/integration/simulation"
 	"math/rand"
 	"os"
 	"time"

@@ -1,7 +1,7 @@
 package ethereum_mock
 
 import (
-	common2 "github.com/otherview/obscuro-playground/go/common"
+	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	"sync"
 )
 
