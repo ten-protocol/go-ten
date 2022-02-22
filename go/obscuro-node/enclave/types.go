@@ -85,7 +85,7 @@ func (r *EnclaveRollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
 func (r *EnclaveRollup) ToExtRollup() oc.ExtRollup {
 	return oc.ExtRollup{
 		Header: r.Header,
-		Txs:    encryptTransactions(r.Transactions),
+		Txs:    EncryptTransactions(r.Transactions),
 	}
 }
 

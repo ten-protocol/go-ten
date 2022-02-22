@@ -10,6 +10,5 @@ type Wallet struct {
 }
 
 func New() Wallet {
-	// return Wallet{Address: uuid.New()}
 	return Wallet{Address: uuid.New().ID()}
 }
