@@ -1,18 +1,18 @@
 package common
 
 import (
-	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	"io"
 	"sync"
 	"sync/atomic"
 
-	c "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	obscuroCommon "github.com/obscuronet/obscuro-playground/go/common"
 	"golang.org/x/crypto/sha3"
 )
 
-var GenesisHash = c.HexToHash("1000000000000000000000000000000000000000000000000000000000000000")
+var GenesisHash = common.HexToHash("1000000000000000000000000000000000000000000000000000000000000000")
 
 // Todo - this has to be a trie root eventually
 type StateRoot = string
@@ -22,17 +22,17 @@ type EncryptedTransactions []EncryptedTx
 
 // Header is in plaintext
 type Header struct {
-	ParentHash  common2.L2RootHash
-	Agg         common2.NodeId
-	Nonce       common2.Nonce
-	L1Proof     common2.L1RootHash // the L1 block where the Parent was published
+	ParentHash  obscuroCommon.L2RootHash
+	Agg         obscuroCommon.NodeID
+	Nonce       obscuroCommon.Nonce
+	L1Proof     obscuroCommon.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
 	Withdrawals []Withdrawal
 }
 
 type Withdrawal struct {
 	Amount  uint64
-	Address common2.Address
+	Address obscuroCommon.Address
 }
 
 type Rollup struct {
@@ -51,63 +51,76 @@ type ExtRollup struct {
 	Txs    EncryptedTransactions
 }
 
-func (eb ExtRollup) ToRollup() *Rollup {
+func (er ExtRollup) ToRollup() *Rollup {
 	return &Rollup{
-		Header:       eb.Header,
-		Transactions: eb.Txs,
+		Header:       er.Header,
+		Transactions: er.Txs,
 	}
 }
 
-func (b Rollup) ToExtRollup() ExtRollup {
+func (r Rollup) ToExtRollup() ExtRollup {
 	return ExtRollup{
-		Header: b.Header,
-		Txs:    b.Transactions,
+		Header: r.Header,
+		Txs:    r.Transactions,
 	}
 }
 
-func (r Rollup) Proof(l1BlockResolver common2.BlockResolver) *common2.Block {
+func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *obscuroCommon.Block {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
 	}
+
 	return v
 }
 
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r Rollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
+func (r Rollup) ProofHeight(l1BlockResolver obscuroCommon.BlockResolver) int {
 	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
 	if !f {
 		return -1
 	}
+
 	return v.Height(l1BlockResolver)
 }
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *Rollup) Hash() common2.L2RootHash {
+func (r *Rollup) Hash() obscuroCommon.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
-		return hash.(common2.L2RootHash)
+		return hash.(obscuroCommon.L2RootHash)
 	}
-	v := r.Header.Hash()
+
+	v, _ := r.Header.Hash()
 	r.hash.Store(v)
+
 	return v
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
-func (h *Header) Hash() common2.L2RootHash {
+func (h *Header) Hash() (obscuroCommon.L2RootHash, error) {
 	return rlpHash(h)
 }
 
 // rlpHash encodes x and hashes the encoded bytes.
-func rlpHash(x interface{}) (h common2.L2RootHash) {
+func rlpHash(x interface{}) (obscuroCommon.L2RootHash, error) {
+	var hash obscuroCommon.L2RootHash
+
 	sha := hasherPool.Get().(crypto.KeccakState)
 	defer hasherPool.Put(sha)
 	sha.Reset()
-	rlp.Encode(sha, x)
-	sha.Read(h[:])
-	return h
+
+	if err := rlp.Encode(sha, x); err != nil {
+		return hash, err
+	}
+
+	if _, err := sha.Read(hash[:]); err != nil {
+		return hash, err
+	}
+
+	return hash, nil
 }
 
 var hasherPool = sync.Pool{
@@ -115,18 +128,22 @@ var hasherPool = sync.Pool{
 }
 
 // DecodeRLP decodes the Ethereum
-func (b *Rollup) DecodeRLP(s *rlp.Stream) error {
+func (r *Rollup) DecodeRLP(s *rlp.Stream) error {
 	var eb ExtRollup
+
 	_, size, _ := s.Kind()
+
 	if err := s.Decode(&eb); err != nil {
 		return err
 	}
-	b.Header, b.Transactions = eb.Header, eb.Txs
-	b.size.Store(c.StorageSize(rlp.ListSize(size)))
+
+	r.Header, r.Transactions = eb.Header, eb.Txs
+	r.size.Store(common.StorageSize(rlp.ListSize(size)))
+
 	return nil
 }
 
 // EncodeRLP serializes b into the Ethereum RLP block format.
-func (b Rollup) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, b.ToExtRollup())
+func (r Rollup) EncodeRLP(w io.Writer) error {
+	return rlp.Encode(w, r.ToExtRollup())
 }

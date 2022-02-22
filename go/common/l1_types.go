@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -24,7 +25,7 @@ const (
 
 // todo - replace with the ethereum Transaction type
 type L1Tx struct {
-	Id     TxHash
+	ID     TxHash
 	TxType L1TxType
 
 	// if the type is rollup
@@ -43,7 +44,7 @@ type (
 
 type Header struct {
 	ParentHash L1RootHash
-	Miner      NodeId // this is actually coinbase
+	Miner      NodeID // this is actually coinbase
 	Nonce      Nonce
 }
 
@@ -64,21 +65,22 @@ type EncodedBlock []byte
 
 var GenesisHash = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
 
-func NewBlock(parent *Block, nonce uint64, m NodeId, txs []*L1Tx) Block {
+func NewBlock(parent *Block, nonce uint64, nodeID NodeID, txs []*L1Tx) Block {
 	parentHash := GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
 	}
-	h := Header{
+
+	header := Header{
 		Nonce:      nonce,
-		Miner:      m,
+		Miner:      nodeID,
 		ParentHash: parentHash,
 	}
-	b := Block{
-		Header:       &h,
+
+	return Block{
+		Header:       &header,
 		Transactions: txs,
 	}
-	return b
 }
 
 var GenesisBlock = NewBlock(nil, 0, 0, []*L1Tx{})
@@ -95,14 +97,16 @@ func (b *Block) Hash() L1RootHash {
 	if hash := b.hash.Load(); hash != nil {
 		return hash.(L1RootHash)
 	}
-	v := b.Header.Hash()
+
+	v, _ := b.Header.Hash()
 	b.hash.Store(v)
+
 	return v
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
-func (h *Header) Hash() L1RootHash {
+func (h *Header) Hash() (L1RootHash, error) {
 	return rlpHash(h)
 }
 
@@ -111,13 +115,23 @@ func (h *Header) Hash() L1RootHash {
 //}
 
 // rlpHash encodes x and hashes the encoded bytes.
-func rlpHash(x interface{}) (h L1RootHash) {
+func rlpHash(value interface{}) (L1RootHash, error) {
+	var hash L1RootHash
+
 	sha := hasherPool.Get().(crypto.KeccakState)
 	defer hasherPool.Put(sha)
 	sha.Reset()
-	rlp.Encode(sha, x)
-	sha.Read(h[:])
-	return h
+	err := rlp.Encode(sha, value)
+	if err != nil {
+		return hash, fmt.Errorf("unable to encode Value. %w", err)
+	}
+
+	_, err = sha.Read(hash[:])
+	if err != nil {
+		return hash, fmt.Errorf("unable to read encoded value. %w", err)
+	}
+
+	return hash, nil
 }
 
 var hasherPool = sync.Pool{
@@ -140,13 +154,17 @@ func (b Block) ToExtBlock() ExtBlock {
 
 // DecodeRLP decodes the Ethereum
 func (b *Block) DecodeRLP(s *rlp.Stream) error {
-	var eb ExtBlock
+	var extBlock ExtBlock
+
 	_, size, _ := s.Kind()
-	if err := s.Decode(&eb); err != nil {
+
+	if err := s.Decode(&extBlock); err != nil {
 		return err
 	}
-	b.Header, b.Transactions = eb.Header, eb.Txs
+
+	b.Header, b.Transactions = extBlock.Header, extBlock.Txs
 	b.size.Store(common.StorageSize(rlp.ListSize(size)))
+
 	return nil
 }
 
@@ -162,6 +180,7 @@ func (b *Block) Height(resolver BlockResolver) int {
 	if height := b.height.Load(); height != nil {
 		return height.(int)
 	}
+
 	if b.Hash() == GenesisBlock.Hash() {
 		b.height.Store(L1GenesisHeight)
 		return L1GenesisHeight
@@ -171,7 +190,9 @@ func (b *Block) Height(resolver BlockResolver) int {
 	if !f {
 		panic("wtf")
 	}
+
 	v := p.Height(resolver) + 1
 	b.height.Store(v)
+
 	return v
 }

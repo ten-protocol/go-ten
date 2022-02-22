@@ -1,4 +1,4 @@
-package wallet_mock
+package walletmock
 
 import (
 	"github.com/google/uuid"

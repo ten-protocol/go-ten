@@ -1,9 +1,10 @@
 package simulation
 
 import (
-	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
 	"sync"
+
+	common3 "github.com/obscuronet/obscuro-playground/go/common"
+	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.
@@ -24,8 +25,8 @@ type Stats struct {
 	nrEmptyBlocks      int
 
 	totalL2Txs  int
-	noL1Reorgs  map[common3.NodeId]int
-	noL2Recalcs map[common3.NodeId]int
+	noL1Reorgs  map[common3.NodeID]int
+	noL2Recalcs map[common3.NodeID]int
 	// todo - actual avg block Duration
 
 	totalDepositedAmount      uint64
@@ -42,19 +43,19 @@ func NewStats(nrMiners int, simulationTime int, avgBlockDuration uint64, avgLate
 		avgBlockDuration: avgBlockDuration,
 		avgLatency:       avgLatency,
 		gossipPeriod:     gossipPeriod,
-		noL1Reorgs:       map[common3.NodeId]int{},
-		noL2Recalcs:      map[common3.NodeId]int{},
+		noL1Reorgs:       map[common3.NodeID]int{},
+		noL2Recalcs:      map[common3.NodeID]int{},
 		statsMu:          &sync.RWMutex{},
 	}
 }
 
-func (s *Stats) L1Reorg(id common3.NodeId) {
+func (s *Stats) L1Reorg(id common3.NodeID) {
 	s.statsMu.Lock()
 	s.noL1Reorgs[id]++
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) L2Recalc(id common3.NodeId) {
+func (s *Stats) L2Recalc(id common3.NodeID) {
 	s.statsMu.Lock()
 	s.noL2Recalcs[id]++
 	s.statsMu.Unlock()

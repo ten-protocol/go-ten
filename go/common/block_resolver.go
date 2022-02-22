@@ -11,40 +11,48 @@ func (b Block) Parent(r BlockResolver) (*Block, bool) {
 }
 
 // IsAncestor return true if a is the ancestor of b
-func IsAncestor(a *Block, b *Block, r BlockResolver) bool {
-	if a.Hash() == b.Hash() {
+func IsAncestor(blockA *Block, blockB *Block, r BlockResolver) bool {
+	if blockA.Hash() == blockB.Hash() {
 		return true
 	}
-	if a.Height(r) >= b.Height(r) {
+
+	if blockA.Height(r) >= blockB.Height(r) {
 		return false
 	}
-	p, f := b.Parent(r)
+
+	p, f := blockB.Parent(r)
 	if !f {
 		return false
 	}
-	return IsAncestor(a, p, r)
+
+	return IsAncestor(blockA, p, r)
 }
 
 // IsBlockAncestor - takes into consideration that the block to verify might be on a branch we haven't received yet
-func IsBlockAncestor(a L1RootHash, b *Block, r BlockResolver) bool {
-	if a == b.Hash() {
+func IsBlockAncestor(l1BlockHash L1RootHash, block *Block, resolver BlockResolver) bool {
+	if l1BlockHash == block.Hash() {
 		return true
 	}
-	if a == GenesisBlock.Hash() {
+
+	if l1BlockHash == GenesisBlock.Hash() {
 		return true
 	}
-	if b.Height(r) == 0 {
+
+	if block.Height(resolver) == 0 {
 		return false
 	}
-	block, found := r.Resolve(a)
+
+	resolvedBlock, found := resolver.Resolve(l1BlockHash)
 	if found {
-		if block.Height(r) >= b.Height(r) {
+		if resolvedBlock.Height(resolver) >= block.Height(resolver) {
 			return false
 		}
 	}
-	p, f := b.Parent(r)
+
+	p, f := block.Parent(resolver)
 	if !f {
 		return false
 	}
-	return IsBlockAncestor(a, p, r)
+
+	return IsBlockAncestor(l1BlockHash, p, resolver)
 }

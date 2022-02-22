@@ -2,13 +2,14 @@ package enclave
 
 import (
 	"fmt"
+
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
+	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id common3.NodeId)
+	L2Recalc(id common3.NodeID)
 	RollupWithMoreRecentProof()
 }
 
@@ -23,7 +24,7 @@ type SubmitBlockResponse struct {
 type Enclave interface {
 	// Todo - attestation, secret generation, etc
 
-	ProduceGenesis() SubmitBlockResponse
+	ProduceGenesis() (SubmitBlockResponse, error)
 	IngestBlocks(blocks []common3.ExtBlock)
 	Start(block common3.ExtBlock)
 
@@ -44,28 +45,33 @@ type Enclave interface {
 	RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool)
 	Stop()
 
-	// TestPeekHead - only availble for testing purposes
+	// TestPeekHead - only available for testing purposes
 	TestPeekHead() BlockState
 
-	// TestDb - only availble for testing purposes
-	TestDb() Db
+	// TestDb - only available for testing purposes
+	TestDB() DB
 }
 
 type enclaveImpl struct {
-	node   common3.NodeId
+	node           common3.NodeID
 	mining         bool
-	db             Db
+	db             DB
 	statsCollector StatsCollector
 
 	txCh                 chan L2Tx
-	roundWinnerCh        chan *EnclaveRollup
+	roundWinnerCh        chan *Rollup
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
 }
 
 func (e *enclaveImpl) Start(block common3.ExtBlock) {
-	s, f := e.db.FetchState(block.Header.Hash())
+	headerHash, err := block.Header.Hash()
+	if err != nil {
+		// todo - implement a nice way to support enclave bootstrap issues
+		panic(fmt.Errorf("unable to start the enclave %w", err))
+	}
+	s, f := e.db.FetchState(headerHash)
 	if !f {
 		panic("state should be calculated")
 	}
@@ -92,18 +98,16 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			_, f := currentProcessedTxsMap[tx.Id]
+			_, f := currentProcessedTxsMap[tx.ID]
 			if !f {
-				currentProcessedTxsMap[tx.Id] = tx
+				currentProcessedTxsMap[tx.ID] = tx
 				currentProcessedTxs = append(currentProcessedTxs, tx)
 				executeTx(&currentState, tx)
 			}
 
 		case <-e.speculativeWorkInCh:
-			b := make([]L2Tx, 0)
-			for _, tx := range currentProcessedTxs {
-				b = append(b, tx)
-			}
+			b := make([]L2Tx, 0, len(currentProcessedTxs))
+			b = append(b, currentProcessedTxs...)
 			state := copyProcessedState(currentState)
 			e.speculativeWorkOutCh <- speculativeWork{
 				r:   currentHead,
@@ -117,13 +121,17 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
+func (e *enclaveImpl) ProduceGenesis() (SubmitBlockResponse, error) {
 	r := GenesisRollup
+	hash, err := r.Header.Hash()
+	if err != nil {
+		return SubmitBlockResponse{}, err
+	}
 	return SubmitBlockResponse{
-		Hash:      r.Header.Hash(),
+		Hash:      hash,
 		Rollup:    r.ToExtRollup(),
 		Processed: true,
-	}
+	}, nil
 }
 
 func (e *enclaveImpl) IngestBlocks(blocks []common3.ExtBlock) {
@@ -138,7 +146,8 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 	b := block.ToBlock()
 	e.db.Store(b)
 	// this is where much more will actually happen.
-	// the "blockchain" logic from geth has to be executed here, to determine the total proof of work, to verify some key aspects, etc
+	// the "blockchain" logic from geth has to be executed here,
+	// to determine the total proof of work, to verify some key aspects, etc
 
 	_, f := e.db.Resolve(b.Header.ParentHash)
 	if !f && b.Height(e.db) > common3.L1GenesisHeight {
@@ -166,7 +175,7 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
-	r := EnclaveRollup{
+	r := Rollup{
 		Header:       rollup.Header,
 		Transactions: decryptTransactions(rollup.Txs),
 	}
@@ -184,7 +193,7 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 
 	rollupsReceivedFromPeers := e.db.FetchRollups(e.db.Height(head) + 1)
 	// filter out rollups with a different Parent
-	var usefulRollups []*EnclaveRollup
+	var usefulRollups []*Rollup
 	for _, rol := range rollupsReceivedFromPeers {
 		p := e.db.Parent(rol)
 		if p.Hash() == head.Hash() {
@@ -195,7 +204,9 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	parentState := e.db.FetchRollupState(head.Hash())
 	// determine the winner of the round
 	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.db)
-	// common.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(), winnerRollup.L2RootHash.ID(), winnerRollup.Height(), winnerRollup.Parent().L2RootHash.ID(), winnerRollup.Proof().L2RootHash.ID()))
+	// common.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(),
+	// winnerRollup.L2RootHash.ID(), winnerRollup.Height(), winnerRollup.Parent().L2RootHash.ID(),
+	// winnerRollup.Proof().L2RootHash.ID()))
 
 	e.db.SetRollupState(winnerRollup.Hash(), s)
 	go e.notifySpeculative(winnerRollup)
@@ -204,13 +215,20 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.db)
 		w := e.db.Parent(winnerRollup)
-		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.", e.node, common3.Str(winnerRollup.Hash()), e.db.Height(winnerRollup), common3.Str(w.Hash()), common3.Str(v.Hash()), printTxs(winnerRollup.Transactions), winnerRollup.Header.State))
+		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.",
+			e.node,
+			common3.Str(winnerRollup.Hash()), e.db.Height(winnerRollup),
+			common3.Str(w.Hash()),
+			common3.Str(v.Hash()),
+			printTxs(winnerRollup.Transactions),
+			winnerRollup.Header.State),
+		)
 		return winnerRollup.ToExtRollup(), true
 	}
 	return common2.ExtRollup{}, false
 }
 
-func (e *enclaveImpl) notifySpeculative(winnerRollup *EnclaveRollup) {
+func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
 	//if atomic.LoadInt32(e.interrupt) == 1 {
 	//	return
 	//}
@@ -222,7 +240,7 @@ func (e *enclaveImpl) Balance(address common3.Address) uint64 {
 	return 0
 }
 
-func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *EnclaveRollup {
+func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
 	e.speculativeWorkInCh <- true
 	speculativeRollup := <-e.speculativeWorkOutCh
@@ -234,7 +252,13 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *EnclaveRol
 	// if true {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
 		if speculativeRollup.r != nil {
-			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%s(%d), published=r_%s(%d)", e.node, common3.Str(speculativeRollup.r.Hash()), e.db.Height(speculativeRollup.r), common3.Str(bs.Head.Hash()), e.db.Height(bs.Head)))
+			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%s(%d), published=r_%s(%d)",
+				e.node,
+				common3.Str(speculativeRollup.r.Hash()),
+				e.db.Height(speculativeRollup.r),
+				common3.Str(bs.Head.Hash()),
+				e.db.Height(bs.Head)),
+			)
 			e.statsCollector.L2Recalc(e.node)
 		}
 
@@ -259,7 +283,7 @@ func (e *enclaveImpl) TestPeekHead() BlockState {
 	return e.db.Head()
 }
 
-func (e *enclaveImpl) TestDb() Db {
+func (e *enclaveImpl) TestDB() DB {
 	return e.db
 }
 
@@ -269,18 +293,18 @@ func (e *enclaveImpl) Stop() {
 
 // internal structure to pass information.
 type speculativeWork struct {
-	r   *EnclaveRollup
+	r   *Rollup
 	s   *RollupState
 	txs []L2Tx
 }
 
-func NewEnclave(id common3.NodeId, mining bool, collector StatsCollector) Enclave {
+func NewEnclave(id common3.NodeID, mining bool, collector StatsCollector) Enclave {
 	return &enclaveImpl{
 		node:                 id,
-		db:                   NewInMemoryDb(),
+		db:                   NewInMemoryDB(),
 		mining:               mining,
 		txCh:                 make(chan L2Tx),
-		roundWinnerCh:        make(chan *EnclaveRollup),
+		roundWinnerCh:        make(chan *Rollup),
 		exitCh:               make(chan bool),
 		speculativeWorkInCh:  make(chan bool),
 		speculativeWorkOutCh: make(chan speculativeWork),

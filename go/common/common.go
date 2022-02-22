@@ -5,7 +5,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type NodeId uint64
+type NodeID uint64
 
 // todo - use proper crypto
 // type Address = uuid.UUID

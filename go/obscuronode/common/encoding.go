@@ -12,6 +12,7 @@ func (r Rollup) Encode() (common.EncodedRollup, error) {
 func Decode(encoded common.EncodedRollup) (*Rollup, error) {
 	r := Rollup{}
 	err := rlp.DecodeBytes(encoded, &r)
+
 	return &r, err
 }
 
@@ -20,6 +21,7 @@ func EncodeRollup(r *Rollup) common.EncodedRollup {
 	if err != nil {
 		panic(err)
 	}
+
 	return encoded
 }
 
@@ -28,5 +30,6 @@ func DecodeRollup(rollup common.EncodedRollup) *Rollup {
 	if err != nil {
 		panic(err)
 	}
+
 	return r
 }

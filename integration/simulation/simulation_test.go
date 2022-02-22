@@ -2,16 +2,16 @@ package simulation
 
 import (
 	"fmt"
-	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
-	enclave2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/enclave"
-	"github.com/obscuronet/obscuro-playground/integration/ethereum-mock"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/obscuronet/obscuro-playground/go/common"
+	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	enclave2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 func TestSimulation(t *testing.T) {
@@ -28,23 +28,23 @@ func TestSimulation(t *testing.T) {
 		panic(err)
 	}
 	defer f.Close()
-	common3.SetLog(f)
+	common.SetLog(f)
 
 	blockDuration := uint64(20_000)
 	l1netw, l2netw := RunSimulation(5, 10, 15, blockDuration, blockDuration/15, blockDuration/3)
 	firstNode := l2netw.nodes[0]
-	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.TestDb(), firstNode.Enclave.TestPeekHead().Head)
+	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.TestDB(), firstNode.Enclave.TestPeekHead().Head)
 	stats := l1netw.Stats
 	fmt.Printf("%+v\n", stats)
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
-func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave2.Db, r *enclave2.EnclaveRollup) {
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave2.DB, r *enclave2.Rollup) {
 	stats := l1Network.Stats
 	p := r.Proof(db)
 	validateL1(t, p, stats, db)
 	totalWithdrawn := validateL2(t, r, stats, db)
-	validateL2State(t, l1Network, l2Network, stats, totalWithdrawn)
+	validateL2State(t, l2Network, stats, totalWithdrawn)
 }
 
 // For this simulation, this represents an acceptable "dead blocks" percentage.
@@ -54,25 +54,25 @@ const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
 // Sanity check
-func validateL1(t *testing.T, b *common3.Block, s *Stats, db enclave2.Db) {
+func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 	deposits := make([]uuid.UUID, 0)
-	rollups := make([]common3.L2RootHash, 0)
+	rollups := make([]common.L2RootHash, 0)
 	s.l1Height = b.Height(db)
 	totalDeposited := uint64(0)
 
-	blockchain := ethereum_mock.BlocksBetween(&common3.GenesisBlock, b, db)
+	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, b, db)
 	headRollup := &enclave2.GenesisRollup
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions {
-			currentRollups := make([]*enclave2.EnclaveRollup, 0)
+			currentRollups := make([]*enclave2.Rollup, 0)
 			switch tx.TxType {
-			case common3.DepositTx:
-				deposits = append(deposits, tx.Id)
+			case common.DepositTx:
+				deposits = append(deposits, tx.ID)
 				totalDeposited += tx.Amount
-			case common3.RollupTx:
-				r := common.DecodeRollup(tx.Rollup)
+			case common.RollupTx:
+				r := obscuroCommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if common3.IsBlockAncestor(r.Header.L1Proof, b, db) {
+				if common.IsBlockAncestor(r.Header.L1Proof, b, db) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					currentRollups = append(currentRollups, enclave2.DecryptRollup(r))
@@ -88,12 +88,12 @@ func validateL1(t *testing.T, b *common3.Block, s *Stats, db enclave2.Db) {
 		}
 	}
 
-	if len(common3.FindDups(deposits)) > 0 {
-		dups := common3.FindDups(deposits)
+	if len(common.FindDups(deposits)) > 0 {
+		dups := common.FindDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
-	if len(common3.FindRollupDups(rollups)) > 0 {
-		dups := common3.FindRollupDups(rollups)
+	if len(common.FindRollupDups(rollups)) > 0 {
+		dups := common.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
 	if totalDeposited != s.totalDepositedAmount {
@@ -106,27 +106,27 @@ func validateL1(t *testing.T, b *common3.Block, s *Stats, db enclave2.Db) {
 	}
 
 	// todo
-	for nodeId, reorgs := range s.noL1Reorgs {
+	for nodeID, reorgs := range s.noL1Reorgs {
 		eff := float64(reorgs) / float64(s.l1Height)
 		if eff > L1EfficiencyThreashold {
-			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeId, eff, L1EfficiencyThreashold)
+			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeID, eff, L1EfficiencyThreashold)
 		}
 	}
 }
 
-func validateL2(t *testing.T, r *enclave2.EnclaveRollup, s *Stats, db enclave2.Db) uint64 {
+func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint64 {
 	s.l2Height = db.Height(r)
 	transfers := make([]uuid.UUID, 0)
 	withdrawalTxs := make([]enclave2.L2Tx, 0)
-	withdrawalRequests := make([]common.Withdrawal, 0)
+	withdrawalRequests := make([]obscuroCommon.Withdrawal, 0)
 	for {
-		if db.Height(r) == common3.L2GenesisHeight {
+		if db.Height(r) == common.L2GenesisHeight {
 			break
 		}
 		for _, tx := range r.Transactions {
 			switch tx.TxType {
 			case enclave2.TransferTx:
-				transfers = append(transfers, tx.Id)
+				transfers = append(transfers, tx.ID)
 			case enclave2.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
@@ -138,8 +138,8 @@ func validateL2(t *testing.T, r *enclave2.EnclaveRollup, s *Stats, db enclave2.D
 	}
 	// todo - check that proofs are on the canonical chain
 
-	if len(common3.FindDups(transfers)) > 0 {
-		dups := common3.FindDups(transfers)
+	if len(common.FindDups(transfers)) > 0 {
+		dups := common.FindDups(transfers)
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
 	if len(transfers) != s.nrTransferTransactions {
@@ -159,7 +159,7 @@ func validateL2(t *testing.T, r *enclave2.EnclaveRollup, s *Stats, db enclave2.D
 	return sumWithdrawals(withdrawalRequests)
 }
 
-func sumWithdrawals(w []common.Withdrawal) uint64 {
+func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
 	sum := uint64(0)
 	for _, r := range w {
 		sum += r.Amount
@@ -172,10 +172,11 @@ func sumWithdrawalTxs(t []enclave2.L2Tx) uint64 {
 	for _, r := range t {
 		sum += r.Amount
 	}
+
 	return sum
 }
 
-func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, s *Stats, totalWithdrawn uint64) {
+func validateL2State(t *testing.T, l2Network L2NetworkCfg, s *Stats, totalWithdrawn uint64) {
 	finalAmount := s.totalDepositedAmount - totalWithdrawn
 	// Check that the state on all nodes is valid
 	for _, observer := range l2Network.nodes {
@@ -183,7 +184,7 @@ func validateL2State(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCf
 		lastState := observer.Enclave.TestPeekHead()
 		total := totalBalance(lastState)
 		if total != finalAmount {
-			t.Errorf("The amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", observer.Id, total, finalAmount)
+			t.Errorf("The amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", observer.ID, total, finalAmount)
 		}
 	}
 

@@ -1,15 +1,18 @@
-package obscuro_node
+package obscuronode
 
 import (
 	"fmt"
-	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuro-node/enclave"
-	"github.com/obscuronet/obscuro-playground/integration/ethereum-mock"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
+
+	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
 type AggregatorCfg struct {
@@ -18,28 +21,28 @@ type AggregatorCfg struct {
 }
 
 type L2Network interface {
-	BroadcastRollup(r common3.EncodedRollup)
-	BroadcastTx(tx common.EncryptedTx)
+	BroadcastRollup(r common.EncodedRollup)
+	BroadcastTx(tx obscuroCommon.EncryptedTx)
 }
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id common3.NodeId)
-	NewBlock(block *common3.Block)
-	NewRollup(rollup *common.Rollup)
+	L2Recalc(id common.NodeID)
+	NewBlock(block *common.Block)
+	NewRollup(rollup *obscuroCommon.Rollup)
 	RollupWithMoreRecentProof()
 }
 
 // Node this will become the Obscuro "Node" type
 type Node struct {
-	Id common3.NodeId
+	ID common.NodeID
 
 	l2Network L2Network
-	L1Node    *ethereum_mock.Node
+	L1Node    *ethereummock.Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
-	cfg AggregatorCfg
+	cfg     AggregatorCfg
 
 	stats StatsCollector
 
@@ -48,10 +51,10 @@ type Node struct {
 	interrupt  *int32
 
 	// where the connected L1Node node drops new blocks
-	blockRpcCh chan common3.EncodedBlock
-	forkRpcCh  chan []common3.EncodedBlock
+	blockRPCCh chan common.EncodedBlock
+	forkRPCCh  chan []common.EncodedBlock
 
-	rollupsP2pCh chan common3.EncodedRollup
+	rollupsP2PCh chan common.EncodedRollup
 
 	// Interface to the logic running inside the TEE
 	Enclave enclave.Enclave
@@ -61,16 +64,22 @@ func (a *Node) Start() {
 	// Todo: This is a naive implementation.
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	allblocks := a.L1Node.RPCBlockchainFeed()
-	extblocks := make([]common3.ExtBlock, len(allblocks))
+	extblocks := make([]common.ExtBlock, len(allblocks))
+
 	for i, b := range allblocks {
 		extblocks[i] = b.ToExtBlock()
 	}
+
 	a.Enclave.IngestBlocks(extblocks)
 	// todo - what happens with the blocks received while processing ?
 	go a.Enclave.Start(extblocks[len(extblocks)-1])
 
 	if a.genesis {
-		a.initialiseProtocol()
+		_, err := a.initialiseProtocol()
+		if err != nil {
+			// todo - gracefully kill nodes
+			panic(fmt.Errorf("unable to initialize obscuro protocol on chain %w", err))
+		}
 	}
 
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
@@ -81,17 +90,17 @@ func (a *Node) Start() {
 	// Note that during processing, more recent notifications can be received.
 	for {
 		select {
-		case b := <-a.blockRpcCh:
+		case b := <-a.blockRPCCh:
 			interrupt = sendInterrupt(interrupt)
-			a.processBlocks([]common3.EncodedBlock{b}, interrupt)
+			a.processBlocks([]common.EncodedBlock{b}, interrupt)
 
-		case f := <-a.forkRpcCh:
+		case f := <-a.forkRPCCh:
 			interrupt = sendInterrupt(interrupt)
 			a.processBlocks(f, interrupt)
 
-		case r := <-a.rollupsP2pCh:
-			rol, _ := common.Decode(r)
-			go a.Enclave.SubmitRollup(common.ExtRollup{
+		case r := <-a.rollupsP2PCh:
+			rol, _ := obscuroCommon.Decode(r)
+			go a.Enclave.SubmitRollup(obscuroCommon.ExtRollup{
 				Header: rol.Header,
 				Txs:    rol.Transactions,
 			})
@@ -110,7 +119,7 @@ func sendInterrupt(interrupt *int32) *int32 {
 	return &i
 }
 
-func (a *Node) processBlocks(blocks []common3.EncodedBlock, interrupt *int32) {
+func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	var result enclave.SubmitBlockResponse
 	for _, block := range blocks {
 		result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
@@ -118,19 +127,20 @@ func (a *Node) processBlocks(blocks []common3.EncodedBlock, interrupt *int32) {
 
 	if !result.Processed {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		common3.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%s", a.Id, common3.Str(b.Hash())))
+		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%s", a.ID, common.Str(b.Hash())))
 		return
 	}
-	a.l2Network.BroadcastRollup(common.EncodeRollup(result.Rollup.ToRollup()))
 
-	common3.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
+	a.l2Network.BroadcastRollup(obscuroCommon.EncodeRollup(result.Rollup.ToRollup()))
+
+	common.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
 			return
 		}
 		// Request the round winner for the current head
 		winnerRollup, submit := a.Enclave.RoundWinner(result.Hash)
 		if submit {
-			tx := common3.L1Tx{Id: uuid.New(), TxType: common3.RollupTx, Rollup: common.EncodeRollup(winnerRollup.ToRollup())}
+			tx := common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(winnerRollup.ToRollup())}
 			t, err := tx.Encode()
 			if err != nil {
 				panic(err)
@@ -143,37 +153,38 @@ func (a *Node) processBlocks(blocks []common3.EncodedBlock, interrupt *int32) {
 }
 
 // RPCNewHead Receive notifications From the L1Node Node when there's a new block
-func (a *Node) RPCNewHead(b common3.EncodedBlock) {
+func (a *Node) RPCNewHead(b common.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.blockRpcCh <- b
+	a.blockRPCCh <- b
 }
 
-func (a *Node) RPCNewFork(b []common3.EncodedBlock) {
+func (a *Node) RPCNewFork(b []common.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.forkRpcCh <- b
+	a.forkRPCCh <- b
 }
 
 // P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
 // All it does is forward the rollup for processing to the enclave
-func (a *Node) P2PGossipRollup(r common3.EncodedRollup) {
+func (a *Node) P2PGossipRollup(r common.EncodedRollup) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.rollupsP2pCh <- r
+	a.rollupsP2PCh <- r
 }
 
-func (a *Node) P2PReceiveTx(tx common.EncryptedTx) {
+func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
+
 	go a.Enclave.SubmitTx(tx)
 }
 
-func (a *Node) RPCBalance(address common3.Address) uint64 {
+func (a *Node) RPCBalance(address common.Address) uint64 {
 	return a.Enclave.Balance(address)
 }
 
@@ -186,22 +197,35 @@ func (a *Node) Stop() {
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol() common3.L2RootHash {
+func (a *Node) initialiseProtocol() (common.L2RootHash, error) {
 	// todo shared secret
-	genesis := a.Enclave.ProduceGenesis()
-	tx := common3.L1Tx{Id: uuid.New(), TxType: common3.RollupTx, Rollup: common.EncodeRollup(genesis.Rollup.ToRollup())}
+	genesis, err := a.Enclave.ProduceGenesis()
+	if err != nil {
+		return genesis.Hash, err
+	}
+
+	tx := common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())}
 	t, err := tx.Encode()
 	if err != nil {
 		panic(err)
 	}
+
 	a.L1Node.BroadcastTx(t)
-	return genesis.Hash
+
+	return genesis.Hash, nil
 }
 
-func NewAgg(id common3.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Network L2Network, collector StatsCollector, genesis bool) Node {
+func NewAgg(
+	id common.NodeID,
+	cfg AggregatorCfg,
+	l1 *ethereummock.Node,
+	l2Network L2Network,
+	collector StatsCollector,
+	genesis bool,
+) Node {
 	return Node{
 		// config
-		Id:        id,
+		ID:        id,
 		cfg:       cfg,
 		mining:    true,
 		genesis:   genesis,
@@ -215,9 +239,9 @@ func NewAgg(id common3.NodeId, cfg AggregatorCfg, l1 *ethereum_mock.Node, l2Netw
 		interrupt:  new(int32),
 
 		// incoming data
-		blockRpcCh:   make(chan common3.EncodedBlock),
-		forkRpcCh:    make(chan []common3.EncodedBlock),
-		rollupsP2pCh: make(chan common3.EncodedRollup),
+		blockRPCCh:   make(chan common.EncodedBlock),
+		forkRPCCh:    make(chan []common.EncodedBlock),
+		rollupsP2PCh: make(chan common.EncodedRollup),
 
 		// State processing
 		Enclave: enclave.NewEnclave(id, true, collector),

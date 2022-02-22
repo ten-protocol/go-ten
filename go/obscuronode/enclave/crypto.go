@@ -2,7 +2,7 @@ package enclave
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuro-node/common"
+	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
 func decryptTransactions(txs common2.EncryptedTransactions) Transactions {
@@ -15,10 +15,10 @@ func decryptTransactions(txs common2.EncryptedTransactions) Transactions {
 
 func DecryptTx(tx common2.EncryptedTx) L2Tx {
 	t := L2Tx{}
-	err := rlp.DecodeBytes(tx, &t)
-	if err != nil {
+	if err := rlp.DecodeBytes(tx, &t); err != nil {
 		panic("no way")
 	}
+
 	return t
 }
 
@@ -38,8 +38,8 @@ func EncryptTransactions(transactions Transactions) common2.EncryptedTransaction
 	return result
 }
 
-func DecryptRollup(rollup *common2.Rollup) *EnclaveRollup {
-	return &EnclaveRollup{
+func DecryptRollup(rollup *common2.Rollup) *Rollup {
+	return &Rollup{
 		Header:       rollup.Header,
 		Transactions: decryptTransactions(rollup.Transactions),
 	}

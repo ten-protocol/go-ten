@@ -1,10 +1,11 @@
-package ethereum_mock
+package ethereummock
 
 import (
 	"fmt"
-	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	"sync/atomic"
 	"time"
+
+	common2 "github.com/obscuronet/obscuro-playground/go/common"
 )
 
 type L1Network interface {
@@ -22,25 +23,25 @@ type MiningConfig struct {
 	PowTime common2.Latency
 }
 
-type TxDb interface {
+type TxDB interface {
 	Txs(block *common2.Block) (map[common2.TxHash]*common2.L1Tx, bool)
 	AddTxs(*common2.Block, map[common2.TxHash]*common2.L1Tx)
 }
 
 type StatsCollector interface {
 	// Register when a miner has to process a reorg (a winning block from a fork)
-	L1Reorg(id common2.NodeId)
+	L1Reorg(id common2.NodeID)
 }
 
 type Node struct {
-	Id       common2.NodeId
+	ID       common2.NodeID
 	cfg      MiningConfig
 	clients  []NotifyNewBlock
 	network  L1Network
 	mining   bool
 	stats    StatsCollector
 	Resolver common2.BlockResolver
-	db       TxDb
+	db       TxDB
 
 	// Channels
 	exitCh       chan bool // the Node stops
@@ -96,21 +97,24 @@ func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Bloc
 	m.Resolver.Store(b)
 	_, f := m.Resolver.Resolve(b.Header.ParentHash)
 	// only proceed if the parent is available
+	// todo review this nested ifs
+	// nolint:nestif
 	if f {
 		if b.Height(m.Resolver) > head.Height(m.Resolver) {
 			// Check for Reorgs
 			if !common2.IsAncestor(head, b, m.Resolver) {
-				m.stats.L1Reorg(m.Id)
+				m.stats.L1Reorg(m.ID)
 				fork := LCA(head, b, m.Resolver)
-				common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.Id, common2.Str(b.Hash()), b.Height(m.Resolver), common2.Str(head.Hash()), head.Height(m.Resolver), common2.Str(fork.Hash()), fork.Height(m.Resolver)))
+				common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.ID, common2.Str(b.Hash()), b.Height(m.Resolver), common2.Str(head.Hash()), head.Height(m.Resolver), common2.Str(fork.Hash()), fork.Height(m.Resolver)))
 				head = m.setFork(BlocksBetween(fork, b, m.Resolver))
 			} else {
 				head = m.setHead(b)
 			}
 		}
 	} else {
-		common2.Log(fmt.Sprintf("> M%d: Not found=b_%s", m.Id, common2.Str(b.Header.ParentHash)))
+		common2.Log(fmt.Sprintf("> M%d: Not found=b_%s", m.ID, common2.Str(b.Header.ParentHash)))
 	}
+
 	return head
 }
 
@@ -126,24 +130,28 @@ func (m *Node) setHead(b *common2.Block) *common2.Block {
 		go t.RPCNewHead(b.EncodeBlock())
 	}
 	m.canonicalCh <- b
+
 	return b
 }
 
 func (m *Node) setFork(blocks []*common2.Block) *common2.Block {
-	h := blocks[len(blocks)-1]
+	lastKnownBlock := blocks[len(blocks)-1]
 	if atomic.LoadInt32(m.interrupt) == 1 {
-		return h
+		return lastKnownBlock
 	}
+
 	encoded := make([]common2.EncodedBlock, len(blocks))
 	for i, block := range blocks {
 		encoded[i] = block.EncodeBlock()
 	}
+
 	// notify the clients
 	for _, c := range m.clients {
 		c.RPCNewFork(encoded)
 	}
-	m.canonicalCh <- h
-	return h
+	m.canonicalCh <- lastKnownBlock
+
+	return lastKnownBlock
 }
 
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
@@ -156,7 +164,8 @@ func (m *Node) P2PReceiveBlock(b common2.EncodedBlock, p common2.EncodedBlock) {
 	m.p2pCh <- b.DecodeBlock()
 }
 
-// startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it on the miningCh channel
+// startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it
+// on the miningCh channel
 func (m *Node) startMining() {
 	// stores all transactions seen from the beginning of time.
 	mempool := make([]*common2.L1Tx, 0)
@@ -170,11 +179,11 @@ func (m *Node) startMining() {
 		case tx := <-m.mempoolCh:
 			mempool = append(mempool, &tx)
 
-		case cb := <-m.canonicalCh:
+		case canonicalBlock := <-m.canonicalCh:
 			// A new canonical block was found. Start a new round based on that block.
 
 			// remove transactions that are already considered committed
-			mempool = removeCommittedTransactions(cb, mempool, m.Resolver, m.db)
+			mempool = removeCommittedTransactions(canonicalBlock, mempool, m.Resolver, m.db)
 
 			// notify the existing mining go routine to stop mining
 			atomic.StoreInt32(interrupt, 1)
@@ -185,12 +194,12 @@ func (m *Node) startMining() {
 			// Include all rollups received during this period.
 			nonce := m.cfg.PowTime()
 			common2.ScheduleInterrupt(nonce, interrupt, func() {
-				toInclude := findNotIncludedTxs(cb, mempool, m.Resolver, m.db)
+				toInclude := findNotIncludedTxs(canonicalBlock, mempool, m.Resolver, m.db)
 				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				b := common2.NewBlock(cb, nonce, m.Id, toInclude)
+				b := common2.NewBlock(canonicalBlock, nonce, m.ID, toInclude)
 				m.miningCh <- &b
 			})
 		}
@@ -229,14 +238,20 @@ func (m *Node) Stop() {
 	m.exitCh <- true
 }
 
-func NewMiner(id common2.NodeId, cfg MiningConfig, client NotifyNewBlock, network L1Network, statsCollector StatsCollector) Node {
+func NewMiner(
+	id common2.NodeID,
+	cfg MiningConfig,
+	client NotifyNewBlock,
+	network L1Network,
+	statsCollector StatsCollector,
+) Node {
 	return Node{
-		Id:           id,
+		ID:           id,
 		mining:       true,
 		cfg:          cfg,
 		stats:        statsCollector,
 		Resolver:     NewResolver(),
-		db:           NewTxDb(),
+		db:           NewTxDB(),
 		clients:      []NotifyNewBlock{client},
 		network:      network,
 		exitCh:       make(chan bool),

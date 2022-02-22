@@ -17,21 +17,21 @@ type (
 )
 
 func RndBtw(min uint64, max uint64) uint64 {
-	r := uint64(rand.Int63n(int64(max-min))) + min
+	r := uint64(rand.Int63n(int64(max-min))) + min //nolint:gosec
 	return r
 }
 
 // ScheduleInterrupt runs the function after the delay and can be interrupted
 func ScheduleInterrupt(delay uint64, interrupt *int32, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))
+
 	go func() {
-		select {
-		case <-ticker.C:
-			if atomic.LoadInt32(interrupt) == 1 {
-				return
-			}
-			fun()
+		<-ticker.C
+		if atomic.LoadInt32(interrupt) == 1 {
+			return
 		}
+
+		fun()
 		ticker.Stop()
 	}()
 }
@@ -51,7 +51,7 @@ func Duration(us uint64) time.Duration {
 }
 
 func GenerateNonce() Nonce {
-	return uint64(rand.Int63n(math.MaxInt))
+	return uint64(rand.Int63n(math.MaxInt)) //nolint:gosec
 }
 
 func Max(x, y uint64) uint64 {
@@ -76,7 +76,7 @@ func FindDups(list []uuid.UUID) map[uuid.UUID]int {
 		// check if the item/element exist in the duplicate_frequency map
 		_, exist := elementCount[item]
 		if exist {
-			elementCount[item] += 1 // increase counter by 1 if already in the map
+			elementCount[item]++ // increase counter by 1 if already in the map
 		} else {
 			elementCount[item] = 1 // else start counting from 1
 		}
@@ -99,7 +99,7 @@ func FindRollupDups(list []L2RootHash) map[L2RootHash]int {
 		// check if the item/element exist in the duplicate_frequency map
 		_, exist := elementCount[item]
 		if exist {
-			elementCount[item] += 1 // increase counter by 1 if already in the map
+			elementCount[item]++ // increase counter by 1 if already in the map
 		} else {
 			elementCount[item] = 1 // else start counting from 1
 		}
@@ -119,11 +119,11 @@ func FindTxDups(list []L1Tx) map[TxHash]int {
 
 	for _, item := range list {
 		// check if the item/element exist in the duplicate_frequency map
-		_, exist := elementCount[item.Id]
+		_, exist := elementCount[item.ID]
 		if exist {
-			elementCount[item.Id] += 1 // increase counter by 1 if already in the map
+			elementCount[item.ID]++ // increase counter by 1 if already in the map
 		} else {
-			elementCount[item.Id] = 1 // else start counting from 1
+			elementCount[item.ID] = 1 // else start counting from 1
 		}
 	}
 	dups := make(map[TxHash]int)

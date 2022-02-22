@@ -1,10 +1,11 @@
 package simulation
 
 import (
-	common2 "github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/integration/ethereum-mock"
 	"sync/atomic"
 	"time"
+
+	common2 "github.com/obscuronet/obscuro-playground/go/common"
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // L1NetworkCfg - models a full network including artificial random latencies
@@ -22,15 +23,17 @@ func (n *L1NetworkCfg) BroadcastBlock(b common2.EncodedBlock, p common2.EncodedB
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
+
 	bl, _ := b.Decode()
 	for _, m := range n.nodes {
-		if m.Id != bl.Header.Miner {
+		if m.ID != bl.Header.Miner {
 			t := m
 			common2.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
 			common2.Log(printBlock(bl, *m))
 		}
 	}
+
 	n.Stats.NewBlock(bl)
 }
 
@@ -39,6 +42,7 @@ func (n *L1NetworkCfg) BroadcastTx(tx common2.EncodedL1Tx) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
+
 	for _, m := range n.nodes {
 		t := m
 		// the time to broadcast a tx is half that of a L1 block, because it is smaller.
@@ -63,6 +67,6 @@ func (n *L1NetworkCfg) Stop() {
 	for _, m := range n.nodes {
 		t := m
 		go t.Stop()
-		// fmt.Printf("Stopped L1 node: %d.\n", m.Id)
+		// fmt.Printf("Stopped L1 node: %d.\n", m.ID)
 	}
 }
