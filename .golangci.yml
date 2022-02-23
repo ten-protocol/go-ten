@@ -1,0 +1,88 @@
+linters:
+  # Disable all linters.
+  # Default: false
+  disable-all: true
+  # Enable specific linter
+  # https://golangci-lint.run/usage/linters/#enabled-by-default-linters
+  enable:
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - durationcheck
+    - errcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocyclo
+    - goerr113
+    - gofmt
+    - gofumpt # https://github.com/mvdan/gofumpt#gofumpt -> gofumpt -l -w .
+    - goheader
+    - goimports
+    - revive
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ifshort
+    - importas
+    - ineffassign
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - promlinter
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - tagliatelle
+    - tenv
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - wastedassign
+    - whitespace
+    # - cyclop Would be nice to enable this
+    # - wrapcheck Helpful to add error tracing
+    # - varnamelen Handy to enforce much better readability
+    # - wsl would be nice to turn this on
+    # - forcetypeassert Usually good to enable
+    # - gocritic  Would be nice to enabled this in the future
+    # - gochecknoglobals Should enable this at some stage too
+    # - godot
+    # - godox
+    # - testpackage
+    # - thelper
+    # - nlreturn
+    # - paralleltest
+    # - interfacer
+    # - ireturn
+    # - lll
+    # - gomnd
+    # - exhaustivestruct
+    # - forbidigo
+    # - funlen
+    # - gci
