@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -108,8 +109,16 @@ func rlpHash(x interface{}) (h common.Hash) {
 	sha := hasherPool.Get().(crypto.KeccakState)
 	defer hasherPool.Put(sha)
 	sha.Reset()
-	_ = rlp.Encode(sha, x)
-	_, _ = sha.Read(h[:])
+	if err := rlp.Encode(sha, x); err != nil {
+		// TODO hook this up with a logger in the future - shouldn't need errors to go upstream
+		// Supplying the encoder so we shouldn't see any errors
+		fmt.Printf("unexpected error on the rpl encoding %v\n", err)
+	}
+
+	if _, err := sha.Read(h[:]); err != nil {
+		fmt.Printf("unexpected error on the KeccakState byte read  %v\n", err)
+	}
+
 	return h
 }
 
