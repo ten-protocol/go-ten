@@ -91,8 +91,7 @@ func (r *Rollup) Hash() obscuroCommon.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
 		return hash.(obscuroCommon.L2RootHash)
 	}
-
-	v, _ := r.Header.Hash()
+	v := r.Header.Hash()
 	r.hash.Store(v)
 
 	return v
@@ -100,27 +99,18 @@ func (r *Rollup) Hash() obscuroCommon.L2RootHash {
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
-func (h *Header) Hash() (obscuroCommon.L2RootHash, error) {
+func (h *Header) Hash() obscuroCommon.L2RootHash {
 	return rlpHash(h)
 }
 
-// rlpHash encodes x and hashes the encoded bytes.
-func rlpHash(x interface{}) (obscuroCommon.L2RootHash, error) {
-	var hash obscuroCommon.L2RootHash
-
+/// rlpHash encodes x and hashes the encoded bytes.
+func rlpHash(x interface{}) (h common.Hash) {
 	sha := hasherPool.Get().(crypto.KeccakState)
 	defer hasherPool.Put(sha)
 	sha.Reset()
-
-	if err := rlp.Encode(sha, x); err != nil {
-		return hash, err
-	}
-
-	if _, err := sha.Read(hash[:]); err != nil {
-		return hash, err
-	}
-
-	return hash, nil
+	_ = rlp.Encode(sha, x)
+	_, _ = sha.Read(h[:])
+	return h
 }
 
 var hasherPool = sync.Pool{

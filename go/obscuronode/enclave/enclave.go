@@ -24,7 +24,7 @@ type SubmitBlockResponse struct {
 type Enclave interface {
 	// Todo - attestation, secret generation, etc
 
-	ProduceGenesis() (SubmitBlockResponse, error)
+	ProduceGenesis() SubmitBlockResponse
 	IngestBlocks(blocks []common3.ExtBlock)
 	Start(block common3.ExtBlock)
 
@@ -121,17 +121,14 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis() (SubmitBlockResponse, error) {
+func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
 	r := GenesisRollup
-	hash, err := r.Header.Hash()
-	if err != nil {
-		return SubmitBlockResponse{}, err
-	}
+	hash := r.Header.Hash()
 	return SubmitBlockResponse{
 		Hash:      hash,
 		Rollup:    r.ToExtRollup(),
 		Processed: true,
-	}, nil
+	}
 }
 
 func (e *enclaveImpl) IngestBlocks(blocks []common3.ExtBlock) {

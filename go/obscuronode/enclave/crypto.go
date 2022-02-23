@@ -30,7 +30,7 @@ func EncryptTx(tx L2Tx) common2.EncryptedTx {
 	return bytes
 }
 
-func EncryptTransactions(transactions Transactions) common2.EncryptedTransactions {
+func encryptTransactions(transactions Transactions) common2.EncryptedTransactions {
 	result := make([]common2.EncryptedTx, 0)
 	for _, tx := range transactions {
 		result = append(result, EncryptTx(tx))

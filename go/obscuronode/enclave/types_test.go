@@ -45,7 +45,7 @@ func TestSerialiseRollup(t *testing.T) {
 	rollup := common2.Rollup{
 		Header:       GenesisRollup.Header,
 		Height:       height,
-		Transactions: EncryptTransactions(Transactions{tx}),
+		Transactions: encryptTransactions(Transactions{tx}),
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {

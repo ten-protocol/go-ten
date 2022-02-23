@@ -199,15 +199,12 @@ func (a *Node) Stop() {
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol() (common.L2RootHash, error) {
 	// todo shared secret
-	genesis, err := a.Enclave.ProduceGenesis()
-	if err != nil {
-		return genesis.Hash, err
-	}
+	genesis := a.Enclave.ProduceGenesis()
 
 	tx := common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())}
 	t, err := tx.Encode()
 	if err != nil {
-		panic(err)
+		return common.L2RootHash{}, fmt.Errorf("unable to encode genesis tx %w", err)
 	}
 
 	a.L1Node.BroadcastTx(t)

@@ -48,7 +48,7 @@ func (r *Rollup) Hash() common2.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
 		return hash.(common2.L2RootHash)
 	}
-	v, _ := r.Header.Hash()
+	v := r.Header.Hash()
 	r.hash.Store(v)
 	return v
 }
@@ -86,7 +86,7 @@ func (r *Rollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
 func (r *Rollup) ToExtRollup() oc.ExtRollup {
 	return oc.ExtRollup{
 		Header: r.Header,
-		Txs:    EncryptTransactions(r.Transactions),
+		Txs:    encryptTransactions(r.Transactions),
 	}
 }
 
