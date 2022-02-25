@@ -121,6 +121,7 @@ func sendInterrupt(interrupt *int32) *int32 {
 func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	var result enclave.SubmitBlockResponse
 	for _, block := range blocks {
+		// For the genesis block the parent is nil
 		if block != nil {
 			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
 		}

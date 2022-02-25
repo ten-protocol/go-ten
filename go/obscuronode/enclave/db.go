@@ -174,7 +174,7 @@ func (db *inMemoryDB) FetchTxs() []L2Tx {
 func (db *inMemoryDB) PruneTxs(toRemove map[common2.TxHash]common2.TxHash) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	r := make(map[common2.TxHash]L2Tx, 0)
+	r := make(map[common2.TxHash]L2Tx)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
 		if !f {

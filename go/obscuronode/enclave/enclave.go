@@ -194,6 +194,8 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	// only store if the parent exists
 	if e.db.ExistRollup(r.Header.ParentHash) {
 		e.db.StoreRollup(&r)
+	} else {
+		common3.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%s\n", e.node, r.Hash()))
 	}
 }
 
