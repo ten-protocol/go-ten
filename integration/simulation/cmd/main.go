@@ -40,7 +40,7 @@ func main() {
 	common.SetLog(f1)
 
 	blockDuration := uint64(25_000)
-	l1netw, _ := simulation.RunSimulation(
+	l1netw, _, _ := simulation.RunSimulation(
 		5,
 		2,
 		55,

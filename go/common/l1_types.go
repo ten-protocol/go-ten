@@ -188,7 +188,7 @@ func (b *Block) Height(resolver BlockResolver) int {
 
 	p, f := b.Parent(resolver)
 	if !f {
-		panic("wtf")
+		panic("unable to find block's parent")
 	}
 
 	v := p.Height(resolver) + 1

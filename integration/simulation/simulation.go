@@ -15,17 +15,9 @@ import (
 
 // todo - introduce 2 parameters for nrNodes and random L1-L2 allocation
 // todo - random add or remove l1 or l2 nodes - logic for catching up
-func RunSimulation(
-	nrWallets int,
-	nrNodes int,
-	simulationTime int,
-	avgBlockDuration uint64,
-	avgLatency uint64,
-	gossipPeriod uint64,
-) (L1NetworkCfg, L2NetworkCfg) {
+func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDuration uint64, avgLatency uint64, gossipPeriod uint64) (L1NetworkCfg, L2NetworkCfg, []wallet_mock.Wallet) {
 	// todo - add observer nodes
 	// todo read balance
-
 	stats := NewStats(nrNodes, simulationTime, avgBlockDuration, avgLatency, gossipPeriod)
 
 	l1Network := L1NetworkCfg{delay: func() uint64 {
@@ -85,7 +77,7 @@ func RunSimulation(
 
 	time.Sleep(time.Second)
 
-	return l1Network, l2Network
+	return l1Network, l2Network, wallets
 }
 
 const INITIAL_BALANCE = 5000 // nolint:revive,stylecheck

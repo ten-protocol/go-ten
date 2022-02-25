@@ -91,6 +91,7 @@ func BlocksBetween(blockA *common2.Block, blockB *common2.Block, resolver common
 	if blockA.Hash() == blockB.Hash() {
 		return []*common2.Block{blockA}
 	}
+
 	blocks := make([]*common2.Block, 0)
 	tempBlock := blockB
 	var found bool

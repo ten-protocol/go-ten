@@ -45,8 +45,29 @@ type Enclave interface {
 	RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool)
 	Stop()
 
-	// TestPeekHead - only available for testing purposes
-	TestPeekHead() BlockState
+	// L1Height returns the current L1 height
+	L1Height() int
+
+	// L1Height returns the current L1 height Hash
+	L1HeightHash() common3.L1RootHash
+
+	// L2Height returns the current L2 height
+	L2Height() int
+
+	// L2HeightHash returns the L2 height Hash
+	L2HeightHash() common3.L2RootHash
+
+	// TransactionsAtHeight returns the transactions at the given height
+	TransactionsAtHeight(height common3.L2RootHash) Transactions
+
+	// WithdrawlsAtHeight returns the withdrawls at the given height
+	WithdrawlsAtHeight(heightHash common3.L2RootHash) []common2.Withdrawal
+
+	// ParentHash returns the parent hash
+	ParentHash(heightHash common3.L2RootHash) common3.L2RootHash
+
+	// GetState returns the canonical BlockState
+	GetState(l1Hash common3.L1RootHash) (BlockState, bool)
 
 	// TestDb - only available for testing purposes
 	TestDB() DB
@@ -233,8 +254,8 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
 }
 
 func (e *enclaveImpl) Balance(address common3.Address) uint64 {
-	// todo
-	return 0
+	// todo user encryption
+	return e.db.Balance(address)
 }
 
 func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
@@ -276,8 +297,36 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 	return &r
 }
 
-func (e *enclaveImpl) TestPeekHead() BlockState {
-	return e.db.Head()
+func (e *enclaveImpl) L1Height() int {
+	return e.db.Head().Block.Height(e.db)
+}
+
+func (e *enclaveImpl) L1HeightHash() common3.L1RootHash {
+	return e.db.Head().Block.Hash()
+}
+
+func (e *enclaveImpl) L2Height() int {
+	return e.db.Head().Head.Height.Load().(int)
+}
+
+func (e *enclaveImpl) L2HeightHash() common3.L2RootHash {
+	return e.db.Head().Head.Hash()
+}
+
+func (e *enclaveImpl) ParentHash(heightHash common3.L2RootHash) common3.L2RootHash {
+	return e.db.Parent(e.db.FetchRollup(heightHash)).Hash()
+}
+
+func (e *enclaveImpl) TransactionsAtHeight(heightHash common3.L2RootHash) Transactions {
+	return e.db.FetchRollup(heightHash).Transactions
+}
+
+func (e *enclaveImpl) WithdrawlsAtHeight(heightHash common3.L2RootHash) []common2.Withdrawal {
+	return e.db.FetchRollup(heightHash).Header.Withdrawals
+}
+
+func (e *enclaveImpl) GetState(l1Hash common3.L1RootHash) (BlockState, bool) {
+	return e.db.FetchState(l1Hash)
 }
 
 func (e *enclaveImpl) TestDB() DB {
