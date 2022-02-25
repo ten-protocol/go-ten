@@ -29,3 +29,13 @@ type (
 type Nonce = uint64
 
 type EncodedRollup []byte
+
+type NotifyNewBlock interface {
+	RPCNewHead(b EncodedBlock, p EncodedBlock)
+	RPCNewFork(b []EncodedBlock)
+}
+
+type L1Node interface {
+	RPCBlockchainFeed() []*Block
+	BroadcastTx(t EncodedL1Tx)
+}

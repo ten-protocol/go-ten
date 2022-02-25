@@ -28,8 +28,10 @@ type Enclave interface {
 	IngestBlocks(blocks []common3.ExtBlock)
 	Start(block common3.ExtBlock)
 
-	// SubmitBlock - When a new round starts, the host submits a block to the enclave, which responds with a rollup
-	// it is the responsibility of the host to gossip the rollup
+	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
+	// it is the responsibility of the host to gossip the returned rollup
+	// For good functioning the caller should always submit blocks ordered by height
+	// submitting a block before receiving a parent of it, will result in it being ignored
 	SubmitBlock(block common3.ExtBlock) SubmitBlockResponse
 
 	// SubmitRollup - receive gossiped rollups
@@ -116,8 +118,8 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			_, f := currentProcessedTxsMap[tx.ID]
-			if !f {
+			_, found := currentProcessedTxsMap[tx.ID]
+			if !found {
 				currentProcessedTxsMap[tx.ID] = tx
 				currentProcessedTxs = append(currentProcessedTxs, tx)
 				executeTx(&currentState, tx)
@@ -158,7 +160,20 @@ func (e *enclaveImpl) IngestBlocks(blocks []common3.ExtBlock) {
 }
 
 func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
+	// Todo - investigate further why this is needed.
+	// So far this seems to recover correctly
+	defer func() {
+		if r := recover(); r != nil {
+			common3.Log(fmt.Sprintf("Agg%d Panic %s\n", e.node, r))
+		}
+	}()
+
 	b := block.ToBlock()
+	_, foundBlock := e.db.Resolve(b.Hash())
+	if foundBlock {
+		return SubmitBlockResponse{Processed: false}
+	}
+
 	e.db.Store(b)
 	// this is where much more will actually happen.
 	// the "blockchain" logic from geth has to be executed here,
@@ -194,7 +209,12 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 		Header:       rollup.Header,
 		Transactions: decryptTransactions(rollup.Txs),
 	}
-	e.db.StoreRollup(&r)
+	// only store if the parent exists
+	if e.db.ExistRollup(r.Header.ParentHash) {
+		e.db.StoreRollup(&r)
+	} else {
+		common3.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%s\n", e.node, r.Hash()))
+	}
 }
 
 func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
