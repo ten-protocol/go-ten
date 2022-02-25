@@ -68,9 +68,6 @@ type Enclave interface {
 
 	// GetState returns the canonical BlockState
 	GetState(l1Hash common3.L1RootHash) (BlockState, bool)
-
-	// TestDb - only available for testing purposes
-	TestDB() DB
 }
 
 type enclaveImpl struct {
@@ -327,10 +324,6 @@ func (e *enclaveImpl) WithdrawlsAtHeight(heightHash common3.L2RootHash) []common
 
 func (e *enclaveImpl) GetState(l1Hash common3.L1RootHash) (BlockState, bool) {
 	return e.db.FetchState(l1Hash)
-}
-
-func (e *enclaveImpl) TestDB() DB {
-	return e.db
 }
 
 func (e *enclaveImpl) Stop() {

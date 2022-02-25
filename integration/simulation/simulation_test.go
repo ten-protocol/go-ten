@@ -45,17 +45,13 @@ func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2N
 	// TODO check all nodes are the same height ?
 	// pick one node to draw height
 	enclaveNode := l2Network.nodes[0].Enclave
+	l1Node := l1Network.nodes[0]
 	l1Height := enclaveNode.L1Height()
 	l1HeightHash := enclaveNode.L1HeightHash()
 	l2Height := enclaveNode.L2Height()
 	l2HeightHash := enclaveNode.L2HeightHash()
 
-	//stats := l1Network.Stats
-	//l1BlockState, found := enclaveNode.TestDB().FetchState(l1Height)
-	//if !found {
-	//	fmt.Println("derp")
-	//}
-	validateL1(t, l1Network.Stats, l1Height, l1HeightHash, enclaveNode.TestDB())
+	validateL1(t, l1Network.Stats, l1Height, l1HeightHash, l1Node)
 	totalWithdrawn := validateL2(t, l1Network.Stats, enclaveNode, l2Height, l2HeightHash)
 	validateL2State(t, l2Network, l1Network.Stats, totalWithdrawn, wallets)
 }
@@ -67,19 +63,19 @@ const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
 // Sanity check
-func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1RootHash, db enclave.DB) {
+func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1RootHash, node *ethereum_mock.Node) {
 	deposits := make([]uuid.UUID, 0)
 	rollups := make([]common.L2RootHash, 0)
 	stats.l1Height = l1Height
 	totalDeposited := uint64(0)
 
-	l1State, found := db.FetchState(l1HeightHash)
+	l1Block, found := node.Resolver.Resolve(l1HeightHash)
 	if !found {
-		t.Errorf("expected l1 height not found")
+		t.Errorf("expected l1 height block not found")
 	}
 
-	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, l1State.Block, db)
-	headRollup := &enclave.GenesisRollup
+	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, l1Block, node.Resolver)
+	//headRollup := &enclave.GenesisRollup
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions {
 			currentRollups := make([]*enclave.Rollup, 0)
@@ -90,7 +86,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1
 			case common.RollupTx:
 				r := obscuroCommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if common.IsBlockAncestor(r.Header.L1Proof, block, db) {
+				if common.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					currentRollups = append(currentRollups, enclave.DecryptRollup(r))
@@ -99,10 +95,10 @@ func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1
 			default:
 				panic("unknown transaction type")
 			}
-			r, _ := enclave.FindWinner(headRollup, currentRollups, db)
-			if r != nil {
-				headRollup = r
-			}
+			//r, _ := enclave.FindWinner(headRollup, currentRollups, node.Resolver)
+			//if r != nil {
+			//	headRollup = r
+			//}
 		}
 	}
 
