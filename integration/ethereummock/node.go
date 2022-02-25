@@ -56,7 +56,7 @@ type Node struct {
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
 // it outputs the winning blocks to the roundWinnerCh channel
 func (m *Node) Start() {
-	//common2.Log(fmt.Sprintf("Starting miner %d..", m.ID))
+	// common2.Log(fmt.Sprintf("Starting miner %d..", m.ID))
 	if m.mining {
 		// This starts the mining
 		go m.startMining()

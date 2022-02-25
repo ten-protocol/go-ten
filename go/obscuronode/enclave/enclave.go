@@ -142,7 +142,6 @@ func (e *enclaveImpl) IngestBlocks(blocks []common3.ExtBlock) {
 }
 
 func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
-
 	// Todo - investigate further why this is needed.
 	// So far this seems to recover correctly
 	defer func() {
