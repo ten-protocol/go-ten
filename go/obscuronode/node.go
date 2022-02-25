@@ -10,7 +10,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
@@ -38,7 +37,7 @@ type Node struct {
 	ID common.NodeID
 
 	l2Network L2Network
-	L1Node    *ethereummock.Node
+	L1Node    common.L1Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -51,7 +50,7 @@ type Node struct {
 	interrupt  *int32
 
 	// where the connected L1Node node drops new blocks
-	blockRPCCh chan common.EncodedBlock
+	blockRPCCh chan blockAndParent
 	forkRPCCh  chan []common.EncodedBlock
 
 	rollupsP2PCh chan common.EncodedRollup
@@ -92,7 +91,7 @@ func (a *Node) Start() {
 		select {
 		case b := <-a.blockRPCCh:
 			interrupt = sendInterrupt(interrupt)
-			a.processBlocks([]common.EncodedBlock{b}, interrupt)
+			a.processBlocks([]common.EncodedBlock{b.p, b.b}, interrupt)
 
 		case f := <-a.forkRPCCh:
 			interrupt = sendInterrupt(interrupt)
@@ -122,7 +121,9 @@ func sendInterrupt(interrupt *int32) *int32 {
 func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	var result enclave.SubmitBlockResponse
 	for _, block := range blocks {
-		result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
+		if block != nil {
+			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
+		}
 	}
 
 	if !result.Processed {
@@ -152,12 +153,17 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	})
 }
 
+type blockAndParent struct {
+	b common.EncodedBlock
+	p common.EncodedBlock
+}
+
 // RPCNewHead Receive notifications From the L1Node Node when there's a new block
-func (a *Node) RPCNewHead(b common.EncodedBlock) {
+func (a *Node) RPCNewHead(b common.EncodedBlock, p common.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	a.blockRPCCh <- b
+	a.blockRPCCh <- blockAndParent{b, p}
 }
 
 func (a *Node) RPCNewFork(b []common.EncodedBlock) {
@@ -215,7 +221,7 @@ func (a *Node) initialiseProtocol() (common.L2RootHash, error) {
 func NewAgg(
 	id common.NodeID,
 	cfg AggregatorCfg,
-	l1 *ethereummock.Node,
+	l1 common.L1Node,
 	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
@@ -236,7 +242,7 @@ func NewAgg(
 		interrupt:  new(int32),
 
 		// incoming data
-		blockRPCCh:   make(chan common.EncodedBlock),
+		blockRPCCh:   make(chan blockAndParent),
 		forkRPCCh:    make(chan []common.EncodedBlock),
 		rollupsP2PCh: make(chan common.EncodedRollup),
 
