@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"fmt"
 	"sync"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
@@ -18,6 +19,7 @@ type DB interface {
 	FetchState(hash common2.L1RootHash) (BlockState, bool)
 	SetState(hash common2.L1RootHash, state BlockState)
 	FetchRollup(hash common2.L2RootHash) *Rollup
+	ExistRollup(hash common2.L2RootHash) bool
 	FetchRollupState(hash common2.L2RootHash) State
 	SetRollupState(hash common2.L2RootHash, state State)
 	Head() BlockState
@@ -126,9 +128,16 @@ func (db *inMemoryDB) FetchRollup(hash common2.L2RootHash) *Rollup {
 	defer db.stateMutex.RUnlock()
 	r, f := db.rollups[hash]
 	if !f {
-		panic("wtf")
+		panic(fmt.Sprintf("Could not find rollup: r_%s", hash))
 	}
 	return r
+}
+
+func (db *inMemoryDB) ExistRollup(hash common2.L2RootHash) bool {
+	db.stateMutex.RLock()
+	defer db.stateMutex.RUnlock()
+	_, f := db.rollups[hash]
+	return f
 }
 
 func (db *inMemoryDB) FetchRollups(height int) []*Rollup {
@@ -165,7 +174,7 @@ func (db *inMemoryDB) FetchTxs() []L2Tx {
 func (db *inMemoryDB) PruneTxs(toRemove map[common2.TxHash]common2.TxHash) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	r := make(map[common2.TxHash]L2Tx, 0)
+	r := make(map[common2.TxHash]L2Tx)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
 		if !f {
