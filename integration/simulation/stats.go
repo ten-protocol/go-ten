@@ -18,7 +18,6 @@ type Stats struct {
 	l1Height      int
 	totalL1Blocks int
 
-	l2Height           int
 	totalL2Blocks      int
 	l2Head             *common2.Rollup
 	maxRollupsPerBlock uint32

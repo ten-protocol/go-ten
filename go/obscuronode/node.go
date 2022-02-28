@@ -49,10 +49,13 @@ type Node struct {
 	exitNodeCh chan bool
 	interrupt  *int32
 
-	// where the connected L1Node node drops new blocks
+	// blockRPCCh is where the connected L1Node node drops new blocks
 	blockRPCCh chan blockAndParent
-	forkRPCCh  chan []common.EncodedBlock
 
+	// forkRPCCh is where new forks from the L1 notify the obscuro node
+	forkRPCCh chan []common.EncodedBlock
+
+	// rollupsP2PCh is the mock channel where new rollups are gossiped to
 	rollupsP2PCh chan common.EncodedRollup
 
 	// Interface to the logic running inside the TEE

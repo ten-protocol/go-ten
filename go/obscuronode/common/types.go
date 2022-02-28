@@ -21,7 +21,7 @@ type EncryptedTx []byte
 
 type EncryptedTransactions []EncryptedTx
 
-// Header is in plaintext
+// Header is public and in plaintext
 type Header struct {
 	ParentHash  obscuroCommon.L2RootHash
 	Agg         obscuroCommon.NodeID

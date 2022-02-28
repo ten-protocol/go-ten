@@ -50,7 +50,7 @@ type Enclave interface {
 	// L1Height returns the current L1 height
 	L1Height() int
 
-	// L1Height returns the current L1 height Hash
+	// L1HeightHash returns the current L1 height Hash
 	L1HeightHash() common3.L1RootHash
 
 	// L2Height returns the current L2 height
@@ -59,17 +59,8 @@ type Enclave interface {
 	// L2HeightHash returns the L2 height Hash
 	L2HeightHash() common3.L2RootHash
 
-	// TransactionsAtHeight returns the transactions at the given height
-	TransactionsAtHeight(height common3.L2RootHash) Transactions
-
-	// WithdrawlsAtHeight returns the withdrawls at the given height
-	WithdrawlsAtHeight(heightHash common3.L2RootHash) []common2.Withdrawal
-
-	// ParentHash returns the parent hash
-	ParentHash(heightHash common3.L2RootHash) common3.L2RootHash
-
-	// GetState returns the canonical BlockState
-	GetState(l1Hash common3.L1RootHash) (BlockState, bool)
+	// GetTransaction returns a transaction given its ID, returns nil, false if Transaction is unknown
+	GetTransaction(txHash common3.TxHash) (*L2Tx, bool)
 }
 
 type enclaveImpl struct {
@@ -330,20 +321,21 @@ func (e *enclaveImpl) L2HeightHash() common3.L2RootHash {
 	return e.db.Head().Head.Hash()
 }
 
-func (e *enclaveImpl) ParentHash(heightHash common3.L2RootHash) common3.L2RootHash {
-	return e.db.Parent(e.db.FetchRollup(heightHash)).Hash()
-}
-
-func (e *enclaveImpl) TransactionsAtHeight(heightHash common3.L2RootHash) Transactions {
-	return e.db.FetchRollup(heightHash).Transactions
-}
-
-func (e *enclaveImpl) WithdrawlsAtHeight(heightHash common3.L2RootHash) []common2.Withdrawal {
-	return e.db.FetchRollup(heightHash).Header.Withdrawals
-}
-
-func (e *enclaveImpl) GetState(l1Hash common3.L1RootHash) (BlockState, bool) {
-	return e.db.FetchState(l1Hash)
+func (e *enclaveImpl) GetTransaction(txHash common3.TxHash) (*L2Tx, bool) {
+	// todo add some sort of cache
+	rollup := e.db.Head().Head
+	for {
+		txs := rollup.Transactions
+		for _, tx := range txs {
+			if tx.ID == txHash {
+				return &tx, true
+			}
+		}
+		rollup = e.db.FetchRollup(rollup.Header.ParentHash)
+		if rollup.Height.Load() == common3.L2GenesisHeight {
+			return nil, false
+		}
+	}
 }
 
 func (e *enclaveImpl) Stop() {

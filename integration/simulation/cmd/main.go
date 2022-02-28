@@ -39,14 +39,22 @@ func main() {
 	defer f1.Close()
 	common.SetLog(f1)
 
+	numberOfNodes := 10
+	simulationTime := 15
+	avgBlockDuration := uint64(20_000)
+	avgLatency := avgBlockDuration / 15
+	avgGossipPeriod := avgBlockDuration / 3
+
+	stats := simulation.NewStats(numberOfNodes, simulationTime, avgBlockDuration, avgLatency, avgGossipPeriod)
+
 	blockDuration := uint64(25_000)
-	l1netw, _, _ := simulation.RunSimulation(
-		5,
+	l1netw, _ := simulation.RunSimulation(
+		simulation.NewTransactionGenerator(5),
 		2,
 		55,
 		blockDuration,
 		blockDuration/DefaultAverageLatencyToBlockRatio,
 		blockDuration/DefaultAverageGossipPeriodToBlockRatio,
-	)
+		stats)
 	fmt.Printf("%#v\n", l1netw.Stats)
 }

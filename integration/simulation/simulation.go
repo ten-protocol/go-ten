@@ -15,10 +15,17 @@ import (
 
 // todo - introduce 2 parameters for nrNodes and random L1-L2 allocation
 // todo - random add or remove l1 or l2 nodes - logic for catching up
-func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDuration uint64, avgLatency uint64, gossipPeriod uint64) (L1NetworkCfg, L2NetworkCfg, []wallet_mock.Wallet) {
+func RunSimulation(
+	txManager *TransactionManager,
+	nrNodes int,
+	simulationTime int,
+	avgBlockDuration uint64,
+	avgLatency uint64,
+	gossipPeriod uint64,
+	stats Stats,
+) (L1NetworkCfg, L2NetworkCfg) {
 	// todo - add observer nodes
 	// todo read balance
-	stats := NewStats(nrNodes, simulationTime, avgBlockDuration, avgLatency, gossipPeriod)
 
 	l1Network := L1NetworkCfg{delay: func() uint64 {
 		return common.RndBtw(avgLatency/10, 2*avgLatency)
@@ -57,19 +64,14 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 	l1Network.Start(common.Duration(avgBlockDuration / 4))
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
 
-	// Create a bunch of users and inject transactions
-	wallets := make([]wallet_mock.Wallet, nrWallets)
-	for i := 0; i < nrWallets; i++ {
-		wallets[i] = wallet_mock.Wallet{Address: uuid.New().ID()}
-	}
-
 	timeInUs := simulationTime * 1000 * 1000
-	go injectUserTxs(wallets, &l1Network, &l2Network, avgBlockDuration, timeInUs, &stats)
+
+	go txManager.Start(&l1Network, &l2Network, avgBlockDuration, timeInUs, &stats)
 
 	// Wait for the simulation time
 	time.Sleep(common.Duration(uint64(timeInUs)))
 
-	fmt.Println("Stopping..")
+	fmt.Printf("Stopping simulation after running it for: %s ... \n", common.Duration(uint64(timeInUs)))
 
 	// stop L2 first and then L1
 	go l2Network.Stop()
@@ -77,33 +79,13 @@ func RunSimulation(nrWallets int, nrNodes int, simulationTime int, avgBlockDurat
 
 	time.Sleep(time.Second)
 
-	return l1Network, l2Network, wallets
+	return l1Network, l2Network
 }
 
 const INITIAL_BALANCE = 5000 // nolint:revive,stylecheck
 
-func injectUserTxs(wallets []wallet_mock.Wallet, l1Network ethereum_mock.L1Network, l2Network obscuro_node.L2Network, avgBlockDuration uint64, simulationTime int, s *Stats) {
-	// deposit some initial amount into every user
-	initialiseWallets(wallets, l1Network, avgBlockDuration, s)
-
-	// inject numbers of transactions proportional to the simulation time, such that they can be processed
-	go injectRandomDeposits(wallets, l1Network, avgBlockDuration, simulationTime, s)
-	go injectRandomWithdrawals(wallets, l2Network, avgBlockDuration, simulationTime, s)
-	injectRandomTransfers(wallets, l2Network, avgBlockDuration, simulationTime, s)
-}
-
-func initialiseWallets(wallets []wallet_mock.Wallet, l1Network ethereum_mock.L1Network, avgBlockDuration uint64, s *Stats) {
-	for _, u := range wallets {
-		tx := deposit(u, INITIAL_BALANCE)
-		t, _ := tx.Encode()
-		l1Network.BroadcastTx(t)
-		s.Deposit(INITIAL_BALANCE)
-		time.Sleep(common.Duration(avgBlockDuration / 3))
-	}
-}
-
-func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.L2Network, avgBlockDuration uint64, simulationTime int, s *Stats) {
-	n := uint64(simulationTime) / avgBlockDuration
+func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.L2Network, avgBlockDuration uint64, simulationTime int, s *Stats, trackTx func(tx enclave2.L2Tx)) {
+	n := uint64(simulationTime) / (avgBlockDuration * 3)
 	i := uint64(0)
 	for {
 		if i == n {
@@ -124,12 +106,13 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.
 		s.Transfer()
 		encoded := enclave2.EncryptTx(tx)
 		l2Network.BroadcastTx(encoded)
+		go trackTx(tx)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration/4, avgBlockDuration)))
 		i++
 	}
 }
 
-func injectRandomDeposits(wallets []wallet_mock.Wallet, network ethereum_mock.L1Network, avgBlockDuration uint64, simulationTime int, s *Stats) {
+func injectRandomDeposits(wallets []wallet_mock.Wallet, network ethereum_mock.L1Network, avgBlockDuration uint64, simulationTime int, s *Stats, trackTx func(tx common.L1Tx)) {
 	n := uint64(simulationTime) / (avgBlockDuration * 3)
 	i := uint64(0)
 	for {
@@ -141,12 +124,13 @@ func injectRandomDeposits(wallets []wallet_mock.Wallet, network ethereum_mock.L1
 		t, _ := tx.Encode()
 		network.BroadcastTx(t)
 		s.Deposit(v)
+		go trackTx(tx)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
 	}
 }
 
-func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.L2Network, avgBlockDuration uint64, simulationTime int, s *Stats) {
+func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.L2Network, avgBlockDuration uint64, simulationTime int, s *Stats, trackTx func(tx enclave2.L2Tx)) {
 	n := uint64(simulationTime) / (avgBlockDuration * 3)
 	i := uint64(0)
 	for {
@@ -158,6 +142,7 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 		t := enclave2.EncryptTx(tx)
 		network.BroadcastTx(t)
 		s.Withdrawal(v)
+		go trackTx(tx)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
 	}

@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
+
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"golang.org/x/sync/errgroup"
 
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -33,15 +34,26 @@ func TestSimulation(t *testing.T) {
 	defer f.Close()
 	common.SetLog(f)
 
-	blockDuration := uint64(20_000)
-	l1netw, l2netw, wallets := RunSimulation(5, 10, 15, blockDuration, blockDuration/15, blockDuration/3)
-	checkBlockchainValidity(t, l1netw, l2netw, wallets)
-	stats := l1netw.Stats
+	txGenerator := NewTransactionGenerator(5)
+
+	numberOfNodes := 10
+	simulationTime := 15
+	avgBlockDuration := uint64(20_000)
+	avgLatency := avgBlockDuration / 15
+	avgGossipPeriod := avgBlockDuration / 3
+
+	stats := NewStats(numberOfNodes, simulationTime, avgBlockDuration, avgLatency, avgGossipPeriod)
+
+	l1Network, l2Network := RunSimulation(txGenerator, numberOfNodes, simulationTime, avgBlockDuration, avgBlockDuration/15, avgBlockDuration/3, stats)
+
+	checkBlockchainValidity(t, l1Network, l2Network, txGenerator)
+
+	fmt.Println("Simulation ended...")
 	fmt.Printf("%+v\n", stats)
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
-func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, wallets []wallet_mock.Wallet) {
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, txManager *TransactionManager) {
 	// TODO check all nodes are the same height ?
 	// pick one node to draw height
 	enclaveNode := l2Network.nodes[0].Enclave
@@ -49,11 +61,35 @@ func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2N
 	l1Height := enclaveNode.L1Height()
 	l1HeightHash := enclaveNode.L1HeightHash()
 	l2Height := enclaveNode.L2Height()
-	l2HeightHash := enclaveNode.L2HeightHash()
 
 	validateL1(t, l1Network.Stats, l1Height, l1HeightHash, l1Node)
-	totalWithdrawn := validateL2(t, l1Network.Stats, enclaveNode, l2Height, l2HeightHash)
-	validateL2State(t, l2Network, l1Network.Stats, totalWithdrawn, wallets)
+	totalWithdrawn := validateL2Stats(t, l1Network.Stats, l2Height, txManager)
+	validateL2StateStats(t, l2Network, l1Network.Stats, totalWithdrawn, txManager.wallets)
+	validateL2State(t, l2Network.nodes, txManager)
+}
+
+// validateL2State tests that all transaction in the transaction Manager are found in the blockchain state of each node
+func validateL2State(t *testing.T, nodes []*obscuro_node.Node, txManager *TransactionManager) {
+	// Parallelize this check
+	var nGroup errgroup.Group
+
+	// Check the balance of all nodes adds up with the balance in the stats
+	for _, node := range nodes {
+		closureNode := node
+		nGroup.Go(func() error {
+			// all transactions should exist on every node
+			for _, transaction := range txManager.GetL2Transactions() {
+				tx, found := closureNode.Enclave.GetTransaction(transaction.ID)
+				if !found {
+					return fmt.Errorf("unable to find transaction: %v", tx) // nolint:goerr113
+				}
+			}
+			return nil
+		})
+	}
+	if err := nGroup.Wait(); err != nil {
+		t.Error(err)
+	}
 }
 
 // For this simulation, this represents an acceptable "dead blocks" percentage.
@@ -62,7 +98,7 @@ func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2N
 const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
-// Sanity check
+// validateL1 does a sanity check on the mock implementation of the L1
 func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1RootHash, node *ethereum_mock.Node) {
 	deposits := make([]uuid.UUID, 0)
 	rollups := make([]common.L2RootHash, 0)
@@ -75,10 +111,8 @@ func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1
 	}
 
 	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, l1Block, node.Resolver)
-	//headRollup := &enclave.GenesisRollup
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions {
-			currentRollups := make([]*enclave.Rollup, 0)
 			switch tx.TxType {
 			case common.DepositTx:
 				deposits = append(deposits, tx.ID)
@@ -89,16 +123,11 @@ func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1
 				if common.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					currentRollups = append(currentRollups, enclave.DecryptRollup(r))
 					stats.NewRollup(r)
 				}
 			default:
 				panic("unknown transaction type")
 			}
-			//r, _ := enclave.FindWinner(headRollup, currentRollups, node.Resolver)
-			//if r != nil {
-			//	headRollup = r
-			//}
 		}
 	}
 
@@ -128,57 +157,40 @@ func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1
 	}
 }
 
-func validateL2(t *testing.T, stats *Stats, enclaveNode enclave.Enclave, l2Height int, l2HeightHash common.L2RootHash) uint64 {
-	stats.l2Height = l2Height
-	transfers := make([]uuid.UUID, 0)
-	withdrawalTxs := make([]enclave.L2Tx, 0)
-	withdrawalRequests := make([]obscuroCommon.Withdrawal, 0)
+func validateL2Stats(t *testing.T, stats *Stats, l2Height int, txManager *TransactionManager) uint64 {
+	// get non-failed transactions
+	transactions := txManager.GetL2Transactions()
+	withdrawalRequests := txManager.GetL2WithdrawalRequests()
 
-	// get transactions at current height (which we'll need to track somewhere else)
-	transactions := enclaveNode.TransactionsAtHeight(l2HeightHash)
-	withdrawals := enclaveNode.WithdrawlsAtHeight(l2HeightHash)
-
-	for {
-		if l2Height == common.L2GenesisHeight {
-			break
-		}
-		for _, tx := range transactions {
-			switch tx.TxType {
-			case enclave.TransferTx:
-				transfers = append(transfers, tx.ID)
-			case enclave.WithdrawalTx:
-				withdrawalTxs = append(withdrawalTxs, tx)
-			default:
-				panic("Invalid tx type")
-			}
-		}
-		withdrawalRequests = append(withdrawalRequests, withdrawals...)
-		l2Height--
-		l2HeightHash = enclaveNode.ParentHash(l2HeightHash)
-		transactions = enclaveNode.TransactionsAtHeight(l2HeightHash)
-		withdrawals = enclaveNode.WithdrawlsAtHeight(l2HeightHash)
-	}
 	// todo - check that proofs are on the canonical chain
 
-	if len(common.FindDups(transfers)) > 0 {
-		dups := common.FindDups(transfers)
+	// Sum all withdraw transactions AND
+	txSumWithdrawalsRequested := sumWithdrawals(withdrawalRequests)
+
+	// are there duplicated transaction Ids ?
+	txIds := make([]uuid.UUID, len(transactions))
+	for i, transaction := range transactions {
+		txIds[i] = transaction.ID
+	}
+	if dups := common.FindDups(txIds); len(dups) > 0 {
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
-	if len(transfers) != stats.nrTransferTransactions {
-		t.Errorf("Nr of transfers don't match. Found %d , expected %d", len(transfers), stats.nrTransferTransactions)
+
+	// are the number of txs sent by the generator the same as the captured by the enclave stats ?
+	if len(transactions) != stats.nrTransferTransactions {
+		t.Errorf("Nr of transfers don't match. Found %d , expected %d", len(transactions), stats.nrTransferTransactions)
 	}
-	if sumWithdrawalTxs(withdrawalTxs) != stats.totalWithdrawnAmount {
-		t.Errorf("Withdrawal tx amounts don't match. Found %d , expected %d", sumWithdrawalTxs(withdrawalTxs), stats.totalWithdrawnAmount)
+
+	if txSumWithdrawalsRequested != stats.totalWithdrawnAmount {
+		t.Errorf("The amount withdrawn %d exceeds the actual amount requested %d", txSumWithdrawalsRequested, stats.totalWithdrawnAmount)
 	}
-	if sumWithdrawals(withdrawalRequests) > stats.totalWithdrawnAmount {
-		t.Errorf("The amount withdrawn %d exceeds the actual amount requested %d", sumWithdrawals(withdrawalRequests), stats.totalWithdrawnAmount)
-	}
-	efficiency := float64(stats.totalL2Blocks-stats.l2Height) / float64(stats.totalL2Blocks)
+
+	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
 	if efficiency > L2EfficiencyThreashold {
 		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreashold)
 	}
 
-	return sumWithdrawals(withdrawalRequests)
+	return txSumWithdrawalsRequested
 }
 
 func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
@@ -189,47 +201,30 @@ func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
 	return sum
 }
 
-func sumWithdrawalTxs(t []enclave.L2Tx) uint64 {
-	sum := uint64(0)
-	for _, r := range t {
-		sum += r.Amount
-	}
-
-	return sum
-}
-
-func validateL2State(t *testing.T, l2Network L2NetworkCfg, s *Stats, totalWithdrawn uint64, wallets []wallet_mock.Wallet) {
+func validateL2StateStats(t *testing.T, l2Network L2NetworkCfg, s *Stats, totalWithdrawn uint64, wallets []wallet_mock.Wallet) {
 	finalAmount := s.totalDepositedAmount - totalWithdrawn
 
 	// Parallelize this check
 	var nGroup errgroup.Group
 
-	// Check that the state on all nodes is valid
+	// Check the balance of all nodes adds up with the balance in the stats
 	for _, node := range l2Network.nodes {
+		closureNode := node
 		nGroup.Go(func() error {
 			// add up all balances
 			total := uint64(0)
 			for _, wallet := range wallets {
-				total += node.Enclave.Balance(wallet.Address)
+				total += closureNode.Enclave.Balance(wallet.Address)
 			}
 			if total != finalAmount {
-				return fmt.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", node.ID, total, finalAmount)
+				return fmt.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", closureNode.ID, total, finalAmount) // nolint:goerr113
 			}
 			return nil
 		})
 	}
-	err := nGroup.Wait()
-	if err != nil {
+	if err := nGroup.Wait(); err != nil {
 		t.Error(err)
 	}
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
-}
-
-func totalBalance(s enclave.BlockState) uint64 {
-	tot := uint64(0)
-	for _, bal := range s.State {
-		tot += bal
-	}
-	return tot
 }
