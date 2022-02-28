@@ -48,7 +48,7 @@ type Header struct {
 	Nonce      Nonce
 }
 
-// todo - split into header and payload and then replace with the ethereum Block
+// todo - replace with the ethereum Block
 type Block struct {
 	Header       *Header
 	Transactions Transactions

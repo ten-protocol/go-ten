@@ -44,7 +44,7 @@ type inMemoryDB struct {
 	headBlock      common2.L1RootHash
 	stateMutex     sync.RWMutex
 
-	rollupsByHeight map[int][]*Rollup // todo encoded
+	rollupsByHeight map[int][]*Rollup
 	rollups         map[common2.L2RootHash]*Rollup
 
 	mempool map[common2.TxHash]L2Tx
