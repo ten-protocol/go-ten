@@ -78,8 +78,6 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 					currentRollups = append(currentRollups, enclave2.DecryptRollup(r))
 					s.NewRollup(r)
 				}
-			default:
-				panic("unknown transaction type")
 			}
 			r, _ := enclave2.FindWinner(headRollup, currentRollups, db)
 			if r != nil {

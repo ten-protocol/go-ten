@@ -35,6 +35,8 @@ type DB interface {
 	AddTxs(*Rollup, map[common2.TxHash]L2Tx)
 	Height(*Rollup) int
 	Parent(*Rollup) *Rollup
+	StoreSecret(secret SharedEnclaveSecret)
+	FetchSecret() SharedEnclaveSecret
 }
 
 type inMemoryDB struct {
@@ -55,6 +57,8 @@ type inMemoryDB struct {
 
 	transactionsPerBlockCache map[common2.L2RootHash]map[common2.TxHash]L2Tx
 	txM                       sync.RWMutex
+
+	sharedEnclaveSecret SharedEnclaveSecret
 }
 
 func NewInMemoryDB() DB {
@@ -74,6 +78,7 @@ func NewInMemoryDB() DB {
 }
 
 func (db *inMemoryDB) FetchState(hash common2.L1RootHash) (BlockState, bool) {
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	val, found := db.statePerBlock[hash]
@@ -81,6 +86,7 @@ func (db *inMemoryDB) FetchState(hash common2.L1RootHash) (BlockState, bool) {
 }
 
 func (db *inMemoryDB) SetState(hash common2.L1RootHash, state BlockState) {
+	db.assertSecretAvailable()
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 	db.statePerBlock[hash] = state
@@ -95,21 +101,25 @@ func (db *inMemoryDB) SetState(hash common2.L1RootHash, state BlockState) {
 }
 
 func (db *inMemoryDB) SetRollupState(hash common2.L2RootHash, state State) {
+	db.assertSecretAvailable()
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 	db.statePerRollup[hash] = state
 }
 
 func (db *inMemoryDB) Head() BlockState {
+	db.assertSecretAvailable()
 	val, _ := db.FetchState(db.headBlock)
 	return val
 }
 
 func (db *inMemoryDB) Balance(address common2.Address) uint64 {
+	db.assertSecretAvailable()
 	return db.Head().State[address]
 }
 
 func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
+	db.assertSecretAvailable()
 	height := db.Height(rollup)
 
 	db.stateMutex.Lock()
@@ -124,6 +134,7 @@ func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
 }
 
 func (db *inMemoryDB) FetchRollup(hash common2.L2RootHash) *Rollup {
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	r, f := db.rollups[hash]
@@ -134,6 +145,7 @@ func (db *inMemoryDB) FetchRollup(hash common2.L2RootHash) *Rollup {
 }
 
 func (db *inMemoryDB) ExistRollup(hash common2.L2RootHash) bool {
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	_, f := db.rollups[hash]
@@ -141,24 +153,28 @@ func (db *inMemoryDB) ExistRollup(hash common2.L2RootHash) bool {
 }
 
 func (db *inMemoryDB) FetchRollups(height int) []*Rollup {
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	return db.rollupsByHeight[height]
 }
 
 func (db *inMemoryDB) FetchRollupState(hash common2.L2RootHash) State {
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	return db.statePerRollup[hash]
 }
 
 func (db *inMemoryDB) StoreTx(tx L2Tx) {
+	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 	db.mempool[tx.ID] = tx
 }
 
 func (db *inMemoryDB) FetchTxs() []L2Tx {
+	db.assertSecretAvailable()
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
 	// txStr := make([]common.TxHash, 0)
@@ -172,6 +188,7 @@ func (db *inMemoryDB) FetchTxs() []L2Tx {
 }
 
 func (db *inMemoryDB) PruneTxs(toRemove map[common2.TxHash]common2.TxHash) {
+	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 	r := make(map[common2.TxHash]L2Tx)
@@ -186,12 +203,14 @@ func (db *inMemoryDB) PruneTxs(toRemove map[common2.TxHash]common2.TxHash) {
 }
 
 func (db *inMemoryDB) Store(node *common2.Block) {
+	db.assertSecretAvailable()
 	db.blockM.Lock()
 	db.blockCache[node.Hash()] = node
 	db.blockM.Unlock()
 }
 
 func (db *inMemoryDB) Resolve(hash common2.L1RootHash) (*common2.Block, bool) {
+	db.assertSecretAvailable()
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	v, f := db.blockCache[hash]
@@ -199,6 +218,7 @@ func (db *inMemoryDB) Resolve(hash common2.L1RootHash) (*common2.Block, bool) {
 }
 
 func (db *inMemoryDB) Txs(r *Rollup) (map[common2.TxHash]L2Tx, bool) {
+	db.assertSecretAvailable()
 	db.txM.RLock()
 	val, found := db.transactionsPerBlockCache[r.Hash()]
 	db.txM.RUnlock()
@@ -206,16 +226,19 @@ func (db *inMemoryDB) Txs(r *Rollup) (map[common2.TxHash]L2Tx, bool) {
 }
 
 func (db *inMemoryDB) AddTxs(r *Rollup, newMap map[common2.TxHash]L2Tx) {
+	db.assertSecretAvailable()
 	db.txM.Lock()
 	db.transactionsPerBlockCache[r.Hash()] = newMap
 	db.txM.Unlock()
 }
 
 func (db *inMemoryDB) Parent(r *Rollup) *Rollup {
+	db.assertSecretAvailable()
 	return db.FetchRollup(r.Header.ParentHash)
 }
 
 func (db *inMemoryDB) Height(r *Rollup) int {
+	db.assertSecretAvailable()
 	if height := r.Height.Load(); height != nil {
 		return height.(int)
 	}
@@ -226,4 +249,18 @@ func (db *inMemoryDB) Height(r *Rollup) int {
 	v := db.Height(db.Parent(r)) + 1
 	r.Height.Store(v)
 	return v
+}
+
+func (db *inMemoryDB) StoreSecret(secret SharedEnclaveSecret) {
+	db.sharedEnclaveSecret = secret
+}
+
+func (db *inMemoryDB) FetchSecret() SharedEnclaveSecret {
+	return db.sharedEnclaveSecret
+}
+
+func (db *inMemoryDB) assertSecretAvailable() {
+	if db.sharedEnclaveSecret == nil {
+		panic("Enclave not initialized")
+	}
 }

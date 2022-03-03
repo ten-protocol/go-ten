@@ -2,7 +2,6 @@
 ----
 Progress:
 
-- implement a very basic secret sharing protocol
 - Create a unit test with a checker for the final state of the simulation:
     - all injected transactions were included, and there are no duplicates
     - the state in each rollup matches the transactions. (deposits + L1)

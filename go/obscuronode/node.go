@@ -60,6 +60,27 @@ type Node struct {
 }
 
 func (a *Node) Start() {
+
+	if a.genesis {
+		// Create the shared secret and submit it to the management contract for storage
+		secret := a.Enclave.GenerateSecret()
+		a.broadcastTx(common.L1Tx{
+			ID:          uuid.New(),
+			TxType:      common.StoreSecretTx,
+			Secret:      secret,
+			Attestation: a.Enclave.Attestation(),
+		})
+	}
+
+	if !a.Enclave.IsInitialised() {
+		a.requestSecret()
+	}
+
+	//todo create a channel between request secret and start processing
+	a.startProcessing()
+}
+
+func (a *Node) startProcessing() {
 	// Todo: This is a naive implementation.
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	allblocks := a.L1Node.RPCBlockchainFeed()
@@ -123,6 +144,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
+			a.checkForSharedSecretRequests(block)
 			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
 		}
 	}
@@ -187,8 +209,10 @@ func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-
-	go a.Enclave.SubmitTx(tx)
+	// Ignore gossiped transactions while the node is still initialisng
+	if a.Enclave.IsInitialised() {
+		go a.Enclave.SubmitTx(tx)
+	}
 }
 
 func (a *Node) RPCBalance(address common.Address) uint64 {
@@ -205,18 +229,66 @@ func (a *Node) Stop() {
 
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol() (common.L2RootHash, error) {
-	// todo shared secret
+	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis()
-
-	tx := common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())}
-	t, err := tx.Encode()
-	if err != nil {
-		return common.L2RootHash{}, fmt.Errorf("unable to encode genesis tx %w", err)
-	}
-
-	a.L1Node.BroadcastTx(t)
+	a.broadcastTx(common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())})
 
 	return genesis.Hash, nil
+}
+
+func (a *Node) broadcastTx(tx common.L1Tx) {
+	t, err := tx.Encode()
+	if err != nil {
+		panic(err)
+	}
+	a.L1Node.BroadcastTx(t)
+}
+
+// This method implements the procedure by which a node obtains the secret
+func (a *Node) requestSecret() {
+	a.broadcastTx(common.L1Tx{
+		ID:          uuid.New(),
+		TxType:      common.RequestSecretTx,
+		Attestation: a.Enclave.Attestation(),
+	})
+
+	// start listening for l1 blocks that contain the response to the request
+	for {
+		select {
+		case b := <-a.blockRPCCh:
+			txs := b.b.DecodeBlock().Transactions
+			for _, tx := range txs {
+				if tx.TxType == common.StoreSecretTx && tx.Attestation.Owner == a.ID {
+					//someone has replied
+					a.Enclave.Init(tx.Secret)
+					return
+				}
+			}
+
+		case _ = <-a.forkRPCCh:
+			//todo
+
+		case <-a.rollupsP2PCh:
+			//ignore rolllups from peers as we're not part of the network just yet
+
+		case <-a.exitNodeCh:
+			return
+		}
+	}
+}
+
+func (a *Node) checkForSharedSecretRequests(block common.EncodedBlock) {
+	b := block.DecodeBlock()
+	for _, tx := range b.Transactions {
+		if tx.TxType == common.RequestSecretTx {
+			a.broadcastTx(common.L1Tx{
+				ID:          uuid.New(),
+				TxType:      common.StoreSecretTx,
+				Secret:      a.Enclave.FetchSecret(tx.Attestation),
+				Attestation: tx.Attestation,
+			})
+		}
+	}
 }
 
 func NewAgg(
