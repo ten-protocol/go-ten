@@ -23,13 +23,13 @@ type SubmitBlockResponse struct {
 
 // Enclave - The actual implementation of this interface will call an rpc service
 type Enclave interface {
-	// Attestation - Produces an attestation report which will be used to initialise
+	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation() common3.AttestationReport
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 	GenerateSecret() common3.EncryptedSharedEnclaveSecret
 
-	// return the shared secret encrypted with the key from the attestation
+	// FetchSecret - return the shared secret encrypted with the key from the attestation
 	FetchSecret(report common3.AttestationReport) common3.EncryptedSharedEnclaveSecret
 
 	// Init - initialise an enclave with a seed received by another enclave
@@ -327,13 +327,13 @@ func (e *enclaveImpl) Stop() {
 	e.exitCh <- true
 }
 
-func (e enclaveImpl) Attestation() common3.AttestationReport {
+func (e *enclaveImpl) Attestation() common3.AttestationReport {
 	// Todo
 	return common3.AttestationReport{Owner: e.node}
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e enclaveImpl) GenerateSecret() common3.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) GenerateSecret() common3.EncryptedSharedEnclaveSecret {
 	secret := make([]byte, 32)
 	n, err := rand.Read(secret)
 	if n != 32 || err != nil {
@@ -344,15 +344,15 @@ func (e enclaveImpl) GenerateSecret() common3.EncryptedSharedEnclaveSecret {
 }
 
 // Init - initialise an enclave with a seed received by another enclave
-func (e enclaveImpl) Init(secret common3.EncryptedSharedEnclaveSecret) {
+func (e *enclaveImpl) Init(secret common3.EncryptedSharedEnclaveSecret) {
 	e.db.StoreSecret(decryptSecret(secret))
 }
 
-func (e enclaveImpl) FetchSecret(report common3.AttestationReport) common3.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) FetchSecret(report common3.AttestationReport) common3.EncryptedSharedEnclaveSecret {
 	return encryptSecret(e.db.FetchSecret())
 }
 
-func (e enclaveImpl) IsInitialised() bool {
+func (e *enclaveImpl) IsInitialised() bool {
 	return e.db.FetchSecret() != nil
 }
 
