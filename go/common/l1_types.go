@@ -207,7 +207,7 @@ type EncryptedSharedEnclaveSecret []byte
 
 type AttestationReport struct {
 	Owner NodeID
-	//todo public key
+	// todo public key
 	// hash of code
 	// other stuff
 }

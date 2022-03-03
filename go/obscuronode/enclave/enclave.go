@@ -35,6 +35,7 @@ type Enclave interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	Init(secret common3.EncryptedSharedEnclaveSecret)
 
+	// IsInitialised - true if the shared secret is avaible
 	IsInitialised() bool
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
@@ -43,6 +44,7 @@ type Enclave interface {
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
 	IngestBlocks(blocks []common3.ExtBlock)
 
+	// Start - start speculative execution
 	Start(block common3.ExtBlock)
 
 	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup

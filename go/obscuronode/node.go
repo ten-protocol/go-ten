@@ -60,7 +60,6 @@ type Node struct {
 }
 
 func (a *Node) Start() {
-
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
 		secret := a.Enclave.GenerateSecret()
@@ -76,7 +75,7 @@ func (a *Node) Start() {
 		a.requestSecret()
 	}
 
-	//todo create a channel between request secret and start processing
+	// todo create a channel between request secret and start processing
 	a.startProcessing()
 }
 
@@ -95,11 +94,7 @@ func (a *Node) startProcessing() {
 	go a.Enclave.Start(extblocks[len(extblocks)-1])
 
 	if a.genesis {
-		_, err := a.initialiseProtocol()
-		if err != nil {
-			// todo - gracefully kill nodes
-			panic(fmt.Errorf("unable to initialize obscuro protocol on chain %w", err))
-		}
+		a.initialiseProtocol()
 	}
 
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
@@ -228,12 +223,12 @@ func (a *Node) Stop() {
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol() (common.L2RootHash, error) {
+func (a *Node) initialiseProtocol() common.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis()
 	a.broadcastTx(common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())})
 
-	return genesis.Hash, nil
+	return genesis.Hash
 }
 
 func (a *Node) broadcastTx(tx common.L1Tx) {
@@ -259,17 +254,17 @@ func (a *Node) requestSecret() {
 			txs := b.b.DecodeBlock().Transactions
 			for _, tx := range txs {
 				if tx.TxType == common.StoreSecretTx && tx.Attestation.Owner == a.ID {
-					//someone has replied
+					// someone has replied
 					a.Enclave.Init(tx.Secret)
 					return
 				}
 			}
 
-		case _ = <-a.forkRPCCh:
-			//todo
+		case <-a.forkRPCCh:
+			// todo
 
 		case <-a.rollupsP2PCh:
-			//ignore rolllups from peers as we're not part of the network just yet
+			// ignore rolllups from peers as we're not part of the network just yet
 
 		case <-a.exitNodeCh:
 			return
