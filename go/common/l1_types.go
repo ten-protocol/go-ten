@@ -21,9 +21,12 @@ type L1TxType uint8
 const (
 	DepositTx L1TxType = iota
 	RollupTx
+	StoreSecretTx
+	RequestSecretTx
 )
 
 // todo - replace with the ethereum Transaction type
+// all the fields are placeholders for arguments sent to the management contract
 type L1Tx struct {
 	ID     TxHash
 	TxType L1TxType
@@ -31,6 +34,9 @@ type L1Tx struct {
 	// if the type is rollup
 	// todo -payload
 	Rollup EncodedRollup
+
+	Secret      EncryptedSharedEnclaveSecret
+	Attestation AttestationReport
 
 	// if the type is deposit
 	Amount uint64
@@ -48,7 +54,7 @@ type Header struct {
 	Nonce      Nonce
 }
 
-// todo - split into header and payload and then replace with the ethereum Block
+// todo - replace with the ethereum Block
 type Block struct {
 	Header       *Header
 	Transactions Transactions
@@ -195,4 +201,13 @@ func (b *Block) Height(resolver BlockResolver) int {
 	b.height.Store(v)
 
 	return v
+}
+
+type EncryptedSharedEnclaveSecret []byte
+
+type AttestationReport struct {
+	Owner NodeID
+	// todo public key
+	// hash of code
+	// other stuff
 }

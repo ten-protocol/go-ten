@@ -1,0 +1,8 @@
+1. How do you prevent multiple "genesis" nodes
+ - publish the hash of the shared secret  to the L1, and also added to the haeder of the rollup?
+ - hardcode the address of the management smart contract and each enclave can decide what to do when it ingests the blocks
+
+2. How to make the secret sharing more efficient?
+ - currently the requester submits a transaction to the L1, and everybody responds automatically. Which is super inefficient.
+ - need to find a way where only someone responds. If they don't respond, then the next,etc
+ - based on the request, there should be a way to uniquely calculate who should respond

@@ -180,7 +180,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 			printTxs(win.Transactions)),
 		)
 	}
-	// todo - we need another root hash for withdrawals
+	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
 	return win, s.s
 }

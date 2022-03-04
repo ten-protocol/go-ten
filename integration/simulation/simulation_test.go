@@ -125,8 +125,8 @@ func validateL1(t *testing.T, stats *Stats, l1Height int, l1HeightHash common.L1
 					// todo - once logic is added to the l1 - this can be made into a check
 					stats.NewRollup(r)
 				}
-			default:
-				panic("unknown transaction type")
+			case common.RequestSecretTx:
+			case common.StoreSecretTx:
 			}
 		}
 	}
