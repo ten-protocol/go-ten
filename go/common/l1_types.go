@@ -3,13 +3,11 @@ package common
 import (
 	"fmt"
 	"io"
-	"sync"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"golang.org/x/crypto/sha3"
+	"github.com/obscuronet/obscuro-playground/go/hashing"
 )
 
 // Todo - replace these data structures with the actual Ethereum structures from geth
@@ -113,35 +111,7 @@ func (b *Block) Hash() L1RootHash {
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
 func (h *Header) Hash() (L1RootHash, error) {
-	return rlpHash(h)
-}
-
-//func (h *Header) Height() uint32 {
-//	return rlpHash(h)
-//}
-
-// rlpHash encodes x and hashes the encoded bytes.
-func rlpHash(value interface{}) (L1RootHash, error) {
-	var hash L1RootHash
-
-	sha := hasherPool.Get().(crypto.KeccakState)
-	defer hasherPool.Put(sha)
-	sha.Reset()
-	err := rlp.Encode(sha, value)
-	if err != nil {
-		return hash, fmt.Errorf("unable to encode Value. %w", err)
-	}
-
-	_, err = sha.Read(hash[:])
-	if err != nil {
-		return hash, fmt.Errorf("unable to read encoded value. %w", err)
-	}
-
-	return hash, nil
-}
-
-var hasherPool = sync.Pool{
-	New: func() interface{} { return sha3.NewLegacyKeccak256() },
+	return hashing.RLPHash(h)
 }
 
 func (eb ExtBlock) ToBlock() *Block {

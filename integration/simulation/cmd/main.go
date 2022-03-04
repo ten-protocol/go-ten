@@ -6,18 +6,19 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/google/uuid"
-	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 )
 
 // DefaultAverageLatencyToBlockRatio is relative to the block time
 // Average eth Block duration=12s, and average eth block latency = 1s
 // Determines the broadcast powTime. The lower, the more powTime.
-const DefaultAverageLatencyToBlockRatio = 12
+const DefaultAverageLatencyToBlockRatio = uint64(12)
 
 // DefaultAverageGossipPeriodToBlockRatio - how long to wait for gossip in L2.
-const DefaultAverageGossipPeriodToBlockRatio = 3
+const DefaultAverageGossipPeriodToBlockRatio = uint64(3)
 
 func main() {
 	//f, err := os.Create("cpu.prof")
@@ -37,24 +38,32 @@ func main() {
 		panic(err)
 	}
 	defer f1.Close()
-	common.SetLog(f1)
+	log.SetLog(f1)
 
+	// define core test parameters
 	numberOfNodes := 10
 	simulationTime := 15
-	avgBlockDuration := uint64(20_000)
+	avgBlockDuration := DefaultAverageLatencyToBlockRatio
 	avgLatency := avgBlockDuration / 15
-	avgGossipPeriod := avgBlockDuration / 3
+	avgGossipPeriod := DefaultAverageGossipPeriodToBlockRatio
 
+	// define network params
 	stats := simulation.NewStats(numberOfNodes, simulationTime, avgBlockDuration, avgLatency, avgGossipPeriod)
+	l1NetworkConfig := simulation.NewL1Network(avgLatency, stats)
+	l2NetworkCfg := simulation.NewL2Network(avgLatency)
 
-	blockDuration := uint64(25_000)
-	l1netw, _ := simulation.RunSimulation(
-		simulation.NewTransactionGenerator(5),
-		2,
-		55,
-		blockDuration,
-		blockDuration/DefaultAverageLatencyToBlockRatio,
-		blockDuration/DefaultAverageGossipPeriodToBlockRatio,
-		stats)
-	fmt.Printf("%#v\n", l1netw.Stats)
+	// define instances of the simulation mechanisms
+	txManager := simulation.NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)
+	simulationNetwork := simulation.NewSimulationNetwork(
+		numberOfNodes,
+		l1NetworkConfig,
+		l2NetworkCfg,
+		avgBlockDuration,
+		avgGossipPeriod,
+		stats,
+	)
+
+	// execute the simulation
+	simulation.RunSimulation(txManager, simulationNetwork, simulationTime)
+	fmt.Printf("%#v\n", l1NetworkConfig.Stats)
 }
