@@ -1,8 +1,9 @@
 package enclave
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	oc "github.com/obscuronet/obscuro-playground/go/obscuronode/common"

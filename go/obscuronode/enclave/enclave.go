@@ -3,6 +3,7 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
