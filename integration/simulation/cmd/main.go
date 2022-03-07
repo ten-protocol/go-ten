@@ -48,7 +48,7 @@ func main() {
 	avgGossipPeriod := DefaultAverageGossipPeriodToBlockRatio
 
 	// define network params
-	stats := simulation.NewStats(numberOfNodes, simulationTime, avgBlockDuration, avgLatency, avgGossipPeriod)
+	stats := simulation.NewStats(numberOfNodes)
 	l1NetworkConfig := simulation.NewL1Network(avgLatency, stats)
 	l2NetworkCfg := simulation.NewL2Network(avgLatency)
 
