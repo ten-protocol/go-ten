@@ -31,6 +31,7 @@ type TransactionManager struct {
 }
 
 // NewTransactionManager returns a transaction manager with a given number of wallets
+// todo Add methods that generate deterministic scenarios
 func NewTransactionManager(numberWallets uint, l1 *L1NetworkCfg, l2 *L2NetworkCfg, avgBlockDuration uint64, stats *Stats) *TransactionManager {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
@@ -124,7 +125,6 @@ func (m *TransactionManager) GetL2WithdrawalRequests() []common2.Withdrawal {
 }
 
 // issueRandomTransfers creates and issues a numbers of L2 transfer transactions proportional to the simulation time, such that they can be processed
-// todo make this deterministic
 func (m *TransactionManager) issueRandomTransfers() {
 	n := uint64(m.simulationTimeInUS) / m.avgBlockDuration
 	i := uint64(0)
@@ -155,7 +155,6 @@ func (m *TransactionManager) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a numbers transactions proportional to the simulation time, such that they can be processed
 // Generates L1 common.DepositTx transactions
-// todo make this deterministic
 func (m *TransactionManager) issueRandomDeposits() {
 	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
 	i := uint64(0)
@@ -176,7 +175,6 @@ func (m *TransactionManager) issueRandomDeposits() {
 
 // issueRandomWithdrawals creates and issues a numbers transactions proportional to the simulation time, such that they can be processed
 // Generates L2 enclave2.WithdrawalTx transactions
-// todo make this deterministic
 func (m *TransactionManager) issueRandomWithdrawals() {
 	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
 	i := uint64(0)

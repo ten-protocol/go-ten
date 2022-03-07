@@ -29,29 +29,29 @@ func TestSimulation(t *testing.T) {
 
 	// define core test parameters
 	numberOfNodes := 10
-	simulationTime := 15
-	avgBlockDuration := uint64(20_000)
-	avgLatency := avgBlockDuration / 15
-	avgGossipPeriod := avgBlockDuration / 3
+	simulationTimeSecs := 15                // in seconds
+	avgBlockDurationUSecs := uint64(20_000) // in u seconds 1 sec = 1e6 usecs
+	avgLatency := avgBlockDurationUSecs / 15
+	avgGossipPeriod := avgBlockDurationUSecs / 3
 
 	// define network params
-	stats := NewStats(numberOfNodes, simulationTime, avgBlockDuration, avgLatency, avgGossipPeriod)
+	stats := NewStats(numberOfNodes)
 	l1NetworkConfig := NewL1Network(avgLatency, stats)
 	l2NetworkCfg := NewL2Network(avgLatency)
 
 	// define instances of the simulation mechanisms
-	txManager := NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)
+	txManager := NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDurationUSecs, stats)
 	simulationNetwork := NewSimulationNetwork(
 		numberOfNodes,
 		l1NetworkConfig,
 		l2NetworkCfg,
-		avgBlockDuration,
+		avgBlockDurationUSecs,
 		avgGossipPeriod,
 		stats,
 	)
 
 	// execute the simulation
-	RunSimulation(txManager, simulationNetwork, simulationTime)
+	RunSimulation(txManager, simulationNetwork, simulationTimeSecs)
 
 	// run tests
 	checkBlockchainValidity(t, txManager, simulationNetwork)

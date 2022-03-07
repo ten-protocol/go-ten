@@ -212,6 +212,16 @@ func (a *Node) RPCBalance(address common.Address) uint64 {
 	return a.Enclave.Balance(address)
 }
 
+// RPCCurrentBlockHead returns the current head of the blocks (l1)
+func (a *Node) RPCCurrentBlockHead() *NodeHeaderElement {
+	return a.blockHeaders.GetCurrentHead()
+}
+
+// RPCCurrentRollupHead returns the current head of the rollups (l2)
+func (a *Node) RPCCurrentRollupHead() *NodeHeaderElement {
+	return a.rollupHeaders.GetCurrentHead()
+}
+
 // BlockHeaders returns the block headers of the node pointing at the current head
 func (a *Node) BlockHeaders() *NodeHeader {
 	return a.blockHeaders

@@ -10,16 +10,14 @@ import (
 
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
-	nodes []*obscuro_node.Node
-	delay common3.Latency // the latency
+	nodes      []*obscuro_node.Node
+	avgLatency uint64
 }
 
 // NewL2Network returns an instance of a configured L2 Network (no nodes)
 func NewL2Network(avgLatency uint64) *L2NetworkCfg {
 	return &L2NetworkCfg{
-		delay: func() uint64 {
-			return common3.RndBtw(avgLatency/10, 2*avgLatency)
-		},
+		avgLatency: avgLatency,
 	}
 }
 
@@ -57,4 +55,9 @@ func (cfg *L2NetworkCfg) Stop() {
 		m.Stop()
 		// fmt.Printf("Stopped L2 node: %d\n", m.ID)
 	}
+}
+
+// delay returns an expected delay on the l2
+func (cfg *L2NetworkCfg) delay() uint64 {
+	return common3.RndBtw(cfg.avgLatency/10, 2*cfg.avgLatency)
 }

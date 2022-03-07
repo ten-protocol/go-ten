@@ -13,21 +13,19 @@ import (
 // L1NetworkCfg - models a full network including artificial random latencies
 type L1NetworkCfg struct {
 	nodes []*ethereum_mock.Node
-	delay common2.Latency // the latency
 	Stats *Stats
 	// used as a signal to stop all network communication.
 	// This helps prevent deadlocks when stopping nodes
-	interrupt *int32
+	interrupt  *int32
+	avgLatency uint64
 }
 
 // NewL1Network returns an instance of a configured L1 Network (no nodes)
 func NewL1Network(avgLatency uint64, stats *Stats) *L1NetworkCfg {
 	return &L1NetworkCfg{
-		delay: func() uint64 {
-			return common2.RndBtw(avgLatency/10, 2*avgLatency)
-		},
-		Stats:     stats,
-		interrupt: new(int32),
+		Stats:      stats,
+		interrupt:  new(int32),
+		avgLatency: avgLatency,
 	}
 }
 
@@ -83,4 +81,9 @@ func (n *L1NetworkCfg) Stop() {
 		go t.Stop()
 		// fmt.Printf("Stopped L1 node: %d.\n", m.ID)
 	}
+}
+
+// delay returns an expected delay on the l1 network
+func (n *L1NetworkCfg) delay() uint64 {
+	return common2.RndBtw(n.avgLatency/10, 2*n.avgLatency)
 }
