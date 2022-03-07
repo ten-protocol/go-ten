@@ -232,6 +232,7 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) bool {
 
 	// only store if the parent exists
 	if e.db.ExistRollup(r.Header.ParentHash) {
+		// todo - this is a temporary storage that should be discarded after the round is done
 		e.db.StoreRollup(&r)
 		return true
 	}

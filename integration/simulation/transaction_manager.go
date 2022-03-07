@@ -16,7 +16,6 @@ import (
 )
 
 // TransactionManager is a structure that generates, issues and tracks transactions
-// this should only be used in the context of the simulation / test
 type TransactionManager struct {
 	l1NetworkConfig    *L1NetworkCfg
 	l2NetworkConfig    *L2NetworkCfg

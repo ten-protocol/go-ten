@@ -15,10 +15,10 @@ import (
 // DefaultAverageLatencyToBlockRatio is relative to the block time
 // Average eth Block duration=12s, and average eth block latency = 1s
 // Determines the broadcast powTime. The lower, the more powTime.
-const DefaultAverageLatencyToBlockRatio = uint64(12)
+const DefaultAverageLatencyToBlockRatio = uint64(12_000_000)
 
 // DefaultAverageGossipPeriodToBlockRatio - how long to wait for gossip in L2.
-const DefaultAverageGossipPeriodToBlockRatio = uint64(3)
+const DefaultAverageGossipPeriodToBlockRatio = uint64(3_000_000)
 
 func main() {
 	//f, err := os.Create("cpu.prof")
@@ -54,7 +54,7 @@ func main() {
 
 	// define instances of the simulation mechanisms
 	txManager := simulation.NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)
-	simulationNetwork := simulation.NewSimulationNetwork(
+	sim := simulation.NewSimulation(
 		numberOfNodes,
 		l1NetworkConfig,
 		l2NetworkCfg,
@@ -64,6 +64,6 @@ func main() {
 	)
 
 	// execute the simulation
-	simulation.RunSimulation(txManager, simulationNetwork, simulationTime)
+	sim.Start(txManager, simulationTime)
 	fmt.Printf("%#v\n", l1NetworkConfig.Stats)
 }

@@ -41,7 +41,7 @@ func TestSimulation(t *testing.T) {
 
 	// define instances of the simulation mechanisms
 	txManager := NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDurationUSecs, stats)
-	simulationNetwork := NewSimulationNetwork(
+	simulation := NewSimulation(
 		numberOfNodes,
 		l1NetworkConfig,
 		l2NetworkCfg,
@@ -51,16 +51,16 @@ func TestSimulation(t *testing.T) {
 	)
 
 	// execute the simulation
-	RunSimulation(txManager, simulationNetwork, simulationTimeSecs)
+	simulation.Start(txManager, simulationTimeSecs)
 
 	// run tests
-	checkBlockchainValidity(t, txManager, simulationNetwork)
+	checkBlockchainValidity(t, txManager, simulation)
 
 	fmt.Printf("%+v\n", stats)
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
-func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, network *Network) {
+func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, network *Simulation) {
 	// TODO check all nodes are the same height ?
 	// pick one node to draw height
 	l1Node := network.l1Network.nodes[0]
@@ -200,6 +200,9 @@ func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Sta
 	if headerWithdrawalSum > stats.totalWithdrawnAmount {
 		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", headerWithdrawalSum, stats.totalWithdrawnAmount)
 	}
+
+	// TODO - there should be an efficiency test between blocks and rollups
+	// you should not have % difference between the # of rollups and the # of blocks
 
 	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
 	if efficiency > L2EfficiencyThreashold {

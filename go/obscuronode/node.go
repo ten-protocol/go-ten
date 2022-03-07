@@ -57,7 +57,7 @@ type Node struct {
 	// forkRPCCh is where new forks from the L1 notify the obscuro node
 	forkRPCCh chan []common.EncodedBlock
 
-	// rollupsP2PCh is the mock channel where new rollups are gossiped to
+	// rollupsP2PCh is the channel where new rollups are gossiped to
 	rollupsP2PCh chan common.EncodedRollup
 
 	// Interface to the logic running inside the TEE
@@ -259,7 +259,12 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 		// For the genesis block the parent is nil
 		if block != nil {
 			a.checkForSharedSecretRequests(block)
+
+			// enclave is not giving me all tha rollups that exist
 			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
+
+			// I should go throughout the tx list on the block and store any sucessfull rollups
+			// compare the tx list with the result - that should give me why the enclave is not giving the expected rollup on the result * could be a bug *
 
 			// update the current known headers for each received block
 			if result.Rollup.Header != nil {
