@@ -22,8 +22,8 @@ T7: Refactoring create a Blockchain structure (see geth)- to better encapsulate 
 T8: Implement the obscuro cryptography: (depends on T4) (Complexity level 2)
     - from the master seed derive the keys
     - create the transaction block
-T9: Implement p2p communication, gossiping
-T10: Implement the enclave service.
+T9: Implement p2p communication, gossiping (Complexity level 3)
+T10: Implement the enclave service. (Complexity level 3)
 
 Normal:
 - update the readme
