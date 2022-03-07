@@ -63,11 +63,8 @@ type Node struct {
 	// Interface to the logic running inside the TEE
 	Enclave enclave.Enclave
 
-	// Node block headers - stores the known l1 block headers, always points at head
-	blockHeaders *NodeHeader
-
-	// Node rollup headers - stores the known l2 block headers (rollups), always points at head
-	rollupHeaders *NodeHeader
+	// Node headers - stores the known l1 block headers and l2 block headers, always points at head
+	headers *NodeHeader
 }
 
 func NewAgg(
@@ -102,8 +99,7 @@ func NewAgg(
 		Enclave: enclave.NewEnclave(id, true, collector),
 
 		// Initialized the node headers
-		blockHeaders:  NewNodeHead(),
-		rollupHeaders: NewNodeHead(),
+		headers: NewNodeHeader(),
 	}
 }
 
@@ -213,23 +209,18 @@ func (a *Node) RPCBalance(address common.Address) uint64 {
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
-func (a *Node) RPCCurrentBlockHead() *NodeHeaderElement {
-	return a.blockHeaders.GetCurrentHead()
+func (a *Node) RPCCurrentBlockHead() *BlockHeader {
+	return a.headers.GetCurrentBlockHead()
 }
 
 // RPCCurrentRollupHead returns the current head of the rollups (l2)
-func (a *Node) RPCCurrentRollupHead() *NodeHeaderElement {
-	return a.rollupHeaders.GetCurrentHead()
+func (a *Node) RPCCurrentRollupHead() *RollupHeader {
+	return a.headers.GetCurrentRollupHead()
 }
 
-// BlockHeaders returns the block headers of the node pointing at the current head
-func (a *Node) BlockHeaders() *NodeHeader {
-	return a.blockHeaders
-}
-
-// RollupHeaders returns the rollup headers of the node pointing at the current head
-func (a *Node) RollupHeaders() *NodeHeader {
-	return a.rollupHeaders
+// Headers returns the NodeHeader of the node, pointing at the current head
+func (a *Node) Headers() *NodeHeader {
+	return a.headers
 }
 
 // Stop gracefully stops the node execution
@@ -268,8 +259,8 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 
 			// update the current known headers for each received block
 			if result.Rollup.Header != nil {
-				a.RollupHeaders().AddHeader(
-					&NodeHeaderElement{
+				a.Headers().AddRollupHeader(
+					&RollupHeader{
 						ID:          result.Rollup.Header.Hash(),
 						Parent:      result.Rollup.Header.ParentHash,
 						Withdrawals: result.Rollup.Header.Withdrawals,
@@ -277,9 +268,10 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 						IsRollup:    true,
 					},
 				)
-				if a.RollupHeaders().GetCurrentHead() == nil ||
-					(a.RollupHeaders().GetCurrentHead() != nil && a.RollupHeaders().GetCurrentHead().Height <= result.L2Height) {
-					a.RollupHeaders().SetCurrent(result.Rollup.Header.Hash())
+				if a.Headers().GetCurrentRollupHead() == nil ||
+					// todo remove this
+					(a.Headers().GetCurrentRollupHead() != nil && a.Headers().GetCurrentRollupHead().Height <= result.L2Height) {
+					a.Headers().SetCurrentRollupHead(result.Rollup.Header.Hash())
 				}
 			}
 		}
@@ -293,13 +285,15 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 
 	a.l2Network.BroadcastRollup(obscuroCommon.EncodeRollup(result.Rollup.ToRollup()))
 
-	a.BlockHeaders().AddHeader(
-		&NodeHeaderElement{
+	a.Headers().AddBlockHeader(
+		&BlockHeader{
 			ID:     result.L1Hash,
 			Parent: result.Rollup.Header.L1Proof,
 			Height: result.L1Height,
 		},
 	)
+	a.Headers().SetCurrentBlockHead(result.L1Hash)
+
 	common.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
 			return
@@ -395,7 +389,7 @@ func (a *Node) processP2PRollups(rollup *obscuroCommon.Rollup) {
 		height = uint(rollup.Height.Load().(int))
 	}
 	if stored {
-		a.RollupHeaders().AddHeader(&NodeHeaderElement{
+		a.Headers().AddRollupHeader(&RollupHeader{
 			Parent:      rollup.Header.ParentHash,
 			ID:          rollup.Header.Hash(),
 			Height:      height,
@@ -403,8 +397,8 @@ func (a *Node) processP2PRollups(rollup *obscuroCommon.Rollup) {
 			IsRollup:    true,
 		})
 
-		if a.RollupHeaders().GetCurrentHead() == nil || a.RollupHeaders().GetCurrentHead().Height <= height {
-			a.RollupHeaders().SetCurrent(rollup.Header.Hash())
+		if a.Headers().GetCurrentBlockHead() == nil || a.Headers().GetCurrentRollupHead().Height <= height {
+			a.Headers().SetCurrentRollupHead(rollup.Header.Hash())
 		}
 	}
 }

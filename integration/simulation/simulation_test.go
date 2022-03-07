@@ -65,8 +65,8 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 	// pick one node to draw height
 	l1Node := network.l1Network.nodes[0]
 	obscuroNode := network.l2Network.nodes[0]
-	currentBlockHead := obscuroNode.BlockHeaders().GetCurrentHead()
-	currentRollupHead := obscuroNode.RollupHeaders().GetCurrentHead()
+	currentBlockHead := obscuroNode.Headers().GetCurrentBlockHead()
+	currentRollupHead := obscuroNode.Headers().GetCurrentRollupHead()
 
 	l1Height := currentBlockHead.Height
 	l1HeightHash := currentBlockHead.ID
@@ -182,7 +182,7 @@ func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Sta
 
 	// todo - check that proofs are on the canonical chain
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for header := node.RollupHeaders().GetCurrentHead(); header != nil; header = node.RollupHeaders().GetHeader(header.Parent) {
+	for header := node.Headers().GetCurrentRollupHead(); header != nil; header = node.Headers().GetRollupHeader(header.Parent) {
 		for _, w := range header.Withdrawals {
 			headerWithdrawalSum += w.Amount
 			headerWithdrawalTxCount++
