@@ -16,12 +16,14 @@ T2: Introduce basic crypto for L2 transactions (Complexity level 4)
 T3: Introduce better mempool logic (Complexity level 4)
 T4: Refactor the Obscuro "database" and introduce something proper that works within an enclave (Complexity level 2)
 T5: Create better logic to get L2 node up to speed (Depends on T1) (Complexity level 3)
-T6: replace the state and transaction execution with code from geth ( Depends on T2, T5)
+T6: replace the state and transaction execution with code from geth ( Depends on T2, T4)
     (super complex task. Complexity level 1)
 T7: Refactoring create a Blockchain structure (see geth)- to better encapsulate the logic (Complexity level 5)
 T8: Implement the obscuro cryptography: (depends on T4) (Complexity level 2)
     - from the master seed derive the keys
     - create the transaction block
+T9: Implement p2p communication, gossiping
+T10: Implement the enclave service.
 
 Normal:
 - update the readme
