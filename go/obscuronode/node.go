@@ -254,7 +254,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 			// enclave is not giving me all tha rollups that exist
 			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
 
-			// I should go throughout the tx list on the block and store any sucessfull rollups
+			// I should go throughout the tx list on the block and store any successful rollups
 			// compare the tx list with the result - that should give me why the enclave is not giving the expected rollup on the result * could be a bug *
 
 			// update the current known headers for each received block
