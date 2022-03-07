@@ -7,10 +7,6 @@ import (
 
 type NodeID uint64
 
-// todo - use proper crypto
-// type Address = uuid.UUID
-type Address = uint32
-
 const (
 	L2GenesisHeight = 0
 	L1GenesisHeight = 0

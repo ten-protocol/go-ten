@@ -3,11 +3,12 @@ package enclave
 import (
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
-type State = map[common3.Address]uint64
+type State = map[gethcommon.Address]uint64
 
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {

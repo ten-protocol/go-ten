@@ -12,6 +12,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type AggregatorCfg struct {
@@ -210,7 +212,7 @@ func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 	}
 }
 
-func (a *Node) RPCBalance(address common.Address) uint64 {
+func (a *Node) RPCBalance(address gethcommon.Address) uint64 {
 	return a.Enclave.Balance(address)
 }
 

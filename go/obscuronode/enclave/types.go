@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
@@ -20,8 +21,8 @@ type L2Tx struct {
 	ID     common2.TxHash
 	TxType L2TxType
 	Amount uint64
-	From   common2.Address
-	To     common2.Address
+	From   common.Address
+	To     common.Address
 }
 
 var GenesisRollup = NewRollup(&common2.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")
