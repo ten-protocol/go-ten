@@ -1,14 +1,36 @@
 package walletmock
 
 import (
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
-	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 type Wallet struct {
 	Address common.Address
+	// TODO - Store key securely. Geth stores the key encrypted on disk.
+	Key keystore.Key
 }
 
 func New() Wallet {
-	return Wallet{Address: uuid.New().ID()}
+	id, err := uuid.NewRandom()
+	if err != nil {
+		panic(fmt.Sprintf("Could not create random uuid: %v", err))
+	}
+
+	privateKeyECDSA, err := crypto.GenerateKey()
+	if err != nil {
+		panic(fmt.Sprintf("Could not generate keypair for wallet: %v", err))
+	}
+
+	key := keystore.Key{
+		Id:         id,
+		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
+		PrivateKey: privateKeyECDSA,
+	}
+
+	return Wallet{Address: key.Address, Key: key}
 }

@@ -10,5 +10,8 @@ require (
 
 require (
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/deckarep/golang-set v1.8.0 // indirect
+	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/rjeczalik/notify v0.9.1 // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 )

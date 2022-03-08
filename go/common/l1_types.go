@@ -40,7 +40,7 @@ type L1Tx struct {
 
 	// if the type is deposit
 	Amount uint64
-	Dest   Address
+	Dest   common.Address
 }
 
 type (

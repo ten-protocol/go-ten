@@ -68,7 +68,7 @@ func RunSimulation(
 	// Create a bunch of users and inject transactions
 	wallets := make([]wallet_mock.Wallet, nrWallets)
 	for i := 0; i < nrWallets; i++ {
-		wallets[i] = wallet_mock.Wallet{Address: uuid.New().ID()}
+		wallets[i] = wallet_mock.New()
 	}
 
 	timeInUs := simulationTime * 1000 * 1000

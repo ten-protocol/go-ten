@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 )
 
@@ -23,7 +25,7 @@ type DB interface {
 	FetchRollupState(hash common2.L2RootHash) State
 	SetRollupState(hash common2.L2RootHash, state State)
 	Head() BlockState
-	Balance(address common2.Address) uint64
+	Balance(address common.Address) uint64
 	FetchRollups(height int) []*Rollup
 	StoreRollup(rollup *Rollup)
 	FetchTxs() []L2Tx
@@ -113,7 +115,7 @@ func (db *inMemoryDB) Head() BlockState {
 	return val
 }
 
-func (db *inMemoryDB) Balance(address common2.Address) uint64 {
+func (db *inMemoryDB) Balance(address common.Address) uint64 {
 	db.assertSecretAvailable()
 	return db.Head().State[address]
 }
