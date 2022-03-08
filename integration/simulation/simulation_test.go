@@ -119,7 +119,6 @@ const L2EfficiencyThreashold = 0.3
 func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.L1RootHash, node *ethereum_mock.Node) {
 	deposits := make([]uuid.UUID, 0)
 	rollups := make([]common.L2RootHash, 0)
-	stats.l1Height = l1Height
 	totalDeposited := uint64(0)
 
 	l1Block, found := node.Resolver.Resolve(*l1HeightHash)
@@ -160,14 +159,14 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.
 		t.Errorf("Deposit amounts don't match. Found %d , expected %d", totalDeposited, stats.totalDepositedAmount)
 	}
 
-	efficiency := float64(stats.totalL1Blocks-stats.l1Height) / float64(stats.totalL1Blocks)
+	efficiency := float64(stats.totalL1Blocks-l1Height) / float64(stats.totalL1Blocks)
 	if efficiency > L1EfficiencyThreashold {
 		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, L1EfficiencyThreashold)
 	}
 
 	// todo
 	for nodeID, reorgs := range stats.noL1Reorgs {
-		eff := float64(reorgs) / float64(stats.l1Height)
+		eff := float64(reorgs) / float64(l1Height)
 		if eff > L1EfficiencyThreashold {
 			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeID, eff, L1EfficiencyThreashold)
 		}

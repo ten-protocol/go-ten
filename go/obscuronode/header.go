@@ -22,7 +22,6 @@ type RollupHeader struct {
 	Height uint
 
 	Withdrawals []common2.Withdrawal
-	IsRollup    bool
 }
 
 // NodeHeader allows to access the nodes current l1, l2 headers
@@ -36,7 +35,7 @@ type NodeHeader struct {
 	rollupDB          map[string]*RollupHeader
 }
 
-// NewNodeHeader returns a new instance of the NodeHeaders
+// NewNodeHeader returns a new instance of the Node Headers
 func NewNodeHeader() *NodeHeader {
 	return &NodeHeader{
 		blockDB:  map[string]*BlockHeader{},

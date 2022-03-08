@@ -265,7 +265,6 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 						Parent:      result.Rollup.Header.ParentHash,
 						Withdrawals: result.Rollup.Header.Withdrawals,
 						Height:      result.L2Height,
-						IsRollup:    true,
 					},
 				)
 				if a.Headers().GetCurrentRollupHead() == nil ||
@@ -394,10 +393,9 @@ func (a *Node) processP2PRollups(rollup *obscuroCommon.Rollup) {
 			ID:          rollup.Header.Hash(),
 			Height:      height,
 			Withdrawals: rollup.Header.Withdrawals,
-			IsRollup:    true,
 		})
 
-		if a.Headers().GetCurrentBlockHead() == nil || a.Headers().GetCurrentRollupHead().Height <= height {
+		if a.Headers().GetCurrentRollupHead() == nil || a.Headers().GetCurrentRollupHead().Height <= height {
 			a.Headers().SetCurrentRollupHead(rollup.Header.Hash())
 		}
 	}

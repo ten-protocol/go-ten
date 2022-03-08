@@ -11,7 +11,6 @@ import (
 type Stats struct {
 	nrMiners int
 
-	l1Height      uint
 	totalL1Blocks uint
 
 	totalL2Blocks      uint
