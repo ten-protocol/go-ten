@@ -3,6 +3,7 @@ package simulation
 import (
 	"fmt"
 	common2 "github.com/ethereum/go-ethereum/common"
+	"math/big"
 	"math/rand"
 	"time"
 
@@ -106,7 +107,7 @@ func initialiseWallets(wallets []wallet_mock.Wallet, l1Network ethereum_mock.L1N
 		tx := deposit(u, INITIAL_BALANCE)
 		t, _ := tx.Encode()
 		l1Network.BroadcastTx(t)
-		s.Deposit(INITIAL_BALANCE)
+		s.Deposit(big.NewInt(INITIAL_BALANCE))
 		time.Sleep(common.Duration(avgBlockDuration / 3))
 	}
 }
@@ -143,7 +144,8 @@ func injectRandomDeposits(wallets []wallet_mock.Wallet, network ethereum_mock.L1
 		tx := deposit(rndWallet(wallets), v)
 		t, _ := tx.Encode()
 		network.BroadcastTx(t)
-		s.Deposit(v)
+		// TODO - Joel - Review this conversion.
+		s.Deposit(big.NewInt(int64(v)))
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
 	}
@@ -160,7 +162,8 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 		tx := withdrawal(rndWallet(wallets), v)
 		t := enclave2.EncryptTx(tx)
 		network.BroadcastTx(t)
-		s.Withdrawal(v)
+		// TODO - Joel - Review this conversion.
+		s.Withdrawal(big.NewInt(int64(v)))
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
 	}

@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"math/big"
 	"sync"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
@@ -29,8 +30,8 @@ type Stats struct {
 	noL2Recalcs map[common3.NodeID]int
 	// todo - actual avg block Duration
 
-	totalDepositedAmount      uint64
-	totalWithdrawnAmount      uint64
+	totalDepositedAmount      *big.Int
+	totalWithdrawnAmount      *big.Int
 	rollupWithMoreRecentProof uint64
 	nrTransferTransactions    int
 	statsMu                   *sync.RWMutex
@@ -38,14 +39,16 @@ type Stats struct {
 
 func NewStats(nrMiners int, simulationTime int, avgBlockDuration uint64, avgLatency uint64, gossipPeriod uint64) Stats {
 	return Stats{
-		nrMiners:         nrMiners,
-		simulationTime:   simulationTime,
-		avgBlockDuration: avgBlockDuration,
-		avgLatency:       avgLatency,
-		gossipPeriod:     gossipPeriod,
-		noL1Reorgs:       map[common3.NodeID]int{},
-		noL2Recalcs:      map[common3.NodeID]int{},
-		statsMu:          &sync.RWMutex{},
+		nrMiners:             nrMiners,
+		simulationTime:       simulationTime,
+		avgBlockDuration:     avgBlockDuration,
+		avgLatency:           avgLatency,
+		gossipPeriod:         gossipPeriod,
+		noL1Reorgs:           map[common3.NodeID]int{},
+		noL2Recalcs:          map[common3.NodeID]int{},
+		statsMu:              &sync.RWMutex{},
+		totalDepositedAmount: big.NewInt(0),
+		totalWithdrawnAmount: big.NewInt(0),
 	}
 }
 
@@ -80,9 +83,9 @@ func (s *Stats) NewRollup(r *common2.Rollup) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) Deposit(v uint64) {
+func (s *Stats) Deposit(v *big.Int) {
 	s.statsMu.Lock()
-	s.totalDepositedAmount += v
+	s.totalDepositedAmount = big.NewInt(0).Add(s.totalDepositedAmount, v)
 	s.statsMu.Unlock()
 }
 
@@ -92,9 +95,9 @@ func (s *Stats) Transfer() {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) Withdrawal(v uint64) {
+func (s *Stats) Withdrawal(v *big.Int) {
 	s.statsMu.Lock()
-	s.totalWithdrawnAmount += v
+	s.totalWithdrawnAmount = big.NewInt(0).Add(s.totalWithdrawnAmount, v)
 	s.statsMu.Unlock()
 }
 

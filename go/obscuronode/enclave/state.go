@@ -74,7 +74,6 @@ func executeTx(s *RollupState, tx L2Tx) {
 }
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
-	// TODO - Joel - Error handling if balance not found.
 	balance := s.s[tx.From]
 	if balance != nil && balance.Cmp(tx.Tx.Value()) >= 0 {
 		s.s[tx.From] = big.NewInt(0).Sub(s.s[tx.From], tx.Tx.Value())

@@ -3,12 +3,12 @@ package common
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
 	"math"
 	"math/rand"
 	"sync/atomic"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type (
@@ -69,7 +69,31 @@ func MaxInt(x, y uint32) uint32 {
 }
 
 // FindDups - returns a map of all elements that appear multiple times, and how many times
-func FindDups(list []uuid.UUID) map[uuid.UUID]int {
+func FindDups(list []common.Hash) map[common.Hash]int {
+	elementCount := make(map[common.Hash]int)
+
+	for _, item := range list {
+		// check if the item/element exist in the duplicate_frequency map
+		_, exist := elementCount[item]
+		if exist {
+			elementCount[item]++ // increase counter by 1 if already in the map
+		} else {
+			elementCount[item] = 1 // else start counting from 1
+		}
+	}
+	dups := make(map[common.Hash]int)
+	for u, i := range elementCount {
+		if i > 1 {
+			dups[u] = i
+			fmt.Printf("Dup: %d\n", u)
+		}
+	}
+	return dups
+}
+
+// TODO - Joel - Combine with the above?
+// FindDupsUUID - returns a map of all elements that appear multiple times, and how many times
+func FindDupsUUID(list []uuid.UUID) map[uuid.UUID]int {
 	elementCount := make(map[uuid.UUID]int)
 
 	for _, item := range list {
