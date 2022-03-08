@@ -35,7 +35,7 @@ func NewTransactionManager(numberWallets uint, l1 *L1NetworkCfg, l2 *L2NetworkCf
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
 	for i := uint(0); i < numberWallets; i++ {
-		wallets[i] = wallet_mock.Wallet{Address: uuid.New().ID()}
+		wallets[i] = wallet_mock.New()
 	}
 
 	return &TransactionManager{

@@ -32,7 +32,7 @@ type Header struct {
 
 type Withdrawal struct {
 	Amount  uint64
-	Address obscuroCommon.Address
+	Address common.Address
 }
 
 type Rollup struct {

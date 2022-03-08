@@ -39,11 +39,6 @@ High level tasks to achieve the non-privacy testnet starting with this Simulatio
     - Given a payload, and the address of the mgmt contract, construct an etheruem transction that sends that payload with enough gas.
     ]
 
-- Choose a serialisation format for Obscuro (RLP?)
-    [
-    - Serialise and deserialize Obscuro rollups and transactions
-    ]
-
 - Implement reasonably robust state storage mechanism (geth) (compatible with enclaves?)
 - Implement transaction execution engine on top of the storage mechanism (geth)
 - Implement cryptography (hashing, signing)

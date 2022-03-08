@@ -4,9 +4,10 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
@@ -69,7 +70,7 @@ type Enclave interface {
 	SubmitTx(tx common2.EncryptedTx)
 
 	// Balance - returns the balance of an address with a block delay
-	Balance(address common3.Address) uint64
+	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool)
@@ -282,7 +283,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) Balance(address common3.Address) uint64 {
+func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
 	return e.db.Balance(address)
 }
