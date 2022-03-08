@@ -102,7 +102,7 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 	currentHead := s.Head
 	currentState := newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
 	var currentProcessedTxs []L2Tx
-	currentProcessedTxsMap := make(map[common3.TxHash]L2Tx)
+	currentProcessedTxsMap := make(map[common.Hash]L2Tx)
 
 	// start the speculative rollup execution loop
 	for {
@@ -121,9 +121,9 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			_, found := currentProcessedTxsMap[tx.ID]
+			_, found := currentProcessedTxsMap[tx.Tx.Hash()]
 			if !found {
-				currentProcessedTxsMap[tx.ID] = tx
+				currentProcessedTxsMap[tx.Tx.Hash()] = tx
 				currentProcessedTxs = append(currentProcessedTxs, tx)
 				executeTx(&currentState, tx)
 			}

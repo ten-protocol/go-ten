@@ -1,29 +1,24 @@
 package enclave
 
 import (
-	"sync/atomic"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"sync/atomic"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	oc "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
 // Transfers and Withdrawals for now
-type L2TxType uint64
-
 const (
-	TransferTx L2TxType = iota
-	WithdrawalTx
+	TransferTx   = 0
+	WithdrawalTx = 1
 )
 
 // L2Tx Only in clear inside the enclave
 type L2Tx struct {
-	ID     common2.TxHash
-	TxType L2TxType
-	Amount uint64
-	From   common.Address
-	To     common.Address
+	Tx   types.Transaction
+	From common.Address
 }
 
 var GenesisRollup = NewRollup(&common2.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")

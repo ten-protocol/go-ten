@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"io"
+	"math/big"
 	"sync"
 	"sync/atomic"
 
@@ -32,7 +33,7 @@ type Header struct {
 }
 
 type Withdrawal struct {
-	Amount  uint64
+	Value   *big.Int
 	Address common.Address
 }
 

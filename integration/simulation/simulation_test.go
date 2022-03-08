@@ -162,7 +162,7 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
 	sum := uint64(0)
 	for _, r := range w {
-		sum += r.Amount
+		sum += r.Value
 	}
 	return sum
 }

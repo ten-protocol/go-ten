@@ -2,13 +2,14 @@ package enclave
 
 import (
 	"fmt"
+	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
-type State = map[gethcommon.Address]uint64
+type State = map[gethcommon.Address]*big.Int
 
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
@@ -62,7 +63,7 @@ func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 
 // mutates the State
 func executeTx(s *RollupState, tx L2Tx) {
-	switch tx.TxType {
+	switch tx.Tx.Type() {
 	case TransferTx:
 		executeTransfer(s, tx)
 	case WithdrawalTx:
@@ -73,10 +74,10 @@ func executeTx(s *RollupState, tx L2Tx) {
 }
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
-	if s.s[tx.From] >= tx.Amount {
-		s.s[tx.From] -= tx.Amount
+	if s.s[tx.From].Cmp(tx.Tx.Value()) >= 0 {
+		s.s[tx.From] = big.NewInt(0).Sub(s.s[tx.From], tx.Tx.Value())
 		s.w = append(s.w, common.Withdrawal{
-			Amount:  tx.Amount,
+			Value:   tx.Tx.Value(),
 			Address: tx.From,
 		})
 		// fmt.Printf("w: %v\n", s.w)
@@ -84,9 +85,9 @@ func executeWithdrawal(s *RollupState, tx L2Tx) {
 }
 
 func executeTransfer(s *RollupState, tx L2Tx) {
-	if s.s[tx.From] >= tx.Amount {
-		s.s[tx.From] -= tx.Amount
-		s.s[tx.To] += tx.Amount
+	if s.s[tx.From].Cmp(tx.Tx.Value()) >= 0 {
+		s.s[tx.From] = big.NewInt(0).Sub(s.s[tx.From], tx.Tx.Value())
+		s.s[*tx.Tx.To()] = big.NewInt(0).Add(s.s[*tx.Tx.To()], tx.Tx.Value())
 	}
 }
 
@@ -209,9 +210,11 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 			if tx.TxType == common3.DepositTx {
 				v, f := s.s[tx.Dest]
 				if f {
-					s.s[tx.Dest] = v + tx.Amount
+					// TODO - Joel - Kill off dirty conversion here.
+					s.s[tx.Dest] = big.NewInt(0).Add(v, big.NewInt(int64(tx.Amount)))
 				} else {
-					s.s[tx.Dest] = tx.Amount
+					// TODO - Joel - Kill off dirty conversion here.
+					s.s[tx.Dest] = big.NewInt(int64(tx.Amount))
 				}
 			}
 		}
