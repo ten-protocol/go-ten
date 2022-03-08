@@ -80,7 +80,7 @@ func printTxs(txs []L2Tx) (txsString []string) {
 }
 
 func printTx(t L2Tx, txsString []string) []string {
-	switch t.Tx.Type() {
+	switch t.Type {
 	case TransferTx:
 		txsString = append(txsString, fmt.Sprintf("%v->%v(%d){%d}", t.From, t.Tx.To(), t.Tx.Value(), t.Tx.Hash()))
 	case WithdrawalTx:

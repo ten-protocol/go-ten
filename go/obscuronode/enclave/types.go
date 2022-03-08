@@ -3,6 +3,7 @@ package enclave
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"math/big"
 	"sync/atomic"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
@@ -10,15 +11,31 @@ import (
 )
 
 // Transfers and Withdrawals for now
+type L2TxType uint64
+
 const (
-	TransferTx   = 0
-	WithdrawalTx = 1
+	TransferTx L2TxType = iota
+	WithdrawalTx
 )
 
 // L2Tx Only in clear inside the enclave
 type L2Tx struct {
-	Tx   types.Transaction
+	Tx *types.Transaction
+	// TODO - Joel - Explain why these wrapper fields are needed.
 	From common.Address
+	Type L2TxType
+}
+
+// TODO - Joel - Describe.
+func L2TxNew(to common.Address, value uint64, from common.Address, txType L2TxType) L2Tx {
+	// TODO - Joel - Create the tx data.
+	tx := types.NewTx(&types.LegacyTx{
+		// TODO - Joel - Review this taking of a reference.
+		To: &to,
+		// TODO - Joel - Review this conversion.
+		Value: big.NewInt(int64(value)),
+	})
+	return L2Tx{tx, from, txType}
 }
 
 var GenesisRollup = NewRollup(&common2.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")

@@ -63,7 +63,7 @@ func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 
 // mutates the State
 func executeTx(s *RollupState, tx L2Tx) {
-	switch tx.Tx.Type() {
+	switch tx.Type {
 	case TransferTx:
 		executeTransfer(s, tx)
 	case WithdrawalTx:
@@ -74,7 +74,9 @@ func executeTx(s *RollupState, tx L2Tx) {
 }
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
-	if s.s[tx.From].Cmp(tx.Tx.Value()) >= 0 {
+	// TODO - Joel - Error handling if balance not found.
+	balance := s.s[tx.From]
+	if balance.Cmp(tx.Tx.Value()) >= 0 {
 		s.s[tx.From] = big.NewInt(0).Sub(s.s[tx.From], tx.Tx.Value())
 		s.w = append(s.w, common.Withdrawal{
 			Value:   tx.Tx.Value(),

@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+	common2 "github.com/ethereum/go-ethereum/common"
 	"math/rand"
 	"time"
 
@@ -122,13 +123,7 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.
 		if f == t {
 			continue
 		}
-		tx := enclave2.L2Tx{
-			ID:     uuid.New(),
-			TxType: enclave2.TransferTx,
-			Amount: common.RndBtw(1, 500),
-			From:   f,
-			To:     t,
-		}
+		tx := enclave2.L2TxNew(t, common.RndBtw(1, 500), f, enclave2.TransferTx)
 		s.Transfer()
 		encoded := enclave2.EncryptTx(tx)
 		l2Network.BroadcastTx(encoded)
@@ -172,12 +167,8 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 }
 
 func withdrawal(wallet wallet_mock.Wallet, amount uint64) enclave2.L2Tx {
-	return enclave2.L2Tx{
-		ID:     uuid.New(),
-		TxType: enclave2.WithdrawalTx,
-		Amount: amount,
-		From:   wallet.Address,
-	}
+	// TODO - Joel - Avoid the empty address. Maybe two `New` methods (transfer and withdraw)?
+	return enclave2.L2TxNew(common2.Address{}, amount, wallet.Address, enclave2.WithdrawalTx)
 }
 
 func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
