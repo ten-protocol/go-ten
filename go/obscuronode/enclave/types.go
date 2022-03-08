@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
+	"math/rand"
 	"sync/atomic"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
@@ -34,6 +35,8 @@ func L2TxNew(to common.Address, value uint64, from common.Address, txType L2TxTy
 		To: &to,
 		// TODO - Joel - Review this conversion.
 		Value: big.NewInt(int64(value)),
+		// TODO - Joel - Choose a better nonce. Just using this to avoid duplicates.
+		Nonce: rand.Uint64(),
 	})
 	return L2Tx{tx, from, txType}
 }

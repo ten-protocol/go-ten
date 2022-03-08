@@ -148,7 +148,7 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) *big
 	if len(transfers) != s.nrTransferTransactions {
 		t.Errorf("Nr of transfers don't match. Found %d , expected %d", len(transfers), s.nrTransferTransactions)
 	}
-	if sumWithdrawalTxs(withdrawalTxs) != s.totalWithdrawnAmount {
+	if sumWithdrawalTxs(withdrawalTxs).Cmp(s.totalWithdrawnAmount) != 0 {
 		t.Errorf("Withdrawal tx amounts don't match. Found %d , expected %d", sumWithdrawalTxs(withdrawalTxs), s.totalWithdrawnAmount)
 	}
 	if sumWithdrawals(withdrawalRequests).Cmp(s.totalWithdrawnAmount) > 0 {
