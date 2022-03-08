@@ -18,14 +18,16 @@ type StatsCollector interface {
 
 // SubmitBlockResponse is the processed response sent from the enclave back to the node
 type SubmitBlockResponse struct {
-	L1Hash   common3.L1RootHash
-	L1Height uint
-	L2Hash   common3.L2RootHash
-	L2Height uint
+	L1Hash      common3.L1RootHash   // The Header Hash of the ingested Block
+	L1Height    uint                 // The L1 Height of the ingested Block
+	L1Parent    common3.L2RootHash   // The L1 Parent of the ingested Block
+	L2Hash      common3.L2RootHash   // The Rollup Hash in the ingested Block
+	L2Height    uint                 // The Rollup Height in the ingested Block
+	L2Parent    common3.L2RootHash   // The Rollup Hash Parent inside the ingested Block
+	Withdrawals []common2.Withdrawal // The Withdrawals available in Rollup of the ingested Block
 
-	Rollup    common2.ExtRollup
-	Processed bool
-	NewRollup bool
+	ProducedRollup common2.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
+	Ingested       bool              // Whether the Block was ingested or discarded
 }
 
 // Enclave - The actual implementation of this interface will call an rpc service
@@ -61,7 +63,7 @@ type Enclave interface {
 	SubmitBlock(block common3.ExtBlock) SubmitBlockResponse
 
 	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup common2.ExtRollup) bool
+	SubmitRollup(rollup common2.ExtRollup)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx common2.EncryptedTx)
@@ -150,10 +152,10 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 
 func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
 	return SubmitBlockResponse{
-		L2Hash:    GenesisRollup.Header.Hash(),
-		L1Hash:    common2.GenesisHash,
-		Rollup:    GenesisRollup.ToExtRollup(),
-		Processed: true,
+		L2Hash:         GenesisRollup.Header.Hash(),
+		L1Hash:         common2.GenesisHash,
+		ProducedRollup: GenesisRollup.ToExtRollup(),
+		Ingested:       true,
 	}
 }
 
@@ -177,7 +179,7 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 	b := block.ToBlock()
 	_, foundBlock := e.db.Resolve(b.Hash())
 	if foundBlock {
-		return SubmitBlockResponse{Processed: false}
+		return SubmitBlockResponse{Ingested: false}
 	}
 
 	e.db.Store(b)
@@ -187,44 +189,32 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 
 	_, f := e.db.Resolve(b.Header.ParentHash)
 	if !f && b.Height(e.db) > common3.L1GenesisHeight {
-		return SubmitBlockResponse{Processed: false}
+		return SubmitBlockResponse{Ingested: false}
 	}
+
 	blockState := updateState(b, e.db)
 
-	l1hash := block.ToBlock().Hash()
-	l1height := block.ToBlock().Height(e.db)
-
-	if e.mining {
-		e.db.PruneTxs(historicTxs(blockState.Head, e.db))
-
-		r := e.produceRollup(b, blockState)
-		e.db.StoreRollup(r)
-
-		return SubmitBlockResponse{
-			L1Hash:    l1hash,
-			L1Height:  uint(l1height),
-			L2Hash:    blockState.Head.Hash(),
-			L2Height:  uint(blockState.Head.Height.Load().(int)),
-			NewRollup: blockState.foundNewRollup,
-			Rollup:    r.ToExtRollup(),
-
-			Processed: true,
-		}
-	}
+	e.db.PruneTxs(historicTxs(blockState.Head, e.db))
+	// todo - should only create new rollups when there's a new rollup in the block ?
+	r := e.produceRollup(b, blockState)
+	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
+	e.db.StoreRollup(r)
 
 	return SubmitBlockResponse{
-		L1Hash:    l1hash,
-		L1Height:  uint(l1height),
-		L2Hash:    blockState.Head.Hash(),
-		L2Height:  uint(blockState.Head.Height.Load().(int)),
-		NewRollup: blockState.foundNewRollup,
-		Rollup:    blockState.Head.ToExtRollup(),
+		L1Hash:      b.Hash(),
+		L1Height:    uint(b.Height(e.db)),
+		L1Parent:    blockState.Block.Header.ParentHash,
+		L2Hash:      blockState.Head.Hash(),
+		L2Height:    uint(blockState.Head.Height.Load().(int)),
+		L2Parent:    blockState.Head.Header.ParentHash,
+		Withdrawals: blockState.Head.Header.Withdrawals,
 
-		Processed: true,
+		ProducedRollup: r.ToExtRollup(),
+		Ingested:       true,
 	}
 }
 
-func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) bool {
+func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	r := Rollup{
 		Header:       rollup.Header,
 		Transactions: decryptTransactions(rollup.Txs),
@@ -234,11 +224,9 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) bool {
 	if e.db.ExistRollup(r.Header.ParentHash) {
 		// todo - this is a temporary storage that should be discarded after the round is done
 		e.db.StoreRollup(&r)
-		return true
 	}
 
 	log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%s\n", e.node, r.Hash()))
-	return false
 }
 
 func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {

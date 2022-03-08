@@ -251,47 +251,50 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 		if block != nil {
 			a.checkForSharedSecretRequests(block)
 
-			// enclave is not giving me all tha rollups that exist
+			// submit each block to the enclave for ingestion plus validation
 			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
 
-			// I should go throughout the tx list on the block and store any successful rollups
-			// compare the tx list with the result - that should give me why the enclave is not giving the expected rollup on the result * could be a bug *
-
-			// update the current known headers for each received block
-			if result.Rollup.Header != nil {
+			// only update the rollup node headers if there is a rollup tx in the block
+			blockHasRollup := false
+			for _, tx := range block.DecodeBlock().Transactions {
+				if tx.TxType == common.RollupTx {
+					blockHasRollup = true
+				}
+			}
+			if blockHasRollup {
 				a.Headers().AddRollupHeader(
 					&RollupHeader{
-						ID:          result.Rollup.Header.Hash(),
-						Parent:      result.Rollup.Header.ParentHash,
-						Withdrawals: result.Rollup.Header.Withdrawals,
+						ID:          result.L2Hash,
+						Parent:      result.L2Parent,
+						Withdrawals: result.Withdrawals,
 						Height:      result.L2Height,
 					},
 				)
 				if a.Headers().GetCurrentRollupHead() == nil ||
-					// todo remove this
-					(a.Headers().GetCurrentRollupHead() != nil && a.Headers().GetCurrentRollupHead().Height <= result.L2Height) {
-					a.Headers().SetCurrentRollupHead(result.Rollup.Header.Hash())
+					a.Headers().GetCurrentRollupHead().Height <= result.L2Height {
+					a.Headers().SetCurrentRollupHead(result.L2Hash)
 				}
 			}
+
+			// always update the L1 headers
+			a.Headers().AddBlockHeader(
+				&BlockHeader{
+					ID:     result.L1Hash,
+					Parent: result.L1Parent,
+					Height: result.L1Height,
+				},
+			)
+			a.Headers().SetCurrentBlockHead(result.L1Hash)
 		}
 	}
 
-	if !result.Processed {
+	if !result.Ingested {
 		b := blocks[len(blocks)-1].DecodeBlock()
 		log.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%s", a.ID, common.Str(b.Hash())))
 		return
 	}
 
-	a.l2Network.BroadcastRollup(obscuroCommon.EncodeRollup(result.Rollup.ToRollup()))
-
-	a.Headers().AddBlockHeader(
-		&BlockHeader{
-			ID:     result.L1Hash,
-			Parent: result.Rollup.Header.L1Proof,
-			Height: result.L1Height,
-		},
-	)
-	a.Headers().SetCurrentBlockHead(result.L1Hash)
+	a.l2Network.BroadcastRollup(obscuroCommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
 	common.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
@@ -316,7 +319,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 func (a *Node) initialiseProtocol() common.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis()
-	a.broadcastTx(common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())})
+	a.broadcastTx(common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.ProducedRollup.ToRollup())})
 
 	return genesis.L2Hash
 }
@@ -378,25 +381,8 @@ func (a *Node) checkForSharedSecretRequests(block common.EncodedBlock) {
 
 // processP2PRollups handles rollups gossiped by other obscuro nodes
 func (a *Node) processP2PRollups(rollup *obscuroCommon.Rollup) {
-	stored := a.Enclave.SubmitRollup(obscuroCommon.ExtRollup{
+	a.Enclave.SubmitRollup(obscuroCommon.ExtRollup{
 		Header: rollup.Header,
 		Txs:    rollup.Transactions,
 	})
-
-	height := uint(0)
-	if rollup.Height.Load() != nil {
-		height = uint(rollup.Height.Load().(int))
-	}
-	if stored {
-		a.Headers().AddRollupHeader(&RollupHeader{
-			Parent:      rollup.Header.ParentHash,
-			ID:          rollup.Header.Hash(),
-			Height:      height,
-			Withdrawals: rollup.Header.Withdrawals,
-		})
-
-		if a.Headers().GetCurrentRollupHead() == nil || a.Headers().GetCurrentRollupHead().Height <= height {
-			a.Headers().SetCurrentRollupHead(rollup.Header.Hash())
-		}
-	}
 }

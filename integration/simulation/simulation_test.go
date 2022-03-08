@@ -56,7 +56,7 @@ func TestSimulation(t *testing.T) {
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
 
-	fmt.Printf("%+v\n", stats)
+	t.Logf("%+v\n", stats)
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
@@ -75,6 +75,9 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 	// ensure the L1 blocks are valid
 	validateL1(t, network.l1Network.Stats, l1Height, &l1HeightHash, l1Node)
 
+	// ensure the validity of l1 vs l2 stats
+	validateL1L2Stats(t, obscuroNode, network.l1Network.Stats)
+
 	// ensure the generated withdrawal stats match the l2 blockchain state (withdrawals)
 	totalWithdrawn := validateL2WithdrawalStats(t, obscuroNode, network.l1Network.Stats, l2Height, txManager)
 
@@ -83,6 +86,36 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 
 	// ensure that each node can fetch each of the generated transactions
 	validateL2TxsExist(t, network.l2Network.nodes, txManager)
+}
+
+// validateL1L2Stats validates blockchain wide properties between L1 and the L2
+func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
+	l1HeaderCount := uint(0)
+	for header := node.Headers().GetCurrentBlockHead(); header != nil; header = node.Headers().GetBlockHeader(header.Parent) {
+		l1HeaderCount++
+	}
+	l2HeaderCount := uint(0)
+	for header := node.Headers().GetCurrentRollupHead(); header != nil; header = node.Headers().GetRollupHeader(header.Parent) {
+		l2HeaderCount++
+	}
+
+	if l1HeaderCount > stats.totalL1Blocks || l2HeaderCount > stats.totalL2Blocks {
+		t.Errorf("should not have more blocks/rollups in stats than in the node header "+
+			"- Blocks: Header %d, Stats %d - Rollups: Header %d, Stats %d ",
+			l1HeaderCount,
+			stats.totalL1Blocks,
+			l2HeaderCount,
+			stats.totalL2Blocks,
+		)
+	}
+
+	efficiency := float64(l1HeaderCount-l2HeaderCount) / float64(l1HeaderCount)
+	if efficiency > L2EfficiencyThreshold {
+		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, L2EfficiencyThreshold)
+	}
+
+	t.Logf("There was %d L1 blocks and %d L2 Blocks\n", stats.totalL1Blocks, stats.totalL2Blocks)
+	t.Logf("Node %d Header had %d l2 blocks in the header\n", l1HeaderCount, l2HeaderCount)
 }
 
 // validateL2TxsExist tests that all transaction in the transaction Manager are found in the blockchain state of each node
@@ -112,8 +145,8 @@ func validateL2TxsExist(t *testing.T, nodes []*obscuro_node.Node, txManager *Tra
 // For this simulation, this represents an acceptable "dead blocks" percentage.
 // dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
 // We test the results against this threshold to catch eventual protocol errors.
-const L1EfficiencyThreashold = 0.2
-const L2EfficiencyThreashold = 0.3
+const L1EfficiencyThreshold = 0.2
+const L2EfficiencyThreshold = 0.3
 
 // validateL1 does a sanity check on the mock implementation of the L1
 func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.L1RootHash, node *ethereum_mock.Node) {
@@ -160,15 +193,15 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.
 	}
 
 	efficiency := float64(stats.totalL1Blocks-l1Height) / float64(stats.totalL1Blocks)
-	if efficiency > L1EfficiencyThreashold {
-		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, L1EfficiencyThreashold)
+	if efficiency > L1EfficiencyThreshold {
+		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, L1EfficiencyThreshold)
 	}
 
 	// todo
 	for nodeID, reorgs := range stats.noL1Reorgs {
 		eff := float64(reorgs) / float64(l1Height)
-		if eff > L1EfficiencyThreashold {
-			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeID, eff, L1EfficiencyThreashold)
+		if eff > L1EfficiencyThreshold {
+			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeID, eff, L1EfficiencyThreshold)
 		}
 	}
 }
@@ -204,8 +237,8 @@ func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Sta
 	// you should not have % difference between the # of rollups and the # of blocks
 
 	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
-	if efficiency > L2EfficiencyThreashold {
-		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreashold)
+	if efficiency > L2EfficiencyThreshold {
+		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreshold)
 	}
 
 	return headerWithdrawalSum
