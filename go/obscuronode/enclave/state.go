@@ -76,7 +76,7 @@ func executeTx(s *RollupState, tx L2Tx) {
 func executeWithdrawal(s *RollupState, tx L2Tx) {
 	// TODO - Joel - Error handling if balance not found.
 	balance := s.s[tx.From]
-	if balance.Cmp(tx.Tx.Value()) >= 0 {
+	if balance != nil && balance.Cmp(tx.Tx.Value()) >= 0 {
 		s.s[tx.From] = big.NewInt(0).Sub(s.s[tx.From], tx.Tx.Value())
 		s.w = append(s.w, common.Withdrawal{
 			Value:   tx.Tx.Value(),
@@ -87,9 +87,15 @@ func executeWithdrawal(s *RollupState, tx L2Tx) {
 }
 
 func executeTransfer(s *RollupState, tx L2Tx) {
-	if s.s[tx.From].Cmp(tx.Tx.Value()) >= 0 {
-		s.s[tx.From] = big.NewInt(0).Sub(s.s[tx.From], tx.Tx.Value())
-		s.s[*tx.Tx.To()] = big.NewInt(0).Add(s.s[*tx.Tx.To()], tx.Tx.Value())
+	fromBalance := s.s[tx.From]
+	if fromBalance != nil && fromBalance.Cmp(tx.Tx.Value()) >= 0 {
+		toBalance := s.s[*tx.Tx.To()]
+		if toBalance == nil {
+			toBalance = big.NewInt(0)
+		}
+
+		s.s[tx.From] = big.NewInt(0).Sub(fromBalance, tx.Tx.Value())
+		s.s[*tx.Tx.To()] = big.NewInt(0).Add(toBalance, tx.Tx.Value())
 	}
 }
 
