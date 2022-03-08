@@ -1,8 +1,6 @@
 package walletmock
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -23,7 +21,7 @@ func New() Wallet {
 		panic(fmt.Sprintf("Could not create random uuid: %v", err))
 	}
 
-	privateKeyECDSA, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	privateKeyECDSA, err := crypto.GenerateKey()
 	if err != nil {
 		panic(fmt.Sprintf("Could not generate keypair for wallet: %v", err))
 	}
