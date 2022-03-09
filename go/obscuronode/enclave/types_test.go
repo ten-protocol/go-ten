@@ -1,23 +1,21 @@
 package enclave
 
 import (
+	"crypto/rand"
+	"math"
+	"math/big"
 	"sync/atomic"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/google/uuid"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
-	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := L2Tx{
-		ID:     uuid.New(),
-		TxType: TransferTx,
-		Amount: 100,
-		From:   wallet_mock.New().Address,
-		To:     wallet_mock.New().Address,
-	}
+	tx := createL2Tx()
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic(err)
@@ -27,25 +25,19 @@ func TestSerialiseL2Tx(t *testing.T) {
 	if err2 != nil {
 		panic(err2)
 	}
-	if tx1.ID != tx.ID {
+	if tx1.Hash() != tx.Hash() {
 		t.Errorf("tx deserialized incorrectly\n")
 	}
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := L2Tx{
-		ID:     uuid.New(),
-		TxType: TransferTx,
-		Amount: 100,
-		From:   wallet_mock.New().Address,
-		To:     wallet_mock.New().Address,
-	}
+	tx := createL2Tx()
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := common2.Rollup{
 		Header:       GenesisRollup.Header,
 		Height:       height,
-		Transactions: encryptTransactions(Transactions{tx}),
+		Transactions: encryptTransactions(Transactions{*tx}),
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
@@ -60,7 +52,14 @@ func TestSerialiseRollup(t *testing.T) {
 	if r1.Hash() != rollup.Hash() {
 		t.Errorf("rollup deserialized incorrectly\n")
 	}
-	//if r1.Transactions[0].ID != rollup.Transactions[0].ID {
-	//	t.Errorf("rollup deserialized incorrectly\n")
-	//}
+}
+
+// Creates a dummy L2Tx for testing
+func createL2Tx() *L2Tx {
+	txData := L2TxData{TransferTx, common.Address{}, common.Address{}, 100}
+	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	encodedTxData, _ := rlp.EncodeToBytes(txData)
+	return types.NewTx(&types.LegacyTx{
+		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: big.NewInt(1), Data: encodedTxData,
+	})
 }

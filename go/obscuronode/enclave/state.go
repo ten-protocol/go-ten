@@ -62,7 +62,7 @@ func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 
 // mutates the State
 func executeTx(s *RollupState, tx L2Tx) {
-	switch tx.TxType {
+	switch TxData(&tx).Type {
 	case TransferTx:
 		executeTransfer(s, tx)
 	case WithdrawalTx:
@@ -73,20 +73,19 @@ func executeTx(s *RollupState, tx L2Tx) {
 }
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
-	if s.s[tx.From] >= tx.Amount {
-		s.s[tx.From] -= tx.Amount
+	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
+		s.s[txData.From] -= txData.Amount
 		s.w = append(s.w, common.Withdrawal{
-			Amount:  tx.Amount,
-			Address: tx.From,
+			Amount:  txData.Amount,
+			Address: txData.From,
 		})
-		// fmt.Printf("w: %v\n", s.w)
 	}
 }
 
 func executeTransfer(s *RollupState, tx L2Tx) {
-	if s.s[tx.From] >= tx.Amount {
-		s.s[tx.From] -= tx.Amount
-		s.s[tx.To] += tx.Amount
+	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
+		s.s[txData.From] -= txData.Amount
+		s.s[txData.To] += txData.Amount
 	}
 }
 

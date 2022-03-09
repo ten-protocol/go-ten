@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	common2 "github.com/ethereum/go-ethereum/common"
+
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -88,8 +90,8 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 		}
 	}
 
-	if len(common.FindDups(deposits)) > 0 {
-		dups := common.FindDups(deposits)
+	if len(common.FindUUIDDups(deposits)) > 0 {
+		dups := common.FindUUIDDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
 	if len(common.FindRollupDups(rollups)) > 0 {
@@ -116,17 +118,19 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 
 func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint64 {
 	s.l2Height = db.Height(r)
-	transfers := make([]uuid.UUID, 0)
+	transfers := make([]common2.Hash, 0)
 	withdrawalTxs := make([]enclave2.L2Tx, 0)
 	withdrawalRequests := make([]obscuroCommon.Withdrawal, 0)
 	for {
 		if db.Height(r) == common.L2GenesisHeight {
 			break
 		}
-		for _, tx := range r.Transactions {
-			switch tx.TxType {
+		for i := range r.Transactions {
+			tx := r.Transactions[i]
+			txData := enclave2.TxData(&tx)
+			switch txData.Type {
 			case enclave2.TransferTx:
-				transfers = append(transfers, tx.ID)
+				transfers = append(transfers, tx.Hash())
 			case enclave2.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
@@ -138,8 +142,8 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 	}
 	// todo - check that proofs are on the canonical chain
 
-	if len(common.FindDups(transfers)) > 0 {
-		dups := common.FindDups(transfers)
+	if len(common.FindHashDups(transfers)) > 0 {
+		dups := common.FindHashDups(transfers)
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
 	if len(transfers) != s.nrTransferTransactions {
@@ -169,8 +173,9 @@ func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
 
 func sumWithdrawalTxs(t []enclave2.L2Tx) uint64 {
 	sum := uint64(0)
-	for _, r := range t {
-		sum += r.Amount
+	for i := range t {
+		txData := enclave2.TxData(&t[i])
+		sum += txData.Amount
 	}
 
 	return sum
