@@ -12,7 +12,7 @@ func TestSerialiseBlock(t *testing.T) {
 		ID:     uuid.New(),
 		TxType: DepositTx,
 		Amount: 100,
-		// To:   wallet_mock.New().Address,
+		// Dest:   wallet_mock.New().Address,
 	}
 	block := Block{
 		Header:       GenesisBlock.Header,
@@ -43,7 +43,7 @@ func TestPlay(t *testing.T) {
 		ID:     uuid.New(),
 		TxType: DepositTx,
 		Amount: 100,
-		// To:   wallet_mock.New().Address,
+		// Dest:   wallet_mock.New().Address,
 	}
 	block := Block{
 		Header:       GenesisBlock.Header,
