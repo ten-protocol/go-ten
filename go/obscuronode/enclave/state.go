@@ -73,20 +73,17 @@ func executeTx(s *RollupState, tx L2Tx) {
 }
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
-	txData := TxData(&tx)
-	if s.s[txData.From] >= txData.Amount {
+	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
 		s.s[txData.From] -= txData.Amount
 		s.w = append(s.w, common.Withdrawal{
 			Amount:  txData.Amount,
 			Address: txData.From,
 		})
-		// fmt.Printf("w: %v\n", s.w)
 	}
 }
 
 func executeTransfer(s *RollupState, tx L2Tx) {
-	txData := TxData(&tx)
-	if s.s[txData.From] >= txData.Amount {
+	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
 		s.s[txData.From] -= txData.Amount
 		s.s[txData.To] += txData.Amount
 	}
