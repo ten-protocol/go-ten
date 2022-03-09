@@ -46,7 +46,7 @@ func (cfg *L2NetworkCfg) Start() {
 		t := m
 		go t.Start()
 		// don't start everything at once
-		time.Sleep(time.Second)
+		time.Sleep(NODE_BOOTUP_DELAY_MS * 1_000)
 	}
 }
 

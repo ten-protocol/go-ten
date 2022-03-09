@@ -225,9 +225,9 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	if e.db.ExistRollup(r.Header.ParentHash) {
 		// todo - this is a temporary storage that should be discarded after the round is done
 		e.db.StoreRollup(&r)
+	} else {
+		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%s\n", e.node, r.Hash()))
 	}
-
-	log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%s\n", e.node, r.Hash()))
 }
 
 func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {

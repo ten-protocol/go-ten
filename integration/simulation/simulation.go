@@ -16,7 +16,10 @@ import (
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
-const INITIAL_BALANCE = 5000 // nolint:revive,stylecheck
+const (
+	INITIAL_BALANCE      = 5000 // nolint:revive,stylecheck
+	NODE_BOOTUP_DELAY_MS = 100  // nolint:revive,stylecheck
+)
 
 // Simulation represents the data which to set up and run a simulated network
 type Simulation struct {

@@ -110,8 +110,8 @@ func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
 	}
 
 	efficiency := float64(l1HeaderCount-l2HeaderCount) / float64(l1HeaderCount)
-	if efficiency > L2EfficiencyThreshold {
-		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, L2EfficiencyThreshold)
+	if efficiency > L2ToL1EfficiencyThreshold {
+		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, L2ToL1EfficiencyThreshold)
 	}
 
 	t.Logf("There was %d L1 blocks and %d L2 Blocks\n", stats.totalL1Blocks, stats.totalL2Blocks)
@@ -145,8 +145,11 @@ func validateL2TxsExist(t *testing.T, nodes []*obscuro_node.Node, txManager *Tra
 // For this simulation, this represents an acceptable "dead blocks" percentage.
 // dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
 // We test the results against this threshold to catch eventual protocol errors.
-const L1EfficiencyThreshold = 0.2
-const L2EfficiencyThreshold = 0.3
+const (
+	L1EfficiencyThreshold     = 0.2
+	L2EfficiencyThreshold     = 0.3
+	L2ToL1EfficiencyThreshold = 0.3
+)
 
 // validateL1 does a sanity check on the mock implementation of the L1
 func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.L1RootHash, node *ethereum_mock.Node) {
