@@ -56,7 +56,8 @@ func TestSimulation(t *testing.T) {
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
 
-	t.Logf("%+v\n", stats)
+	// generate and print the final stats
+	t.Logf("%+v\n", NewOutputStats(simulation))
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
@@ -113,9 +114,6 @@ func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
 	if efficiency > L2ToL1EfficiencyThreshold {
 		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, L2ToL1EfficiencyThreshold)
 	}
-
-	t.Logf("There was %d L1 blocks and %d L2 Blocks\n", stats.totalL1Blocks, stats.totalL2Blocks)
-	t.Logf("Node %d Header had %d l2 blocks in the header\n", l1HeaderCount, l2HeaderCount)
 }
 
 // validateL2TxsExist tests that all transaction in the transaction Manager are found in the blockchain state of each node
