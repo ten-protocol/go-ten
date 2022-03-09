@@ -2,10 +2,11 @@ package enclave
 
 import (
 	"crypto/rand"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math"
 	"math/big"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
