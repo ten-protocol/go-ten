@@ -90,8 +90,8 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 		}
 	}
 
-	if len(common.FindDupsUUID(deposits)) > 0 {
-		dups := common.FindDupsUUID(deposits)
+	if len(common.FindUUIDDups(deposits)) > 0 {
+		dups := common.FindUUIDDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
 	if len(common.FindRollupDups(rollups)) > 0 {
@@ -141,8 +141,8 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) *big
 	}
 	// todo - check that proofs are on the canonical chain
 
-	if len(common.FindDups(transfers)) > 0 {
-		dups := common.FindDups(transfers)
+	if len(common.FindHashDups(transfers)) > 0 {
+		dups := common.FindHashDups(transfers)
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
 	if len(transfers) != s.nrTransferTransactions {

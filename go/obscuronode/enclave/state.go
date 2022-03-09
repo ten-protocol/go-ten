@@ -217,10 +217,10 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 			if tx.TxType == common3.DepositTx {
 				v, f := s.s[tx.Dest]
 				if f {
-					// TODO - Joel - Kill off dirty conversion here.
+					// TODO - Joel - Review this conversion.
 					s.s[tx.Dest] = big.NewInt(0).Add(v, big.NewInt(int64(tx.Amount)))
 				} else {
-					// TODO - Joel - Kill off dirty conversion here.
+					// TODO - Joel - Review this conversion.
 					s.s[tx.Dest] = big.NewInt(int64(tx.Amount))
 				}
 			}

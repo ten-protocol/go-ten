@@ -11,7 +11,7 @@ import (
 	oc "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
-// Transfers and Withdrawals for now
+// L2TxType indicates the type of L2 transaction - either a transfer or a withdrawal for now
 type L2TxType uint64
 
 const (
@@ -19,23 +19,33 @@ const (
 	WithdrawalTx
 )
 
-// L2Tx Only in clear inside the enclave
+// L2Tx wraps a Geth types.Transaction to add two fields - the sender of the transaction, and its L2TxType.
+//
+// This type should only be in the clear inside the enclave.
 type L2Tx struct {
-	Tx *types.Transaction
-	// TODO - Joel - Explain why these wrapper fields are needed.
+	Tx   *types.Transaction
 	From common.Address
 	Type L2TxType
 }
 
-// TODO - Joel - Describe.
-func L2TxNew(to common.Address, value uint64, from common.Address, txType L2TxType) L2Tx {
-	// TODO - Joel - Create the tx data.
+// L2TxTransferNew creates a new L2Tx of type TransferTx
+func L2TxTransferNew(value uint64, from common.Address, to common.Address) L2Tx {
+	return l2TxNew(value, from, to, TransferTx)
+}
+
+// L2TxWithdrawalNew creates a new L2Tx of type WithdrawalTx
+func L2TxWithdrawalNew(value uint64, from common.Address) L2Tx {
+	to := common.Address{} // There is no recipient, so we use an empty address
+	return l2TxNew(value, from, to, WithdrawalTx)
+}
+
+// l2TxNew creates a new L2Tx
+func l2TxNew(value uint64, from common.Address, to common.Address, txType L2TxType) L2Tx {
 	tx := types.NewTx(&types.LegacyTx{
-		// TODO - Joel - Review this taking of a reference.
 		To: &to,
 		// TODO - Joel - Review this conversion.
 		Value: big.NewInt(int64(value)),
-		// TODO - Joel - Choose a better nonce. Just using this to avoid duplicates.
+		// This is just a random value to avoid hash collisions. We may want a deterministic nonce instead, as in L1.
 		Nonce: rand.Uint64(),
 	})
 	return L2Tx{tx, from, txType}
