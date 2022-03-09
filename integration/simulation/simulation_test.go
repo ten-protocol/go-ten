@@ -125,7 +125,8 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 		if db.Height(r) == common.L2GenesisHeight {
 			break
 		}
-		for _, tx := range r.Transactions {
+		for i := range r.Transactions {
+			tx := r.Transactions[i]
 			txData := enclave2.TxData(&tx)
 			switch txData.Type {
 			case enclave2.TransferTx:
@@ -172,8 +173,8 @@ func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
 
 func sumWithdrawalTxs(t []enclave2.L2Tx) uint64 {
 	sum := uint64(0)
-	for _, r := range t {
-		txData := enclave2.TxData(&r)
+	for i := range t {
+		txData := enclave2.TxData(&t[i])
 		sum += txData.Amount
 	}
 
