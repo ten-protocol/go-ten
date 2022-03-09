@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
@@ -91,26 +93,34 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2
 func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
-	l1HeaderCount := uint(0)
+	l1Height := uint(0)
 	for header := node.Headers().GetCurrentBlockHead(); header != nil; header = node.Headers().GetBlockHeader(header.Parent) {
-		l1HeaderCount++
+		l1Height++
 	}
-	l2HeaderCount := uint(0)
-	for header := node.Headers().GetCurrentRollupHead(); header != nil; header = node.Headers().GetRollupHeader(header.Parent) {
-		l2HeaderCount++
+	l2Height := uint(0)
+	for header := node.Headers().GetCurrentRollupHead(); header.ID != enclave.GenesisRollup.Hash(); header = node.Headers().GetRollupHeader(header.Parent) {
+		l2Height++
 	}
 
-	if l1HeaderCount > stats.totalL1Blocks || l2HeaderCount > stats.totalL2Blocks {
+	if l1Height != node.Headers().GetCurrentBlockHead().Height {
+		t.Errorf("unexpected block heigh. expected %d, got %d", l1Height, node.Headers().GetCurrentBlockHead().Height)
+	}
+
+	if l2Height != node.Headers().GetCurrentRollupHead().Height {
+		t.Errorf("unexpected rollup heigh. expected %d, got %d", l2Height, node.Headers().GetCurrentRollupHead().Height)
+	}
+
+	if l1Height > stats.totalL1Blocks || l2Height > stats.totalL2Blocks {
 		t.Errorf("should not have more blocks/rollups in stats than in the node header "+
 			"- Blocks: Header %d, Stats %d - Rollups: Header %d, Stats %d ",
-			l1HeaderCount,
+			l1Height,
 			stats.totalL1Blocks,
-			l2HeaderCount,
+			l2Height,
 			stats.totalL2Blocks,
 		)
 	}
 
-	efficiency := float64(l1HeaderCount-l2HeaderCount) / float64(l1HeaderCount)
+	efficiency := float64(l1Height-l2Height) / float64(l1Height)
 	if efficiency > L2ToL1EfficiencyThreshold {
 		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, L2ToL1EfficiencyThreshold)
 	}
@@ -215,7 +225,7 @@ func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Sta
 
 	// todo - check that proofs are on the canonical chain
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for header := node.Headers().GetCurrentRollupHead(); header != nil; header = node.Headers().GetRollupHeader(header.Parent) {
+	for header := node.Headers().GetCurrentRollupHead(); header.ID != enclave.GenesisRollup.Hash(); header = node.Headers().GetRollupHeader(header.Parent) {
 		for _, w := range header.Withdrawals {
 			headerWithdrawalSum += w.Amount
 			headerWithdrawalTxCount++
