@@ -5,19 +5,12 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/google/uuid"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := L2Tx{
-		ID:     uuid.New(),
-		TxType: TransferTx,
-		Amount: 100,
-		From:   wallet_mock.New().Address,
-		To:     wallet_mock.New().Address,
-	}
+	tx := L2TxTransferNew(100, wallet_mock.New().Address, wallet_mock.New().Address)
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic(err)
@@ -27,19 +20,13 @@ func TestSerialiseL2Tx(t *testing.T) {
 	if err2 != nil {
 		panic(err2)
 	}
-	if tx1.ID != tx.ID {
+	if tx1.Tx.Hash() != tx.Tx.Hash() {
 		t.Errorf("tx deserialized incorrectly\n")
 	}
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := L2Tx{
-		ID:     uuid.New(),
-		TxType: TransferTx,
-		Amount: 100,
-		From:   wallet_mock.New().Address,
-		To:     wallet_mock.New().Address,
-	}
+	tx := L2TxTransferNew(100, wallet_mock.New().Address, wallet_mock.New().Address)
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := common2.Rollup{
