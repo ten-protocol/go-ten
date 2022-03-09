@@ -4,25 +4,44 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	oc "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
-// Transfers and Withdrawals for now
-type L2TxType uint64
+// L2TxType indicates the type of L2 transaction - either a transfer or a withdrawal for now
+type L2TxType uint8
 
 const (
 	TransferTx L2TxType = iota
 	WithdrawalTx
 )
 
-// L2Tx Only in clear inside the enclave
-type L2Tx struct {
-	ID     common2.L2TxHash
-	TxType L2TxType
+// L2TxData is the Obscuro transaction data that will be stored encoded in the types.Transaction data field.
+type L2TxData struct {
+	Type   L2TxType
+	From   common.Address
+	To     common.Address
 	Amount uint64
-	From   common2.Address
-	To     common2.Address
+}
+
+type L2Tx = types.Transaction
+
+// TxData returns the decoded L2 data stored in the transaction's data field.
+func TxData(tx *L2Tx) L2TxData {
+	data := L2TxData{}
+
+	err := rlp.DecodeBytes(tx.Data(), &data)
+	if err != nil {
+		// TODO - Surface this error properly.
+		panic(err)
+	}
+
+	return data
 }
 
 var GenesisRollup = NewRollup(common2.GenesisBlock, nil, common.HexToAddress("0x0"), []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")

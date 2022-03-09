@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
@@ -61,7 +63,7 @@ type Enclave interface {
 	SubmitTx(tx common2.EncryptedTx)
 
 	// Balance - returns the balance of an address with a block delay
-	Balance(address common3.Address) uint64
+	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool)
@@ -98,7 +100,7 @@ func (e *enclaveImpl) Start(block common3.Block) {
 	currentHead := s.Head
 	currentState := newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
 	var currentProcessedTxs []L2Tx
-	currentProcessedTxsMap := make(map[common3.L2TxHash]L2Tx)
+	currentProcessedTxsMap := make(map[common.Hash]L2Tx)
 
 	// start the speculative rollup execution loop
 	for {
@@ -117,9 +119,9 @@ func (e *enclaveImpl) Start(block common3.Block) {
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			_, found := currentProcessedTxsMap[tx.ID]
+			_, found := currentProcessedTxsMap[tx.Hash()]
 			if !found {
-				currentProcessedTxsMap[tx.ID] = tx
+				currentProcessedTxsMap[tx.Hash()] = tx
 				currentProcessedTxs = append(currentProcessedTxs, tx)
 				executeTx(&currentState, tx)
 			}
@@ -267,7 +269,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) Balance(address common3.Address) uint64 {
+func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo
 	return 0
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
-	enclave2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
@@ -70,7 +69,7 @@ func RunSimulation(
 	// Create a bunch of users and inject transactions
 	wallets := make([]wallet_mock.Wallet, nrWallets)
 	for i := 0; i < nrWallets; i++ {
-		wallets[i] = wallet_mock.Wallet{Address: uuid.New().ID()}
+		wallets[i] = wallet_mock.New()
 	}
 
 	timeInUs := simulationTime * 1000 * 1000
@@ -124,16 +123,9 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.
 		if f == t {
 			continue
 		}
-		tx := enclave2.L2Tx{
-			ID:     uuid.New(),
-			TxType: enclave2.TransferTx,
-			Amount: common.RndBtw(1, 500),
-			From:   f,
-			To:     t,
-		}
+		encryptedTx := wallet_mock.NewEncryptedL2Transfer(f, t, common.RndBtw(1, 500))
 		s.Transfer()
-		encoded := enclave2.EncryptTx(tx)
-		l2Network.BroadcastTx(encoded)
+		l2Network.BroadcastTx(encryptedTx)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration/4, avgBlockDuration)))
 		i++
 	}
@@ -164,21 +156,11 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 			break
 		}
 		v := common.RndBtw(1, 100)
-		tx := withdrawal(rndWallet(wallets), v)
-		t := enclave2.EncryptTx(tx)
-		network.BroadcastTx(t)
+		encryptedTx := wallet_mock.NewEncryptedL2Withdrawal(rndWallet(wallets).Address, v)
+		network.BroadcastTx(encryptedTx)
 		s.Withdrawal(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
-	}
-}
-
-func withdrawal(wallet wallet_mock.Wallet, amount uint64) enclave2.L2Tx {
-	return enclave2.L2Tx{
-		ID:     uuid.New(),
-		TxType: enclave2.WithdrawalTx,
-		Amount: amount,
-		From:   wallet.Address,
 	}
 }
 

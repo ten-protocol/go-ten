@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	common2 "github.com/ethereum/go-ethereum/common"
+
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -90,8 +92,8 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB, resolve
 		}
 	}
 
-	if len(common.FindDups(deposits)) > 0 {
-		dups := common.FindDups(deposits)
+	if len(common.FindUUIDDups(deposits)) > 0 {
+		dups := common.FindUUIDDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
 	if len(common.FindRollupDups(rollups)) > 0 {
@@ -125,11 +127,12 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 		if db.Height(r) == common.L2GenesisHeight {
 			break
 		}
-		for _, tx := range r.Transactions {
-			switch tx.TxType {
+		for i := range r.Transactions {
+			tx := r.Transactions[i]
+			txData := enclave2.TxData(&tx)
+			switch txData.Type {
 			case enclave2.TransferTx:
-				var h common2.Hash = tx.ID
-				transfers = append(transfers, h)
+				transfers = append(transfers, tx.Hash())
 			case enclave2.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
@@ -141,8 +144,8 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 	}
 	// todo - check that proofs are on the canonical chain
 
-	if len(common.FindDups(transfers)) > 0 {
-		dups := common.FindDups(transfers)
+	if len(common.FindHashDups(transfers)) > 0 {
+		dups := common.FindHashDups(transfers)
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
 	if len(transfers) != s.nrTransferTransactions {
@@ -172,8 +175,9 @@ func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
 
 func sumWithdrawalTxs(t []enclave2.L2Tx) uint64 {
 	sum := uint64(0)
-	for _, r := range t {
-		sum += r.Amount
+	for i := range t {
+		txData := enclave2.TxData(&t[i])
+		sum += txData.Amount
 	}
 
 	return sum

@@ -2,11 +2,13 @@ package enclave
 
 import (
 	"fmt"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
-type State = map[common3.Address]uint64
+type State = map[gethcommon.Address]uint64
 
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
@@ -60,7 +62,7 @@ func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 
 // mutates the State
 func executeTx(s *RollupState, tx L2Tx) {
-	switch tx.TxType {
+	switch TxData(&tx).Type {
 	case TransferTx:
 		executeTransfer(s, tx)
 	case WithdrawalTx:
@@ -71,20 +73,19 @@ func executeTx(s *RollupState, tx L2Tx) {
 }
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
-	if s.s[tx.From] >= tx.Amount {
-		s.s[tx.From] -= tx.Amount
+	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
+		s.s[txData.From] -= txData.Amount
 		s.w = append(s.w, common.Withdrawal{
-			Amount:  tx.Amount,
-			Address: tx.From,
+			Amount:  txData.Amount,
+			Address: txData.From,
 		})
-		// fmt.Printf("w: %v\n", s.w)
 	}
 }
 
 func executeTransfer(s *RollupState, tx L2Tx) {
-	if s.s[tx.From] >= tx.Amount {
-		s.s[tx.From] -= tx.Amount
-		s.s[tx.To] += tx.Amount
+	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
+		s.s[txData.From] -= txData.Amount
+		s.s[txData.To] += txData.Amount
 	}
 }
 
