@@ -1,9 +1,6 @@
 package enclave
 
 import (
-	"crypto/rand"
-	"math"
-	"math/big"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -32,39 +29,6 @@ type L2TxData struct {
 }
 
 type L2Tx = types.Transaction
-
-// NewL2Transfer creates an L2Tx of type TransferTx.
-func NewL2Transfer(from common.Address, dest common.Address, amount uint64) *L2Tx {
-	txData := L2TxData{Type: TransferTx, From: from, To: dest, Amount: amount}
-	return newL2Tx(txData)
-}
-
-// NewL2Withdrawal creates an L2Tx of type WithdrawalTx.
-func NewL2Withdrawal(from common.Address, amount uint64) *L2Tx {
-	txData := L2TxData{Type: WithdrawalTx, From: from, Amount: amount}
-	return newL2Tx(txData)
-}
-
-// newL2Tx creates an L2Tx, using a random nonce (to avoid hash collisions) and with the L2 data encoded in the
-// transaction's data field.
-func newL2Tx(data L2TxData) *L2Tx {
-	// We should probably use a deterministic nonce instead, as in L1.
-	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-
-	enc, err := rlp.EncodeToBytes(data)
-	if err != nil {
-		// TODO - Surface this error properly.
-		panic(err)
-	}
-
-	return types.NewTx(&types.LegacyTx{
-		Nonce:    nonce.Uint64(),
-		Value:    big.NewInt(1),
-		Gas:      1,
-		GasPrice: big.NewInt(1),
-		Data:     enc,
-	})
-}
 
 // TxData returns the decoded L2 data stored in the transaction's data field.
 func TxData(tx *L2Tx) L2TxData {

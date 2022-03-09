@@ -1,16 +1,21 @@
 package enclave
 
 import (
+	"crypto/rand"
+	"math"
+	"math/big"
 	"sync/atomic"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
-	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := NewL2Transfer(wallet_mock.New().Address, wallet_mock.New().Address, 100)
+	tx := createL2Tx()
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic(err)
@@ -26,7 +31,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := NewL2Transfer(wallet_mock.New().Address, wallet_mock.New().Address, 100)
+	tx := createL2Tx()
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := common2.Rollup{
@@ -47,7 +52,14 @@ func TestSerialiseRollup(t *testing.T) {
 	if r1.Hash() != rollup.Hash() {
 		t.Errorf("rollup deserialized incorrectly\n")
 	}
-	//if r1.Transactions[0].ID != rollup.Transactions[0].ID {
-	//	t.Errorf("rollup deserialized incorrectly\n")
-	//}
+}
+
+// Creates a dummy L2Tx for testing
+func createL2Tx() *L2Tx {
+	txData := L2TxData{TransferTx, common.Address{}, common.Address{}, 100}
+	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	encodedTxData, _ := rlp.EncodeToBytes(txData)
+	return types.NewTx(&types.LegacyTx{
+		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: big.NewInt(1), Data: encodedTxData,
+	})
 }
