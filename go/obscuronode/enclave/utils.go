@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"fmt"
+
 	common2 "github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/common"

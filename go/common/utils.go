@@ -3,12 +3,13 @@ package common
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/uuid"
 	"math"
 	"math/rand"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
 )
 
 type (

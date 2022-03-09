@@ -2,12 +2,13 @@ package simulation
 
 import (
 	"fmt"
-	common2 "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	common2 "github.com/ethereum/go-ethereum/common"
 
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"

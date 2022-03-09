@@ -1,11 +1,12 @@
 package enclave
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	oc "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
