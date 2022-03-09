@@ -74,8 +74,8 @@ func executeTx(s *RollupState, tx L2Tx) {
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
 	txData := TxData(&tx)
-	if txData.Amount >= 0 {
-		s.s[txData.From] += txData.Amount
+	if s.s[txData.From] >= txData.Amount {
+		s.s[txData.From] -= txData.Amount
 		s.w = append(s.w, common.Withdrawal{
 			Amount:  txData.Amount,
 			Address: txData.From,
