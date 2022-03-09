@@ -32,8 +32,8 @@ func EncryptTx(tx *L2Tx) common2.EncryptedTx {
 
 func encryptTransactions(transactions Transactions) common2.EncryptedTransactions {
 	result := make([]common2.EncryptedTx, 0)
-	for _, tx := range transactions {
-		result = append(result, EncryptTx(&tx))
+	for i := range transactions {
+		result = append(result, EncryptTx(&transactions[i]))
 	}
 	return result
 }
