@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	common2 "github.com/ethereum/go-ethereum/common"
 	"time"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
@@ -18,7 +19,7 @@ type L2NetworkCfg struct {
 func (cfg *L2NetworkCfg) BroadcastRollup(r common3.EncodedRollup) {
 	for _, a := range cfg.nodes {
 		rol := common.DecodeRollup(r)
-		if a.ID != rol.Header.Agg {
+		if common2.Address(a.ID) != rol.Header.Agg {
 			t := a
 			common3.Schedule(cfg.delay(), func() { t.P2PGossipRollup(r) })
 		}

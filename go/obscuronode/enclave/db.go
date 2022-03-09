@@ -28,13 +28,13 @@ type DB interface {
 	StoreRollup(rollup *Rollup)
 	FetchTxs() []L2Tx
 	StoreTx(tx L2Tx)
-	PruneTxs(remove map[common2.TxHash]common2.TxHash)
+	PruneTxs(remove map[common2.L2TxHash]common2.L2TxHash)
 	Resolve(hash common2.L1RootHash) (*common2.Block, bool)
 	Store(node *common2.Block)
 	BlockHeight(block *common2.Block) int
 	BlockParent(block *common2.Block) (*common2.Block, bool)
-	Txs(r *Rollup) (map[common2.TxHash]L2Tx, bool)
-	AddTxs(*Rollup, map[common2.TxHash]L2Tx)
+	Txs(r *Rollup) (map[common2.L2TxHash]L2Tx, bool)
+	AddTxs(*Rollup, map[common2.L2TxHash]L2Tx)
 	Height(*Rollup) int
 	Parent(*Rollup) *Rollup
 	StoreSecret(secret SharedEnclaveSecret)
@@ -56,13 +56,13 @@ type inMemoryDB struct {
 	rollupsByHeight map[int][]*Rollup
 	rollups         map[common2.L2RootHash]*Rollup
 
-	mempool map[common2.TxHash]L2Tx
+	mempool map[common2.L2TxHash]L2Tx
 	mpMutex sync.RWMutex
 
 	blockCache map[common2.L1RootHash]*blockAndHeight
 	blockM     sync.RWMutex
 
-	transactionsPerBlockCache map[common2.L2RootHash]map[common2.TxHash]L2Tx
+	transactionsPerBlockCache map[common2.L2RootHash]map[common2.L2TxHash]L2Tx
 	txM                       sync.RWMutex
 
 	sharedEnclaveSecret SharedEnclaveSecret
@@ -74,12 +74,12 @@ func NewInMemoryDB() DB {
 		stateMutex:                sync.RWMutex{},
 		rollupsByHeight:           make(map[int][]*Rollup),
 		rollups:                   make(map[common2.L2RootHash]*Rollup),
-		mempool:                   make(map[common2.TxHash]L2Tx),
+		mempool:                   make(map[common2.L2TxHash]L2Tx),
 		mpMutex:                   sync.RWMutex{},
 		statePerRollup:            make(map[common2.L2RootHash]State),
 		blockCache:                map[common2.L1RootHash]*blockAndHeight{},
 		blockM:                    sync.RWMutex{},
-		transactionsPerBlockCache: make(map[common2.L2RootHash]map[common2.TxHash]L2Tx),
+		transactionsPerBlockCache: make(map[common2.L2RootHash]map[common2.L2TxHash]L2Tx),
 		txM:                       sync.RWMutex{},
 	}
 }
@@ -194,11 +194,11 @@ func (db *inMemoryDB) FetchTxs() []L2Tx {
 	return mpCopy
 }
 
-func (db *inMemoryDB) PruneTxs(toRemove map[common2.TxHash]common2.TxHash) {
+func (db *inMemoryDB) PruneTxs(toRemove map[common2.L2TxHash]common2.L2TxHash) {
 	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	r := make(map[common2.TxHash]L2Tx)
+	r := make(map[common2.L2TxHash]L2Tx)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
 		if !f {
@@ -228,7 +228,7 @@ func (db *inMemoryDB) Resolve(hash common2.L1RootHash) (*common2.Block, bool) {
 	return v.b, f
 }
 
-func (db *inMemoryDB) Txs(r *Rollup) (map[common2.TxHash]L2Tx, bool) {
+func (db *inMemoryDB) Txs(r *Rollup) (map[common2.L2TxHash]L2Tx, bool) {
 	db.assertSecretAvailable()
 	db.txM.RLock()
 	val, found := db.transactionsPerBlockCache[r.Hash()]
@@ -236,7 +236,7 @@ func (db *inMemoryDB) Txs(r *Rollup) (map[common2.TxHash]L2Tx, bool) {
 	return val, found
 }
 
-func (db *inMemoryDB) AddTxs(r *Rollup, newMap map[common2.TxHash]L2Tx) {
+func (db *inMemoryDB) AddTxs(r *Rollup, newMap map[common2.L2TxHash]L2Tx) {
 	db.assertSecretAvailable()
 	db.txM.Lock()
 	db.transactionsPerBlockCache[r.Hash()] = newMap

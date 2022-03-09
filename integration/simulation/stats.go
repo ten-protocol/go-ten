@@ -65,8 +65,8 @@ func (s *Stats) NewBlock(b *common3.Block) {
 	s.statsMu.Lock()
 	// s.l1Height = common.MaxInt(s.l1Height, b.Height)
 	s.totalL1Blocks++
-	s.maxRollupsPerBlock = common3.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions)))
-	if len(b.Transactions) == 0 {
+	s.maxRollupsPerBlock = common3.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions())))
+	if len(b.Transactions()) == 0 {
 		s.nrEmptyBlocks++
 	}
 	s.statsMu.Unlock()

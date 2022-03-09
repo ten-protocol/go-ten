@@ -18,7 +18,7 @@ const (
 
 // L2Tx Only in clear inside the enclave
 type L2Tx struct {
-	ID     common2.TxHash
+	ID     common2.L2TxHash
 	TxType L2TxType
 	Amount uint64
 	From   common2.Address
