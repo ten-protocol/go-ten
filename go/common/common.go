@@ -2,10 +2,9 @@ package common
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/uuid"
 )
 
-type NodeID uint64
+type NodeID common.Address
 
 // todo - use proper crypto
 // type Address = uuid.UUID
@@ -23,7 +22,7 @@ type L1RootHash = common.Hash
 
 type (
 	L2RootHash = common.Hash
-	TxHash     = uuid.UUID
+	TxHash     = common.Hash
 )
 
 type Nonce = uint64

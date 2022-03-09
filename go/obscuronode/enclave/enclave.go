@@ -3,6 +3,7 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -42,16 +43,16 @@ type Enclave interface {
 	ProduceGenesis() SubmitBlockResponse
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(blocks []common3.ExtBlock)
+	IngestBlocks(blocks []*common3.Block)
 
 	// Start - start speculative execution
-	Start(block common3.ExtBlock)
+	Start(block common3.Block)
 
 	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
 	// it is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving a parent of it, will result in it being ignored
-	SubmitBlock(block common3.ExtBlock) SubmitBlockResponse
+	SubmitBlock(block common3.Block) SubmitBlockResponse
 
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(rollup common2.ExtRollup)
@@ -77,6 +78,7 @@ type enclaveImpl struct {
 	node           common3.NodeID
 	mining         bool
 	db             DB
+	blockResolver  common3.BlockResolver
 	statsCollector StatsCollector
 
 	txCh                 chan L2Tx
@@ -86,12 +88,8 @@ type enclaveImpl struct {
 	speculativeWorkOutCh chan speculativeWork
 }
 
-func (e *enclaveImpl) Start(block common3.ExtBlock) {
-	headerHash, err := block.Header.Hash()
-	if err != nil {
-		// todo - implement a nice way to support enclave bootstrap issues
-		panic(fmt.Errorf("unable to start the enclave %w", err))
-	}
+func (e *enclaveImpl) Start(block common3.Block) {
+	headerHash := block.Hash()
 	s, f := e.db.FetchState(headerHash)
 	if !f {
 		panic("state should be calculated")
@@ -152,15 +150,14 @@ func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
 	}
 }
 
-func (e *enclaveImpl) IngestBlocks(blocks []common3.ExtBlock) {
+func (e *enclaveImpl) IngestBlocks(blocks []*common3.Block) {
 	for _, block := range blocks {
-		b := block.ToBlock()
-		e.db.Store(b)
-		updateState(b, e.db)
+		e.db.Store(block)
+		updateState(block, e.db, e.blockResolver)
 	}
 }
 
-func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
+func (e *enclaveImpl) SubmitBlock(block common3.Block) SubmitBlockResponse {
 	// Todo - investigate further why this is needed.
 	// So far this seems to recover correctly
 	defer func() {
@@ -169,27 +166,26 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 		}
 	}()
 
-	b := block.ToBlock()
-	_, foundBlock := e.db.Resolve(b.Hash())
+	_, foundBlock := e.db.Resolve(block.Hash())
 	if foundBlock {
 		return SubmitBlockResponse{Processed: false}
 	}
 
-	e.db.Store(b)
+	e.db.Store(&block)
 	// this is where much more will actually happen.
 	// the "blockchain" logic from geth has to be executed here,
 	// to determine the total proof of work, to verify some key aspects, etc
 
-	_, f := e.db.Resolve(b.Header.ParentHash)
-	if !f && b.Height(e.db) > common3.L1GenesisHeight {
+	_, f := e.db.Resolve(block.Header().ParentHash)
+	if !f && e.db.BlockHeight(&block) > common3.L1GenesisHeight {
 		return SubmitBlockResponse{Processed: false}
 	}
-	blockState := updateState(b, e.db)
+	blockState := updateState(&block, e.db, e.blockResolver)
 
 	if e.mining {
 		e.db.PruneTxs(historicTxs(blockState.Head, e.db))
 
-		r := e.produceRollup(b, blockState)
+		r := e.produceRollup(&block, blockState)
 		e.db.StoreRollup(r)
 
 		return SubmitBlockResponse{
@@ -239,7 +235,7 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 
 	parentState := e.db.FetchRollupState(head.Hash())
 	// determine the winner of the round
-	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.db)
+	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.db, e.blockResolver)
 	// common.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(),
 	// winnerRollup.L2RootHash.ID(), winnerRollup.Height(), winnerRollup.Parent().L2RootHash.ID(),
 	// winnerRollup.Proof().L2RootHash.ID()))
@@ -248,8 +244,8 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	go e.notifySpeculative(winnerRollup)
 
 	// we are the winner
-	if winnerRollup.Header.Agg == e.node {
-		v := winnerRollup.Proof(e.db)
+	if winnerRollup.Header.Agg == common.Address(e.node) {
+		v := winnerRollup.Proof(e.blockResolver)
 		w := e.db.Parent(winnerRollup)
 		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.",
 			e.node,
@@ -305,11 +301,11 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
-	proof := bs.Head.Proof(e.db)
-	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.db)
+	proof := bs.Head.Proof(e.blockResolver)
+	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.db, e.blockResolver)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := NewRollup(b, bs.Head, e.node, newRollupTxs, newRollupState.w, common3.GenerateNonce(), serialize(newRollupState.s))
+	r := NewRollup(b, bs.Head, common.Address(e.node), newRollupTxs, newRollupState.w, common3.GenerateNonce(), serialize(newRollupState.s))
 	// h := r.Height(e.db)
 	// fmt.Printf("h:=%d\n", h)
 	return &r
@@ -374,9 +370,12 @@ type speculativeWork struct {
 }
 
 func NewEnclave(id common3.NodeID, mining bool, collector StatsCollector) Enclave {
+	db := NewInMemoryDB()
+
 	return &enclaveImpl{
 		node:                 id,
-		db:                   NewInMemoryDB(),
+		db:                   db,
+		blockResolver:        nil, //todo
 		mining:               mining,
 		txCh:                 make(chan L2Tx),
 		roundWinnerCh:        make(chan *Rollup),

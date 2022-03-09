@@ -24,7 +24,7 @@ type EncryptedTransactions []EncryptedTx
 // Header is in plaintext
 type Header struct {
 	ParentHash  obscuroCommon.L2RootHash
-	Agg         obscuroCommon.NodeID
+	Agg         common.Address
 	Nonce       obscuroCommon.Nonce
 	L1Proof     obscuroCommon.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
@@ -83,7 +83,7 @@ func (r Rollup) ProofHeight(l1BlockResolver obscuroCommon.BlockResolver) int {
 		return -1
 	}
 
-	return v.Height(l1BlockResolver)
+	return l1BlockResolver.Height(v)
 }
 
 // Hash returns the keccak256 hash of b's header.

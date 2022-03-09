@@ -2,7 +2,6 @@ package enclave
 
 import (
 	"fmt"
-
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
@@ -95,7 +94,7 @@ func emptyState() State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *common3.Block, db DB) BlockState {
+func updateState(b *common3.Block, db DB, blockResolver common3.BlockResolver) BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := db.FetchState(b.Hash())
 	if found {
@@ -115,17 +114,17 @@ func updateState(b *common3.Block, db DB) BlockState {
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
-	parentState, parentFound := db.FetchState(b.Header.ParentHash)
+	parentState, parentFound := db.FetchState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the State of the Parent
-		p, f := b.Parent(db)
+		p, f := db.BlockParent(b)
 		if !f {
 			panic("wtf")
 		}
-		parentState = updateState(p, db)
+		parentState = updateState(p, db, blockResolver)
 	}
 
-	bs := calculateBlockState(b, parentState, db)
+	bs := calculateBlockState(b, parentState, db, blockResolver)
 
 	db.SetState(b.Hash(), bs)
 
@@ -137,7 +136,7 @@ func currentTxs(head *Rollup, mempool []L2Tx, db DB) []L2Tx {
 	return findTxsNotIncluded(head, mempool, db)
 }
 
-func FindWinner(parent *Rollup, rollups []*Rollup, db DB) (*Rollup, bool) {
+func FindWinner(parent *Rollup, rollups []*Rollup, db DB, blockResolver common3.BlockResolver) (*Rollup, bool) {
 	win := -1
 	// todo - add statistics to determine why there are conflicts.
 	for i, r := range rollups {
@@ -146,8 +145,8 @@ func FindWinner(parent *Rollup, rollups []*Rollup, db DB) (*Rollup, bool) {
 		case db.Height(r) <= db.Height(parent): // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
-		case r.ProofHeight(db) < rollups[win].ProofHeight(db): // ignore rollups generated with an older proof
-		case r.ProofHeight(db) > rollups[win].ProofHeight(db): // newer rollups win
+		case r.ProofHeight(blockResolver) < rollups[win].ProofHeight(blockResolver): // ignore rollups generated with an older proof
+		case r.ProofHeight(blockResolver) > rollups[win].ProofHeight(blockResolver): // newer rollups win
 			win = i
 		case r.Header.Nonce < rollups[win].Header.Nonce: // for rollups with the same proof, base on the nonce
 			win = i
@@ -159,8 +158,8 @@ func FindWinner(parent *Rollup, rollups []*Rollup, db DB) (*Rollup, bool) {
 	return rollups[win], true
 }
 
-func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState State, db DB) (*Rollup, State) {
-	win, found := FindWinner(parent, receivedRollups, db)
+func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState State, db DB, blockResolver common3.BlockResolver) (*Rollup, State) {
+	win, found := FindWinner(parent, receivedRollups, db, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
 	}
@@ -168,8 +167,8 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	s := newProcessedState(parentState)
 	s = executeTransactions(win.Transactions, s)
 
-	p := db.Parent(win).Proof(db)
-	s = processDeposits(p, win.Proof(db), s, db)
+	p := db.Parent(win).Proof(blockResolver)
+	s = processDeposits(p, win.Proof(blockResolver), s, db, blockResolver)
 
 	if serialize(s.s) != win.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
@@ -187,13 +186,13 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupState, db DB) RollupState {
+func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupState, db DB, blockResolver common3.BlockResolver) RollupState {
 	from := common3.GenesisBlock.Hash()
 	height := common3.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
-		height = fromBlock.Height(db)
-		if !common3.IsAncestor(fromBlock, toBlock, db) {
+		height = blockResolver.Height(fromBlock)
+		if !common3.IsAncestor(fromBlock, toBlock, blockResolver) {
 			panic("wtf")
 		}
 	}
@@ -203,21 +202,22 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 		if b.Hash() == from {
 			break
 		}
-		for _, tx := range b.Transactions {
+		for _, tx := range b.Transactions() {
+			t := common3.TxData(tx)
 			// transactions to a hardcoded bridge address
-			if tx.TxType == common3.DepositTx {
-				v, f := s.s[tx.Dest]
+			if t.TxType == common3.DepositTx {
+				v, f := s.s[t.Dest]
 				if f {
-					s.s[tx.Dest] = v + tx.Amount
+					s.s[t.Dest] = v + t.Amount
 				} else {
-					s.s[tx.Dest] = tx.Amount
+					s.s[t.Dest] = t.Amount
 				}
 			}
 		}
-		if b.Height(db) < height {
+		if blockResolver.Height(b) < height {
 			panic("something went wrong")
 		}
-		p, f := b.Parent(db)
+		p, f := blockResolver.Parent(b)
 		if !f {
 			panic("wtf")
 		}
@@ -227,17 +227,17 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *common3.Block, parentState BlockState, db DB) BlockState {
-	rollups := extractRollups(b, db)
-	newHead, found := FindWinner(parentState.Head, rollups, db)
+func calculateBlockState(b *common3.Block, parentState BlockState, db DB, blockResolver common3.BlockResolver) BlockState {
+	rollups := extractRollups(b, db, blockResolver)
+	newHead, found := FindWinner(parentState.Head, rollups, db, blockResolver)
 
 	s := newProcessedState(parentState.State)
 
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		s = executeTransactions(newHead.Transactions, s)
-		p := db.Parent(newHead).Proof(db)
-		s = processDeposits(p, newHead.Proof(db), s, db)
+		p := db.Parent(newHead).Proof(blockResolver)
+		s = processDeposits(p, newHead.Proof(blockResolver), s, db, blockResolver)
 	} else {
 		newHead = parentState.Head
 	}
@@ -251,16 +251,17 @@ func calculateBlockState(b *common3.Block, parentState BlockState, db DB) BlockS
 	return bs
 }
 
-func extractRollups(b *common3.Block, db DB) []*Rollup {
+func extractRollups(b *common3.Block, db DB, blockResolver common3.BlockResolver) []*Rollup {
 	rollups := make([]*Rollup, 0)
-	for _, t := range b.Transactions {
+	for _, t := range b.Transactions() {
 		// go through all rollup transactions
-		if t.TxType == common3.RollupTx {
-			r := common.DecodeRollup(t.Rollup)
+		data := common3.TxData(t)
+		if data.TxType == common3.RollupTx {
+			r := common.DecodeRollup(common3.TxData(t).Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
-			if common3.IsBlockAncestor(r.Header.L1Proof, b, db) {
+			if common3.IsBlockAncestor(r.Header.L1Proof, b, blockResolver) {
 				rollups = append(rollups, toEnclaveRollup(r))
 			}
 		}

@@ -2,12 +2,12 @@ package common
 
 import "github.com/ethereum/go-ethereum/rlp"
 
-func (b Block) Encode() (EncodedBlock, error) {
+func EncodeBlockErr(b *Block) (EncodedBlock, error) {
 	return rlp.EncodeToBytes(b)
 }
 
-func (b Block) EncodeBlock() EncodedBlock {
-	encoded, err := b.Encode()
+func EncodeBlock(b *Block) EncodedBlock {
+	encoded, err := EncodeBlockErr(b)
 	if err != nil {
 		panic(err)
 	}
@@ -31,7 +31,7 @@ func (eb EncodedBlock) DecodeBlock() *Block {
 	return b
 }
 
-func (tx L1Tx) Encode() (EncodedL1Tx, error) {
+func EncodeTx(tx *L1Tx) (EncodedL1Tx, error) {
 	return rlp.EncodeToBytes(tx)
 }
 

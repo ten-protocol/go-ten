@@ -119,18 +119,18 @@ func FindTxDups(list []L1Tx) map[TxHash]int {
 
 	for _, item := range list {
 		// check if the item/element exist in the duplicate_frequency map
-		_, exist := elementCount[item.ID]
+		_, exist := elementCount[item.Hash()]
 		if exist {
-			elementCount[item.ID]++ // increase counter by 1 if already in the map
+			elementCount[item.Hash()]++ // increase counter by 1 if already in the map
 		} else {
-			elementCount[item.ID] = 1 // else start counting from 1
+			elementCount[item.Hash()] = 1 // else start counting from 1
 		}
 	}
 	dups := make(map[TxHash]int)
 	for u, i := range elementCount {
 		if i > 1 {
 			dups[u] = i
-			fmt.Printf(">>Dup: %d\n", u.ID())
+			fmt.Printf(">>Dup: %s\n", u)
 		}
 	}
 	return dups

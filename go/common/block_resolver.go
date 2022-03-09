@@ -3,11 +3,13 @@ package common
 // BlockResolver -database of blocks indexed by the root hash
 type BlockResolver interface {
 	Resolve(hash L1RootHash) (*Block, bool)
-	Store(node *Block)
+	Store(block *Block)
+	Height(block *Block) int
+	Parent(block *Block) (*Block, bool)
 }
 
-func (b Block) Parent(r BlockResolver) (*Block, bool) {
-	return r.Resolve(b.Header.ParentHash)
+func Parent(r BlockResolver, b *Block) (*Block, bool) {
+	return r.Resolve(b.Header().ParentHash)
 }
 
 // IsAncestor return true if a is the ancestor of b
@@ -16,11 +18,11 @@ func IsAncestor(blockA *Block, blockB *Block, r BlockResolver) bool {
 		return true
 	}
 
-	if blockA.Height(r) >= blockB.Height(r) {
+	if r.Height(blockA) >= r.Height(blockB) {
 		return false
 	}
 
-	p, f := blockB.Parent(r)
+	p, f := r.Parent(blockB)
 	if !f {
 		return false
 	}
@@ -38,18 +40,18 @@ func IsBlockAncestor(l1BlockHash L1RootHash, block *Block, resolver BlockResolve
 		return true
 	}
 
-	if block.Height(resolver) == 0 {
+	if resolver.Height(block) == 0 {
 		return false
 	}
 
 	resolvedBlock, found := resolver.Resolve(l1BlockHash)
 	if found {
-		if resolvedBlock.Height(resolver) >= block.Height(resolver) {
+		if resolver.Height(resolvedBlock) >= resolver.Height(block) {
 			return false
 		}
 	}
 
-	p, f := block.Parent(resolver)
+	p, f := resolver.Parent(block)
 	if !f {
 		return false
 	}

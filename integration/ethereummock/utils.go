@@ -1,37 +1,38 @@
 package ethereummock
 
 import (
+	"github.com/ethereum/go-ethereum/core/types"
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // LCA - returns the least common ancestor of the 2 blocks
 func LCA(blockA *common2.Block, blockB *common2.Block, resolver common2.BlockResolver) *common2.Block {
-	if blockA.Height(resolver) == common2.L1GenesisHeight || blockB.Height(resolver) == common2.L1GenesisHeight {
+	if resolver.Height(blockA) == common2.L1GenesisHeight || resolver.Height(blockB) == common2.L1GenesisHeight {
 		return blockA
 	}
 	if blockA.Hash() == blockB.Hash() {
 		return blockA
 	}
-	if blockA.Height(resolver) > blockB.Height(resolver) {
-		p, f := blockA.Parent(resolver)
+	if resolver.Height(blockA) > resolver.Height(blockB) {
+		p, f := resolver.Parent(blockA)
 		if !f {
 			panic("wtf")
 		}
 		return LCA(p, blockB, resolver)
 	}
-	if blockB.Height(resolver) > blockA.Height(resolver) {
-		p, f := blockB.Parent(resolver)
+	if resolver.Height(blockB) > resolver.Height(blockA) {
+		p, f := resolver.Parent(blockB)
 		if !f {
 			panic("wtf")
 		}
 
 		return LCA(blockA, p, resolver)
 	}
-	parentBlockA, f := blockA.Parent(resolver)
+	parentBlockA, f := resolver.Parent(blockA)
 	if !f {
 		panic("wtf")
 	}
-	parentBlockB, f := blockB.Parent(resolver)
+	parentBlockB, f := resolver.Parent(blockB)
 	if !f {
 		panic("wtf")
 	}
@@ -51,19 +52,19 @@ func allIncludedTransactions(b *common2.Block, r common2.BlockResolver, db TxDB)
 	if found {
 		return val
 	}
-	if b.Height(r) == common2.L1GenesisHeight {
-		return makeMap(b.Transactions)
+	if r.Height(b) == common2.L1GenesisHeight {
+		return makeMap(b.Transactions())
 	}
 	newMap := make(map[common2.TxHash]*common2.L1Tx)
-	p, f := b.Parent(r)
+	p, f := r.Parent(b)
 	if !f {
 		panic("wtf")
 	}
 	for k, v := range allIncludedTransactions(p, r, db) {
 		newMap[k] = v
 	}
-	for _, tx := range b.Transactions {
-		newMap[tx.ID] = tx
+	for _, tx := range b.Transactions() {
+		newMap[tx.Hash()] = tx
 	}
 	db.AddTxs(b, newMap)
 	return newMap
@@ -71,7 +72,7 @@ func allIncludedTransactions(b *common2.Block, r common2.BlockResolver, db TxDB)
 
 func removeExisting(base []*common2.L1Tx, toRemove map[common2.TxHash]*common2.L1Tx) (r []*common2.L1Tx) {
 	for _, t := range base {
-		_, f := toRemove[t.ID]
+		_, f := toRemove[t.Hash()]
 		if !f {
 			r = append(r, t)
 		}
@@ -79,10 +80,10 @@ func removeExisting(base []*common2.L1Tx, toRemove map[common2.TxHash]*common2.L
 	return
 }
 
-func makeMap(txs []*common2.L1Tx) map[common2.TxHash]*common2.L1Tx {
+func makeMap(txs types.Transactions) map[common2.TxHash]*common2.L1Tx {
 	m := make(map[common2.TxHash]*common2.L1Tx)
 	for _, tx := range txs {
-		m[tx.ID] = tx
+		m[tx.Hash()] = tx
 	}
 	return m
 }
@@ -99,7 +100,7 @@ func BlocksBetween(blockA *common2.Block, blockB *common2.Block, resolver common
 		if tempBlock.Hash() == blockA.Hash() {
 			break
 		}
-		tempBlock, found = tempBlock.Parent(resolver)
+		tempBlock, found = resolver.Parent(tempBlock)
 		if !found {
 			panic("should not happen")
 		}

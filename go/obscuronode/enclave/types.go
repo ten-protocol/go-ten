@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
@@ -24,7 +25,7 @@ type L2Tx struct {
 	To     common2.Address
 }
 
-var GenesisRollup = NewRollup(&common2.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")
+var GenesisRollup = NewRollup(common2.GenesisBlock, nil, common.HexToAddress("0x0"), []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")
 
 type Transactions []L2Tx
 
@@ -53,7 +54,7 @@ func (r *Rollup) Hash() common2.L2RootHash {
 	return v
 }
 
-func NewRollup(b *common2.Block, parent *Rollup, a common2.NodeID, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common2.Nonce, state oc.StateRoot) Rollup {
+func NewRollup(b *common2.Block, parent *Rollup, a common.Address, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common2.Nonce, state oc.StateRoot) Rollup {
 	parentHash := oc.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -80,7 +81,7 @@ func (r *Rollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
 	if !f {
 		return -1
 	}
-	return v.Height(l1BlockResolver)
+	return l1BlockResolver.Height(v)
 }
 
 func (r *Rollup) ToExtRollup() oc.ExtRollup {

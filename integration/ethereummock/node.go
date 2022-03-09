@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 	"time"
 
@@ -62,8 +63,8 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	head := m.setHead(&common2.GenesisBlock)
-	m.Resolver.Store(&common2.GenesisBlock)
+	head := m.setHead(common2.GenesisBlock)
+	m.Resolver.Store(common2.GenesisBlock)
 
 	for {
 		select {
@@ -77,11 +78,11 @@ func (m *Node) Start() {
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if head.Hash() == mb.Hash() { // Ignore the locally produced block if someone else found one already
-				p, found := mb.Parent(m.Resolver)
+				p, found := m.Resolver.Parent(mb)
 				if !found {
 					panic("noo")
 				}
-				m.network.BroadcastBlock(mb.EncodeBlock(), p.EncodeBlock())
+				m.network.BroadcastBlock(common2.EncodeBlock(mb), common2.EncodeBlock(p))
 			}
 		case <-m.headInCh:
 			m.headOutCh <- head
@@ -93,16 +94,16 @@ func (m *Node) Start() {
 
 func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Block {
 	m.Resolver.Store(b)
-	_, f := m.Resolver.Resolve(b.Header.ParentHash)
+	_, f := m.Resolver.Resolve(b.Header().ParentHash)
 
 	// only proceed if the parent is available
 	if !f {
-		common2.Log(fmt.Sprintf("> M%d: Parent block not found=b_%s", m.ID, common2.Str(b.Header.ParentHash)))
+		common2.Log(fmt.Sprintf("> M%d: Parent block not found=b_%s", m.ID, common2.Str(b.Header().ParentHash)))
 		return head
 	}
 
 	// Ignore superseeded blocks
-	if b.Height(m.Resolver) <= head.Height(m.Resolver) {
+	if m.Resolver.Height(b) <= m.Resolver.Height(head) {
 		return head
 	}
 
@@ -110,11 +111,11 @@ func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Bloc
 	if !common2.IsAncestor(head, b, m.Resolver) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
-		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.ID, common2.Str(b.Hash()), b.Height(m.Resolver), common2.Str(head.Hash()), head.Height(m.Resolver), common2.Str(fork.Hash()), fork.Height(m.Resolver)))
+		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.ID, common2.Str(b.Hash()), m.Resolver.Height(b), common2.Str(head.Hash()), m.Resolver.Height(head), common2.Str(fork.Hash()), m.Resolver.Height(fork)))
 		return m.setFork(BlocksBetween(fork, b, m.Resolver))
 	}
 
-	if b.Height(m.Resolver) > (head.Height(m.Resolver) + 1) {
+	if m.Resolver.Height(b) > (m.Resolver.Height(head) + 1) {
 		panic(fmt.Sprintf("> M%d: Should not happen", m.ID))
 	}
 
@@ -130,14 +131,14 @@ func (m *Node) setHead(b *common2.Block) *common2.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		if b.Height(m.Resolver) == 0 {
-			go t.RPCNewHead(b.EncodeBlock(), nil)
+		if m.Resolver.Height(b) == 0 {
+			go t.RPCNewHead(common2.EncodeBlock(b), nil)
 		} else {
-			p, f := b.Parent(m.Resolver)
+			p, f := m.Resolver.Parent(b)
 			if !f {
 				panic("This should not happen")
 			}
-			go t.RPCNewHead(b.EncodeBlock(), p.EncodeBlock())
+			go t.RPCNewHead(common2.EncodeBlock(b), common2.EncodeBlock(p))
 		}
 	}
 	m.canonicalCh <- b
@@ -153,7 +154,7 @@ func (m *Node) setFork(blocks []*common2.Block) *common2.Block {
 
 	fork := make([]common2.EncodedBlock, len(blocks))
 	for i, block := range blocks {
-		fork[i] = block.EncodeBlock()
+		fork[i] = common2.EncodeBlock(block)
 	}
 
 	// notify the clients
@@ -210,8 +211,8 @@ func (m *Node) startMining() {
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				b := common2.NewBlock(canonicalBlock, nonce, m.ID, toInclude)
-				m.miningCh <- &b
+				b := common2.NewBlock(canonicalBlock, nonce, common.Address(m.ID), toInclude)
+				m.miningCh <- b
 			})
 		}
 	}
@@ -237,7 +238,7 @@ func (m *Node) BroadcastTx(tx common2.EncodedL1Tx) {
 func (m *Node) RPCBlockchainFeed() []*common2.Block {
 	m.headInCh <- true
 	h := <-m.headOutCh
-	return BlocksBetween(&common2.GenesisBlock, h, m.Resolver)
+	return BlocksBetween(common2.GenesisBlock, h, m.Resolver)
 }
 
 func (m *Node) Stop() {
