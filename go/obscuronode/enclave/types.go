@@ -32,18 +32,6 @@ type L2TxData struct {
 
 type L2Tx = types.Transaction
 
-// TODO - Joel - Consider reintroducing these.
-//// L2TxTransferNew creates a new L2Tx of type TransferTx
-//func L2TxTransferNew(value int64, from common.Address, to common.Address) L2Tx {
-//	return l2TxNew(value, from, to, TransferTx)
-//}
-//
-//// L2TxWithdrawalNew creates a new L2Tx of type WithdrawalTx
-//func L2TxWithdrawalNew(value int64, from common.Address) L2Tx {
-//	to := common.Address{} // There is no recipient, so we use an empty address
-//	return l2TxNew(value, from, to, WithdrawalTx)
-//}
-
 // TODO - Joel - Describe.
 func NewL2Tx(data L2TxData) *L2Tx {
 	// A random nonce to avoid hash collisions. We should probably use a deterministic nonce instead, as in L1.
@@ -64,8 +52,8 @@ func NewL2Tx(data L2TxData) *L2Tx {
 // TODO - Joel - Describe.
 func TxData(tx *L2Tx) L2TxData {
 	data := L2TxData{}
-	// TODO - Joel - Handle error.
-	rlp.DecodeBytes(tx.Data(), data)
+	// TODO - Joel - Handle error properly.
+	rlp.DecodeBytes(tx.Data(), &data)
 	return data
 }
 

@@ -35,12 +35,10 @@ func TestSerialiseRollup(t *testing.T) {
 	tx := NewL2Tx(txData)
 	height := atomic.Value{}
 	height.Store(1)
-	txs := Transactions{*tx}
-	encryptedTxs := encryptTransactions(txs)
 	rollup := common2.Rollup{
 		Header:       GenesisRollup.Header,
 		Height:       height,
-		Transactions: encryptedTxs,
+		Transactions: encryptTransactions(Transactions{*tx}),
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
