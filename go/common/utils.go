@@ -21,10 +21,6 @@ func RndBtw(min uint64, max uint64) uint64 {
 	return uint64(rand.Int63n(int64(max-min))) + min //nolint:gosec
 }
 
-func RndBtwSigned(min uint64, max uint64) int64 {
-	return rand.Int63n(int64(max-min)) + int64(min) //nolint:gosec
-}
-
 // ScheduleInterrupt runs the function after the delay and can be interrupted
 func ScheduleInterrupt(delay uint64, interrupt *int32, fun ScheduledFunc) {
 	ticker := time.NewTicker(Duration(delay))

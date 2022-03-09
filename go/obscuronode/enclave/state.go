@@ -2,14 +2,12 @@ package enclave
 
 import (
 	"fmt"
-	"math/big"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
-type State = map[gethcommon.Address]*big.Int
+type State = map[gethcommon.Address]uint64
 
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
@@ -63,7 +61,7 @@ func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 
 // mutates the State
 func executeTx(s *RollupState, tx L2Tx) {
-	switch tx.Type {
+	switch TxData(&tx).Type {
 	case TransferTx:
 		executeTransfer(s, tx)
 	case WithdrawalTx:
@@ -74,27 +72,22 @@ func executeTx(s *RollupState, tx L2Tx) {
 }
 
 func executeWithdrawal(s *RollupState, tx L2Tx) {
-	balance := s.s[tx.From]
-	if balance != nil && balance.Cmp(tx.Tx.Value()) >= 0 {
-		s.s[tx.From] = big.NewInt(0).Sub(s.s[tx.From], tx.Tx.Value())
+	txData := TxData(&tx)
+	if txData.Amount >= 0 {
+		s.s[txData.From] += txData.Amount
 		s.w = append(s.w, common.Withdrawal{
-			Value:   tx.Tx.Value(),
-			Address: tx.From,
+			Amount:  txData.Amount,
+			Address: txData.From,
 		})
 		// fmt.Printf("w: %v\n", s.w)
 	}
 }
 
 func executeTransfer(s *RollupState, tx L2Tx) {
-	fromBalance := s.s[tx.From]
-	if fromBalance != nil && fromBalance.Cmp(tx.Tx.Value()) >= 0 {
-		toBalance := s.s[*tx.Tx.To()]
-		if toBalance == nil {
-			toBalance = big.NewInt(0)
-		}
-
-		s.s[tx.From] = big.NewInt(0).Sub(fromBalance, tx.Tx.Value())
-		s.s[*tx.Tx.To()] = big.NewInt(0).Add(toBalance, tx.Tx.Value())
+	txData := TxData(&tx)
+	if s.s[txData.From] >= txData.Amount {
+		s.s[txData.From] -= txData.Amount
+		s.s[txData.Dest] += txData.Amount
 	}
 }
 
@@ -217,9 +210,9 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 			if tx.TxType == common3.DepositTx {
 				v, f := s.s[tx.Dest]
 				if f {
-					s.s[tx.Dest] = big.NewInt(0).Add(v, big.NewInt(int64(tx.Amount)))
+					s.s[tx.Dest] = v + tx.Amount
 				} else {
-					s.s[tx.Dest] = big.NewInt(int64(tx.Amount))
+					s.s[tx.Dest] = tx.Amount
 				}
 			}
 		}

@@ -28,7 +28,7 @@ func allIncludedTransactions(b *Rollup, db DB) map[common2.Hash]L2Tx {
 		newMap[k] = v
 	}
 	for _, tx := range b.Transactions {
-		newMap[tx.Tx.Hash()] = tx
+		newMap[tx.Hash()] = tx
 	}
 	db.AddTxs(b, newMap)
 	return newMap
@@ -36,7 +36,7 @@ func allIncludedTransactions(b *Rollup, db DB) map[common2.Hash]L2Tx {
 
 func removeExisting(base []L2Tx, toRemove map[common2.Hash]L2Tx) (r []L2Tx) {
 	for _, t := range base {
-		_, f := toRemove[t.Tx.Hash()]
+		_, f := toRemove[t.Hash()]
 		if !f {
 			r = append(r, t)
 		}
@@ -60,7 +60,7 @@ func historicTxs(r *Rollup, db DB) map[common2.Hash]common2.Hash {
 func makeMap(txs []L2Tx) map[common2.Hash]L2Tx {
 	m := make(map[common2.Hash]L2Tx)
 	for _, tx := range txs {
-		m[tx.Tx.Hash()] = tx
+		m[tx.Hash()] = tx
 	}
 	return m
 }
@@ -68,7 +68,7 @@ func makeMap(txs []L2Tx) map[common2.Hash]L2Tx {
 func toMap(txs []L2Tx) map[common2.Hash]common2.Hash {
 	m := make(map[common2.Hash]common2.Hash)
 	for _, tx := range txs {
-		m[tx.Tx.Hash()] = tx.Tx.Hash()
+		m[tx.Hash()] = tx.Hash()
 	}
 	return m
 }
@@ -81,11 +81,12 @@ func printTxs(txs []L2Tx) (txsString []string) {
 }
 
 func printTx(t L2Tx, txsString []string) []string {
-	switch t.Type {
+	txData := TxData(&t)
+	switch txData.Type {
 	case TransferTx:
-		txsString = append(txsString, fmt.Sprintf("%v->%v(%d){%d}", t.From, t.Tx.To(), t.Tx.Value(), t.Tx.Hash()))
+		txsString = append(txsString, fmt.Sprintf("%v->%v(%d){%d}", txData.From, txData.Dest, txData.Amount, t.Hash()))
 	case WithdrawalTx:
-		txsString = append(txsString, fmt.Sprintf("%v->*(%d){%d}", t.From, t.Tx.Value(), t.Tx.Hash()))
+		txsString = append(txsString, fmt.Sprintf("%v->*(%d){%d}", txData.From, txData.Amount, t.Hash()))
 	}
 	return txsString
 }

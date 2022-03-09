@@ -121,9 +121,9 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			_, found := currentProcessedTxsMap[tx.Tx.Hash()]
+			_, found := currentProcessedTxsMap[tx.Hash()]
 			if !found {
-				currentProcessedTxsMap[tx.Tx.Hash()] = tx
+				currentProcessedTxsMap[tx.Hash()] = tx
 				currentProcessedTxs = append(currentProcessedTxs, tx)
 				executeTx(&currentState, tx)
 			}

@@ -2,7 +2,6 @@ package enclave
 
 import (
 	"fmt"
-	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -26,7 +25,7 @@ type DB interface {
 	FetchRollupState(hash common2.L2RootHash) State
 	SetRollupState(hash common2.L2RootHash, state State)
 	Head() BlockState
-	Balance(address common.Address) *big.Int
+	Balance(address common.Address) uint64
 	FetchRollups(height int) []*Rollup
 	StoreRollup(rollup *Rollup)
 	FetchTxs() []L2Tx
@@ -116,7 +115,7 @@ func (db *inMemoryDB) Head() BlockState {
 	return val
 }
 
-func (db *inMemoryDB) Balance(address common.Address) *big.Int {
+func (db *inMemoryDB) Balance(address common.Address) uint64 {
 	db.assertSecretAvailable()
 	return db.Head().State[address]
 }
@@ -173,7 +172,7 @@ func (db *inMemoryDB) StoreTx(tx L2Tx) {
 	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	db.mempool[tx.Tx.Hash()] = tx
+	db.mempool[tx.Hash()] = tx
 }
 
 func (db *inMemoryDB) FetchTxs() []L2Tx {

@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"fmt"
-	"math/big"
 	"math/rand"
 	"time"
 
@@ -106,7 +105,7 @@ func initialiseWallets(wallets []wallet_mock.Wallet, l1Network ethereum_mock.L1N
 		tx := deposit(u, INITIAL_BALANCE)
 		t, _ := tx.Encode()
 		l1Network.BroadcastTx(t)
-		s.Deposit(big.NewInt(INITIAL_BALANCE))
+		s.Deposit(INITIAL_BALANCE)
 		time.Sleep(common.Duration(avgBlockDuration / 3))
 	}
 }
@@ -123,7 +122,10 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.
 		if f == t {
 			continue
 		}
-		tx := enclave2.L2TxTransferNew(common.RndBtwSigned(1, 500), f, t)
+		txData := enclave2.L2TxData{
+			Type: enclave2.TransferTx, From: f, Dest: t, Amount: common.RndBtw(1, 500),
+		}
+		tx := enclave2.NewL2Tx(txData)
 		s.Transfer()
 		encoded := enclave2.EncryptTx(tx)
 		l2Network.BroadcastTx(encoded)
@@ -143,7 +145,7 @@ func injectRandomDeposits(wallets []wallet_mock.Wallet, network ethereum_mock.L1
 		tx := deposit(rndWallet(wallets), v)
 		t, _ := tx.Encode()
 		network.BroadcastTx(t)
-		s.Deposit(big.NewInt(int64(v)))
+		s.Deposit(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
 	}
@@ -156,11 +158,14 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 		if i == n {
 			break
 		}
-		v := common.RndBtwSigned(1, 100)
-		tx := enclave2.L2TxWithdrawalNew(v, rndWallet(wallets).Address)
+		v := common.RndBtw(1, 100)
+		txData := enclave2.L2TxData{
+			Type: enclave2.WithdrawalTx, From: rndWallet(wallets).Address, Amount: v,
+		}
+		tx := enclave2.NewL2Tx(txData)
 		t := enclave2.EncryptTx(tx)
 		network.BroadcastTx(t)
-		s.Withdrawal(big.NewInt(v))
+		s.Withdrawal(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
 		i++
 	}

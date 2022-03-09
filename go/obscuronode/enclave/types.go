@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"crypto/rand"
+	"github.com/ethereum/go-ethereum/rlp"
 	"math"
 	"math/big"
 	"sync/atomic"
@@ -14,44 +15,58 @@ import (
 )
 
 // L2TxType indicates the type of L2 transaction - either a transfer or a withdrawal for now
-type L2TxType uint64
+type L2TxType uint8
 
 const (
 	TransferTx L2TxType = iota
 	WithdrawalTx
 )
 
-// L2Tx wraps a Geth types.Transaction to add two fields - the sender of the transaction, and its L2TxType.
+// L2TxData is the Obscuro transaction data that will be stored encoded in the types.Transaction data field.
+type L2TxData struct {
+	Type   L2TxType
+	From   common.Address
+	Dest   common.Address
+	Amount uint64
+}
+
+type L2Tx = types.Transaction
+
+// TODO - Joel - Consider reintroducing these.
+//// L2TxTransferNew creates a new L2Tx of type TransferTx
+//func L2TxTransferNew(value int64, from common.Address, to common.Address) L2Tx {
+//	return l2TxNew(value, from, to, TransferTx)
+//}
 //
-// This type should only be in the clear inside the enclave.
-type L2Tx struct {
-	Tx   *types.Transaction
-	From common.Address
-	Type L2TxType
-}
+//// L2TxWithdrawalNew creates a new L2Tx of type WithdrawalTx
+//func L2TxWithdrawalNew(value int64, from common.Address) L2Tx {
+//	to := common.Address{} // There is no recipient, so we use an empty address
+//	return l2TxNew(value, from, to, WithdrawalTx)
+//}
 
-// L2TxTransferNew creates a new L2Tx of type TransferTx
-func L2TxTransferNew(value int64, from common.Address, to common.Address) L2Tx {
-	return l2TxNew(value, from, to, TransferTx)
-}
-
-// L2TxWithdrawalNew creates a new L2Tx of type WithdrawalTx
-func L2TxWithdrawalNew(value int64, from common.Address) L2Tx {
-	to := common.Address{} // There is no recipient, so we use an empty address
-	return l2TxNew(value, from, to, WithdrawalTx)
-}
-
-// l2TxNew creates a new L2Tx
-func l2TxNew(value int64, from common.Address, to common.Address, txType L2TxType) L2Tx {
+// TODO - Joel - Describe.
+func NewL2Tx(data L2TxData) *L2Tx {
 	// A random nonce to avoid hash collisions. We should probably use a deterministic nonce instead, as in L1.
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 
-	tx := types.NewTx(&types.LegacyTx{
-		To:    &to,
-		Value: big.NewInt(value),
-		Nonce: nonce.Uint64(),
+	// TODO - Joel - Handle error.
+	enc, _ := rlp.EncodeToBytes(data)
+
+	return types.NewTx(&types.LegacyTx{
+		Nonce:    nonce.Uint64(),
+		Value:    big.NewInt(1),
+		Gas:      1,
+		GasPrice: big.NewInt(1),
+		Data:     enc,
 	})
-	return L2Tx{tx, from, txType}
+}
+
+// TODO - Joel - Describe.
+func TxData(tx *L2Tx) L2TxData {
+	data := L2TxData{}
+	// TODO - Joel - Handle error.
+	rlp.DecodeBytes(tx.Data(), data)
+	return data
 }
 
 var GenesisRollup = NewRollup(&common2.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")

@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"fmt"
-	"math/big"
 	"math/rand"
 	"os"
 	"testing"
@@ -99,7 +98,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 		dups := common.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
-	if big.NewInt(int64(totalDeposited)).Cmp(s.totalDepositedAmount) != 0 {
+	if totalDeposited != s.totalDepositedAmount {
 		t.Errorf("Deposit amounts don't match. Found %d , expected %d", totalDeposited, s.totalDepositedAmount)
 	}
 
@@ -117,7 +116,7 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 	}
 }
 
-func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) *big.Int {
+func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint64 {
 	s.l2Height = db.Height(r)
 	transfers := make([]common2.Hash, 0)
 	withdrawalTxs := make([]enclave2.L2Tx, 0)
@@ -127,9 +126,10 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) *big
 			break
 		}
 		for _, tx := range r.Transactions {
-			switch tx.Type {
+			txData := enclave2.TxData(&tx)
+			switch txData.Type {
 			case enclave2.TransferTx:
-				transfers = append(transfers, tx.Tx.Hash())
+				transfers = append(transfers, tx.Hash())
 			case enclave2.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
@@ -148,10 +148,10 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) *big
 	if len(transfers) != s.nrTransferTransactions {
 		t.Errorf("Nr of transfers don't match. Found %d , expected %d", len(transfers), s.nrTransferTransactions)
 	}
-	if sumWithdrawalTxs(withdrawalTxs).Cmp(s.totalWithdrawnAmount) != 0 {
+	if sumWithdrawalTxs(withdrawalTxs) != s.totalWithdrawnAmount {
 		t.Errorf("Withdrawal tx amounts don't match. Found %d , expected %d", sumWithdrawalTxs(withdrawalTxs), s.totalWithdrawnAmount)
 	}
-	if sumWithdrawals(withdrawalRequests).Cmp(s.totalWithdrawnAmount) > 0 {
+	if sumWithdrawals(withdrawalRequests) > s.totalWithdrawnAmount {
 		t.Errorf("The amount withdrawn %d exceeds the actual amount requested %d", sumWithdrawals(withdrawalRequests), s.totalWithdrawnAmount)
 	}
 	efficiency := float64(s.totalL2Blocks-s.l2Height) / float64(s.totalL2Blocks)
@@ -162,31 +162,32 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) *big
 	return sumWithdrawals(withdrawalRequests)
 }
 
-func sumWithdrawals(w []obscuroCommon.Withdrawal) *big.Int {
-	sum := big.NewInt(0)
+func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
+	sum := uint64(0)
 	for _, r := range w {
-		sum = big.NewInt(0).Add(sum, r.Value)
+		sum += r.Amount
 	}
 	return sum
 }
 
-func sumWithdrawalTxs(t []enclave2.L2Tx) *big.Int {
-	sum := big.NewInt(0)
+func sumWithdrawalTxs(t []enclave2.L2Tx) uint64 {
+	sum := uint64(0)
 	for _, r := range t {
-		sum = big.NewInt(0).Add(sum, r.Tx.Value())
+		txData := enclave2.TxData(&r)
+		sum += txData.Amount
 	}
 
 	return sum
 }
 
-func validateL2State(t *testing.T, l2Network L2NetworkCfg, s *Stats, totalWithdrawn *big.Int) {
-	finalAmount := big.NewInt(0).Sub(s.totalDepositedAmount, totalWithdrawn)
+func validateL2State(t *testing.T, l2Network L2NetworkCfg, s *Stats, totalWithdrawn uint64) {
+	finalAmount := s.totalDepositedAmount - totalWithdrawn
 	// Check that the state on all nodes is valid
 	for _, observer := range l2Network.nodes {
 		// read the last state
 		lastState := observer.Enclave.TestPeekHead()
 		total := totalBalance(lastState)
-		if total.Cmp(finalAmount) != 0 {
+		if total != finalAmount {
 			t.Errorf("The amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", observer.ID, total, finalAmount)
 		}
 	}
@@ -195,10 +196,10 @@ func validateL2State(t *testing.T, l2Network L2NetworkCfg, s *Stats, totalWithdr
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
 }
 
-func totalBalance(s enclave2.BlockState) *big.Int {
-	tot := big.NewInt(0)
+func totalBalance(s enclave2.BlockState) uint64 {
+	tot := uint64(0)
 	for _, bal := range s.State {
-		tot = big.NewInt(0).Add(tot, bal)
+		tot += bal
 	}
 	return tot
 }

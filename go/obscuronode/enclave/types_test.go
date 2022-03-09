@@ -10,7 +10,10 @@ import (
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := L2TxTransferNew(100, wallet_mock.New().Address, wallet_mock.New().Address)
+	txData := L2TxData{
+		Type: TransferTx, From: wallet_mock.New().Address, Dest: wallet_mock.New().Address, Amount: 100,
+	}
+	tx := NewL2Tx(txData)
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic(err)
@@ -20,19 +23,24 @@ func TestSerialiseL2Tx(t *testing.T) {
 	if err2 != nil {
 		panic(err2)
 	}
-	if tx1.Tx.Hash() != tx.Tx.Hash() {
+	if tx1.Hash() != tx.Hash() {
 		t.Errorf("tx deserialized incorrectly\n")
 	}
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := L2TxTransferNew(100, wallet_mock.New().Address, wallet_mock.New().Address)
+	txData := L2TxData{
+		Type: TransferTx, From: wallet_mock.New().Address, Dest: wallet_mock.New().Address, Amount: 100,
+	}
+	tx := NewL2Tx(txData)
 	height := atomic.Value{}
 	height.Store(1)
+	txs := Transactions{*tx}
+	encryptedTxs := encryptTransactions(txs)
 	rollup := common2.Rollup{
 		Header:       GenesisRollup.Header,
 		Height:       height,
-		Transactions: encryptTransactions(Transactions{tx}),
+		Transactions: encryptedTxs,
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
