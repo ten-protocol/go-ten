@@ -43,19 +43,19 @@ func New() Wallet {
 	return Wallet{Address: key.Address, Key: key}
 }
 
-// NewEncryptedL2Transfer creates an encrypted L2Tx of type TransferTx.
+// NewEncryptedL2Transfer creates an encrypted enclave.L2Tx of type enclave.TransferTx.
 func NewEncryptedL2Transfer(from common.Address, dest common.Address, amount uint64) common2.EncryptedTx {
 	txData := enclave.L2TxData{Type: enclave.TransferTx, From: from, To: dest, Amount: amount}
 	return newEncryptedL2Tx(txData)
 }
 
-// NewEncryptedL2Withdrawal creates an encrypted L2Tx of type WithdrawalTx.
+// NewEncryptedL2Withdrawal creates an encrypted enclave.L2Tx of type enclave.WithdrawalTx.
 func NewEncryptedL2Withdrawal(from common.Address, amount uint64) common2.EncryptedTx {
 	txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: from, Amount: amount}
 	return newEncryptedL2Tx(txData)
 }
 
-// newL2Tx creates an L2Tx, using a random nonce (to avoid hash collisions) and with the L2 data encoded in the
+// newL2Tx creates an enclave.L2Tx, using a random nonce (to avoid hash collisions) and with the L2 data encoded in the
 // transaction's data field, then encrypts it.
 func newEncryptedL2Tx(data enclave.L2TxData) common2.EncryptedTx {
 	// We should probably use a deterministic nonce instead, as in L1.
