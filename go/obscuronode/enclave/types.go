@@ -1,8 +1,9 @@
 package enclave
 
 import (
+	"crypto/rand"
+	"math"
 	"math/big"
-	"math/rand"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -42,11 +43,13 @@ func L2TxWithdrawalNew(value int64, from common.Address) L2Tx {
 
 // l2TxNew creates a new L2Tx
 func l2TxNew(value int64, from common.Address, to common.Address, txType L2TxType) L2Tx {
+	// A random nonce to avoid hash collisions. We should probably use a deterministic nonce instead, as in L1.
+	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+
 	tx := types.NewTx(&types.LegacyTx{
 		To:    &to,
 		Value: big.NewInt(value),
-		// This is just a random value to avoid hash collisions. We may want a deterministic nonce instead, as in L1.
-		Nonce: rand.Uint64(),
+		Nonce: nonce.Uint64(),
 	})
 	return L2Tx{tx, from, txType}
 }
