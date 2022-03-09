@@ -10,10 +10,7 @@ import (
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	txData := L2TxData{
-		Type: TransferTx, From: wallet_mock.New().Address, Dest: wallet_mock.New().Address, Amount: 100,
-	}
-	tx := NewL2Tx(txData)
+	tx := NewL2Transfer(wallet_mock.New().Address, wallet_mock.New().Address, 100)
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic(err)
@@ -29,10 +26,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	txData := L2TxData{
-		Type: TransferTx, From: wallet_mock.New().Address, Dest: wallet_mock.New().Address, Amount: 100,
-	}
-	tx := NewL2Tx(txData)
+	tx := NewL2Transfer(wallet_mock.New().Address, wallet_mock.New().Address, 100)
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := common2.Rollup{

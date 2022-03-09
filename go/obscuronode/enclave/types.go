@@ -27,7 +27,7 @@ const (
 type L2TxData struct {
 	Type   L2TxType
 	From   common.Address
-	Dest   common.Address
+	To     common.Address
 	Amount uint64
 }
 
@@ -35,7 +35,7 @@ type L2Tx = types.Transaction
 
 // NewL2Transfer creates an L2Tx of type TransferTx.
 func NewL2Transfer(from common.Address, dest common.Address, amount uint64) *L2Tx {
-	txData := L2TxData{Type: TransferTx, From: from, Dest: dest, Amount: amount}
+	txData := L2TxData{Type: TransferTx, From: from, To: dest, Amount: amount}
 	return newL2Tx(txData)
 }
 

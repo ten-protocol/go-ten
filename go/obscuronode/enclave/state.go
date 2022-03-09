@@ -88,7 +88,7 @@ func executeTransfer(s *RollupState, tx L2Tx) {
 	txData := TxData(&tx)
 	if s.s[txData.From] >= txData.Amount {
 		s.s[txData.From] -= txData.Amount
-		s.s[txData.Dest] += txData.Amount
+		s.s[txData.To] += txData.Amount
 	}
 }
 
