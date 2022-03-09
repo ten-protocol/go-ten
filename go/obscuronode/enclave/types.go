@@ -29,22 +29,21 @@ type L2Tx struct {
 }
 
 // L2TxTransferNew creates a new L2Tx of type TransferTx
-func L2TxTransferNew(value uint64, from common.Address, to common.Address) L2Tx {
+func L2TxTransferNew(value int64, from common.Address, to common.Address) L2Tx {
 	return l2TxNew(value, from, to, TransferTx)
 }
 
 // L2TxWithdrawalNew creates a new L2Tx of type WithdrawalTx
-func L2TxWithdrawalNew(value uint64, from common.Address) L2Tx {
+func L2TxWithdrawalNew(value int64, from common.Address) L2Tx {
 	to := common.Address{} // There is no recipient, so we use an empty address
 	return l2TxNew(value, from, to, WithdrawalTx)
 }
 
 // l2TxNew creates a new L2Tx
-func l2TxNew(value uint64, from common.Address, to common.Address, txType L2TxType) L2Tx {
+func l2TxNew(value int64, from common.Address, to common.Address, txType L2TxType) L2Tx {
 	tx := types.NewTx(&types.LegacyTx{
-		To: &to,
-		// TODO - Joel - Review this conversion.
-		Value: big.NewInt(int64(value)),
+		To:    &to,
+		Value: big.NewInt(value),
 		// This is just a random value to avoid hash collisions. We may want a deterministic nonce instead, as in L1.
 		Nonce: rand.Uint64(),
 	})

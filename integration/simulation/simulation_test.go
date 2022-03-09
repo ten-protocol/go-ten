@@ -98,7 +98,6 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 		dups := common.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
-	// TODO - Joel - Review this conversion.
 	if big.NewInt(int64(totalDeposited)).Cmp(s.totalDepositedAmount) != 0 {
 		t.Errorf("Deposit amounts don't match. Found %d , expected %d", totalDeposited, s.totalDepositedAmount)
 	}
