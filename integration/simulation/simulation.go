@@ -122,10 +122,7 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.
 		if f == t {
 			continue
 		}
-		txData := enclave2.L2TxData{
-			Type: enclave2.TransferTx, From: f, Dest: t, Amount: common.RndBtw(1, 500),
-		}
-		tx := enclave2.NewL2Tx(txData)
+		tx := enclave2.NewL2Transfer(f, t, common.RndBtw(1, 500))
 		s.Transfer()
 		encoded := enclave2.EncryptTx(tx)
 		l2Network.BroadcastTx(encoded)
@@ -159,10 +156,7 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 			break
 		}
 		v := common.RndBtw(1, 100)
-		txData := enclave2.L2TxData{
-			Type: enclave2.WithdrawalTx, From: rndWallet(wallets).Address, Amount: v,
-		}
-		tx := enclave2.NewL2Tx(txData)
+		tx := enclave2.NewL2Withdrawal(rndWallet(wallets).Address, v)
 		t := enclave2.EncryptTx(tx)
 		network.BroadcastTx(t)
 		s.Withdrawal(v)

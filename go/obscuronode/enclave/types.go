@@ -33,13 +33,29 @@ type L2TxData struct {
 
 type L2Tx = types.Transaction
 
-// TODO - Joel - Describe.
-func NewL2Tx(data L2TxData) *L2Tx {
-	// A random nonce to avoid hash collisions. We should probably use a deterministic nonce instead, as in L1.
+// NewL2Transfer creates an L2Tx of type TransferTx.
+func NewL2Transfer(from common.Address, dest common.Address, amount uint64) *L2Tx {
+	txData := L2TxData{Type: TransferTx, From: from, Dest: dest, Amount: amount}
+	return newL2Tx(txData)
+}
+
+// NewL2Withdrawal creates an L2Tx of type WithdrawalTx.
+func NewL2Withdrawal(from common.Address, amount uint64) *L2Tx {
+	txData := L2TxData{Type: WithdrawalTx, From: from, Amount: amount}
+	return newL2Tx(txData)
+}
+
+// newL2Tx creates an L2Tx, using a random nonce (to avoid hash collisions) and with the L2 data encoded in the
+// transaction's data field.
+func newL2Tx(data L2TxData) *L2Tx {
+	// We should probably use a deterministic nonce instead, as in L1.
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 
-	// TODO - Joel - Handle error.
-	enc, _ := rlp.EncodeToBytes(data)
+	enc, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		// TODO - Surface this error properly.
+		panic(err)
+	}
 
 	return types.NewTx(&types.LegacyTx{
 		Nonce:    nonce.Uint64(),
@@ -50,11 +66,16 @@ func NewL2Tx(data L2TxData) *L2Tx {
 	})
 }
 
-// TODO - Joel - Describe.
+// TxData returns the decoded L2 data stored in the transaction's data field.
 func TxData(tx *L2Tx) L2TxData {
 	data := L2TxData{}
-	// TODO - Joel - Handle error properly.
-	rlp.DecodeBytes(tx.Data(), &data)
+
+	err := rlp.DecodeBytes(tx.Data(), &data)
+	if err != nil {
+		// TODO - Surface this error properly.
+		panic(err)
+	}
+
 	return data
 }
 
