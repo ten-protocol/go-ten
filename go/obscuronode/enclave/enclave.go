@@ -64,7 +64,7 @@ type Enclave interface {
 	SubmitRollup(rollup common2.ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx common2.EncryptedTx)
+	SubmitTx(tx common2.EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
@@ -225,20 +225,22 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	}
 }
 
-func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
+func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) error {
 	decryptedTx := DecryptTx(tx)
-	verifySignature(decryptedTx)
+	err := verifySignature(&decryptedTx)
+	if err != nil {
+		return err
+	}
 	e.db.StoreTx(decryptedTx)
 	e.txCh <- decryptedTx
+	return nil
 }
 
 // Checks that the L2Tx has a valid signature.
-func verifySignature(decryptedTx L2Tx) {
+func verifySignature(decryptedTx *L2Tx) error {
 	signer := types.NewLondonSigner(big.NewInt(ChainID))
-	_, err := types.Sender(signer, &decryptedTx)
-	if err != nil {
-		panic(fmt.Errorf("sig didn't validate: %w", err))
-	}
+	_, err := types.Sender(signer, decryptedTx)
+	return err
 }
 
 func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool) {

@@ -206,9 +206,14 @@ func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	// Ignore gossiped transactions while the node is still initialisng
+	// Ignore gossiped transactions while the node is still initialising
 	if a.Enclave.IsInitialised() {
-		go a.Enclave.SubmitTx(tx)
+		go func() {
+			err := a.Enclave.SubmitTx(tx)
+			if err != nil {
+				common.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.ID, err))
+			}
+		}()
 	}
 }
 
