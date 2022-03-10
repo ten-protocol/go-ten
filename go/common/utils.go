@@ -1,7 +1,6 @@
 package common
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math"
 	"math/rand"
@@ -139,6 +138,7 @@ func FindRollupDups(list []L2RootHash) map[L2RootHash]int {
 	return dups
 }
 
-func Str(hash L1RootHash) string {
-	return hex.EncodeToString(hash.Bytes())
+// Short converts the hash to a shorter uint64 for printing.
+func Short(hash L1RootHash) uint64 {
+	return hash.Big().Uint64()
 }

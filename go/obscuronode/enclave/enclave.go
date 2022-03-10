@@ -270,11 +270,11 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.db)
 		w := e.db.Parent(winnerRollup)
-		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.",
+		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
 			e.node,
-			common3.Str(winnerRollup.Hash()), e.db.Height(winnerRollup),
-			common3.Str(w.Hash()),
-			common3.Str(v.Hash()),
+			common3.Short(winnerRollup.Hash()), e.db.Height(winnerRollup),
+			common3.Short(w.Hash()),
+			common3.Short(v.Hash()),
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State),
 		)
@@ -307,11 +307,11 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 	// if true {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
 		if speculativeRollup.r != nil {
-			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%s(%d), published=r_%s(%d)",
+			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				e.node,
-				common3.Str(speculativeRollup.r.Hash()),
+				common3.Short(speculativeRollup.r.Hash()),
 				e.db.Height(speculativeRollup.r),
-				common3.Str(bs.Head.Hash()),
+				common3.Short(bs.Head.Hash()),
 				e.db.Height(bs.Head)),
 			)
 			e.statsCollector.L2Recalc(e.node)

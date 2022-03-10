@@ -61,7 +61,7 @@ func RunSimulation(
 		agg.L1Node = &miner
 	}
 
-	common.Log(fmt.Sprintf("Genesis block: b_%s.", common.Str(common.GenesisBlock.Hash())))
+	common.Log(fmt.Sprintf("Genesis block: b_%d.", common.Short(common.GenesisBlock.Hash())))
 
 	l1Network.Start(common.Duration(avgBlockDuration / 4))
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
