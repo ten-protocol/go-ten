@@ -25,7 +25,8 @@ func TestSimulation(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	f, err := os.CreateTemp("../.build/simulations", "simulation-result-*.txt")
+	fileName := fmt.Sprintf("simulation-result-%d-*.txt", time.Now().Unix())
+	f, err := os.CreateTemp("../.build/simulations", fileName)
 	if err != nil {
 		panic(err)
 	}
