@@ -1,7 +1,6 @@
 package enclave
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -96,11 +95,11 @@ func NewRollup(b *common2.Block, parent *Rollup, a common.Address, txs []L2Tx, w
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (r *Rollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		return -1
 	}
-	return l1BlockResolver.Height(v)
+	return l1BlockResolver.HeightBlock(v)
 }
 
 func (r *Rollup) ToExtRollup() oc.ExtRollup {
@@ -111,7 +110,7 @@ func (r *Rollup) ToExtRollup() oc.ExtRollup {
 }
 
 func (r *Rollup) Proof(l1BlockResolver common2.BlockResolver) *common2.Block {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
 	}

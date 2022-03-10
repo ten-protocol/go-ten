@@ -2,9 +2,10 @@ package ethereummock
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 )
@@ -64,12 +65,12 @@ func (m *Node) Start() {
 	}
 
 	head := m.setHead(common2.GenesisBlock)
-	m.Resolver.Store(common2.GenesisBlock)
+	m.Resolver.StoreBlock(common2.GenesisBlock)
 
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, received := m.Resolver.Resolve(p2pb.Hash())
+			_, received := m.Resolver.ResolveBlock(p2pb.Hash())
 			// only process blocks if they haven't been processed before
 			if !received {
 				head = m.processBlock(p2pb, head)
@@ -78,7 +79,7 @@ func (m *Node) Start() {
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if head.Hash() == mb.Hash() { // Ignore the locally produced block if someone else found one already
-				p, found := m.Resolver.Parent(mb)
+				p, found := m.Resolver.ParentBlock(mb)
 				if !found {
 					panic("noo")
 				}
@@ -93,8 +94,8 @@ func (m *Node) Start() {
 }
 
 func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Block {
-	m.Resolver.Store(b)
-	_, f := m.Resolver.Resolve(b.Header().ParentHash)
+	m.Resolver.StoreBlock(b)
+	_, f := m.Resolver.ResolveBlock(b.Header().ParentHash)
 
 	// only proceed if the parent is available
 	if !f {
@@ -103,7 +104,7 @@ func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Bloc
 	}
 
 	// Ignore superseeded blocks
-	if m.Resolver.Height(b) <= m.Resolver.Height(head) {
+	if m.Resolver.HeightBlock(b) <= m.Resolver.HeightBlock(head) {
 		return head
 	}
 
@@ -111,11 +112,11 @@ func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Bloc
 	if !common2.IsAncestor(head, b, m.Resolver) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
-		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.ID, common2.Str(b.Hash()), m.Resolver.Height(b), common2.Str(head.Hash()), m.Resolver.Height(head), common2.Str(fork.Hash()), m.Resolver.Height(fork)))
+		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.ID, common2.Str(b.Hash()), m.Resolver.HeightBlock(b), common2.Str(head.Hash()), m.Resolver.HeightBlock(head), common2.Str(fork.Hash()), m.Resolver.HeightBlock(fork)))
 		return m.setFork(BlocksBetween(fork, b, m.Resolver))
 	}
 
-	if m.Resolver.Height(b) > (m.Resolver.Height(head) + 1) {
+	if m.Resolver.HeightBlock(b) > (m.Resolver.HeightBlock(head) + 1) {
 		panic(fmt.Sprintf("> M%d: Should not happen", m.ID))
 	}
 
@@ -131,10 +132,10 @@ func (m *Node) setHead(b *common2.Block) *common2.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		if m.Resolver.Height(b) == 0 {
+		if m.Resolver.HeightBlock(b) == 0 {
 			go t.RPCNewHead(common2.EncodeBlock(b), nil)
 		} else {
-			p, f := m.Resolver.Parent(b)
+			p, f := m.Resolver.ParentBlock(b)
 			if !f {
 				panic("This should not happen")
 			}

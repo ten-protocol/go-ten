@@ -20,10 +20,10 @@ func printBlock(b *common3.Block, m ethereum_mock.Node) string {
 			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", t.Dest, t.Amount))
 		}
 	}
-	p, f := m.Resolver.Parent(b)
+	p, f := m.Resolver.ParentBlock(b)
 	if !f {
 		panic("wtf")
 	}
 
-	return fmt.Sprintf("> M%d: create b_%s(Height=%d, Nonce=%d)[p=b_%s]. Txs: %v", m.ID, common3.Str(b.Hash()), m.Resolver.Height(b), b.Header().Nonce, common3.Str(p.Hash()), txs)
+	return fmt.Sprintf("> M%d: create b_%s(Height=%d, Nonce=%d)[p=b_%s]. Txs: %v", m.ID, common3.Str(b.Hash()), m.Resolver.HeightBlock(b), b.Header().Nonce, common3.Str(p.Hash()), txs)
 }

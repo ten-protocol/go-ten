@@ -2,12 +2,11 @@ package simulation
 
 import (
 	"fmt"
-	common2 "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"math/rand"
 	"time"
 
-	"github.com/google/uuid"
+	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"

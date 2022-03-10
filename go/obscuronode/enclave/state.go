@@ -118,7 +118,7 @@ func updateState(b *common3.Block, db DB, blockResolver common3.BlockResolver) B
 	parentState, parentFound := db.FetchState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the State of the Parent
-		p, f := db.BlockParent(b)
+		p, f := db.ParentBlock(b)
 		if !f {
 			panic("wtf")
 		}
@@ -143,7 +143,7 @@ func FindWinner(parent *Rollup, rollups []*Rollup, db DB, blockResolver common3.
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case db.Height(r) <= db.Height(parent): // ignore rollups that are older than the parent
+		case db.HeightRollup(r) <= db.HeightRollup(parent): // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
 		case r.ProofHeight(blockResolver) < rollups[win].ProofHeight(blockResolver): // ignore rollups generated with an older proof
@@ -168,7 +168,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	s := newProcessedState(parentState)
 	s = executeTransactions(win.Transactions, s)
 
-	p := db.Parent(win).Proof(blockResolver)
+	p := db.ParentRollup(win).Proof(blockResolver)
 	s = processDeposits(p, win.Proof(blockResolver), s, db, blockResolver)
 
 	if serialize(s.s) != win.Header.State {
@@ -192,7 +192,7 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 	height := common3.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
-		height = blockResolver.Height(fromBlock)
+		height = blockResolver.HeightBlock(fromBlock)
 		if !common3.IsAncestor(fromBlock, toBlock, blockResolver) {
 			panic("wtf")
 		}
@@ -215,10 +215,10 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 				}
 			}
 		}
-		if blockResolver.Height(b) < height {
+		if blockResolver.HeightBlock(b) < height {
 			panic("something went wrong")
 		}
-		p, f := blockResolver.Parent(b)
+		p, f := blockResolver.ParentBlock(b)
 		if !f {
 			panic("wtf")
 		}
@@ -237,7 +237,7 @@ func calculateBlockState(b *common3.Block, parentState BlockState, db DB, blockR
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		s = executeTransactions(newHead.Transactions, s)
-		p := db.Parent(newHead).Proof(blockResolver)
+		p := db.ParentRollup(newHead).Proof(blockResolver)
 		s = processDeposits(p, newHead.Proof(blockResolver), s, db, blockResolver)
 	} else {
 		newHead = parentState.Head

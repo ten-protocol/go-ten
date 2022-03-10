@@ -7,32 +7,32 @@ import (
 
 // LCA - returns the least common ancestor of the 2 blocks
 func LCA(blockA *common2.Block, blockB *common2.Block, resolver common2.BlockResolver) *common2.Block {
-	if resolver.Height(blockA) == common2.L1GenesisHeight || resolver.Height(blockB) == common2.L1GenesisHeight {
+	if resolver.HeightBlock(blockA) == common2.L1GenesisHeight || resolver.HeightBlock(blockB) == common2.L1GenesisHeight {
 		return blockA
 	}
 	if blockA.Hash() == blockB.Hash() {
 		return blockA
 	}
-	if resolver.Height(blockA) > resolver.Height(blockB) {
-		p, f := resolver.Parent(blockA)
+	if resolver.HeightBlock(blockA) > resolver.HeightBlock(blockB) {
+		p, f := resolver.ParentBlock(blockA)
 		if !f {
 			panic("wtf")
 		}
 		return LCA(p, blockB, resolver)
 	}
-	if resolver.Height(blockB) > resolver.Height(blockA) {
-		p, f := resolver.Parent(blockB)
+	if resolver.HeightBlock(blockB) > resolver.HeightBlock(blockA) {
+		p, f := resolver.ParentBlock(blockB)
 		if !f {
 			panic("wtf")
 		}
 
 		return LCA(blockA, p, resolver)
 	}
-	parentBlockA, f := resolver.Parent(blockA)
+	parentBlockA, f := resolver.ParentBlock(blockA)
 	if !f {
 		panic("wtf")
 	}
-	parentBlockB, f := resolver.Parent(blockB)
+	parentBlockB, f := resolver.ParentBlock(blockB)
 	if !f {
 		panic("wtf")
 	}
@@ -52,11 +52,11 @@ func allIncludedTransactions(b *common2.Block, r common2.BlockResolver, db TxDB)
 	if found {
 		return val
 	}
-	if r.Height(b) == common2.L1GenesisHeight {
+	if r.HeightBlock(b) == common2.L1GenesisHeight {
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[common2.TxHash]*common2.L1Tx)
-	p, f := r.Parent(b)
+	p, f := r.ParentBlock(b)
 	if !f {
 		panic("wtf")
 	}
@@ -100,7 +100,7 @@ func BlocksBetween(blockA *common2.Block, blockB *common2.Block, resolver common
 		if tempBlock.Hash() == blockA.Hash() {
 			break
 		}
-		tempBlock, found = resolver.Parent(tempBlock)
+		tempBlock, found = resolver.ParentBlock(tempBlock)
 		if !found {
 			panic("should not happen")
 		}

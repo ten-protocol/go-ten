@@ -2,14 +2,12 @@ package simulation
 
 import (
 	"fmt"
-	common2 "github.com/ethereum/go-ethereum/common"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
 	common2 "github.com/ethereum/go-ethereum/common"
-
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -60,7 +58,7 @@ const L2EfficiencyThreashold = 0.3
 func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB, resolver common.BlockResolver) {
 	deposits := make([]common2.Hash, 0)
 	rollups := make([]common.L2RootHash, 0)
-	s.l1Height = db.BlockHeight(b)
+	s.l1Height = db.HeightBlock(b)
 	totalDeposited := uint64(0)
 
 	blockchain := ethereum_mock.BlocksBetween(common.GenesisBlock, b, resolver)
@@ -92,8 +90,8 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB, resolve
 		}
 	}
 
-	if len(common.FindUUIDDups(deposits)) > 0 {
-		dups := common.FindUUIDDups(deposits)
+	if len(common.FindHashDups(deposits)) > 0 {
+		dups := common.FindHashDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
 	if len(common.FindRollupDups(rollups)) > 0 {
@@ -119,12 +117,12 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB, resolve
 }
 
 func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint64 {
-	s.l2Height = db.Height(r)
+	s.l2Height = db.HeightRollup(r)
 	transfers := make([]common2.Hash, 0)
 	withdrawalTxs := make([]enclave2.L2Tx, 0)
 	withdrawalRequests := make([]obscuroCommon.Withdrawal, 0)
 	for {
-		if db.Height(r) == common.L2GenesisHeight {
+		if db.HeightRollup(r) == common.L2GenesisHeight {
 			break
 		}
 		for i := range r.Transactions {
@@ -140,7 +138,7 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 			}
 		}
 		withdrawalRequests = append(withdrawalRequests, r.Header.Withdrawals...)
-		r = db.Parent(r)
+		r = db.ParentRollup(r)
 	}
 	// todo - check that proofs are on the canonical chain
 

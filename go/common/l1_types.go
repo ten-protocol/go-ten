@@ -1,10 +1,13 @@
 package common
 
 import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"math/big"
 )
 
 // L1TxType - Just two types of relevant L1 transactions: Deposits and Rollups
@@ -80,8 +83,8 @@ func NewBlock(parent *Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *
 		TxHash:      common.Hash{},
 		ReceiptHash: common.Hash{},
 		Bloom:       types.Bloom{},
-		Difficulty:  nil,
-		Number:      nil,
+		Difficulty:  big.NewInt(0),
+		Number:      big.NewInt(0),
 		GasLimit:    0,
 		GasUsed:     0,
 		Time:        0,
@@ -91,7 +94,7 @@ func NewBlock(parent *Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *
 		BaseFee:     nil,
 	}
 
-	return types.NewBlock(&header, txs, nil, nil, nil)
+	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
 
 	//header := Header{
 	//	Nonce:      nonce,

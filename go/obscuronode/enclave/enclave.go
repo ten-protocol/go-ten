@@ -3,10 +3,8 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/common"
-
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
@@ -154,7 +152,7 @@ func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
 
 func (e *enclaveImpl) IngestBlocks(blocks []*common3.Block) {
 	for _, block := range blocks {
-		e.db.Store(block)
+		e.db.StoreBlock(block)
 		updateState(block, e.db, e.blockResolver)
 	}
 }
@@ -164,22 +162,22 @@ func (e *enclaveImpl) SubmitBlock(block common3.Block) SubmitBlockResponse {
 	// So far this seems to recover correctly
 	defer func() {
 		if r := recover(); r != nil {
-			common3.Log(fmt.Sprintf("Agg%d Panic %s\n", e.node, r))
+			common3.Log(fmt.Sprintf("Agg%d Panic %s", e.node, r))
 		}
 	}()
 
-	_, foundBlock := e.db.Resolve(block.Hash())
+	_, foundBlock := e.db.ResolveBlock(block.Hash())
 	if foundBlock {
 		return SubmitBlockResponse{Processed: false}
 	}
 
-	e.db.Store(&block)
+	e.db.StoreBlock(&block)
 	// this is where much more will actually happen.
 	// the "blockchain" logic from geth has to be executed here,
 	// to determine the total proof of work, to verify some key aspects, etc
 
-	_, f := e.db.Resolve(block.Header().ParentHash)
-	if !f && e.db.BlockHeight(&block) > common3.L1GenesisHeight {
+	_, f := e.db.ResolveBlock(block.Header().ParentHash)
+	if !f && e.db.HeightBlock(&block) > common3.L1GenesisHeight {
 		return SubmitBlockResponse{Processed: false}
 	}
 	blockState := updateState(&block, e.db, e.blockResolver)
@@ -225,11 +223,11 @@ func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
 func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool) {
 	head := e.db.FetchRollup(parent)
 
-	rollupsReceivedFromPeers := e.db.FetchRollups(e.db.Height(head) + 1)
+	rollupsReceivedFromPeers := e.db.FetchGossipedRollups(e.db.HeightRollup(head) + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*Rollup
 	for _, rol := range rollupsReceivedFromPeers {
-		p := e.db.Parent(rol)
+		p := e.db.ParentRollup(rol)
 		if p.Hash() == head.Hash() {
 			usefulRollups = append(usefulRollups, rol)
 		}
@@ -248,10 +246,10 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	// we are the winner
 	if winnerRollup.Header.Agg == common.Address(e.node) {
 		v := winnerRollup.Proof(e.blockResolver)
-		w := e.db.Parent(winnerRollup)
+		w := e.db.ParentRollup(winnerRollup)
 		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.",
 			e.node,
-			common3.Str(winnerRollup.Hash()), e.db.Height(winnerRollup),
+			common3.Str(winnerRollup.Hash()), e.db.HeightRollup(winnerRollup),
 			common3.Str(w.Hash()),
 			common3.Str(v.Hash()),
 			printTxs(winnerRollup.Transactions),
@@ -289,9 +287,9 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%s(%d), published=r_%s(%d)",
 				e.node,
 				common3.Str(speculativeRollup.r.Hash()),
-				e.db.Height(speculativeRollup.r),
+				e.db.HeightRollup(speculativeRollup.r),
 				common3.Str(bs.Head.Hash()),
-				e.db.Height(bs.Head)),
+				e.db.HeightRollup(bs.Head)),
 			)
 			e.statsCollector.L2Recalc(e.node)
 		}
@@ -373,11 +371,10 @@ type speculativeWork struct {
 
 func NewEnclave(id common3.NodeID, mining bool, collector StatsCollector) Enclave {
 	db := NewInMemoryDB()
-
 	return &enclaveImpl{
 		node:                 id,
 		db:                   db,
-		blockResolver:        nil, //todo
+		blockResolver:        db,
 		mining:               mining,
 		txCh:                 make(chan L2Tx),
 		roundWinnerCh:        make(chan *Rollup),

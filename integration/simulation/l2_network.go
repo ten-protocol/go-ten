@@ -1,8 +1,9 @@
 package simulation
 
 import (
-	common2 "github.com/ethereum/go-ethereum/common"
 	"time"
+
+	common2 "github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"

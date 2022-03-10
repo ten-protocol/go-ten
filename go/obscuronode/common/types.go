@@ -67,7 +67,7 @@ func (r Rollup) ToExtRollup() ExtRollup {
 }
 
 func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *obscuroCommon.Block {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
 	}
@@ -78,12 +78,12 @@ func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *obscuroCommo
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (r Rollup) ProofHeight(l1BlockResolver obscuroCommon.BlockResolver) int {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		return -1
 	}
 
-	return l1BlockResolver.Height(v)
+	return l1BlockResolver.HeightBlock(v)
 }
 
 // Hash returns the keccak256 hash of b's header.

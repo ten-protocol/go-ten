@@ -1,9 +1,10 @@
 package simulation
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
