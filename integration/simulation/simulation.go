@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	enclave2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
@@ -126,7 +126,7 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.
 		}
 		tx := wallet_mock.NewL2Transfer(from, to, common.RndBtw(1, 500))
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
-		encryptedTx := enclave2.EncryptTx(signedTx)
+		encryptedTx := enclave.EncryptTx(signedTx)
 		s.Transfer()
 		l2Network.BroadcastTx(encryptedTx)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration/4, avgBlockDuration)))
@@ -162,7 +162,7 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 		wallet := rndWallet(wallets)
 		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
-		encryptedTx := enclave2.EncryptTx(signedTx)
+		encryptedTx := enclave.EncryptTx(signedTx)
 		network.BroadcastTx(encryptedTx)
 		s.Withdrawal(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
