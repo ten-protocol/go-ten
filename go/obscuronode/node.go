@@ -5,17 +5,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/google/uuid"
-
 	"github.com/obscuronet/obscuro-playground/go/common"
-
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
-	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
 
 type AggregatorCfg struct {
@@ -201,8 +197,15 @@ func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-
-	go a.Enclave.SubmitTx(tx)
+	// Ignore gossiped transactions while the node is still initialising
+	if a.Enclave.IsInitialised() {
+		go func() {
+			err := a.Enclave.SubmitTx(tx)
+			if err != nil {
+				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.ID, err))
+			}
+		}()
+	}
 }
 
 // RPCBalance allows to fetch the balance of one address

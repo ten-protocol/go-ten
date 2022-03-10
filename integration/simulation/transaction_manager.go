@@ -1,17 +1,16 @@
 package simulation
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"golang.org/x/sync/errgroup"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-
-	"github.com/google/uuid"
-	"github.com/obscuronet/obscuro-playground/go/common"
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
@@ -55,7 +54,12 @@ func (m *TransactionManager) Start(us int) {
 
 	// deposit some initial amount into every user
 	for _, u := range m.wallets {
-		tx := deposit(u, INITIAL_BALANCE)
+		tx := common.L1Tx{
+			ID:     uuid.New(),
+			TxType: common.DepositTx,
+			Amount: INITIAL_BALANCE,
+			Dest:   u.Address,
+		}
 		t, _ := tx.Encode()
 		m.l1NetworkConfig.BroadcastTx(t)
 		m.stats.Deposit(INITIAL_BALANCE)
@@ -105,7 +109,7 @@ func (m *TransactionManager) GetL1Transactions() common.Transactions {
 func (m *TransactionManager) GetL2Transactions() enclave.Transactions {
 	var transactions enclave.Transactions
 	for _, req := range m.l2Transactions {
-		if req.TxType != enclave.WithdrawalTx {
+		if enclave.TxData(&req).Type != enclave.WithdrawalTx {
 			transactions = append(transactions, req)
 		}
 	}
@@ -116,8 +120,8 @@ func (m *TransactionManager) GetL2Transactions() enclave.Transactions {
 func (m *TransactionManager) GetL2WithdrawalRequests() []common2.Withdrawal {
 	var withdrawals []common2.Withdrawal
 	for _, req := range m.l2Transactions {
-		if req.TxType == enclave.WithdrawalTx {
-			withdrawals = append(withdrawals, common2.Withdrawal{Amount: req.Amount, Address: req.To})
+		if enclave.TxData(&req).Type == enclave.WithdrawalTx {
+			withdrawals = append(withdrawals, common2.Withdrawal{Amount: enclave.TxData(&req).Amount, Address: enclave.TxData(&req).To})
 		}
 	}
 	return withdrawals
@@ -131,22 +135,18 @@ func (m *TransactionManager) issueRandomTransfers() {
 		if i == n {
 			break
 		}
-		f := rndWallet(m.wallets).Address
-		t := rndWallet(m.wallets).Address
-		if f == t {
+		fromWallet := rndWallet(m.wallets)
+		from := fromWallet.Address
+		to := rndWallet(m.wallets).Address
+		if from == to {
 			continue
 		}
-		tx := enclave.L2Tx{
-			ID:     uuid.New(),
-			TxType: enclave.TransferTx,
-			Amount: common.RndBtw(1, 500),
-			From:   f,
-			To:     t,
-		}
+		tx := wallet_mock.NewL2Transfer(from, to, common.RndBtw(1, 500))
+		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
+		encryptedTx := enclave.EncryptTx(signedTx)
 		m.stats.Transfer()
-		encoded := enclave.EncryptTx(tx)
-		m.l2NetworkConfig.BroadcastTx(encoded)
-		go m.TrackL2Tx(tx)
+		m.l2NetworkConfig.BroadcastTx(encryptedTx)
+		go m.TrackL2Tx(*signedTx)
 		time.Sleep(common.Duration(common.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration)))
 		i++
 	}
@@ -162,7 +162,12 @@ func (m *TransactionManager) issueRandomDeposits() {
 			break
 		}
 		v := common.RndBtw(1, 100)
-		tx := deposit(rndWallet(m.wallets), v)
+		tx := common.L1Tx{
+			ID:     uuid.New(),
+			TxType: common.DepositTx,
+			Amount: v,
+			Dest:   rndWallet(m.wallets).Address,
+		}
 		t, _ := tx.Encode()
 		m.l1NetworkConfig.BroadcastTx(t)
 		m.stats.Deposit(v)
@@ -182,12 +187,18 @@ func (m *TransactionManager) issueRandomWithdrawals() {
 			break
 		}
 		v := common.RndBtw(1, 100)
-		tx := withdrawal(rndWallet(m.wallets), v)
-		t := enclave.EncryptTx(tx)
-		m.l2NetworkConfig.BroadcastTx(t)
+		wallet := rndWallet(m.wallets)
+		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
+		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
+		encryptedTx := enclave.EncryptTx(signedTx)
+		m.l2NetworkConfig.BroadcastTx(encryptedTx)
 		m.stats.Withdrawal(v)
-		go m.TrackL2Tx(tx)
+		go m.TrackL2Tx(*signedTx)
 		time.Sleep(common.Duration(common.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
 		i++
 	}
+}
+
+func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
+	return wallets[rand.Intn(len(wallets))] //nolint:gosec
 }

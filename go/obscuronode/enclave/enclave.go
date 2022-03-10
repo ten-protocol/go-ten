@@ -3,13 +3,17 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
+
+const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
@@ -17,7 +21,7 @@ type StatsCollector interface {
 	RollupWithMoreRecentProof()
 }
 
-// SubmitBlockResponse is the processed response sent from the enclave back to the node
+// SubmitBlockResponse is the response sent from the enclave back to the node after ingesting a block
 type SubmitBlockResponse struct {
 	L1Hash      common3.L1RootHash   // The Header Hash of the ingested Block
 	L1Height    uint                 // The L1 Height of the ingested Block
@@ -67,7 +71,7 @@ type Enclave interface {
 	SubmitRollup(rollup common2.ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx common2.EncryptedTx)
+	SubmitTx(tx common2.EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
@@ -78,8 +82,8 @@ type Enclave interface {
 	// Stop gracefully stops the enclave
 	Stop()
 
-	// GetTransaction returns a transaction given its ID, returns nil, false if Transaction is unknown
-	GetTransaction(txHash common3.TxHash) (*L2Tx, bool)
+	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
+	GetTransaction(txHash common.Hash) (*L2Tx, bool)
 }
 
 type enclaveImpl struct {
@@ -109,7 +113,7 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 	currentHead := s.Head
 	currentState := newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
 	var currentProcessedTxs []L2Tx
-	currentProcessedTxsMap := make(map[common3.TxHash]L2Tx)
+	currentProcessedTxsMap := make(map[common.Hash]L2Tx)
 
 	// start the speculative rollup execution loop
 	for {
@@ -128,9 +132,9 @@ func (e *enclaveImpl) Start(block common3.ExtBlock) {
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			_, found := currentProcessedTxsMap[tx.ID]
+			_, found := currentProcessedTxsMap[tx.Hash()]
 			if !found {
-				currentProcessedTxsMap[tx.ID] = tx
+				currentProcessedTxsMap[tx.Hash()] = tx
 				currentProcessedTxs = append(currentProcessedTxs, tx)
 				executeTx(&currentState, tx)
 			}
@@ -230,10 +234,22 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	}
 }
 
-func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
-	t := DecryptTx(tx)
-	e.db.StoreTx(t)
-	e.txCh <- t
+func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) error {
+	decryptedTx := DecryptTx(tx)
+	err := verifySignature(&decryptedTx)
+	if err != nil {
+		return err
+	}
+	e.db.StoreTx(decryptedTx)
+	e.txCh <- decryptedTx
+	return nil
+}
+
+// Checks that the L2Tx has a valid signature.
+func verifySignature(decryptedTx *L2Tx) error {
+	signer := types.NewLondonSigner(big.NewInt(ChainID))
+	_, err := types.Sender(signer, decryptedTx)
+	return err
 }
 
 func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool) {
@@ -327,13 +343,13 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 	return &r
 }
 
-func (e *enclaveImpl) GetTransaction(txHash common3.TxHash) (*L2Tx, bool) {
+func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, bool) {
 	// todo add some sort of cache
 	rollup := e.db.Head().Head
 	for {
 		txs := rollup.Transactions
 		for _, tx := range txs {
-			if tx.ID == txHash {
+			if tx.Hash() == txHash {
 				return &tx, true
 			}
 		}

@@ -6,9 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/google/uuid"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 )
 
@@ -65,5 +64,5 @@ func main() {
 
 	// execute the simulation
 	sim.Start(txManager, simulationTime)
-	fmt.Printf("%#v\n", l1NetworkConfig.Stats)
+	fmt.Printf("%s\n", simulation.NewOutputStats(sim))
 }

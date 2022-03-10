@@ -137,9 +137,9 @@ func validateL2TxsExist(t *testing.T, nodes []*obscuro_node.Node, txManager *Tra
 		nGroup.Go(func() error {
 			// all transactions should exist on every node
 			for _, transaction := range txManager.GetL2Transactions() {
-				tx, found := closureNode.Enclave.GetTransaction(transaction.ID)
+				_, found := closureNode.Enclave.GetTransaction(transaction.Hash())
 				if !found {
-					return fmt.Errorf("unable to find transaction: %v", tx) // nolint:goerr113
+					return fmt.Errorf("node %d, unable to find transaction: %+v", closureNode.ID, transaction) // nolint:goerr113
 				}
 			}
 			return nil
@@ -191,8 +191,8 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.
 		}
 	}
 
-	if len(common.FindDups(deposits)) > 0 {
-		dups := common.FindDups(deposits)
+	if len(common.FindUUIDDups(deposits)) > 0 {
+		dups := common.FindUUIDDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
 	if len(common.FindRollupDups(rollups)) > 0 {
