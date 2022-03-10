@@ -1,14 +1,8 @@
 package enclave
 
 import (
-	"crypto/rand"
-	"math"
-	"math/big"
 	"sync/atomic"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -52,14 +46,4 @@ func TestSerialiseRollup(t *testing.T) {
 	if r1.Hash() != rollup.Hash() {
 		t.Errorf("rollup deserialized incorrectly\n")
 	}
-}
-
-// Creates a dummy L2Tx for testing
-func createL2Tx() *L2Tx {
-	txData := L2TxData{TransferTx, common.Address{}, common.Address{}, 100}
-	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-	encodedTxData, _ := rlp.EncodeToBytes(txData)
-	return types.NewTx(&types.LegacyTx{
-		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: big.NewInt(1), Data: encodedTxData,
-	})
 }

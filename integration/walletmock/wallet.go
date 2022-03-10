@@ -1,6 +1,7 @@
 package walletmock
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"fmt"
 	"math"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -43,22 +43,24 @@ func New() Wallet {
 	return Wallet{Address: key.Address, Key: key}
 }
 
-// NewEncryptedL2Transfer creates an encrypted enclave.L2Tx of type enclave.TransferTx.
-func NewEncryptedL2Transfer(from common.Address, dest common.Address, amount uint64) common2.EncryptedTx {
+// NewL2Transfer creates an enclave.L2Tx of type enclave.TransferTx
+func NewL2Transfer(from common.Address, dest common.Address, amount uint64) *enclave.L2Tx {
 	txData := enclave.L2TxData{Type: enclave.TransferTx, From: from, To: dest, Amount: amount}
-	return newEncryptedL2Tx(txData)
+	return newL2Tx(txData)
 }
 
-// NewEncryptedL2Withdrawal creates an encrypted enclave.L2Tx of type enclave.WithdrawalTx.
-func NewEncryptedL2Withdrawal(from common.Address, amount uint64) common2.EncryptedTx {
+// NewL2Withdrawal creates an enclave.L2Tx of type enclave.WithdrawalTx
+func NewL2Withdrawal(from common.Address, amount uint64) *enclave.L2Tx {
 	txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: from, Amount: amount}
-	return newEncryptedL2Tx(txData)
+	return newL2Tx(txData)
 }
 
-// newL2Tx creates an enclave.L2Tx, using a random nonce (to avoid hash collisions) and with the L2 data encoded in the
-// transaction's data field, then encrypts it.
-func newEncryptedL2Tx(data enclave.L2TxData) common2.EncryptedTx {
-	// We should probably use a deterministic nonce instead, as in L1.
+// newL2Tx creates an enclave.L2Tx.
+//
+// A random nonce is used to avoid hash collisions. The enclave.L2TxData is encoded and stored in the transaction's
+// data field.
+func newL2Tx(data enclave.L2TxData) *enclave.L2Tx {
+	// We should probably use a deterministic nonce instead, as in the L1.
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 
 	enc, err := rlp.EncodeToBytes(data)
@@ -67,13 +69,21 @@ func newEncryptedL2Tx(data enclave.L2TxData) common2.EncryptedTx {
 		panic(err)
 	}
 
-	tx := types.NewTx(&types.LegacyTx{
+	return types.NewTx(&types.LegacyTx{
 		Nonce:    nonce.Uint64(),
 		Value:    big.NewInt(1),
 		Gas:      1,
 		GasPrice: big.NewInt(1),
 		Data:     enc,
 	})
+}
 
-	return enclave.EncryptTx(tx)
+// SignTx returns a copy of the enclave.L2Tx signed with the provided ecdsa.PrivateKey
+func SignTx(tx *enclave.L2Tx, privateKey *ecdsa.PrivateKey) *enclave.L2Tx {
+	signer := types.NewLondonSigner(big.NewInt(enclave.ChainID))
+	signedTx, err := types.SignTx(tx, signer, privateKey)
+	if err != nil {
+		panic(fmt.Errorf("could not sign transaction: %w", err))
+	}
+	return signedTx
 }

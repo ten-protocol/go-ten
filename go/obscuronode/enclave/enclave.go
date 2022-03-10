@@ -3,11 +3,16 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
+
+const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
@@ -58,7 +63,7 @@ type Enclave interface {
 	SubmitRollup(rollup common2.ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx common2.EncryptedTx)
+	SubmitTx(tx common2.EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
@@ -210,14 +215,26 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	if e.db.ExistRollup(r.Header.ParentHash) {
 		e.db.StoreRollup(&r)
 	} else {
-		common3.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%s\n", e.node, r.Hash()))
+		common3.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d\n", e.node, common3.ShortHash(r.Hash())))
 	}
 }
 
-func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
-	t := DecryptTx(tx)
-	e.db.StoreTx(t)
-	e.txCh <- t
+func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) error {
+	decryptedTx := DecryptTx(tx)
+	err := verifySignature(&decryptedTx)
+	if err != nil {
+		return err
+	}
+	e.db.StoreTx(decryptedTx)
+	e.txCh <- decryptedTx
+	return nil
+}
+
+// Checks that the L2Tx has a valid signature.
+func verifySignature(decryptedTx *L2Tx) error {
+	signer := types.NewLondonSigner(big.NewInt(ChainID))
+	_, err := types.Sender(signer, decryptedTx)
+	return err
 }
 
 func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool) {
@@ -249,9 +266,9 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 		w := e.db.ParentRollup(winnerRollup)
 		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.",
 			e.node,
-			common3.Str(winnerRollup.Hash()), e.db.HeightRollup(winnerRollup),
-			common3.Str(w.Hash()),
-			common3.Str(v.Hash()),
+			common3.ShortHash(winnerRollup.Hash()), e.db.Height(winnerRollup),
+			common3.ShortHash(w.Hash()),
+			common3.ShortHash(v.Hash()),
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State),
 		)
@@ -284,11 +301,11 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 	// if true {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
 		if speculativeRollup.r != nil {
-			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%s(%d), published=r_%s(%d)",
+			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				e.node,
-				common3.Str(speculativeRollup.r.Hash()),
+				common3.ShortHash(speculativeRollup.r.Hash()),
 				e.db.HeightRollup(speculativeRollup.r),
-				common3.Str(bs.Head.Hash()),
+				common3.ShortHash(bs.Head.Hash()),
 				e.db.HeightRollup(bs.Head)),
 			)
 			e.statsCollector.L2Recalc(e.node)

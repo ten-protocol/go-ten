@@ -99,7 +99,7 @@ func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Bloc
 
 	// only proceed if the parent is available
 	if !f {
-		common2.Log(fmt.Sprintf("> M%d: Parent block not found=b_%s", m.ID, common2.Str(b.Header().ParentHash)))
+		common2.Log(fmt.Sprintf("> M%d: Parent block not found=b_%d", m.ID, common2.ShortHash(b.Header().ParentHash)))
 		return head
 	}
 
@@ -112,7 +112,7 @@ func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Bloc
 	if !common2.IsAncestor(head, b, m.Resolver) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
-		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", m.ID, common2.Str(b.Hash()), m.Resolver.HeightBlock(b), common2.Str(head.Hash()), m.Resolver.HeightBlock(head), common2.Str(fork.Hash()), m.Resolver.HeightBlock(fork)))
+		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.ID, common2.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), common2.ShortHash(head.Hash()),  m.Resolver.HeightBlock(head), common2.ShortHash(fork.Hash()),  m.Resolver.HeightBlock(fork)))
 		return m.setFork(BlocksBetween(fork, b, m.Resolver))
 	}
 

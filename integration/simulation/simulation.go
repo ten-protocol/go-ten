@@ -7,6 +7,9 @@ import (
 	"time"
 
 	common2 "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
+	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
@@ -60,7 +63,7 @@ func RunSimulation(
 		agg.L1Node = &miner
 	}
 
-	common.Log(fmt.Sprintf("Genesis block: b_%s.", common.Str(common.GenesisBlock.Hash())))
+	common.Log(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
 
 	l1Network.Start(common.Duration(avgBlockDuration / 4))
 	l2Network.Start(common.Duration(avgBlockDuration / 4))
@@ -117,12 +120,15 @@ func injectRandomTransfers(wallets []wallet_mock.Wallet, l2Network obscuro_node.
 		if i == n {
 			break
 		}
-		f := rndWallet(wallets).Address
-		t := rndWallet(wallets).Address
-		if f == t {
+		fromWallet := rndWallet(wallets)
+		from := fromWallet.Address
+		to := rndWallet(wallets).Address
+		if from == to {
 			continue
 		}
-		encryptedTx := wallet_mock.NewEncryptedL2Transfer(f, t, common.RndBtw(1, 500))
+		tx := wallet_mock.NewL2Transfer(from, to, common.RndBtw(1, 500))
+		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
+		encryptedTx := enclave.EncryptTx(signedTx)
 		s.Transfer()
 		l2Network.BroadcastTx(encryptedTx)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration/4, avgBlockDuration)))
@@ -155,7 +161,10 @@ func injectRandomWithdrawals(wallets []wallet_mock.Wallet, network obscuro_node.
 			break
 		}
 		v := common.RndBtw(1, 100)
-		encryptedTx := wallet_mock.NewEncryptedL2Withdrawal(rndWallet(wallets).Address, v)
+		wallet := rndWallet(wallets)
+		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
+		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
+		encryptedTx := enclave.EncryptTx(signedTx)
 		network.BroadcastTx(encryptedTx)
 		s.Withdrawal(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
