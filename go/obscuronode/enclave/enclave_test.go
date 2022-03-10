@@ -14,8 +14,7 @@ func TestValidSignatureVerifies(t *testing.T) {
 	signer := types.NewLondonSigner(big.NewInt(ChainID))
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
-	err := verifySignature(signedTx)
-	if err != nil {
+	if err := verifySignature(signedTx); err != nil {
 		t.Errorf("validly-signed transaction did not pass verification: %s", err)
 	}
 }
@@ -39,8 +38,7 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 	txData.Nonce = 0
 	modifiedTx := types.NewTx(txData)
 
-	err := verifySignature(modifiedTx)
-	if err == nil {
+	if err := verifySignature(modifiedTx); err == nil {
 		t.Errorf("transaction was modified after signature but verified anyway: %s", err)
 	}
 }
@@ -52,8 +50,7 @@ func TestIncorrectSignerDoesNotVerify(t *testing.T) {
 	signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
-	err := verifySignature(signedTx)
-	if err == nil {
+	if err := verifySignature(signedTx); err == nil {
 		t.Errorf("transaction used incorrect signer but verified anyway: %s", err)
 	}
 }
