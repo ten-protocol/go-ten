@@ -34,8 +34,8 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	o.l1Height = int(o.simulation.l2Network.nodes[0].Headers().GetCurrentBlockHead().Height)
-	o.l2Height = int(o.simulation.l2Network.nodes[0].Headers().GetCurrentRollupHead().Height)
+	o.l1Height = int(o.simulation.l2Network.nodes[0].Storage().GetCurrentBlockHead().Height)
+	o.l2Height = int(o.simulation.l2Network.nodes[0].Storage().GetCurrentRollupHead().Height)
 }
 
 func (o *OutputStats) countRollups() {
@@ -43,12 +43,12 @@ func (o *OutputStats) countRollups() {
 	l2Node := o.simulation.l2Network.nodes[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := l2Node.Headers().GetCurrentRollupHead(); header.ID != enclave.GenesisRollup.Hash(); header = l2Node.Headers().GetRollupHeader(header.Parent) {
+	for header := l2Node.Storage().GetCurrentRollupHead(); header.ID != enclave.GenesisRollup.Hash(); header = l2Node.Storage().GetRollupHeader(header.Parent) {
 		o.l2RollupCountInHeaders++
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for header := l2Node.Headers().GetCurrentBlockHead(); header != nil; header = l2Node.Headers().GetBlockHeader(header.Parent) {
+	for header := l2Node.Storage().GetCurrentBlockHead(); header != nil; header = l2Node.Storage().GetBlockHeader(header.Parent) {
 		block, found := l1Node.Resolver.Resolve(header.ID)
 		if !found {
 			panic("expected l1 block not found")

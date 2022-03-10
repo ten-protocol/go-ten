@@ -61,8 +61,8 @@ type Node struct {
 	// Interface to the logic running inside the TEE
 	Enclave enclave.Enclave
 
-	// Node headers - stores the known l1 block headers and l2 block headers, always points at head
-	headers *NodeHeader
+	// Node storage - stores the node public available data
+	storage *Storage
 }
 
 func NewAgg(
@@ -96,8 +96,8 @@ func NewAgg(
 		// State processing
 		Enclave: enclave.NewEnclave(id, true, collector),
 
-		// Initialized the node headers
-		headers: NewNodeHeader(),
+		// Initialized the node storage
+		storage: NewStorage(),
 	}
 }
 
@@ -215,17 +215,17 @@ func (a *Node) RPCBalance(address gethcommon.Address) uint64 {
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
 func (a *Node) RPCCurrentBlockHead() *BlockHeader {
-	return a.headers.GetCurrentBlockHead()
+	return a.storage.GetCurrentBlockHead()
 }
 
 // RPCCurrentRollupHead returns the current head of the rollups (l2)
 func (a *Node) RPCCurrentRollupHead() *RollupHeader {
-	return a.headers.GetCurrentRollupHead()
+	return a.storage.GetCurrentRollupHead()
 }
 
-// Headers returns the NodeHeader of the node, pointing at the current head
-func (a *Node) Headers() *NodeHeader {
-	return a.headers
+// Storage returns the Storage of the node
+func (a *Node) Storage() *Storage {
+	return a.storage
 }
 
 // Stop gracefully stops the node execution
@@ -268,7 +268,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 			}
 			if blockHasRollup {
 				// adding a header will update the head if it has a higher height
-				a.Headers().AddRollupHeader(
+				a.Storage().AddRollupHeader(
 					&RollupHeader{
 						ID:          result.L2Hash,
 						Parent:      result.L2Parent,
@@ -279,7 +279,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 			}
 
 			// adding a header will update the head if it has a higher height
-			a.Headers().AddBlockHeader(
+			a.Storage().AddBlockHeader(
 				&BlockHeader{
 					ID:     result.L1Hash,
 					Parent: result.L1Parent,
