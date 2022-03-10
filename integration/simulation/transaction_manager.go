@@ -109,7 +109,7 @@ func (m *TransactionManager) GetL1Transactions() common.Transactions {
 func (m *TransactionManager) GetL2Transactions() enclave.Transactions {
 	var transactions enclave.Transactions
 	for _, req := range m.l2Transactions {
-		if enclave.TxData(&req).Type != enclave.WithdrawalTx {
+		if enclave.TxData(&req).Type != enclave.WithdrawalTx { //nolint:gosec
 			transactions = append(transactions, req)
 		}
 	}
@@ -120,8 +120,9 @@ func (m *TransactionManager) GetL2Transactions() enclave.Transactions {
 func (m *TransactionManager) GetL2WithdrawalRequests() []common2.Withdrawal {
 	var withdrawals []common2.Withdrawal
 	for _, req := range m.l2Transactions {
-		if enclave.TxData(&req).Type == enclave.WithdrawalTx {
-			withdrawals = append(withdrawals, common2.Withdrawal{Amount: enclave.TxData(&req).Amount, Address: enclave.TxData(&req).To})
+		tx := enclave.TxData(&req) //nolint:gosec
+		if tx.Type == enclave.WithdrawalTx {
+			withdrawals = append(withdrawals, common2.Withdrawal{Amount: tx.Amount, Address: tx.To})
 		}
 	}
 	return withdrawals
