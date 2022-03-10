@@ -16,7 +16,7 @@ func printBlock(b *common3.Block, m ethereum_mock.Node) string {
 			r := common2.DecodeRollup(tx.Rollup)
 			txs = append(txs, fmt.Sprintf("r_%d", common3.ShortHash(r.Hash())))
 		} else {
-			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.Dest, tx.Amount))
+			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", common3.ShortAddress(tx.Dest), tx.Amount))
 		}
 	}
 	p, f := b.Parent(m.Resolver)

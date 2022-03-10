@@ -139,6 +139,11 @@ func FindRollupDups(list []L2RootHash) map[L2RootHash]int {
 }
 
 // ShortHash converts the hash to a shorter uint64 for printing.
-func ShortHash(hash L1RootHash) uint64 {
+func ShortHash(hash common.Hash) uint64 {
 	return hash.Big().Uint64()
+}
+
+// ShortAddress converts the address to a shorter uint64 for printing.
+func ShortAddress(address common.Address) uint64 {
+	return ShortHash(address.Hash())
 }
