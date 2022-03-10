@@ -140,7 +140,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 
 	if !result.Processed {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", a.ID, common.ShortHash(b.Hash())))
+		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", common.ShortNodeID(a.ID), common.ShortHash(b.Hash())))
 		return
 	}
 
@@ -204,7 +204,7 @@ func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 		go func() {
 			err := a.Enclave.SubmitTx(tx)
 			if err != nil {
-				common.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.ID, err))
+				common.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", common.ShortNodeID(a.ID), err))
 			}
 		}()
 	}

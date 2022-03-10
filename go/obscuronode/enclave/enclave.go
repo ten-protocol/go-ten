@@ -167,7 +167,7 @@ func (e *enclaveImpl) SubmitBlock(block common3.Block) SubmitBlockResponse {
 	// So far this seems to recover correctly
 	defer func() {
 		if r := recover(); r != nil {
-			common3.Log(fmt.Sprintf("Agg%d Panic %s", e.node, r))
+			common3.Log(fmt.Sprintf("Agg%d Panic %s", common3.ShortNodeID(e.node), r))
 		}
 	}()
 
@@ -215,7 +215,7 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	if e.db.ExistRollup(r.Header.ParentHash) {
 		e.db.StoreRollup(&r)
 	} else {
-		common3.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d\n", e.node, common3.ShortHash(r.Hash())))
+		common3.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", common3.ShortNodeID(e.node), common3.ShortHash(r.Hash())))
 	}
 }
 
@@ -264,9 +264,9 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	if winnerRollup.Header.Agg == common.Address(e.node) {
 		v := winnerRollup.Proof(e.blockResolver)
 		w := e.db.ParentRollup(winnerRollup)
-		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%s(%d)[r_%s]{proof=b_%s}. Txs: %v. State=%v.",
-			e.node,
-			common3.ShortHash(winnerRollup.Hash()), e.db.Height(winnerRollup),
+		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
+			common3.ShortNodeID(e.node),
+			common3.ShortHash(winnerRollup.Hash()), e.db.HeightRollup(winnerRollup),
 			common3.ShortHash(w.Hash()),
 			common3.ShortHash(v.Hash()),
 			printTxs(winnerRollup.Transactions),
@@ -302,7 +302,7 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
 		if speculativeRollup.r != nil {
 			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
-				e.node,
+				common3.ShortNodeID(e.node),
 				common3.ShortHash(speculativeRollup.r.Hash()),
 				e.db.HeightRollup(speculativeRollup.r),
 				common3.ShortHash(bs.Head.Hash()),
@@ -319,7 +319,7 @@ func (e *enclaveImpl) produceRollup(b *common3.Block, bs BlockState) *Rollup {
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.Head.Proof(e.blockResolver)
-	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.db, e.blockResolver)
+	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.blockResolver)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
 	r := NewRollup(b, bs.Head, common.Address(e.node), newRollupTxs, newRollupState.w, common3.GenerateNonce(), serialize(newRollupState.s))

@@ -40,9 +40,12 @@ type L1TxData struct {
 type L1Tx = types.Transaction
 
 func NewL1Tx(data L1TxData) *L1Tx {
-	enc, _ := rlp.EncodeToBytes(data)
+	enc, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		panic(err)
+	}
 	return types.NewTx(&types.LegacyTx{
-		Nonce:    1,
+		Nonce:    RndBtw(0, ^uint64(0)/2),
 		Value:    big.NewInt(1),
 		Gas:      1,
 		GasPrice: big.NewInt(1),
@@ -52,7 +55,10 @@ func NewL1Tx(data L1TxData) *L1Tx {
 
 func TxData(tx *L1Tx) L1TxData {
 	data := L1TxData{}
-	rlp.DecodeBytes(tx.Data(), data)
+	err := rlp.DecodeBytes(tx.Data(), &data)
+	if err != nil {
+		panic(err)
+	}
 	return data
 }
 
@@ -90,22 +96,11 @@ func NewBlock(parent *Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *
 		Time:        0,
 		Extra:       nil,
 		MixDigest:   common.Hash{},
-		Nonce:       types.BlockNonce{},
+		Nonce:       types.EncodeNonce(nonce),
 		BaseFee:     nil,
 	}
 
 	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
-
-	//header := Header{
-	//	Nonce:      nonce,
-	//	Miner:      nodeID,
-	//	ParentHash: parentHash,
-	//}
-	//
-	//return Block{
-	//	Header:       &header,
-	//	Transactions: txs,
-	//}
 }
 
 var GenesisBlock = NewBlock(nil, 0, common.HexToAddress("0x0"), []*L1Tx{})

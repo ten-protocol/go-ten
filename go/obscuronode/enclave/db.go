@@ -246,7 +246,7 @@ func (db *inMemoryDB) ResolveBlock(hash common2.L1RootHash) (*common2.Block, boo
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	v, f := db.blockCache[hash]
-	var r *common2.Block = nil
+	var r *common2.Block
 	if f {
 		r = v.b
 	}

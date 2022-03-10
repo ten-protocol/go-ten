@@ -3,9 +3,12 @@ package common
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -122,4 +125,12 @@ func ShortHash(hash common.Hash) uint64 {
 // ShortAddress converts the address to a shorter uint64 for printing.
 func ShortAddress(address common.Address) uint64 {
 	return ShortHash(address.Hash())
+}
+
+func ShortNodeID(address NodeID) uint64 {
+	return new(big.Int).SetBytes(address[:]).Uint64()
+}
+
+func ShortNonce(nonce types.BlockNonce) uint64 {
+	return new(big.Int).SetBytes(nonce[4:]).Uint64()
 }

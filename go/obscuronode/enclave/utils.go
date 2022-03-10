@@ -84,9 +84,9 @@ func printTx(t L2Tx, txsString []string) []string {
 	txData := TxData(&t)
 	switch txData.Type {
 	case TransferTx:
-		txsString = append(txsString, fmt.Sprintf("%d->%d(%d){%d}", common.ShortAddress(txData.From), common.ShortAddress(txData.To), txData.Amount, t.Hash()))
+		txsString = append(txsString, fmt.Sprintf("%d->%d(%d){%d}", common.ShortAddress(txData.From), common.ShortAddress(txData.To), txData.Amount, common.ShortHash(t.Hash())))
 	case WithdrawalTx:
-		txsString = append(txsString, fmt.Sprintf("%d->*(%d){%d}", common.ShortAddress(txData.From), txData.Amount, t.Hash()))
+		txsString = append(txsString, fmt.Sprintf("%d->*(%d){%d}", common.ShortAddress(txData.From), txData.Amount, common.ShortHash(t.Hash())))
 	}
 	return txsString
 }

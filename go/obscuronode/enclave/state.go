@@ -169,7 +169,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	s = executeTransactions(win.Transactions, s)
 
 	p := db.ParentRollup(win).Proof(blockResolver)
-	s = processDeposits(p, win.Proof(blockResolver), s, db, blockResolver)
+	s = processDeposits(p, win.Proof(blockResolver), s, blockResolver)
 
 	if serialize(s.s) != win.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
@@ -187,7 +187,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupState, db DB, blockResolver common3.BlockResolver) RollupState {
+func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupState, blockResolver common3.BlockResolver) RollupState {
 	from := common3.GenesisBlock.Hash()
 	height := common3.L1GenesisHeight
 	if fromBlock != nil {
@@ -229,7 +229,7 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func calculateBlockState(b *common3.Block, parentState BlockState, db DB, blockResolver common3.BlockResolver) BlockState {
-	rollups := extractRollups(b, db, blockResolver)
+	rollups := extractRollups(b, blockResolver)
 	newHead, found := FindWinner(parentState.Head, rollups, db, blockResolver)
 
 	s := newProcessedState(parentState.State)
@@ -238,7 +238,7 @@ func calculateBlockState(b *common3.Block, parentState BlockState, db DB, blockR
 	if found {
 		s = executeTransactions(newHead.Transactions, s)
 		p := db.ParentRollup(newHead).Proof(blockResolver)
-		s = processDeposits(p, newHead.Proof(blockResolver), s, db, blockResolver)
+		s = processDeposits(p, newHead.Proof(blockResolver), s, blockResolver)
 	} else {
 		newHead = parentState.Head
 	}
@@ -252,7 +252,7 @@ func calculateBlockState(b *common3.Block, parentState BlockState, db DB, blockR
 	return bs
 }
 
-func extractRollups(b *common3.Block, db DB, blockResolver common3.BlockResolver) []*Rollup {
+func extractRollups(b *common3.Block, blockResolver common3.BlockResolver) []*Rollup {
 	rollups := make([]*Rollup, 0)
 	for _, t := range b.Transactions() {
 		// go through all rollup transactions
