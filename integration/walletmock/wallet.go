@@ -17,8 +17,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const chainID = 777 // The unique ID for the Obscuro chain. Required for using Geth signing.
-
 type Wallet struct {
 	Address common.Address
 	// TODO - Store key securely. Geth stores the key encrypted on disk.
@@ -82,10 +80,10 @@ func newL2Tx(data enclave.L2TxData) *enclave.L2Tx {
 
 // SignTx returns a copy of the enclave.L2Tx signed with the provided ecdsa.PrivateKey
 func SignTx(tx *enclave.L2Tx, privateKey *ecdsa.PrivateKey) *enclave.L2Tx {
-	signer := types.NewLondonSigner(big.NewInt(chainID))
+	signer := types.NewLondonSigner(big.NewInt(enclave.ChainID))
 	signedTx, err := types.SignTx(tx, signer, privateKey)
 	if err != nil {
-		panic(fmt.Errorf("could not sign transaction %w", err))
+		panic(fmt.Errorf("could not sign transaction: %w", err))
 	}
 	return signedTx
 }

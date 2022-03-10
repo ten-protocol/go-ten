@@ -3,12 +3,17 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
+
+const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
@@ -221,9 +226,19 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 }
 
 func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) {
-	t := DecryptTx(tx)
-	e.db.StoreTx(t)
-	e.txCh <- t
+	decryptedTx := DecryptTx(tx)
+	verifySignature(decryptedTx)
+	e.db.StoreTx(decryptedTx)
+	e.txCh <- decryptedTx
+}
+
+// Checks that the L2Tx has a valid signature.
+func verifySignature(decryptedTx L2Tx) {
+	signer := types.NewLondonSigner(big.NewInt(ChainID))
+	_, err := types.Sender(signer, &decryptedTx)
+	if err != nil {
+		panic(fmt.Errorf("sig didn't validate: %w", err))
+	}
 }
 
 func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool) {
