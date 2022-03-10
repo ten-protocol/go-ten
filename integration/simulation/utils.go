@@ -14,9 +14,9 @@ func printBlock(b *common3.Block, m ethereum_mock.Node) string {
 	for _, tx := range b.Transactions {
 		if tx.TxType == common3.RollupTx {
 			r := common2.DecodeRollup(tx.Rollup)
-			txs = append(txs, fmt.Sprintf("r_%s", common3.Str(r.Hash())))
+			txs = append(txs, fmt.Sprintf("r_%d", common3.ShortHash(r.Hash())))
 		} else {
-			txs = append(txs, fmt.Sprintf("deposit(%v=%d)", tx.Dest, tx.Amount))
+			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", common3.ShortAddress(tx.Dest), tx.Amount))
 		}
 	}
 	p, f := b.Parent(m.Resolver)
@@ -24,5 +24,5 @@ func printBlock(b *common3.Block, m ethereum_mock.Node) string {
 		panic("wtf")
 	}
 
-	return fmt.Sprintf("> M%d: create b_%s(Height=%d, Nonce=%d)[p=b_%s]. Txs: %v", m.ID, common3.Str(b.Hash()), b.Height(m.Resolver), b.Header.Nonce, common3.Str(p.Hash()), txs)
+	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[parent=b_%d]. Txs: %v", m.ID, common3.ShortHash(b.Hash()), b.Height(m.Resolver), b.Header.Nonce, common3.ShortHash(p.Hash()), txs)
 }
