@@ -199,8 +199,8 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 
 	blockState := updateState(b, e.db)
 
+	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	e.db.PruneTxs(historicTxs(blockState.Head, e.db))
-	// todo - should only create new rollups when there's a new rollup in the block ?
 	r := e.produceRollup(b, blockState)
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.db.StoreRollup(r)

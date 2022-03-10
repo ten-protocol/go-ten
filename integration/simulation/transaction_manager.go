@@ -86,15 +86,15 @@ func (m *TransactionManager) Start(us int) {
 	_ = wg.Wait() // future proofing to return errors
 }
 
-// TrackL1Tx adds a common.L1Tx to the internal list
-func (m *TransactionManager) TrackL1Tx(tx common.L1Tx) {
+// trackL1Tx adds a common.L1Tx to the internal list
+func (m *TransactionManager) trackL1Tx(tx common.L1Tx) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
 	m.l1Transactions = append(m.l1Transactions, &tx)
 }
 
-// TrackL2Tx adds an enclave.L2Tx to the internal list
-func (m *TransactionManager) TrackL2Tx(tx enclave.L2Tx) {
+// trackL2Tx adds an enclave.L2Tx to the internal list
+func (m *TransactionManager) trackL2Tx(tx enclave.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
 	m.l2Transactions = append(m.l2Transactions, tx)
@@ -147,7 +147,7 @@ func (m *TransactionManager) issueRandomTransfers() {
 		encryptedTx := enclave.EncryptTx(signedTx)
 		m.stats.Transfer()
 		m.l2NetworkConfig.BroadcastTx(encryptedTx)
-		go m.TrackL2Tx(*signedTx)
+		go m.trackL2Tx(*signedTx)
 		time.Sleep(common.Duration(common.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration)))
 		i++
 	}
@@ -172,7 +172,7 @@ func (m *TransactionManager) issueRandomDeposits() {
 		t, _ := tx.Encode()
 		m.l1NetworkConfig.BroadcastTx(t)
 		m.stats.Deposit(v)
-		go m.TrackL1Tx(tx)
+		go m.trackL1Tx(tx)
 		time.Sleep(common.Duration(common.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
 		i++
 	}
@@ -194,7 +194,7 @@ func (m *TransactionManager) issueRandomWithdrawals() {
 		encryptedTx := enclave.EncryptTx(signedTx)
 		m.l2NetworkConfig.BroadcastTx(encryptedTx)
 		m.stats.Withdrawal(v)
-		go m.TrackL2Tx(*signedTx)
+		go m.trackL2Tx(*signedTx)
 		time.Sleep(common.Duration(common.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
 		i++
 	}

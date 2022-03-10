@@ -267,6 +267,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 				}
 			}
 			if blockHasRollup {
+				// adding a header will update the head if it has a higher height
 				a.Headers().AddRollupHeader(
 					&RollupHeader{
 						ID:          result.L2Hash,
@@ -275,13 +276,9 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 						Height:      result.L2Height,
 					},
 				)
-				if a.Headers().GetCurrentRollupHead() == nil ||
-					a.Headers().GetCurrentRollupHead().Height <= result.L2Height {
-					a.Headers().SetCurrentRollupHead(result.L2Hash)
-				}
 			}
 
-			// always update the L1 headers
+			// adding a header will update the head if it has a higher height
 			a.Headers().AddBlockHeader(
 				&BlockHeader{
 					ID:     result.L1Hash,
@@ -289,7 +286,6 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 					Height: result.L1Height,
 				},
 			)
-			a.Headers().SetCurrentBlockHead(result.L1Hash)
 		}
 	}
 

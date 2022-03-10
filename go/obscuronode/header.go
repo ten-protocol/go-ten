@@ -28,18 +28,18 @@ type RollupHeader struct {
 type NodeHeader struct {
 	blockLock        sync.RWMutex
 	currentBlockHead common.Hash
-	blockDB          map[string]*BlockHeader
+	blockDB          map[common.Hash]*BlockHeader
 
 	rollupLock        sync.RWMutex
 	currentRollupHead common.Hash
-	rollupDB          map[string]*RollupHeader
+	rollupDB          map[common.Hash]*RollupHeader
 }
 
 // NewNodeHeader returns a new instance of the Node Headers
 func NewNodeHeader() *NodeHeader {
 	return &NodeHeader{
-		blockDB:  map[string]*BlockHeader{},
-		rollupDB: map[string]*RollupHeader{},
+		blockDB:  map[common.Hash]*BlockHeader{},
+		rollupDB: map[common.Hash]*RollupHeader{},
 	}
 }
 
@@ -54,24 +54,23 @@ func (n *NodeHeader) GetCurrentBlockHead() *BlockHeader {
 
 // GetBlockHeader returns the block header given the Hash
 func (n *NodeHeader) GetBlockHeader(hash common.Hash) *BlockHeader {
-	n.blockLock.Lock()
-	defer n.blockLock.Unlock()
-	return n.blockDB[hash.Hex()]
-}
-
-// SetCurrentBlockHead sets the node block head
-func (n *NodeHeader) SetCurrentBlockHead(hash common.Hash) {
-	n.blockLock.Lock()
-	defer n.blockLock.Unlock()
-	n.currentBlockHead = hash
+	n.blockLock.RLock()
+	defer n.blockLock.RUnlock()
+	return n.blockDB[hash]
 }
 
 // AddBlockHeader adds a BlockHeader to the known headers
-func (n *NodeHeader) AddBlockHeader(blockHeader *BlockHeader) {
+func (n *NodeHeader) AddBlockHeader(header *BlockHeader) {
 	n.blockLock.Lock()
 	defer n.blockLock.Unlock()
 
-	n.blockDB[blockHeader.ID.Hex()] = blockHeader
+	n.blockDB[header.ID] = header
+
+	// update the head if the new height is greater than the existing one
+	currentBlockHead := n.blockDB[n.currentBlockHead]
+	if currentBlockHead == nil || currentBlockHead.Height <= header.Height {
+		n.currentBlockHead = header.ID
+	}
 }
 
 // GetCurrentRollupHead returns the current rollup header (head) of the Node
@@ -85,16 +84,9 @@ func (n *NodeHeader) GetCurrentRollupHead() *RollupHeader {
 
 // GetRollupHeader returns the rollup header given the Hash
 func (n *NodeHeader) GetRollupHeader(hash common.Hash) *RollupHeader {
-	n.rollupLock.Lock()
-	defer n.rollupLock.Unlock()
-	return n.rollupDB[hash.Hex()]
-}
-
-// SetCurrentRollupHead sets the node rollup head
-func (n *NodeHeader) SetCurrentRollupHead(hash common.Hash) {
-	n.rollupLock.Lock()
-	defer n.rollupLock.Unlock()
-	n.currentRollupHead = hash
+	n.rollupLock.RLock()
+	defer n.rollupLock.RUnlock()
+	return n.rollupDB[hash]
 }
 
 // AddRollupHeader adds a RollupHeader to the known headers
@@ -102,5 +94,11 @@ func (n *NodeHeader) AddRollupHeader(header *RollupHeader) {
 	n.rollupLock.Lock()
 	defer n.rollupLock.Unlock()
 
-	n.rollupDB[header.ID.Hex()] = header
+	n.rollupDB[header.ID] = header
+
+	// update the head if the new height is greater than the existing one
+	currentRollupHead := n.rollupDB[n.currentRollupHead]
+	if currentRollupHead == nil || currentRollupHead.Height <= header.Height {
+		n.currentRollupHead = header.ID
+	}
 }
