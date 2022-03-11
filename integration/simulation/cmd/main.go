@@ -14,10 +14,10 @@ import (
 // DefaultAverageLatencyToBlockRatio is relative to the block time
 // Average eth Block duration=12s, and average eth block latency = 1s
 // Determines the broadcast powTime. The lower, the more powTime.
-const DefaultAverageLatencyToBlockRatio = uint64(12_000_000)
+const DefaultAverageLatencyToBlockRatio = 12
 
 // DefaultAverageGossipPeriodToBlockRatio - how long to wait for gossip in L2.
-const DefaultAverageGossipPeriodToBlockRatio = uint64(3_000_000)
+const DefaultAverageGossipPeriodToBlockRatio = 3
 
 func main() {
 	//f, err := os.Create("cpu.prof")
@@ -42,9 +42,9 @@ func main() {
 	// define core test parameters
 	numberOfNodes := 10
 	simulationTime := 15
-	avgBlockDuration := DefaultAverageLatencyToBlockRatio
+	avgBlockDuration := uint64(25_000)
 	avgLatency := avgBlockDuration / 15
-	avgGossipPeriod := DefaultAverageGossipPeriodToBlockRatio
+	avgGossipPeriod := avgBlockDuration / 3
 
 	// define network params
 	stats := simulation.NewStats(numberOfNodes)

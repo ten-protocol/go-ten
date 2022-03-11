@@ -43,7 +43,7 @@ func TxData(tx *L2Tx) L2TxData {
 	return data
 }
 
-var GenesisRollup = NewRollup(&common2.GenesisBlock, nil, 0, []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")
+var GenesisRollup = NewRollup(common2.GenesisBlock, nil, common.HexToAddress("0x0"), []L2Tx{}, []oc.Withdrawal{}, common2.GenerateNonce(), "")
 
 type Transactions []L2Tx
 
@@ -72,7 +72,7 @@ func (r *Rollup) Hash() common2.L2RootHash {
 	return v
 }
 
-func NewRollup(b *common2.Block, parent *Rollup, a common2.NodeID, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common2.Nonce, state oc.StateRoot) Rollup {
+func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common2.Nonce, state oc.StateRoot) Rollup {
 	parentHash := oc.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -95,11 +95,11 @@ func NewRollup(b *common2.Block, parent *Rollup, a common2.NodeID, txs []L2Tx, w
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (r *Rollup) ProofHeight(l1BlockResolver common2.BlockResolver) int {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		return -1
 	}
-	return v.Height(l1BlockResolver)
+	return l1BlockResolver.HeightBlock(v)
 }
 
 func (r *Rollup) ToExtRollup() oc.ExtRollup {
@@ -109,8 +109,8 @@ func (r *Rollup) ToExtRollup() oc.ExtRollup {
 	}
 }
 
-func (r *Rollup) Proof(l1BlockResolver common2.BlockResolver) *common2.Block {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+func (r *Rollup) Proof(l1BlockResolver common2.BlockResolver) *types.Block {
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
 	}

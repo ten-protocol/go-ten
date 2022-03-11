@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"golang.org/x/sync/errgroup"
@@ -23,7 +22,7 @@ type TransactionManager struct {
 	stats              *Stats
 	wallets            []wallet_mock.Wallet
 	l1TransactionsLock sync.RWMutex
-	l1Transactions     common.Transactions
+	l1Transactions     []common.L1TxData
 	l2TransactionsLock sync.RWMutex
 	l2Transactions     enclave.Transactions
 }
@@ -54,13 +53,13 @@ func (m *TransactionManager) Start(us int) {
 
 	// deposit some initial amount into every user
 	for _, u := range m.wallets {
-		tx := common.L1Tx{
-			ID:     uuid.New(),
+		txData := common.L1TxData{
 			TxType: common.DepositTx,
 			Amount: INITIAL_BALANCE,
 			Dest:   u.Address,
 		}
-		t, _ := tx.Encode()
+		tx := common.NewL1Tx(txData)
+		t, _ := common.EncodeTx(tx)
 		m.l1NetworkConfig.BroadcastTx(t)
 		m.stats.Deposit(INITIAL_BALANCE)
 		time.Sleep(common.Duration(m.avgBlockDuration / 3))
@@ -87,10 +86,10 @@ func (m *TransactionManager) Start(us int) {
 }
 
 // trackL1Tx adds a common.L1Tx to the internal list
-func (m *TransactionManager) trackL1Tx(tx common.L1Tx) {
+func (m *TransactionManager) trackL1Tx(tx common.L1TxData) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
-	m.l1Transactions = append(m.l1Transactions, &tx)
+	m.l1Transactions = append(m.l1Transactions, tx)
 }
 
 // trackL2Tx adds an enclave.L2Tx to the internal list
@@ -101,7 +100,7 @@ func (m *TransactionManager) trackL2Tx(tx enclave.L2Tx) {
 }
 
 // GetL1Transactions returns all generated L1 Transactions
-func (m *TransactionManager) GetL1Transactions() common.Transactions {
+func (m *TransactionManager) GetL1Transactions() []common.L1TxData {
 	return m.l1Transactions
 }
 
@@ -163,16 +162,16 @@ func (m *TransactionManager) issueRandomDeposits() {
 			break
 		}
 		v := common.RndBtw(1, 100)
-		tx := common.L1Tx{
-			ID:     uuid.New(),
+		txData := common.L1TxData{
 			TxType: common.DepositTx,
 			Amount: v,
 			Dest:   rndWallet(m.wallets).Address,
 		}
-		t, _ := tx.Encode()
+		tx := common.NewL1Tx(txData)
+		t, _ := common.EncodeTx(tx)
 		m.l1NetworkConfig.BroadcastTx(t)
 		m.stats.Deposit(v)
-		go m.trackL1Tx(tx)
+		go m.trackL1Tx(txData)
 		time.Sleep(common.Duration(common.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
 		i++
 	}

@@ -42,13 +42,13 @@ func (cfg *L2NetworkCfg) BroadcastTx(tx common.EncryptedTx) {
 }
 
 // Start kicks off the l2 nodes waiting 1 second between each node
-func (cfg *L2NetworkCfg) Start() {
+func (cfg *L2NetworkCfg) Start(delay time.Duration) {
 	// Start l1 nodes
 	for _, m := range cfg.nodes {
 		t := m
 		go t.Start()
 		// start each node one block apart (on avg)
-		time.Sleep(time.Duration(cfg.avgBlockDuration))
+		time.Sleep(delay)
 	}
 }
 

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	common2 "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
@@ -159,21 +161,22 @@ const (
 
 // validateL1 does a sanity check on the mock implementation of the L1
 func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.L1RootHash, node *ethereum_mock.Node) {
-	deposits := make([]uuid.UUID, 0)
+	deposits := make([]common2.Hash, 0)
 	rollups := make([]common.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	l1Block, found := node.Resolver.Resolve(*l1HeightHash)
+	l1Block, found := node.Resolver.ResolveBlock(*l1HeightHash)
 	if !found {
 		t.Errorf("expected l1 height block not found")
 	}
 
-	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, l1Block, node.Resolver)
+	blockchain := ethereum_mock.BlocksBetween(common.GenesisBlock, l1Block, node.Resolver)
 	for _, block := range blockchain {
-		for _, tx := range block.Transactions {
+		for _, tr := range block.Transactions() {
+			tx := common.TxData(tr)
 			switch tx.TxType {
 			case common.DepositTx:
-				deposits = append(deposits, tx.ID)
+				deposits = append(deposits, tr.Hash())
 				totalDeposited += tx.Amount
 			case common.RollupTx:
 				r := obscuroCommon.DecodeRollup(tx.Rollup)
@@ -189,8 +192,8 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.
 		}
 	}
 
-	if len(common.FindUUIDDups(deposits)) > 0 {
-		dups := common.FindUUIDDups(deposits)
+	if len(common.FindHashDups(deposits)) > 0 {
+		dups := common.FindHashDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
 	if len(common.FindRollupDups(rollups)) > 0 {

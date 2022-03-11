@@ -39,7 +39,7 @@ func (n *L1NetworkCfg) BroadcastBlock(b common2.EncodedBlock, p common2.EncodedB
 
 	bl, _ := b.Decode()
 	for _, m := range n.nodes {
-		if m.ID != bl.Header.Miner {
+		if m.ID != bl.Header().Coinbase {
 			t := m
 			common2.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
@@ -66,13 +66,13 @@ func (n *L1NetworkCfg) BroadcastTx(tx common2.EncodedL1Tx) {
 }
 
 // Start kicks off the l1 nodes waiting 1 second between each node
-func (n *L1NetworkCfg) Start() {
+func (n *L1NetworkCfg) Start(delay time.Duration) {
 	// Start l1 nodes
 	for _, m := range n.nodes {
 		t := m
 		go t.Start()
 		// start each node one block apart (on avg)
-		time.Sleep(time.Duration(n.avgBlockDuration))
+		time.Sleep(delay)
 	}
 }
 

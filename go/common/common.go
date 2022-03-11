@@ -2,10 +2,8 @@ package common
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/uuid"
+	"github.com/ethereum/go-ethereum/core/types"
 )
-
-type NodeID uint64
 
 const (
 	L2GenesisHeight = 0
@@ -19,7 +17,7 @@ type L1RootHash = common.Hash
 
 type (
 	L2RootHash = common.Hash
-	TxHash     = uuid.UUID
+	TxHash     = common.Hash
 )
 
 type Nonce = uint64
@@ -32,6 +30,6 @@ type NotifyNewBlock interface {
 }
 
 type L1Node interface {
-	RPCBlockchainFeed() []*Block
+	RPCBlockchainFeed() []*types.Block
 	BroadcastTx(t EncodedL1Tx)
 }

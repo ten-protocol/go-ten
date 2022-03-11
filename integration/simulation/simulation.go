@@ -2,7 +2,10 @@ package simulation
 
 import (
 	"fmt"
+	"math/big"
 	"time"
+
+	common2 "github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -12,16 +15,16 @@ import (
 )
 
 const (
-	INITIAL_BALANCE      = 5000 // nolint:revive,stylecheck
-	NODE_BOOTUP_DELAY_MS = 100  // nolint:revive,stylecheck
+	INITIAL_BALANCE = 5000 // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
 type Simulation struct {
-	l1NodeConfig *ethereum_mock.MiningConfig
-	l1Network    *L1NetworkCfg
-	l2NodeConfig *obscuro_node.AggregatorCfg
-	l2Network    *L2NetworkCfg
+	l1NodeConfig     *ethereum_mock.MiningConfig
+	l1Network        *L1NetworkCfg
+	l2NodeConfig     *obscuro_node.AggregatorCfg
+	l2Network        *L2NetworkCfg
+	avgBlockDuration uint64
 }
 
 // NewSimulation defines a new simulation network
@@ -45,20 +48,23 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 			genesis = true
 		}
 		// create a layer 2 node
-		agg := obscuro_node.NewAgg(common.NodeID(i), l2NodeCfg, nil, l2NetworkCfg, stats, genesis)
+		agg := obscuro_node.NewAgg(common2.BigToAddress(big.NewInt(int64(i))), l2NodeCfg, nil, l2NetworkCfg, stats, genesis)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
-		miner := ethereum_mock.NewMiner(common.NodeID(i), l1NodeCfg, &agg, l1NetworkCfg, stats)
+		miner := ethereum_mock.NewMiner(common2.BigToAddress(big.NewInt(int64(i))), l1NodeCfg, &agg, l1NetworkCfg, stats)
 		l1NetworkCfg.nodes = append(l1NetworkCfg.nodes, &miner)
 		agg.L1Node = &miner
 	}
 
+	log.Log(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
+
 	return &Simulation{
-		l1NodeConfig: &l1NodeCfg,
-		l1Network:    l1NetworkCfg,
-		l2NodeConfig: &l2NodeCfg,
-		l2Network:    l2NetworkCfg,
+		l1NodeConfig:     &l1NodeCfg,
+		l1Network:        l1NetworkCfg,
+		l2NodeConfig:     &l2NodeCfg,
+		l2Network:        l2NetworkCfg,
+		avgBlockDuration: avgBlockDuration,
 	}
 }
 
@@ -72,10 +78,11 @@ func (s *Simulation) Start(
 	// todo - add observer nodes
 	// todo read balance
 
-	log.Log(fmt.Sprintf("Genesis block: b_%s.", common.Str(common.GenesisBlock.Hash())))
+	log.Log(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
 
-	s.l1Network.Start()
-	s.l2Network.Start()
+	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
+	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
+	s.l2Network.Start(common.Duration(s.avgBlockDuration / 4))
 
 	timeInUs := simulationTime * 1000 * 1000
 
