@@ -105,7 +105,7 @@ func (h *Header) Hash() obscuroCommon.L2RootHash {
 	hash, err := hashing.RLPHash(h)
 	if err != nil {
 		// todo - log / surface these
-		fmt.Printf("err hashing the l2roohash")
+		fmt.Printf("err hashing the l2roothash")
 	}
 	return hash
 }

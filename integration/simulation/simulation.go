@@ -84,6 +84,7 @@ func (s *Simulation) Start(
 	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
 	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
 
+	// time in micro seconds to run the simulation
 	timeInUs := simulationTime * 1000 * 1000
 
 	timer := time.Now()

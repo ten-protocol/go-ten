@@ -288,7 +288,7 @@ func setupTestLog(baseDir string) *os.File {
 	if err != nil {
 		panic(err)
 	}
-	f, err := os.CreateTemp(baseDir, "simulation-result-*.txt")
+	f, err := os.CreateTemp(baseDir, fmt.Sprintf("simulation-result-%d-*.txt", time.Now().Unix()))
 	if err != nil {
 		panic(err)
 	}
