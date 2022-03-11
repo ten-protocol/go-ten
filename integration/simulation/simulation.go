@@ -6,11 +6,12 @@ import (
 	"math/rand"
 	"time"
 
-	common2 "github.com/ethereum/go-ethereum/common"
+	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
-	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
@@ -53,11 +54,11 @@ func RunSimulation(
 			genesis = true
 		}
 		// create a layer 2 node
-		agg := obscuro_node.NewAgg(common2.BigToAddress(big.NewInt(int64(i))), l2Cfg, nil, &l2Network, &stats, genesis)
+		agg := obscuro_node.NewAgg(gethcommon.BigToAddress(big.NewInt(int64(i))), l2Cfg, nil, &l2Network, &stats, genesis)
 		l2Network.nodes = append(l2Network.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
-		miner := ethereum_mock.NewMiner(common2.BigToAddress(big.NewInt(int64(i))), l1Cfg, &agg, &l1Network, &stats)
+		miner := ethereum_mock.NewMiner(gethcommon.BigToAddress(big.NewInt(int64(i))), l1Cfg, &agg, &l1Network, &stats)
 		l1Network.nodes = append(l1Network.nodes, &miner)
 		agg.L1Node = &miner
 	}

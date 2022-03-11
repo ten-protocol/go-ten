@@ -3,32 +3,33 @@ package simulation
 import (
 	"time"
 
-	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
 	nodes []*obscuro_node.Node
-	delay common3.Latency // the latency
+	delay common.Latency // the latency
 }
 
 // BroadcastRollup Broadcasts the rollup to all L2 peers
-func (cfg *L2NetworkCfg) BroadcastRollup(r common3.EncodedRollup) {
+func (cfg *L2NetworkCfg) BroadcastRollup(r common.EncodedRollup) {
 	for _, a := range cfg.nodes {
-		rol := common.DecodeRollup(r)
+		rol := nodecommon.DecodeRollup(r)
 		if a.ID != rol.Header.Agg {
 			t := a
-			common3.Schedule(cfg.delay(), func() { t.P2PGossipRollup(r) })
+			common.Schedule(cfg.delay(), func() { t.P2PGossipRollup(r) })
 		}
 	}
 }
 
-func (cfg *L2NetworkCfg) BroadcastTx(tx common.EncryptedTx) {
+func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
 	for _, a := range cfg.nodes {
 		t := a
-		common3.Schedule(cfg.delay()/2, func() { t.P2PReceiveTx(tx) })
+		common.Schedule(cfg.delay()/2, func() { t.P2PReceiveTx(tx) })
 	}
 }
 

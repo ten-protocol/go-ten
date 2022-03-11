@@ -1,13 +1,9 @@
-package common
+package nodecommon
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/common"
 )
-
-func (r Rollup) Encode() (common.EncodedRollup, error) {
-	return rlp.EncodeToBytes(r)
-}
 
 func Decode(encoded common.EncodedRollup) (*Rollup, error) {
 	r := Rollup{}
@@ -17,7 +13,7 @@ func Decode(encoded common.EncodedRollup) (*Rollup, error) {
 }
 
 func EncodeRollup(r *Rollup) common.EncodedRollup {
-	encoded, err := r.Encode()
+	encoded, err := r.encode()
 	if err != nil {
 		panic(err)
 	}
@@ -32,4 +28,8 @@ func DecodeRollup(rollup common.EncodedRollup) *Rollup {
 	}
 
 	return r
+}
+
+func (r Rollup) encode() (common.EncodedRollup, error) {
+	return rlp.EncodeToBytes(r)
 }

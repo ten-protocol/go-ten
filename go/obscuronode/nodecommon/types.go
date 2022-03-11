@@ -1,12 +1,9 @@
-package common
+package nodecommon
 
 import (
 	"fmt"
-	"io"
 	"sync"
 	"sync/atomic"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -14,8 +11,6 @@ import (
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/common"
 	"golang.org/x/crypto/sha3"
 )
-
-var GenesisHash = common.HexToHash("1000000000000000000000000000000000000000000000000000000000000000")
 
 // Todo - this has to be a trie root eventually
 type StateRoot = string
@@ -43,7 +38,7 @@ type Rollup struct {
 
 	hash   atomic.Value
 	Height atomic.Value
-	size   atomic.Value
+	size   atomic.Value //nolint
 
 	Transactions EncryptedTransactions
 }
@@ -59,33 +54,6 @@ func (er ExtRollup) ToRollup() *Rollup {
 		Header:       er.Header,
 		Transactions: er.Txs,
 	}
-}
-
-func (r Rollup) ToExtRollup() ExtRollup {
-	return ExtRollup{
-		Header: r.Header,
-		Txs:    r.Transactions,
-	}
-}
-
-func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *types.Block {
-	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
-	if !f {
-		panic("Could not find proof for this rollup")
-	}
-
-	return v
-}
-
-// ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
-// todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r Rollup) ProofHeight(l1BlockResolver obscuroCommon.BlockResolver) int {
-	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
-	if !f {
-		return -1
-	}
-
-	return l1BlockResolver.HeightBlock(v)
 }
 
 // Hash returns the keccak256 hash of b's header.
@@ -126,25 +94,4 @@ func rlpHash(x interface{}) (h common.Hash) {
 
 var hasherPool = sync.Pool{
 	New: func() interface{} { return sha3.NewLegacyKeccak256() },
-}
-
-// DecodeRLP decodes the Ethereum
-func (r *Rollup) DecodeRLP(s *rlp.Stream) error {
-	var eb ExtRollup
-
-	_, size, _ := s.Kind()
-
-	if err := s.Decode(&eb); err != nil {
-		return err
-	}
-
-	r.Header, r.Transactions = eb.Header, eb.Txs
-	r.size.Store(common.StorageSize(rlp.ListSize(size)))
-
-	return nil
-}
-
-// EncodeRLP serializes b into the Ethereum RLP block format.
-func (r Rollup) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, r.ToExtRollup())
 }

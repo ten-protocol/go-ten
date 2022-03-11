@@ -1,4 +1,4 @@
-package obscuronode
+package host
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
-	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

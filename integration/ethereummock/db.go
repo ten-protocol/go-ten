@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	common2 "github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 type blockAndHeight struct {
@@ -15,13 +15,13 @@ type blockAndHeight struct {
 
 // Received blocks ar stored here
 type blockResolverInMem struct {
-	blockCache map[common2.L1RootHash]blockAndHeight
+	blockCache map[common.L1RootHash]blockAndHeight
 	m          sync.RWMutex
 }
 
-func NewResolver() common2.BlockResolver {
+func NewResolver() common.BlockResolver {
 	return &blockResolverInMem{
-		blockCache: map[common2.L1RootHash]blockAndHeight{},
+		blockCache: map[common.L1RootHash]blockAndHeight{},
 		m:          sync.RWMutex{},
 	}
 }
@@ -29,7 +29,7 @@ func NewResolver() common2.BlockResolver {
 func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.m.Lock()
 	defer n.m.Unlock()
-	if block.ParentHash() == common2.GenesisHash {
+	if block.ParentHash() == common.GenesisHash {
 		n.blockCache[block.Hash()] = blockAndHeight{block, 0}
 		return
 	}
@@ -41,7 +41,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.blockCache[block.Hash()] = blockAndHeight{block, p.height + 1}
 }
 
-func (n *blockResolverInMem) ResolveBlock(hash common2.L1RootHash) (*types.Block, bool) {
+func (n *blockResolverInMem) ResolveBlock(hash common.L1RootHash) (*types.Block, bool) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
@@ -56,23 +56,23 @@ func (n *blockResolverInMem) HeightBlock(block *types.Block) int {
 }
 
 func (n *blockResolverInMem) ParentBlock(block *types.Block) (*types.Block, bool) {
-	return common2.Parent(n, block)
+	return common.Parent(n, block)
 }
 
 // The cache of included transactions
 type txDBInMem struct {
-	transactionsPerBlockCache map[common2.L1RootHash]map[common2.TxHash]*common2.L1Tx
+	transactionsPerBlockCache map[common.L1RootHash]map[common.TxHash]*common.L1Tx
 	rpbcM                     *sync.RWMutex
 }
 
 func NewTxDB() TxDB {
 	return &txDBInMem{
-		transactionsPerBlockCache: make(map[common2.L1RootHash]map[common2.TxHash]*common2.L1Tx),
+		transactionsPerBlockCache: make(map[common.L1RootHash]map[common.TxHash]*common.L1Tx),
 		rpbcM:                     &sync.RWMutex{},
 	}
 }
 
-func (n *txDBInMem) Txs(b *types.Block) (map[common2.TxHash]*common2.L1Tx, bool) {
+func (n *txDBInMem) Txs(b *types.Block) (map[common.TxHash]*common.L1Tx, bool) {
 	n.rpbcM.RLock()
 	val, found := n.transactionsPerBlockCache[b.Hash()]
 	n.rpbcM.RUnlock()
@@ -80,7 +80,7 @@ func (n *txDBInMem) Txs(b *types.Block) (map[common2.TxHash]*common2.L1Tx, bool)
 	return val, found
 }
 
-func (n *txDBInMem) AddTxs(b *types.Block, newMap map[common2.TxHash]*common2.L1Tx) {
+func (n *txDBInMem) AddTxs(b *types.Block, newMap map[common.TxHash]*common.L1Tx) {
 	n.rpbcM.Lock()
 	n.transactionsPerBlockCache[b.Hash()] = newMap
 	n.rpbcM.Unlock()
@@ -90,11 +90,11 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[common2.TxHash]*common2.L1
 // deep have been removed.
 func removeCommittedTransactions(
 	cb *types.Block,
-	mempool []*common2.L1Tx,
-	resolver common2.BlockResolver,
+	mempool []*common.L1Tx,
+	resolver common.BlockResolver,
 	db TxDB,
-) []*common2.L1Tx {
-	if resolver.HeightBlock(cb) <= common2.HeightCommittedBlocks {
+) []*common.L1Tx {
+	if resolver.HeightBlock(cb) <= common.HeightCommittedBlocks {
 		return mempool
 	}
 
@@ -102,7 +102,7 @@ func removeCommittedTransactions(
 	i := 0
 
 	for {
-		if i == common2.HeightCommittedBlocks {
+		if i == common.HeightCommittedBlocks {
 			break
 		}
 

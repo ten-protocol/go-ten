@@ -9,11 +9,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	common2 "github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
-	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 	enclave2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
@@ -59,7 +59,7 @@ const L2EfficiencyThreashold = 0.3
 
 // Sanity check
 func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave2.DB, resolver common.BlockResolver) {
-	deposits := make([]common2.Hash, 0)
+	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]common.L2RootHash, 0)
 	s.l1Height = db.HeightBlock(b)
 	totalDeposited := uint64(0)
@@ -75,7 +75,7 @@ func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave2.DB, resolver
 				deposits = append(deposits, tr.Hash())
 				totalDeposited += tx.Amount
 			case common.RollupTx:
-				r := obscuroCommon.DecodeRollup(tx.Rollup)
+				r := nodecommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if common.IsBlockAncestor(r.Header.L1Proof, b, resolver) {
 					// only count the rollup if it is published in the right branch
@@ -121,9 +121,9 @@ func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave2.DB, resolver
 
 func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint64 {
 	s.l2Height = db.HeightRollup(r)
-	transfers := make([]common2.Hash, 0)
+	transfers := make([]gethcommon.Hash, 0)
 	withdrawalTxs := make([]enclave2.L2Tx, 0)
-	withdrawalRequests := make([]obscuroCommon.Withdrawal, 0)
+	withdrawalRequests := make([]nodecommon.Withdrawal, 0)
 	for {
 		if db.HeightRollup(r) == common.L2GenesisHeight {
 			break
@@ -166,7 +166,7 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 	return sumWithdrawals(withdrawalRequests)
 }
 
-func sumWithdrawals(w []obscuroCommon.Withdrawal) uint64 {
+func sumWithdrawals(w []nodecommon.Withdrawal) uint64 {
 	sum := uint64(0)
 	for _, r := range w {
 		sum += r.Amount
