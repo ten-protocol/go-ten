@@ -245,9 +245,7 @@ func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Sta
 		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", headerWithdrawalSum, stats.totalWithdrawnAmount)
 	}
 
-	// TODO - there should be an efficiency test between blocks and rollups
 	// you should not have % difference between the # of rollups and the # of blocks
-
 	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
 	if efficiency > L2EfficiencyThreshold {
 		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreshold)

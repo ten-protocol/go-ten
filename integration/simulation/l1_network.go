@@ -65,13 +65,12 @@ func (n *L1NetworkCfg) BroadcastTx(tx common2.EncodedL1Tx) {
 	}
 }
 
-// Start kicks off the l1 nodes waiting 1 second between each node
+// Start kicks off the l1 nodes waiting a delay between each node
 func (n *L1NetworkCfg) Start(delay time.Duration) {
 	// Start l1 nodes
 	for _, m := range n.nodes {
 		t := m
 		go t.Start()
-		// start each node one block apart (on avg)
 		time.Sleep(delay)
 	}
 }

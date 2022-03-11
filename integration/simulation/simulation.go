@@ -82,7 +82,7 @@ func (s *Simulation) Start(
 
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
 	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
-	s.l2Network.Start(common.Duration(s.avgBlockDuration / 4))
+	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
 
 	timeInUs := simulationTime * 1000 * 1000
 
