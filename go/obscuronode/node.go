@@ -61,8 +61,8 @@ type Node struct {
 	// Interface to the logic running inside the TEE
 	Enclave enclave.Enclave
 
-	// Node storage - stores the node public available data
-	storage *Storage
+	// Node nodeDB - stores the node public available data
+	nodeDB *DB
 }
 
 func NewAgg(
@@ -96,15 +96,15 @@ func NewAgg(
 		// State processing
 		Enclave: enclave.NewEnclave(id, true, collector),
 
-		// Initialized the node storage
-		storage: NewStorage(),
+		// Initialized the node nodeDB
+		nodeDB: NewDB(),
 	}
 }
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
 	if a.genesis {
-		// Create the shared secret and submit it to the management contract for storage
+		// Create the shared secret and submit it to the management contract for nodeDB
 		secret := a.Enclave.GenerateSecret()
 		a.broadcastTx(common.L1Tx{
 			ID:          uuid.New(),
@@ -215,17 +215,17 @@ func (a *Node) RPCBalance(address gethcommon.Address) uint64 {
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
 func (a *Node) RPCCurrentBlockHead() *BlockHeader {
-	return a.storage.GetCurrentBlockHead()
+	return a.nodeDB.GetCurrentBlockHead()
 }
 
 // RPCCurrentRollupHead returns the current head of the rollups (l2)
 func (a *Node) RPCCurrentRollupHead() *RollupHeader {
-	return a.storage.GetCurrentRollupHead()
+	return a.nodeDB.GetCurrentRollupHead()
 }
 
-// Storage returns the Storage of the node
-func (a *Node) Storage() *Storage {
-	return a.storage
+// DB returns the DB of the node
+func (a *Node) DB() *DB {
+	return a.nodeDB
 }
 
 // Stop gracefully stops the node execution
@@ -262,7 +262,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 			// only update the node rollup headers if the enclave has ingested it
 			if result.IngestedNewRollup {
 				// adding a header will update the head if it has a higher height
-				a.Storage().AddRollupHeader(
+				a.DB().AddRollupHeader(
 					&RollupHeader{
 						ID:          result.L2Hash,
 						Parent:      result.L2Parent,
@@ -273,7 +273,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 			}
 
 			// adding a header will update the head if it has a higher height
-			a.Storage().AddBlockHeader(
+			a.DB().AddBlockHeader(
 				&BlockHeader{
 					ID:     result.L1Hash,
 					Parent: result.L1Parent,

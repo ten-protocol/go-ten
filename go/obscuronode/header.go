@@ -24,8 +24,8 @@ type RollupHeader struct {
 	Withdrawals []common2.Withdrawal
 }
 
-// Storage allows to access the nodes public storage
-type Storage struct {
+// DB allows to access the nodes public nodeDB
+type DB struct {
 	blockLock        sync.RWMutex
 	currentBlockHead common.Hash
 	blockDB          map[common.Hash]*BlockHeader
@@ -35,16 +35,16 @@ type Storage struct {
 	rollupDB          map[common.Hash]*RollupHeader
 }
 
-// NewStorage returns a new instance of the Node Storage
-func NewStorage() *Storage {
-	return &Storage{
+// NewDB returns a new instance of the Node DB
+func NewDB() *DB {
+	return &DB{
 		blockDB:  map[common.Hash]*BlockHeader{},
 		rollupDB: map[common.Hash]*RollupHeader{},
 	}
 }
 
 // GetCurrentBlockHead returns the current block header (head) of the Node
-func (n *Storage) GetCurrentBlockHead() *BlockHeader {
+func (n *DB) GetCurrentBlockHead() *BlockHeader {
 	n.blockLock.RLock()
 	current := n.currentBlockHead
 	n.blockLock.RUnlock()
@@ -53,14 +53,14 @@ func (n *Storage) GetCurrentBlockHead() *BlockHeader {
 }
 
 // GetBlockHeader returns the block header given the Hash
-func (n *Storage) GetBlockHeader(hash common.Hash) *BlockHeader {
+func (n *DB) GetBlockHeader(hash common.Hash) *BlockHeader {
 	n.blockLock.RLock()
 	defer n.blockLock.RUnlock()
 	return n.blockDB[hash]
 }
 
 // AddBlockHeader adds a BlockHeader to the known headers
-func (n *Storage) AddBlockHeader(header *BlockHeader) {
+func (n *DB) AddBlockHeader(header *BlockHeader) {
 	n.blockLock.Lock()
 	defer n.blockLock.Unlock()
 
@@ -74,7 +74,7 @@ func (n *Storage) AddBlockHeader(header *BlockHeader) {
 }
 
 // GetCurrentRollupHead returns the current rollup header (head) of the Node
-func (n *Storage) GetCurrentRollupHead() *RollupHeader {
+func (n *DB) GetCurrentRollupHead() *RollupHeader {
 	n.rollupLock.RLock()
 	current := n.currentRollupHead
 	n.rollupLock.RUnlock()
@@ -83,14 +83,14 @@ func (n *Storage) GetCurrentRollupHead() *RollupHeader {
 }
 
 // GetRollupHeader returns the rollup header given the Hash
-func (n *Storage) GetRollupHeader(hash common.Hash) *RollupHeader {
+func (n *DB) GetRollupHeader(hash common.Hash) *RollupHeader {
 	n.rollupLock.RLock()
 	defer n.rollupLock.RUnlock()
 	return n.rollupDB[hash]
 }
 
 // AddRollupHeader adds a RollupHeader to the known headers
-func (n *Storage) AddRollupHeader(header *RollupHeader) {
+func (n *DB) AddRollupHeader(header *RollupHeader) {
 	n.rollupLock.Lock()
 	defer n.rollupLock.Unlock()
 

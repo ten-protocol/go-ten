@@ -66,8 +66,8 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 	// pick one node to draw height
 	l1Node := network.l1Network.nodes[0]
 	obscuroNode := network.l2Network.nodes[0]
-	currentBlockHead := obscuroNode.Storage().GetCurrentBlockHead()
-	currentRollupHead := obscuroNode.Storage().GetCurrentRollupHead()
+	currentBlockHead := obscuroNode.DB().GetCurrentBlockHead()
+	currentRollupHead := obscuroNode.DB().GetCurrentRollupHead()
 
 	l1Height := currentBlockHead.Height
 	l1HeightHash := currentBlockHead.ID
@@ -92,20 +92,20 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2
 func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
 	l1Height := uint(0)
-	for header := node.Storage().GetCurrentBlockHead(); header != nil; header = node.Storage().GetBlockHeader(header.Parent) {
+	for header := node.DB().GetCurrentBlockHead(); header != nil; header = node.DB().GetBlockHeader(header.Parent) {
 		l1Height++
 	}
 	l2Height := uint(0)
-	for header := node.Storage().GetCurrentRollupHead(); header != nil; header = node.Storage().GetRollupHeader(header.Parent) {
+	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
 		l2Height++
 	}
 
-	if l1Height != node.Storage().GetCurrentBlockHead().Height {
-		t.Errorf("unexpected block heigh. expected %d, got %d", l1Height, node.Storage().GetCurrentBlockHead().Height)
+	if l1Height != node.DB().GetCurrentBlockHead().Height {
+		t.Errorf("unexpected block heigh. expected %d, got %d", l1Height, node.DB().GetCurrentBlockHead().Height)
 	}
 
-	if l2Height != node.Storage().GetCurrentRollupHead().Height {
-		t.Errorf("unexpected rollup heigh. expected %d, got %d", l2Height, node.Storage().GetCurrentRollupHead().Height)
+	if l2Height != node.DB().GetCurrentRollupHead().Height {
+		t.Errorf("unexpected rollup heigh. expected %d, got %d", l2Height, node.DB().GetCurrentRollupHead().Height)
 	}
 
 	if l1Height > stats.totalL1Blocks || l2Height > stats.totalL2Blocks {
@@ -223,7 +223,7 @@ func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Sta
 
 	// todo - check that proofs are on the canonical chain
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for header := node.Storage().GetCurrentRollupHead(); header != nil; header = node.Storage().GetRollupHeader(header.Parent) {
+	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
 		for _, w := range header.Withdrawals {
 			headerWithdrawalSum += w.Amount
 			headerWithdrawalTxCount++
