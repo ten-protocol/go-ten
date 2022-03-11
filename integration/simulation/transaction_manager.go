@@ -1,11 +1,12 @@
 package simulation
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"golang.org/x/sync/errgroup"

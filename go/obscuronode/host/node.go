@@ -2,10 +2,11 @@ package host
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode"
 
 	"github.com/ethereum/go-ethereum/core/types"
 

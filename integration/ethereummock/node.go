@@ -2,9 +2,10 @@ package ethereummock
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 

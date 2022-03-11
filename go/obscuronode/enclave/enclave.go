@@ -3,8 +3,9 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"math/big"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"

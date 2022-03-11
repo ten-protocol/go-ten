@@ -2,11 +2,12 @@ package simulation
 
 import (
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"math/big"
-	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 

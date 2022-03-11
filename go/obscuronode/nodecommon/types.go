@@ -2,9 +2,10 @@ package nodecommon
 
 import (
 	"fmt"
+	"sync/atomic"
+
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
 )

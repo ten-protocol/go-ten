@@ -1,8 +1,9 @@
 package obscuronode
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"sync"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
 )

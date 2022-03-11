@@ -1,8 +1,9 @@
 package simulation
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"

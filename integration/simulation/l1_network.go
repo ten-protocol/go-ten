@@ -1,9 +1,10 @@
 package simulation
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
