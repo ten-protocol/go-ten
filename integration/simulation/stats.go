@@ -12,17 +12,11 @@ import (
 
 // Stats - collects information during the simulation. It can be checked programmatically.
 type Stats struct {
-	nrMiners         int
-	simulationTime   int
-	avgBlockDuration uint64
-	avgLatency       uint64
-	gossipPeriod     uint64
+	nrMiners int
 
-	l1Height      int
-	totalL1Blocks int
+	totalL1Blocks uint
 
-	l2Height           int
-	totalL2Blocks      int
+	totalL2Blocks      uint
 	l2Head             *common2.Rollup
 	maxRollupsPerBlock uint32
 	nrEmptyBlocks      int
@@ -39,16 +33,12 @@ type Stats struct {
 	statsMu                   *sync.RWMutex
 }
 
-func NewStats(nrMiners int, simulationTime int, avgBlockDuration uint64, avgLatency uint64, gossipPeriod uint64) Stats {
-	return Stats{
-		nrMiners:         nrMiners,
-		simulationTime:   simulationTime,
-		avgBlockDuration: avgBlockDuration,
-		avgLatency:       avgLatency,
-		gossipPeriod:     gossipPeriod,
-		noL1Reorgs:       map[common.Address]int{},
-		noL2Recalcs:      map[common.Address]int{},
-		statsMu:          &sync.RWMutex{},
+func NewStats(nrMiners int) *Stats {
+	return &Stats{
+		nrMiners:    nrMiners,
+		noL1Reorgs:  map[common.Address]int{},
+		noL2Recalcs: map[common.Address]int{},
+		statsMu:     &sync.RWMutex{},
 	}
 }
 

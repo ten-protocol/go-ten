@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
@@ -20,11 +21,19 @@ type StatsCollector interface {
 	RollupWithMoreRecentProof()
 }
 
-// The response sent back to the node
+// SubmitBlockResponse is the response sent from the enclave back to the node after ingesting a block
 type SubmitBlockResponse struct {
-	Hash      common3.L2RootHash
-	Rollup    common2.ExtRollup
-	Processed bool
+	L1Hash      common3.L1RootHash   // The Header Hash of the ingested Block
+	L1Height    uint                 // The L1 Height of the ingested Block
+	L1Parent    common3.L2RootHash   // The L1 Parent of the ingested Block
+	L2Hash      common3.L2RootHash   // The Rollup Hash in the ingested Block
+	L2Height    uint                 // The Rollup Height in the ingested Block
+	L2Parent    common3.L2RootHash   // The Rollup Hash Parent inside the ingested Block
+	Withdrawals []common2.Withdrawal // The Withdrawals available in Rollup of the ingested Block
+
+	ProducedRollup    common2.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
+	IngestedBlock     bool              // Whether the Block was ingested or discarded
+	IngestedNewRollup bool              // Whether the Block had a new Rollup and the enclave has ingested it
 }
 
 // Enclave - The actual implementation of this interface will call an rpc service
@@ -70,13 +79,12 @@ type Enclave interface {
 
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool)
+
+	// Stop gracefully stops the enclave
 	Stop()
 
-	// TestPeekHead - only available for testing purposes
-	TestPeekHead() BlockState
-
-	// TestDb - only available for testing purposes
-	TestDB() DB
+	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
+	GetTransaction(txHash common.Hash) (*L2Tx, bool)
 }
 
 type enclaveImpl struct {
@@ -146,12 +154,11 @@ func (e *enclaveImpl) Start(block types.Block) {
 }
 
 func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
-	r := GenesisRollup
-	hash := r.Header.Hash()
 	return SubmitBlockResponse{
-		Hash:      hash,
-		Rollup:    r.ToExtRollup(),
-		Processed: true,
+		L2Hash:         GenesisRollup.Header.Hash(),
+		L1Hash:         common2.GenesisHash,
+		ProducedRollup: GenesisRollup.ToExtRollup(),
+		IngestedBlock:  true,
 	}
 }
 
@@ -167,13 +174,13 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 	// So far this seems to recover correctly
 	defer func() {
 		if r := recover(); r != nil {
-			common3.Log(fmt.Sprintf("Agg%d Panic %s", common3.ShortAddress(e.node), r))
+			log.Log(fmt.Sprintf("Agg%d Panic %s", common3.ShortAddress(e.node), r))
 		}
 	}()
 
 	_, foundBlock := e.db.ResolveBlock(block.Hash())
 	if foundBlock {
-		return SubmitBlockResponse{Processed: false}
+		return SubmitBlockResponse{IngestedBlock: false}
 	}
 
 	e.db.StoreBlock(&block)
@@ -183,26 +190,28 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 
 	_, f := e.db.ResolveBlock(block.Header().ParentHash)
 	if !f && e.db.HeightBlock(&block) > common3.L1GenesisHeight {
-		return SubmitBlockResponse{Processed: false}
+		return SubmitBlockResponse{IngestedBlock: false}
 	}
 	blockState := updateState(&block, e.db, e.blockResolver)
 
-	if e.mining {
-		e.db.PruneTxs(historicTxs(blockState.Head, e.db))
-
-		r := e.produceRollup(&block, blockState)
-		e.db.StoreRollup(r)
-
-		return SubmitBlockResponse{
-			Hash:      blockState.Head.Hash(),
-			Rollup:    r.ToExtRollup(),
-			Processed: true,
-		}
-	}
+	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
+	e.db.PruneTxs(historicTxs(blockState.Head, e.db))
+	r := e.produceRollup(&block, blockState)
+	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
+	e.db.StoreRollup(r)
 
 	return SubmitBlockResponse{
-		Hash:      blockState.Head.Hash(),
-		Processed: true,
+		L1Hash:      block.Hash(),
+		L1Height:    uint(e.blockResolver.HeightBlock(&block)),
+		L1Parent:    blockState.Block.Header().ParentHash,
+		L2Hash:      blockState.Head.Hash(),
+		L2Height:    uint(blockState.Head.Height.Load().(int)),
+		L2Parent:    blockState.Head.Header.ParentHash,
+		Withdrawals: blockState.Head.Header.Withdrawals,
+
+		ProducedRollup:    r.ToExtRollup(),
+		IngestedBlock:     true,
+		IngestedNewRollup: blockState.foundNewRollup,
 	}
 }
 
@@ -211,11 +220,12 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 		Header:       rollup.Header,
 		Transactions: decryptTransactions(rollup.Txs),
 	}
+
 	// only store if the parent exists
 	if e.db.ExistRollup(r.Header.ParentHash) {
 		e.db.StoreRollup(&r)
 	} else {
-		common3.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", common3.ShortAddress(e.node), common3.ShortHash(r.Hash())))
+		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", common3.ShortAddress(e.node), common3.ShortHash(r.Hash())))
 	}
 }
 
@@ -264,7 +274,7 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.blockResolver)
 		w := e.db.ParentRollup(winnerRollup)
-		common3.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
+		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
 			common3.ShortAddress(e.node),
 			common3.ShortHash(winnerRollup.Hash()), e.db.HeightRollup(winnerRollup),
 			common3.ShortHash(w.Hash()),
@@ -285,8 +295,8 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
 }
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
-	// todo
-	return 0
+	// todo user encryption
+	return e.db.Balance(address)
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
@@ -301,7 +311,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 	// if true {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
 		if speculativeRollup.r != nil {
-			common3.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
+			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				common3.ShortAddress(e.node),
 				common3.ShortHash(speculativeRollup.r.Hash()),
 				e.db.HeightRollup(speculativeRollup.r),
@@ -328,12 +338,21 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 	return &r
 }
 
-func (e *enclaveImpl) TestPeekHead() BlockState {
-	return e.db.Head()
-}
-
-func (e *enclaveImpl) TestDB() DB {
-	return e.db
+func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, bool) {
+	// todo add some sort of cache
+	rollup := e.db.Head().Head
+	for {
+		txs := rollup.Transactions
+		for _, tx := range txs {
+			if tx.Hash() == txHash {
+				return &tx, true
+			}
+		}
+		rollup = e.db.FetchRollup(rollup.Header.ParentHash)
+		if rollup.Height.Load() == common3.L2GenesisHeight {
+			return nil, false
+		}
+	}
 }
 
 func (e *enclaveImpl) Stop() {

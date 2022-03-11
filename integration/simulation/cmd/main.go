@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 )
 
@@ -37,16 +37,32 @@ func main() {
 		panic(err)
 	}
 	defer f1.Close()
-	common.SetLog(f1)
+	log.SetLog(f1)
 
-	blockDuration := uint64(25_000)
-	l1netw, _ := simulation.RunSimulation(
-		5,
-		2,
-		55,
-		blockDuration,
-		blockDuration/DefaultAverageLatencyToBlockRatio,
-		blockDuration/DefaultAverageGossipPeriodToBlockRatio,
+	// define core test parameters
+	numberOfNodes := 10
+	simulationTime := 15
+	avgBlockDuration := uint64(25_000)
+	avgLatency := avgBlockDuration / DefaultAverageLatencyToBlockRatio
+	avgGossipPeriod := avgBlockDuration / DefaultAverageGossipPeriodToBlockRatio
+
+	// define network params
+	stats := simulation.NewStats(numberOfNodes)
+	l1NetworkConfig := simulation.NewL1Network(avgBlockDuration, avgLatency, stats)
+	l2NetworkCfg := simulation.NewL2Network(avgBlockDuration, avgLatency)
+
+	// define instances of the simulation mechanisms
+	txManager := simulation.NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)
+	sim := simulation.NewSimulation(
+		numberOfNodes,
+		l1NetworkConfig,
+		l2NetworkCfg,
+		avgBlockDuration,
+		avgGossipPeriod,
+		stats,
 	)
-	fmt.Printf("%#v\n", l1netw.Stats)
+
+	// execute the simulation
+	sim.Start(txManager, simulationTime)
+	fmt.Printf("%s\n", simulation.NewOutputStats(sim))
 }

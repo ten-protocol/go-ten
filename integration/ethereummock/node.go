@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -101,7 +103,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 
 	// only proceed if the parent is available
 	if !f {
-		common2.Log(fmt.Sprintf("> M%d: Parent block not found=b_%d", common2.ShortAddress(m.ID), common2.ShortHash(b.Header().ParentHash)))
+		log.Log(fmt.Sprintf("> M%d: Parent block not found=b_%d", common2.ShortAddress(m.ID), common2.ShortHash(b.Header().ParentHash)))
 		return head
 	}
 
@@ -114,7 +116,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	if !common2.IsAncestor(head, b, m.Resolver) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
-		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common2.ShortAddress(m.ID), common2.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), common2.ShortHash(head.Hash()), m.Resolver.HeightBlock(head), common2.ShortHash(fork.Hash()), m.Resolver.HeightBlock(fork)))
+		log.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common2.ShortAddress(m.ID), common2.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), common2.ShortHash(head.Hash()), m.Resolver.HeightBlock(head), common2.ShortHash(fork.Hash()), m.Resolver.HeightBlock(fork)))
 		return m.setFork(BlocksBetween(fork, b, m.Resolver))
 	}
 
