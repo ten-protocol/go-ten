@@ -1,4 +1,4 @@
-package obscurocommon
+package log
 
 import (
 	"fmt"

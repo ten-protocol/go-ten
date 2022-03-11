@@ -2,14 +2,11 @@ package nodecommon
 
 import (
 	"fmt"
-	"sync"
+	"github.com/obscuronet/obscuro-playground/go/hashing"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"golang.org/x/crypto/sha3"
 )
 
 // Todo - this has to be a trie root eventually
@@ -18,7 +15,7 @@ type EncryptedTx []byte
 
 type EncryptedTransactions []EncryptedTx
 
-// Header is in plaintext
+// Header is a public / plaintext struct that holds common properties of the Rollup
 type Header struct {
 	ParentHash  obscurocommon.L2RootHash
 	Agg         common.Address
@@ -71,27 +68,10 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
 func (h *Header) Hash() obscurocommon.L2RootHash {
-	return rlpHash(h)
-}
-
-/// rlpHash encodes x and hashes the encoded bytes.
-func rlpHash(x interface{}) (h common.Hash) {
-	sha := hasherPool.Get().(crypto.KeccakState)
-	defer hasherPool.Put(sha)
-	sha.Reset()
-	if err := rlp.Encode(sha, x); err != nil {
-		// TODO hook this up with a logger in the future - shouldn't need errors to go upstream
-		// Supplying the encoder so we shouldn't see any errors
-		fmt.Printf("unexpected error on the rpl encoding %v\n", err)
+	hash, err := hashing.RLPHash(h)
+	if err != nil {
+		// todo - log / surface these
+		fmt.Printf("err hashing the l2roothash")
 	}
-
-	if _, err := sha.Read(h[:]); err != nil {
-		fmt.Printf("unexpected error on the KeccakState byte read  %v\n", err)
-	}
-
-	return h
-}
-
-var hasherPool = sync.Pool{
-	New: func() interface{} { return sha3.NewLegacyKeccak256() },
+	return hash
 }

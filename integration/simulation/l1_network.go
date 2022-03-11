@@ -1,21 +1,34 @@
 package simulation
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // L1NetworkCfg - models a full network including artificial random latencies
 type L1NetworkCfg struct {
 	nodes []*ethereum_mock.Node
-	delay obscurocommon.Latency // the latency
 	Stats *Stats
 	// used as a signal to stop all network communication.
 	// This helps prevent deadlocks when stopping nodes
-	interrupt *int32
+	interrupt        *int32
+	avgLatency       uint64
+	avgBlockDuration uint64
+}
+
+// NewL1Network returns an instance of a configured L1 Network (no nodes)
+func NewL1Network(avgBlockDuration uint64, avgLatency uint64, stats *Stats) *L1NetworkCfg {
+	return &L1NetworkCfg{
+		Stats:            stats,
+		interrupt:        new(int32),
+		avgLatency:       avgLatency,
+		avgBlockDuration: avgBlockDuration,
+	}
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
@@ -30,7 +43,7 @@ func (n *L1NetworkCfg) BroadcastBlock(b obscurocommon.EncodedBlock, p obscurocom
 			t := m
 			obscurocommon.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
-			obscurocommon.Log(printBlock(bl, *m))
+			log.Log(printBlock(bl, *m))
 		}
 	}
 
@@ -52,12 +65,12 @@ func (n *L1NetworkCfg) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
 	}
 }
 
+// Start kicks off the l1 nodes waiting a delay between each node
 func (n *L1NetworkCfg) Start(delay time.Duration) {
 	// Start l1 nodes
 	for _, m := range n.nodes {
 		t := m
 		go t.Start()
-		// don't start everything at once
 		time.Sleep(delay)
 	}
 }
@@ -69,4 +82,9 @@ func (n *L1NetworkCfg) Stop() {
 		go t.Stop()
 		// fmt.Printf("Stopped L1 node: %d.\n", m.ID)
 	}
+}
+
+// delay returns an expected delay on the l1 network
+func (n *L1NetworkCfg) delay() uint64 {
+	return obscurocommon.RndBtw(n.avgLatency/10, 2*n.avgLatency)
 }
