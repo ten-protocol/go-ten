@@ -1,4 +1,4 @@
-package common
+package obscurocommon
 
 import (
 	"math/big"

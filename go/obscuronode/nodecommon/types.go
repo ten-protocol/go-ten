@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	obscuroCommon "github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -20,10 +20,10 @@ type EncryptedTransactions []EncryptedTx
 
 // Header is in plaintext
 type Header struct {
-	ParentHash  obscuroCommon.L2RootHash
+	ParentHash  obscurocommon.L2RootHash
 	Agg         common.Address
-	Nonce       obscuroCommon.Nonce
-	L1Proof     obscuroCommon.L1RootHash // the L1 block where the Parent was published
+	Nonce       obscurocommon.Nonce
+	L1Proof     obscurocommon.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
 	Withdrawals []Withdrawal
 }
@@ -58,9 +58,9 @@ func (er ExtRollup) ToRollup() *Rollup {
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *Rollup) Hash() obscuroCommon.L2RootHash {
+func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
-		return hash.(obscuroCommon.L2RootHash)
+		return hash.(obscurocommon.L2RootHash)
 	}
 	v := r.Header.Hash()
 	r.hash.Store(v)
@@ -70,7 +70,7 @@ func (r *Rollup) Hash() obscuroCommon.L2RootHash {
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
-func (h *Header) Hash() obscuroCommon.L2RootHash {
+func (h *Header) Hash() obscurocommon.L2RootHash {
 	return rlpHash(h)
 }
 

@@ -9,10 +9,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	enclave2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
@@ -32,7 +32,7 @@ func TestSimulation(t *testing.T) {
 		panic(err)
 	}
 	defer f.Close()
-	common.SetLog(f)
+	obscurocommon.SetLog(f)
 
 	blockDuration := uint64(20_000)
 	l1netw, l2netw := RunSimulation(5, 10, 15, blockDuration, blockDuration/15, blockDuration/3)
@@ -43,7 +43,7 @@ func TestSimulation(t *testing.T) {
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
-func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave2.DB, r *enclave2.Rollup, resolver common.BlockResolver) {
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave.DB, r *enclave.Rollup, resolver obscurocommon.BlockResolver) {
 	stats := l1Network.Stats
 	p := r.Proof(resolver)
 	validateL1(t, p, stats, db, resolver)
@@ -58,47 +58,47 @@ const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
 // Sanity check
-func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave2.DB, resolver common.BlockResolver) {
-	deposits := make([]gethcommon.Hash, 0)
-	rollups := make([]common.L2RootHash, 0)
+func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave.DB, resolver obscurocommon.BlockResolver) {
+	deposits := make([]common.Hash, 0)
+	rollups := make([]obscurocommon.L2RootHash, 0)
 	s.l1Height = db.HeightBlock(b)
 	totalDeposited := uint64(0)
 
-	blockchain := ethereum_mock.BlocksBetween(common.GenesisBlock, b, resolver)
-	headRollup := &enclave2.GenesisRollup
+	blockchain := ethereum_mock.BlocksBetween(obscurocommon.GenesisBlock, b, resolver)
+	headRollup := &enclave.GenesisRollup
 	for _, block := range blockchain {
 		for _, tr := range block.Transactions() {
-			currentRollups := make([]*enclave2.Rollup, 0)
-			tx := common.TxData(tr)
+			currentRollups := make([]*enclave.Rollup, 0)
+			tx := obscurocommon.TxData(tr)
 			switch tx.TxType {
-			case common.DepositTx:
+			case obscurocommon.DepositTx:
 				deposits = append(deposits, tr.Hash())
 				totalDeposited += tx.Amount
-			case common.RollupTx:
+			case obscurocommon.RollupTx:
 				r := nodecommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if common.IsBlockAncestor(r.Header.L1Proof, b, resolver) {
+				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, b, resolver) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					currentRollups = append(currentRollups, enclave2.DecryptRollup(r))
+					currentRollups = append(currentRollups, enclave.DecryptRollup(r))
 					s.NewRollup(r)
 				}
-			case common.RequestSecretTx:
-			case common.StoreSecretTx:
+			case obscurocommon.RequestSecretTx:
+			case obscurocommon.StoreSecretTx:
 			}
-			r, _ := enclave2.FindWinner(headRollup, currentRollups, db, resolver)
+			r, _ := enclave.FindWinner(headRollup, currentRollups, db, resolver)
 			if r != nil {
 				headRollup = r
 			}
 		}
 	}
 
-	if len(common.FindHashDups(deposits)) > 0 {
-		dups := common.FindHashDups(deposits)
+	if len(obscurocommon.FindHashDups(deposits)) > 0 {
+		dups := obscurocommon.FindHashDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
-	if len(common.FindRollupDups(rollups)) > 0 {
-		dups := common.FindRollupDups(rollups)
+	if len(obscurocommon.FindRollupDups(rollups)) > 0 {
+		dups := obscurocommon.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
 	if totalDeposited != s.totalDepositedAmount {
@@ -119,22 +119,22 @@ func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave2.DB, resolver
 	}
 }
 
-func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint64 {
+func validateL2(t *testing.T, r *enclave.Rollup, s *Stats, db enclave.DB) uint64 {
 	s.l2Height = db.HeightRollup(r)
-	transfers := make([]gethcommon.Hash, 0)
-	withdrawalTxs := make([]enclave2.L2Tx, 0)
+	transfers := make([]common.Hash, 0)
+	withdrawalTxs := make([]enclave.L2Tx, 0)
 	withdrawalRequests := make([]nodecommon.Withdrawal, 0)
 	for {
-		if db.HeightRollup(r) == common.L2GenesisHeight {
+		if db.HeightRollup(r) == obscurocommon.L2GenesisHeight {
 			break
 		}
 		for i := range r.Transactions {
 			tx := r.Transactions[i]
-			txData := enclave2.TxData(&tx)
+			txData := enclave.TxData(&tx)
 			switch txData.Type {
-			case enclave2.TransferTx:
+			case enclave.TransferTx:
 				transfers = append(transfers, tx.Hash())
-			case enclave2.WithdrawalTx:
+			case enclave.WithdrawalTx:
 				withdrawalTxs = append(withdrawalTxs, tx)
 			default:
 				panic("Invalid tx type")
@@ -145,8 +145,8 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 	}
 	// todo - check that proofs are on the canonical chain
 
-	if len(common.FindHashDups(transfers)) > 0 {
-		dups := common.FindHashDups(transfers)
+	if len(obscurocommon.FindHashDups(transfers)) > 0 {
+		dups := obscurocommon.FindHashDups(transfers)
 		t.Errorf("Found L2 txs duplicates: %v", dups)
 	}
 	if len(transfers) != s.nrTransferTransactions {
@@ -174,10 +174,10 @@ func sumWithdrawals(w []nodecommon.Withdrawal) uint64 {
 	return sum
 }
 
-func sumWithdrawalTxs(t []enclave2.L2Tx) uint64 {
+func sumWithdrawalTxs(t []enclave.L2Tx) uint64 {
 	sum := uint64(0)
 	for i := range t {
-		txData := enclave2.TxData(&t[i])
+		txData := enclave.TxData(&t[i])
 		sum += txData.Amount
 	}
 
@@ -200,7 +200,7 @@ func validateL2State(t *testing.T, l2Network L2NetworkCfg, s *Stats, totalWithdr
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
 }
 
-func totalBalance(s enclave2.BlockState) uint64 {
+func totalBalance(s enclave.BlockState) uint64 {
 	tot := uint64(0)
 	for _, bal := range s.State {
 		tot += bal

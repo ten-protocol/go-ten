@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 )
 
@@ -37,7 +37,7 @@ func main() {
 		panic(err)
 	}
 	defer f1.Close()
-	common.SetLog(f1)
+	obscurocommon.SetLog(f1)
 
 	blockDuration := uint64(25_000)
 	l1netw, _ := simulation.RunSimulation(

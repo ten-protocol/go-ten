@@ -5,12 +5,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-type State = map[gethcommon.Address]uint64
+type State = map[common.Address]uint64
 
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
@@ -97,7 +97,7 @@ func emptyState() State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, db DB, blockResolver common.BlockResolver) BlockState {
+func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolver) BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := db.FetchState(b.Hash())
 	if found {
@@ -105,7 +105,7 @@ func updateState(b *types.Block, db DB, blockResolver common.BlockResolver) Bloc
 	}
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if b.Hash() == common.GenesisBlock.Hash() {
+	if b.Hash() == obscurocommon.GenesisBlock.Hash() {
 		bs := BlockState{
 			Block:          b,
 			Head:           &GenesisRollup,
@@ -139,7 +139,7 @@ func currentTxs(head *Rollup, mempool []L2Tx, db DB) []L2Tx {
 	return findTxsNotIncluded(head, mempool, db)
 }
 
-func FindWinner(parent *Rollup, rollups []*Rollup, db DB, blockResolver common.BlockResolver) (*Rollup, bool) {
+func FindWinner(parent *Rollup, rollups []*Rollup, db DB, blockResolver obscurocommon.BlockResolver) (*Rollup, bool) {
 	win := -1
 	// todo - add statistics to determine why there are conflicts.
 	for i, r := range rollups {
@@ -161,7 +161,7 @@ func FindWinner(parent *Rollup, rollups []*Rollup, db DB, blockResolver common.B
 	return rollups[win], true
 }
 
-func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState State, db DB, blockResolver common.BlockResolver) (*Rollup, State) {
+func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState State, db DB, blockResolver obscurocommon.BlockResolver) (*Rollup, State) {
 	win, found := FindWinner(parent, receivedRollups, db, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
@@ -189,13 +189,13 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState, blockResolver common.BlockResolver) RollupState {
-	from := common.GenesisBlock.Hash()
-	height := common.L1GenesisHeight
+func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState, blockResolver obscurocommon.BlockResolver) RollupState {
+	from := obscurocommon.GenesisBlock.Hash()
+	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
 		height = blockResolver.HeightBlock(fromBlock)
-		if !common.IsAncestor(fromBlock, toBlock, blockResolver) {
+		if !obscurocommon.IsAncestor(fromBlock, toBlock, blockResolver) {
 			panic("wtf")
 		}
 	}
@@ -206,9 +206,9 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 			break
 		}
 		for _, tx := range b.Transactions() {
-			t := common.TxData(tx)
+			t := obscurocommon.TxData(tx)
 			// transactions to a hardcoded bridge address
-			if t.TxType == common.DepositTx {
+			if t.TxType == obscurocommon.DepositTx {
 				v, f := s.s[t.Dest]
 				if f {
 					s.s[t.Dest] = v + t.Amount
@@ -230,7 +230,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockResolver common.BlockResolver) BlockState {
+func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockResolver obscurocommon.BlockResolver) BlockState {
 	rollups := extractRollups(b, blockResolver)
 	newHead, found := FindWinner(parentState.Head, rollups, db, blockResolver)
 
@@ -254,17 +254,17 @@ func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockRes
 	return bs
 }
 
-func extractRollups(b *types.Block, blockResolver common.BlockResolver) []*Rollup {
+func extractRollups(b *types.Block, blockResolver obscurocommon.BlockResolver) []*Rollup {
 	rollups := make([]*Rollup, 0)
 	for _, t := range b.Transactions() {
 		// go through all rollup transactions
-		data := common.TxData(t)
-		if data.TxType == common.RollupTx {
-			r := nodecommon.DecodeRollup(common.TxData(t).Rollup)
+		data := obscurocommon.TxData(t)
+		if data.TxType == obscurocommon.RollupTx {
+			r := nodecommon.DecodeRollup(obscurocommon.TxData(t).Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
-			if common.IsBlockAncestor(r.Header.L1Proof, b, blockResolver) {
+			if obscurocommon.IsBlockAncestor(r.Header.L1Proof, b, blockResolver) {
 				rollups = append(rollups, toEnclaveRollup(r))
 			}
 		}

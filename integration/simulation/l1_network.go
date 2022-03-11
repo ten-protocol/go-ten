@@ -4,14 +4,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // L1NetworkCfg - models a full network including artificial random latencies
 type L1NetworkCfg struct {
 	nodes []*ethereum_mock.Node
-	delay common.Latency // the latency
+	delay obscurocommon.Latency // the latency
 	Stats *Stats
 	// used as a signal to stop all network communication.
 	// This helps prevent deadlocks when stopping nodes
@@ -19,7 +19,7 @@ type L1NetworkCfg struct {
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
-func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock) {
+func (n *L1NetworkCfg) BroadcastBlock(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
@@ -28,9 +28,9 @@ func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlo
 	for _, m := range n.nodes {
 		if m.ID != bl.Header().Coinbase {
 			t := m
-			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
+			obscurocommon.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
-			common.Log(printBlock(bl, *m))
+			obscurocommon.Log(printBlock(bl, *m))
 		}
 	}
 
@@ -38,7 +38,7 @@ func (n *L1NetworkCfg) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlo
 }
 
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
-func (n *L1NetworkCfg) BroadcastTx(tx common.EncodedL1Tx) {
+func (n *L1NetworkCfg) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
@@ -47,8 +47,8 @@ func (n *L1NetworkCfg) BroadcastTx(tx common.EncodedL1Tx) {
 		t := m
 		// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 		// todo - find a better way to express this
-		d := common.Max(n.delay()/2, 1)
-		common.Schedule(d, func() { t.P2PGossipTx(tx) })
+		d := obscurocommon.Max(n.delay()/2, 1)
+		obscurocommon.Schedule(d, func() { t.P2PGossipTx(tx) })
 	}
 }
 

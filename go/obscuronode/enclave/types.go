@@ -5,14 +5,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
-	nodecommon "github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-var GenesisHash = gethcommon.HexToHash("1000000000000000000000000000000000000000000000000000000000000000")
+var GenesisHash = common.HexToHash("1000000000000000000000000000000000000000000000000000000000000000")
 
 // L2TxType indicates the type of L2 transaction - either a transfer or a withdrawal for now
 type L2TxType uint8
@@ -25,8 +25,8 @@ const (
 // L2TxData is the Obscuro transaction data that will be stored encoded in the types.Transaction data field.
 type L2TxData struct {
 	Type   L2TxType
-	From   gethcommon.Address
-	To     gethcommon.Address
+	From   common.Address
+	To     common.Address
 	Amount uint64
 }
 
@@ -45,7 +45,7 @@ func TxData(tx *L2Tx) L2TxData {
 	return data
 }
 
-var GenesisRollup = NewRollup(common.GenesisBlock, nil, gethcommon.HexToAddress("0x0"), []L2Tx{}, []nodecommon.Withdrawal{}, common.GenerateNonce(), "")
+var GenesisRollup = NewRollup(obscurocommon.GenesisBlock, nil, common.HexToAddress("0x0"), []L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
 
 type Transactions []L2Tx
 
@@ -65,16 +65,16 @@ type Rollup struct {
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *Rollup) Hash() common.L2RootHash {
+func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
-		return hash.(common.L2RootHash)
+		return hash.(obscurocommon.L2RootHash)
 	}
 	v := r.Header.Hash()
 	r.hash.Store(v)
 	return v
 }
 
-func NewRollup(b *types.Block, parent *Rollup, a gethcommon.Address, txs []L2Tx, withdrawals []nodecommon.Withdrawal, nonce common.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
 	parentHash := GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -96,7 +96,7 @@ func NewRollup(b *types.Block, parent *Rollup, a gethcommon.Address, txs []L2Tx,
 
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r *Rollup) ProofHeight(l1BlockResolver common.BlockResolver) int {
+func (r *Rollup) ProofHeight(l1BlockResolver obscurocommon.BlockResolver) int {
 	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		return -1
@@ -111,7 +111,7 @@ func (r *Rollup) ToExtRollup() nodecommon.ExtRollup {
 	}
 }
 
-func (r *Rollup) Proof(l1BlockResolver common.BlockResolver) *types.Block {
+func (r *Rollup) Proof(l1BlockResolver obscurocommon.BlockResolver) *types.Block {
 	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
