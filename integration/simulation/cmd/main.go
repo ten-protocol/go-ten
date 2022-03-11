@@ -43,8 +43,8 @@ func main() {
 	numberOfNodes := 10
 	simulationTime := 15
 	avgBlockDuration := uint64(25_000)
-	avgLatency := avgBlockDuration / 15
-	avgGossipPeriod := avgBlockDuration / 3
+	avgLatency := avgBlockDuration / DefaultAverageLatencyToBlockRatio
+	avgGossipPeriod := avgBlockDuration / DefaultAverageGossipPeriodToBlockRatio
 
 	// define network params
 	stats := simulation.NewStats(numberOfNodes)
