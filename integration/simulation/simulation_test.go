@@ -36,8 +36,8 @@ func TestSimulation(t *testing.T) {
 
 	// define network params
 	stats := NewStats(numberOfNodes)
-	l1NetworkConfig := NewL1Network(avgLatency, stats)
-	l2NetworkCfg := NewL2Network(avgLatency)
+	l1NetworkConfig := NewL1Network(avgBlockDurationUSecs, avgLatency, stats)
+	l2NetworkCfg := NewL2Network(avgBlockDurationUSecs, avgLatency)
 
 	// define instances of the simulation mechanisms
 	txManager := NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDurationUSecs, stats)

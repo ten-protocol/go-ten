@@ -10,14 +10,16 @@ import (
 
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
-	nodes      []*obscuro_node.Node
-	avgLatency uint64
+	nodes            []*obscuro_node.Node
+	avgLatency       uint64
+	avgBlockDuration uint64
 }
 
 // NewL2Network returns an instance of a configured L2 Network (no nodes)
-func NewL2Network(avgLatency uint64) *L2NetworkCfg {
+func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 	return &L2NetworkCfg{
-		avgLatency: avgLatency,
+		avgLatency:       avgLatency,
+		avgBlockDuration: avgBlockDuration,
 	}
 }
 
@@ -45,8 +47,8 @@ func (cfg *L2NetworkCfg) Start() {
 	for _, m := range cfg.nodes {
 		t := m
 		go t.Start()
-		// don't start everything at once
-		time.Sleep(NODE_BOOTUP_DELAY_MS * 1_000)
+		// start each node one block apart (on avg)
+		time.Sleep(time.Duration(cfg.avgBlockDuration))
 	}
 }
 

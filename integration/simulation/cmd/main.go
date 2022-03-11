@@ -48,8 +48,8 @@ func main() {
 
 	// define network params
 	stats := simulation.NewStats(numberOfNodes)
-	l1NetworkConfig := simulation.NewL1Network(avgLatency, stats)
-	l2NetworkCfg := simulation.NewL2Network(avgLatency)
+	l1NetworkConfig := simulation.NewL1Network(avgBlockDuration, avgLatency, stats)
+	l2NetworkCfg := simulation.NewL2Network(avgBlockDuration, avgLatency)
 
 	// define instances of the simulation mechanisms
 	txManager := simulation.NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)

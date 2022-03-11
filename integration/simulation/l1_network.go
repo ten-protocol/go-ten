@@ -16,16 +16,18 @@ type L1NetworkCfg struct {
 	Stats *Stats
 	// used as a signal to stop all network communication.
 	// This helps prevent deadlocks when stopping nodes
-	interrupt  *int32
-	avgLatency uint64
+	interrupt        *int32
+	avgLatency       uint64
+	avgBlockDuration uint64
 }
 
 // NewL1Network returns an instance of a configured L1 Network (no nodes)
-func NewL1Network(avgLatency uint64, stats *Stats) *L1NetworkCfg {
+func NewL1Network(avgBlockDuration uint64, avgLatency uint64, stats *Stats) *L1NetworkCfg {
 	return &L1NetworkCfg{
-		Stats:      stats,
-		interrupt:  new(int32),
-		avgLatency: avgLatency,
+		Stats:            stats,
+		interrupt:        new(int32),
+		avgLatency:       avgLatency,
+		avgBlockDuration: avgBlockDuration,
 	}
 }
 
@@ -69,8 +71,8 @@ func (n *L1NetworkCfg) Start() {
 	for _, m := range n.nodes {
 		t := m
 		go t.Start()
-		// don't start everything at once
-		time.Sleep(time.Duration(NODE_BOOTUP_DELAY_MS * 1_000))
+		// start each node one block apart (on avg)
+		time.Sleep(time.Duration(n.avgBlockDuration))
 	}
 }
 
