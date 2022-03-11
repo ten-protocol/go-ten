@@ -31,8 +31,9 @@ type SubmitBlockResponse struct {
 	L2Parent    common3.L2RootHash   // The Rollup Hash Parent inside the ingested Block
 	Withdrawals []common2.Withdrawal // The Withdrawals available in Rollup of the ingested Block
 
-	ProducedRollup common2.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	Ingested       bool              // Whether the Block was ingested or discarded
+	ProducedRollup    common2.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
+	IngestedBlock     bool              // Whether the Block was ingested or discarded
+	IngestedNewRollup bool              // Whether the Block had a new Rollup and the enclave has ingested it
 }
 
 // Enclave - The actual implementation of this interface will call an rpc service
@@ -160,7 +161,7 @@ func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
 		L2Hash:         GenesisRollup.Header.Hash(),
 		L1Hash:         common2.GenesisHash,
 		ProducedRollup: GenesisRollup.ToExtRollup(),
-		Ingested:       true,
+		IngestedBlock:  true,
 	}
 }
 
@@ -184,7 +185,7 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 	b := block.ToBlock()
 	_, foundBlock := e.db.Resolve(b.Hash())
 	if foundBlock {
-		return SubmitBlockResponse{Ingested: false}
+		return SubmitBlockResponse{IngestedBlock: false}
 	}
 
 	e.db.Store(b)
@@ -194,7 +195,7 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 
 	_, f := e.db.Resolve(b.Header.ParentHash)
 	if !f && b.Height(e.db) > common3.L1GenesisHeight {
-		return SubmitBlockResponse{Ingested: false}
+		return SubmitBlockResponse{IngestedBlock: false}
 	}
 
 	blockState := updateState(b, e.db)
@@ -214,8 +215,9 @@ func (e *enclaveImpl) SubmitBlock(block common3.ExtBlock) SubmitBlockResponse {
 		L2Parent:    blockState.Head.Header.ParentHash,
 		Withdrawals: blockState.Head.Header.Withdrawals,
 
-		ProducedRollup: r.ToExtRollup(),
-		Ingested:       true,
+		ProducedRollup:    r.ToExtRollup(),
+		IngestedBlock:     true,
+		IngestedNewRollup: blockState.foundNewRollup,
 	}
 }
 

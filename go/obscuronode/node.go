@@ -259,14 +259,8 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 			// submit each block to the enclave for ingestion plus validation
 			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
 
-			// only update the rollup node headers if there is a rollup tx in the block
-			blockHasRollup := false
-			for _, tx := range block.DecodeBlock().Transactions {
-				if tx.TxType == common.RollupTx {
-					blockHasRollup = true
-				}
-			}
-			if blockHasRollup {
+			// only update the node rollup headers if the enclave has ingested it
+			if result.IngestedNewRollup {
 				// adding a header will update the head if it has a higher height
 				a.Storage().AddRollupHeader(
 					&RollupHeader{
@@ -289,7 +283,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 		}
 	}
 
-	if !result.Ingested {
+	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
 		log.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%s", a.ID, common.Str(b.Hash())))
 		return

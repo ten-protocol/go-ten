@@ -3,8 +3,6 @@ package simulation
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
@@ -43,7 +41,7 @@ func (o *OutputStats) countRollups() {
 	l2Node := o.simulation.l2Network.nodes[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := l2Node.Storage().GetCurrentRollupHead(); header.ID != enclave.GenesisRollup.Hash(); header = l2Node.Storage().GetRollupHeader(header.Parent) {
+	for header := l2Node.Storage().GetCurrentRollupHead(); header != nil; header = l2Node.Storage().GetRollupHeader(header.Parent) {
 		o.l2RollupCountInHeaders++
 	}
 

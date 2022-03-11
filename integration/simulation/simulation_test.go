@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
@@ -98,7 +96,7 @@ func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
 		l1Height++
 	}
 	l2Height := uint(0)
-	for header := node.Storage().GetCurrentRollupHead(); header.ID != enclave.GenesisRollup.Hash(); header = node.Storage().GetRollupHeader(header.Parent) {
+	for header := node.Storage().GetCurrentRollupHead(); header != nil; header = node.Storage().GetRollupHeader(header.Parent) {
 		l2Height++
 	}
 
@@ -225,7 +223,7 @@ func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Sta
 
 	// todo - check that proofs are on the canonical chain
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for header := node.Storage().GetCurrentRollupHead(); header.ID != enclave.GenesisRollup.Hash(); header = node.Storage().GetRollupHeader(header.Parent) {
+	for header := node.Storage().GetCurrentRollupHead(); header != nil; header = node.Storage().GetRollupHeader(header.Parent) {
 		for _, w := range header.Withdrawals {
 			headerWithdrawalSum += w.Amount
 			headerWithdrawalTxCount++
