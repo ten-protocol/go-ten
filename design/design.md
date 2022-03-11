@@ -20,8 +20,21 @@ The following additional components must be developed:
   [here](https://whitepaper.obscu.ro/obscuro-whitepaper/l1-contracts)
 * **Client apps:** Applications that interact with the Obscuro node (e.g. Obscuro wallets)
 
-Wherever reasonable, node logic should be part of the host rather than the enclave. This has two benefits:
+## Host/enclave split
+
+The node is divided into two components, the host and the enclave. Wherever reasonable, node logic should be part of 
+the host rather than the enclave. This has two benefits:
 
 * It minimises the amount of code in the 
   [trusted computing base (TCB)](https://en.wikipedia.org/wiki/Trusted_computing_base)
 * It reduces churn in the TCB, reducing the frequency of re-attestations
+
+The host and the enclave are two separate OS processes, rather than separate threads in a single process. This is 
+because our initial target TEE, [Intel SGX](https://en.wikipedia.org/wiki/Software_Guard_Extensions), requires the 
+TEE to execute as a separate process.
+
+The host and the enclave communicate via RPC. For simplicity, this transport is not authenticated (e.g. using TLS or 
+credentials). One possible attack vector is for a _parasite_ aggregator to only run the host software, and connect to 
+another aggregator's enclave to submit transactions, in order to economise on operating costs. To avoid this scenario, 
+the enclave is designed to have full control over which account receives the rollup rewards, meaning that a would-be 
+parasite aggregator does not receive any rewards for acting in this manner.
