@@ -1,19 +1,21 @@
 package common
 
+import "github.com/ethereum/go-ethereum/core/types"
+
 // BlockResolver -database of blocks indexed by the root hash
 type BlockResolver interface {
-	ResolveBlock(hash L1RootHash) (*Block, bool)
-	StoreBlock(block *Block)
-	HeightBlock(block *Block) int
-	ParentBlock(block *Block) (*Block, bool)
+	ResolveBlock(hash L1RootHash) (*types.Block, bool)
+	StoreBlock(block *types.Block)
+	HeightBlock(block *types.Block) int
+	ParentBlock(block *types.Block) (*types.Block, bool)
 }
 
-func Parent(r BlockResolver, b *Block) (*Block, bool) {
+func Parent(r BlockResolver, b *types.Block) (*types.Block, bool) {
 	return r.ResolveBlock(b.Header().ParentHash)
 }
 
 // IsAncestor return true if a is the ancestor of b
-func IsAncestor(blockA *Block, blockB *Block, r BlockResolver) bool {
+func IsAncestor(blockA *types.Block, blockB *types.Block, r BlockResolver) bool {
 	if blockA.Hash() == blockB.Hash() {
 		return true
 	}
@@ -31,7 +33,7 @@ func IsAncestor(blockA *Block, blockB *Block, r BlockResolver) bool {
 }
 
 // IsBlockAncestor - takes into consideration that the block to verify might be on a branch we haven't received yet
-func IsBlockAncestor(l1BlockHash L1RootHash, block *Block, resolver BlockResolver) bool {
+func IsBlockAncestor(l1BlockHash L1RootHash, block *types.Block, resolver BlockResolver) bool {
 	if l1BlockHash == block.Hash() {
 		return true
 	}

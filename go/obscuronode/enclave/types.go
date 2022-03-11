@@ -72,7 +72,7 @@ func (r *Rollup) Hash() common2.L2RootHash {
 	return v
 }
 
-func NewRollup(b *common2.Block, parent *Rollup, a common.Address, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common2.Nonce, state oc.StateRoot) Rollup {
+func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []L2Tx, withdrawals []oc.Withdrawal, nonce common2.Nonce, state oc.StateRoot) Rollup {
 	parentHash := oc.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -109,7 +109,7 @@ func (r *Rollup) ToExtRollup() oc.ExtRollup {
 	}
 }
 
-func (r *Rollup) Proof(l1BlockResolver common2.BlockResolver) *common2.Block {
+func (r *Rollup) Proof(l1BlockResolver common2.BlockResolver) *types.Block {
 	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")

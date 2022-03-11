@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
@@ -56,7 +58,7 @@ const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
 // Sanity check
-func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB, resolver common.BlockResolver) {
+func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave2.DB, resolver common.BlockResolver) {
 	deposits := make([]common2.Hash, 0)
 	rollups := make([]common.L2RootHash, 0)
 	s.l1Height = db.HeightBlock(b)

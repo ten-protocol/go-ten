@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -66,7 +68,7 @@ func (r Rollup) ToExtRollup() ExtRollup {
 	}
 }
 
-func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *obscuroCommon.Block {
+func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *types.Block {
 	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")

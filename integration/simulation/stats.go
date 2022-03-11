@@ -3,6 +3,9 @@ package simulation
 import (
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 )
@@ -25,8 +28,8 @@ type Stats struct {
 	nrEmptyBlocks      int
 
 	totalL2Txs  int
-	noL1Reorgs  map[common3.NodeID]int
-	noL2Recalcs map[common3.NodeID]int
+	noL1Reorgs  map[common.Address]int
+	noL2Recalcs map[common.Address]int
 	// todo - actual avg block Duration
 
 	totalDepositedAmount      uint64
@@ -43,25 +46,25 @@ func NewStats(nrMiners int, simulationTime int, avgBlockDuration uint64, avgLate
 		avgBlockDuration: avgBlockDuration,
 		avgLatency:       avgLatency,
 		gossipPeriod:     gossipPeriod,
-		noL1Reorgs:       map[common3.NodeID]int{},
-		noL2Recalcs:      map[common3.NodeID]int{},
+		noL1Reorgs:       map[common.Address]int{},
+		noL2Recalcs:      map[common.Address]int{},
 		statsMu:          &sync.RWMutex{},
 	}
 }
 
-func (s *Stats) L1Reorg(id common3.NodeID) {
+func (s *Stats) L1Reorg(id common.Address) {
 	s.statsMu.Lock()
 	s.noL1Reorgs[id]++
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) L2Recalc(id common3.NodeID) {
+func (s *Stats) L2Recalc(id common.Address) {
 	s.statsMu.Lock()
 	s.noL2Recalcs[id]++
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewBlock(b *common3.Block) {
+func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Lock()
 	// s.l1Height = common.MaxInt(s.l1Height, b.Height)
 	s.totalL1Blocks++

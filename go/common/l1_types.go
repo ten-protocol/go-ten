@@ -2,6 +2,7 @@ package common
 
 import (
 	"math/big"
+	"math/rand"
 
 	"github.com/ethereum/go-ethereum/trie"
 
@@ -45,7 +46,7 @@ func NewL1Tx(data L1TxData) *L1Tx {
 		panic(err)
 	}
 	return types.NewTx(&types.LegacyTx{
-		Nonce:    RndBtw(0, ^uint64(0)/2),
+		Nonce:    rand.Uint64(), //nolint:gosec
 		Value:    big.NewInt(1),
 		Gas:      1,
 		GasPrice: big.NewInt(1),
@@ -67,22 +68,18 @@ type (
 	Transactions types.Transactions
 )
 
-type Header = types.Header
-
-type Block = types.Block
-
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
 var GenesisHash = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
 
-func NewBlock(parent *Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *Block {
+func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *types.Block {
 	parentHash := GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
 	}
 
-	header := Header{
+	header := types.Header{
 		ParentHash:  parentHash,
 		Coinbase:    nodeID,
 		Root:        common.Hash{},
@@ -108,7 +105,7 @@ var GenesisBlock = NewBlock(nil, 0, common.HexToAddress("0x0"), []*L1Tx{})
 type EncryptedSharedEnclaveSecret []byte
 
 type AttestationReport struct {
-	Owner NodeID
+	Owner common.Address
 	// todo public key
 	// hash of code
 	// other stuff

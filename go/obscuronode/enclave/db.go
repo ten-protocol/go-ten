@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
@@ -31,10 +33,10 @@ type DB interface {
 	FetchGossipedRollups(height int) []*Rollup
 
 	// Block resolver
-	HeightBlock(block *common2.Block) int
-	ParentBlock(block *common2.Block) (*common2.Block, bool)
-	ResolveBlock(hash common2.L1RootHash) (*common2.Block, bool)
-	StoreBlock(node *common2.Block)
+	HeightBlock(block *types.Block) int
+	ParentBlock(block *types.Block) (*types.Block, bool)
+	ResolveBlock(hash common2.L1RootHash) (*types.Block, bool)
+	StoreBlock(node *types.Block)
 
 	// State
 	FetchState(hash common2.L1RootHash) (BlockState, bool)
@@ -57,7 +59,7 @@ type DB interface {
 }
 
 type blockAndHeight struct {
-	b      *common2.Block
+	b      *types.Block
 	height int
 }
 
@@ -224,7 +226,7 @@ func (db *inMemoryDB) PruneTxs(toRemove map[common.Hash]common.Hash) {
 	db.mempool = r
 }
 
-func (db *inMemoryDB) StoreBlock(b *common2.Block) {
+func (db *inMemoryDB) StoreBlock(b *types.Block) {
 	db.assertSecretAvailable()
 	db.blockM.Lock()
 	defer db.blockM.Unlock()
@@ -241,16 +243,16 @@ func (db *inMemoryDB) StoreBlock(b *common2.Block) {
 	db.blockCache[b.Hash()] = &blockAndHeight{b: b, height: p.height + 1}
 }
 
-func (db *inMemoryDB) ResolveBlock(hash common2.L1RootHash) (*common2.Block, bool) {
+func (db *inMemoryDB) ResolveBlock(hash common2.L1RootHash) (*types.Block, bool) {
 	db.assertSecretAvailable()
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
-	v, f := db.blockCache[hash]
-	var r *common2.Block
+	val, f := db.blockCache[hash]
+	var block *types.Block
 	if f {
-		r = v.b
+		block = val.b
 	}
-	return r, f
+	return block, f
 }
 
 func (db *inMemoryDB) Txs(r *Rollup) (map[common.Hash]L2Tx, bool) {
@@ -301,7 +303,7 @@ func (db *inMemoryDB) assertSecretAvailable() {
 	}
 }
 
-func (db *inMemoryDB) HeightBlock(block *common2.Block) int {
+func (db *inMemoryDB) HeightBlock(block *types.Block) int {
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	b, f := db.blockCache[block.Hash()]
@@ -311,7 +313,7 @@ func (db *inMemoryDB) HeightBlock(block *common2.Block) int {
 	return b.height
 }
 
-func (db *inMemoryDB) ParentBlock(block *common2.Block) (*common2.Block, bool) {
+func (db *inMemoryDB) ParentBlock(block *types.Block) (*types.Block, bool) {
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	b, f := db.blockCache[block.ParentHash()]

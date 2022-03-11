@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -26,15 +28,15 @@ type L2Network interface {
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id common.NodeID)
-	NewBlock(block *common.Block)
+	L2Recalc(id gethcommon.Address)
+	NewBlock(block *types.Block)
 	NewRollup(rollup *obscuroCommon.Rollup)
 	RollupWithMoreRecentProof()
 }
 
 // Node this will become the Obscuro "Node" type
 type Node struct {
-	ID common.NodeID
+	ID gethcommon.Address
 
 	l2Network L2Network
 	L1Node    common.L1Node
@@ -140,7 +142,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 
 	if !result.Processed {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", common.ShortNodeID(a.ID), common.ShortHash(b.Hash())))
+		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", common.ShortAddress(a.ID), common.ShortHash(b.Hash())))
 		return
 	}
 
@@ -204,7 +206,7 @@ func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 		go func() {
 			err := a.Enclave.SubmitTx(tx)
 			if err != nil {
-				common.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", common.ShortNodeID(a.ID), err))
+				common.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", common.ShortAddress(a.ID), err))
 			}
 		}()
 	}
@@ -290,7 +292,7 @@ func (a *Node) checkForSharedSecretRequests(block common.EncodedBlock) {
 }
 
 func NewAgg(
-	id common.NodeID,
+	id gethcommon.Address,
 	cfg AggregatorCfg,
 	l1 common.L1Node,
 	l2Network L2Network,

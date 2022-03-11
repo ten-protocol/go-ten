@@ -3,6 +3,8 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	common3 "github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -12,7 +14,7 @@ type State = map[gethcommon.Address]uint64
 
 // BlockState - Represents the state after an L1 block was processed.
 type BlockState struct {
-	Block          *common3.Block
+	Block          *types.Block
 	Head           *Rollup
 	State          State
 	foundNewRollup bool
@@ -95,7 +97,7 @@ func emptyState() State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *common3.Block, db DB, blockResolver common3.BlockResolver) BlockState {
+func updateState(b *types.Block, db DB, blockResolver common3.BlockResolver) BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := db.FetchState(b.Hash())
 	if found {
@@ -187,7 +189,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupState, blockResolver common3.BlockResolver) RollupState {
+func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState, blockResolver common3.BlockResolver) RollupState {
 	from := common3.GenesisBlock.Hash()
 	height := common3.L1GenesisHeight
 	if fromBlock != nil {
@@ -228,7 +230,7 @@ func processDeposits(fromBlock *common3.Block, toBlock *common3.Block, s RollupS
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *common3.Block, parentState BlockState, db DB, blockResolver common3.BlockResolver) BlockState {
+func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockResolver common3.BlockResolver) BlockState {
 	rollups := extractRollups(b, blockResolver)
 	newHead, found := FindWinner(parentState.Head, rollups, db, blockResolver)
 
@@ -252,7 +254,7 @@ func calculateBlockState(b *common3.Block, parentState BlockState, db DB, blockR
 	return bs
 }
 
-func extractRollups(b *common3.Block, blockResolver common3.BlockResolver) []*Rollup {
+func extractRollups(b *types.Block, blockResolver common3.BlockResolver) []*Rollup {
 	rollups := make([]*Rollup, 0)
 	for _, t := range b.Transactions() {
 		// go through all rollup transactions

@@ -127,10 +127,7 @@ func ShortAddress(address common.Address) uint64 {
 	return ShortHash(address.Hash())
 }
 
-func ShortNodeID(address NodeID) uint64 {
-	return new(big.Int).SetBytes(address[:]).Uint64()
-}
-
+// ShortNonce converts the nonce to a shorter uint64 for printing.
 func ShortNonce(nonce types.BlockNonce) uint64 {
 	return new(big.Int).SetBytes(nonce[4:]).Uint64()
 }

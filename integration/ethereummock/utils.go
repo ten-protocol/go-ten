@@ -6,7 +6,7 @@ import (
 )
 
 // LCA - returns the least common ancestor of the 2 blocks
-func LCA(blockA *common2.Block, blockB *common2.Block, resolver common2.BlockResolver) *common2.Block {
+func LCA(blockA *types.Block, blockB *types.Block, resolver common2.BlockResolver) *types.Block {
 	if resolver.HeightBlock(blockA) == common2.L1GenesisHeight || resolver.HeightBlock(blockB) == common2.L1GenesisHeight {
 		return blockA
 	}
@@ -42,12 +42,12 @@ func LCA(blockA *common2.Block, blockB *common2.Block, resolver common2.BlockRes
 
 // findNotIncludedTxs - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findNotIncludedTxs(head *common2.Block, txs []*common2.L1Tx, r common2.BlockResolver, db TxDB) []*common2.L1Tx {
+func findNotIncludedTxs(head *types.Block, txs []*common2.L1Tx, r common2.BlockResolver, db TxDB) []*common2.L1Tx {
 	included := allIncludedTransactions(head, r, db)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *common2.Block, r common2.BlockResolver, db TxDB) map[common2.TxHash]*common2.L1Tx {
+func allIncludedTransactions(b *types.Block, r common2.BlockResolver, db TxDB) map[common2.TxHash]*common2.L1Tx {
 	val, found := db.Txs(b)
 	if found {
 		return val
@@ -88,11 +88,11 @@ func makeMap(txs types.Transactions) map[common2.TxHash]*common2.L1Tx {
 	return m
 }
 
-func BlocksBetween(blockA *common2.Block, blockB *common2.Block, resolver common2.BlockResolver) []*common2.Block {
+func BlocksBetween(blockA *types.Block, blockB *types.Block, resolver common2.BlockResolver) []*types.Block {
 	if blockA.Hash() == blockB.Hash() {
-		return []*common2.Block{blockA}
+		return []*types.Block{blockA}
 	}
-	blocks := make([]*common2.Block, 0)
+	blocks := make([]*types.Block, 0)
 	tempBlock := blockB
 	var found bool
 	for {
@@ -106,7 +106,7 @@ func BlocksBetween(blockA *common2.Block, blockB *common2.Block, resolver common
 		}
 	}
 	n := len(blocks)
-	result := make([]*common2.Block, n)
+	result := make([]*types.Block, n)
 	for i, block := range blocks {
 		result[n-i-1] = block
 	}
