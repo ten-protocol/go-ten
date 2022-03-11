@@ -36,5 +36,5 @@ TEE to execute as a separate process.
 The host and the enclave communicate via RPC. For simplicity, this transport is not authenticated (e.g. using TLS or 
 credentials). One possible attack vector is for a _parasite_ aggregator to only run the host software, and connect to 
 another aggregator's enclave to submit transactions, in order to economise on operating costs. To avoid this scenario, 
-the enclave must be designed to have full control over which account receives the rollup rewards, meaning that a would-
-be parasite aggregator does not receive any rewards for acting in this manner.
+the enclave is designed to have full control over which account receives the rollup rewards, meaning that a would-be 
+parasite aggregator does not receive any rewards for acting in this manner.
