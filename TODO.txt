@@ -36,3 +36,4 @@ Normal:
 
 Future:
 - analyse the POBI round - some inefficient state recalculation for the rollups
+- analyse the impact of encrypting the entire obscuro transaction or leaving out some fields like the gas. The concern is that a ddos attack can be peformed where someoen creates lots of transactions with 0 gas without any personal cost, but which will keep the network busy.

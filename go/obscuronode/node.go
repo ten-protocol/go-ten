@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
 
@@ -28,15 +28,15 @@ type L2Network interface {
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id common.NodeID)
-	NewBlock(block *common.Block)
+	L2Recalc(id gethcommon.Address)
+	NewBlock(block *types.Block)
 	NewRollup(rollup *obscuroCommon.Rollup)
 	RollupWithMoreRecentProof()
 }
 
 // Node this will become the Obscuro "Node" type
 type Node struct {
-	ID common.NodeID
+	ID gethcommon.Address
 
 	l2Network L2Network
 	L1Node    common.L1Node
@@ -65,12 +65,12 @@ func (a *Node) Start() {
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
 		secret := a.Enclave.GenerateSecret()
-		a.broadcastTx(common.L1Tx{
-			ID:          uuid.New(),
+		txData := common.L1TxData{
 			TxType:      common.StoreSecretTx,
 			Secret:      secret,
 			Attestation: a.Enclave.Attestation(),
-		})
+		}
+		a.broadcastTx(*common.NewL1Tx(txData))
 	}
 
 	if !a.Enclave.IsInitialised() {
@@ -85,15 +85,9 @@ func (a *Node) startProcessing() {
 	// Todo: This is a naive implementation.
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	allblocks := a.L1Node.RPCBlockchainFeed()
-	extblocks := make([]common.ExtBlock, len(allblocks))
-
-	for i, b := range allblocks {
-		extblocks[i] = b.ToExtBlock()
-	}
-
-	a.Enclave.IngestBlocks(extblocks)
+	a.Enclave.IngestBlocks(allblocks)
 	// todo - what happens with the blocks received while processing ?
-	go a.Enclave.Start(extblocks[len(extblocks)-1])
+	go a.Enclave.Start(*allblocks[len(allblocks)-1])
 
 	if a.genesis {
 		a.initialiseProtocol()
@@ -142,13 +136,13 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 		// For the genesis block the parent is nil
 		if block != nil {
 			a.checkForSharedSecretRequests(block)
-			result = a.Enclave.SubmitBlock(block.DecodeBlock().ToExtBlock())
+			result = a.Enclave.SubmitBlock(*block.DecodeBlock())
 		}
 	}
 
 	if !result.Processed {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", a.ID, common.ShortHash(b.Hash())))
+		common.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", common.ShortAddress(a.ID), common.ShortHash(b.Hash())))
 		return
 	}
 
@@ -161,8 +155,9 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 		// Request the round winner for the current head
 		winnerRollup, submit := a.Enclave.RoundWinner(result.Hash)
 		if submit {
-			tx := common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(winnerRollup.ToRollup())}
-			t, err := tx.Encode()
+			txData := common.L1TxData{TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(winnerRollup.ToRollup())}
+			tx := common.NewL1Tx(txData)
+			t, err := common.EncodeTx(tx)
 			if err != nil {
 				panic(err)
 			}
@@ -211,7 +206,7 @@ func (a *Node) P2PReceiveTx(tx obscuroCommon.EncryptedTx) {
 		go func() {
 			err := a.Enclave.SubmitTx(tx)
 			if err != nil {
-				common.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.ID, err))
+				common.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", common.ShortAddress(a.ID), err))
 			}
 		}()
 	}
@@ -233,13 +228,14 @@ func (a *Node) Stop() {
 func (a *Node) initialiseProtocol() common.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis()
-	a.broadcastTx(common.L1Tx{ID: uuid.New(), TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())})
+	txData := common.L1TxData{TxType: common.RollupTx, Rollup: obscuroCommon.EncodeRollup(genesis.Rollup.ToRollup())}
+	a.broadcastTx(*common.NewL1Tx(txData))
 
 	return genesis.Hash
 }
 
 func (a *Node) broadcastTx(tx common.L1Tx) {
-	t, err := tx.Encode()
+	t, err := common.EncodeTx(&tx)
 	if err != nil {
 		panic(err)
 	}
@@ -248,21 +244,22 @@ func (a *Node) broadcastTx(tx common.L1Tx) {
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
-	a.broadcastTx(common.L1Tx{
-		ID:          uuid.New(),
+	txData := common.L1TxData{
 		TxType:      common.RequestSecretTx,
 		Attestation: a.Enclave.Attestation(),
-	})
+	}
+	a.broadcastTx(*common.NewL1Tx(txData))
 
 	// start listening for l1 blocks that contain the response to the request
 	for {
 		select {
 		case b := <-a.blockRPCCh:
-			txs := b.b.DecodeBlock().Transactions
+			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
-				if tx.TxType == common.StoreSecretTx && tx.Attestation.Owner == a.ID {
+				t := common.TxData(tx)
+				if t.TxType == common.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
-					a.Enclave.Init(tx.Secret)
+					a.Enclave.Init(t.Secret)
 					return
 				}
 			}
@@ -281,20 +278,21 @@ func (a *Node) requestSecret() {
 
 func (a *Node) checkForSharedSecretRequests(block common.EncodedBlock) {
 	b := block.DecodeBlock()
-	for _, tx := range b.Transactions {
-		if tx.TxType == common.RequestSecretTx {
-			a.broadcastTx(common.L1Tx{
-				ID:          uuid.New(),
+	for _, tx := range b.Transactions() {
+		t := common.TxData(tx)
+		if t.TxType == common.RequestSecretTx {
+			txData := common.L1TxData{
 				TxType:      common.StoreSecretTx,
-				Secret:      a.Enclave.FetchSecret(tx.Attestation),
-				Attestation: tx.Attestation,
-			})
+				Secret:      a.Enclave.FetchSecret(t.Attestation),
+				Attestation: t.Attestation,
+			}
+			a.broadcastTx(*common.NewL1Tx(txData))
 		}
 	}
 }
 
 func NewAgg(
-	id common.NodeID,
+	id gethcommon.Address,
 	cfg AggregatorCfg,
 	l1 common.L1Node,
 	l2Network L2Network,

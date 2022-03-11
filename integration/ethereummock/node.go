@@ -5,6 +5,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
+
 	common2 "github.com/obscuronet/obscuro-playground/go/common"
 )
 
@@ -19,17 +23,17 @@ type MiningConfig struct {
 }
 
 type TxDB interface {
-	Txs(block *common2.Block) (map[common2.TxHash]*common2.L1Tx, bool)
-	AddTxs(*common2.Block, map[common2.TxHash]*common2.L1Tx)
+	Txs(block *types.Block) (map[common2.TxHash]*common2.L1Tx, bool)
+	AddTxs(*types.Block, map[common2.TxHash]*common2.L1Tx)
 }
 
 type StatsCollector interface {
 	// Register when a miner has to process a reorg (a winning block from a fork)
-	L1Reorg(id common2.NodeID)
+	L1Reorg(id common.Address)
 }
 
 type Node struct {
-	ID       common2.NodeID
+	ID       common.Address
 	cfg      MiningConfig
 	clients  []common2.NotifyNewBlock
 	network  L1Network
@@ -43,14 +47,14 @@ type Node struct {
 	exitMiningCh chan bool // the mining loop is notified to stop
 	interrupt    *int32
 
-	p2pCh       chan *common2.Block // this is where blocks received from peers are dropped
-	miningCh    chan *common2.Block // this is where blocks created by the mining setup of the current node are dropped
-	canonicalCh chan *common2.Block // this is where the main processing routine drops blocks that are canonical
-	mempoolCh   chan common2.L1Tx   // where l1 transactions to be published in the next block are added
+	p2pCh       chan *types.Block // this is where blocks received from peers are dropped
+	miningCh    chan *types.Block // this is where blocks created by the mining setup of the current node are dropped
+	canonicalCh chan *types.Block // this is where the main processing routine drops blocks that are canonical
+	mempoolCh   chan common2.L1Tx // where l1 transactions to be published in the next block are added
 
 	// internal
 	headInCh  chan bool
-	headOutCh chan *common2.Block
+	headOutCh chan *types.Block
 }
 
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
@@ -62,13 +66,13 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	head := m.setHead(&common2.GenesisBlock)
-	m.Resolver.Store(&common2.GenesisBlock)
+	head := m.setHead(common2.GenesisBlock)
+	m.Resolver.StoreBlock(common2.GenesisBlock)
 
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, received := m.Resolver.Resolve(p2pb.Hash())
+			_, received := m.Resolver.ResolveBlock(p2pb.Hash())
 			// only process blocks if they haven't been processed before
 			if !received {
 				head = m.processBlock(p2pb, head)
@@ -77,11 +81,11 @@ func (m *Node) Start() {
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if head.Hash() == mb.Hash() { // Ignore the locally produced block if someone else found one already
-				p, found := mb.Parent(m.Resolver)
+				p, found := m.Resolver.ParentBlock(mb)
 				if !found {
 					panic("noo")
 				}
-				m.network.BroadcastBlock(mb.EncodeBlock(), p.EncodeBlock())
+				m.network.BroadcastBlock(common2.EncodeBlock(mb), common2.EncodeBlock(p))
 			}
 		case <-m.headInCh:
 			m.headOutCh <- head
@@ -91,18 +95,18 @@ func (m *Node) Start() {
 	}
 }
 
-func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Block {
-	m.Resolver.Store(b)
-	_, f := m.Resolver.Resolve(b.Header.ParentHash)
+func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
+	m.Resolver.StoreBlock(b)
+	_, f := m.Resolver.ResolveBlock(b.Header().ParentHash)
 
 	// only proceed if the parent is available
 	if !f {
-		common2.Log(fmt.Sprintf("> M%d: Parent block not found=b_%d", m.ID, common2.ShortHash(b.Header.ParentHash)))
+		common2.Log(fmt.Sprintf("> M%d: Parent block not found=b_%d", common2.ShortAddress(m.ID), common2.ShortHash(b.Header().ParentHash)))
 		return head
 	}
 
 	// Ignore superseeded blocks
-	if b.Height(m.Resolver) <= head.Height(m.Resolver) {
+	if m.Resolver.HeightBlock(b) <= m.Resolver.HeightBlock(head) {
 		return head
 	}
 
@@ -110,19 +114,19 @@ func (m *Node) processBlock(b *common2.Block, head *common2.Block) *common2.Bloc
 	if !common2.IsAncestor(head, b, m.Resolver) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
-		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", m.ID, common2.ShortHash(b.Hash()), b.Height(m.Resolver), common2.ShortHash(head.Hash()), head.Height(m.Resolver), common2.ShortHash(fork.Hash()), fork.Height(m.Resolver)))
+		common2.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common2.ShortAddress(m.ID), common2.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), common2.ShortHash(head.Hash()), m.Resolver.HeightBlock(head), common2.ShortHash(fork.Hash()), m.Resolver.HeightBlock(fork)))
 		return m.setFork(BlocksBetween(fork, b, m.Resolver))
 	}
 
-	if b.Height(m.Resolver) > (head.Height(m.Resolver) + 1) {
-		panic(fmt.Sprintf("> M%d: Should not happen", m.ID))
+	if m.Resolver.HeightBlock(b) > (m.Resolver.HeightBlock(head) + 1) {
+		panic(fmt.Sprintf("> M%d: Should not happen", common2.ShortAddress(m.ID)))
 	}
 
 	return m.setHead(b)
 }
 
 // Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
-func (m *Node) setHead(b *common2.Block) *common2.Block {
+func (m *Node) setHead(b *types.Block) *types.Block {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return b
 	}
@@ -130,14 +134,14 @@ func (m *Node) setHead(b *common2.Block) *common2.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		if b.Height(m.Resolver) == 0 {
-			go t.RPCNewHead(b.EncodeBlock(), nil)
+		if m.Resolver.HeightBlock(b) == 0 {
+			go t.RPCNewHead(common2.EncodeBlock(b), nil)
 		} else {
-			p, f := b.Parent(m.Resolver)
+			p, f := m.Resolver.ParentBlock(b)
 			if !f {
 				panic("This should not happen")
 			}
-			go t.RPCNewHead(b.EncodeBlock(), p.EncodeBlock())
+			go t.RPCNewHead(common2.EncodeBlock(b), common2.EncodeBlock(p))
 		}
 	}
 	m.canonicalCh <- b
@@ -145,7 +149,7 @@ func (m *Node) setHead(b *common2.Block) *common2.Block {
 	return b
 }
 
-func (m *Node) setFork(blocks []*common2.Block) *common2.Block {
+func (m *Node) setFork(blocks []*types.Block) *types.Block {
 	head := blocks[len(blocks)-1]
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return head
@@ -153,7 +157,7 @@ func (m *Node) setFork(blocks []*common2.Block) *common2.Block {
 
 	fork := make([]common2.EncodedBlock, len(blocks))
 	for i, block := range blocks {
-		fork[i] = block.EncodeBlock()
+		fork[i] = common2.EncodeBlock(block)
 	}
 
 	// notify the clients
@@ -211,7 +215,7 @@ func (m *Node) startMining() {
 					return
 				}
 				b := common2.NewBlock(canonicalBlock, nonce, m.ID, toInclude)
-				m.miningCh <- &b
+				m.miningCh <- b
 			})
 		}
 	}
@@ -234,10 +238,10 @@ func (m *Node) BroadcastTx(tx common2.EncodedL1Tx) {
 	m.network.BroadcastTx(tx)
 }
 
-func (m *Node) RPCBlockchainFeed() []*common2.Block {
+func (m *Node) RPCBlockchainFeed() []*types.Block {
 	m.headInCh <- true
 	h := <-m.headOutCh
-	return BlocksBetween(&common2.GenesisBlock, h, m.Resolver)
+	return BlocksBetween(common2.GenesisBlock, h, m.Resolver)
 }
 
 func (m *Node) Stop() {
@@ -250,7 +254,7 @@ func (m *Node) Stop() {
 }
 
 func NewMiner(
-	id common2.NodeID,
+	id common.Address,
 	cfg MiningConfig,
 	client common2.NotifyNewBlock,
 	network L1Network,
@@ -268,11 +272,11 @@ func NewMiner(
 		exitCh:       make(chan bool),
 		exitMiningCh: make(chan bool),
 		interrupt:    new(int32),
-		p2pCh:        make(chan *common2.Block),
-		miningCh:     make(chan *common2.Block),
-		canonicalCh:  make(chan *common2.Block),
+		p2pCh:        make(chan *types.Block),
+		miningCh:     make(chan *types.Block),
+		canonicalCh:  make(chan *types.Block),
 		mempoolCh:    make(chan common2.L1Tx),
 		headInCh:     make(chan bool),
-		headOutCh:    make(chan *common2.Block),
+		headOutCh:    make(chan *types.Block),
 	}
 }

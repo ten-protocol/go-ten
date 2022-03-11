@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -24,7 +26,7 @@ type EncryptedTransactions []EncryptedTx
 // Header is in plaintext
 type Header struct {
 	ParentHash  obscuroCommon.L2RootHash
-	Agg         obscuroCommon.NodeID
+	Agg         common.Address
 	Nonce       obscuroCommon.Nonce
 	L1Proof     obscuroCommon.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
@@ -66,8 +68,8 @@ func (r Rollup) ToExtRollup() ExtRollup {
 	}
 }
 
-func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *obscuroCommon.Block {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *types.Block {
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
 	}
@@ -78,12 +80,12 @@ func (r Rollup) Proof(l1BlockResolver obscuroCommon.BlockResolver) *obscuroCommo
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (r Rollup) ProofHeight(l1BlockResolver obscuroCommon.BlockResolver) int {
-	v, f := l1BlockResolver.Resolve(r.Header.L1Proof)
+	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		return -1
 	}
 
-	return v.Height(l1BlockResolver)
+	return l1BlockResolver.HeightBlock(v)
 }
 
 // Hash returns the keccak256 hash of b's header.

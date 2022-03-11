@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	common2 "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
+	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
@@ -36,16 +37,16 @@ func TestSimulation(t *testing.T) {
 	blockDuration := uint64(20_000)
 	l1netw, l2netw := RunSimulation(5, 10, 15, blockDuration, blockDuration/15, blockDuration/3)
 	firstNode := l2netw.nodes[0]
-	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.TestDB(), firstNode.Enclave.TestPeekHead().Head)
+	checkBlockchainValidity(t, l1netw, l2netw, firstNode.Enclave.TestDB(), firstNode.Enclave.TestPeekHead().Head, l1netw.nodes[0].Resolver)
 	stats := l1netw.Stats
 	fmt.Printf("%+v\n", stats)
 	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 }
 
-func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave2.DB, r *enclave2.Rollup) {
+func checkBlockchainValidity(t *testing.T, l1Network L1NetworkCfg, l2Network L2NetworkCfg, db enclave2.DB, r *enclave2.Rollup, resolver common.BlockResolver) {
 	stats := l1Network.Stats
-	p := r.Proof(db)
-	validateL1(t, p, stats, db)
+	p := r.Proof(resolver)
+	validateL1(t, p, stats, db, resolver)
 	totalWithdrawn := validateL2(t, r, stats, db)
 	validateL2State(t, l2Network, stats, totalWithdrawn)
 }
@@ -57,25 +58,26 @@ const L1EfficiencyThreashold = 0.2
 const L2EfficiencyThreashold = 0.3
 
 // Sanity check
-func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
-	deposits := make([]uuid.UUID, 0)
+func validateL1(t *testing.T, b *types.Block, s *Stats, db enclave2.DB, resolver common.BlockResolver) {
+	deposits := make([]common2.Hash, 0)
 	rollups := make([]common.L2RootHash, 0)
-	s.l1Height = b.Height(db)
+	s.l1Height = db.HeightBlock(b)
 	totalDeposited := uint64(0)
 
-	blockchain := ethereum_mock.BlocksBetween(&common.GenesisBlock, b, db)
+	blockchain := ethereum_mock.BlocksBetween(common.GenesisBlock, b, resolver)
 	headRollup := &enclave2.GenesisRollup
 	for _, block := range blockchain {
-		for _, tx := range block.Transactions {
+		for _, tr := range block.Transactions() {
 			currentRollups := make([]*enclave2.Rollup, 0)
+			tx := common.TxData(tr)
 			switch tx.TxType {
 			case common.DepositTx:
-				deposits = append(deposits, tx.ID)
+				deposits = append(deposits, tr.Hash())
 				totalDeposited += tx.Amount
 			case common.RollupTx:
 				r := obscuroCommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if common.IsBlockAncestor(r.Header.L1Proof, b, db) {
+				if common.IsBlockAncestor(r.Header.L1Proof, b, resolver) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					currentRollups = append(currentRollups, enclave2.DecryptRollup(r))
@@ -84,15 +86,15 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 			case common.RequestSecretTx:
 			case common.StoreSecretTx:
 			}
-			r, _ := enclave2.FindWinner(headRollup, currentRollups, db)
+			r, _ := enclave2.FindWinner(headRollup, currentRollups, db, resolver)
 			if r != nil {
 				headRollup = r
 			}
 		}
 	}
 
-	if len(common.FindUUIDDups(deposits)) > 0 {
-		dups := common.FindUUIDDups(deposits)
+	if len(common.FindHashDups(deposits)) > 0 {
+		dups := common.FindHashDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
 	if len(common.FindRollupDups(rollups)) > 0 {
@@ -118,12 +120,12 @@ func validateL1(t *testing.T, b *common.Block, s *Stats, db enclave2.DB) {
 }
 
 func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint64 {
-	s.l2Height = db.Height(r)
+	s.l2Height = db.HeightRollup(r)
 	transfers := make([]common2.Hash, 0)
 	withdrawalTxs := make([]enclave2.L2Tx, 0)
 	withdrawalRequests := make([]obscuroCommon.Withdrawal, 0)
 	for {
-		if db.Height(r) == common.L2GenesisHeight {
+		if db.HeightRollup(r) == common.L2GenesisHeight {
 			break
 		}
 		for i := range r.Transactions {
@@ -139,7 +141,7 @@ func validateL2(t *testing.T, r *enclave2.Rollup, s *Stats, db enclave2.DB) uint
 			}
 		}
 		withdrawalRequests = append(withdrawalRequests, r.Header.Withdrawals...)
-		r = db.Parent(r)
+		r = db.ParentRollup(r)
 	}
 	// todo - check that proofs are on the canonical chain
 

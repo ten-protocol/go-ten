@@ -2,12 +2,13 @@ package simulation
 
 import (
 	"fmt"
+	"math/big"
 	"math/rand"
 	"time"
 
+	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
-	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
@@ -52,11 +53,11 @@ func RunSimulation(
 			genesis = true
 		}
 		// create a layer 2 node
-		agg := obscuro_node.NewAgg(common.NodeID(i), l2Cfg, nil, &l2Network, &stats, genesis)
+		agg := obscuro_node.NewAgg(common2.BigToAddress(big.NewInt(int64(i))), l2Cfg, nil, &l2Network, &stats, genesis)
 		l2Network.nodes = append(l2Network.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
-		miner := ethereum_mock.NewMiner(common.NodeID(i), l1Cfg, &agg, &l1Network, &stats)
+		miner := ethereum_mock.NewMiner(common2.BigToAddress(big.NewInt(int64(i))), l1Cfg, &agg, &l1Network, &stats)
 		l1Network.nodes = append(l1Network.nodes, &miner)
 		agg.L1Node = &miner
 	}
@@ -104,7 +105,7 @@ func injectUserTxs(wallets []wallet_mock.Wallet, l1Network ethereum_mock.L1Netwo
 func initialiseWallets(wallets []wallet_mock.Wallet, l1Network ethereum_mock.L1Network, avgBlockDuration uint64, s *Stats) {
 	for _, u := range wallets {
 		tx := deposit(u, INITIAL_BALANCE)
-		t, _ := tx.Encode()
+		t, _ := common.EncodeTx(tx)
 		l1Network.BroadcastTx(t)
 		s.Deposit(INITIAL_BALANCE)
 		time.Sleep(common.Duration(avgBlockDuration / 3))
@@ -143,7 +144,7 @@ func injectRandomDeposits(wallets []wallet_mock.Wallet, network ethereum_mock.L1
 		}
 		v := common.RndBtw(1, 100)
 		tx := deposit(rndWallet(wallets), v)
-		t, _ := tx.Encode()
+		t, _ := common.EncodeTx(tx)
 		network.BroadcastTx(t)
 		s.Deposit(v)
 		time.Sleep(common.Duration(common.RndBtw(avgBlockDuration, avgBlockDuration*2)))
@@ -174,11 +175,11 @@ func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
 	return wallets[rand.Intn(len(wallets))] //nolint:gosec
 }
 
-func deposit(wallet wallet_mock.Wallet, amount uint64) common.L1Tx {
-	return common.L1Tx{
-		ID:     uuid.New(),
+func deposit(wallet wallet_mock.Wallet, amount uint64) *common.L1Tx {
+	data := common.L1TxData{
 		TxType: common.DepositTx,
 		Amount: amount,
 		Dest:   wallet.Address,
 	}
+	return common.NewL1Tx(data)
 }

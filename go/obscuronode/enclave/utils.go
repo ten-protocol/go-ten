@@ -20,11 +20,11 @@ func allIncludedTransactions(b *Rollup, db DB) map[common2.Hash]L2Tx {
 	if found {
 		return val
 	}
-	if db.Height(b) == common.L2GenesisHeight {
+	if db.HeightRollup(b) == common.L2GenesisHeight {
 		return makeMap(b.Transactions)
 	}
 	newMap := make(map[common2.Hash]L2Tx)
-	for k, v := range allIncludedTransactions(db.Parent(b), db) {
+	for k, v := range allIncludedTransactions(db.ParentRollup(b), db) {
 		newMap[k] = v
 	}
 	for _, tx := range b.Transactions {
@@ -49,11 +49,11 @@ func historicTxs(r *Rollup, db DB) map[common2.Hash]common2.Hash {
 	i := common.HeightCommittedBlocks
 	c := r
 	for {
-		if i == 0 || db.Height(c) == common.L2GenesisHeight {
+		if i == 0 || db.HeightRollup(c) == common.L2GenesisHeight {
 			return toMap(c.Transactions)
 		}
 		i--
-		c = db.Parent(c)
+		c = db.ParentRollup(c)
 	}
 }
 
@@ -84,9 +84,9 @@ func printTx(t L2Tx, txsString []string) []string {
 	txData := TxData(&t)
 	switch txData.Type {
 	case TransferTx:
-		txsString = append(txsString, fmt.Sprintf("%d->%d(%d){%d}", common.ShortAddress(txData.From), common.ShortAddress(txData.To), txData.Amount, t.Hash()))
+		txsString = append(txsString, fmt.Sprintf("%d->%d(%d){%d}", common.ShortAddress(txData.From), common.ShortAddress(txData.To), txData.Amount, common.ShortHash(t.Hash())))
 	case WithdrawalTx:
-		txsString = append(txsString, fmt.Sprintf("%d->*(%d){%d}", common.ShortAddress(txData.From), txData.Amount, t.Hash()))
+		txsString = append(txsString, fmt.Sprintf("%d->*(%d){%d}", common.ShortAddress(txData.From), txData.Amount, common.ShortHash(t.Hash())))
 	}
 	return txsString
 }
