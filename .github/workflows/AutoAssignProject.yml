@@ -7,8 +7,8 @@ on:
     types: [opened, labeled]
   # issue_comment:
   #  types: [created]
-# env:
-  # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+env:
+  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
 jobs:
   assign_one_project:
