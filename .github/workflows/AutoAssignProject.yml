@@ -13,6 +13,7 @@ jobs:
           ORGANIZATION: obscuronet
           PROJECT_NUMBER: 1
         run: |
+          gh auth login
           gh api graphql -f query='
             query($org: String!, $number: Int!) {
               organization(login: $org){
