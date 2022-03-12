@@ -36,6 +36,6 @@ There are users submitting transactions.
 For now these can only be Transfer or Withdrawal transactions.
 
 Aggregators have to process these transactions, and include them in the rollups they create according to the POBI protocol.
-
+ 
 
 
