@@ -1,31 +1,46 @@
-name: Auto Assign to Project
-
+name: Add issue to project
 on:
   issues:
-    types: [opened, labeled]
-  pull_request:
-    types: [opened, labeled]
-  # issue_comment:
-  #  types: [created]
-env:
-  MY_GITHUB_TOKEN: ${{secrets.MY_GITHUB_TOKEN}}
-
+    types:
+      - opened
 jobs:
-  assign_one_project:
+  track_issue:
     runs-on: ubuntu-latest
-    name: Assign to One Project
     steps:
-    - name: Assign NEW issues and NEW pull requests to Obscuro project
-      uses: srggrs/assign-one-project-github-action@1.3.1
-      if: github.event.action == 'opened'
-      with:
-        project: 'https://github.com/orgs/obscuronet/projects/1'
+      - name: Get project data
+        env:
+          MY_GITHUB_TOKEN: ${{ secrets.GH_TOKEN_PROJECT_ACCESS }}
+          ORGANIZATION: obscuronet
+          PROJECT_NUMBER: 1
+        run: |
+          gh api graphql -f query='
+            query($org: String!, $number: Int!) {
+              organization(login: $org){
+                projectNext(number: $number) {
+                  id
+                  fields(first:20) {
+                    nodes {
+                      id
+                      name
+                      settings
+                    }
+                  }
+                }
+              }
+            }' -f org=$ORGANIZATION -F number=$PROJECT_NUMBER > project_data.json
 
-    - name: Assign issues and pull requests with `epic` label to Obscuro project
-      uses: srggrs/assign-one-project-github-action@1.3.1
-      if: |
-        contains(github.event.issue.labels.*.name, 'epic') ||
-        contains(github.event.pull_request.labels.*.name, 'epic')
-      with:
-        project: 'https://github.com/orgs/obscuronet/projects/1'
-        column_name: 'To do'
+          echo 'PROJECT_ID='$(jq '.data.organization.projectNext.id' project_data.json) >> $GITHUB_ENV
+                    
+      - name: Add issue to project
+        env:
+          MY_GITHUB_TOKEN: ${{ secrets.GH_TOKEN_PROJECT_ACCESS }}
+          ISSUE_ID: ${{ github.event.issue.node_id }}
+        run: |
+          item_id="$( gh api graphql -f query='
+            mutation($project:ID!, $issue:ID!) {
+              addProjectNextItem(input: {projectId: $project, contentId: $issue}) {
+                projectNextItem {
+                  id
+                }
+              }
+            }' -f project=$PROJECT_ID -f issue=$ISSUE_ID --jq '.data.addProjectNextItem.projectNextItem.id')"   
