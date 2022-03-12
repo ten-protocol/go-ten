@@ -28,4 +28,4 @@ jobs:
         contains(github.event.pull_request.labels.*.name, 'epic')
       with:
         project: 'https://github.com/orgs/obscuronet/projects/1'
-        column_name: 'To Do'
+        column_name: 'To do'
