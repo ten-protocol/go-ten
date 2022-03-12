@@ -9,11 +9,10 @@ jobs:
     steps:
       - name: Get project data
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN_PROJECT_ACCESS }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           ORGANIZATION: obscuronet
           PROJECT_NUMBER: 1
         run: |
-          gh auth login
           gh api graphql -f query='
             query($org: String!, $number: Int!) {
               organization(login: $org){
@@ -34,7 +33,7 @@ jobs:
                     
       - name: Add issue to project
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN_PROJECT_ACCESS }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           ISSUE_ID: ${{ github.event.issue.node_id }}
         run: |
           item_id="$( gh api graphql -f query='
