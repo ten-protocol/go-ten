@@ -12,8 +12,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-var GenesisHash = common.HexToHash("1000000000000000000000000000000000000000000000000000000000000000")
-
 // L2TxType indicates the type of L2 transaction - either a transfer or a withdrawal for now
 type L2TxType uint8
 
@@ -75,7 +73,7 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 }
 
 func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
-	parentHash := GenesisHash
+	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
 	}

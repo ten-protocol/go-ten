@@ -5,7 +5,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// LCA - returns the least nodecommon ancestor of the 2 blocks
+// LCA - returns the least common ancestor of the 2 blocks
 func LCA(blockA *types.Block, blockB *types.Block, resolver obscurocommon.BlockResolver) *types.Block {
 	if resolver.HeightBlock(blockA) == obscurocommon.L1GenesisHeight || resolver.HeightBlock(blockB) == obscurocommon.L1GenesisHeight {
 		return blockA

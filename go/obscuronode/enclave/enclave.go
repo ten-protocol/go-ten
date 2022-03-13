@@ -156,7 +156,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
 	return SubmitBlockResponse{
 		L2Hash:         GenesisRollup.Header.Hash(),
-		L1Hash:         GenesisHash,
+		L1Hash:         obscurocommon.GenesisHash,
 		ProducedRollup: GenesisRollup.ToExtRollup(),
 		IngestedBlock:  true,
 	}
