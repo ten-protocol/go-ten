@@ -4,9 +4,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	common2 "github.com/obscuronet/obscuro-playground/go/common"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
@@ -32,7 +33,7 @@ func NewL1Network(avgBlockDuration uint64, avgLatency uint64, stats *Stats) *L1N
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
-func (n *L1NetworkCfg) BroadcastBlock(b common2.EncodedBlock, p common2.EncodedBlock) {
+func (n *L1NetworkCfg) BroadcastBlock(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
@@ -41,7 +42,7 @@ func (n *L1NetworkCfg) BroadcastBlock(b common2.EncodedBlock, p common2.EncodedB
 	for _, m := range n.nodes {
 		if m.ID != bl.Header().Coinbase {
 			t := m
-			common2.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
+			obscurocommon.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
 			log.Log(printBlock(bl, *m))
 		}
@@ -51,7 +52,7 @@ func (n *L1NetworkCfg) BroadcastBlock(b common2.EncodedBlock, p common2.EncodedB
 }
 
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
-func (n *L1NetworkCfg) BroadcastTx(tx common2.EncodedL1Tx) {
+func (n *L1NetworkCfg) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
 	if atomic.LoadInt32(n.interrupt) == 1 {
 		return
 	}
@@ -60,8 +61,8 @@ func (n *L1NetworkCfg) BroadcastTx(tx common2.EncodedL1Tx) {
 		t := m
 		// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 		// todo - find a better way to express this
-		d := common2.Max(n.delay()/2, 1)
-		common2.Schedule(d, func() { t.P2PGossipTx(tx) })
+		d := obscurocommon.Max(n.delay()/2, 1)
+		obscurocommon.Schedule(d, func() { t.P2PGossipTx(tx) })
 	}
 }
 
@@ -86,5 +87,5 @@ func (n *L1NetworkCfg) Stop() {
 
 // delay returns an expected delay on the l1 network
 func (n *L1NetworkCfg) delay() uint64 {
-	return common2.RndBtw(n.avgLatency/10, 2*n.avgLatency)
+	return obscurocommon.RndBtw(n.avgLatency/10, 2*n.avgLatency)
 }

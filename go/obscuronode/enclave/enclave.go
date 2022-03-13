@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
@@ -23,32 +23,32 @@ type StatsCollector interface {
 
 // SubmitBlockResponse is the response sent from the enclave back to the node after ingesting a block
 type SubmitBlockResponse struct {
-	L1Hash      common3.L1RootHash   // The Header Hash of the ingested Block
-	L1Height    uint                 // The L1 Height of the ingested Block
-	L1Parent    common3.L2RootHash   // The L1 Parent of the ingested Block
-	L2Hash      common3.L2RootHash   // The Rollup Hash in the ingested Block
-	L2Height    uint                 // The Rollup Height in the ingested Block
-	L2Parent    common3.L2RootHash   // The Rollup Hash Parent inside the ingested Block
-	Withdrawals []common2.Withdrawal // The Withdrawals available in Rollup of the ingested Block
+	L1Hash      obscurocommon.L1RootHash // The Header Hash of the ingested Block
+	L1Height    uint                     // The L1 Height of the ingested Block
+	L1Parent    obscurocommon.L2RootHash // The L1 Parent of the ingested Block
+	L2Hash      obscurocommon.L2RootHash // The Rollup Hash in the ingested Block
+	L2Height    uint                     // The Rollup Height in the ingested Block
+	L2Parent    obscurocommon.L2RootHash // The Rollup Hash Parent inside the ingested Block
+	Withdrawals []nodecommon.Withdrawal  // The Withdrawals available in Rollup of the ingested Block
 
-	ProducedRollup    common2.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	IngestedBlock     bool              // Whether the Block was ingested or discarded
-	IngestedNewRollup bool              // Whether the Block had a new Rollup and the enclave has ingested it
+	ProducedRollup    nodecommon.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
+	IngestedBlock     bool                 // Whether the Block was ingested or discarded
+	IngestedNewRollup bool                 // Whether the Block had a new Rollup and the enclave has ingested it
 }
 
 // Enclave - The actual implementation of this interface will call an rpc service
 type Enclave interface {
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
-	Attestation() common3.AttestationReport
+	Attestation() obscurocommon.AttestationReport
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-	GenerateSecret() common3.EncryptedSharedEnclaveSecret
+	GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret
 
 	// FetchSecret - return the shared secret encrypted with the key from the attestation
-	FetchSecret(report common3.AttestationReport) common3.EncryptedSharedEnclaveSecret
+	FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret
 
 	// Init - initialise an enclave with a seed received by another enclave
-	Init(secret common3.EncryptedSharedEnclaveSecret)
+	Init(secret obscurocommon.EncryptedSharedEnclaveSecret)
 
 	// IsInitialised - true if the shared secret is avaible
 	IsInitialised() bool
@@ -69,16 +69,16 @@ type Enclave interface {
 	SubmitBlock(block types.Block) SubmitBlockResponse
 
 	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup common2.ExtRollup)
+	SubmitRollup(rollup nodecommon.ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx common2.EncryptedTx) error
+	SubmitTx(tx nodecommon.EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round
-	RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool)
+	RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool)
 
 	// Stop gracefully stops the enclave
 	Stop()
@@ -91,7 +91,7 @@ type enclaveImpl struct {
 	node           common.Address
 	mining         bool
 	db             DB
-	blockResolver  common3.BlockResolver
+	blockResolver  obscurocommon.BlockResolver
 	statsCollector StatsCollector
 
 	txCh                 chan L2Tx
@@ -156,7 +156,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
 	return SubmitBlockResponse{
 		L2Hash:         GenesisRollup.Header.Hash(),
-		L1Hash:         common2.GenesisHash,
+		L1Hash:         obscurocommon.GenesisHash,
 		ProducedRollup: GenesisRollup.ToExtRollup(),
 		IngestedBlock:  true,
 	}
@@ -174,7 +174,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 	// So far this seems to recover correctly
 	defer func() {
 		if r := recover(); r != nil {
-			log.Log(fmt.Sprintf("Agg%d Panic %s", common3.ShortAddress(e.node), r))
+			log.Log(fmt.Sprintf("Agg%d Panic %s", obscurocommon.ShortAddress(e.node), r))
 		}
 	}()
 
@@ -189,7 +189,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 	// to determine the total proof of work, to verify some key aspects, etc
 
 	_, f := e.db.ResolveBlock(block.Header().ParentHash)
-	if !f && e.db.HeightBlock(&block) > common3.L1GenesisHeight {
+	if !f && e.db.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
 		return SubmitBlockResponse{IngestedBlock: false}
 	}
 	blockState := updateState(&block, e.db, e.blockResolver)
@@ -215,7 +215,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 	}
 }
 
-func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
+func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	r := Rollup{
 		Header:       rollup.Header,
 		Transactions: decryptTransactions(rollup.Txs),
@@ -225,11 +225,11 @@ func (e *enclaveImpl) SubmitRollup(rollup common2.ExtRollup) {
 	if e.db.ExistRollup(r.Header.ParentHash) {
 		e.db.StoreRollup(&r)
 	} else {
-		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", common3.ShortAddress(e.node), common3.ShortHash(r.Hash())))
+		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
 	}
 }
 
-func (e *enclaveImpl) SubmitTx(tx common2.EncryptedTx) error {
+func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	decryptedTx := DecryptTx(tx)
 	err := verifySignature(&decryptedTx)
 	if err != nil {
@@ -247,7 +247,7 @@ func verifySignature(decryptedTx *L2Tx) error {
 	return err
 }
 
-func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup, bool) {
+func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
 	head := e.db.FetchRollup(parent)
 
 	rollupsReceivedFromPeers := e.db.FetchGossipedRollups(e.db.HeightRollup(head) + 1)
@@ -263,7 +263,7 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 	parentState := e.db.FetchRollupState(head.Hash())
 	// determine the winner of the round
 	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.db, e.blockResolver)
-	// common.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(),
+	// nodecommon.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(),
 	// winnerRollup.L2RootHash.ID(), winnerRollup.Height(), winnerRollup.Parent().L2RootHash.ID(),
 	// winnerRollup.Proof().L2RootHash.ID()))
 
@@ -275,16 +275,16 @@ func (e *enclaveImpl) RoundWinner(parent common3.L2RootHash) (common2.ExtRollup,
 		v := winnerRollup.Proof(e.blockResolver)
 		w := e.db.ParentRollup(winnerRollup)
 		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
-			common3.ShortAddress(e.node),
-			common3.ShortHash(winnerRollup.Hash()), e.db.HeightRollup(winnerRollup),
-			common3.ShortHash(w.Hash()),
-			common3.ShortHash(v.Hash()),
+			obscurocommon.ShortAddress(e.node),
+			obscurocommon.ShortHash(winnerRollup.Hash()), e.db.HeightRollup(winnerRollup),
+			obscurocommon.ShortHash(w.Hash()),
+			obscurocommon.ShortHash(v.Hash()),
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State),
 		)
 		return winnerRollup.ToExtRollup(), true
 	}
-	return common2.ExtRollup{}, false
+	return nodecommon.ExtRollup{}, false
 }
 
 func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
@@ -312,10 +312,10 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
 		if speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
-				common3.ShortAddress(e.node),
-				common3.ShortHash(speculativeRollup.r.Hash()),
+				obscurocommon.ShortAddress(e.node),
+				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
 				e.db.HeightRollup(speculativeRollup.r),
-				common3.ShortHash(bs.Head.Hash()),
+				obscurocommon.ShortHash(bs.Head.Hash()),
 				e.db.HeightRollup(bs.Head)),
 			)
 			e.statsCollector.L2Recalc(e.node)
@@ -332,7 +332,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.blockResolver)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := NewRollup(b, bs.Head, e.node, newRollupTxs, newRollupState.w, common3.GenerateNonce(), serialize(newRollupState.s))
+	r := NewRollup(b, bs.Head, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
 	// h := r.Height(e.db)
 	// fmt.Printf("h:=%d\n", h)
 	return &r
@@ -349,7 +349,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, bool) {
 			}
 		}
 		rollup = e.db.FetchRollup(rollup.Header.ParentHash)
-		if rollup.Height.Load() == common3.L2GenesisHeight {
+		if rollup.Height.Load() == obscurocommon.L2GenesisHeight {
 			return nil, false
 		}
 	}
@@ -359,13 +359,13 @@ func (e *enclaveImpl) Stop() {
 	e.exitCh <- true
 }
 
-func (e *enclaveImpl) Attestation() common3.AttestationReport {
+func (e *enclaveImpl) Attestation() obscurocommon.AttestationReport {
 	// Todo
-	return common3.AttestationReport{Owner: e.node}
+	return obscurocommon.AttestationReport{Owner: e.node}
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() common3.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
 	secret := make([]byte, 32)
 	n, err := rand.Read(secret)
 	if n != 32 || err != nil {
@@ -376,11 +376,11 @@ func (e *enclaveImpl) GenerateSecret() common3.EncryptedSharedEnclaveSecret {
 }
 
 // Init - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) Init(secret common3.EncryptedSharedEnclaveSecret) {
+func (e *enclaveImpl) Init(secret obscurocommon.EncryptedSharedEnclaveSecret) {
 	e.db.StoreSecret(decryptSecret(secret))
 }
 
-func (e *enclaveImpl) FetchSecret(report common3.AttestationReport) common3.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
 	return encryptSecret(e.db.FetchSecret())
 }
 
@@ -389,13 +389,13 @@ func (e *enclaveImpl) IsInitialised() bool {
 }
 
 // Todo - implement with crypto
-func decryptSecret(secret common3.EncryptedSharedEnclaveSecret) SharedEnclaveSecret {
+func decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) SharedEnclaveSecret {
 	return SharedEnclaveSecret(secret)
 }
 
 // Todo - implement with crypto
-func encryptSecret(secret SharedEnclaveSecret) common3.EncryptedSharedEnclaveSecret {
-	return common3.EncryptedSharedEnclaveSecret(secret)
+func encryptSecret(secret SharedEnclaveSecret) obscurocommon.EncryptedSharedEnclaveSecret {
+	return obscurocommon.EncryptedSharedEnclaveSecret(secret)
 }
 
 // internal structure to pass information.

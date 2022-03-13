@@ -6,8 +6,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	common3 "github.com/obscuronet/obscuro-playground/go/common"
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.
@@ -17,7 +17,7 @@ type Stats struct {
 	totalL1Blocks uint
 
 	totalL2Blocks      uint
-	l2Head             *common2.Rollup
+	l2Head             *nodecommon.Rollup
 	maxRollupsPerBlock uint32
 	nrEmptyBlocks      int
 
@@ -56,16 +56,16 @@ func (s *Stats) L2Recalc(id common.Address) {
 
 func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Lock()
-	// s.l1Height = common.MaxInt(s.l1Height, b.Height)
+	// s.l1Height = nodecommon.MaxInt(s.l1Height, b.Height)
 	s.totalL1Blocks++
-	s.maxRollupsPerBlock = common3.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions())))
+	s.maxRollupsPerBlock = obscurocommon.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions())))
 	if len(b.Transactions()) == 0 {
 		s.nrEmptyBlocks++
 	}
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(r *common2.Rollup) {
+func (s *Stats) NewRollup(r *nodecommon.Rollup) {
 	s.statsMu.Lock()
 	s.l2Head = r
 	s.totalL2Blocks++

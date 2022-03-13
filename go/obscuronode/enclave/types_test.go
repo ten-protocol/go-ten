@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
@@ -28,7 +28,7 @@ func TestSerialiseRollup(t *testing.T) {
 	tx := createL2Tx()
 	height := atomic.Value{}
 	height.Store(1)
-	rollup := common2.Rollup{
+	rollup := nodecommon.Rollup{
 		Header:       GenesisRollup.Header,
 		Height:       height,
 		Transactions: encryptTransactions(Transactions{*tx}),
@@ -37,7 +37,7 @@ func TestSerialiseRollup(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	r1 := common2.Rollup{}
+	r1 := nodecommon.Rollup{}
 
 	err = rlp.Decode(read, &r1)
 	if err != nil {

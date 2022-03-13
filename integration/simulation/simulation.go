@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"time"
 
-	common2 "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
@@ -22,7 +22,7 @@ const (
 type Simulation struct {
 	l1NodeConfig     *ethereum_mock.MiningConfig
 	l1Network        *L1NetworkCfg
-	l2NodeConfig     *obscuro_node.AggregatorCfg
+	l2NodeConfig     *host.AggregatorCfg
 	l2Network        *L2NetworkCfg
 	avgBlockDuration uint64
 }
@@ -36,11 +36,11 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 			// Which means on average, every round, the winner (miner who gets the lowest nonce) will pick a number around "avgDuration"
 			// while everyone else will have higher values.
 			// Over a large number of rounds, the actual average block duration will be around the desired value, while the number of miners who get very close numbers will be limited.
-			return common.RndBtw(avgBlockDuration/uint64(nrNodes), uint64(nrNodes)*avgBlockDuration)
+			return obscurocommon.RndBtw(avgBlockDuration/uint64(nrNodes), uint64(nrNodes)*avgBlockDuration)
 		},
 	}
 
-	l2NodeCfg := obscuro_node.AggregatorCfg{GossipRoundDuration: gossipPeriod}
+	l2NodeCfg := host.AggregatorCfg{GossipRoundDuration: gossipPeriod}
 
 	for i := 1; i <= nrNodes; i++ {
 		genesis := false
@@ -48,16 +48,16 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 			genesis = true
 		}
 		// create a layer 2 node
-		agg := obscuro_node.NewAgg(common2.BigToAddress(big.NewInt(int64(i))), l2NodeCfg, nil, l2NetworkCfg, stats, genesis)
+		agg := host.NewAgg(common.BigToAddress(big.NewInt(int64(i))), l2NodeCfg, nil, l2NetworkCfg, stats, genesis)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
-		miner := ethereum_mock.NewMiner(common2.BigToAddress(big.NewInt(int64(i))), l1NodeCfg, &agg, l1NetworkCfg, stats)
+		miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(int64(i))), l1NodeCfg, &agg, l1NetworkCfg, stats)
 		l1NetworkCfg.nodes = append(l1NetworkCfg.nodes, &miner)
 		agg.L1Node = &miner
 	}
 
-	log.Log(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
+	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	return &Simulation{
 		l1NodeConfig:     &l1NodeCfg,
@@ -78,7 +78,7 @@ func (s *Simulation) Start(
 	// todo - add observer nodes
 	// todo read balance
 
-	log.Log(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
+	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
 	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
@@ -91,12 +91,12 @@ func (s *Simulation) Start(
 	go txManager.Start(timeInUs)
 
 	// Wait for the simulation time
-	time.Sleep(common.Duration(uint64(timeInUs)))
+	time.Sleep(obscurocommon.Duration(uint64(timeInUs)))
 
 	// stop L2 first and then L1
 	go s.l2Network.Stop()
 	go s.l1Network.Stop()
 
-	fmt.Printf("Stopped simulation after %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), common.Duration(uint64(timeInUs)))
+	fmt.Printf("Stopped simulation after %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(timeInUs)))
 	time.Sleep(time.Second)
 }

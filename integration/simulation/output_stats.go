@@ -3,8 +3,8 @@ package simulation
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
-	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // OutputStats decouples the processing of data and the collection of statistics
@@ -52,10 +52,10 @@ func (o *OutputStats) countRollups() {
 			panic("expected l1 block not found")
 		}
 		for _, tx := range block.Transactions() {
-			txData := common.TxData(tx)
-			if txData.TxType == common.RollupTx {
-				r := obscuroCommon.DecodeRollup(txData.Rollup)
-				if common.IsBlockAncestor(r.Header.L1Proof, block, l1Node.Resolver) {
+			txData := obscurocommon.TxData(tx)
+			if txData.TxType == obscurocommon.RollupTx {
+				r := nodecommon.DecodeRollup(txData.Rollup)
+				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, block, l1Node.Resolver) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}

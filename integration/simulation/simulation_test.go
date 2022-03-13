@@ -7,17 +7,17 @@ import (
 	"testing"
 	"time"
 
-	common2 "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	obscuro_node "github.com/obscuronet/obscuro-playground/go/obscuronode"
-
 	"github.com/google/uuid"
-	"github.com/obscuronet/obscuro-playground/go/common"
 	"golang.org/x/sync/errgroup"
 
-	obscuroCommon "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
@@ -92,7 +92,7 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 }
 
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2
-func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
+func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats) {
 	l1Height := uint(0)
 	for header := node.DB().GetCurrentBlockHead(); header != nil; header = node.DB().GetBlockHeader(header.Parent) {
 		l1Height++
@@ -127,7 +127,7 @@ func validateL1L2Stats(t *testing.T, node *obscuro_node.Node, stats *Stats) {
 }
 
 // validateL2TxsExist tests that all transaction in the transaction Manager are found in the blockchain state of each node
-func validateL2TxsExist(t *testing.T, nodes []*obscuro_node.Node, txManager *TransactionManager) {
+func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *TransactionManager) {
 	// Parallelize this check
 	var nGroup errgroup.Group
 
@@ -160,9 +160,9 @@ const (
 )
 
 // validateL1 does a sanity check on the mock implementation of the L1
-func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.L1RootHash, node *ethereum_mock.Node) {
-	deposits := make([]common2.Hash, 0)
-	rollups := make([]common.L2RootHash, 0)
+func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node) {
+	deposits := make([]common.Hash, 0)
+	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
 	l1Block, found := node.Resolver.ResolveBlock(*l1HeightHash)
@@ -170,34 +170,34 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.
 		t.Errorf("expected l1 height block not found")
 	}
 
-	blockchain := ethereum_mock.BlocksBetween(common.GenesisBlock, l1Block, node.Resolver)
+	blockchain := ethereum_mock.BlocksBetween(obscurocommon.GenesisBlock, l1Block, node.Resolver)
 	for _, block := range blockchain {
 		for _, tr := range block.Transactions() {
-			tx := common.TxData(tr)
+			tx := obscurocommon.TxData(tr)
 			switch tx.TxType {
-			case common.DepositTx:
+			case obscurocommon.DepositTx:
 				deposits = append(deposits, tr.Hash())
 				totalDeposited += tx.Amount
-			case common.RollupTx:
-				r := obscuroCommon.DecodeRollup(tx.Rollup)
+			case obscurocommon.RollupTx:
+				r := nodecommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if common.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
+				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					stats.NewRollup(r)
 				}
-			case common.RequestSecretTx:
-			case common.StoreSecretTx:
+			case obscurocommon.RequestSecretTx:
+			case obscurocommon.StoreSecretTx:
 			}
 		}
 	}
 
-	if len(common.FindHashDups(deposits)) > 0 {
-		dups := common.FindHashDups(deposits)
+	if len(obscurocommon.FindHashDups(deposits)) > 0 {
+		dups := obscurocommon.FindHashDups(deposits)
 		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
-	if len(common.FindRollupDups(rollups)) > 0 {
-		dups := common.FindRollupDups(rollups)
+	if len(obscurocommon.FindRollupDups(rollups)) > 0 {
+		dups := obscurocommon.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
 	if totalDeposited != stats.totalDepositedAmount {
@@ -220,7 +220,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *common.
 
 // validateL2WithdrawalStats checks the withdrawal requests by
 // comparing the stats of the generated transactions with the withdrawals on the node headers
-func validateL2WithdrawalStats(t *testing.T, node *obscuro_node.Node, stats *Stats, l2Height uint, txManager *TransactionManager) uint64 {
+func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint, txManager *TransactionManager) uint64 {
 	headerWithdrawalSum := uint64(0)
 	headerWithdrawalTxCount := 0
 

@@ -3,7 +3,7 @@ package obscuronode
 import (
 	"sync"
 
-	common2 "github.com/obscuronet/obscuro-playground/go/obscuronode/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -21,7 +21,7 @@ type RollupHeader struct {
 	Parent common.Hash
 	Height uint
 
-	Withdrawals []common2.Withdrawal
+	Withdrawals []nodecommon.Withdrawal
 }
 
 // DB allows to access the nodes public nodeDB
