@@ -30,7 +30,7 @@ Normal:
 - make publishing to L1 more random (to simulate aggregators failing to publish)
 - use "gauge" instead of stats
 - introduce event feeds
-- collect statistics when multiple rollups compete (too see what actually happens)
+- collect statistics when multiple rollups compete (to see what actually happens)
 - When verifying a rollup - check that the withdrawals in the header match the withdrawals as calculated
 
 
