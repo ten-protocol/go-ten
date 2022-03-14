@@ -4,7 +4,8 @@ option go_package = "obscuronode/enclave/rpc";
 
 package rpc;
 
-service Enclave {
+// TODO - Joel - Rename this? Aim was to avoid taking up the useful `EnclaveClient` name that we want for ourselves.
+service EnclaveInternal {
   // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
 
@@ -55,22 +56,32 @@ service Enclave {
 }
 
 message AttestationRequest {}
-message AttestationResponse {}
+message AttestationResponse {
+  bytes owner = 1;
+}
 
 message GenerateSecretRequest {}
-message GenerateSecretResponse {}
+message GenerateSecretResponse {
+  bytes encryptedSharedEnclaveSecret = 1;
+}
 
 message FetchSecretRequest {}
-message FetchSecretResponse {}
+message FetchSecretResponse {
+  bytes encryptedSharedEnclaveSecret = 1;
+}
 
 message InitRequest {}
 message InitResponse {}
 
 message IsInitialisedRequest {}
-message IsInitialisedResponse {}
+message IsInitialisedResponse {
+  bool isInitialised = 1;
+}
 
 message ProduceGenesisRequest {}
-message ProduceGenesisResponse {}
+message ProduceGenesisResponse {
+  bytes blockSubmissionResponse = 1;
+}
 
 message IngestBlocksRequest {}
 message IngestBlocksResponse {}
@@ -88,7 +99,9 @@ message SubmitTxRequest {}
 message SubmitTxResponse {}
 
 message BalanceRequest {}
-message BalanceResponse {}
+message BalanceResponse {
+  uint64 balance = 1;
+}
 
 message RoundWinnerRequest {}
 message RoundWinnerResponse {}

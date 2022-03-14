@@ -21,8 +21,8 @@ type StatsCollector interface {
 	RollupWithMoreRecentProof()
 }
 
-// SubmitBlockResponse is the response sent from the enclave back to the node after ingesting a block
-type SubmitBlockResponse struct {
+// BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
+type BlockSubmissionResponse struct {
 	L1Hash      obscurocommon.L1RootHash // The Header Hash of the ingested Block
 	L1Height    uint                     // The L1 Height of the ingested Block
 	L1Parent    obscurocommon.L2RootHash // The L1 Parent of the ingested Block
@@ -55,7 +55,7 @@ type Enclave interface {
 	IsInitialised() bool
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis() SubmitBlockResponse
+	ProduceGenesis() BlockSubmissionResponse
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
 	IngestBlocks(blocks []*types.Block)
@@ -67,7 +67,7 @@ type Enclave interface {
 	// it is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving a parent of it, will result in it being ignored
-	SubmitBlock(block types.Block) SubmitBlockResponse
+	SubmitBlock(block types.Block) BlockSubmissionResponse
 
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(rollup nodecommon.ExtRollup)
@@ -154,8 +154,8 @@ func (e *enclaveImpl) Start(block types.Block) {
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis() SubmitBlockResponse {
-	return SubmitBlockResponse{
+func (e *enclaveImpl) ProduceGenesis() BlockSubmissionResponse {
+	return BlockSubmissionResponse{
 		L2Hash:         GenesisRollup.Header.Hash(),
 		L1Hash:         obscurocommon.GenesisHash,
 		ProducedRollup: GenesisRollup.ToExtRollup(),
@@ -170,7 +170,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) {
 	}
 }
 
-func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
+func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 	// Todo - investigate further why this is needed.
 	// So far this seems to recover correctly
 	defer func() {
@@ -181,7 +181,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 
 	_, foundBlock := e.db.ResolveBlock(block.Hash())
 	if foundBlock {
-		return SubmitBlockResponse{IngestedBlock: false}
+		return BlockSubmissionResponse{IngestedBlock: false}
 	}
 
 	e.db.StoreBlock(&block)
@@ -191,7 +191,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 
 	_, f := e.db.ResolveBlock(block.Header().ParentHash)
 	if !f && e.db.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
-		return SubmitBlockResponse{IngestedBlock: false}
+		return BlockSubmissionResponse{IngestedBlock: false}
 	}
 	blockState := updateState(&block, e.db, e.blockResolver)
 
@@ -201,7 +201,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.db.StoreRollup(r)
 
-	return SubmitBlockResponse{
+	return BlockSubmissionResponse{
 		L1Hash:      block.Hash(),
 		L1Height:    uint(e.blockResolver.HeightBlock(&block)),
 		L1Parent:    blockState.Block.Header().ParentHash,

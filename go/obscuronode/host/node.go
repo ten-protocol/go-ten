@@ -2,6 +2,7 @@ package host
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
 	"sync/atomic"
 	"time"
 
@@ -77,6 +78,14 @@ func NewAgg(
 	collector StatsCollector,
 	genesis bool,
 ) Node {
+	// TODO - Joel - Close the connection.
+	enclaveClient := rpc.NewEnclaveClient()
+
+	// TODO - Joel - Do I need to wait here for the server to start?
+	// TODO - Joel - We should monitor server health over time.
+	// TODO - Joel - Allow server to be stopped.
+	rpc.StartServer()
+
 	return Node{
 		// config
 		ID:        id,
@@ -98,7 +107,7 @@ func NewAgg(
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 
 		// State processing
-		Enclave: enclave.NewEnclave(id, true, collector),
+		Enclave: &enclaveClient,
 
 		// Initialized the node nodeDB
 		nodeDB: obscuronode.NewDB(),
@@ -252,7 +261,7 @@ type blockAndParent struct {
 }
 
 func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int32) {
-	var result enclave.SubmitBlockResponse
+	var result enclave.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {

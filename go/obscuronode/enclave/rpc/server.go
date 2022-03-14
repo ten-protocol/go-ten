@@ -20,9 +20,17 @@ import (
 
 var Port = flag.Int("port", 50051, "The server port")
 
+// TODO - Joel - Establish whether some gRPC methods can be declared without an '(x, error)' return type.
+
 type server struct {
-	UnimplementedEnclaveServer
+	UnimplementedEnclaveInternalServer
 	enclave enclave.Enclave
+}
+
+func (s *server) Init(ctx context.Context, request *InitRequest) (*InitResponse, error) {
+	secret := []byte("I took some library books with me when I moved to France")
+	s.enclave.Init(secret)
+	return &InitResponse{}, nil
 }
 
 func (s *server) Start(ctx context.Context, request *StartRequest) (*StartResponse, error) {
@@ -32,6 +40,8 @@ func (s *server) Start(ctx context.Context, request *StartRequest) (*StartRespon
 	return &StartResponse{}, errors.New("server received request")
 }
 
+// TODO - Joel - Have the server start on different ports, not just the same one repeatedly.
+// TODO - Joel - Pass in real arguments to create an enclave here. We just use dummies below.
 func StartServer() {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *Port))
@@ -40,9 +50,8 @@ func StartServer() {
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	// TODO - Joel - Pass in real arguments here. These are just dummies.
 	enclaveAddress := common.BigToAddress(big.NewInt(int64(1)))
 	enclaveServer := server{enclave: enclave.NewEnclave(enclaveAddress, true, simulation.NewStats(1))}
-	RegisterEnclaveServer(grpcServer, &enclaveServer)
+	RegisterEnclaveInternalServer(grpcServer, &enclaveServer)
 	grpcServer.Serve(lis)
 }

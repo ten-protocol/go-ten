@@ -1,13 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"sync"
-	"time"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
-)
-
 // DefaultAverageLatencyToBlockRatio is relative to the block time
 // Average eth Block duration=12s, and average eth block latency = 1s
 // Determines the broadcast powTime. The lower, the more powTime.
@@ -17,19 +9,6 @@ const DefaultAverageLatencyToBlockRatio = 12
 const DefaultAverageGossipPeriodToBlockRatio = 3
 
 func main() {
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rpc.StartServer()
-	}()
-
-	time.Sleep(1000)
-	rpc.StartClient()
-
-	wg.Wait()
-	fmt.Println("RPC server stopped.")
-
 	////f, err := os.Create("cpu.prof")
 	////if err != nil {
 	////	log.Fatal("could not create CPU profile: ", err)

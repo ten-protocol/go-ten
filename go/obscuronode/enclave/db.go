@@ -296,7 +296,7 @@ func (db *inMemoryDB) FetchSecret() SharedEnclaveSecret {
 
 func (db *inMemoryDB) assertSecretAvailable() {
 	if db.sharedEnclaveSecret == nil {
-		panic("Enclave not initialized")
+		panic("EnclaveClient not initialized")
 	}
 }
 
