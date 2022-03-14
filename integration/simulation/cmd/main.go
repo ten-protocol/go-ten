@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
 )
@@ -23,7 +24,9 @@ func main() {
 		rpc.StartServer()
 	}()
 
+	time.Sleep(1000)
 	rpc.StartClient()
+
 	wg.Wait()
 	fmt.Println("RPC server stopped.")
 

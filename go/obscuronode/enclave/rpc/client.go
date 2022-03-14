@@ -1,8 +1,11 @@
 package rpc
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"log"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -10,12 +13,12 @@ import (
 
 var serverAddr = flag.String("addr", "localhost:50051", "The server address in the format of host:port")
 
-func getGetFeature(client EnclaveClient) {
-	// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	// defer cancel()
-	// inputPoint := Point{Latitude: 1, Longitude: 1}
-	// point, _ := client.GetFeature(ctx, &inputPoint)
-	// fmt.Println(point.Longitude)
+func start(client EnclaveClient) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	fmt.Println("Calling method on client side.")
+	_, err := client.Start(ctx, &StartRequest{})
+	fmt.Println(err)
 }
 
 func StartClient() {
@@ -30,5 +33,5 @@ func StartClient() {
 	defer conn.Close()
 	client := NewEnclaveClient(conn)
 
-	getGetFeature(client)
+	start(client)
 }

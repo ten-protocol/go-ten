@@ -1,10 +1,17 @@
 package rpc
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"google.golang.org/grpc"
 )
@@ -13,11 +20,13 @@ var Port = flag.Int("port", 50051, "The server port")
 
 type server struct {
 	UnimplementedEnclaveServer
+	enclave enclave.Enclave
 }
 
-//func (s *server) GetFeature(ctx context.Context, point *Point) (*Point, error) {
-//	return &Point{Latitude: 777, Longitude: 777}, nil
-//}
+func (s *server) Start(ctx context.Context, request *StartRequest) (*StartResponse, error) {
+	// TODO - Joel - Actually delegate to enclave.
+	return &StartResponse{}, errors.New("server received request")
+}
 
 func StartServer() {
 	flag.Parse()
@@ -27,6 +36,9 @@ func StartServer() {
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	RegisterEnclaveServer(grpcServer, &server{})
+	// TODO - Joel - Pass in real arguments here. These are just dummies.
+	enclaveAddress := common.BigToAddress(big.NewInt(int64(1)))
+	enclaveServer := server{enclave: enclave.NewEnclave(enclaveAddress, true, simulation.NewStats(1))}
+	RegisterEnclaveServer(grpcServer, &enclaveServer)
 	grpcServer.Serve(lis)
 }
