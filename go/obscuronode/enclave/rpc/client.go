@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -14,10 +13,7 @@ import (
 var serverAddr = flag.String("addr", "localhost:50051", "The server address in the format of host:port")
 
 func start(client EnclaveClient) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	fmt.Println("Calling method on client side.")
-	_, err := client.Start(ctx, &StartRequest{})
+	_, err := client.Start(context.Background(), &StartRequest{})
 	fmt.Println(err)
 }
 

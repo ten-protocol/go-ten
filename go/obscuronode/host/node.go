@@ -132,6 +132,7 @@ func (a *Node) startProcessing() {
 	allblocks := a.L1Node.RPCBlockchainFeed()
 	a.Enclave.IngestBlocks(allblocks)
 	// todo - what happens with the blocks received while processing ?
+	// TODO - Joel - Don't spin up goroutine here. It will be spun up on the enclave side.
 	go a.Enclave.Start(*allblocks[len(allblocks)-1])
 
 	if a.genesis {

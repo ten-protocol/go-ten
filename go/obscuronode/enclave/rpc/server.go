@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"net"
 
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
@@ -24,7 +26,9 @@ type server struct {
 }
 
 func (s *server) Start(ctx context.Context, request *StartRequest) (*StartResponse, error) {
-	// TODO - Joel - Actually delegate to enclave.
+	blockAddress := common.BigToAddress(big.NewInt(int64(0)))
+	block := obscurocommon.NewBlock(nil, 0, blockAddress, []*obscurocommon.L1Tx{})
+	go s.enclave.Start(*block)
 	return &StartResponse{}, errors.New("server received request")
 }
 
