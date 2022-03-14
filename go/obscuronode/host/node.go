@@ -2,9 +2,10 @@ package host
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode"
