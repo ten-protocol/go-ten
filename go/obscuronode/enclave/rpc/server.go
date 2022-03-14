@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -13,12 +12,12 @@ import (
 var Port = flag.Int("port", 50051, "The server port")
 
 type server struct {
-	UnimplementedRouteGuideServer
+	UnimplementedEnclaveServer
 }
 
-func (s *server) GetFeature(ctx context.Context, point *Point) (*Point, error) {
-	return &Point{Latitude: 777, Longitude: 777}, nil
-}
+//func (s *server) GetFeature(ctx context.Context, point *Point) (*Point, error) {
+//	return &Point{Latitude: 777, Longitude: 777}, nil
+//}
 
 func StartServer() {
 	flag.Parse()
@@ -28,6 +27,6 @@ func StartServer() {
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	RegisterRouteGuideServer(grpcServer, &server{})
+	RegisterEnclaveServer(grpcServer, &server{})
 	grpcServer.Serve(lis)
 }

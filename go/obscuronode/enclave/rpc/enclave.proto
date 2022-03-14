@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+option go_package = "obscuronode/enclave/rpc";
+
+package rpc;
+
+service Enclave {
+  // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
+  rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
+
+  // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
+  rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
+
+  // FetchSecret - return the shared secret encrypted with the key from the attestation
+  rpc FetchSecret(FetchSecretRequest) returns (FetchSecretResponse) {}
+
+  // Init - initialise an enclave with a seed received by another enclave
+  rpc Init(InitRequest) returns (InitResponse) {}
+
+  // IsInitialised - true if the shared secret is available
+  rpc IsInitialised(IsInitialisedRequest) returns (IsInitialisedResponse) {}
+
+  // ProduceGenesis - the genesis enclave produces the genesis rollup
+  rpc ProduceGenesis(ProduceGenesisRequest) returns (ProduceGenesisResponse) {}
+
+  // IngestBlocks - feed L1 blocks into the enclave to catch up
+  rpc IngestBlocks(IngestBlocksRequest) returns (IngestBlocksResponse) {}
+
+  // Start - start speculative execution
+  rpc Start(StartRequest) returns (StartResponse) {}
+
+  // SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
+  // it is the responsibility of the host to gossip the returned rollup
+  // For good functioning the caller should always submit blocks ordered by height
+  // submitting a block before receiving a parent of it, will result in it being ignored
+  rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse) {}
+
+  // SubmitRollup - receive gossiped rollups
+  rpc SubmitRollup(SubmitRollupRequest) returns (SubmitRollupResponse) {}
+
+  // SubmitTx - user transactions
+  rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
+
+  // Balance - returns the balance of an address with a block delay
+  rpc Balance(BalanceRequest) returns (BalanceResponse) {}
+
+  // RoundWinner - calculates and returns the winner for a round
+  rpc RoundWinner(RoundWinnerRequest) returns (RoundWinnerResponse) {}
+
+  // Stop gracefully stops the enclave
+  rpc Stop(StopRequest) returns (StopResponse) {}
+
+  // GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
+  rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse) {}
+}
+
+message AttestationRequest {}
+message AttestationResponse {}
+
+message GenerateSecretRequest {}
+message GenerateSecretResponse {}
+
+message FetchSecretRequest {}
+message FetchSecretResponse {}
+
+message InitRequest {}
+message InitResponse {}
+
+message IsInitialisedRequest {}
+message IsInitialisedResponse {}
+
+message ProduceGenesisRequest {}
+message ProduceGenesisResponse {}
+
+message IngestBlocksRequest {}
+message IngestBlocksResponse {}
+
+message StartRequest {}
+message StartResponse {}
+
+message SubmitBlockRequest {}
+message SubmitBlockResponse {}
+
+message SubmitRollupRequest {}
+message SubmitRollupResponse {}
+
+message SubmitTxRequest {}
+message SubmitTxResponse {}
+
+message BalanceRequest {}
+message BalanceResponse {}
+
+message RoundWinnerRequest {}
+message RoundWinnerResponse {}
+
+message StopRequest {}
+message StopResponse {}
+
+message GetTransactionRequest {}
+message GetTransactionResponse {}

@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
 )
 
@@ -13,8 +16,16 @@ const DefaultAverageLatencyToBlockRatio = 12
 const DefaultAverageGossipPeriodToBlockRatio = 3
 
 func main() {
-	go rpc.StartServer()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		rpc.StartServer()
+	}()
+
 	rpc.StartClient()
+	wg.Wait()
+	fmt.Println("RPC server stopped.")
 
 	////f, err := os.Create("cpu.prof")
 	////if err != nil {
