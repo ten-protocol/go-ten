@@ -13,7 +13,8 @@ const DefaultAverageLatencyToBlockRatio = 12
 const DefaultAverageGossipPeriodToBlockRatio = 3
 
 func main() {
-	rpc.Start()
+	go rpc.StartServer()
+	rpc.StartClient()
 
 	////f, err := os.Create("cpu.prof")
 	////if err != nil {
