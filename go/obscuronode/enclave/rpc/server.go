@@ -19,7 +19,7 @@ import (
 // TODO - Joel - Establish whether some gRPC methods can be declared without an '(x, error)' return type.
 
 type server struct {
-	UnimplementedEnclaveInternalServer
+	UnimplementedEnclaveProtoServer
 	enclave enclave.Enclave
 }
 
@@ -32,7 +32,7 @@ func StartServer(nodeID common.Address, port uint64, collector enclave.StatsColl
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	enclaveServer := server{enclave: enclave.NewEnclave(nodeID, true, collector)}
-	RegisterEnclaveInternalServer(grpcServer, &enclaveServer)
+	RegisterEnclaveProtoServer(grpcServer, &enclaveServer)
 	go func(lis net.Listener) {
 		err = grpcServer.Serve(lis)
 		if err != nil {

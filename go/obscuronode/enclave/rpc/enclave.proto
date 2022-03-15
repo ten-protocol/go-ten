@@ -4,8 +4,7 @@ option go_package = "obscuronode/enclave/rpc";
 
 package rpc;
 
-// TODO - Joel - Rename this? Aim was to avoid taking up the useful `EnclaveClient` name that we want for ourselves.
-service EnclaveInternal {
+service EnclaveProto {
   // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
 

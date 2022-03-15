@@ -19,12 +19,12 @@ import (
 )
 
 type EnclaveClient struct {
-	clientInternal EnclaveInternalClient
+	protoClient EnclaveProtoClient
 }
 
 func NewEnclaveClient(port uint64) EnclaveClient {
 	connection := enclaveClientConn(port)
-	client := EnclaveClient{NewEnclaveInternalClient(connection)}
+	client := EnclaveClient{NewEnclaveProtoClient(connection)}
 	return client
 }
 
@@ -44,7 +44,7 @@ func enclaveClientConn(port uint64) *grpc.ClientConn {
 // TODO - Joel - Handle the errors coming back from the client requests.
 
 func (c *EnclaveClient) Attestation() obscurocommon.AttestationReport {
-	response, e := c.clientInternal.Attestation(context.Background(), &AttestationRequest{})
+	response, e := c.protoClient.Attestation(context.Background(), &AttestationRequest{})
 	if e != nil {
 		panic(e)
 	}
@@ -52,7 +52,7 @@ func (c *EnclaveClient) Attestation() obscurocommon.AttestationReport {
 }
 
 func (c *EnclaveClient) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
-	response, e := c.clientInternal.GenerateSecret(context.Background(), &GenerateSecretRequest{})
+	response, e := c.protoClient.GenerateSecret(context.Background(), &GenerateSecretRequest{})
 	if e != nil {
 		panic(e)
 	}
@@ -62,7 +62,7 @@ func (c *EnclaveClient) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSec
 func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
 	attestationReportMsg := toAttestationReportMsg(report)
 	request := FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
-	response, e := c.clientInternal.FetchSecret(context.Background(), &request)
+	response, e := c.protoClient.FetchSecret(context.Background(), &request)
 	if e != nil {
 		panic(e)
 	}
@@ -70,14 +70,14 @@ func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) obsc
 }
 
 func (c *EnclaveClient) Init(secret obscurocommon.EncryptedSharedEnclaveSecret) {
-	_, e := c.clientInternal.Init(context.Background(), &InitRequest{EncryptedSharedEnclaveSecret: secret})
+	_, e := c.protoClient.Init(context.Background(), &InitRequest{EncryptedSharedEnclaveSecret: secret})
 	if e != nil {
 		panic(e)
 	}
 }
 
 func (c *EnclaveClient) IsInitialised() bool {
-	response, e := c.clientInternal.IsInitialised(context.Background(), &IsInitialisedRequest{})
+	response, e := c.protoClient.IsInitialised(context.Background(), &IsInitialisedRequest{})
 	if e != nil {
 		panic(e)
 	}
@@ -85,7 +85,7 @@ func (c *EnclaveClient) IsInitialised() bool {
 }
 
 func (c *EnclaveClient) ProduceGenesis() enclave.BlockSubmissionResponse {
-	response, e := c.clientInternal.ProduceGenesis(context.Background(), &ProduceGenesisRequest{})
+	response, e := c.protoClient.ProduceGenesis(context.Background(), &ProduceGenesisRequest{})
 	if e != nil {
 		panic(e)
 	}
@@ -98,7 +98,7 @@ func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) {
 		encodedBlock := obscurocommon.EncodeBlock(block)
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
-	_, e := c.clientInternal.IngestBlocks(context.Background(), &IngestBlocksRequest{EncodedBlocks: encodedBlocks})
+	_, e := c.protoClient.IngestBlocks(context.Background(), &IngestBlocksRequest{EncodedBlocks: encodedBlocks})
 	if e != nil {
 		panic(e)
 	}
@@ -107,7 +107,7 @@ func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) {
 func (c *EnclaveClient) Start(block types.Block) {
 	var buffer bytes.Buffer
 	block.EncodeRLP(&buffer)
-	_, e := c.clientInternal.Start(context.Background(), &StartRequest{EncodedBlock: buffer.Bytes()})
+	_, e := c.protoClient.Start(context.Background(), &StartRequest{EncodedBlock: buffer.Bytes()})
 	if e != nil {
 		panic(e)
 	}
@@ -116,7 +116,7 @@ func (c *EnclaveClient) Start(block types.Block) {
 func (c *EnclaveClient) SubmitBlock(block types.Block) enclave.BlockSubmissionResponse {
 	var buffer bytes.Buffer
 	block.EncodeRLP(&buffer)
-	response, e := c.clientInternal.SubmitBlock(context.Background(), &SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
+	response, e := c.protoClient.SubmitBlock(context.Background(), &SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if e != nil {
 		panic(e)
 	}
@@ -125,14 +125,14 @@ func (c *EnclaveClient) SubmitBlock(block types.Block) enclave.BlockSubmissionRe
 
 func (c *EnclaveClient) SubmitRollup(rollup nodecommon.ExtRollup) {
 	extRollupMsg := toExtRollupMsg(&rollup)
-	_, e := c.clientInternal.SubmitRollup(context.Background(), &SubmitRollupRequest{ExtRollup: &extRollupMsg})
+	_, e := c.protoClient.SubmitRollup(context.Background(), &SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	if e != nil {
 		panic(e)
 	}
 }
 
 func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) error {
-	_, e := c.clientInternal.SubmitTx(context.Background(), &SubmitTxRequest{EncryptedTx: tx})
+	_, e := c.protoClient.SubmitTx(context.Background(), &SubmitTxRequest{EncryptedTx: tx})
 	if e != nil {
 		panic(e)
 	}
@@ -140,7 +140,7 @@ func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) error {
 }
 
 func (c *EnclaveClient) Balance(address common.Address) uint64 {
-	response, e := c.clientInternal.Balance(context.Background(), &BalanceRequest{Address: address.Bytes()})
+	response, e := c.protoClient.Balance(context.Background(), &BalanceRequest{Address: address.Bytes()})
 	if e != nil {
 		panic(e)
 	}
@@ -148,7 +148,7 @@ func (c *EnclaveClient) Balance(address common.Address) uint64 {
 }
 
 func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
-	response, e := c.clientInternal.RoundWinner(context.Background(), &RoundWinnerRequest{Parent: parent.Bytes()})
+	response, e := c.protoClient.RoundWinner(context.Background(), &RoundWinnerRequest{Parent: parent.Bytes()})
 	if e != nil {
 		panic(e)
 	}
@@ -160,14 +160,14 @@ func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon
 }
 
 func (c *EnclaveClient) Stop() {
-	_, e := c.clientInternal.Stop(context.Background(), &StopRequest{})
+	_, e := c.protoClient.Stop(context.Background(), &StopRequest{})
 	if e != nil {
 		panic(e)
 	}
 }
 
 func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool) {
-	response, e := c.clientInternal.GetTransaction(context.Background(), &GetTransactionRequest{TxHash: txHash.Bytes()})
+	response, e := c.protoClient.GetTransaction(context.Background(), &GetTransactionRequest{TxHash: txHash.Bytes()})
 	if e != nil {
 		panic(e)
 	}

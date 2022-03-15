@@ -18,10 +18,10 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// EnclaveInternalClient is the client API for EnclaveInternal service.
+// EnclaveProtoClient is the client API for EnclaveProto service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type EnclaveInternalClient interface {
+type EnclaveProtoClient interface {
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error)
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
@@ -57,153 +57,153 @@ type EnclaveInternalClient interface {
 	GetTransaction(ctx context.Context, in *GetTransactionRequest, opts ...grpc.CallOption) (*GetTransactionResponse, error)
 }
 
-type enclaveInternalClient struct {
+type enclaveProtoClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewEnclaveInternalClient(cc grpc.ClientConnInterface) EnclaveInternalClient {
-	return &enclaveInternalClient{cc}
+func NewEnclaveProtoClient(cc grpc.ClientConnInterface) EnclaveProtoClient {
+	return &enclaveProtoClient{cc}
 }
 
-func (c *enclaveInternalClient) Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error) {
+func (c *enclaveProtoClient) Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error) {
 	out := new(AttestationResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/Attestation", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Attestation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error) {
+func (c *enclaveProtoClient) GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error) {
 	out := new(GenerateSecretResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/GenerateSecret", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/GenerateSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) FetchSecret(ctx context.Context, in *FetchSecretRequest, opts ...grpc.CallOption) (*FetchSecretResponse, error) {
+func (c *enclaveProtoClient) FetchSecret(ctx context.Context, in *FetchSecretRequest, opts ...grpc.CallOption) (*FetchSecretResponse, error) {
 	out := new(FetchSecretResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/FetchSecret", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/FetchSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error) {
+func (c *enclaveProtoClient) Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error) {
 	out := new(InitResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/Init", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Init", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) IsInitialised(ctx context.Context, in *IsInitialisedRequest, opts ...grpc.CallOption) (*IsInitialisedResponse, error) {
+func (c *enclaveProtoClient) IsInitialised(ctx context.Context, in *IsInitialisedRequest, opts ...grpc.CallOption) (*IsInitialisedResponse, error) {
 	out := new(IsInitialisedResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/IsInitialised", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/IsInitialised", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error) {
+func (c *enclaveProtoClient) ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error) {
 	out := new(ProduceGenesisResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/ProduceGenesis", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/ProduceGenesis", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) IngestBlocks(ctx context.Context, in *IngestBlocksRequest, opts ...grpc.CallOption) (*IngestBlocksResponse, error) {
+func (c *enclaveProtoClient) IngestBlocks(ctx context.Context, in *IngestBlocksRequest, opts ...grpc.CallOption) (*IngestBlocksResponse, error) {
 	out := new(IngestBlocksResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/IngestBlocks", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/IngestBlocks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error) {
+func (c *enclaveProtoClient) Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error) {
 	out := new(StartResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/Start", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Start", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
+func (c *enclaveProtoClient) SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
 	out := new(SubmitBlockResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/SubmitBlock", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/SubmitBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) SubmitRollup(ctx context.Context, in *SubmitRollupRequest, opts ...grpc.CallOption) (*SubmitRollupResponse, error) {
+func (c *enclaveProtoClient) SubmitRollup(ctx context.Context, in *SubmitRollupRequest, opts ...grpc.CallOption) (*SubmitRollupResponse, error) {
 	out := new(SubmitRollupResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/SubmitRollup", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/SubmitRollup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error) {
+func (c *enclaveProtoClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error) {
 	out := new(SubmitTxResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/SubmitTx", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/SubmitTx", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) Balance(ctx context.Context, in *BalanceRequest, opts ...grpc.CallOption) (*BalanceResponse, error) {
+func (c *enclaveProtoClient) Balance(ctx context.Context, in *BalanceRequest, opts ...grpc.CallOption) (*BalanceResponse, error) {
 	out := new(BalanceResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/Balance", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Balance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error) {
+func (c *enclaveProtoClient) RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error) {
 	out := new(RoundWinnerResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/RoundWinner", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/RoundWinner", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error) {
+func (c *enclaveProtoClient) Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error) {
 	out := new(StopResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/Stop", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Stop", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *enclaveInternalClient) GetTransaction(ctx context.Context, in *GetTransactionRequest, opts ...grpc.CallOption) (*GetTransactionResponse, error) {
+func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransactionRequest, opts ...grpc.CallOption) (*GetTransactionResponse, error) {
 	out := new(GetTransactionResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveInternal/GetTransaction", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/GetTransaction", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// EnclaveInternalServer is the server API for EnclaveInternal service.
-// All implementations must embed UnimplementedEnclaveInternalServer
+// EnclaveProtoServer is the server API for EnclaveProto service.
+// All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
-type EnclaveInternalServer interface {
+type EnclaveProtoServer interface {
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error)
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
@@ -237,407 +237,407 @@ type EnclaveInternalServer interface {
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
 	GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error)
-	mustEmbedUnimplementedEnclaveInternalServer()
+	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
-// UnimplementedEnclaveInternalServer must be embedded to have forward compatible implementations.
-type UnimplementedEnclaveInternalServer struct {
+// UnimplementedEnclaveProtoServer must be embedded to have forward compatible implementations.
+type UnimplementedEnclaveProtoServer struct {
 }
 
-func (UnimplementedEnclaveInternalServer) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {
+func (UnimplementedEnclaveProtoServer) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Attestation not implemented")
 }
-func (UnimplementedEnclaveInternalServer) GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error) {
+func (UnimplementedEnclaveProtoServer) GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateSecret not implemented")
 }
-func (UnimplementedEnclaveInternalServer) FetchSecret(context.Context, *FetchSecretRequest) (*FetchSecretResponse, error) {
+func (UnimplementedEnclaveProtoServer) FetchSecret(context.Context, *FetchSecretRequest) (*FetchSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchSecret not implemented")
 }
-func (UnimplementedEnclaveInternalServer) Init(context.Context, *InitRequest) (*InitResponse, error) {
+func (UnimplementedEnclaveProtoServer) Init(context.Context, *InitRequest) (*InitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
 }
-func (UnimplementedEnclaveInternalServer) IsInitialised(context.Context, *IsInitialisedRequest) (*IsInitialisedResponse, error) {
+func (UnimplementedEnclaveProtoServer) IsInitialised(context.Context, *IsInitialisedRequest) (*IsInitialisedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IsInitialised not implemented")
 }
-func (UnimplementedEnclaveInternalServer) ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error) {
+func (UnimplementedEnclaveProtoServer) ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProduceGenesis not implemented")
 }
-func (UnimplementedEnclaveInternalServer) IngestBlocks(context.Context, *IngestBlocksRequest) (*IngestBlocksResponse, error) {
+func (UnimplementedEnclaveProtoServer) IngestBlocks(context.Context, *IngestBlocksRequest) (*IngestBlocksResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IngestBlocks not implemented")
 }
-func (UnimplementedEnclaveInternalServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
+func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
-func (UnimplementedEnclaveInternalServer) SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
+func (UnimplementedEnclaveProtoServer) SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitBlock not implemented")
 }
-func (UnimplementedEnclaveInternalServer) SubmitRollup(context.Context, *SubmitRollupRequest) (*SubmitRollupResponse, error) {
+func (UnimplementedEnclaveProtoServer) SubmitRollup(context.Context, *SubmitRollupRequest) (*SubmitRollupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitRollup not implemented")
 }
-func (UnimplementedEnclaveInternalServer) SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error) {
+func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitTx not implemented")
 }
-func (UnimplementedEnclaveInternalServer) Balance(context.Context, *BalanceRequest) (*BalanceResponse, error) {
+func (UnimplementedEnclaveProtoServer) Balance(context.Context, *BalanceRequest) (*BalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Balance not implemented")
 }
-func (UnimplementedEnclaveInternalServer) RoundWinner(context.Context, *RoundWinnerRequest) (*RoundWinnerResponse, error) {
+func (UnimplementedEnclaveProtoServer) RoundWinner(context.Context, *RoundWinnerRequest) (*RoundWinnerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RoundWinner not implemented")
 }
-func (UnimplementedEnclaveInternalServer) Stop(context.Context, *StopRequest) (*StopResponse, error) {
+func (UnimplementedEnclaveProtoServer) Stop(context.Context, *StopRequest) (*StopResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
-func (UnimplementedEnclaveInternalServer) GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error) {
+func (UnimplementedEnclaveProtoServer) GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransaction not implemented")
 }
-func (UnimplementedEnclaveInternalServer) mustEmbedUnimplementedEnclaveInternalServer() {}
+func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
-// UnsafeEnclaveInternalServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to EnclaveInternalServer will
+// UnsafeEnclaveProtoServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to EnclaveProtoServer will
 // result in compilation errors.
-type UnsafeEnclaveInternalServer interface {
-	mustEmbedUnimplementedEnclaveInternalServer()
+type UnsafeEnclaveProtoServer interface {
+	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
-func RegisterEnclaveInternalServer(s grpc.ServiceRegistrar, srv EnclaveInternalServer) {
-	s.RegisterService(&EnclaveInternal_ServiceDesc, srv)
+func RegisterEnclaveProtoServer(s grpc.ServiceRegistrar, srv EnclaveProtoServer) {
+	s.RegisterService(&EnclaveProto_ServiceDesc, srv)
 }
 
-func _EnclaveInternal_Attestation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_Attestation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AttestationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).Attestation(ctx, in)
+		return srv.(EnclaveProtoServer).Attestation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/Attestation",
+		FullMethod: "/rpc.EnclaveProto/Attestation",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).Attestation(ctx, req.(*AttestationRequest))
+		return srv.(EnclaveProtoServer).Attestation(ctx, req.(*AttestationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_GenerateSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_GenerateSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GenerateSecretRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).GenerateSecret(ctx, in)
+		return srv.(EnclaveProtoServer).GenerateSecret(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/GenerateSecret",
+		FullMethod: "/rpc.EnclaveProto/GenerateSecret",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).GenerateSecret(ctx, req.(*GenerateSecretRequest))
+		return srv.(EnclaveProtoServer).GenerateSecret(ctx, req.(*GenerateSecretRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_FetchSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_FetchSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FetchSecretRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).FetchSecret(ctx, in)
+		return srv.(EnclaveProtoServer).FetchSecret(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/FetchSecret",
+		FullMethod: "/rpc.EnclaveProto/FetchSecret",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).FetchSecret(ctx, req.(*FetchSecretRequest))
+		return srv.(EnclaveProtoServer).FetchSecret(ctx, req.(*FetchSecretRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InitRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).Init(ctx, in)
+		return srv.(EnclaveProtoServer).Init(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/Init",
+		FullMethod: "/rpc.EnclaveProto/Init",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).Init(ctx, req.(*InitRequest))
+		return srv.(EnclaveProtoServer).Init(ctx, req.(*InitRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_IsInitialised_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_IsInitialised_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(IsInitialisedRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).IsInitialised(ctx, in)
+		return srv.(EnclaveProtoServer).IsInitialised(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/IsInitialised",
+		FullMethod: "/rpc.EnclaveProto/IsInitialised",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).IsInitialised(ctx, req.(*IsInitialisedRequest))
+		return srv.(EnclaveProtoServer).IsInitialised(ctx, req.(*IsInitialisedRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_ProduceGenesis_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_ProduceGenesis_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProduceGenesisRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).ProduceGenesis(ctx, in)
+		return srv.(EnclaveProtoServer).ProduceGenesis(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/ProduceGenesis",
+		FullMethod: "/rpc.EnclaveProto/ProduceGenesis",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).ProduceGenesis(ctx, req.(*ProduceGenesisRequest))
+		return srv.(EnclaveProtoServer).ProduceGenesis(ctx, req.(*ProduceGenesisRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_IngestBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_IngestBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(IngestBlocksRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).IngestBlocks(ctx, in)
+		return srv.(EnclaveProtoServer).IngestBlocks(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/IngestBlocks",
+		FullMethod: "/rpc.EnclaveProto/IngestBlocks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).IngestBlocks(ctx, req.(*IngestBlocksRequest))
+		return srv.(EnclaveProtoServer).IngestBlocks(ctx, req.(*IngestBlocksRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StartRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).Start(ctx, in)
+		return srv.(EnclaveProtoServer).Start(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/Start",
+		FullMethod: "/rpc.EnclaveProto/Start",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).Start(ctx, req.(*StartRequest))
+		return srv.(EnclaveProtoServer).Start(ctx, req.(*StartRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_SubmitBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_SubmitBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubmitBlockRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).SubmitBlock(ctx, in)
+		return srv.(EnclaveProtoServer).SubmitBlock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/SubmitBlock",
+		FullMethod: "/rpc.EnclaveProto/SubmitBlock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).SubmitBlock(ctx, req.(*SubmitBlockRequest))
+		return srv.(EnclaveProtoServer).SubmitBlock(ctx, req.(*SubmitBlockRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_SubmitRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_SubmitRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubmitRollupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).SubmitRollup(ctx, in)
+		return srv.(EnclaveProtoServer).SubmitRollup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/SubmitRollup",
+		FullMethod: "/rpc.EnclaveProto/SubmitRollup",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).SubmitRollup(ctx, req.(*SubmitRollupRequest))
+		return srv.(EnclaveProtoServer).SubmitRollup(ctx, req.(*SubmitRollupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_SubmitTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_SubmitTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubmitTxRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).SubmitTx(ctx, in)
+		return srv.(EnclaveProtoServer).SubmitTx(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/SubmitTx",
+		FullMethod: "/rpc.EnclaveProto/SubmitTx",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).SubmitTx(ctx, req.(*SubmitTxRequest))
+		return srv.(EnclaveProtoServer).SubmitTx(ctx, req.(*SubmitTxRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_Balance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_Balance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BalanceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).Balance(ctx, in)
+		return srv.(EnclaveProtoServer).Balance(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/Balance",
+		FullMethod: "/rpc.EnclaveProto/Balance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).Balance(ctx, req.(*BalanceRequest))
+		return srv.(EnclaveProtoServer).Balance(ctx, req.(*BalanceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_RoundWinner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_RoundWinner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RoundWinnerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).RoundWinner(ctx, in)
+		return srv.(EnclaveProtoServer).RoundWinner(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/RoundWinner",
+		FullMethod: "/rpc.EnclaveProto/RoundWinner",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).RoundWinner(ctx, req.(*RoundWinnerRequest))
+		return srv.(EnclaveProtoServer).RoundWinner(ctx, req.(*RoundWinnerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StopRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).Stop(ctx, in)
+		return srv.(EnclaveProtoServer).Stop(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/Stop",
+		FullMethod: "/rpc.EnclaveProto/Stop",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).Stop(ctx, req.(*StopRequest))
+		return srv.(EnclaveProtoServer).Stop(ctx, req.(*StopRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveInternal_GetTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_GetTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetTransactionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveInternalServer).GetTransaction(ctx, in)
+		return srv.(EnclaveProtoServer).GetTransaction(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveInternal/GetTransaction",
+		FullMethod: "/rpc.EnclaveProto/GetTransaction",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveInternalServer).GetTransaction(ctx, req.(*GetTransactionRequest))
+		return srv.(EnclaveProtoServer).GetTransaction(ctx, req.(*GetTransactionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// EnclaveInternal_ServiceDesc is the grpc.ServiceDesc for EnclaveInternal service.
+// EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var EnclaveInternal_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.EnclaveInternal",
-	HandlerType: (*EnclaveInternalServer)(nil),
+var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "rpc.EnclaveProto",
+	HandlerType: (*EnclaveProtoServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Attestation",
-			Handler:    _EnclaveInternal_Attestation_Handler,
+			Handler:    _EnclaveProto_Attestation_Handler,
 		},
 		{
 			MethodName: "GenerateSecret",
-			Handler:    _EnclaveInternal_GenerateSecret_Handler,
+			Handler:    _EnclaveProto_GenerateSecret_Handler,
 		},
 		{
 			MethodName: "FetchSecret",
-			Handler:    _EnclaveInternal_FetchSecret_Handler,
+			Handler:    _EnclaveProto_FetchSecret_Handler,
 		},
 		{
 			MethodName: "Init",
-			Handler:    _EnclaveInternal_Init_Handler,
+			Handler:    _EnclaveProto_Init_Handler,
 		},
 		{
 			MethodName: "IsInitialised",
-			Handler:    _EnclaveInternal_IsInitialised_Handler,
+			Handler:    _EnclaveProto_IsInitialised_Handler,
 		},
 		{
 			MethodName: "ProduceGenesis",
-			Handler:    _EnclaveInternal_ProduceGenesis_Handler,
+			Handler:    _EnclaveProto_ProduceGenesis_Handler,
 		},
 		{
 			MethodName: "IngestBlocks",
-			Handler:    _EnclaveInternal_IngestBlocks_Handler,
+			Handler:    _EnclaveProto_IngestBlocks_Handler,
 		},
 		{
 			MethodName: "Start",
-			Handler:    _EnclaveInternal_Start_Handler,
+			Handler:    _EnclaveProto_Start_Handler,
 		},
 		{
 			MethodName: "SubmitBlock",
-			Handler:    _EnclaveInternal_SubmitBlock_Handler,
+			Handler:    _EnclaveProto_SubmitBlock_Handler,
 		},
 		{
 			MethodName: "SubmitRollup",
-			Handler:    _EnclaveInternal_SubmitRollup_Handler,
+			Handler:    _EnclaveProto_SubmitRollup_Handler,
 		},
 		{
 			MethodName: "SubmitTx",
-			Handler:    _EnclaveInternal_SubmitTx_Handler,
+			Handler:    _EnclaveProto_SubmitTx_Handler,
 		},
 		{
 			MethodName: "Balance",
-			Handler:    _EnclaveInternal_Balance_Handler,
+			Handler:    _EnclaveProto_Balance_Handler,
 		},
 		{
 			MethodName: "RoundWinner",
-			Handler:    _EnclaveInternal_RoundWinner_Handler,
+			Handler:    _EnclaveProto_RoundWinner_Handler,
 		},
 		{
 			MethodName: "Stop",
-			Handler:    _EnclaveInternal_Stop_Handler,
+			Handler:    _EnclaveProto_Stop_Handler,
 		},
 		{
 			MethodName: "GetTransaction",
-			Handler:    _EnclaveInternal_GetTransaction_Handler,
+			Handler:    _EnclaveProto_GetTransaction_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
