@@ -136,7 +136,7 @@ message GetTransactionRequest {
   bytes txHash = 1;
 }
 message GetTransactionResponse {
-  bool unknown = 1;
+  bool known = 1;
   bytes encodedTransaction = 2;
 }
 

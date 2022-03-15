@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"google.golang.org/grpc"
-	"net"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -22,7 +23,7 @@ type server struct {
 	enclave enclave.Enclave
 }
 
-func StartServer(nodeId common.Address, port uint64, collector enclave.StatsCollector) {
+func StartServer(nodeID common.Address, port uint64, collector enclave.StatsCollector) {
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
 		log.Log(fmt.Sprintf("enclave RPC server failed to listen: %v", err))
@@ -30,7 +31,7 @@ func StartServer(nodeId common.Address, port uint64, collector enclave.StatsColl
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	enclaveServer := server{enclave: enclave.NewEnclave(nodeId, true, collector)}
+	enclaveServer := server{enclave: enclave.NewEnclave(nodeID, true, collector)}
 	RegisterEnclaveInternalServer(grpcServer, &enclaveServer)
 	go func(lis net.Listener) {
 		err = grpcServer.Serve(lis)
@@ -86,7 +87,6 @@ func (s *server) IngestBlocks(ctx context.Context, request *IngestBlocksRequest)
 func (s *server) Start(ctx context.Context, request *StartRequest) (*StartResponse, error) {
 	bl := types.Block{}
 	rlp.DecodeBytes(request.EncodedBlock, &bl)
-	// TODO - Joel - Work out if we want to start the goroutine here. We probably do.
 	go s.enclave.Start(bl)
 	return &StartResponse{}, nil
 }
@@ -128,8 +128,8 @@ func (s *server) Stop(ctx context.Context, request *StopRequest) (*StopResponse,
 }
 
 func (s *server) GetTransaction(ctx context.Context, request *GetTransactionRequest) (*GetTransactionResponse, error) {
-	tx, unknown := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
+	tx, known := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
 	var buffer bytes.Buffer
 	tx.EncodeRLP(&buffer)
-	return &GetTransactionResponse{Unknown: unknown, EncodedTransaction: buffer.Bytes()}, nil
+	return &GetTransactionResponse{Known: known, EncodedTransaction: buffer.Bytes()}, nil
 }

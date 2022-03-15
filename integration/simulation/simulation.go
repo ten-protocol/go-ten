@@ -96,6 +96,8 @@ func (s *Simulation) Start(
 	// Wait for the simulation time
 	time.Sleep(obscurocommon.Duration(uint64(timeInUs)))
 
+	time.Sleep(5 * time.Second)
+
 	// stop L2 first and then L1
 	go s.l2Network.Stop()
 	go s.l1Network.Stop()

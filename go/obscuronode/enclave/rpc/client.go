@@ -28,7 +28,6 @@ func NewEnclaveClient(port uint64) EnclaveClient {
 	return client
 }
 
-// TODO - Joel - Need to use same port as server, and not randomly allocate it in the server.
 func enclaveClientConn(port uint64) *grpc.ClientConn {
 	flag.Parse()
 	var opts []grpc.DialOption
@@ -173,7 +172,7 @@ func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool)
 		panic(e)
 	}
 
-	if response.Unknown {
+	if !response.Known {
 		return nil, false
 	}
 	l2Tx := enclave.L2Tx{}

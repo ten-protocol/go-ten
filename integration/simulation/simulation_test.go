@@ -55,6 +55,8 @@ func TestSimulation(t *testing.T) {
 	// execute the simulation
 	simulation.Start(txManager, simulationTimeSecs)
 
+	time.Sleep(3 * time.Second) // TODO - Joel - Minimise this. Caused by client/server latency.
+
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
 
@@ -103,11 +105,11 @@ func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats) {
 	}
 
 	if l1Height != node.DB().GetCurrentBlockHead().Height {
-		t.Errorf("unexpected block heigh. expected %d, got %d", l1Height, node.DB().GetCurrentBlockHead().Height)
+		t.Errorf("unexpected block height. expected %d, got %d", l1Height, node.DB().GetCurrentBlockHead().Height)
 	}
 
 	if l2Height != node.DB().GetCurrentRollupHead().Height {
-		t.Errorf("unexpected rollup heigh. expected %d, got %d", l2Height, node.DB().GetCurrentRollupHead().Height)
+		t.Errorf("unexpected rollup height. expected %d, got %d", l2Height, node.DB().GetCurrentRollupHead().Height)
 	}
 
 	if l1Height > stats.totalL1Blocks || l2Height > stats.totalL2Blocks {

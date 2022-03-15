@@ -36,7 +36,6 @@ type BlockSubmissionResponse struct {
 	IngestedNewRollup bool                 // Whether the Block had a new Rollup and the enclave has ingested it
 }
 
-// TODO - Joel - Remove this interface. Use RPC interface instead.
 // Enclave - The actual implementation of this interface will call an rpc service
 type Enclave interface {
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
