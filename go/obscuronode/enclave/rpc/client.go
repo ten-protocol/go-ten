@@ -76,7 +76,7 @@ func (c *EnclaveClient) ProduceGenesis() enclave.BlockSubmissionResponse {
 }
 
 func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) {
-	var encodedBlocks [][]byte
+	encodedBlocks := make([][]byte, 0)
 	for _, block := range blocks {
 		encodedBlock := obscurocommon.EncodeBlock(block)
 		encodedBlocks = append(encodedBlocks, encodedBlock)
@@ -117,9 +117,9 @@ func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon
 
 	if response.Winner {
 		return toExtRollup(response.ExtRollup), true
-	} else {
-		return nodecommon.ExtRollup{}, false
 	}
+
+	return nodecommon.ExtRollup{}, false
 }
 
 func (c *EnclaveClient) Stop() {
@@ -131,11 +131,11 @@ func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool)
 
 	if response.Unknown {
 		return nil, false
-	} else {
-		l2Tx := enclave.L2Tx{}
-		l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
-		return &l2Tx, true
 	}
+
+	l2Tx := enclave.L2Tx{}
+	l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
+	return &l2Tx, true
 }
 
 // Converters between RPC and regular types.
@@ -149,7 +149,7 @@ func toAttestationReportMsg(report obscurocommon.AttestationReport) AttestationR
 }
 
 func toBlockSubmissionResponse(msg *BlockSubmissionResponseMsg) enclave.BlockSubmissionResponse {
-	var withdrawals []nodecommon.Withdrawal
+	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range msg.Withdrawals {
 		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Address: common.BytesToAddress(withdrawalMsg.Address)}
 		withdrawals = append(withdrawals, withdrawal)
@@ -170,7 +170,7 @@ func toBlockSubmissionResponse(msg *BlockSubmissionResponseMsg) enclave.BlockSub
 }
 
 func toBlockSubmissionResponseMsg(response enclave.BlockSubmissionResponse) BlockSubmissionResponseMsg {
-	var withdrawalMsgs []*WithdrawalMsg
+	withdrawalMsgs := make([]*WithdrawalMsg, 0)
 	for _, withdrawal := range response.Withdrawals {
 		withdrawalMsg := WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
 		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
@@ -193,7 +193,7 @@ func toBlockSubmissionResponseMsg(response enclave.BlockSubmissionResponse) Bloc
 }
 
 func toExtRollup(msg *ExtRollupMsg) nodecommon.ExtRollup {
-	var withdrawals []nodecommon.Withdrawal
+	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range msg.Header.Withdrawals {
 		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Address: common.BytesToAddress(withdrawalMsg.Address)}
 		withdrawals = append(withdrawals, withdrawal)
@@ -207,7 +207,7 @@ func toExtRollup(msg *ExtRollupMsg) nodecommon.ExtRollup {
 		Withdrawals: withdrawals,
 	}
 
-	var txs []nodecommon.EncryptedTx
+	txs := make([]nodecommon.EncryptedTx, 0)
 	for _, tx := range msg.Txs {
 		txs = append(txs, tx)
 	}
@@ -219,22 +219,26 @@ func toExtRollup(msg *ExtRollupMsg) nodecommon.ExtRollup {
 }
 
 func toExtRollupMsg(rollup *nodecommon.ExtRollup) ExtRollupMsg {
-	var withdrawalMsgs []*WithdrawalMsg
-	for _, withdrawal := range rollup.Header.Withdrawals {
-		withdrawalMsg := WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
-		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
+	// TODO - Joel - See if I can avoid the case of a nil header. It's caused by `enclave.go/SubmitBlock` returning early.
+	var headerMsg HeaderMsg
+	if rollup.Header != nil {
+		withdrawalMsgs := make([]*WithdrawalMsg, 0)
+		for _, withdrawal := range rollup.Header.Withdrawals {
+			withdrawalMsg := WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
+			withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
+		}
+
+		headerMsg = HeaderMsg{
+			ParentHash:  rollup.Header.ParentHash.Bytes(),
+			Agg:         rollup.Header.Agg.Bytes(),
+			Nonce:       rollup.Header.Nonce,
+			L1Proof:     rollup.Header.L1Proof.Bytes(),
+			StateRoot:   rollup.Header.State,
+			Withdrawals: withdrawalMsgs,
+		}
 	}
 
-	headerMsg := HeaderMsg{
-		ParentHash:  rollup.Header.ParentHash.Bytes(),
-		Agg:         rollup.Header.Agg.Bytes(),
-		Nonce:       rollup.Header.Nonce,
-		L1Proof:     rollup.Header.L1Proof.Bytes(),
-		StateRoot:   rollup.Header.State,
-		Withdrawals: withdrawalMsgs,
-	}
-
-	var txs [][]byte
+	txs := make([][]byte, 0)
 	for _, tx := range rollup.Txs {
 		txs = append(txs, tx)
 	}

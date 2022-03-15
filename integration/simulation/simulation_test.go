@@ -93,11 +93,11 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2
 func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats) {
-	l1Height := uint(0)
+	l1Height := uint64(0)
 	for header := node.DB().GetCurrentBlockHead(); header != nil; header = node.DB().GetBlockHeader(header.Parent) {
 		l1Height++
 	}
-	l2Height := uint(0)
+	l2Height := uint64(0)
 	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
 		l2Height++
 	}
@@ -137,7 +137,7 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 		nGroup.Go(func() error {
 			// all transactions should exist on every node
 			for _, transaction := range txManager.GetL2Transactions() {
-				_, found := closureNode.EnclaveClient.GetTransaction(transaction.Hash())
+				_, found := closureNode.Enclave.GetTransaction(transaction.Hash())
 				if !found {
 					return fmt.Errorf("node %d, unable to find transaction: %+v", closureNode.ID, transaction) // nolint:goerr113
 				}
@@ -160,7 +160,7 @@ const (
 )
 
 // validateL1 does a sanity check on the mock implementation of the L1
-func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node) {
+func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
@@ -220,7 +220,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscuro
 
 // validateL2WithdrawalStats checks the withdrawal requests by
 // comparing the stats of the generated transactions with the withdrawals on the node headers
-func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint, txManager *TransactionManager) uint64 {
+func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint64, txManager *TransactionManager) uint64 {
 	headerWithdrawalSum := uint64(0)
 	headerWithdrawalTxCount := 0
 
@@ -267,7 +267,7 @@ func validateL2NodeBalances(t *testing.T, l2Network *L2NetworkCfg, s *Stats, tot
 			// add up all balances
 			total := uint64(0)
 			for _, wallet := range wallets {
-				total += closureNode.EnclaveClient.Balance(wallet.Address)
+				total += closureNode.Enclave.Balance(wallet.Address)
 			}
 			if total != finalAmount {
 				return fmt.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", closureNode.ID, total, finalAmount) // nolint:goerr113

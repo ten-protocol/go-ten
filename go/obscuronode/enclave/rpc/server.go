@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 
@@ -13,8 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	//"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"google.golang.org/grpc"
 )
@@ -63,7 +62,7 @@ func (s *server) ProduceGenesis(ctx context.Context, request *ProduceGenesisRequ
 }
 
 func (s *server) IngestBlocks(ctx context.Context, request *IngestBlocksRequest) (*IngestBlocksResponse, error) {
-	var blocks []*types.Block
+	blocks := make([]*types.Block, 0)
 	for _, encodedBlock := range request.EncodedBlocks {
 		bl := types.Block{}
 		rlp.DecodeBytes(encodedBlock, &bl)
@@ -85,8 +84,10 @@ func (s *server) Start(ctx context.Context, request *StartRequest) (*StartRespon
 func (s *server) SubmitBlock(ctx context.Context, request *SubmitBlockRequest) (*SubmitBlockResponse, error) {
 	bl := types.Block{}
 	rlp.DecodeBytes(request.EncodedBlock, &bl)
-	s.enclave.SubmitBlock(bl)
-	return &SubmitBlockResponse{}, nil
+	blockSubmissionResponse := s.enclave.SubmitBlock(bl)
+
+	msg := toBlockSubmissionResponseMsg(blockSubmissionResponse)
+	return &SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
 func (s *server) SubmitRollup(ctx context.Context, request *SubmitRollupRequest) (*SubmitRollupResponse, error) {
@@ -129,12 +130,20 @@ func StartServer(collector enclave.StatsCollector) {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *Port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Log(fmt.Sprintf("enclave RPC server failed to listen: %v", err))
+		return
 	}
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	enclaveAddress := common.BigToAddress(big.NewInt(int64(1)))
 	enclaveServer := server{enclave: enclave.NewEnclave(enclaveAddress, true, collector)}
 	RegisterEnclaveInternalServer(grpcServer, &enclaveServer)
-	grpcServer.Serve(lis)
+	log.Log("Hey joel ngong")
+	go func(lis net.Listener) {
+		err = grpcServer.Serve(lis)
+		log.Log("Hey joel in goroutine")
+		if err != nil {
+			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
+		}
+	}(lis)
 }

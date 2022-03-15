@@ -14,9 +14,9 @@ import (
 type Stats struct {
 	nrMiners int
 
-	totalL1Blocks uint
+	totalL1Blocks uint64
 
-	totalL2Blocks      uint
+	totalL2Blocks      uint64
 	l2Head             *nodecommon.Rollup
 	maxRollupsPerBlock uint32
 	nrEmptyBlocks      int
