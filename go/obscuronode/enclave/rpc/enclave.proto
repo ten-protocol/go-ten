@@ -88,17 +88,17 @@ message ProduceGenesisResponse {
 }
 
 message IngestBlocksRequest {
-  repeated bytes blockRlps = 1;
+  repeated bytes encodedBlocks = 1;
 }
 message IngestBlocksResponse {}
 
 message StartRequest {
-  bytes blockRlp = 1;
+  bytes encodedBlock = 1;
 }
 message StartResponse {}
 
 message SubmitBlockRequest {
-  bytes blockRlp = 1;
+  bytes encodedBlock = 1;
 }
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
@@ -137,7 +137,7 @@ message GetTransactionRequest {
 }
 message GetTransactionResponse {
   bool unknown = 1;
-  bytes blockRlp = 2;
+  bytes encodedTransaction = 2;
 }
 
 // Nested message types.
