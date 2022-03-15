@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration/simulation"
 	"log"
 	"math/big"
 	"net"
@@ -126,7 +125,7 @@ func (s *server) GetTransaction(ctx context.Context, request *GetTransactionRequ
 
 // TODO - Joel - Have the server start on different ports, not just the same one repeatedly.
 // TODO - Joel - Pass in real arguments to create an enclave here. We just use dummies below.
-func StartServer() {
+func StartServer(collector enclave.StatsCollector) {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *Port))
 	if err != nil {
@@ -135,7 +134,7 @@ func StartServer() {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	enclaveAddress := common.BigToAddress(big.NewInt(int64(1)))
-	enclaveServer := server{enclave: enclave.NewEnclave(enclaveAddress, true, simulation.NewStats(1))}
+	enclaveServer := server{enclave: enclave.NewEnclave(enclaveAddress, true, collector)}
 	RegisterEnclaveInternalServer(grpcServer, &enclaveServer)
 	grpcServer.Serve(lis)
 }

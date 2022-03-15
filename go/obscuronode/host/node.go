@@ -85,7 +85,7 @@ func NewAgg(
 	// TODO - Joel - Do I need to wait here for the server to start?
 	// TODO - Joel - We should monitor server health over time.
 	// TODO - Joel - Allow server to be stopped.
-	rpc.StartServer()
+	rpc.StartServer(collector)
 
 	return Node{
 		// config

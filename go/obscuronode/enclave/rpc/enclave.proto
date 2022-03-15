@@ -148,10 +148,10 @@ message AttestationReportMsg {
 
 message BlockSubmissionResponseMsg {
   bytes l1Hash = 1;
-  uint32 l1Height = 2;
+  uint64 l1Height = 2;
   bytes l1Parent = 3;
   bytes l2Hash = 4;
-  uint32 l2Height = 5;
+  uint64 l2Height = 5;
   bytes l2Parent = 6;
   repeated WithdrawalMsg withdrawals = 7;
   ExtRollupMsg producedRollup = 8;

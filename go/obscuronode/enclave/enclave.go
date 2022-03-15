@@ -24,10 +24,10 @@ type StatsCollector interface {
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
 	L1Hash      obscurocommon.L1RootHash // The Header Hash of the ingested Block
-	L1Height    uint32                   // The L1 Height of the ingested Block
+	L1Height    uint64                   // The L1 Height of the ingested Block
 	L1Parent    obscurocommon.L2RootHash // The L1 Parent of the ingested Block
 	L2Hash      obscurocommon.L2RootHash // The Rollup Hash in the ingested Block
-	L2Height    uint32                   // The Rollup Height in the ingested Block
+	L2Height    uint64                   // The Rollup Height in the ingested Block
 	L2Parent    obscurocommon.L2RootHash // The Rollup Hash Parent inside the ingested Block
 	Withdrawals []nodecommon.Withdrawal  // The Withdrawals available in Rollup of the ingested Block
 
@@ -203,10 +203,10 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 
 	return BlockSubmissionResponse{
 		L1Hash:      block.Hash(),
-		L1Height:    uint32(e.blockResolver.HeightBlock(&block)),
+		L1Height:    uint64(e.blockResolver.HeightBlock(&block)),
 		L1Parent:    blockState.Block.Header().ParentHash,
 		L2Hash:      blockState.Head.Hash(),
-		L2Height:    uint32(blockState.Head.Height.Load().(int)),
+		L2Height:    uint64(blockState.Head.Height.Load().(int)),
 		L2Parent:    blockState.Head.Header.ParentHash,
 		Withdrawals: blockState.Head.Header.Withdrawals,
 
