@@ -15,22 +15,23 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
-// TODO - Joel - Return errors as needed.
-// TODO - Joel - Establish whether some gRPC methods can be declared without an '(x, error)' return type.
+// TODO - Joel - Decide when the correct behaviour is to throw an error.
 
+// Receives RPC calls to the enclave process and relays them to the Enclave class.
 type server struct {
 	UnimplementedEnclaveProtoServer
 	enclave enclave.Enclave
 }
 
-func StartServer(nodeID common.Address, port uint64, collector enclave.StatsCollector) {
+// StartServer starts a server on the given port on a separate thread. It creates an Enclave for the provided nodeID,
+// and uses it to respond to incoming RPC messages from the host.
+func StartServer(port uint64, nodeID common.Address, collector enclave.StatsCollector) {
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
-		log.Log(fmt.Sprintf("enclave RPC server failed to listen: %v", err))
+		log.Log(fmt.Sprintf("enclave RPC server could not listen on port: %v", err))
 		return
 	}
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer()
 	enclaveServer := server{enclave: enclave.NewEnclave(nodeID, true, collector)}
 	RegisterEnclaveProtoServer(grpcServer, &enclaveServer)
 	go func(lis net.Listener) {
@@ -41,42 +42,41 @@ func StartServer(nodeID common.Address, port uint64, collector enclave.StatsColl
 	}(lis)
 }
 
-func (s *server) Attestation(ctx context.Context, request *AttestationRequest) (*AttestationResponse, error) {
+func (s *server) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {
 	msg := AttestationReportMsg{Owner: s.enclave.Attestation().Owner.Bytes()}
 	return &AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
-func (s *server) GenerateSecret(ctx context.Context, request *GenerateSecretRequest) (*GenerateSecretResponse, error) {
+func (s *server) GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error) {
 	secret := s.enclave.GenerateSecret()
 	return &GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
-func (s *server) FetchSecret(ctx context.Context, request *FetchSecretRequest) (*FetchSecretResponse, error) {
-	attestationReport := toAttestationReport(request.AttestationReportMsg)
+func (s *server) FetchSecret(_ context.Context, request *FetchSecretRequest) (*FetchSecretResponse, error) {
+	attestationReport := fromAttestationReportMsg(request.AttestationReportMsg)
 	secret := s.enclave.FetchSecret(attestationReport)
 	return &FetchSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
-func (s *server) Init(ctx context.Context, request *InitRequest) (*InitResponse, error) {
+func (s *server) Init(_ context.Context, request *InitRequest) (*InitResponse, error) {
 	s.enclave.Init(request.EncryptedSharedEnclaveSecret)
 	return &InitResponse{}, nil
 }
 
-func (s *server) IsInitialised(ctx context.Context, request *IsInitialisedRequest) (*IsInitialisedResponse, error) {
+func (s *server) IsInitialised(context.Context, *IsInitialisedRequest) (*IsInitialisedResponse, error) {
 	isInitialised := s.enclave.IsInitialised()
 	return &IsInitialisedResponse{IsInitialised: isInitialised}, nil
 }
 
-func (s *server) ProduceGenesis(ctx context.Context, request *ProduceGenesisRequest) (*ProduceGenesisResponse, error) {
+func (s *server) ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error) {
 	blockSubmissionResponse := toBlockSubmissionResponseMsg(s.enclave.ProduceGenesis())
 	return &ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 
-func (s *server) IngestBlocks(ctx context.Context, request *IngestBlocksRequest) (*IngestBlocksResponse, error) {
+func (s *server) IngestBlocks(_ context.Context, request *IngestBlocksRequest) (*IngestBlocksResponse, error) {
 	blocks := make([]*types.Block, 0)
 	for _, encodedBlock := range request.EncodedBlocks {
-		bl := types.Block{}
-		rlp.DecodeBytes(encodedBlock, &bl)
+		bl := decodeBlock(encodedBlock)
 		blocks = append(blocks, &bl)
 	}
 
@@ -84,52 +84,62 @@ func (s *server) IngestBlocks(ctx context.Context, request *IngestBlocksRequest)
 	return &IngestBlocksResponse{}, nil
 }
 
-func (s *server) Start(ctx context.Context, request *StartRequest) (*StartResponse, error) {
-	bl := types.Block{}
-	rlp.DecodeBytes(request.EncodedBlock, &bl)
+func (s *server) Start(_ context.Context, request *StartRequest) (*StartResponse, error) {
+	bl := decodeBlock(request.EncodedBlock)
 	go s.enclave.Start(bl)
 	return &StartResponse{}, nil
 }
 
-func (s *server) SubmitBlock(ctx context.Context, request *SubmitBlockRequest) (*SubmitBlockResponse, error) {
-	bl := types.Block{}
-	rlp.DecodeBytes(request.EncodedBlock, &bl)
+func (s *server) SubmitBlock(_ context.Context, request *SubmitBlockRequest) (*SubmitBlockResponse, error) {
+	bl := decodeBlock(request.EncodedBlock)
 	blockSubmissionResponse := s.enclave.SubmitBlock(bl)
 
 	msg := toBlockSubmissionResponseMsg(blockSubmissionResponse)
 	return &SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
-func (s *server) SubmitRollup(ctx context.Context, request *SubmitRollupRequest) (*SubmitRollupResponse, error) {
-	extRollup := toExtRollup(request.ExtRollup)
+func (s *server) SubmitRollup(_ context.Context, request *SubmitRollupRequest) (*SubmitRollupResponse, error) {
+	extRollup := fromExtRollupMsg(request.ExtRollup)
 	s.enclave.SubmitRollup(extRollup)
 	return &SubmitRollupResponse{}, nil
 }
 
-func (s *server) SubmitTx(ctx context.Context, request *SubmitTxRequest) (*SubmitTxResponse, error) {
+func (s *server) SubmitTx(_ context.Context, request *SubmitTxRequest) (*SubmitTxResponse, error) {
 	err := s.enclave.SubmitTx(request.EncryptedTx)
 	return &SubmitTxResponse{}, err
 }
 
-func (s *server) Balance(ctx context.Context, request *BalanceRequest) (*BalanceResponse, error) {
+func (s *server) Balance(_ context.Context, request *BalanceRequest) (*BalanceResponse, error) {
 	balance := s.enclave.Balance(common.BytesToAddress(request.Address))
 	return &BalanceResponse{Balance: balance}, nil
 }
 
-func (s *server) RoundWinner(ctx context.Context, request *RoundWinnerRequest) (*RoundWinnerResponse, error) {
+func (s *server) RoundWinner(_ context.Context, request *RoundWinnerRequest) (*RoundWinnerResponse, error) {
 	extRollup, winner := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
 	extRollupMsg := toExtRollupMsg(&extRollup)
 	return &RoundWinnerResponse{Winner: winner, ExtRollup: &extRollupMsg}, nil
 }
 
-func (s *server) Stop(ctx context.Context, request *StopRequest) (*StopResponse, error) {
+func (s *server) Stop(context.Context, *StopRequest) (*StopResponse, error) {
 	s.enclave.Stop()
 	return &StopResponse{}, nil
 }
 
-func (s *server) GetTransaction(ctx context.Context, request *GetTransactionRequest) (*GetTransactionResponse, error) {
+func (s *server) GetTransaction(_ context.Context, request *GetTransactionRequest) (*GetTransactionResponse, error) {
 	tx, known := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
 	var buffer bytes.Buffer
-	tx.EncodeRLP(&buffer)
+	err := tx.EncodeRLP(&buffer)
+	if err != nil {
+		log.Log(fmt.Sprintf("failed to decode transaction sent to enclave: %v", err))
+	}
 	return &GetTransactionResponse{Known: known, EncodedTransaction: buffer.Bytes()}, nil
+}
+
+func decodeBlock(encodedBlock []byte) types.Block {
+	block := types.Block{}
+	err := rlp.DecodeBytes(encodedBlock, &block)
+	if err != nil {
+		log.Log(fmt.Sprintf("failed to decode block sent to enclave: %v", err))
+	}
+	return block
 }
