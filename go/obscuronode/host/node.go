@@ -78,14 +78,15 @@ func NewAgg(
 	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
+	port uint64,
 ) Node {
 	// TODO - Joel - Close the connection.
-	enclaveClient := rpc.NewEnclaveClient()
+	enclaveClient := rpc.NewEnclaveClient(port)
 
-	// TODO - Joel - Do I need to wait here for the server to start?
+	// TODO - Joel - Check for server upness.
 	// TODO - Joel - We should monitor server health over time.
 	// TODO - Joel - Allow server to be stopped.
-	rpc.StartServer(collector)
+	rpc.StartServer(id, port, collector)
 
 	return Node{
 		// config

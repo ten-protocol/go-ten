@@ -48,7 +48,8 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 			genesis = true
 		}
 		// create a layer 2 node
-		agg := host.NewAgg(common.BigToAddress(big.NewInt(int64(i))), l2NodeCfg, nil, l2NetworkCfg, stats, genesis)
+		port := uint64(15000 + i) // TODO - Joel - Pull out this constant.
+		agg := host.NewAgg(common.BigToAddress(big.NewInt(int64(i))), l2NodeCfg, nil, l2NetworkCfg, stats, genesis, port)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
@@ -56,6 +57,8 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		l1NetworkCfg.nodes = append(l1NetworkCfg.nodes, &miner)
 		agg.L1Node = &miner
 	}
+
+	time.Sleep(10 * time.Second)
 
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 

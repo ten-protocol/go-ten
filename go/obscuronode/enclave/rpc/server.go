@@ -3,22 +3,16 @@ package rpc
 import (
 	"bytes"
 	"context"
-	"flag"
 	"fmt"
-	"math/big"
-	"net"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"google.golang.org/grpc"
+	"net"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-
-	"google.golang.org/grpc"
 )
-
-var Port = flag.Int("port", 50051, "The server port")
 
 // TODO - Joel - Return errors as needed.
 // TODO - Joel - Establish whether some gRPC methods can be declared without an '(x, error)' return type.
@@ -28,7 +22,23 @@ type server struct {
 	enclave enclave.Enclave
 }
 
-// TODO - Joel - Add all other methods.
+func StartServer(nodeId common.Address, port uint64, collector enclave.StatsCollector) {
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if err != nil {
+		log.Log(fmt.Sprintf("enclave RPC server failed to listen: %v", err))
+		return
+	}
+	var opts []grpc.ServerOption
+	grpcServer := grpc.NewServer(opts...)
+	enclaveServer := server{enclave: enclave.NewEnclave(nodeId, true, collector)}
+	RegisterEnclaveInternalServer(grpcServer, &enclaveServer)
+	go func(lis net.Listener) {
+		err = grpcServer.Serve(lis)
+		if err != nil {
+			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
+		}
+	}(lis)
+}
 
 func (s *server) Attestation(ctx context.Context, request *AttestationRequest) (*AttestationResponse, error) {
 	msg := AttestationReportMsg{Owner: s.enclave.Attestation().Owner.Bytes()}
@@ -122,28 +132,4 @@ func (s *server) GetTransaction(ctx context.Context, request *GetTransactionRequ
 	var buffer bytes.Buffer
 	tx.EncodeRLP(&buffer)
 	return &GetTransactionResponse{Unknown: unknown, EncodedTransaction: buffer.Bytes()}, nil
-}
-
-// TODO - Joel - Have the server start on different ports, not just the same one repeatedly.
-// TODO - Joel - Pass in real arguments to create an enclave here. We just use dummies below.
-func StartServer(collector enclave.StatsCollector) {
-	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *Port))
-	if err != nil {
-		log.Log(fmt.Sprintf("enclave RPC server failed to listen: %v", err))
-		return
-	}
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
-	enclaveAddress := common.BigToAddress(big.NewInt(int64(1)))
-	enclaveServer := server{enclave: enclave.NewEnclave(enclaveAddress, true, collector)}
-	RegisterEnclaveInternalServer(grpcServer, &enclaveServer)
-	log.Log("Hey joel ngong")
-	go func(lis net.Listener) {
-		err = grpcServer.Serve(lis)
-		log.Log("Hey joel in goroutine")
-		if err != nil {
-			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
-		}
-	}(lis)
 }

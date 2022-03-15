@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,24 +18,23 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var serverAddr = flag.String("addr", "localhost:50051", "The server address in the format of host:port")
-
 type EnclaveClient struct {
 	clientInternal EnclaveInternalClient
 }
 
-func NewEnclaveClient() EnclaveClient {
-	connection := enclaveClientConn()
+func NewEnclaveClient(port uint64) EnclaveClient {
+	connection := enclaveClientConn(port)
 	client := EnclaveClient{NewEnclaveInternalClient(connection)}
 	return client
 }
 
-func enclaveClientConn() *grpc.ClientConn {
+// TODO - Joel - Need to use same port as server, and not randomly allocate it in the server.
+func enclaveClientConn(port uint64) *grpc.ClientConn {
 	flag.Parse()
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, err := grpc.Dial(*serverAddr, opts...)
+	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), opts...)
 	// TODO - Joel - Better error handling.
 	if err != nil {
 		log.Fatalf("fail to dial: %v", err)
@@ -45,33 +45,51 @@ func enclaveClientConn() *grpc.ClientConn {
 // TODO - Joel - Handle the errors coming back from the client requests.
 
 func (c *EnclaveClient) Attestation() obscurocommon.AttestationReport {
-	response, _ := c.clientInternal.Attestation(context.Background(), &AttestationRequest{})
+	response, e := c.clientInternal.Attestation(context.Background(), &AttestationRequest{})
+	if e != nil {
+		panic(e)
+	}
 	return toAttestationReport(response.AttestationReportMsg)
 }
 
 func (c *EnclaveClient) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
-	response, _ := c.clientInternal.GenerateSecret(context.Background(), &GenerateSecretRequest{})
+	response, e := c.clientInternal.GenerateSecret(context.Background(), &GenerateSecretRequest{})
+	if e != nil {
+		panic(e)
+	}
 	return response.EncryptedSharedEnclaveSecret
 }
 
 func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
 	attestationReportMsg := toAttestationReportMsg(report)
 	request := FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
-	response, _ := c.clientInternal.FetchSecret(context.Background(), &request)
+	response, e := c.clientInternal.FetchSecret(context.Background(), &request)
+	if e != nil {
+		panic(e)
+	}
 	return response.EncryptedSharedEnclaveSecret
 }
 
 func (c *EnclaveClient) Init(secret obscurocommon.EncryptedSharedEnclaveSecret) {
-	c.clientInternal.Init(context.Background(), &InitRequest{EncryptedSharedEnclaveSecret: secret})
+	_, e := c.clientInternal.Init(context.Background(), &InitRequest{EncryptedSharedEnclaveSecret: secret})
+	if e != nil {
+		panic(e)
+	}
 }
 
 func (c *EnclaveClient) IsInitialised() bool {
-	response, _ := c.clientInternal.IsInitialised(context.Background(), &IsInitialisedRequest{})
+	response, e := c.clientInternal.IsInitialised(context.Background(), &IsInitialisedRequest{})
+	if e != nil {
+		panic(e)
+	}
 	return response.IsInitialised
 }
 
 func (c *EnclaveClient) ProduceGenesis() enclave.BlockSubmissionResponse {
-	response, _ := c.clientInternal.ProduceGenesis(context.Background(), &ProduceGenesisRequest{})
+	response, e := c.clientInternal.ProduceGenesis(context.Background(), &ProduceGenesisRequest{})
+	if e != nil {
+		panic(e)
+	}
 	return toBlockSubmissionResponse(response.BlockSubmissionResponse)
 }
 
@@ -81,58 +99,83 @@ func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) {
 		encodedBlock := obscurocommon.EncodeBlock(block)
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
-	c.clientInternal.IngestBlocks(context.Background(), &IngestBlocksRequest{EncodedBlocks: encodedBlocks})
+	_, e := c.clientInternal.IngestBlocks(context.Background(), &IngestBlocksRequest{EncodedBlocks: encodedBlocks})
+	if e != nil {
+		panic(e)
+	}
 }
 
 func (c *EnclaveClient) Start(block types.Block) {
 	var buffer bytes.Buffer
 	block.EncodeRLP(&buffer)
-	c.clientInternal.Start(context.Background(), &StartRequest{EncodedBlock: buffer.Bytes()})
+	_, e := c.clientInternal.Start(context.Background(), &StartRequest{EncodedBlock: buffer.Bytes()})
+	if e != nil {
+		panic(e)
+	}
 }
 
 func (c *EnclaveClient) SubmitBlock(block types.Block) enclave.BlockSubmissionResponse {
 	var buffer bytes.Buffer
 	block.EncodeRLP(&buffer)
-	response, _ := c.clientInternal.SubmitBlock(context.Background(), &SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
+	response, e := c.clientInternal.SubmitBlock(context.Background(), &SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
+	if e != nil {
+		panic(e)
+	}
 	return toBlockSubmissionResponse(response.BlockSubmissionResponse)
 }
 
 func (c *EnclaveClient) SubmitRollup(rollup nodecommon.ExtRollup) {
 	extRollupMsg := toExtRollupMsg(&rollup)
-	c.clientInternal.SubmitRollup(context.Background(), &SubmitRollupRequest{ExtRollup: &extRollupMsg})
+	_, e := c.clientInternal.SubmitRollup(context.Background(), &SubmitRollupRequest{ExtRollup: &extRollupMsg})
+	if e != nil {
+		panic(e)
+	}
 }
 
 func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) error {
-	_, err := c.clientInternal.SubmitTx(context.Background(), &SubmitTxRequest{EncryptedTx: tx})
-	return err
+	_, e := c.clientInternal.SubmitTx(context.Background(), &SubmitTxRequest{EncryptedTx: tx})
+	if e != nil {
+		panic(e)
+	}
+	return e
 }
 
 func (c *EnclaveClient) Balance(address common.Address) uint64 {
-	response, _ := c.clientInternal.Balance(context.Background(), &BalanceRequest{Address: address.Bytes()})
+	response, e := c.clientInternal.Balance(context.Background(), &BalanceRequest{Address: address.Bytes()})
+	if e != nil {
+		panic(e)
+	}
 	return response.Balance
 }
 
 func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
-	response, _ := c.clientInternal.RoundWinner(context.Background(), &RoundWinnerRequest{Parent: parent.Bytes()})
+	response, e := c.clientInternal.RoundWinner(context.Background(), &RoundWinnerRequest{Parent: parent.Bytes()})
+	if e != nil {
+		panic(e)
+	}
 
 	if response.Winner {
 		return toExtRollup(response.ExtRollup), true
 	}
-
 	return nodecommon.ExtRollup{}, false
 }
 
 func (c *EnclaveClient) Stop() {
-	c.clientInternal.Stop(context.Background(), &StopRequest{})
+	_, e := c.clientInternal.Stop(context.Background(), &StopRequest{})
+	if e != nil {
+		panic(e)
+	}
 }
 
 func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool) {
-	response, _ := c.clientInternal.GetTransaction(context.Background(), &GetTransactionRequest{TxHash: txHash.Bytes()})
+	response, e := c.clientInternal.GetTransaction(context.Background(), &GetTransactionRequest{TxHash: txHash.Bytes()})
+	if e != nil {
+		panic(e)
+	}
 
 	if response.Unknown {
 		return nil, false
 	}
-
 	l2Tx := enclave.L2Tx{}
 	l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
 	return &l2Tx, true

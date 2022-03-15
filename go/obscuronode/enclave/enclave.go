@@ -406,7 +406,6 @@ type speculativeWork struct {
 	txs []L2Tx
 }
 
-// TODO - Joel - This should create an enclave RPC service instead.
 func NewEnclave(id common.Address, mining bool, collector StatsCollector) Enclave {
 	db := NewInMemoryDB()
 	return &enclaveImpl{
