@@ -56,13 +56,13 @@ func TestSimulation(t *testing.T) {
 	simulation.Start(txManager, simulationTimeSecs)
 
 	// wait for all activity to clear
-	time.Sleep(60 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
 
 	// generate and print the final stats
-	t.Logf("%+v\n", NewOutputStats(simulation))
+	t.Logf("Simulation results:%+v", NewOutputStats(simulation))
 
 	simulation.Stop()
 }
