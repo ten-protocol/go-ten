@@ -46,6 +46,7 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 
 	l2NodeCfg := host.AggregatorCfg{GossipRoundDuration: gossipPeriod}
 
+	timeout := CLIENT_TIMEOUT_SECS * time.Second
 	for i := 1; i <= nrNodes; i++ {
 		genesis := false
 		if i == 1 {
@@ -62,11 +63,10 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
 
 		// create a layer 2 node
-		enclaveClient, err := rpc.NewEnclaveClient(port, CLIENT_TIMEOUT_SECS*time.Second)
+		agg, err := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, port, timeout)
 		if err != nil {
-			panic(fmt.Sprintf("failed to create enclave client: %v", err))
+			panic(fmt.Sprintf("failed to create aggregator node: %v", err))
 		}
-		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
@@ -113,10 +113,8 @@ func (s *Simulation) Start(
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
-	s.l1Network.Start(time.Duration(0))
-	time.Sleep(10 * time.Second)
+	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
 	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
-	time.Sleep(10 * time.Second)
 
 	// time in micro seconds to run the simulation
 	timeInUs := simulationTime * 1000 * 1000
@@ -126,7 +124,6 @@ func (s *Simulation) Start(
 
 	// Wait for the simulation time
 	time.Sleep(obscurocommon.Duration(uint64(timeInUs)))
-	time.Sleep(10 * time.Second)
 
 	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(timeInUs)))
 	time.Sleep(time.Second)

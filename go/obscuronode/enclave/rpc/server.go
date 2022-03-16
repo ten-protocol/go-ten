@@ -42,7 +42,7 @@ func StartServer(port uint64, nodeID common.Address, collector enclave.StatsColl
 }
 
 // IsReady returns a nil error to indicate that the server is ready.
-func (s *server) IsReady(ctx context.Context, request *IsReadyRequest) (*IsReadyResponse, error) {
+func (s *server) IsReady(context.Context, *IsReadyRequest) (*IsReadyResponse, error) {
 	return &IsReadyResponse{}, nil
 }
 
@@ -62,9 +62,9 @@ func (s *server) FetchSecret(_ context.Context, request *FetchSecretRequest) (*F
 	return &FetchSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
-func (s *server) Init(_ context.Context, request *InitRequest) (*InitResponse, error) {
-	s.enclave.Init(request.EncryptedSharedEnclaveSecret)
-	return &InitResponse{}, nil
+func (s *server) InitEnclave(_ context.Context, request *InitEnclaveRequest) (*InitEnclaveResponse, error) {
+	s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret)
+	return &InitEnclaveResponse{}, nil
 }
 
 func (s *server) IsInitialised(context.Context, *IsInitialisedRequest) (*IsInitialisedResponse, error) {

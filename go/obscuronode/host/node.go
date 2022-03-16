@@ -65,7 +65,7 @@ type Node struct {
 	rollupsP2PCh chan obscurocommon.EncodedRollup
 
 	// Interface to the logic running inside the TEE
-	EnclaveClient rpc.EnclaveClient
+	EnclaveClient *rpc.EnclaveClient
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *obscuronode.DB
@@ -78,8 +78,14 @@ func NewAgg(
 	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
-	enclaveClient rpc.EnclaveClient,
-) Node {
+	port uint64,
+	timeout time.Duration,
+) (Node, error) {
+	enclaveClient, err := rpc.NewEnclaveClient(port, timeout)
+	if err != nil {
+		return Node{}, err
+	}
+
 	return Node{
 		// config
 		ID:        id,
@@ -105,7 +111,7 @@ func NewAgg(
 
 		// Initialized the node nodeDB
 		nodeDB: obscuronode.NewDB(),
-	}
+	}, nil
 }
 
 // Start initializes the main loop of the node
@@ -410,7 +416,7 @@ func (a *Node) requestSecret() {
 				t := obscurocommon.TxData(tx)
 				if t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
-					err := a.EnclaveClient.Init(t.Secret)
+					err := a.EnclaveClient.InitEnclave(t.Secret)
 					if err != nil {
 						log.Log(fmt.Sprintf(">   Agg%d: Could not initialise enclave: %v", obscurocommon.ShortAddress(a.ID), err))
 					}

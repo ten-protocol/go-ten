@@ -18,7 +18,7 @@ service EnclaveProto {
   rpc FetchSecret(FetchSecretRequest) returns (FetchSecretResponse) {}
 
   // Init - initialise an enclave with a seed received by another enclave
-  rpc Init(InitRequest) returns (InitResponse) {}
+  rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
 
   // IsInitialised - true if the shared secret is available
   rpc IsInitialised(IsInitialisedRequest) returns (IsInitialisedResponse) {}
@@ -77,10 +77,10 @@ message FetchSecretResponse {
   bytes encryptedSharedEnclaveSecret = 1;
 }
 
-message InitRequest {
+message InitEnclaveRequest {
   bytes encryptedSharedEnclaveSecret = 1;
 }
-message InitResponse {}
+message InitEnclaveResponse {}
 
 message IsInitialisedRequest {}
 message IsInitialisedResponse {

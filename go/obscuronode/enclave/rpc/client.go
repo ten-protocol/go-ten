@@ -25,23 +25,17 @@ type EnclaveClient struct {
 	timeout     time.Duration
 }
 
-func NewEnclaveClient(port uint64, timeout time.Duration) (EnclaveClient, error) {
-	connection, err := getConnection(port)
+func NewEnclaveClient(port uint64, timeout time.Duration) (*EnclaveClient, error) {
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	connection, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), opts...)
 	if err != nil {
-		wrappedErr := fmt.Errorf("failed to connect to enclave RPC service: %w", err)
-		return EnclaveClient{}, wrappedErr
+		return nil, fmt.Errorf("failed to connect to enclave RPC service: %w", err)
 	}
-	return EnclaveClient{NewEnclaveProtoClient(connection), connection, timeout}, nil
+	return &EnclaveClient{NewEnclaveProtoClient(connection), connection, timeout}, nil
 }
 
 func (c *EnclaveClient) StopClient() error {
 	return c.connection.Close()
-}
-
-// Returns an unsecured connection to use for communicating with the enclave over RPC.
-func getConnection(port uint64) (*grpc.ClientConn, error) {
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	return grpc.Dial(fmt.Sprintf("localhost:%d", port), opts...)
 }
 
 func (c *EnclaveClient) IsReady() error {
@@ -78,11 +72,11 @@ func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) (obs
 	return response.EncryptedSharedEnclaveSecret, err
 }
 
-func (c *EnclaveClient) Init(secret obscurocommon.EncryptedSharedEnclaveSecret) error {
+func (c *EnclaveClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	_, err := c.protoClient.Init(timeoutCtx, &InitRequest{EncryptedSharedEnclaveSecret: secret})
+	_, err := c.protoClient.InitEnclave(timeoutCtx, &InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
 	return err
 }
 
@@ -190,7 +184,7 @@ func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool,
 
 	response, err := c.protoClient.GetTransaction(timeoutCtx, &GetTransactionRequest{TxHash: txHash.Bytes()})
 	if err != nil || !response.Known {
-		return &enclave.L2Tx{}, false, err
+		return nil, false, err
 	}
 
 	l2Tx := enclave.L2Tx{}
@@ -199,5 +193,5 @@ func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool,
 		return &enclave.L2Tx{}, false, err
 	}
 
-	return &l2Tx, true, err
+	return nil, true, err
 }

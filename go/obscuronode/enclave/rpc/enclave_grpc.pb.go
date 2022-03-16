@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EnclaveProtoClient interface {
+	// IsReady is used to check whether the server is ready for requests.
 	IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyResponse, error)
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error)
@@ -30,7 +31,7 @@ type EnclaveProtoClient interface {
 	// FetchSecret - return the shared secret encrypted with the key from the attestation
 	FetchSecret(ctx context.Context, in *FetchSecretRequest, opts ...grpc.CallOption) (*FetchSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
-	Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error)
+	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	// IsInitialised - true if the shared secret is available
 	IsInitialised(ctx context.Context, in *IsInitialisedRequest, opts ...grpc.CallOption) (*IsInitialisedResponse, error)
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
@@ -102,9 +103,9 @@ func (c *enclaveProtoClient) FetchSecret(ctx context.Context, in *FetchSecretReq
 	return out, nil
 }
 
-func (c *enclaveProtoClient) Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error) {
-	out := new(InitResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Init", in, out, opts...)
+func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error) {
+	out := new(InitEnclaveResponse)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/InitEnclave", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -214,6 +215,7 @@ func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransact
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
 type EnclaveProtoServer interface {
+	// IsReady is used to check whether the server is ready for requests.
 	IsReady(context.Context, *IsReadyRequest) (*IsReadyResponse, error)
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error)
@@ -222,7 +224,7 @@ type EnclaveProtoServer interface {
 	// FetchSecret - return the shared secret encrypted with the key from the attestation
 	FetchSecret(context.Context, *FetchSecretRequest) (*FetchSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
-	Init(context.Context, *InitRequest) (*InitResponse, error)
+	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	// IsInitialised - true if the shared secret is available
 	IsInitialised(context.Context, *IsInitialisedRequest) (*IsInitialisedResponse, error)
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
@@ -267,8 +269,8 @@ func (UnimplementedEnclaveProtoServer) GenerateSecret(context.Context, *Generate
 func (UnimplementedEnclaveProtoServer) FetchSecret(context.Context, *FetchSecretRequest) (*FetchSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FetchSecret not implemented")
 }
-func (UnimplementedEnclaveProtoServer) Init(context.Context, *InitRequest) (*InitResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
+func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitEnclave not implemented")
 }
 func (UnimplementedEnclaveProtoServer) IsInitialised(context.Context, *IsInitialisedRequest) (*IsInitialisedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IsInitialised not implemented")
@@ -388,20 +390,20 @@ func _EnclaveProto_FetchSecret_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InitRequest)
+func _EnclaveProto_InitEnclave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitEnclaveRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveProtoServer).Init(ctx, in)
+		return srv.(EnclaveProtoServer).InitEnclave(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/Init",
+		FullMethod: "/rpc.EnclaveProto/InitEnclave",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).Init(ctx, req.(*InitRequest))
+		return srv.(EnclaveProtoServer).InitEnclave(ctx, req.(*InitEnclaveRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -628,8 +630,8 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_FetchSecret_Handler,
 		},
 		{
-			MethodName: "Init",
-			Handler:    _EnclaveProto_Init_Handler,
+			MethodName: "InitEnclave",
+			Handler:    _EnclaveProto_InitEnclave_Handler,
 		},
 		{
 			MethodName: "IsInitialised",

@@ -47,8 +47,8 @@ type Enclave interface {
 	// FetchSecret - return the shared secret encrypted with the key from the attestation
 	FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret
 
-	// Init - initialise an enclave with a seed received by another enclave
-	Init(secret obscurocommon.EncryptedSharedEnclaveSecret)
+	// InitEnclave - initialise an enclave with a seed received by another enclave
+	InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret)
 
 	// IsInitialised - true if the shared secret is avaible
 	IsInitialised() bool
@@ -375,8 +375,8 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 	return encryptSecret(secret)
 }
 
-// Init - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) Init(secret obscurocommon.EncryptedSharedEnclaveSecret) {
+// InitEnclave - initialise an enclave with a seed received by another enclave
+func (e *enclaveImpl) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) {
 	e.db.StoreSecret(decryptSecret(secret))
 }
 
