@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.19.4
-// source: go/obscuronode/enclave/rpc/enclave.proto
+// source: go/obscuronode/enclave/rpc/generated/enclave.proto
 
-package rpc
+package generated
 
 import (
 	context "context"
@@ -69,7 +69,7 @@ func NewEnclaveProtoClient(cc grpc.ClientConnInterface) EnclaveProtoClient {
 
 func (c *enclaveProtoClient) IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyResponse, error) {
 	out := new(IsReadyResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/IsReady", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/IsReady", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (c *enclaveProtoClient) IsReady(ctx context.Context, in *IsReadyRequest, op
 
 func (c *enclaveProtoClient) Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error) {
 	out := new(AttestationResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Attestation", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Attestation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (c *enclaveProtoClient) Attestation(ctx context.Context, in *AttestationReq
 
 func (c *enclaveProtoClient) GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error) {
 	out := new(GenerateSecretResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/GenerateSecret", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GenerateSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (c *enclaveProtoClient) GenerateSecret(ctx context.Context, in *GenerateSec
 
 func (c *enclaveProtoClient) FetchSecret(ctx context.Context, in *FetchSecretRequest, opts ...grpc.CallOption) (*FetchSecretResponse, error) {
 	out := new(FetchSecretResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/FetchSecret", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/FetchSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (c *enclaveProtoClient) FetchSecret(ctx context.Context, in *FetchSecretReq
 
 func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error) {
 	out := new(InitEnclaveResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/InitEnclave", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/InitEnclave", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveReq
 
 func (c *enclaveProtoClient) IsInitialised(ctx context.Context, in *IsInitialisedRequest, opts ...grpc.CallOption) (*IsInitialisedResponse, error) {
 	out := new(IsInitialisedResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/IsInitialised", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/IsInitialised", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (c *enclaveProtoClient) IsInitialised(ctx context.Context, in *IsInitialise
 
 func (c *enclaveProtoClient) ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error) {
 	out := new(ProduceGenesisResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/ProduceGenesis", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ProduceGenesis", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (c *enclaveProtoClient) ProduceGenesis(ctx context.Context, in *ProduceGene
 
 func (c *enclaveProtoClient) IngestBlocks(ctx context.Context, in *IngestBlocksRequest, opts ...grpc.CallOption) (*IngestBlocksResponse, error) {
 	out := new(IngestBlocksResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/IngestBlocks", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/IngestBlocks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (c *enclaveProtoClient) IngestBlocks(ctx context.Context, in *IngestBlocksR
 
 func (c *enclaveProtoClient) Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error) {
 	out := new(StartResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Start", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Start", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (c *enclaveProtoClient) Start(ctx context.Context, in *StartRequest, opts .
 
 func (c *enclaveProtoClient) SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
 	out := new(SubmitBlockResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/SubmitBlock", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitBlock", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (c *enclaveProtoClient) SubmitBlock(ctx context.Context, in *SubmitBlockReq
 
 func (c *enclaveProtoClient) SubmitRollup(ctx context.Context, in *SubmitRollupRequest, opts ...grpc.CallOption) (*SubmitRollupResponse, error) {
 	out := new(SubmitRollupResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/SubmitRollup", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitRollup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (c *enclaveProtoClient) SubmitRollup(ctx context.Context, in *SubmitRollupR
 
 func (c *enclaveProtoClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error) {
 	out := new(SubmitTxResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/SubmitTx", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitTx", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (c *enclaveProtoClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, 
 
 func (c *enclaveProtoClient) Balance(ctx context.Context, in *BalanceRequest, opts ...grpc.CallOption) (*BalanceResponse, error) {
 	out := new(BalanceResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Balance", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Balance", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (c *enclaveProtoClient) Balance(ctx context.Context, in *BalanceRequest, op
 
 func (c *enclaveProtoClient) RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error) {
 	out := new(RoundWinnerResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/RoundWinner", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/RoundWinner", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (c *enclaveProtoClient) RoundWinner(ctx context.Context, in *RoundWinnerReq
 
 func (c *enclaveProtoClient) Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error) {
 	out := new(StopResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/Stop", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Stop", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (c *enclaveProtoClient) Stop(ctx context.Context, in *StopRequest, opts ...
 
 func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransactionRequest, opts ...grpc.CallOption) (*GetTransactionResponse, error) {
 	out := new(GetTransactionResponse)
-	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/GetTransaction", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetTransaction", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +328,7 @@ func _EnclaveProto_IsReady_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/IsReady",
+		FullMethod: "/generated.EnclaveProto/IsReady",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).IsReady(ctx, req.(*IsReadyRequest))
@@ -346,7 +346,7 @@ func _EnclaveProto_Attestation_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/Attestation",
+		FullMethod: "/generated.EnclaveProto/Attestation",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).Attestation(ctx, req.(*AttestationRequest))
@@ -364,7 +364,7 @@ func _EnclaveProto_GenerateSecret_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/GenerateSecret",
+		FullMethod: "/generated.EnclaveProto/GenerateSecret",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).GenerateSecret(ctx, req.(*GenerateSecretRequest))
@@ -382,7 +382,7 @@ func _EnclaveProto_FetchSecret_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/FetchSecret",
+		FullMethod: "/generated.EnclaveProto/FetchSecret",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).FetchSecret(ctx, req.(*FetchSecretRequest))
@@ -400,7 +400,7 @@ func _EnclaveProto_InitEnclave_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/InitEnclave",
+		FullMethod: "/generated.EnclaveProto/InitEnclave",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).InitEnclave(ctx, req.(*InitEnclaveRequest))
@@ -418,7 +418,7 @@ func _EnclaveProto_IsInitialised_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/IsInitialised",
+		FullMethod: "/generated.EnclaveProto/IsInitialised",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).IsInitialised(ctx, req.(*IsInitialisedRequest))
@@ -436,7 +436,7 @@ func _EnclaveProto_ProduceGenesis_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/ProduceGenesis",
+		FullMethod: "/generated.EnclaveProto/ProduceGenesis",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).ProduceGenesis(ctx, req.(*ProduceGenesisRequest))
@@ -454,7 +454,7 @@ func _EnclaveProto_IngestBlocks_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/IngestBlocks",
+		FullMethod: "/generated.EnclaveProto/IngestBlocks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).IngestBlocks(ctx, req.(*IngestBlocksRequest))
@@ -472,7 +472,7 @@ func _EnclaveProto_Start_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/Start",
+		FullMethod: "/generated.EnclaveProto/Start",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).Start(ctx, req.(*StartRequest))
@@ -490,7 +490,7 @@ func _EnclaveProto_SubmitBlock_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/SubmitBlock",
+		FullMethod: "/generated.EnclaveProto/SubmitBlock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).SubmitBlock(ctx, req.(*SubmitBlockRequest))
@@ -508,7 +508,7 @@ func _EnclaveProto_SubmitRollup_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/SubmitRollup",
+		FullMethod: "/generated.EnclaveProto/SubmitRollup",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).SubmitRollup(ctx, req.(*SubmitRollupRequest))
@@ -526,7 +526,7 @@ func _EnclaveProto_SubmitTx_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/SubmitTx",
+		FullMethod: "/generated.EnclaveProto/SubmitTx",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).SubmitTx(ctx, req.(*SubmitTxRequest))
@@ -544,7 +544,7 @@ func _EnclaveProto_Balance_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/Balance",
+		FullMethod: "/generated.EnclaveProto/Balance",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).Balance(ctx, req.(*BalanceRequest))
@@ -562,7 +562,7 @@ func _EnclaveProto_RoundWinner_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/RoundWinner",
+		FullMethod: "/generated.EnclaveProto/RoundWinner",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).RoundWinner(ctx, req.(*RoundWinnerRequest))
@@ -580,7 +580,7 @@ func _EnclaveProto_Stop_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/Stop",
+		FullMethod: "/generated.EnclaveProto/Stop",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).Stop(ctx, req.(*StopRequest))
@@ -598,7 +598,7 @@ func _EnclaveProto_GetTransaction_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rpc.EnclaveProto/GetTransaction",
+		FullMethod: "/generated.EnclaveProto/GetTransaction",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).GetTransaction(ctx, req.(*GetTransactionRequest))
@@ -610,7 +610,7 @@ func _EnclaveProto_GetTransaction_Handler(srv interface{}, ctx context.Context, 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "rpc.EnclaveProto",
+	ServiceName: "generated.EnclaveProto",
 	HandlerType: (*EnclaveProtoServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -679,5 +679,5 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "go/obscuronode/enclave/rpc/enclave.proto",
+	Metadata: "go/obscuronode/enclave/rpc/generated/enclave.proto",
 }

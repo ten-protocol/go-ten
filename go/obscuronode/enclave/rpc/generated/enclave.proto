@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option go_package = "obscuronode/enclave/rpc";
+option go_package = "obscuronode/enclave/rpc/generated";
 
-package rpc;
+package generated;
 
 service EnclaveProto {
   // IsReady is used to check whether the server is ready for requests.

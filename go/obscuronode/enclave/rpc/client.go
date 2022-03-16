@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc/generated"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,7 +21,7 @@ import (
 // EnclaveClient is the implementation of EnclaveClient that should be used by the host when communicating with the enclave.
 // Calls are proxied to the enclave process over RPC.
 type EnclaveClient struct {
-	protoClient EnclaveProtoClient
+	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
 	timeout     time.Duration
 }
@@ -31,7 +32,7 @@ func NewEnclaveClient(port uint64, timeout time.Duration) (*EnclaveClient, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to enclave RPC service: %w", err)
 	}
-	return &EnclaveClient{NewEnclaveProtoClient(connection), connection, timeout}, nil
+	return &EnclaveClient{generated.NewEnclaveProtoClient(connection), connection, timeout}, nil
 }
 
 func (c *EnclaveClient) StopClient() error {
@@ -42,7 +43,7 @@ func (c *EnclaveClient) IsReady() error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	_, err := c.protoClient.IsReady(timeoutCtx, &IsReadyRequest{})
+	_, err := c.protoClient.IsReady(timeoutCtx, &generated.IsReadyRequest{})
 	return err
 }
 
@@ -50,7 +51,7 @@ func (c *EnclaveClient) Attestation() (obscurocommon.AttestationReport, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.Attestation(timeoutCtx, &AttestationRequest{})
+	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
 	return fromAttestationReportMsg(response.AttestationReportMsg), err
 }
 
@@ -58,7 +59,7 @@ func (c *EnclaveClient) GenerateSecret() (obscurocommon.EncryptedSharedEnclaveSe
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.GenerateSecret(timeoutCtx, &GenerateSecretRequest{})
+	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
 	return response.EncryptedSharedEnclaveSecret, err
 }
 
@@ -67,7 +68,7 @@ func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) (obs
 	defer cancel()
 
 	attestationReportMsg := toAttestationReportMsg(report)
-	request := FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
+	request := generated.FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
 	response, err := c.protoClient.FetchSecret(timeoutCtx, &request)
 	return response.EncryptedSharedEnclaveSecret, err
 }
@@ -76,7 +77,7 @@ func (c *EnclaveClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveS
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	_, err := c.protoClient.InitEnclave(timeoutCtx, &InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
+	_, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
 	return err
 }
 
@@ -84,7 +85,7 @@ func (c *EnclaveClient) IsInitialised() (bool, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.IsInitialised(timeoutCtx, &IsInitialisedRequest{})
+	response, err := c.protoClient.IsInitialised(timeoutCtx, &generated.IsInitialisedRequest{})
 	return response.IsInitialised, err
 }
 
@@ -92,7 +93,7 @@ func (c *EnclaveClient) ProduceGenesis() (enclave.BlockSubmissionResponse, error
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &ProduceGenesisRequest{})
+	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{})
 	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse), err
 }
 
@@ -105,7 +106,7 @@ func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) error {
 		encodedBlock := obscurocommon.EncodeBlock(block)
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
-	_, err := c.protoClient.IngestBlocks(timeoutCtx, &IngestBlocksRequest{EncodedBlocks: encodedBlocks})
+	_, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
 	return err
 }
 
@@ -117,7 +118,7 @@ func (c *EnclaveClient) Start(block types.Block) error {
 	if err := block.EncodeRLP(&buffer); err != nil {
 		return err
 	}
-	_, err := c.protoClient.Start(timeoutCtx, &StartRequest{EncodedBlock: buffer.Bytes()})
+	_, err := c.protoClient.Start(timeoutCtx, &generated.StartRequest{EncodedBlock: buffer.Bytes()})
 	return err
 }
 
@@ -130,7 +131,7 @@ func (c *EnclaveClient) SubmitBlock(block types.Block) (enclave.BlockSubmissionR
 		return enclave.BlockSubmissionResponse{}, err
 	}
 
-	response, err := c.protoClient.SubmitBlock(timeoutCtx, &SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
+	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse), err
 }
 
@@ -139,7 +140,7 @@ func (c *EnclaveClient) SubmitRollup(rollup nodecommon.ExtRollup) error {
 	defer cancel()
 
 	extRollupMsg := toExtRollupMsg(&rollup)
-	_, err := c.protoClient.SubmitRollup(timeoutCtx, &SubmitRollupRequest{ExtRollup: &extRollupMsg})
+	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	return err
 }
 
@@ -147,7 +148,7 @@ func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	_, err := c.protoClient.SubmitTx(timeoutCtx, &SubmitTxRequest{EncryptedTx: tx})
+	_, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
 	return err
 }
 
@@ -155,7 +156,7 @@ func (c *EnclaveClient) Balance(address common.Address) (uint64, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.Balance(timeoutCtx, &BalanceRequest{Address: address.Bytes()})
+	response, err := c.protoClient.Balance(timeoutCtx, &generated.BalanceRequest{Address: address.Bytes()})
 	return response.Balance, err
 }
 
@@ -163,7 +164,7 @@ func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.RoundWinner(timeoutCtx, &RoundWinnerRequest{Parent: parent.Bytes()})
+	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
 	if err == nil && response.Winner {
 		return fromExtRollupMsg(response.ExtRollup), true, err
 	}
@@ -174,7 +175,7 @@ func (c *EnclaveClient) Stop() error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	_, err := c.protoClient.Stop(timeoutCtx, &StopRequest{})
+	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
 	return err
 }
 
@@ -182,7 +183,7 @@ func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool,
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetTransaction(timeoutCtx, &GetTransactionRequest{TxHash: txHash.Bytes()})
+	response, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{TxHash: txHash.Bytes()})
 	if err != nil || !response.Known {
 		return nil, false, err
 	}

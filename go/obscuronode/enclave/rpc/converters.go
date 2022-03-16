@@ -4,30 +4,31 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc/generated"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // Functions to convert classes that need to be sent between the host and the enclave to and from their equivalent
 // Protobuf message classes.
 
-func toAttestationReportMsg(report obscurocommon.AttestationReport) AttestationReportMsg {
-	return AttestationReportMsg{Owner: report.Owner.Bytes()}
+func toAttestationReportMsg(report obscurocommon.AttestationReport) generated.AttestationReportMsg {
+	return generated.AttestationReportMsg{Owner: report.Owner.Bytes()}
 }
 
-func fromAttestationReportMsg(msg *AttestationReportMsg) obscurocommon.AttestationReport {
+func fromAttestationReportMsg(msg *generated.AttestationReportMsg) obscurocommon.AttestationReport {
 	return obscurocommon.AttestationReport{Owner: common.BytesToAddress(msg.Owner)}
 }
 
-func toBlockSubmissionResponseMsg(response enclave.BlockSubmissionResponse) BlockSubmissionResponseMsg {
-	withdrawalMsgs := make([]*WithdrawalMsg, 0)
+func toBlockSubmissionResponseMsg(response enclave.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {
+	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
 	for _, withdrawal := range response.Withdrawals {
-		withdrawalMsg := WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
+		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
 		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
 	}
 
 	producedRollupMsg := toExtRollupMsg(&response.ProducedRollup)
 
-	return BlockSubmissionResponseMsg{
+	return generated.BlockSubmissionResponseMsg{
 		L1Hash:            response.L1Hash.Bytes(),
 		L1Height:          response.L1Height,
 		L1Parent:          response.L1Parent.Bytes(),
@@ -41,7 +42,7 @@ func toBlockSubmissionResponseMsg(response enclave.BlockSubmissionResponse) Bloc
 	}
 }
 
-func fromBlockSubmissionResponseMsg(msg *BlockSubmissionResponseMsg) enclave.BlockSubmissionResponse {
+func fromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) enclave.BlockSubmissionResponse {
 	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range msg.Withdrawals {
 		address := common.BytesToAddress(withdrawalMsg.Address)
@@ -63,16 +64,16 @@ func fromBlockSubmissionResponseMsg(msg *BlockSubmissionResponseMsg) enclave.Blo
 	}
 }
 
-func toExtRollupMsg(rollup *nodecommon.ExtRollup) ExtRollupMsg {
-	var headerMsg HeaderMsg
+func toExtRollupMsg(rollup *nodecommon.ExtRollup) generated.ExtRollupMsg {
+	var headerMsg generated.HeaderMsg
 	if rollup.Header != nil {
-		withdrawalMsgs := make([]*WithdrawalMsg, 0)
+		withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
 		for _, withdrawal := range rollup.Header.Withdrawals {
-			withdrawalMsg := WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
+			withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
 			withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
 		}
 
-		headerMsg = HeaderMsg{
+		headerMsg = generated.HeaderMsg{
 			ParentHash:  rollup.Header.ParentHash.Bytes(),
 			Agg:         rollup.Header.Agg.Bytes(),
 			Nonce:       rollup.Header.Nonce,
@@ -87,10 +88,10 @@ func toExtRollupMsg(rollup *nodecommon.ExtRollup) ExtRollupMsg {
 		txs = append(txs, tx)
 	}
 
-	return ExtRollupMsg{Header: &headerMsg, Txs: txs}
+	return generated.ExtRollupMsg{Header: &headerMsg, Txs: txs}
 }
 
-func fromExtRollupMsg(msg *ExtRollupMsg) nodecommon.ExtRollup {
+func fromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
 	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range msg.Header.Withdrawals {
 		address := common.BytesToAddress(withdrawalMsg.Address)
