@@ -75,7 +75,7 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		agg.L1Node = &miner
 	}
 
-	time.Sleep(1000 * time.Millisecond) // TODO - Joel - Replace this with a direct server upness check.
+	waitForEnclaveServers(l2NetworkCfg)
 
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
@@ -85,6 +85,18 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		l2NodeConfig:     &l2NodeCfg,
 		l2Network:        l2NetworkCfg,
 		avgBlockDuration: avgBlockDuration,
+	}
+}
+
+// Returns once all the enclave servers are ready.
+func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
+	for _, node := range l2NetworkCfg.nodes {
+		for {
+			if node.EnclaveClient.IsReady() == nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 }
 

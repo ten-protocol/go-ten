@@ -41,6 +41,11 @@ func StartServer(port uint64, nodeID common.Address, collector enclave.StatsColl
 	return grpcServer, nil
 }
 
+// IsReady returns a nil error to indicate that the server is ready.
+func (s *server) IsReady(ctx context.Context, request *IsReadyRequest) (*IsReadyResponse, error) {
+	return &IsReadyResponse{}, nil
+}
+
 func (s *server) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {
 	msg := AttestationReportMsg{Owner: s.enclave.Attestation().Owner.Bytes()}
 	return &AttestationResponse{AttestationReportMsg: &msg}, nil

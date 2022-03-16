@@ -44,6 +44,14 @@ func getConnection(port uint64) (*grpc.ClientConn, error) {
 	return grpc.Dial(fmt.Sprintf("localhost:%d", port), opts...)
 }
 
+func (c *EnclaveClient) IsReady() error {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	_, err := c.protoClient.IsReady(timeoutCtx, &IsReadyRequest{})
+	return err
+}
+
 func (c *EnclaveClient) Attestation() (obscurocommon.AttestationReport, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()

@@ -5,6 +5,9 @@ option go_package = "obscuronode/enclave/rpc";
 package rpc;
 
 service EnclaveProto {
+  // IsReady is used to check whether the server is ready for requests.
+  rpc IsReady(IsReadyRequest) returns (IsReadyResponse) {}
+
   // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
 
@@ -53,6 +56,9 @@ service EnclaveProto {
   // GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
   rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse) {}
 }
+
+message IsReadyRequest {}
+message IsReadyResponse {}
 
 message AttestationRequest {}
 message AttestationResponse {

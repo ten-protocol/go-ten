@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EnclaveProtoClient interface {
+	IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyResponse, error)
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error)
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
@@ -63,6 +64,15 @@ type enclaveProtoClient struct {
 
 func NewEnclaveProtoClient(cc grpc.ClientConnInterface) EnclaveProtoClient {
 	return &enclaveProtoClient{cc}
+}
+
+func (c *enclaveProtoClient) IsReady(ctx context.Context, in *IsReadyRequest, opts ...grpc.CallOption) (*IsReadyResponse, error) {
+	out := new(IsReadyResponse)
+	err := c.cc.Invoke(ctx, "/rpc.EnclaveProto/IsReady", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *enclaveProtoClient) Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error) {
@@ -204,6 +214,7 @@ func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransact
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
 type EnclaveProtoServer interface {
+	IsReady(context.Context, *IsReadyRequest) (*IsReadyResponse, error)
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error)
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
@@ -244,6 +255,9 @@ type EnclaveProtoServer interface {
 type UnimplementedEnclaveProtoServer struct {
 }
 
+func (UnimplementedEnclaveProtoServer) IsReady(context.Context, *IsReadyRequest) (*IsReadyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method IsReady not implemented")
+}
 func (UnimplementedEnclaveProtoServer) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Attestation not implemented")
 }
@@ -300,6 +314,24 @@ type UnsafeEnclaveProtoServer interface {
 
 func RegisterEnclaveProtoServer(s grpc.ServiceRegistrar, srv EnclaveProtoServer) {
 	s.RegisterService(&EnclaveProto_ServiceDesc, srv)
+}
+
+func _EnclaveProto_IsReady_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IsReadyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).IsReady(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.EnclaveProto/IsReady",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).IsReady(ctx, req.(*IsReadyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _EnclaveProto_Attestation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -579,6 +611,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "rpc.EnclaveProto",
 	HandlerType: (*EnclaveProtoServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "IsReady",
+			Handler:    _EnclaveProto_IsReady_Handler,
+		},
 		{
 			MethodName: "Attestation",
 			Handler:    _EnclaveProto_Attestation_Handler,
