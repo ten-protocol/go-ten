@@ -56,7 +56,7 @@ func TestSimulation(t *testing.T) {
 	simulation.Start(txManager, simulationTimeSecs)
 
 	// wait for all activity to clear
-	time.Sleep(10 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
@@ -163,7 +163,7 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 const (
 	L1EfficiencyThreshold     = 0.2
 	L2EfficiencyThreshold     = 0.3
-	L2ToL1EfficiencyThreshold = 0.35
+	L2ToL1EfficiencyThreshold = 0.3
 )
 
 // validateL1 does a sanity check on the mock implementation of the L1

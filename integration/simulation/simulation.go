@@ -125,7 +125,7 @@ func (s *Simulation) Start(
 	// Wait for the simulation time
 	time.Sleep(obscurocommon.Duration(uint64(timeInUs)))
 
-	fmt.Printf("Stopped simulation after %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(timeInUs)))
+	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(timeInUs)))
 	time.Sleep(time.Second)
 }
 
