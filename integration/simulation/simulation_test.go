@@ -55,14 +55,16 @@ func TestSimulation(t *testing.T) {
 	// execute the simulation
 	simulation.Start(txManager, simulationTimeSecs)
 
-	time.Sleep(3 * time.Second) // TODO - Joel - Minimise this. Caused by client/server latency.
+	// wait for all activity to clear
+	time.Sleep(100 * time.Millisecond)
 
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
 
 	// generate and print the final stats
 	t.Logf("%+v\n", NewOutputStats(simulation))
-	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+
+	simulation.Stop()
 }
 
 func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, network *Simulation) {

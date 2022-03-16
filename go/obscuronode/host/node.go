@@ -65,7 +65,7 @@ type Node struct {
 	rollupsP2PCh chan obscurocommon.EncodedRollup
 
 	// Interface to the logic running inside the TEE
-	Enclave enclave.Enclave
+	Enclave rpc.EnclaveClient
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *obscuronode.DB
@@ -80,13 +80,7 @@ func NewAgg(
 	genesis bool,
 	port uint64,
 ) Node {
-	// TODO - Joel - Close the connection.
 	enclaveClient := rpc.NewEnclaveClient(port)
-
-	// TODO - Joel - Check for server upness.
-	// TODO - Joel - We should monitor server health over time.
-	// TODO - Joel - Allow server to be stopped.
-	rpc.StartServer(port, id, collector)
 
 	return Node{
 		// config
@@ -109,7 +103,7 @@ func NewAgg(
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 
 		// State processing
-		Enclave: &enclaveClient,
+		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
 		nodeDB: obscuronode.NewDB(),
@@ -245,6 +239,8 @@ func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.interrupt, 1)
 	a.Enclave.Stop()
+	time.Sleep(time.Millisecond * 1000)
+	a.Enclave.StopClient() // TODO - Joel - Handle error.
 	time.Sleep(time.Millisecond * 10)
 	a.exitNodeCh <- true
 }

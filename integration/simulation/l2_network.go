@@ -55,7 +55,6 @@ func (cfg *L2NetworkCfg) Start(delay time.Duration) {
 func (cfg *L2NetworkCfg) Stop() {
 	for _, m := range cfg.nodes {
 		m.Stop()
-		// fmt.Printf("Stopped L2 node: %d\n", m.ID)
 	}
 }
 

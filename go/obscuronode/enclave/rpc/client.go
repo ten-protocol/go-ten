@@ -17,16 +17,24 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// TODO - Joel - Introduce client request timeouts.
+
 // EnclaveClient is the implementation of Enclave that should be used by the host when communicating with the enclave.
 // Calls are proxied to the enclave process over RPC.
 type EnclaveClient struct {
 	protoClient EnclaveProtoClient
+	connection  *grpc.ClientConn
 }
 
 func NewEnclaveClient(port uint64) EnclaveClient {
+	// TODO - Joel - Handle error.
 	connection, _ := getConnection(port)
-	client := EnclaveClient{NewEnclaveProtoClient(connection)}
+	client := EnclaveClient{NewEnclaveProtoClient(connection), connection}
 	return client
+}
+
+func (c *EnclaveClient) StopClient() error {
+	return c.connection.Close()
 }
 
 // Returns an unsecured connection to use for communicating with the enclave over RPC.
