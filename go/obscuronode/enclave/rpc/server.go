@@ -23,11 +23,10 @@ type server struct {
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-func StartServer(port uint64, nodeID common.Address, collector enclave.StatsCollector) {
+func StartServer(port uint64, nodeID common.Address, collector enclave.StatsCollector) (*grpc.Server, error) {
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
-		log.Log(fmt.Sprintf("enclave RPC server could not listen on port: %v", err))
-		return
+		return &grpc.Server{}, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 	grpcServer := grpc.NewServer()
 	enclaveServer := server{enclave: enclave.NewEnclave(nodeID, true, collector)}
@@ -38,6 +37,8 @@ func StartServer(port uint64, nodeID common.Address, collector enclave.StatsColl
 			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
 		}
 	}(lis)
+
+	return grpcServer, nil
 }
 
 func (s *server) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {

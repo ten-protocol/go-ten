@@ -51,12 +51,14 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 			genesis = true
 		}
 
-		// TODO - Joel - We should monitor server health over time.
-		// TODO - Joel - Stop all servers at the end of the simulation.
 		// create an enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		port := uint64(ENCLAVE_CONN_START_PORT + i)
-		rpc.StartServer(port, nodeID, stats)
+		server, err := rpc.StartServer(port, nodeID, stats)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create enclave server: %v", err))
+		}
+		l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
 
 		// create a layer 2 node
 		enclaveClient, err := rpc.NewEnclaveClient(port)
