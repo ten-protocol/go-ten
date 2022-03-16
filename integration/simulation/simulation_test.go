@@ -56,7 +56,7 @@ func TestSimulation(t *testing.T) {
 	simulation.Start(txManager, simulationTimeSecs)
 
 	// wait for all activity to clear
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
@@ -141,7 +141,10 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 		nGroup.Go(func() error {
 			// all transactions should exist on every node
 			for _, transaction := range txManager.GetL2Transactions() {
-				_, found, _ := closureNode.EnclaveClient.GetTransaction(transaction.Hash()) // TODO - Joel - Handle exception.
+				_, found, err := closureNode.EnclaveClient.GetTransaction(transaction.Hash())
+				if err != nil {
+					return fmt.Errorf("node %d, unable to retrieve transaction: %w", closureNode.ID, err)
+				}
 				if !found {
 					return fmt.Errorf("node %d, unable to find transaction: %+v", closureNode.ID, transaction) // nolint:goerr113
 				}
@@ -160,7 +163,7 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 const (
 	L1EfficiencyThreshold     = 0.2
 	L2EfficiencyThreshold     = 0.3
-	L2ToL1EfficiencyThreshold = 0.3
+	L2ToL1EfficiencyThreshold = 0.35
 )
 
 // validateL1 does a sanity check on the mock implementation of the L1
@@ -271,7 +274,10 @@ func validateL2NodeBalances(t *testing.T, l2Network *L2NetworkCfg, s *Stats, tot
 			// add up all balances
 			total := uint64(0)
 			for _, wallet := range wallets {
-				balance, _ := closureNode.EnclaveClient.Balance(wallet.Address) // TODO - Joel - Handle error.
+				balance, err := closureNode.EnclaveClient.Balance(wallet.Address)
+				if err != nil {
+					return fmt.Errorf("node %d, unable to retrieve balance: %w", closureNode.ID, err)
+				}
 				total += balance
 			}
 			if total != finalAmount {
