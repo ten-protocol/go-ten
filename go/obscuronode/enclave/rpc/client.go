@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc/generated"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc/generated"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
