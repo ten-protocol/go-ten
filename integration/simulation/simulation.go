@@ -113,7 +113,7 @@ func (s *Simulation) Start(
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
-	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
+	s.l1Network.Start(time.Duration(0))
 	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
 
 	// time in micro seconds to run the simulation
