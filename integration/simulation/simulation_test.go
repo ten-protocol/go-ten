@@ -30,9 +30,9 @@ func TestSimulation(t *testing.T) {
 	defer logFile.Close()
 
 	// define core test parameters
-	numberOfNodes := 10
-	simulationTimeSecs := 15                 // in seconds
-	avgBlockDurationUSecs := uint64(200_000) // in u seconds 1 sec = 1e6 usecs
+	numberOfNodes := 100
+	simulationTimeSecs := 15               // in seconds
+	avgBlockDurationUSecs := uint64(5_000) // in u seconds 1 sec = 1e6 usecs
 	avgLatency := avgBlockDurationUSecs / 15
 	avgGossipPeriod := avgBlockDurationUSecs / 3
 
