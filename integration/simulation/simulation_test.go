@@ -141,7 +141,7 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 		nGroup.Go(func() error {
 			// all transactions should exist on every node
 			for _, transaction := range txManager.GetL2Transactions() {
-				_, found := closureNode.Enclave.GetTransaction(transaction.Hash())
+				_, found, _ := closureNode.EnclaveClient.GetTransaction(transaction.Hash()) // TODO - Joel - Handle exception.
 				if !found {
 					return fmt.Errorf("node %d, unable to find transaction: %+v", closureNode.ID, transaction) // nolint:goerr113
 				}
@@ -271,7 +271,8 @@ func validateL2NodeBalances(t *testing.T, l2Network *L2NetworkCfg, s *Stats, tot
 			// add up all balances
 			total := uint64(0)
 			for _, wallet := range wallets {
-				total += closureNode.Enclave.Balance(wallet.Address)
+				balance, _ := closureNode.EnclaveClient.Balance(wallet.Address) // TODO - Joel - Handle error.
+				total += balance
 			}
 			if total != finalAmount {
 				return fmt.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", closureNode.ID, total, finalAmount) // nolint:goerr113

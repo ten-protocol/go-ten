@@ -59,7 +59,11 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		rpc.StartServer(port, nodeID, stats)
 
 		// create a layer 2 node
-		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, port)
+		enclaveClient, err := rpc.NewEnclaveClient(port)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create enclave client: %v", err))
+		}
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks

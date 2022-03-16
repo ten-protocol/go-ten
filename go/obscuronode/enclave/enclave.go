@@ -77,7 +77,7 @@ type Enclave interface {
 	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
 
-	// RoundWinner - calculates and returns the winner for a round
+	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
 	RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool)
 
 	// Stop gracefully stops the enclave

@@ -15,15 +15,13 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
-// TODO - Joel - Decide when the correct behaviour is to throw an error.
-
-// Receives RPC calls to the enclave process and relays them to the Enclave class.
+// Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
 type server struct {
 	UnimplementedEnclaveProtoServer
 	enclave enclave.Enclave
 }
 
-// StartServer starts a server on the given port on a separate thread. It creates an Enclave for the provided nodeID,
+// StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
 func StartServer(port uint64, nodeID common.Address, collector enclave.StatsCollector) {
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
@@ -128,8 +126,7 @@ func (s *server) Stop(context.Context, *StopRequest) (*StopResponse, error) {
 func (s *server) GetTransaction(_ context.Context, request *GetTransactionRequest) (*GetTransactionResponse, error) {
 	tx, known := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
 	var buffer bytes.Buffer
-	err := tx.EncodeRLP(&buffer)
-	if err != nil {
+	if err := tx.EncodeRLP(&buffer); err != nil {
 		log.Log(fmt.Sprintf("failed to decode transaction sent to enclave: %v", err))
 	}
 	return &GetTransactionResponse{Known: known, EncodedTransaction: buffer.Bytes()}, nil
