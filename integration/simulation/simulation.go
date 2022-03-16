@@ -19,6 +19,7 @@ import (
 const (
 	INITIAL_BALANCE         = 5000  // nolint:revive,stylecheck
 	ENCLAVE_CONN_START_PORT = 15000 // nolint:revive,stylecheck
+	CLIENT_TIMEOUT_SECS     = 5     // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
@@ -61,7 +62,7 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
 
 		// create a layer 2 node
-		enclaveClient, err := rpc.NewEnclaveClient(port)
+		enclaveClient, err := rpc.NewEnclaveClient(port, CLIENT_TIMEOUT_SECS*time.Second)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave client: %v", err))
 		}
