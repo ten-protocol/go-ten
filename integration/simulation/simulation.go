@@ -114,7 +114,9 @@ func (s *Simulation) Start(
 
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
 	s.l1Network.Start(time.Duration(0))
+	time.Sleep(10 * time.Second)
 	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
+	time.Sleep(10 * time.Second)
 
 	// time in micro seconds to run the simulation
 	timeInUs := simulationTime * 1000 * 1000
@@ -124,6 +126,7 @@ func (s *Simulation) Start(
 
 	// Wait for the simulation time
 	time.Sleep(obscurocommon.Duration(uint64(timeInUs)))
+	time.Sleep(10 * time.Second)
 
 	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(timeInUs)))
 	time.Sleep(time.Second)
