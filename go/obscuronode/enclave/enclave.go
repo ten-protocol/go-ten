@@ -83,8 +83,8 @@ type Enclave interface {
 	// Stop gracefully stops the enclave
 	Stop()
 
-	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
-	GetTransaction(txHash common.Hash) (*L2Tx, bool)
+	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
+	GetTransaction(txHash common.Hash) *L2Tx
 }
 
 type enclaveImpl struct {
@@ -338,19 +338,19 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 	return &r
 }
 
-func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, bool) {
+func (e *enclaveImpl) GetTransaction(txHash common.Hash) *L2Tx {
 	// todo add some sort of cache
 	rollup := e.db.Head().Head
 	for {
 		txs := rollup.Transactions
 		for _, tx := range txs {
 			if tx.Hash() == txHash {
-				return &tx, true
+				return &tx
 			}
 		}
 		rollup = e.db.FetchRollup(rollup.Header.ParentHash)
 		if rollup.Height.Load() == obscurocommon.L2GenesisHeight {
-			return nil, false
+			return nil
 		}
 	}
 }

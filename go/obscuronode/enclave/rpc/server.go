@@ -130,12 +130,16 @@ func (s *server) Stop(context.Context, *StopRequest) (*StopResponse, error) {
 }
 
 func (s *server) GetTransaction(_ context.Context, request *GetTransactionRequest) (*GetTransactionResponse, error) {
-	tx, known := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
+	tx := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
+	if tx == nil {
+		return &GetTransactionResponse{Known: false, EncodedTransaction: []byte{}}, nil
+	}
+
 	var buffer bytes.Buffer
 	if err := tx.EncodeRLP(&buffer); err != nil {
 		log.Log(fmt.Sprintf("failed to decode transaction sent to enclave: %v", err))
 	}
-	return &GetTransactionResponse{Known: known, EncodedTransaction: buffer.Bytes()}, nil
+	return &GetTransactionResponse{Known: true, EncodedTransaction: buffer.Bytes()}, nil
 }
 
 func decodeBlock(encodedBlock []byte) types.Block {
