@@ -55,9 +55,6 @@ func TestSimulation(t *testing.T) {
 	// execute the simulation
 	simulation.Start(txManager, simulationTimeSecs)
 
-	// wait for all activity to clear
-	time.Sleep(1 * time.Second)
-
 	// run tests
 	checkBlockchainValidity(t, txManager, simulation)
 
