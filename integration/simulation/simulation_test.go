@@ -156,8 +156,8 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 // dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
 // We test the results against this threshold to catch eventual protocol errors.
 const (
-	L1EfficiencyThreshold     = 0.2
-	L2EfficiencyThreshold     = 0.32
+	L1EfficiencyThreshold     = 0.22
+	L2EfficiencyThreshold     = 0.37
 	L2ToL1EfficiencyThreshold = 0.3
 )
 
