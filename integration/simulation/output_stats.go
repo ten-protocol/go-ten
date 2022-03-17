@@ -49,7 +49,7 @@ func (o *OutputStats) countRollups() {
 
 	// iterate the L1 Blocks and get the rollups
 	for header := l2Node.DB().GetCurrentBlockHead(); header != nil; header = l2Node.DB().GetBlockHeader(header.Parent) {
-		block, found := l1Node.Resolver.ResolveBlock(header.ID)
+		block, found := l1Node.Resolver.FetchBlock(header.ID)
 		if !found {
 			panic("expected l1 block not found")
 		}

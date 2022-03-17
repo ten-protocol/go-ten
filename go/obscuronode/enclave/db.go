@@ -18,7 +18,7 @@ type RollupResolver interface {
 
 // BlockResolver -database of blocks indexed by the root hash
 type BlockResolver interface {
-	ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
+	FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
 	StoreBlock(block *types.Block)
 	HeightBlock(block *types.Block) int
 }
@@ -218,7 +218,7 @@ func (db *inMemoryDB) StoreBlock(b *types.Block) {
 	db.blockCache[b.Hash()] = &blockAndHeight{b: b, height: p.height + 1}
 }
 
-func (db *inMemoryDB) ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
+func (db *inMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	db.assertSecretAvailable()
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()

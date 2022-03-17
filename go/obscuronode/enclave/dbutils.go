@@ -30,7 +30,7 @@ func HeightRollup(db DB, r *Rollup) int {
 }
 
 func Parent(r BlockResolver, b *types.Block) (*types.Block, bool) {
-	return r.ResolveBlock(b.Header().ParentHash)
+	return r.FetchBlock(b.Header().ParentHash)
 }
 
 // IsAncestor return true if a is the ancestor of b
@@ -65,7 +65,7 @@ func IsBlockAncestor(l1BlockHash obscurocommon.L1RootHash, block *types.Block, r
 		return false
 	}
 
-	resolvedBlock, found := resolver.ResolveBlock(l1BlockHash)
+	resolvedBlock, found := resolver.FetchBlock(l1BlockHash)
 	if found {
 		if resolver.HeightBlock(resolvedBlock) >= resolver.HeightBlock(block) {
 			return false

@@ -43,7 +43,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.blockCache[block.Hash()] = blockAndHeight{block, p.height + 1}
 }
 
-func (n *blockResolverInMem) ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
+func (n *blockResolverInMem) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]

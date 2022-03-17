@@ -178,7 +178,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 		}
 	}()
 
-	_, foundBlock := e.db.ResolveBlock(block.Hash())
+	_, foundBlock := e.db.FetchBlock(block.Hash())
 	if foundBlock {
 		return SubmitBlockResponse{IngestedBlock: false}
 	}
@@ -188,7 +188,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) SubmitBlockResponse {
 	// the "blockchain" logic from geth has to be executed here,
 	// to determine the total proof of work, to verify some key aspects, etc
 
-	_, f := e.db.ResolveBlock(block.Header().ParentHash)
+	_, f := e.db.FetchBlock(block.Header().ParentHash)
 	if !f && e.db.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
 		return SubmitBlockResponse{IngestedBlock: false}
 	}

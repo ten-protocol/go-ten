@@ -76,7 +76,7 @@ func (m *Node) Start() {
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, received := m.Resolver.ResolveBlock(p2pb.Hash())
+			_, received := m.Resolver.FetchBlock(p2pb.Hash())
 			// only process blocks if they haven't been processed before
 			if !received {
 				head = m.processBlock(p2pb, head)
@@ -101,7 +101,7 @@ func (m *Node) Start() {
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	m.Resolver.StoreBlock(b)
-	_, f := m.Resolver.ResolveBlock(b.Header().ParentHash)
+	_, f := m.Resolver.FetchBlock(b.Header().ParentHash)
 
 	// only proceed if the parent is available
 	if !f {

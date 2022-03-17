@@ -167,7 +167,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscuro
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	l1Block, found := node.Resolver.ResolveBlock(*l1HeightHash)
+	l1Block, found := node.Resolver.FetchBlock(*l1HeightHash)
 	if !found {
 		t.Errorf("expected l1 height block not found")
 	}
