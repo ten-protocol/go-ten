@@ -49,33 +49,35 @@ func (s *server) IsReady(context.Context, *generated.IsReadyRequest) (*generated
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
-	msg := generated.AttestationReportMsg{Owner: s.enclave.Attestation().Owner.Bytes()}
+	attestation, _ := s.enclave.Attestation()
+	msg := generated.AttestationReportMsg{Owner: attestation.Owner.Bytes()}
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
 func (s *server) GenerateSecret(context.Context, *generated.GenerateSecretRequest) (*generated.GenerateSecretResponse, error) {
-	secret := s.enclave.GenerateSecret()
+	secret, _ := s.enclave.GenerateSecret()
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
 func (s *server) FetchSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.FetchSecretResponse, error) {
 	attestationReport := fromAttestationReportMsg(request.AttestationReportMsg)
-	secret := s.enclave.FetchSecret(attestationReport)
+	secret, _ := s.enclave.FetchSecret(attestationReport)
 	return &generated.FetchSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
 func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
-	s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret)
+	_ = s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret)
 	return &generated.InitEnclaveResponse{}, nil
 }
 
 func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest) (*generated.IsInitialisedResponse, error) {
-	isInitialised := s.enclave.IsInitialised()
+	isInitialised, _ := s.enclave.IsInitialised()
 	return &generated.IsInitialisedResponse{IsInitialised: isInitialised}, nil
 }
 
 func (s *server) ProduceGenesis(context.Context, *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
-	blockSubmissionResponse := toBlockSubmissionResponseMsg(s.enclave.ProduceGenesis())
+	genesisRollup, _ := s.enclave.ProduceGenesis()
+	blockSubmissionResponse := toBlockSubmissionResponseMsg(genesisRollup)
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 
@@ -86,19 +88,21 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 		blocks = append(blocks, &bl)
 	}
 
-	s.enclave.IngestBlocks(blocks)
+	_ = s.enclave.IngestBlocks(blocks)
 	return &generated.IngestBlocksResponse{}, nil
 }
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
 	bl := decodeBlock(request.EncodedBlock)
-	go s.enclave.Start(bl)
+	go func() {
+		_ = s.enclave.Start(bl)
+	}()
 	return &generated.StartResponse{}, nil
 }
 
 func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := decodeBlock(request.EncodedBlock)
-	blockSubmissionResponse := s.enclave.SubmitBlock(bl)
+	blockSubmissionResponse, _ := s.enclave.SubmitBlock(bl)
 
 	msg := toBlockSubmissionResponseMsg(blockSubmissionResponse)
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
@@ -106,7 +110,7 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 
 func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollupRequest) (*generated.SubmitRollupResponse, error) {
 	extRollup := fromExtRollupMsg(request.ExtRollup)
-	s.enclave.SubmitRollup(extRollup)
+	_ = s.enclave.SubmitRollup(extRollup)
 	return &generated.SubmitRollupResponse{}, nil
 }
 
@@ -116,23 +120,23 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 }
 
 func (s *server) Balance(_ context.Context, request *generated.BalanceRequest) (*generated.BalanceResponse, error) {
-	balance := s.enclave.Balance(common.BytesToAddress(request.Address))
+	balance, _ := s.enclave.Balance(common.BytesToAddress(request.Address))
 	return &generated.BalanceResponse{Balance: balance}, nil
 }
 
 func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
-	extRollup, winner := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
+	extRollup, winner, _ := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
 	extRollupMsg := toExtRollupMsg(&extRollup)
 	return &generated.RoundWinnerResponse{Winner: winner, ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
-	s.enclave.Stop()
+	_ = s.enclave.Stop()
 	return &generated.StopResponse{}, nil
 }
 
 func (s *server) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
-	tx := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
+	tx, _ := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
 	if tx == nil {
 		return &generated.GetTransactionResponse{Known: false, EncodedTransaction: []byte{}}, nil
 	}

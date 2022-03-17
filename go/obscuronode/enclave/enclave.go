@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -14,6 +15,8 @@ import (
 )
 
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
+
+var errTxNotFound = errors.New("transaction not found")
 
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
@@ -39,52 +42,52 @@ type BlockSubmissionResponse struct {
 // Enclave - The actual implementation of this interface will call an rpc service
 type Enclave interface {
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
-	Attestation() obscurocommon.AttestationReport
+	Attestation() (obscurocommon.AttestationReport, error)
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-	GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret
+	GenerateSecret() (obscurocommon.EncryptedSharedEnclaveSecret, error)
 
 	// FetchSecret - return the shared secret encrypted with the key from the attestation
-	FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret
+	FetchSecret(report obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error)
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
-	InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret)
+	InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) error
 
 	// IsInitialised - true if the shared secret is avaible
-	IsInitialised() bool
+	IsInitialised() (bool, error)
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis() BlockSubmissionResponse
+	ProduceGenesis() (BlockSubmissionResponse, error)
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(blocks []*types.Block)
+	IngestBlocks(blocks []*types.Block) error
 
 	// Start - start speculative execution
-	Start(block types.Block)
+	Start(block types.Block) error
 
 	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
 	// it is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving a parent of it, will result in it being ignored
-	SubmitBlock(block types.Block) BlockSubmissionResponse
+	SubmitBlock(block types.Block) (BlockSubmissionResponse, error)
 
 	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup nodecommon.ExtRollup)
+	SubmitRollup(rollup nodecommon.ExtRollup) error
 
 	// SubmitTx - user transactions
 	SubmitTx(tx nodecommon.EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
-	Balance(address common.Address) uint64
+	Balance(address common.Address) (uint64, error)
 
 	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
-	RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool)
+	RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error)
 
 	// Stop gracefully stops the enclave
-	Stop()
+	Stop() error
 
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
-	GetTransaction(txHash common.Hash) *L2Tx
+	GetTransaction(txHash common.Hash) (*L2Tx, error)
 }
 
 type enclaveImpl struct {
@@ -101,7 +104,7 @@ type enclaveImpl struct {
 	speculativeWorkOutCh chan speculativeWork
 }
 
-func (e *enclaveImpl) Start(block types.Block) {
+func (e *enclaveImpl) Start(block types.Block) error {
 	headerHash := block.Hash()
 	s, f := e.db.FetchState(headerHash)
 	if !f {
@@ -148,28 +151,29 @@ func (e *enclaveImpl) Start(block types.Block) {
 			}
 
 		case <-e.exitCh:
-			return
+			return nil
 		}
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis() BlockSubmissionResponse {
+func (e *enclaveImpl) ProduceGenesis() (BlockSubmissionResponse, error) {
 	return BlockSubmissionResponse{
 		L2Hash:         GenesisRollup.Header.Hash(),
 		L1Hash:         obscurocommon.GenesisHash,
 		ProducedRollup: GenesisRollup.ToExtRollup(),
 		IngestedBlock:  true,
-	}
+	}, nil
 }
 
-func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) {
+func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) error {
 	for _, block := range blocks {
 		e.db.StoreBlock(block)
 		updateState(block, e.db, e.blockResolver)
 	}
+	return nil
 }
 
-func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
+func (e *enclaveImpl) SubmitBlock(block types.Block) (BlockSubmissionResponse, error) {
 	// Todo - investigate further why this is needed.
 	// So far this seems to recover correctly
 	defer func() {
@@ -180,7 +184,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 
 	_, foundBlock := e.db.ResolveBlock(block.Hash())
 	if foundBlock {
-		return BlockSubmissionResponse{IngestedBlock: false}
+		return BlockSubmissionResponse{IngestedBlock: false}, nil
 	}
 
 	e.db.StoreBlock(&block)
@@ -190,7 +194,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 
 	_, f := e.db.ResolveBlock(block.Header().ParentHash)
 	if !f && e.db.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
-		return BlockSubmissionResponse{IngestedBlock: false}
+		return BlockSubmissionResponse{IngestedBlock: false}, nil
 	}
 	blockState := updateState(&block, e.db, e.blockResolver)
 
@@ -212,10 +216,10 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 		ProducedRollup:    r.ToExtRollup(),
 		IngestedBlock:     true,
 		IngestedNewRollup: blockState.foundNewRollup,
-	}
+	}, nil
 }
 
-func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
+func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) error {
 	r := Rollup{
 		Header:       rollup.Header,
 		Transactions: decryptTransactions(rollup.Txs),
@@ -227,6 +231,8 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	} else {
 		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
 	}
+
+	return nil
 }
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
@@ -247,7 +253,7 @@ func verifySignature(decryptedTx *L2Tx) error {
 	return err
 }
 
-func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
+func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	head := e.db.FetchRollup(parent)
 
 	rollupsReceivedFromPeers := e.db.FetchGossipedRollups(e.db.HeightRollup(head) + 1)
@@ -282,21 +288,18 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State),
 		)
-		return winnerRollup.ToExtRollup(), true
+		return winnerRollup.ToExtRollup(), true, nil
 	}
-	return nodecommon.ExtRollup{}, false
+	return nodecommon.ExtRollup{}, false, nil
 }
 
 func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
-	//if atomic.LoadInt32(e.interrupt) == 1 {
-	//	return
-	//}
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) Balance(address common.Address) uint64 {
+func (e *enclaveImpl) Balance(address common.Address) (uint64, error) {
 	// todo user encryption
-	return e.db.Balance(address)
+	return e.db.Balance(address), nil
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
@@ -333,59 +336,59 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
 	r := NewRollup(b, bs.Head, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
-	// h := r.Height(e.db)
-	// fmt.Printf("h:=%d\n", h)
 	return &r
 }
 
-func (e *enclaveImpl) GetTransaction(txHash common.Hash) *L2Tx {
+func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, error) {
 	// todo add some sort of cache
 	rollup := e.db.Head().Head
 	for {
 		txs := rollup.Transactions
 		for _, tx := range txs {
 			if tx.Hash() == txHash {
-				return &tx
+				return &tx, nil
 			}
 		}
 		rollup = e.db.FetchRollup(rollup.Header.ParentHash)
 		if rollup.Height.Load() == obscurocommon.L2GenesisHeight {
-			return nil
+			return nil, errTxNotFound
 		}
 	}
 }
 
-func (e *enclaveImpl) Stop() {
+func (e *enclaveImpl) Stop() error {
 	e.exitCh <- true
+	return nil
 }
 
-func (e *enclaveImpl) Attestation() obscurocommon.AttestationReport {
+func (e *enclaveImpl) Attestation() (obscurocommon.AttestationReport, error) {
 	// Todo
-	return obscurocommon.AttestationReport{Owner: e.node}
+	return obscurocommon.AttestationReport{Owner: e.node}, nil
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) GenerateSecret() (obscurocommon.EncryptedSharedEnclaveSecret, error) {
 	secret := make([]byte, 32)
 	n, err := rand.Read(secret)
 	if n != 32 || err != nil {
 		panic(fmt.Sprintf("Could not generate secret: %s", err))
 	}
 	e.db.StoreSecret(secret)
-	return encryptSecret(secret)
+	return encryptSecret(secret), nil
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) {
+func (e *enclaveImpl) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) error {
 	e.db.StoreSecret(decryptSecret(secret))
+	return nil
 }
 
-func (e *enclaveImpl) FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
-	return encryptSecret(e.db.FetchSecret())
+func (e *enclaveImpl) FetchSecret(_ obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+	return encryptSecret(e.db.FetchSecret()), nil
 }
 
-func (e *enclaveImpl) IsInitialised() bool {
-	return e.db.FetchSecret() != nil
+func (e *enclaveImpl) IsInitialised() (bool, error) {
+	return e.db.FetchSecret() != nil, nil
 }
 
 // Todo - implement with crypto
