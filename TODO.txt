@@ -1,6 +1,6 @@
 
 ----
-Progress:
+PROGRESS
 
 - Create a unit test with a checker for the final state of the simulation:
     - all injected transactions were included, and there are no duplicates
@@ -8,11 +8,15 @@ Progress:
     - L1 height, L2 height, how many reorgs, etc - if the efficiency is below a threashold then something could have happened
 
 --------
-Todo:
+TODO
+
+Done:
+
+T2: Introduce basic crypto for L2 transactions (Complexity level 4)
 
 Complex:
+
 T1: Bring in the core ethereum structures (see first task from route to testnet), and connect Obscuro to a real L1 node (Complexity level 3)
-T2: Introduce basic crypto for L2 transactions (Complexity level 4)
 T3: Introduce better mempool logic (Complexity level 4)
 T4: Refactor the Obscuro "database" and introduce something proper that works within an enclave (Complexity level 2)
 T5: Create better logic to get L2 node up to speed (Depends on T1) (Complexity level 3)
@@ -26,13 +30,14 @@ T9: Implement p2p communication, gossiping (Complexity level 3)
 T10: Implement the enclave service (Complexity level 3)
 
 Normal:
+
 - update the readme
 - make publishing to L1 more random (to simulate aggregators failing to publish)
 - use "gauge" instead of stats
 - introduce event feeds
 - collect statistics when multiple rollups compete (to see what actually happens)
 - When verifying a rollup - check that the withdrawals in the header match the withdrawals as calculated
-
+- in simulation, add checks around validly and invalidly signed transactions
 
 Future:
 - analyse the POBI round - some inefficient state recalculation for the rollups
