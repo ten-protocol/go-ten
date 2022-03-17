@@ -65,10 +65,10 @@ type inMemoryDB struct {
 	mpMutex sync.RWMutex
 
 	blockCache map[obscurocommon.L1RootHash]*blockAndHeight
-	blockM     sync.RWMutex
+	blockMutex sync.RWMutex
 
 	transactionsPerBlockCache map[obscurocommon.L2RootHash]map[common.Hash]L2Tx
-	txM                       sync.RWMutex
+	txMutex                   sync.RWMutex
 
 	sharedEnclaveSecret SharedEnclaveSecret
 }
@@ -83,9 +83,9 @@ func NewInMemoryDB() DB {
 		mpMutex:                   sync.RWMutex{},
 		statePerRollup:            make(map[obscurocommon.L2RootHash]State),
 		blockCache:                map[obscurocommon.L1RootHash]*blockAndHeight{},
-		blockM:                    sync.RWMutex{},
+		blockMutex:                sync.RWMutex{},
 		transactionsPerBlockCache: make(map[obscurocommon.L2RootHash]map[common.Hash]L2Tx),
-		txM:                       sync.RWMutex{},
+		txMutex:                   sync.RWMutex{},
 	}
 }
 
@@ -196,8 +196,8 @@ func (db *inMemoryDB) PruneTxs(toRemove map[common.Hash]common.Hash) {
 
 func (db *inMemoryDB) StoreBlock(b *types.Block) {
 	db.assertSecretAvailable()
-	db.blockM.Lock()
-	defer db.blockM.Unlock()
+	db.blockMutex.Lock()
+	defer db.blockMutex.Unlock()
 
 	if b.ParentHash() == obscurocommon.GenesisHash {
 		db.blockCache[b.Hash()] = &blockAndHeight{b, 0}
@@ -213,8 +213,8 @@ func (db *inMemoryDB) StoreBlock(b *types.Block) {
 
 func (db *inMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	db.assertSecretAvailable()
-	db.blockM.RLock()
-	defer db.blockM.RUnlock()
+	db.blockMutex.RLock()
+	defer db.blockMutex.RUnlock()
 	val, f := db.blockCache[hash]
 	var block *types.Block
 	if f {
@@ -225,17 +225,17 @@ func (db *inMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, b
 
 func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
 	db.assertSecretAvailable()
-	db.txM.RLock()
+	db.txMutex.RLock()
 	val, found := db.transactionsPerBlockCache[r.Hash()]
-	db.txM.RUnlock()
+	db.txMutex.RUnlock()
 	return val, found
 }
 
 func (db *inMemoryDB) AddRollupTxs(r *Rollup, newMap map[common.Hash]L2Tx) {
 	db.assertSecretAvailable()
-	db.txM.Lock()
+	db.txMutex.Lock()
 	db.transactionsPerBlockCache[r.Hash()] = newMap
-	db.txM.Unlock()
+	db.txMutex.Unlock()
 }
 
 func (db *inMemoryDB) StoreSecret(secret SharedEnclaveSecret) {
@@ -248,8 +248,8 @@ func (db *inMemoryDB) FetchSecret() SharedEnclaveSecret {
 
 func (db *inMemoryDB) HeightBlock(block *types.Block) int {
 	db.assertSecretAvailable()
-	db.blockM.RLock()
-	defer db.blockM.RUnlock()
+	db.blockMutex.RLock()
+	defer db.blockMutex.RUnlock()
 	b, f := db.blockCache[block.Hash()]
 	if !f {
 		panic("should not happen")
