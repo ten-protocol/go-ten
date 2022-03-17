@@ -55,10 +55,6 @@ func (n *blockResolverInMem) HeightBlock(block *types.Block) int {
 	return n.blockCache[block.Hash()].height
 }
 
-func (n *blockResolverInMem) ParentBlock(block *types.Block) (*types.Block, bool) {
-	return obscurocommon.Parent(n, block)
-}
-
 // The cache of included transactions
 type txDBInMem struct {
 	transactionsPerBlockCache map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*obscurocommon.L1Tx

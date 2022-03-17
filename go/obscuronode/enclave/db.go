@@ -10,8 +10,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// TODO - Joel - The secret being missing shouldn't cause a panic.
-
 // RollupResolver -database of rollups indexed by the root hash
 type RollupResolver interface {
 	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
@@ -28,9 +26,7 @@ type DB interface {
 	FetchRollups(height int) []*Rollup
 
 	// Block resolver
-	HeightBlock(block *types.Block) int
-	ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
-	StoreBlock(node *types.Block)
+	obscurocommon.BlockResolver
 
 	// State
 	FetchState(hash obscurocommon.L1RootHash) (BlockState, bool)
