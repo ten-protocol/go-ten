@@ -138,11 +138,11 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 		nGroup.Go(func() error {
 			// all transactions should exist on every node
 			for _, transaction := range txManager.GetL2Transactions() {
-				_, found, err := closureNode.EnclaveClient.GetTransaction(transaction.Hash())
+				l2tx, err := closureNode.EnclaveClient.GetTransaction(transaction.Hash())
 				if err != nil {
 					return fmt.Errorf("node %d, unable to retrieve transaction: %w", closureNode.ID, err)
 				}
-				if !found {
+				if l2tx == nil {
 					return fmt.Errorf("node %d, unable to find transaction: %+v", closureNode.ID, transaction) // nolint:goerr113
 				}
 			}

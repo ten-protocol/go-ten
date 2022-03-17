@@ -180,20 +180,20 @@ func (c *EnclaveClient) Stop() error {
 	return err
 }
 
-func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, bool, error) {
+func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{TxHash: txHash.Bytes()})
 	if err != nil || !response.Known {
-		return nil, false, err
+		return nil, err
 	}
 
 	l2Tx := enclave.L2Tx{}
 	err = l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
 	if err != nil {
-		return &enclave.L2Tx{}, false, err
+		return nil, err
 	}
 
-	return nil, true, err
+	return &l2Tx, err
 }
