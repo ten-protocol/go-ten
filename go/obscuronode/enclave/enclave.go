@@ -109,7 +109,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 	}
 
 	currentHead := s.Head
-	currentState := newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
+	currentState := newProcessedState(e.db.FetchState(currentHead.Hash()))
 	var currentProcessedTxs []L2Tx
 	currentProcessedTxsMap := make(map[common.Hash]L2Tx)
 
@@ -120,7 +120,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 		case winnerRollup := <-e.roundWinnerCh:
 
 			currentHead = winnerRollup
-			currentState = newProcessedState(e.db.FetchRollupState(winnerRollup.Hash()))
+			currentState = newProcessedState(e.db.FetchState(winnerRollup.Hash()))
 
 			// determine the transactions that were not yet included
 			currentProcessedTxs = currentTxs(winnerRollup, e.db.FetchTxs(), e.db)
@@ -264,14 +264,14 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		}
 	}
 
-	parentState := e.db.FetchRollupState(head.Hash())
+	parentState := e.db.FetchState(head.Hash())
 	// determine the winner of the round
 	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.db, e.blockResolver)
 	// nodecommon.Log(fmt.Sprintf(">   Agg%d: Round=r_%d Winner=r_%d(%d)[r_%d]{proof=b_%d}.", e.node, parent.ID(),
 	// winnerRollup.L2RootHash.ID(), winnerRollup.Height(), winnerRollup.Parent().L2RootHash.ID(),
 	// winnerRollup.Proof().L2RootHash.ID()))
 
-	e.db.SetRollupState(winnerRollup.Hash(), s)
+	e.db.SetState(winnerRollup.Hash(), s)
 	go e.notifySpeculative(winnerRollup)
 
 	// we are the winner

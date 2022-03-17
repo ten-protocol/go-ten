@@ -37,8 +37,8 @@ type DB interface {
 	// State
 	FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool)
 	SetBlockState(hash obscurocommon.L1RootHash, state BlockState)
-	FetchRollupState(hash obscurocommon.L2RootHash) State
-	SetRollupState(hash obscurocommon.L2RootHash, state State)
+	FetchState(hash obscurocommon.L2RootHash) State
+	SetState(hash obscurocommon.L2RootHash, state State)
 	Head() BlockState
 
 	// Transactions
@@ -119,7 +119,7 @@ func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state BlockSt
 	db.headBlock = hash
 }
 
-func (db *inMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state State) {
+func (db *inMemoryDB) SetState(hash obscurocommon.L2RootHash, state State) {
 	db.assertSecretAvailable()
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
@@ -162,7 +162,7 @@ func (db *inMemoryDB) FetchRollups(height int) []*Rollup {
 	return db.rollupsByHeight[height]
 }
 
-func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) State {
+func (db *inMemoryDB) FetchState(hash obscurocommon.L2RootHash) State {
 	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
