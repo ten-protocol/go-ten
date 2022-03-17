@@ -16,7 +16,7 @@ type OutputStats struct {
 
 	l2RollupCountInHeaders    int // Number of rollups counted while node rollup header traversing
 	l2RollupCountInL1Blocks   int // Number of rollups counted while traversing the node block header and searching the txs
-	l2RollupTxCountInL1Blocks int // Number of rollup FetchRollupTxs counted while traversing the node block header
+	l2RollupTxCountInL1Blocks int // Number of rollup Txs counted while traversing the node block header
 	l1Height                  int // Last known l1 block height
 	l2Height                  int // Last known l2 block height
 }
