@@ -97,7 +97,7 @@ func NewInMemoryDB() DB {
 }
 
 func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	val, found := db.statePerBlock[hash]
@@ -105,7 +105,7 @@ func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (BlockState
 }
 
 func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state BlockState) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 	db.statePerBlock[hash] = state
@@ -120,20 +120,20 @@ func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state BlockSt
 }
 
 func (db *inMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state State) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 	db.statePerRollup[hash] = state
 }
 
 func (db *inMemoryDB) Head() BlockState {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	val, _ := db.FetchBlockState(db.headBlock)
 	return val
 }
 
 func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	height := HeightRollup(db, rollup)
 
 	db.stateMutex.Lock()
@@ -148,7 +148,7 @@ func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
 }
 
 func (db *inMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	r, f := db.rollups[hash]
@@ -156,28 +156,28 @@ func (db *inMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
 }
 
 func (db *inMemoryDB) FetchRollups(height int) []*Rollup {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	return db.rollupsByHeight[height]
 }
 
 func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) State {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 	return db.statePerRollup[hash]
 }
 
 func (db *inMemoryDB) StoreTx(tx L2Tx) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 	db.mempool[tx.Hash()] = tx
 }
 
 func (db *inMemoryDB) FetchTxs() []L2Tx {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
 	mpCopy := make([]L2Tx, 0)
@@ -188,7 +188,7 @@ func (db *inMemoryDB) FetchTxs() []L2Tx {
 }
 
 func (db *inMemoryDB) PruneTxs(toRemove map[common.Hash]common.Hash) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 	r := make(map[common.Hash]L2Tx)
@@ -202,7 +202,7 @@ func (db *inMemoryDB) PruneTxs(toRemove map[common.Hash]common.Hash) {
 }
 
 func (db *inMemoryDB) StoreBlock(b *types.Block) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.blockM.Lock()
 	defer db.blockM.Unlock()
 
@@ -219,7 +219,7 @@ func (db *inMemoryDB) StoreBlock(b *types.Block) {
 }
 
 func (db *inMemoryDB) ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	val, f := db.blockCache[hash]
@@ -231,7 +231,7 @@ func (db *inMemoryDB) ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block,
 }
 
 func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.txM.RLock()
 	val, found := db.transactionsPerBlockCache[r.Hash()]
 	db.txM.RUnlock()
@@ -239,7 +239,7 @@ func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
 }
 
 func (db *inMemoryDB) AddRollupTxs(r *Rollup, newMap map[common.Hash]L2Tx) {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.txM.Lock()
 	db.transactionsPerBlockCache[r.Hash()] = newMap
 	db.txM.Unlock()
@@ -254,7 +254,7 @@ func (db *inMemoryDB) FetchSecret() SharedEnclaveSecret {
 }
 
 func (db *inMemoryDB) HeightBlock(block *types.Block) int {
-	assertSecretAvailable(db)
+	db.assertSecretAvailable()
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	b, f := db.blockCache[block.Hash()]
@@ -264,7 +264,7 @@ func (db *inMemoryDB) HeightBlock(block *types.Block) int {
 	return b.height
 }
 
-func assertSecretAvailable(db DB) {
+func (db *inMemoryDB) assertSecretAvailable() {
 	if db.FetchSecret() == nil {
 		panic("Enclave not initialized")
 	}
