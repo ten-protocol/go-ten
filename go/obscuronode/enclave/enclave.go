@@ -91,7 +91,7 @@ type enclaveImpl struct {
 	node           common.Address
 	mining         bool
 	db             DB
-	blockResolver  obscurocommon.BlockResolver
+	blockResolver  BlockResolver
 	statsCollector StatsCollector
 
 	txCh                 chan L2Tx

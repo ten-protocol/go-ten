@@ -3,6 +3,8 @@ package ethereummock
 import (
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -19,7 +21,7 @@ type blockResolverInMem struct {
 	m          sync.RWMutex
 }
 
-func NewResolver() obscurocommon.BlockResolver {
+func NewResolver() enclave.BlockResolver {
 	return &blockResolverInMem{
 		blockCache: map[obscurocommon.L1RootHash]blockAndHeight{},
 		m:          sync.RWMutex{},
@@ -87,7 +89,7 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[obscurocommon.TxHash]*obsc
 func removeCommittedTransactions(
 	cb *types.Block,
 	mempool []*obscurocommon.L1Tx,
-	resolver obscurocommon.BlockResolver,
+	resolver enclave.BlockResolver,
 	db TxDB,
 ) []*obscurocommon.L1Tx {
 	if resolver.HeightBlock(cb) <= obscurocommon.HeightCommittedBlocks {
@@ -102,7 +104,7 @@ func removeCommittedTransactions(
 			break
 		}
 
-		p, f := obscurocommon.Parent(resolver, b)
+		p, f := enclave.Parent(resolver, b)
 		if !f {
 			panic("wtf")
 		}

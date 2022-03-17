@@ -16,17 +16,23 @@ type RollupResolver interface {
 	StoreRollup(rollup *Rollup)
 }
 
+// BlockResolver -database of blocks indexed by the root hash
+type BlockResolver interface {
+	ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
+	StoreBlock(block *types.Block)
+	HeightBlock(block *types.Block) int
+}
+
 // This database lives purely in the memory space of an encrypted enclave
 type DB interface {
 	// Rollup Resolver
-	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
-	StoreRollup(rollup *Rollup)
+	RollupResolver
 
 	// Gossip
 	FetchRollups(height int) []*Rollup
 
 	// Block resolver
-	obscurocommon.BlockResolver
+	BlockResolver
 
 	// State
 	FetchState(hash obscurocommon.L1RootHash) (BlockState, bool)

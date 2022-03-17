@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -181,7 +183,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscuro
 			case obscurocommon.RollupTx:
 				r := nodecommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
+				if enclave.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					stats.NewRollup(r)

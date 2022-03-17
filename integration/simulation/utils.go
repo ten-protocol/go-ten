@@ -3,6 +3,8 @@ package simulation
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -23,7 +25,7 @@ func printBlock(b *types.Block, m ethereum_mock.Node) string {
 			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", obscurocommon.ShortAddress(t.Dest), t.Amount))
 		}
 	}
-	p, f := obscurocommon.Parent(m.Resolver, b)
+	p, f := enclave.Parent(m.Resolver, b)
 	if !f {
 		panic("wtf")
 	}

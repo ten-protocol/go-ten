@@ -3,6 +3,8 @@ package simulation
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -55,7 +57,7 @@ func (o *OutputStats) countRollups() {
 			txData := obscurocommon.TxData(tx)
 			if txData.TxType == obscurocommon.RollupTx {
 				r := nodecommon.DecodeRollup(txData.Rollup)
-				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, block, l1Node.Resolver) {
+				if enclave.IsBlockAncestor(r.Header.L1Proof, block, l1Node.Resolver) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}

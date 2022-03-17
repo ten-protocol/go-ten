@@ -94,7 +94,7 @@ func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []L2Tx, wit
 
 // ProofHeight - return the height of the L1 proof, or -1 - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r *Rollup) ProofHeight(l1BlockResolver obscurocommon.BlockResolver) int {
+func (r *Rollup) ProofHeight(l1BlockResolver BlockResolver) int {
 	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		return -1
@@ -109,7 +109,7 @@ func (r *Rollup) ToExtRollup() nodecommon.ExtRollup {
 	}
 }
 
-func (r *Rollup) Proof(l1BlockResolver obscurocommon.BlockResolver) *types.Block {
+func (r *Rollup) Proof(l1BlockResolver BlockResolver) *types.Block {
 	v, f := l1BlockResolver.ResolveBlock(r.Header.L1Proof)
 	if !f {
 		panic("Could not find proof for this rollup")
