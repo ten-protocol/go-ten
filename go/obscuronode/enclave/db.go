@@ -14,20 +14,15 @@ import (
 // RollupResolver -database of rollups indexed by the root hash
 type RollupResolver interface {
 	FetchRollup(hash obscurocommon.L2RootHash) *Rollup
-	ParentRollup(r Rollup) *Rollup
-	HeightRollup(r Rollup) int
+	ParentRollup(r *Rollup) *Rollup
+	HeightRollup(r *Rollup) int
 	StoreRollup(rollup *Rollup)
 	ExistRollup(hash obscurocommon.L2RootHash) bool
 }
 
 // This database lives purely in the memory space of an encrypted enclave
 type DB interface {
-	// Rollup Resolver
-	FetchRollup(hash obscurocommon.L2RootHash) *Rollup
-	StoreRollup(rollup *Rollup)
-	ParentRollup(*Rollup) *Rollup
-	HeightRollup(*Rollup) int
-	ExistRollup(hash obscurocommon.L2RootHash) bool
+	RollupResolver
 
 	// Gossip
 	FetchGossipedRollups(height int) []*Rollup
