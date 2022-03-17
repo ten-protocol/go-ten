@@ -103,7 +103,7 @@ type enclaveImpl struct {
 
 func (e *enclaveImpl) Start(block types.Block) {
 	headerHash := block.Hash()
-	s, f := e.db.FetchState(headerHash)
+	s, f := e.db.FetchBlockState(headerHash)
 	if !f {
 		panic("state should be calculated")
 	}

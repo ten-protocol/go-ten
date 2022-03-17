@@ -99,7 +99,7 @@ func emptyState() State {
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
 func updateState(b *types.Block, db DB, blockResolver BlockResolver) BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
-	val, found := db.FetchState(b.Hash())
+	val, found := db.FetchBlockState(b.Hash())
 	if found {
 		return val
 	}
@@ -112,12 +112,12 @@ func updateState(b *types.Block, db DB, blockResolver BlockResolver) BlockState 
 			State:          emptyState(),
 			foundNewRollup: true,
 		}
-		db.SetState(b.Hash(), bs)
+		db.SetBlockState(b.Hash(), bs)
 		return bs
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
-	parentState, parentFound := db.FetchState(b.ParentHash())
+	parentState, parentFound := db.FetchBlockState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the State of the Parent
 		p, f := db.ResolveBlock(b.ParentHash())
@@ -129,7 +129,7 @@ func updateState(b *types.Block, db DB, blockResolver BlockResolver) BlockState 
 
 	bs := calculateBlockState(b, parentState, db, blockResolver)
 
-	db.SetState(b.Hash(), bs)
+	db.SetBlockState(b.Hash(), bs)
 
 	return bs
 }

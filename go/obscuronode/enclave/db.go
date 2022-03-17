@@ -28,15 +28,15 @@ type DB interface {
 	// Rollup Resolver
 	RollupResolver
 
-	// Gossip
-	FetchRollups(height int) []*Rollup
-
 	// Block resolver
 	BlockResolver
 
+	// Gossip
+	FetchRollups(height int) []*Rollup
+
 	// State
-	FetchState(hash obscurocommon.L1RootHash) (BlockState, bool)
-	SetState(hash obscurocommon.L1RootHash, state BlockState)
+	FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool)
+	SetBlockState(hash obscurocommon.L1RootHash, state BlockState)
 	FetchRollupState(hash obscurocommon.L2RootHash) State
 	SetRollupState(hash obscurocommon.L2RootHash, state State)
 	Head() BlockState
@@ -96,7 +96,7 @@ func NewInMemoryDB() DB {
 	}
 }
 
-func (db *inMemoryDB) FetchState(hash obscurocommon.L1RootHash) (BlockState, bool) {
+func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool) {
 	assertSecretAvailable(db)
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
@@ -104,7 +104,7 @@ func (db *inMemoryDB) FetchState(hash obscurocommon.L1RootHash) (BlockState, boo
 	return val, found
 }
 
-func (db *inMemoryDB) SetState(hash obscurocommon.L1RootHash, state BlockState) {
+func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state BlockState) {
 	assertSecretAvailable(db)
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
@@ -128,7 +128,7 @@ func (db *inMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state State)
 
 func (db *inMemoryDB) Head() BlockState {
 	assertSecretAvailable(db)
-	val, _ := db.FetchState(db.headBlock)
+	val, _ := db.FetchBlockState(db.headBlock)
 	return val
 }
 
@@ -254,6 +254,7 @@ func (db *inMemoryDB) FetchSecret() SharedEnclaveSecret {
 }
 
 func (db *inMemoryDB) HeightBlock(block *types.Block) int {
+	assertSecretAvailable(db)
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	b, f := db.blockCache[block.Hash()]
