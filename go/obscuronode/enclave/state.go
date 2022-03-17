@@ -120,7 +120,7 @@ func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolve
 	parentState, parentFound := db.FetchState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the State of the Parent
-		p, f := ParentBlock(db, b)
+		p, f := db.ResolveBlock(b.ParentHash())
 		if !f {
 			panic("wtf")
 		}

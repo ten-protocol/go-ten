@@ -16,7 +16,7 @@ func findTxsNotIncluded(head *Rollup, txs []L2Tx, db DB) []L2Tx {
 }
 
 func allIncludedTransactions(b *Rollup, db DB) map[common.Hash]L2Tx {
-	val, found := db.Txs(b)
+	val, found := db.FetchRollupTxs(b)
 	if found {
 		return val
 	}
@@ -30,7 +30,7 @@ func allIncludedTransactions(b *Rollup, db DB) map[common.Hash]L2Tx {
 	for _, tx := range b.Transactions {
 		newMap[tx.Hash()] = tx
 	}
-	db.AddTxs(b, newMap)
+	db.AddRollupTxs(b, newMap)
 	return newMap
 }
 
