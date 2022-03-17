@@ -10,12 +10,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// RollupResolver -database of rollups indexed by the root hash
-type RollupResolver interface {
-	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
-	StoreRollup(rollup *Rollup)
-}
-
 // BlockResolver -database of blocks indexed by the root hash
 type BlockResolver interface {
 	FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
@@ -25,13 +19,12 @@ type BlockResolver interface {
 
 // This database lives purely in the memory space of an encrypted enclave
 type DB interface {
-	// Rollup Resolver
-	RollupResolver
-
 	// Block resolver
 	BlockResolver
 
-	// Gossip
+	// Rollups
+	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
+	StoreRollup(rollup *Rollup)
 	FetchRollups(height int) []*Rollup
 
 	// State
@@ -134,7 +127,7 @@ func (db *inMemoryDB) Head() BlockState {
 
 func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
 	db.assertSecretAvailable()
-	height := HeightRollup(db, rollup)
+	height := heightRollup(db, rollup)
 
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()

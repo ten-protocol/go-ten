@@ -145,7 +145,7 @@ func FindWinner(parent *Rollup, rollups []*Rollup, db DB, blockResolver BlockRes
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case HeightRollup(db, r) <= HeightRollup(db, parent): // ignore rollups that are older than the parent
+		case heightRollup(db, r) <= heightRollup(db, parent): // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
 		case r.ProofHeight(blockResolver) < rollups[win].ProofHeight(blockResolver): // ignore rollups generated with an older proof
@@ -170,7 +170,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	s := newProcessedState(parentState)
 	s = executeTransactions(win.Transactions, s)
 
-	p := ParentRollup(db, win).Proof(blockResolver)
+	p := parentRollup(db, win).Proof(blockResolver)
 	s = processDeposits(p, win.Proof(blockResolver), s, blockResolver)
 
 	if serialize(s.s) != win.Header.State {
@@ -239,7 +239,7 @@ func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockRes
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		s = executeTransactions(newHead.Transactions, s)
-		p := ParentRollup(db, newHead).Proof(blockResolver)
+		p := parentRollup(db, newHead).Proof(blockResolver)
 		s = processDeposits(p, newHead.Proof(blockResolver), s, blockResolver)
 	} else {
 		newHead = parentState.Head

@@ -254,11 +254,11 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		panic(fmt.Sprintf("Could not find rollup: r_%s", parent))
 	}
 
-	rollupsReceivedFromPeers := e.db.FetchRollups(HeightRollup(e.db, head) + 1)
+	rollupsReceivedFromPeers := e.db.FetchRollups(heightRollup(e.db, head) + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*Rollup
 	for _, rol := range rollupsReceivedFromPeers {
-		p := ParentRollup(e.db, rol)
+		p := parentRollup(e.db, rol)
 		if p.Hash() == head.Hash() {
 			usefulRollups = append(usefulRollups, rol)
 		}
@@ -277,10 +277,10 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	// we are the winner
 	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.blockResolver)
-		w := ParentRollup(e.db, winnerRollup)
+		w := parentRollup(e.db, winnerRollup)
 		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. FetchRollupTxs: %v. State=%v.",
 			obscurocommon.ShortAddress(e.node),
-			obscurocommon.ShortHash(winnerRollup.Hash()), HeightRollup(e.db, winnerRollup),
+			obscurocommon.ShortHash(winnerRollup.Hash()), heightRollup(e.db, winnerRollup),
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
 			printTxs(winnerRollup.Transactions),
@@ -318,9 +318,9 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-				HeightRollup(e.db, speculativeRollup.r),
+				heightRollup(e.db, speculativeRollup.r),
 				obscurocommon.ShortHash(bs.Head.Hash()),
-				HeightRollup(e.db, bs.Head)),
+				heightRollup(e.db, bs.Head)),
 			)
 			e.statsCollector.L2Recalc(e.node)
 		}
@@ -353,7 +353,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, bool) {
 				return &tx, true
 			}
 		}
-		rollup = ParentRollup(e.db, rollup)
+		rollup = parentRollup(e.db, rollup)
 		rollup, found = e.db.FetchRollup(rollup.Hash())
 		if !found {
 			panic(fmt.Sprintf("Could not find rollup: r_%s", rollup.Hash()))
