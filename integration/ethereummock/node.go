@@ -83,7 +83,7 @@ func (m *Node) Start() {
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if head.Hash() == mb.Hash() { // Ignore the locally produced block if someone else found one already
-				p, found := m.Resolver.ParentBlock(mb)
+				p, found := obscurocommon.Parent(m.Resolver, mb)
 				if !found {
 					panic("noo")
 				}
@@ -139,7 +139,7 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 		if m.Resolver.HeightBlock(b) == 0 {
 			go t.RPCNewHead(obscurocommon.EncodeBlock(b), nil)
 		} else {
-			p, f := m.Resolver.ParentBlock(b)
+			p, f := obscurocommon.Parent(m.Resolver, b)
 			if !f {
 				panic("This should not happen")
 			}

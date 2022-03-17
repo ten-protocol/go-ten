@@ -120,7 +120,7 @@ func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolve
 	parentState, parentFound := db.FetchState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the State of the Parent
-		p, f := db.ParentBlock(b)
+		p, f := ParentBlock(db, b)
 		if !f {
 			panic("wtf")
 		}
@@ -145,7 +145,7 @@ func FindWinner(parent *Rollup, rollups []*Rollup, db DB, blockResolver obscuroc
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case db.HeightRollup(r) <= db.HeightRollup(parent): // ignore rollups that are older than the parent
+		case HeightRollup(db, r) <= HeightRollup(db, parent): // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
 		case r.ProofHeight(blockResolver) < rollups[win].ProofHeight(blockResolver): // ignore rollups generated with an older proof
@@ -170,7 +170,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	s := newProcessedState(parentState)
 	s = executeTransactions(win.Transactions, s)
 
-	p := db.ParentRollup(win).Proof(blockResolver)
+	p := ParentRollup(db, win).Proof(blockResolver)
 	s = processDeposits(p, win.Proof(blockResolver), s, blockResolver)
 
 	if serialize(s.s) != win.Header.State {
@@ -220,7 +220,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 		if blockResolver.HeightBlock(b) < height {
 			panic("something went wrong")
 		}
-		p, f := blockResolver.ParentBlock(b)
+		p, f := obscurocommon.Parent(blockResolver, b)
 		if !f {
 			panic("wtf")
 		}
@@ -239,7 +239,7 @@ func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockRes
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		s = executeTransactions(newHead.Transactions, s)
-		p := db.ParentRollup(newHead).Proof(blockResolver)
+		p := ParentRollup(db, newHead).Proof(blockResolver)
 		s = processDeposits(p, newHead.Proof(blockResolver), s, blockResolver)
 	} else {
 		newHead = parentState.Head

@@ -222,7 +222,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	}
 
 	// only store if the parent exists
-	if e.db.ExistRollup(r.Header.ParentHash) {
+	if ExistRollup(e.db, r.Header.ParentHash) {
 		e.db.StoreRollup(&r)
 	} else {
 		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
@@ -248,13 +248,16 @@ func verifySignature(decryptedTx *L2Tx) error {
 }
 
 func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
-	head := e.db.FetchRollup(parent)
+	head, found := e.db.FetchRollup(parent)
+	if !found {
+		panic(fmt.Sprintf("Could not find rollup: r_%s", parent))
+	}
 
-	rollupsReceivedFromPeers := e.db.FetchGossipedRollups(e.db.HeightRollup(head) + 1)
+	rollupsReceivedFromPeers := e.db.FetchGossipedRollups(HeightRollup(e.db, head) + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*Rollup
 	for _, rol := range rollupsReceivedFromPeers {
-		p := e.db.ParentRollup(rol)
+		p := ParentRollup(e.db, rol)
 		if p.Hash() == head.Hash() {
 			usefulRollups = append(usefulRollups, rol)
 		}
@@ -273,10 +276,10 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	// we are the winner
 	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.blockResolver)
-		w := e.db.ParentRollup(winnerRollup)
+		w := ParentRollup(e.db, winnerRollup)
 		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
 			obscurocommon.ShortAddress(e.node),
-			obscurocommon.ShortHash(winnerRollup.Hash()), e.db.HeightRollup(winnerRollup),
+			obscurocommon.ShortHash(winnerRollup.Hash()), HeightRollup(e.db, winnerRollup),
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
 			printTxs(winnerRollup.Transactions),
@@ -296,7 +299,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
-	return e.db.Balance(address)
+	return Balance(e.db, address)
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
@@ -314,9 +317,9 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-				e.db.HeightRollup(speculativeRollup.r),
+				HeightRollup(e.db, speculativeRollup.r),
 				obscurocommon.ShortHash(bs.Head.Hash()),
-				e.db.HeightRollup(bs.Head)),
+				HeightRollup(e.db, bs.Head)),
 			)
 			e.statsCollector.L2Recalc(e.node)
 		}
@@ -341,6 +344,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
 func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, bool) {
 	// todo add some sort of cache
 	rollup := e.db.Head().Head
+	var found bool
 	for {
 		txs := rollup.Transactions
 		for _, tx := range txs {
@@ -348,7 +352,11 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) (*L2Tx, bool) {
 				return &tx, true
 			}
 		}
-		rollup = e.db.FetchRollup(rollup.Header.ParentHash)
+		rollup = ParentRollup(e.db, rollup)
+		rollup, found = e.db.FetchRollup(rollup.Hash())
+		if !found {
+			panic(fmt.Sprintf("Could not find rollup: r_%s", rollup.Hash()))
+		}
 		if rollup.Height.Load() == obscurocommon.L2GenesisHeight {
 			return nil, false
 		}

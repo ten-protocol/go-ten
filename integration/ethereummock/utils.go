@@ -14,25 +14,25 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver obscurocommon.BlockR
 		return blockA
 	}
 	if resolver.HeightBlock(blockA) > resolver.HeightBlock(blockB) {
-		p, f := resolver.ParentBlock(blockA)
+		p, f := obscurocommon.Parent(resolver, blockA)
 		if !f {
 			panic("wtf")
 		}
 		return LCA(p, blockB, resolver)
 	}
 	if resolver.HeightBlock(blockB) > resolver.HeightBlock(blockA) {
-		p, f := resolver.ParentBlock(blockB)
+		p, f := obscurocommon.Parent(resolver, blockB)
 		if !f {
 			panic("wtf")
 		}
 
 		return LCA(blockA, p, resolver)
 	}
-	parentBlockA, f := resolver.ParentBlock(blockA)
+	parentBlockA, f := obscurocommon.Parent(resolver, blockA)
 	if !f {
 		panic("wtf")
 	}
-	parentBlockB, f := resolver.ParentBlock(blockB)
+	parentBlockB, f := obscurocommon.Parent(resolver, blockB)
 	if !f {
 		panic("wtf")
 	}
@@ -56,7 +56,7 @@ func allIncludedTransactions(b *types.Block, r obscurocommon.BlockResolver, db T
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[obscurocommon.TxHash]*obscurocommon.L1Tx)
-	p, f := r.ParentBlock(b)
+	p, f := obscurocommon.Parent(r, b)
 	if !f {
 		panic("wtf")
 	}
@@ -100,7 +100,7 @@ func BlocksBetween(blockA *types.Block, blockB *types.Block, resolver obscurocom
 		if tempBlock.Hash() == blockA.Hash() {
 			break
 		}
-		tempBlock, found = resolver.ParentBlock(tempBlock)
+		tempBlock, found = obscurocommon.Parent(resolver, tempBlock)
 		if !found {
 			panic("should not happen")
 		}

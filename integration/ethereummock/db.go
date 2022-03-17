@@ -106,7 +106,7 @@ func removeCommittedTransactions(
 			break
 		}
 
-		p, f := resolver.ParentBlock(b)
+		p, f := obscurocommon.Parent(resolver, b)
 		if !f {
 			panic("wtf")
 		}

@@ -23,7 +23,7 @@ func printBlock(b *types.Block, m ethereum_mock.Node) string {
 			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", obscurocommon.ShortAddress(t.Dest), t.Amount))
 		}
 	}
-	p, f := m.Resolver.ParentBlock(b)
+	p, f := obscurocommon.Parent(m.Resolver, b)
 	if !f {
 		panic("wtf")
 	}

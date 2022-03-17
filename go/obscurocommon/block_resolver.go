@@ -7,7 +7,6 @@ type BlockResolver interface {
 	ResolveBlock(hash L1RootHash) (*types.Block, bool)
 	StoreBlock(block *types.Block)
 	HeightBlock(block *types.Block) int
-	ParentBlock(block *types.Block) (*types.Block, bool)
 }
 
 func Parent(r BlockResolver, b *types.Block) (*types.Block, bool) {
@@ -24,7 +23,7 @@ func IsAncestor(blockA *types.Block, blockB *types.Block, r BlockResolver) bool 
 		return false
 	}
 
-	p, f := r.ParentBlock(blockB)
+	p, f := Parent(r, blockB)
 	if !f {
 		return false
 	}
@@ -53,7 +52,7 @@ func IsBlockAncestor(l1BlockHash L1RootHash, block *types.Block, resolver BlockR
 		}
 	}
 
-	p, f := resolver.ParentBlock(block)
+	p, f := Parent(resolver, block)
 	if !f {
 		return false
 	}
