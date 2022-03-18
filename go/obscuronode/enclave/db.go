@@ -24,7 +24,7 @@ type DB interface {
 
 	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored
 	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
-	// FetchRollups returns all the rollup with the given height
+	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height int) []*Rollup
 	// StoreRollup persists the rollup
 	StoreRollup(rollup *Rollup, height int)
