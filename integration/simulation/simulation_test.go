@@ -155,7 +155,7 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 // We test the results against this threshold to catch eventual protocol errors.
 const (
 	L1EfficiencyThreshold     = 0.22
-	L2EfficiencyThreshold     = 0.37
+	L2EfficiencyThreshold     = 0.38
 	L2ToL1EfficiencyThreshold = 0.3
 )
 
