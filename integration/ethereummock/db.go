@@ -38,7 +38,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 
 	p, f := n.blockCache[block.ParentHash()]
 	if !f {
-		panic("Parent not found. Should not happen")
+		panic("ParentBlock not found. Should not happen")
 	}
 	n.blockCache[block.Hash()] = blockAndHeight{block, p.height + 1}
 }
@@ -57,33 +57,33 @@ func (n *blockResolverInMem) HeightBlock(block *types.Block) int {
 	return n.blockCache[block.Hash()].height
 }
 
-func (n *blockResolverInMem) Parent(b *types.Block) (*types.Block, bool) {
+func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {
 	return n.FetchBlock(b.Header().ParentHash)
 }
 
-func (n *blockResolverInMem) IsAncestor(blockA *types.Block, blockB *types.Block) bool {
-	if blockA.Hash() == blockB.Hash() {
+func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
+	if maybeAncestor.Hash() == block.Hash() {
 		return true
 	}
 
-	if n.HeightBlock(blockA) >= n.HeightBlock(blockB) {
+	if n.HeightBlock(maybeAncestor) >= n.HeightBlock(block) {
 		return false
 	}
 
-	p, f := n.Parent(blockB)
+	p, f := n.ParentBlock(block)
 	if !f {
 		return false
 	}
 
-	return n.IsAncestor(blockA, p)
+	return n.IsAncestor(p, maybeAncestor)
 }
 
-func (n *blockResolverInMem) IsBlockAncestor(l1BlockHash obscurocommon.L1RootHash, block *types.Block) bool {
-	if l1BlockHash == block.Hash() {
+func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+	if maybeAncestor == block.Hash() {
 		return true
 	}
 
-	if l1BlockHash == obscurocommon.GenesisBlock.Hash() {
+	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
 		return true
 	}
 
@@ -91,19 +91,19 @@ func (n *blockResolverInMem) IsBlockAncestor(l1BlockHash obscurocommon.L1RootHas
 		return false
 	}
 
-	resolvedBlock, found := n.FetchBlock(l1BlockHash)
+	resolvedBlock, found := n.FetchBlock(maybeAncestor)
 	if found {
 		if n.HeightBlock(resolvedBlock) >= n.HeightBlock(block) {
 			return false
 		}
 	}
 
-	p, f := n.Parent(block)
+	p, f := n.ParentBlock(block)
 	if !f {
 		return false
 	}
 
-	return n.IsBlockAncestor(l1BlockHash, p)
+	return n.IsBlockAncestor(p, maybeAncestor)
 }
 
 // The cache of included transactions
@@ -153,7 +153,7 @@ func removeCommittedTransactions(
 			break
 		}
 
-		p, f := resolver.Parent(b)
+		p, f := resolver.ParentBlock(b)
 		if !f {
 			panic("wtf")
 		}

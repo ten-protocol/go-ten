@@ -8,44 +8,64 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// BlockResolver - database of blocks indexed by the root hash
+// BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
+	// FetchBlock returns the L1 block with the given hash and true, or (nil, false) if no such block is stored
 	FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
+	// StoreBlock persists the L1 block
 	StoreBlock(block *types.Block)
+	// HeightBlock returns the height of the L1 block
 	HeightBlock(block *types.Block) int
-	Parent(b *types.Block) (*types.Block, bool)
-	IsAncestor(blockA *types.Block, blockB *types.Block) bool
-	IsBlockAncestor(l1BlockHash obscurocommon.L1RootHash, block *types.Block) bool
+	// ParentBlock returns the L1 block's parent and true, or (nil, false)  if no parent block is stored
+	ParentBlock(block *types.Block) (*types.Block, bool)
+	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 block, and false otherwise
+	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
+	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 block, and false otherwise
+	// Takes into consideration that the block to verify might be on a branch we haven't received yet
+	IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool
 }
 
-// Storage is the enclave's interface for interacting with the enclave's datastore.
+// Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
 
-	// Rollups
+	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored
 	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
-	StoreRollup(rollup *Rollup)
+	// FetchRollups returns all the rollup with the given height
 	FetchRollups(height int) []*Rollup
-	ParentRollup(r *Rollup) *Rollup
-	HeightRollup(r *Rollup) int
+	// StoreRollup persists the rollup
+	StoreRollup(rollup *Rollup)
+	// HeightRollup returns the height of the rollup
+	HeightRollup(rollup *Rollup) int
+	// ParentRollup returns the rollup's parent rollup
+	ParentRollup(rollup *Rollup) *Rollup
 
-	// State
-	FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool)
-	SetBlockState(hash obscurocommon.L1RootHash, state BlockState)
-	FetchState(hash obscurocommon.L2RootHash) State
-	SetState(hash obscurocommon.L2RootHash, state State)
-	Head() BlockState
+	// FetchBlockState returns the state after ingesting the L1 block with the given hash
+	FetchBlockState(hash obscurocommon.L1RootHash) (blockState, bool)
+	// FetchHeadState returns the state after ingesting the L1 block at the head of the chain
+	FetchHeadState() blockState
+	// SetBlockState persists the state after ingesting the L1 block with the given hash
+	SetBlockState(hash obscurocommon.L1RootHash, state blockState)
+	// FetchRollupState returns the state after adding the rollup with the given hash
+	FetchRollupState(hash obscurocommon.L2RootHash) State
+	// SetRollupState persists the state after adding the rollup with the given hash
+	SetRollupState(hash obscurocommon.L2RootHash, state State)
 
-	// Transactions
-	FetchTxs() []L2Tx
-	StoreTx(tx L2Tx)
-	PruneTxs(remove map[common.Hash]common.Hash)
-	FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool)
-	AddRollupTxs(*Rollup, map[common.Hash]L2Tx)
+	// FetchMempoolTxs returns all L2 transactions in the mempool
+	FetchMempoolTxs() []L2Tx
+	// AddMempoolTx adds an L2 transaction to the mempool
+	AddMempoolTx(tx L2Tx)
+	// RemoveMempoolTxs removes any L2 transactions whose hash is keyed in the map from the mempool
+	RemoveMempoolTxs(toRemove map[common.Hash]common.Hash)
+	// FetchRollupTxs returns all transactions in a given rollup keyed by hash and true, or (nil, false) if the rollup is unknown
+	FetchRollupTxs(rollup *Rollup) (map[common.Hash]L2Tx, bool)
+	// StoreRollupTxs overwrites the transactions associated with a given rollup
+	StoreRollupTxs(rollup *Rollup, newTxs map[common.Hash]L2Tx)
 
-	// Shared secret
-	StoreSecret(secret SharedEnclaveSecret)
+	// FetchSecret returns the enclave's secret
 	FetchSecret() SharedEnclaveSecret
+	// StoreSecret stores a secret in the enclave
+	StoreSecret(secret SharedEnclaveSecret)
 }
 
 type storageImpl struct {
@@ -57,12 +77,12 @@ func NewStorage() Storage {
 	return &storageImpl{db: db}
 }
 
-func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool) {
+func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (blockState, bool) {
 	s.assertSecretAvailable()
 	return s.db.FetchBlockState(hash)
 }
 
-func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state BlockState) {
+func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state blockState) {
 	s.assertSecretAvailable()
 	if state.foundNewRollup {
 		s.db.SetBlockStateNewRollup(hash, state)
@@ -71,14 +91,14 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state BlockSt
 	}
 }
 
-func (s *storageImpl) SetState(hash obscurocommon.L2RootHash, state State) {
+func (s *storageImpl) SetRollupState(hash obscurocommon.L2RootHash, state State) {
 	s.assertSecretAvailable()
-	s.db.SetState(hash, state)
+	s.db.SetRollupState(hash, state)
 }
 
-func (s *storageImpl) Head() BlockState {
+func (s *storageImpl) FetchHeadState() blockState {
 	s.assertSecretAvailable()
-	val, _ := s.db.FetchBlockState(s.db.HeadBlock())
+	val, _ := s.db.FetchBlockState(s.db.FetchHeadBlock())
 	return val
 }
 
@@ -98,24 +118,24 @@ func (s *storageImpl) FetchRollups(height int) []*Rollup {
 	return s.db.FetchRollups(height)
 }
 
-func (s *storageImpl) FetchState(hash obscurocommon.L2RootHash) State {
+func (s *storageImpl) FetchRollupState(hash obscurocommon.L2RootHash) State {
 	s.assertSecretAvailable()
-	return s.db.FetchState(hash)
+	return s.db.FetchRollupState(hash)
 }
 
-func (s *storageImpl) StoreTx(tx L2Tx) {
+func (s *storageImpl) AddMempoolTx(tx L2Tx) {
 	s.assertSecretAvailable()
-	s.db.StoreTx(tx)
+	s.db.AddMempoolTx(tx)
 }
 
-func (s *storageImpl) FetchTxs() []L2Tx {
+func (s *storageImpl) FetchMempoolTxs() []L2Tx {
 	s.assertSecretAvailable()
-	return s.db.FetchTxs()
+	return s.db.FetchMempoolTxs()
 }
 
-func (s *storageImpl) PruneTxs(toRemove map[common.Hash]common.Hash) {
+func (s *storageImpl) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash) {
 	s.assertSecretAvailable()
-	s.db.PruneTxs(toRemove)
+	s.db.RemoveMempoolTxs(toRemove)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) {
@@ -150,9 +170,9 @@ func (s *storageImpl) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
 	return s.db.FetchRollupTxs(r)
 }
 
-func (s *storageImpl) AddRollupTxs(r *Rollup, newMap map[common.Hash]L2Tx) {
+func (s *storageImpl) StoreRollupTxs(r *Rollup, newTxs map[common.Hash]L2Tx) {
 	s.assertSecretAvailable()
-	s.db.AddRollupTxs(r, newMap)
+	s.db.StoreRollupTxs(r, newTxs)
 }
 
 func (s *storageImpl) StoreSecret(secret SharedEnclaveSecret) {
@@ -195,38 +215,37 @@ func (s *storageImpl) HeightRollup(r *Rollup) int {
 	return v
 }
 
-func (s *storageImpl) Parent(b *types.Block) (*types.Block, bool) {
+func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, bool) {
 	s.assertSecretAvailable()
 	return s.FetchBlock(b.Header().ParentHash)
 }
 
 // IsAncestor return true if a is the ancestor of b
-func (s *storageImpl) IsAncestor(blockA *types.Block, blockB *types.Block) bool {
+func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
 	s.assertSecretAvailable()
-	if blockA.Hash() == blockB.Hash() {
+	if maybeAncestor.Hash() == block.Hash() {
 		return true
 	}
 
-	if s.HeightBlock(blockA) >= s.HeightBlock(blockB) {
+	if s.HeightBlock(maybeAncestor) >= s.HeightBlock(block) {
 		return false
 	}
 
-	p, f := s.Parent(blockB)
+	p, f := s.ParentBlock(block)
 	if !f {
 		return false
 	}
 
-	return s.IsAncestor(blockA, p)
+	return s.IsAncestor(p, maybeAncestor)
 }
 
-// IsBlockAncestor - takes into consideration that the block to verify might be on a branch we haven't received yet
-func (s *storageImpl) IsBlockAncestor(l1BlockHash obscurocommon.L1RootHash, block *types.Block) bool {
+func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
 	s.assertSecretAvailable()
-	if l1BlockHash == block.Hash() {
+	if maybeAncestor == block.Hash() {
 		return true
 	}
 
-	if l1BlockHash == obscurocommon.GenesisBlock.Hash() {
+	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
 		return true
 	}
 
@@ -234,19 +253,19 @@ func (s *storageImpl) IsBlockAncestor(l1BlockHash obscurocommon.L1RootHash, bloc
 		return false
 	}
 
-	resolvedBlock, found := s.FetchBlock(l1BlockHash)
+	resolvedBlock, found := s.FetchBlock(maybeAncestor)
 	if found {
 		if s.HeightBlock(resolvedBlock) >= s.HeightBlock(block) {
 			return false
 		}
 	}
 
-	p, f := s.Parent(block)
+	p, f := s.ParentBlock(block)
 	if !f {
 		return false
 	}
 
-	return s.IsBlockAncestor(l1BlockHash, p)
+	return s.IsBlockAncestor(p, maybeAncestor)
 }
 
 func (s *storageImpl) assertSecretAvailable() {

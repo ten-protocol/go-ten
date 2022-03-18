@@ -12,7 +12,7 @@ import (
 )
 
 // DefaultAverageLatencyToBlockRatio is relative to the block time
-// Average eth Block duration=12s, and average eth block latency = 1s
+// Average eth block duration=12s, and average eth block latency = 1s
 // Determines the broadcast powTime. The lower, the more powTime.
 const DefaultAverageLatencyToBlockRatio = 12
 

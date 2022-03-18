@@ -15,25 +15,25 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver enclave.BlockResolve
 		return blockA
 	}
 	if resolver.HeightBlock(blockA) > resolver.HeightBlock(blockB) {
-		p, f := resolver.Parent(blockA)
+		p, f := resolver.ParentBlock(blockA)
 		if !f {
 			panic("wtf")
 		}
 		return LCA(p, blockB, resolver)
 	}
 	if resolver.HeightBlock(blockB) > resolver.HeightBlock(blockA) {
-		p, f := resolver.Parent(blockB)
+		p, f := resolver.ParentBlock(blockB)
 		if !f {
 			panic("wtf")
 		}
 
 		return LCA(blockA, p, resolver)
 	}
-	parentBlockA, f := resolver.Parent(blockA)
+	parentBlockA, f := resolver.ParentBlock(blockA)
 	if !f {
 		panic("wtf")
 	}
-	parentBlockB, f := resolver.Parent(blockB)
+	parentBlockB, f := resolver.ParentBlock(blockB)
 	if !f {
 		panic("wtf")
 	}
@@ -57,7 +57,7 @@ func allIncludedTransactions(b *types.Block, r enclave.BlockResolver, db TxDB) m
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[obscurocommon.TxHash]*obscurocommon.L1Tx)
-	p, f := r.Parent(b)
+	p, f := r.ParentBlock(b)
 	if !f {
 		panic("wtf")
 	}
@@ -101,7 +101,7 @@ func BlocksBetween(blockA *types.Block, blockB *types.Block, resolver enclave.Bl
 		if tempBlock.Hash() == blockA.Hash() {
 			break
 		}
-		tempBlock, found = resolver.Parent(tempBlock)
+		tempBlock, found = resolver.ParentBlock(tempBlock)
 		if !found {
 			panic("should not happen")
 		}

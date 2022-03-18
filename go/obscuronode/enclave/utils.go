@@ -30,7 +30,7 @@ func allIncludedTransactions(b *Rollup, s Storage) map[common.Hash]L2Tx {
 	for _, tx := range b.Transactions {
 		newMap[tx.Hash()] = tx
 	}
-	s.AddRollupTxs(b, newMap)
+	s.StoreRollupTxs(b, newMap)
 	return newMap
 }
 

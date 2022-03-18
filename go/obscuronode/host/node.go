@@ -97,7 +97,7 @@ func NewAgg(
 		forkRPCCh:    make(chan []obscurocommon.EncodedBlock),
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 
-		// State processing
+		// state processing
 		Enclave: enclave.NewEnclave(id, true, collector),
 
 		// Initialized the node nodeDB

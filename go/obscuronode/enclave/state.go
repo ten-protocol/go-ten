@@ -12,15 +12,15 @@ import (
 
 type State = map[common.Address]uint64
 
-// BlockState - Represents the state after an L1 block was processed.
-type BlockState struct {
-	Block          *types.Block
-	Head           *Rollup
-	State          State
+// blockState - Represents the State after an L1 block was processed.
+type blockState struct {
+	block          *types.Block
+	head           *Rollup
+	state          State
 	foundNewRollup bool
 }
 
-// RollupState - state after an L2 rollups was processed
+// RollupState - State after an L2 rollup was processed
 type RollupState struct {
 	s State
 	w []nodecommon.Withdrawal
@@ -96,9 +96,9 @@ func emptyState() State {
 }
 
 // Determine the new canonical L2 head and calculate the State
-// Uses cache-ing to map the HeadBlock rollup and the State to each L1Node block.
-func updateState(b *types.Block, s Storage, blockResolver BlockResolver) BlockState {
-	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
+// Uses cache-ing to map the FetchHeadState rollup and the State to each L1Node block.
+func updateState(b *types.Block, s Storage, blockResolver BlockResolver) blockState {
+	// This method is called recursively in case of Re-orgs. Stop when State was calculated already.
 	val, found := s.FetchBlockState(b.Hash())
 	if found {
 		return val
@@ -106,20 +106,20 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) BlockSt
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
 	if b.Hash() == obscurocommon.GenesisBlock.Hash() {
-		bs := BlockState{
-			Block:          b,
-			Head:           &GenesisRollup,
-			State:          emptyState(),
+		bs := blockState{
+			block:          b,
+			head:           &GenesisRollup,
+			state:          emptyState(),
 			foundNewRollup: true,
 		}
 		s.SetBlockState(b.Hash(), bs)
 		return bs
 	}
 
-	// To calculate the state after the current block, we need the state after the parent.
+	// To calculate the State after the current block, we need the State after the parent.
 	parentState, parentFound := s.FetchBlockState(b.ParentHash())
 	if !parentFound {
-		// go back and calculate the State of the Parent
+		// go back and calculate the State of the ParentBlock
 		p, f := s.FetchBlock(b.ParentHash())
 		if !f {
 			panic("wtf")
@@ -166,7 +166,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	if !found {
 		panic("This should not happen for gossip rounds.")
 	}
-	// calculate the state to compare with what is in the Rollup
+	// calculate the State to compare with what is in the Rollup
 	state := newProcessedState(parentState)
 	state = executeTransactions(win.Transactions, state)
 
@@ -174,7 +174,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	state = processDeposits(p, win.Proof(blockResolver), state, blockResolver)
 
 	if serialize(state.s) != win.Header.State {
-		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
+		panic(fmt.Sprintf("Calculated a different State. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent State:%v\nParent State:%s\nTxs:%v",
 			serialize(state.s),
 			win.Header.State,
 			parentState,
@@ -187,7 +187,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	return win, state.s
 }
 
-// mutates the state
+// mutates the State
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
 func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState, blockResolver BlockResolver) RollupState {
 	from := obscurocommon.GenesisBlock.Hash()
@@ -195,7 +195,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 	if fromBlock != nil {
 		from = fromBlock.Hash()
 		height = blockResolver.HeightBlock(fromBlock)
-		if !blockResolver.IsAncestor(fromBlock, toBlock) {
+		if !blockResolver.IsAncestor(toBlock, fromBlock) {
 			panic("wtf")
 		}
 	}
@@ -220,7 +220,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 		if blockResolver.HeightBlock(b) < height {
 			panic("something went wrong")
 		}
-		p, f := blockResolver.Parent(b)
+		p, f := blockResolver.ParentBlock(b)
 		if !f {
 			panic("wtf")
 		}
@@ -229,26 +229,26 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 	return s
 }
 
-// given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState BlockState, s Storage, blockResolver BlockResolver) BlockState {
+// given an L1 block, and the State as it was in the ParentBlock block, calculates the State after the current block.
+func calculateBlockState(b *types.Block, parentState blockState, s Storage, blockResolver BlockResolver) blockState {
 	rollups := extractRollups(b, blockResolver)
-	newHead, found := FindWinner(parentState.Head, rollups, s, blockResolver)
+	newHead, found := FindWinner(parentState.head, rollups, s, blockResolver)
 
-	state := newProcessedState(parentState.State)
+	state := newProcessedState(parentState.state)
 
-	// only change the state if there is a new l2 HeadBlock in the current block
+	// only change the State if there is a new l2 FetchHeadState in the current block
 	if found {
 		state = executeTransactions(newHead.Transactions, state)
 		p := s.ParentRollup(newHead).Proof(blockResolver)
 		state = processDeposits(p, newHead.Proof(blockResolver), state, blockResolver)
 	} else {
-		newHead = parentState.Head
+		newHead = parentState.head
 	}
 
-	bs := BlockState{
-		Block:          b,
-		Head:           newHead,
-		State:          state.s,
+	bs := blockState{
+		block:          b,
+		head:           newHead,
+		state:          state.s,
 		foundNewRollup: found,
 	}
 	return bs
@@ -264,7 +264,7 @@ func extractRollups(b *types.Block, blockResolver BlockResolver) []*Rollup {
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
-			if blockResolver.IsBlockAncestor(r.Header.L1Proof, b) {
+			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 				rollups = append(rollups, toEnclaveRollup(r))
 			}
 		}
