@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -183,7 +181,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscuro
 			case obscurocommon.RollupTx:
 				r := nodecommon.DecodeRollup(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if enclave.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
+				if node.Resolver.IsBlockAncestor(r.Header.L1Proof, block) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					stats.NewRollup(r)
@@ -227,7 +225,7 @@ func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2He
 	headerWithdrawalTxCount := 0
 
 	// todo - check that proofs are on the canonical chain
-	// sum all the withdrawals by traversing the node headers from Head to Genesis
+	// sum all the withdrawals by traversing the node headers from HeadBlock to Genesis
 	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
 		for _, w := range header.Withdrawals {
 			headerWithdrawalSum += w.Amount

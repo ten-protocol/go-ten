@@ -85,7 +85,7 @@ func (m *Node) Start() {
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if head.Hash() == mb.Hash() { // Ignore the locally produced block if someone else found one already
-				p, found := enclave.Parent(m.Resolver, mb)
+				p, found := m.Resolver.Parent(mb)
 				if !found {
 					panic("noo")
 				}
@@ -115,7 +115,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	}
 
 	// Check for Reorgs
-	if !enclave.IsAncestor(head, b, m.Resolver) {
+	if !m.Resolver.IsAncestor(head, b) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
 		log.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), obscurocommon.ShortHash(head.Hash()), m.Resolver.HeightBlock(head), obscurocommon.ShortHash(fork.Hash()), m.Resolver.HeightBlock(fork)))
@@ -141,7 +141,7 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 		if m.Resolver.HeightBlock(b) == 0 {
 			go t.RPCNewHead(obscurocommon.EncodeBlock(b), nil)
 		} else {
-			p, f := enclave.Parent(m.Resolver, b)
+			p, f := m.Resolver.Parent(b)
 			if !f {
 				panic("This should not happen")
 			}

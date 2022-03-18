@@ -57,6 +57,55 @@ func (n *blockResolverInMem) HeightBlock(block *types.Block) int {
 	return n.blockCache[block.Hash()].height
 }
 
+func (n *blockResolverInMem) Parent(b *types.Block) (*types.Block, bool) {
+	return n.FetchBlock(b.Header().ParentHash)
+}
+
+func (n *blockResolverInMem) IsAncestor(blockA *types.Block, blockB *types.Block) bool {
+	if blockA.Hash() == blockB.Hash() {
+		return true
+	}
+
+	if n.HeightBlock(blockA) >= n.HeightBlock(blockB) {
+		return false
+	}
+
+	p, f := n.Parent(blockB)
+	if !f {
+		return false
+	}
+
+	return n.IsAncestor(blockA, p)
+}
+
+func (n *blockResolverInMem) IsBlockAncestor(l1BlockHash obscurocommon.L1RootHash, block *types.Block) bool {
+	if l1BlockHash == block.Hash() {
+		return true
+	}
+
+	if l1BlockHash == obscurocommon.GenesisBlock.Hash() {
+		return true
+	}
+
+	if n.HeightBlock(block) == 0 {
+		return false
+	}
+
+	resolvedBlock, found := n.FetchBlock(l1BlockHash)
+	if found {
+		if n.HeightBlock(resolvedBlock) >= n.HeightBlock(block) {
+			return false
+		}
+	}
+
+	p, f := n.Parent(block)
+	if !f {
+		return false
+	}
+
+	return n.IsBlockAncestor(l1BlockHash, p)
+}
+
 // The cache of included transactions
 type txDBInMem struct {
 	transactionsPerBlockCache map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*obscurocommon.L1Tx
@@ -104,7 +153,7 @@ func removeCommittedTransactions(
 			break
 		}
 
-		p, f := enclave.Parent(resolver, b)
+		p, f := resolver.Parent(b)
 		if !f {
 			panic("wtf")
 		}
