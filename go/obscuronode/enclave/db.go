@@ -63,23 +63,19 @@ type blockAndHeight struct {
 }
 
 type inMemoryDB struct {
-	// the State is dependent on the L1 block alone
-	statePerBlock  map[obscurocommon.L1RootHash]blockState
-	statePerRollup map[obscurocommon.L2RootHash]State
-	headBlock      obscurocommon.L1RootHash
-	stateMutex     sync.RWMutex
+	stateMutex sync.RWMutex // Controls access to `statePerBlock`, `statePerRollup`, `headBlock`, `rollupsByHeight` and `rollups`
+	mpMutex    sync.RWMutex // Controls access to `mempool`
+	blockMutex sync.RWMutex // Controls access to `blockCache`
+	txMutex    sync.RWMutex // Controls access to `txsPerRollupCache`
 
-	rollupsByHeight map[int][]*Rollup
-	rollups         map[obscurocommon.L2RootHash]*Rollup
-
-	mempool map[common.Hash]L2Tx
-	mpMutex sync.RWMutex
-
-	blockCache map[obscurocommon.L1RootHash]*blockAndHeight
-	blockMutex sync.RWMutex
-
+	statePerBlock     map[obscurocommon.L1RootHash]blockState
+	statePerRollup    map[obscurocommon.L2RootHash]State
+	headBlock         obscurocommon.L1RootHash
+	rollupsByHeight   map[int][]*Rollup
+	rollups           map[obscurocommon.L2RootHash]*Rollup
+	mempool           map[common.Hash]L2Tx
+	blockCache        map[obscurocommon.L1RootHash]*blockAndHeight
 	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]L2Tx
-	txMutex           sync.RWMutex
 
 	sharedEnclaveSecret SharedEnclaveSecret
 }
