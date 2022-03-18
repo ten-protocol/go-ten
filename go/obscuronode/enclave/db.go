@@ -78,25 +78,25 @@ type inMemoryDB struct {
 	blockCache map[obscurocommon.L1RootHash]*blockAndHeight
 	blockMutex sync.RWMutex
 
-	txsPerBlockCache map[obscurocommon.L2RootHash]map[common.Hash]L2Tx
-	txMutex          sync.RWMutex
+	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]L2Tx
+	txMutex           sync.RWMutex
 
 	sharedEnclaveSecret SharedEnclaveSecret
 }
 
 func NewInMemoryDB() DB {
 	return &inMemoryDB{
-		statePerBlock:    make(map[obscurocommon.L1RootHash]blockState),
-		stateMutex:       sync.RWMutex{},
-		rollupsByHeight:  make(map[int][]*Rollup),
-		rollups:          make(map[obscurocommon.L2RootHash]*Rollup),
-		mempool:          make(map[common.Hash]L2Tx),
-		mpMutex:          sync.RWMutex{},
-		statePerRollup:   make(map[obscurocommon.L2RootHash]State),
-		blockCache:       map[obscurocommon.L1RootHash]*blockAndHeight{},
-		blockMutex:       sync.RWMutex{},
-		txsPerBlockCache: make(map[obscurocommon.L2RootHash]map[common.Hash]L2Tx),
-		txMutex:          sync.RWMutex{},
+		statePerBlock:     make(map[obscurocommon.L1RootHash]blockState),
+		stateMutex:        sync.RWMutex{},
+		rollupsByHeight:   make(map[int][]*Rollup),
+		rollups:           make(map[obscurocommon.L2RootHash]*Rollup),
+		mempool:           make(map[common.Hash]L2Tx),
+		mpMutex:           sync.RWMutex{},
+		statePerRollup:    make(map[obscurocommon.L2RootHash]State),
+		blockCache:        map[obscurocommon.L1RootHash]*blockAndHeight{},
+		blockMutex:        sync.RWMutex{},
+		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]L2Tx),
+		txMutex:           sync.RWMutex{},
 	}
 }
 
@@ -225,7 +225,7 @@ func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
 	db.txMutex.RLock()
 	defer db.txMutex.RUnlock()
 
-	val, found := db.txsPerBlockCache[r.Hash()]
+	val, found := db.txsPerRollupCache[r.Hash()]
 	return val, found
 }
 
@@ -233,7 +233,7 @@ func (db *inMemoryDB) StoreRollupTxs(r *Rollup, newMap map[common.Hash]L2Tx) {
 	db.txMutex.Lock()
 	defer db.txMutex.Unlock()
 
-	db.txsPerBlockCache[r.Hash()] = newMap
+	db.txsPerRollupCache[r.Hash()] = newMap
 }
 
 func (db *inMemoryDB) StoreSecret(secret SharedEnclaveSecret) {
