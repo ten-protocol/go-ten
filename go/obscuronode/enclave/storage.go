@@ -3,6 +3,8 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/db"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -49,22 +51,48 @@ type Storage interface {
 }
 
 type storageImpl struct {
-	db DB
+	db               DB
+	blockDB          db.Database
+	rollupDB         *RollupDB
+	statePerBlockDB  *BlockStateDB
+	secretsDB        db.Database
+	statePerRollupDB db.Database
 }
 
 func NewStorage() Storage {
-	db := NewInMemoryDB()
-	return &storageImpl{db: db}
+	return &storageImpl{
+		blockDB:          NewBlockDB(db.NewMemDB()),
+		rollupDB:         NewRollupDB(db.NewMemDB()),
+		statePerBlockDB:  NewBlockStateDB(db.NewMemDB()),
+		statePerRollupDB: db.NewMemDB(),
+		secretsDB:        db.NewMemDB(),
+	}
 }
 
 func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool) {
 	s.assertSecretAvailable()
-	return s.db.FetchBlockState(hash)
+
+	blockState, err := s.statePerBlockDB.Get(hash[:])
+	if err != nil {
+		panic(err)
+	}
+
+	return blockState, true
 }
 
 func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state BlockState) {
 	s.assertSecretAvailable()
 	if state.foundNewRollup {
+		err := s.statePerBlockDB.Store(hash[:], state)
+		if err != nil {
+			panic(err)
+		}
+		rollupHash := state.Head.Hash()
+		err := s.rollupDB.Store(rollupHash[:], *state.Head)
+		if err != nil {
+			panic(err)
+		}
+
 		s.db.SetBlockStateNewRollup(hash, state)
 	} else {
 		s.db.SetBlockState(hash, state)
@@ -160,7 +188,11 @@ func (s *storageImpl) StoreSecret(secret SharedEnclaveSecret) {
 }
 
 func (s *storageImpl) FetchSecret() SharedEnclaveSecret {
-	return s.db.FetchSecret()
+	secret, err := s.secretsDB.Get([]byte("currentSecret"))
+	if err != nil {
+		panic(err)
+	}
+	return secret
 }
 
 func (s *storageImpl) HeightBlock(block *types.Block) int {
