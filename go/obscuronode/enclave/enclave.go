@@ -105,7 +105,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 	headerHash := block.Hash()
 	s, f := e.storage.FetchBlockState(headerHash)
 	if !f {
-		panic("State should be calculated")
+		panic("state should be calculated")
 	}
 
 	currentHead := s.head
@@ -275,7 +275,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.blockResolver)
 		w := e.storage.ParentRollup(winnerRollup)
-		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. FetchRollupTxs: %v. State=%v.",
+		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
 			obscurocommon.ShortAddress(e.node),
 			obscurocommon.ShortHash(winnerRollup.Hash()), e.storage.HeightRollup(winnerRollup),
 			obscurocommon.ShortHash(w.Hash()),

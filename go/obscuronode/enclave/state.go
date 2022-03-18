@@ -116,7 +116,7 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) blockSt
 		return bs
 	}
 
-	// To calculate the state after the current block, we need the State after the parent.
+	// To calculate the state after the current block, we need the state after the parent.
 	parentState, parentFound := s.FetchBlockState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the State of the Parent
@@ -174,7 +174,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	state = processDeposits(p, win.Proof(blockResolver), state, blockResolver)
 
 	if serialize(state.s) != win.Header.State {
-		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent State:%v\nParent State:%s\nTxs:%v",
+		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
 			serialize(state.s),
 			win.Header.State,
 			parentState,
