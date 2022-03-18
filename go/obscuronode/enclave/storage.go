@@ -61,6 +61,13 @@ type storageImpl struct {
 
 func NewStorage() Storage {
 	return &storageImpl{
+		// db as a composition of Type and DB Implementation
+		//
+		// the Type (for example NewRollupDB) can also do business specific logic handling
+		// For example: the invariance of all stored values must have valid hashes
+		// a better example of an invariant translated into the Type business logic could be:
+		// - You cannot store an invalid eth address in the database
+		// When storing an address the type would run a validation to ensure that.
 		blockDB:          NewBlockDB(db.NewMemDB()),
 		rollupDB:         NewRollupDB(db.NewMemDB()),
 		statePerBlockDB:  NewBlockStateDB(db.NewMemDB()),
@@ -72,6 +79,8 @@ func NewStorage() Storage {
 func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (BlockState, bool) {
 	s.assertSecretAvailable()
 
+	// at the storage level we don't care about serialization/locks/etc
+	// if it fails it's a db error
 	blockState, err := s.statePerBlockDB.Get(hash[:])
 	if err != nil {
 		panic(err)
@@ -82,7 +91,11 @@ func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (BlockState
 
 func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state BlockState) {
 	s.assertSecretAvailable()
+
+	// at this level we do care about the business logic (like below)
+	// for example, if foundNewRollup then also store on the rollupDB
 	if state.foundNewRollup {
+
 		err := s.statePerBlockDB.Store(hash[:], state)
 		if err != nil {
 			panic(err)
