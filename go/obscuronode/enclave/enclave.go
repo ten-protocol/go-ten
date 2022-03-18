@@ -23,17 +23,17 @@ type StatsCollector interface {
 
 // SubmitBlockResponse is the response sent from the enclave back to the node after ingesting a block
 type SubmitBlockResponse struct {
-	L1Hash      obscurocommon.L1RootHash // The Header Hash of the ingested block
-	L1Height    uint                     // The L1 Height of the ingested block
-	L1Parent    obscurocommon.L2RootHash // The L1 ParentBlock of the ingested block
-	L2Hash      obscurocommon.L2RootHash // The Rollup Hash in the ingested block
-	L2Height    uint                     // The Rollup Height in the ingested block
-	L2Parent    obscurocommon.L2RootHash // The Rollup Hash ParentBlock inside the ingested block
-	Withdrawals []nodecommon.Withdrawal  // The Withdrawals available in Rollup of the ingested block
+	L1Hash      obscurocommon.L1RootHash // The Header Hash of the ingested Block
+	L1Height    uint                     // The L1 Height of the ingested Block
+	L1Parent    obscurocommon.L2RootHash // The L1 Parent of the ingested Block
+	L2Hash      obscurocommon.L2RootHash // The Rollup Hash in the ingested Block
+	L2Height    uint                     // The Rollup Height in the ingested Block
+	L2Parent    obscurocommon.L2RootHash // The Rollup Hash Parent inside the ingested Block
+	Withdrawals []nodecommon.Withdrawal  // The Withdrawals available in Rollup of the ingested Block
 
 	ProducedRollup    nodecommon.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	IngestedBlock     bool                 // Whether the block was ingested or discarded
-	IngestedNewRollup bool                 // Whether the block had a new Rollup and the enclave has ingested it
+	IngestedBlock     bool                 // Whether the Block was ingested or discarded
+	IngestedNewRollup bool                 // Whether the Block had a new Rollup and the enclave has ingested it
 }
 
 // Enclave - The actual implementation of this interface will call an rpc service
