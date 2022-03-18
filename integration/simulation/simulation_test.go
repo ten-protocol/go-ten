@@ -225,7 +225,7 @@ func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2He
 	headerWithdrawalTxCount := 0
 
 	// todo - check that proofs are on the canonical chain
-	// sum all the withdrawals by traversing the node headers from FetchHeadState to Genesis
+	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
 		for _, w := range header.Withdrawals {
 			headerWithdrawalSum += w.Amount

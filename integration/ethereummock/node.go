@@ -105,7 +105,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 
 	// only proceed if the parent is available
 	if !f {
-		log.Log(fmt.Sprintf("> M%d: ParentBlock block not found=b_%d", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Header().ParentHash)))
+		log.Log(fmt.Sprintf("> M%d: Parent block not found=b_%d", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Header().ParentHash)))
 		return head
 	}
 

@@ -220,7 +220,6 @@ func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, bool) {
 	return s.FetchBlock(b.Header().ParentHash)
 }
 
-// IsAncestor return true if a is the ancestor of b
 func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
 	s.assertSecretAvailable()
 	if maybeAncestor.Hash() == block.Hash() {

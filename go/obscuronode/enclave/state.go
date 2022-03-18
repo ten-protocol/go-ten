@@ -12,7 +12,7 @@ import (
 
 type State = map[common.Address]uint64
 
-// blockState - Represents the State after an L1 block was processed.
+// blockState - Represents the state after an L1 block was processed.
 type blockState struct {
 	block          *types.Block
 	head           *Rollup
@@ -62,7 +62,7 @@ func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 	return ps
 }
 
-// mutates the State
+// mutates the state
 func executeTx(s *RollupState, tx L2Tx) {
 	switch TxData(&tx).Type {
 	case TransferTx:
@@ -96,9 +96,9 @@ func emptyState() State {
 }
 
 // Determine the new canonical L2 head and calculate the State
-// Uses cache-ing to map the FetchHeadState rollup and the State to each L1Node block.
+// Uses cache-ing to map the Head rollup and the State to each L1Node block.
 func updateState(b *types.Block, s Storage, blockResolver BlockResolver) blockState {
-	// This method is called recursively in case of Re-orgs. Stop when State was calculated already.
+	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := s.FetchBlockState(b.Hash())
 	if found {
 		return val
@@ -116,10 +116,10 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) blockSt
 		return bs
 	}
 
-	// To calculate the State after the current block, we need the State after the parent.
+	// To calculate the state after the current block, we need the State after the parent.
 	parentState, parentFound := s.FetchBlockState(b.ParentHash())
 	if !parentFound {
-		// go back and calculate the State of the ParentBlock
+		// go back and calculate the State of the Parent
 		p, f := s.FetchBlock(b.ParentHash())
 		if !f {
 			panic("wtf")
@@ -166,7 +166,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	if !found {
 		panic("This should not happen for gossip rounds.")
 	}
-	// calculate the State to compare with what is in the Rollup
+	// calculate the state to compare with what is in the Rollup
 	state := newProcessedState(parentState)
 	state = executeTransactions(win.Transactions, state)
 
@@ -174,7 +174,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	state = processDeposits(p, win.Proof(blockResolver), state, blockResolver)
 
 	if serialize(state.s) != win.Header.State {
-		panic(fmt.Sprintf("Calculated a different State. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent State:%v\nParent State:%s\nTxs:%v",
+		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent State:%v\nParent State:%s\nTxs:%v",
 			serialize(state.s),
 			win.Header.State,
 			parentState,
@@ -187,7 +187,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	return win, state.s
 }
 
-// mutates the State
+// mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
 func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState, blockResolver BlockResolver) RollupState {
 	from := obscurocommon.GenesisBlock.Hash()
@@ -229,14 +229,14 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 	return s
 }
 
-// given an L1 block, and the State as it was in the ParentBlock block, calculates the State after the current block.
+// given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func calculateBlockState(b *types.Block, parentState blockState, s Storage, blockResolver BlockResolver) blockState {
 	rollups := extractRollups(b, blockResolver)
 	newHead, found := FindWinner(parentState.head, rollups, s, blockResolver)
 
 	state := newProcessedState(parentState.state)
 
-	// only change the State if there is a new l2 FetchHeadState in the current block
+	// only change the state if there is a new l2 Head in the current block
 	if found {
 		state = executeTransactions(newHead.Transactions, state)
 		p := s.ParentRollup(newHead).Proof(blockResolver)

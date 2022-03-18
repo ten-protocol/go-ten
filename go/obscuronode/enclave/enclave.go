@@ -255,7 +255,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	}
 
 	rollupsReceivedFromPeers := e.storage.FetchRollups(e.storage.HeightRollup(head) + 1)
-	// filter out rollups with a different ParentBlock
+	// filter out rollups with a different Parent
 	var usefulRollups []*Rollup
 	for _, rol := range rollupsReceivedFromPeers {
 		p := e.storage.ParentRollup(rol)
