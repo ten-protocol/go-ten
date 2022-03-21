@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -47,11 +49,11 @@ type DB interface {
 	Balance(address common.Address) uint64
 
 	// Transactions
-	FetchTxs() []L2Tx
-	StoreTx(tx L2Tx)
+	FetchTxs() []nodecommon.L2Tx
+	StoreTx(tx nodecommon.L2Tx)
 	PruneTxs(remove map[common.Hash]common.Hash)
-	Txs(r *Rollup) (map[common.Hash]L2Tx, bool)
-	AddTxs(*Rollup, map[common.Hash]L2Tx)
+	Txs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
+	AddTxs(*Rollup, map[common.Hash]nodecommon.L2Tx)
 
 	// Shared secret
 	StoreSecret(secret SharedEnclaveSecret)
@@ -73,13 +75,13 @@ type inMemoryDB struct {
 	rollupsByHeight map[int][]*Rollup
 	rollups         map[obscurocommon.L2RootHash]*Rollup
 
-	mempool map[common.Hash]L2Tx
+	mempool map[common.Hash]nodecommon.L2Tx
 	mpMutex sync.RWMutex
 
 	blockCache map[obscurocommon.L1RootHash]*blockAndHeight
 	blockM     sync.RWMutex
 
-	transactionsPerBlockCache map[obscurocommon.L2RootHash]map[common.Hash]L2Tx
+	transactionsPerBlockCache map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx
 	txM                       sync.RWMutex
 
 	sharedEnclaveSecret SharedEnclaveSecret
@@ -91,12 +93,12 @@ func NewInMemoryDB() DB {
 		stateMutex:                sync.RWMutex{},
 		rollupsByHeight:           make(map[int][]*Rollup),
 		rollups:                   make(map[obscurocommon.L2RootHash]*Rollup),
-		mempool:                   make(map[common.Hash]L2Tx),
+		mempool:                   make(map[common.Hash]nodecommon.L2Tx),
 		mpMutex:                   sync.RWMutex{},
 		statePerRollup:            make(map[obscurocommon.L2RootHash]State),
 		blockCache:                map[obscurocommon.L1RootHash]*blockAndHeight{},
 		blockM:                    sync.RWMutex{},
-		transactionsPerBlockCache: make(map[obscurocommon.L2RootHash]map[common.Hash]L2Tx),
+		transactionsPerBlockCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
 		txM:                       sync.RWMutex{},
 	}
 }
@@ -190,18 +192,18 @@ func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) State {
 	return db.statePerRollup[hash]
 }
 
-func (db *inMemoryDB) StoreTx(tx L2Tx) {
+func (db *inMemoryDB) StoreTx(tx nodecommon.L2Tx) {
 	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 	db.mempool[tx.Hash()] = tx
 }
 
-func (db *inMemoryDB) FetchTxs() []L2Tx {
+func (db *inMemoryDB) FetchTxs() []nodecommon.L2Tx {
 	db.assertSecretAvailable()
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
-	mpCopy := make([]L2Tx, 0)
+	mpCopy := make([]nodecommon.L2Tx, 0)
 	for _, tx := range db.mempool {
 		mpCopy = append(mpCopy, tx)
 	}
@@ -212,7 +214,7 @@ func (db *inMemoryDB) PruneTxs(toRemove map[common.Hash]common.Hash) {
 	db.assertSecretAvailable()
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	r := make(map[common.Hash]L2Tx)
+	r := make(map[common.Hash]nodecommon.L2Tx)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
 		if !f {
@@ -252,7 +254,7 @@ func (db *inMemoryDB) ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block,
 	return block, f
 }
 
-func (db *inMemoryDB) Txs(r *Rollup) (map[common.Hash]L2Tx, bool) {
+func (db *inMemoryDB) Txs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
 	db.assertSecretAvailable()
 	db.txM.RLock()
 	val, found := db.transactionsPerBlockCache[r.Hash()]
@@ -260,7 +262,7 @@ func (db *inMemoryDB) Txs(r *Rollup) (map[common.Hash]L2Tx, bool) {
 	return val, found
 }
 
-func (db *inMemoryDB) AddTxs(r *Rollup, newMap map[common.Hash]L2Tx) {
+func (db *inMemoryDB) AddTxs(r *Rollup, newMap map[common.Hash]nodecommon.L2Tx) {
 	db.assertSecretAvailable()
 	db.txM.Lock()
 	db.transactionsPerBlockCache[r.Hash()] = newMap

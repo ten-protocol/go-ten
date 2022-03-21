@@ -1,4 +1,4 @@
-package obscuronode
+package host
 
 import (
 	"sync"

@@ -3,6 +3,8 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -10,12 +12,12 @@ import (
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findTxsNotIncluded(head *Rollup, txs []L2Tx, db DB) []L2Tx {
+func findTxsNotIncluded(head *Rollup, txs []nodecommon.L2Tx, db DB) []nodecommon.L2Tx {
 	included := allIncludedTransactions(head, db)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *Rollup, db DB) map[common.Hash]L2Tx {
+func allIncludedTransactions(b *Rollup, db DB) map[common.Hash]nodecommon.L2Tx {
 	val, found := db.Txs(b)
 	if found {
 		return val
@@ -23,7 +25,7 @@ func allIncludedTransactions(b *Rollup, db DB) map[common.Hash]L2Tx {
 	if db.HeightRollup(b) == obscurocommon.L2GenesisHeight {
 		return makeMap(b.Transactions)
 	}
-	newMap := make(map[common.Hash]L2Tx)
+	newMap := make(map[common.Hash]nodecommon.L2Tx)
 	for k, v := range allIncludedTransactions(db.ParentRollup(b), db) {
 		newMap[k] = v
 	}
@@ -34,7 +36,7 @@ func allIncludedTransactions(b *Rollup, db DB) map[common.Hash]L2Tx {
 	return newMap
 }
 
-func removeExisting(base []L2Tx, toRemove map[common.Hash]L2Tx) (r []L2Tx) {
+func removeExisting(base []nodecommon.L2Tx, toRemove map[common.Hash]nodecommon.L2Tx) (r []nodecommon.L2Tx) {
 	for _, t := range base {
 		_, f := toRemove[t.Hash()]
 		if !f {
@@ -57,15 +59,15 @@ func historicTxs(r *Rollup, db DB) map[common.Hash]common.Hash {
 	}
 }
 
-func makeMap(txs []L2Tx) map[common.Hash]L2Tx {
-	m := make(map[common.Hash]L2Tx)
+func makeMap(txs []nodecommon.L2Tx) map[common.Hash]nodecommon.L2Tx {
+	m := make(map[common.Hash]nodecommon.L2Tx)
 	for _, tx := range txs {
 		m[tx.Hash()] = tx
 	}
 	return m
 }
 
-func toMap(txs []L2Tx) map[common.Hash]common.Hash {
+func toMap(txs []nodecommon.L2Tx) map[common.Hash]common.Hash {
 	m := make(map[common.Hash]common.Hash)
 	for _, tx := range txs {
 		m[tx.Hash()] = tx.Hash()
@@ -73,14 +75,14 @@ func toMap(txs []L2Tx) map[common.Hash]common.Hash {
 	return m
 }
 
-func printTxs(txs []L2Tx) (txsString []string) {
+func printTxs(txs []nodecommon.L2Tx) (txsString []string) {
 	for _, t := range txs {
 		txsString = printTx(t, txsString)
 	}
 	return txsString
 }
 
-func printTx(t L2Tx, txsString []string) []string {
+func printTx(t nodecommon.L2Tx, txsString []string) []string {
 	txData := TxData(&t)
 	switch txData.Type {
 	case TransferTx:

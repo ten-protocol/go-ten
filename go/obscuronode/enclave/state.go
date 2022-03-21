@@ -53,7 +53,7 @@ func serialize(state State) string {
 }
 
 // returns a modified copy of the State
-func executeTransactions(txs []L2Tx, state RollupState) RollupState {
+func executeTransactions(txs []nodecommon.L2Tx, state RollupState) RollupState {
 	ps := copyProcessedState(state)
 	for _, tx := range txs {
 		executeTx(&ps, tx)
@@ -63,7 +63,7 @@ func executeTransactions(txs []L2Tx, state RollupState) RollupState {
 }
 
 // mutates the State
-func executeTx(s *RollupState, tx L2Tx) {
+func executeTx(s *RollupState, tx nodecommon.L2Tx) {
 	switch TxData(&tx).Type {
 	case TransferTx:
 		executeTransfer(s, tx)
@@ -74,7 +74,7 @@ func executeTx(s *RollupState, tx L2Tx) {
 	}
 }
 
-func executeWithdrawal(s *RollupState, tx L2Tx) {
+func executeWithdrawal(s *RollupState, tx nodecommon.L2Tx) {
 	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
 		s.s[txData.From] -= txData.Amount
 		s.w = append(s.w, nodecommon.Withdrawal{
@@ -84,7 +84,7 @@ func executeWithdrawal(s *RollupState, tx L2Tx) {
 	}
 }
 
-func executeTransfer(s *RollupState, tx L2Tx) {
+func executeTransfer(s *RollupState, tx nodecommon.L2Tx) {
 	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
 		s.s[txData.From] -= txData.Amount
 		s.s[txData.To] += txData.Amount
@@ -135,7 +135,7 @@ func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolve
 }
 
 // Calculate transactions to be included in the current rollup
-func currentTxs(head *Rollup, mempool []L2Tx, db DB) []L2Tx {
+func currentTxs(head *Rollup, mempool []nodecommon.L2Tx, db DB) []nodecommon.L2Tx {
 	return findTxsNotIncluded(head, mempool, db)
 }
 

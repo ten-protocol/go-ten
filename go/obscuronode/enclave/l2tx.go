@@ -2,14 +2,13 @@ package enclave
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 type (
-	L2Tx  = types.Transaction
-	L2Txs []L2Tx
+	L2Txs []nodecommon.L2Tx
 	// L2TxType indicates the type of L2 transaction - either a transfer or a withdrawal for now
 	L2TxType uint8
 )
@@ -28,7 +27,7 @@ type L2TxData struct {
 }
 
 // TxData returns the decoded L2 data stored in the transaction's data field.
-func TxData(tx *L2Tx) L2TxData {
+func TxData(tx *nodecommon.L2Tx) L2TxData {
 	data := L2TxData{}
 
 	err := rlp.DecodeBytes(tx.Data(), &data)
