@@ -181,7 +181,7 @@ func (a *Node) startProcessing() {
 			a.processBlocks(f, interrupt)
 
 		case r := <-a.rollupsP2PCh:
-			rol, err := nodecommon.Decode(r)
+			rol, err := nodecommon.DecodeRollup(r)
 			if err != nil {
 				log.Log(fmt.Sprintf(">   Agg%d: Could not check enclave initialisation: %v", obscurocommon.ShortAddress(a.ID), err))
 			}
@@ -369,7 +369,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 			}
 			a.L1Node.BroadcastTx(t)
 			// collect Stats
-			// a.stats.NewRollup(DecodeRollup(winnerRollup))
+			// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
 		}
 	})
 }

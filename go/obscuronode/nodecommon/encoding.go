@@ -5,15 +5,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-func Decode(encoded obscurocommon.EncodedRollup) (*Rollup, error) {
-	r := Rollup{}
-	err := rlp.DecodeBytes(encoded, &r)
-
-	return &r, err
-}
-
 func EncodeRollup(r *Rollup) obscurocommon.EncodedRollup {
-	encoded, err := r.encode()
+	encoded, err := rlp.EncodeToBytes(r)
 	if err != nil {
 		panic(err)
 	}
@@ -21,15 +14,18 @@ func EncodeRollup(r *Rollup) obscurocommon.EncodedRollup {
 	return encoded
 }
 
-func DecodeRollup(rollup obscurocommon.EncodedRollup) *Rollup {
-	r, err := Decode(rollup)
+func DecodeRollup(encoded obscurocommon.EncodedRollup) (*Rollup, error) {
+	r := Rollup{}
+	err := rlp.DecodeBytes(encoded, &r)
+
+	return &r, err
+}
+
+func DecodeRollupOrPanic(rollup obscurocommon.EncodedRollup) *Rollup {
+	r, err := DecodeRollup(rollup)
 	if err != nil {
 		panic(err)
 	}
 
 	return r
-}
-
-func (r Rollup) encode() (obscurocommon.EncodedRollup, error) {
-	return rlp.EncodeToBytes(r)
 }

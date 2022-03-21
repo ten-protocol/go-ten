@@ -107,7 +107,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 		return head
 	}
 
-	// Ignore superseeded blocks
+	// Ignore superseded blocks
 	if m.Resolver.HeightBlock(b) <= m.Resolver.HeightBlock(head) {
 		return head
 	}

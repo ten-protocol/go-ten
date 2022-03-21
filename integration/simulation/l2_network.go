@@ -30,7 +30,7 @@ func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 // BroadcastRollup Broadcasts the rollup to all L2 peers
 func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	for _, a := range cfg.nodes {
-		rol := nodecommon.DecodeRollup(r)
+		rol := nodecommon.DecodeRollupOrPanic(r)
 		if a.ID != rol.Header.Agg {
 			t := a
 			obscurocommon.Schedule(cfg.delay(), func() { t.P2PGossipRollup(r) })

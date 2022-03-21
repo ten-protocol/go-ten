@@ -260,7 +260,7 @@ func extractRollups(b *types.Block, blockResolver obscurocommon.BlockResolver) [
 		// go through all rollup transactions
 		data := obscurocommon.TxData(t)
 		if data.TxType == obscurocommon.RollupTx {
-			r := nodecommon.DecodeRollup(obscurocommon.TxData(t).Rollup)
+			r := nodecommon.DecodeRollupOrPanic(obscurocommon.TxData(t).Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork

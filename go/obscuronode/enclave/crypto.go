@@ -5,7 +5,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-func decryptTransactions(txs nodecommon.EncryptedTransactions) Transactions {
+func decryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
 	t := make([]L2Tx, 0)
 	for _, tx := range txs {
 		t = append(t, DecryptTx(tx))
@@ -30,7 +30,7 @@ func EncryptTx(tx *L2Tx) nodecommon.EncryptedTx {
 	return bytes
 }
 
-func encryptTransactions(transactions Transactions) nodecommon.EncryptedTransactions {
+func encryptTransactions(transactions L2Txs) nodecommon.EncryptedTransactions {
 	result := make([]nodecommon.EncryptedTx, 0)
 	for i := range transactions {
 		result = append(result, EncryptTx(&transactions[i]))

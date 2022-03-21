@@ -31,6 +31,14 @@ type Withdrawal struct {
 	Address common.Address
 }
 
+// ExtRollup is used for communication between the enclave and the outside world.
+type ExtRollup struct {
+	Header *Header
+	Txs    EncryptedTransactions
+}
+
+// Rollup extends ExtRollup with additional fields.
+// This parallels the Block/extblock split in Go Ethereum.
 type Rollup struct {
 	Header *Header
 
@@ -39,12 +47,6 @@ type Rollup struct {
 	size   atomic.Value //nolint
 
 	Transactions EncryptedTransactions
-}
-
-// ExtRollup Data structure that is used to communicate between the enclave and the outside world
-type ExtRollup struct {
-	Header *Header
-	Txs    EncryptedTransactions
 }
 
 func (er ExtRollup) ToRollup() *Rollup {
