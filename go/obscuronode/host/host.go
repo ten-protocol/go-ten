@@ -155,7 +155,7 @@ func (a *Node) startProcessing() {
 			a.processBlocks(f, interrupt)
 
 		case r := <-a.rollupsP2PCh:
-			rol, _ := nodecommon.Decode(r)
+			rol, _ := nodecommon.DecodeRollup(r)
 			go a.Enclave.SubmitRollup(nodecommon.ExtRollup{
 				Header: rol.Header,
 				Txs:    rol.Transactions,
@@ -307,7 +307,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 			}
 			a.L1Node.BroadcastTx(t)
 			// collect Stats
-			// a.stats.NewRollup(DecodeRollup(winnerRollup))
+			// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
 		}
 	})
 }
