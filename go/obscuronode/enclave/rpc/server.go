@@ -129,7 +129,7 @@ func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRe
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
-	_ = s.enclave.Stop()
+	s.enclave.Stop()
 	return &generated.StopResponse{}, nil
 }
 

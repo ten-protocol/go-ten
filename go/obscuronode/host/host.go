@@ -88,7 +88,6 @@ func NewAgg(
 		cfg.ClientRPCTimeoutSecs = clientRPCTimeoutSecs
 	}
 	timeout := time.Duration(cfg.ClientRPCTimeoutSecs) * time.Second
-	enclaveClient := rpc.NewEnclaveRPCClient(port, timeout)
 
 	return Node{
 		// config
@@ -111,7 +110,7 @@ func NewAgg(
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 
 		// State processing
-		Enclave: enclaveClient,
+		Enclave: rpc.NewEnclaveRPCClient(port, timeout),
 
 		// Initialized the node nodeDB
 		nodeDB: obscuronode.NewDB(),
@@ -122,18 +121,15 @@ func NewAgg(
 func (a *Node) Start() {
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
-		secret := a.Enclave.GenerateSecret()
-		attestation := a.Enclave.Attestation()
 		txData := obscurocommon.L1TxData{
 			TxType:      obscurocommon.StoreSecretTx,
-			Secret:      secret,
-			Attestation: attestation,
+			Secret:      a.Enclave.GenerateSecret(),
+			Attestation: a.Enclave.Attestation(),
 		}
 		a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 	}
 
-	isInitialised := a.Enclave.IsInitialised()
-	if !isInitialised {
+	if !a.Enclave.IsInitialised() {
 		a.requestSecret()
 	}
 
@@ -181,9 +177,7 @@ func (a *Node) startProcessing() {
 			})
 
 		case <-a.exitNodeCh:
-			if err := a.Enclave.Stop(); err != nil {
-				panic(err)
-			}
+			a.Enclave.Stop()
 			return
 		}
 	}
@@ -220,11 +214,10 @@ func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
 		return
 	}
 	// Ignore gossiped transactions while the node is still initialising
-	isInitialised := a.Enclave.IsInitialised()
-	if isInitialised {
+	if a.Enclave.IsInitialised() {
 		go func() {
 			if err := a.Enclave.SubmitTx(tx); err != nil {
-				panic(err)
+				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
 			}
 		}()
 	}
@@ -254,9 +247,7 @@ func (a *Node) DB() *obscuronode.DB {
 func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.interrupt, 1)
-	if err := a.Enclave.Stop(); err != nil {
-		panic(err)
-	}
+	a.Enclave.Stop()
 
 	time.Sleep(time.Millisecond * 1000)
 	a.exitNodeCh <- true
@@ -396,10 +387,9 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	for _, tx := range b.Transactions() {
 		t := obscurocommon.TxData(tx)
 		if t.TxType == obscurocommon.RequestSecretTx {
-			secret := a.Enclave.FetchSecret(t.Attestation)
 			txData := obscurocommon.L1TxData{
 				TxType:      obscurocommon.StoreSecretTx,
-				Secret:      secret,
+				Secret:      a.Enclave.FetchSecret(t.Attestation),
 				Attestation: t.Attestation,
 			}
 			a.broadcastTx(*obscurocommon.NewL1Tx(txData))

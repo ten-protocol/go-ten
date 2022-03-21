@@ -87,7 +87,7 @@ type Enclave interface {
 	RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool)
 
 	// Stop gracefully stops the enclave
-	Stop() error
+	Stop()
 
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
 	GetTransaction(txHash common.Hash) *L2Tx
@@ -367,9 +367,8 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *L2Tx {
 	}
 }
 
-func (e *enclaveImpl) Stop() error {
+func (e *enclaveImpl) Stop() {
 	e.exitCh <- true
-	return nil
 }
 
 func (e *enclaveImpl) Attestation() obscurocommon.AttestationReport {
@@ -393,7 +392,7 @@ func (e *enclaveImpl) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSec
 	e.db.StoreSecret(decryptSecret(secret))
 }
 
-func (e *enclaveImpl) FetchSecret(_ obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) FetchSecret(obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
 	return encryptSecret(e.db.FetchSecret())
 }
 

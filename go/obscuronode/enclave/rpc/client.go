@@ -206,12 +206,14 @@ func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecom
 	return nodecommon.ExtRollup{}, false
 }
 
-func (c *EnclaveRPCClient) Stop() error {
+func (c *EnclaveRPCClient) Stop() {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
-	return err
+	if err != nil {
+		panic(fmt.Sprintf("failed to stop enclave: %v", err))
+	}
 }
 
 func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *enclave.L2Tx {
