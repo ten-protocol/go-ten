@@ -38,3 +38,41 @@ credentials). One possible attack vector is for a _parasite_ aggregator to only 
 another aggregator's enclave to submit transactions, in order to economise on operating costs. To avoid this scenario, 
 the enclave is designed to have full control over which account receives the rollup rewards, meaning that a would-be 
 parasite aggregator does not receive any rewards for acting in this manner.
+
+## Enclave datastore
+
+The enclave is backed by a datastore. This datastore stores seven maps:
+
+1. L1 block hash -> the state after ingesting the block
+2. Rollup hash -> the state after adding the rollup
+3. int -> the proposed rollups with height <int>
+4. Rollup hash -> the corresponding rollup
+5. L2 transaction hash -> the corresponding mempool transaction
+6. L1 block hash -> the corresponding block and its height
+7. Rollup hash -> the transactions in the corresponding rollup
+
+The files backing the datastore are stored outside the enclave. To ensure the datastore contents remain confidential, 
+the values in the datastore maps are stored in encrypted form [WITH WHAT KEY?]. The hash/int keys are not considered 
+sensitive and are not encrypted.
+
+The datastore used is LevelDB. We use LevelDB because:
+
+* It is used by Go Ethereum. This shows that it is suitable for workloads of this type. It also means that we already 
+  have an indirect dependency on LevelDB
+* It is a library, meaning that we do not introduce one or more additional datastore components to manage
+  * An additional benefit is that since it is not exposed to the user as an additional component to manage, we can 
+    switch it out later at lower cost
+* It has reasonable adoption and is well-maintained
+* There is a Go implementation (https://github.com/syndtr/goleveldb)
+
+### Can enclave data be ephemeral?
+
+An alternative approach to enclave data would be to make it ephemeral. State could be recovered through a combination 
+of requesting data from peer nodes (e.g. blocks, transactions), requesting resubmission from clients (e.g. mempool 
+transactions) and recreating the data (e.g. candidate rollups).
+
+However, this has several downsides:
+
+* It is less efficient
+* Is provides a worse user experience (transactions have to be resubmitted on occasion)
+* It forces the enclave to hold the full state inside the enclave memory
