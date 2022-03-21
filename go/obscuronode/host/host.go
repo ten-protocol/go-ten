@@ -174,7 +174,9 @@ func (a *Node) startProcessing() {
 			})
 
 		case <-a.exitNodeCh:
-			a.EnclaveClient.Stop()
+			if err := a.EnclaveClient.Stop(); err != nil {
+				panic(err)
+			}
 			return
 		}
 	}
@@ -213,7 +215,11 @@ func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
 	// Ignore gossiped transactions while the node is still initialising
 	isInitialised := a.EnclaveClient.IsInitialised()
 	if isInitialised {
-		go a.EnclaveClient.SubmitTx(tx)
+		go func() {
+			if err := a.EnclaveClient.SubmitTx(tx); err != nil {
+				panic(err)
+			}
+		}()
 	}
 }
 
@@ -241,7 +247,9 @@ func (a *Node) DB() *obscuronode.DB {
 func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.interrupt, 1)
-	a.EnclaveClient.Stop()
+	if err := a.EnclaveClient.Stop(); err != nil {
+		panic(err)
+	}
 
 	time.Sleep(time.Millisecond * 1000)
 	a.exitNodeCh <- true
@@ -359,10 +367,7 @@ func (a *Node) requestSecret() {
 				t := obscurocommon.TxData(tx)
 				if t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
-					err := a.EnclaveClient.InitEnclave(t.Secret)
-					if err != nil {
-						log.Log(fmt.Sprintf(">   Agg%d: Could not initialise enclave: %v", obscurocommon.ShortAddress(a.ID), err))
-					}
+					a.EnclaveClient.InitEnclave(t.Secret)
 					return
 				}
 			}

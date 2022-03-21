@@ -85,7 +85,7 @@ func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) obsc
 	return response.EncryptedSharedEnclaveSecret
 }
 
-func (c *EnclaveClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) error {
+func (c *EnclaveClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -93,7 +93,6 @@ func (c *EnclaveClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveS
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialise enclave: %v", err))
 	}
-	return err
 }
 
 func (c *EnclaveClient) IsInitialised() bool {
@@ -174,14 +173,12 @@ func (c *EnclaveClient) SubmitRollup(rollup nodecommon.ExtRollup) {
 	}
 }
 
-func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) {
+func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	_, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
-	if err != nil {
-		panic(fmt.Sprintf("failed to submit transaction: %v", err))
-	}
+	return err
 }
 
 func (c *EnclaveClient) Balance(address common.Address) uint64 {
@@ -210,14 +207,12 @@ func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon
 	return nodecommon.ExtRollup{}, false
 }
 
-func (c *EnclaveClient) Stop() {
+func (c *EnclaveClient) Stop() error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
-	if err != nil {
-		panic(fmt.Sprintf("failed to stop enclave: %v", err))
-	}
+	return err
 }
 
 func (c *EnclaveClient) GetTransaction(txHash common.Hash) *enclave.L2Tx {
