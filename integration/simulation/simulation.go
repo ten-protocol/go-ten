@@ -89,7 +89,7 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
 	for _, node := range l2NetworkCfg.nodes {
 		for {
-			if node.EnclaveClient.IsReady() == nil {
+			if node.Enclave.IsReady() == nil {
 				break
 			}
 			time.Sleep(10 * time.Millisecond)

@@ -41,6 +41,9 @@ type BlockSubmissionResponse struct {
 
 // Enclave - The actual implementation of this interface will call an rpc service
 type Enclave interface {
+	// IsReady checks whether the enclave is ready to process requests
+	IsReady() error
+
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation() obscurocommon.AttestationReport
 
@@ -88,6 +91,9 @@ type Enclave interface {
 
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
 	GetTransaction(txHash common.Hash) *L2Tx
+
+	// StopClient stops the enclave client if one exists
+	StopClient()
 }
 
 type enclaveImpl struct {
@@ -102,6 +108,14 @@ type enclaveImpl struct {
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
+}
+
+func (e *enclaveImpl) IsReady() error {
+	return nil // The enclave is local so it is always ready
+}
+
+func (e *enclaveImpl) StopClient() {
+	// The enclave is local so there is no client to stop
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
