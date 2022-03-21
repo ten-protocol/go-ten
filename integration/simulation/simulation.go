@@ -63,10 +63,7 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
 
 		// create a layer 2 node
-		agg, err := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, port, timeout)
-		if err != nil {
-			panic(fmt.Sprintf("failed to create aggregator node: %v", err))
-		}
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, port, timeout)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks

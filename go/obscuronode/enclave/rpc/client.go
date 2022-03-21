@@ -27,17 +27,19 @@ type EnclaveClient struct {
 	timeout     time.Duration
 }
 
-func NewEnclaveClient(port uint64, timeout time.Duration) (*EnclaveClient, error) {
+func NewEnclaveClient(port uint64, timeout time.Duration) *EnclaveClient {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to enclave RPC service: %w", err)
+		panic(fmt.Sprintf("failed to connect to enclave RPC service: %v", err))
 	}
-	return &EnclaveClient{generated.NewEnclaveProtoClient(connection), connection, timeout}, nil
+	return &EnclaveClient{generated.NewEnclaveProtoClient(connection), connection, timeout}
 }
 
-func (c *EnclaveClient) StopClient() error {
-	return c.connection.Close()
+func (c *EnclaveClient) StopClient() {
+	if err := c.connection.Close(); err != nil {
+		panic(fmt.Sprintf("failed to stop enclave RPC service: %v", err))
+	}
 }
 
 func (c *EnclaveClient) IsReady() error {
@@ -48,30 +50,39 @@ func (c *EnclaveClient) IsReady() error {
 	return err
 }
 
-func (c *EnclaveClient) Attestation() (obscurocommon.AttestationReport, error) {
+func (c *EnclaveClient) Attestation() obscurocommon.AttestationReport {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
-	return fromAttestationReportMsg(response.AttestationReportMsg), err
+	if err != nil {
+		panic(fmt.Sprintf("failed to retrieve attestation: %v", err))
+	}
+	return fromAttestationReportMsg(response.AttestationReportMsg)
 }
 
-func (c *EnclaveClient) GenerateSecret() (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+func (c *EnclaveClient) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
-	return response.EncryptedSharedEnclaveSecret, err
+	if err != nil {
+		panic(fmt.Sprintf("failed to generate secret: %v", err))
+	}
+	return response.EncryptedSharedEnclaveSecret
 }
 
-func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+func (c *EnclaveClient) FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	attestationReportMsg := toAttestationReportMsg(report)
 	request := generated.FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
 	response, err := c.protoClient.FetchSecret(timeoutCtx, &request)
-	return response.EncryptedSharedEnclaveSecret, err
+	if err != nil {
+		panic(fmt.Sprintf("failed to fetch secret: %v", err))
+	}
+	return response.EncryptedSharedEnclaveSecret
 }
 
 func (c *EnclaveClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) error {
@@ -79,26 +90,35 @@ func (c *EnclaveClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveS
 	defer cancel()
 
 	_, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialise enclave: %v", err))
+	}
 	return err
 }
 
-func (c *EnclaveClient) IsInitialised() (bool, error) {
+func (c *EnclaveClient) IsInitialised() bool {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.IsInitialised(timeoutCtx, &generated.IsInitialisedRequest{})
-	return response.IsInitialised, err
+	if err != nil {
+		panic(fmt.Sprintf("failed to establish enclave initialisation status: %v", err))
+	}
+	return response.IsInitialised
 }
 
-func (c *EnclaveClient) ProduceGenesis() (enclave.BlockSubmissionResponse, error) {
+func (c *EnclaveClient) ProduceGenesis() enclave.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{})
-	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse), err
+	if err != nil {
+		panic(fmt.Sprintf("failed to produce genesis: %v", err))
+	}
+	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
-func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) error {
+func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -108,92 +128,116 @@ func (c *EnclaveClient) IngestBlocks(blocks []*types.Block) error {
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
 	_, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
-	return err
+	if err != nil {
+		panic(fmt.Sprintf("failed to ingest blocks: %v", err))
+	}
 }
 
-func (c *EnclaveClient) Start(block types.Block) error {
+func (c *EnclaveClient) Start(block types.Block) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		return err
+		panic(fmt.Sprintf("failed to encode block: %v", err))
 	}
 	_, err := c.protoClient.Start(timeoutCtx, &generated.StartRequest{EncodedBlock: buffer.Bytes()})
-	return err
+	if err != nil {
+		panic(fmt.Sprintf("failed to start enclave: %v", err))
+	}
 }
 
-func (c *EnclaveClient) SubmitBlock(block types.Block) (enclave.BlockSubmissionResponse, error) {
+func (c *EnclaveClient) SubmitBlock(block types.Block) enclave.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		return enclave.BlockSubmissionResponse{}, err
+		panic(fmt.Sprintf("failed to encode block: %v", err))
 	}
 
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
-	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse), err
+	if err != nil {
+		panic(fmt.Sprintf("failed to submit block: %v", err))
+	}
+	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
-func (c *EnclaveClient) SubmitRollup(rollup nodecommon.ExtRollup) error {
+func (c *EnclaveClient) SubmitRollup(rollup nodecommon.ExtRollup) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	extRollupMsg := toExtRollupMsg(&rollup)
 	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
-	return err
+	if err != nil {
+		panic(fmt.Sprintf("failed to submit rollup: %v", err))
+	}
 }
 
-func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) error {
+func (c *EnclaveClient) SubmitTx(tx nodecommon.EncryptedTx) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	_, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
-	return err
+	if err != nil {
+		panic(fmt.Sprintf("failed to submit transaction: %v", err))
+	}
 }
 
-func (c *EnclaveClient) Balance(address common.Address) (uint64, error) {
+func (c *EnclaveClient) Balance(address common.Address) uint64 {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.Balance(timeoutCtx, &generated.BalanceRequest{Address: address.Bytes()})
-	return response.Balance, err
+	if err != nil {
+		panic(fmt.Sprintf("failed to retrieve balance: %v", err))
+	}
+	return response.Balance
 }
 
-func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
+func (c *EnclaveClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
-	if err == nil && response.Winner {
-		return fromExtRollupMsg(response.ExtRollup), true, err
+	if err != nil {
+		panic(fmt.Sprintf("failed to determine round winner: %v", err))
 	}
-	return nodecommon.ExtRollup{}, false, err
+
+	if response.Winner {
+		return fromExtRollupMsg(response.ExtRollup), true
+	}
+	return nodecommon.ExtRollup{}, false
 }
 
-func (c *EnclaveClient) Stop() error {
+func (c *EnclaveClient) Stop() {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
-	return err
+	if err != nil {
+		panic(fmt.Sprintf("failed to stop enclave: %v", err))
+	}
 }
 
-func (c *EnclaveClient) GetTransaction(txHash common.Hash) (*enclave.L2Tx, error) {
+func (c *EnclaveClient) GetTransaction(txHash common.Hash) *enclave.L2Tx {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{TxHash: txHash.Bytes()})
-	if err != nil || !response.Known {
-		return nil, err
+	if err != nil {
+		panic(fmt.Sprintf("failed to get transaction: %v", err))
+	}
+
+	if !response.Known {
+		return nil
 	}
 
 	l2Tx := enclave.L2Tx{}
 	err = l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("failed to decode transaction: %v", err))
 	}
 
-	return &l2Tx, err
+	return &l2Tx
 }
