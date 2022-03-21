@@ -88,7 +88,7 @@ func NewAgg(
 		cfg.ClientRPCTimeoutSecs = clientRPCTimeoutSecs
 	}
 	timeout := time.Duration(cfg.ClientRPCTimeoutSecs) * time.Second
-	enclaveClient := rpc.NewEnclaveClient(port, timeout)
+	enclaveClient := rpc.NewEnclaveRPCClient(port, timeout)
 
 	return Node{
 		// config
