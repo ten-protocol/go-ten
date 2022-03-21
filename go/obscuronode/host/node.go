@@ -32,7 +32,7 @@ type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
 	NewBlock(block *types.Block)
-	NewRollup(rollup *nodecommon.Rollup)
+	NewRollup(rollup *nodecommon.ExtRollup)
 	RollupWithMoreRecentProof()
 }
 
@@ -158,7 +158,7 @@ func (a *Node) startProcessing() {
 			rol, _ := nodecommon.Decode(r)
 			go a.Enclave.SubmitRollup(nodecommon.ExtRollup{
 				Header: rol.Header,
-				Txs:    rol.Transactions,
+				Txs:    rol.Txs,
 			})
 
 		case <-a.exitNodeCh:
@@ -290,7 +290,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		return
 	}
 
-	a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
+	a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(&result.ProducedRollup))
 
 	obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
@@ -299,7 +299,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		// Request the round winner for the current head
 		winnerRollup, submit := a.Enclave.RoundWinner(result.L2Hash)
 		if submit {
-			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(&winnerRollup)}
 			tx := obscurocommon.NewL1Tx(txData)
 			t, err := obscurocommon.EncodeTx(tx)
 			if err != nil {
@@ -316,7 +316,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 func (a *Node) initialiseProtocol() obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis()
-	txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
+	txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(&genesis.ProducedRollup)}
 	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 
 	return genesis.L2Hash

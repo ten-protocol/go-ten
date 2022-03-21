@@ -272,9 +272,9 @@ func extractRollups(b *types.Block, blockResolver obscurocommon.BlockResolver) [
 	return rollups
 }
 
-func toEnclaveRollup(r *nodecommon.Rollup) *Rollup {
+func toEnclaveRollup(r *nodecommon.ExtRollup) *Rollup {
 	return &Rollup{
 		Header:       r.Header,
-		Transactions: decryptTransactions(r.Transactions),
+		Transactions: decryptTransactions(r.Txs),
 	}
 }

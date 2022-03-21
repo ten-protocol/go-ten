@@ -17,7 +17,7 @@ type Stats struct {
 	totalL1Blocks uint
 
 	totalL2Blocks      uint
-	l2Head             *nodecommon.Rollup
+	l2Head             *nodecommon.ExtRollup
 	maxRollupsPerBlock uint32
 	nrEmptyBlocks      int
 
@@ -65,11 +65,11 @@ func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(r *nodecommon.Rollup) {
+func (s *Stats) NewRollup(r *nodecommon.ExtRollup) {
 	s.statsMu.Lock()
 	s.l2Head = r
 	s.totalL2Blocks++
-	s.totalL2Txs += len(r.Transactions)
+	s.totalL2Txs += len(r.Txs)
 	s.statsMu.Unlock()
 }
 

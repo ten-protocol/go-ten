@@ -57,7 +57,7 @@ func (o *OutputStats) countRollups() {
 				r := nodecommon.DecodeRollup(txData.Rollup)
 				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, block, l1Node.Resolver) {
 					o.l2RollupCountInL1Blocks++
-					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
+					o.l2RollupTxCountInL1Blocks += len(r.Txs)
 				}
 			}
 		}

@@ -38,9 +38,9 @@ func encryptTransactions(transactions Transactions) nodecommon.EncryptedTransact
 	return result
 }
 
-func DecryptRollup(rollup *nodecommon.Rollup) *Rollup {
+func DecryptRollup(rollup *nodecommon.ExtRollup) *Rollup {
 	return &Rollup{
 		Header:       rollup.Header,
-		Transactions: decryptTransactions(rollup.Transactions),
+		Transactions: decryptTransactions(rollup.Txs),
 	}
 }

@@ -18,7 +18,7 @@ func printBlock(b *types.Block, m ethereum_mock.Node) string {
 		t := obscurocommon.TxData(tx)
 		if t.TxType == obscurocommon.RollupTx {
 			r := nodecommon.DecodeRollup(t.Rollup)
-			txs = append(txs, fmt.Sprintf("r_%d", obscurocommon.ShortHash(r.Hash())))
+			txs = append(txs, fmt.Sprintf("r_%d", obscurocommon.ShortHash(r.Header.Hash())))
 		} else if t.TxType == obscurocommon.DepositTx {
 			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", obscurocommon.ShortAddress(t.Dest), t.Amount))
 		}

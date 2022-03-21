@@ -28,22 +28,21 @@ func TestSerialiseRollup(t *testing.T) {
 	tx := createL2Tx()
 	height := atomic.Value{}
 	height.Store(1)
-	rollup := nodecommon.Rollup{
-		Header:       GenesisRollup.Header,
-		Height:       height,
-		Transactions: encryptTransactions(Transactions{*tx}),
+	rollup := nodecommon.ExtRollup{
+		Header: GenesisRollup.Header,
+		Txs:    encryptTransactions(Transactions{*tx}),
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
 		panic(err)
 	}
-	r1 := nodecommon.Rollup{}
+	r1 := nodecommon.ExtRollup{}
 
 	err = rlp.Decode(read, &r1)
 	if err != nil {
 		panic(err)
 	}
-	if r1.Hash() != rollup.Hash() {
+	if r1.Header.Hash() != rollup.Header.Hash() {
 		t.Errorf("rollup deserialized incorrectly\n")
 	}
 }

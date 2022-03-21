@@ -2,7 +2,6 @@ package nodecommon
 
 import (
 	"fmt"
-	"sync/atomic"
 
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -31,39 +30,10 @@ type Withdrawal struct {
 	Address common.Address
 }
 
-type Rollup struct {
-	Header *Header
-
-	hash   atomic.Value
-	Height atomic.Value
-	size   atomic.Value //nolint
-
-	Transactions EncryptedTransactions
-}
-
 // ExtRollup Data structure that is used to communicate between the enclave and the outside world
 type ExtRollup struct {
 	Header *Header
 	Txs    EncryptedTransactions
-}
-
-func (er ExtRollup) ToRollup() *Rollup {
-	return &Rollup{
-		Header:       er.Header,
-		Transactions: er.Txs,
-	}
-}
-
-// Hash returns the keccak256 hash of b's header.
-// The hash is computed on the first call and cached thereafter.
-func (r *Rollup) Hash() obscurocommon.L2RootHash {
-	if hash := r.hash.Load(); hash != nil {
-		return hash.(obscurocommon.L2RootHash)
-	}
-	v := r.Header.Hash()
-	r.hash.Store(v)
-
-	return v
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its

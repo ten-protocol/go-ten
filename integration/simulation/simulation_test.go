@@ -180,7 +180,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscuro
 				totalDeposited += tx.Amount
 			case obscurocommon.RollupTx:
 				r := nodecommon.DecodeRollup(tx.Rollup)
-				rollups = append(rollups, r.Hash())
+				rollups = append(rollups, r.Header.Hash())
 				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
