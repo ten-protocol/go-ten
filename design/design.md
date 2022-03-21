@@ -49,12 +49,12 @@ To reduce coupling, the enclave process will be monitored and managed by a super
 The enclave is backed by a datastore. This datastore stores seven maps:
 
 1. L1 block hash -> the state after ingesting the block
-2. Rollup hash -> the state after adding the rollup
-3. int -> the proposed rollups with height <int>
-4. Rollup hash -> the corresponding rollup
-5. L2 transaction hash -> the corresponding mempool transaction
-6. L1 block hash -> the corresponding block and its height
-7. Rollup hash -> the transactions in the corresponding rollup
+2. L1 block hash -> the corresponding block and its height
+3. L2 transaction hash -> the corresponding mempool transaction
+4. Rollup hash -> the state after adding the rollup
+5. Rollup hash -> the corresponding rollup
+6. Rollup hash -> the transactions in the corresponding rollup
+7. int -> the proposed rollups with height <int>
 
 The files backing the datastore are stored outside the enclave. To ensure the datastore contents remain confidential, 
 the values in the datastore maps are stored in encrypted form [WITH WHAT KEY?]. The hash/int keys are not considered 
