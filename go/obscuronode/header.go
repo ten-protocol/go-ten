@@ -12,14 +12,14 @@ import (
 type BlockHeader struct {
 	ID     common.Hash
 	Parent common.Hash
-	Height uint
+	Height uint64
 }
 
 // RollupHeader is holds the header info for the l2 rollups
 type RollupHeader struct {
 	ID     common.Hash
 	Parent common.Hash
-	Height uint
+	Height uint64
 
 	Withdrawals []nodecommon.Withdrawal
 }

@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -15,7 +17,8 @@ import (
 )
 
 const (
-	INITIAL_BALANCE = 5000 // nolint:revive,stylecheck
+	INITIAL_BALANCE         = 5000  // nolint:revive,stylecheck
+	ENCLAVE_CONN_START_PORT = 15000 // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
@@ -47,8 +50,18 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		if i == 1 {
 			genesis = true
 		}
+
+		// create an enclave server
+		nodeID := common.BigToAddress(big.NewInt(int64(i)))
+		port := uint64(ENCLAVE_CONN_START_PORT + i)
+		server, err := rpc.StartServer(port, nodeID, stats)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create enclave server: %v", err))
+		}
+		l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
+
 		// create a layer 2 node
-		agg := host.NewAgg(common.BigToAddress(big.NewInt(int64(i))), l2NodeCfg, nil, l2NetworkCfg, stats, genesis)
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, port)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
@@ -56,6 +69,8 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		l1NetworkCfg.nodes = append(l1NetworkCfg.nodes, &miner)
 		agg.L1Node = &miner
 	}
+
+	waitForEnclaveServers(l2NetworkCfg)
 
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
@@ -65,6 +80,18 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		l2NodeConfig:     &l2NodeCfg,
 		l2Network:        l2NetworkCfg,
 		avgBlockDuration: avgBlockDuration,
+	}
+}
+
+// Returns once all the enclave servers are ready.
+func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
+	for _, node := range l2NetworkCfg.nodes {
+		for {
+			if node.Enclave.IsReady() == nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 }
 
@@ -93,10 +120,13 @@ func (s *Simulation) Start(
 	// Wait for the simulation time
 	time.Sleep(obscurocommon.Duration(uint64(timeInUs)))
 
+	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(timeInUs)))
+	time.Sleep(time.Second)
+}
+
+// Stop closes down the L2 and L1 networks.
+func (s *Simulation) Stop() {
 	// stop L2 first and then L1
 	go s.l2Network.Stop()
 	go s.l1Network.Stop()
-
-	fmt.Printf("Stopped simulation after %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(timeInUs)))
-	time.Sleep(time.Second)
 }

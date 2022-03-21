@@ -65,4 +65,5 @@ func main() {
 	// execute the simulation
 	sim.Start(txManager, simulationTime)
 	fmt.Printf("%s\n", simulation.NewOutputStats(sim))
+	sim.Stop()
 }

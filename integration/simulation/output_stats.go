@@ -19,7 +19,7 @@ type OutputStats struct {
 	l2Height                  int // Last known l2 block height
 }
 
-// NewOutputStats process the simulation and retrieves the output statistics
+// NewOutputStats processes the simulation and retrieves the output statistics
 func NewOutputStats(simulation *Simulation) *OutputStats {
 	outputStats := &OutputStats{
 		simulation: simulation,

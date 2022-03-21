@@ -1,0 +1,184 @@
+syntax = "proto3";
+
+option go_package = "obscuronode/enclave/rpc/generated";
+
+package generated;
+
+service EnclaveProto {
+  // IsReady is used to check whether the server is ready for requests.
+  rpc IsReady(IsReadyRequest) returns (IsReadyResponse) {}
+
+  // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
+  rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
+
+  // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
+  rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
+
+  // FetchSecret - return the shared secret encrypted with the key from the attestation
+  rpc FetchSecret(FetchSecretRequest) returns (FetchSecretResponse) {}
+
+  // Init - initialise an enclave with a seed received by another enclave
+  rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
+
+  // IsInitialised - true if the shared secret is available
+  rpc IsInitialised(IsInitialisedRequest) returns (IsInitialisedResponse) {}
+
+  // ProduceGenesis - the genesis enclave produces the genesis rollup
+  rpc ProduceGenesis(ProduceGenesisRequest) returns (ProduceGenesisResponse) {}
+
+  // IngestBlocks - feed L1 blocks into the enclave to catch up
+  rpc IngestBlocks(IngestBlocksRequest) returns (IngestBlocksResponse) {}
+
+  // Start - start speculative execution
+  rpc Start(StartRequest) returns (StartResponse) {}
+
+  // SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
+  // it is the responsibility of the host to gossip the returned rollup
+  // For good functioning the caller should always submit blocks ordered by height
+  // submitting a block before receiving a parent of it, will result in it being ignored
+  rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse) {}
+
+  // SubmitRollup - receive gossiped rollups
+  rpc SubmitRollup(SubmitRollupRequest) returns (SubmitRollupResponse) {}
+
+  // SubmitTx - user transactions
+  rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
+
+  // Balance - returns the balance of an address with a block delay
+  rpc Balance(BalanceRequest) returns (BalanceResponse) {}
+
+  // RoundWinner - calculates and returns the winner for a round
+  rpc RoundWinner(RoundWinnerRequest) returns (RoundWinnerResponse) {}
+
+  // Stop gracefully stops the enclave
+  rpc Stop(StopRequest) returns (StopResponse) {}
+
+  // GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
+  rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse) {}
+}
+
+message IsReadyRequest {}
+message IsReadyResponse {}
+
+message AttestationRequest {}
+message AttestationResponse {
+  AttestationReportMsg attestationReportMsg = 1;
+}
+
+message GenerateSecretRequest {}
+message GenerateSecretResponse {
+  bytes encryptedSharedEnclaveSecret = 1;
+}
+
+message FetchSecretRequest {
+  AttestationReportMsg attestationReportMsg = 1;
+}
+message FetchSecretResponse {
+  bytes encryptedSharedEnclaveSecret = 1;
+}
+
+message InitEnclaveRequest {
+  bytes encryptedSharedEnclaveSecret = 1;
+}
+message InitEnclaveResponse {}
+
+message IsInitialisedRequest {}
+message IsInitialisedResponse {
+  bool isInitialised = 1;
+}
+
+message ProduceGenesisRequest {}
+message ProduceGenesisResponse {
+  BlockSubmissionResponseMsg blockSubmissionResponse = 1;
+}
+
+message IngestBlocksRequest {
+  repeated bytes encodedBlocks = 1;
+}
+message IngestBlocksResponse {}
+
+message StartRequest {
+  bytes encodedBlock = 1;
+}
+message StartResponse {}
+
+message SubmitBlockRequest {
+  bytes encodedBlock = 1;
+}
+message SubmitBlockResponse {
+  BlockSubmissionResponseMsg blockSubmissionResponse = 1;
+}
+
+message SubmitRollupRequest {
+  ExtRollupMsg extRollup = 1;
+}
+message SubmitRollupResponse {}
+
+message SubmitTxRequest {
+  bytes encryptedTx = 1;
+}
+message SubmitTxResponse {}
+
+message BalanceRequest {
+  bytes address = 1;
+}
+message BalanceResponse {
+  uint64 balance = 1;
+}
+
+message RoundWinnerRequest {
+  bytes parent = 1;
+}
+message RoundWinnerResponse {
+  bool winner = 1;
+  ExtRollupMsg extRollup = 2;
+}
+
+message StopRequest {}
+message StopResponse {}
+
+message GetTransactionRequest {
+  bytes txHash = 1;
+}
+message GetTransactionResponse {
+  bool known = 1;
+  bytes encodedTransaction = 2;
+}
+
+// Nested message types.
+
+message AttestationReportMsg {
+  bytes owner = 1;
+}
+
+message BlockSubmissionResponseMsg {
+  bytes l1Hash = 1;
+  uint64 l1Height = 2;
+  bytes l1Parent = 3;
+  bytes l2Hash = 4;
+  uint64 l2Height = 5;
+  bytes l2Parent = 6;
+  repeated WithdrawalMsg withdrawals = 7;
+  ExtRollupMsg producedRollup = 8;
+  bool ingestedBlock = 9;
+  bool ingestedNewRollup = 10;
+}
+
+message ExtRollupMsg {
+  HeaderMsg header = 1;
+  repeated bytes txs = 2;
+}
+
+message HeaderMsg {
+  bytes parentHash = 1;
+  bytes agg = 2;
+  uint64 nonce = 3;
+  bytes l1Proof = 4;
+  string stateRoot = 5;
+  repeated WithdrawalMsg withdrawals = 6;
+}
+
+message WithdrawalMsg {
+  uint64 amount = 1;
+  bytes address = 2;
+}

@@ -3,6 +3,8 @@ package simulation
 import (
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -12,6 +14,7 @@ import (
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
 	nodes            []*host.Node
+	enclaveServers   []*grpc.Server
 	avgLatency       uint64
 	avgBlockDuration uint64
 }
@@ -53,9 +56,12 @@ func (cfg *L2NetworkCfg) Start(delay time.Duration) {
 }
 
 func (cfg *L2NetworkCfg) Stop() {
-	for _, m := range cfg.nodes {
-		m.Stop()
-		// fmt.Printf("Stopped L2 node: %d\n", m.ID)
+	for _, n := range cfg.nodes {
+		n.Stop()
+	}
+
+	for _, es := range cfg.enclaveServers {
+		es.GracefulStop()
 	}
 }
 
