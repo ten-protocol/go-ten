@@ -20,9 +20,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const clientRPCTimeoutSecs = 5
+
 type AggregatorCfg struct {
 	// duration of the gossip round
 	GossipRoundDuration uint64
+	// timeout duration in seconds for RPC requests to the enclave service
+	ClientRPCTimeoutSecs uint64
 }
 
 type L2Network interface {
@@ -79,8 +83,11 @@ func NewAgg(
 	collector StatsCollector,
 	genesis bool,
 	port uint64,
-	timeout time.Duration,
 ) Node {
+	if cfg.ClientRPCTimeoutSecs == 0 {
+		cfg.ClientRPCTimeoutSecs = clientRPCTimeoutSecs
+	}
+	timeout := time.Duration(cfg.ClientRPCTimeoutSecs) * time.Second
 	enclaveClient := rpc.NewEnclaveClient(port, timeout)
 
 	return Node{
