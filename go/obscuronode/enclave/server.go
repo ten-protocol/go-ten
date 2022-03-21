@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"net"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
@@ -20,7 +21,7 @@ import (
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
 type server struct {
 	generated.UnimplementedEnclaveProtoServer
-	enclave rpc.Enclave
+	enclave nodecommon.Enclave
 }
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,

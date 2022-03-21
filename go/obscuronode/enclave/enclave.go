@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -100,8 +98,8 @@ func (e *enclaveImpl) Start(block types.Block) {
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis() rpc.BlockSubmissionResponse {
-	return rpc.BlockSubmissionResponse{
+func (e *enclaveImpl) ProduceGenesis() nodecommon.BlockSubmissionResponse {
+	return nodecommon.BlockSubmissionResponse{
 		L2Hash:         GenesisRollup.Header.Hash(),
 		L1Hash:         obscurocommon.GenesisHash,
 		ProducedRollup: GenesisRollup.ToExtRollup(),
@@ -116,7 +114,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) {
 	}
 }
 
-func (e *enclaveImpl) SubmitBlock(block types.Block) rpc.BlockSubmissionResponse {
+func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
 	// Todo - investigate further why this is needed.
 	// So far this seems to recover correctly
 	defer func() {
@@ -127,7 +125,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) rpc.BlockSubmissionResponse
 
 	_, foundBlock := e.db.ResolveBlock(block.Hash())
 	if foundBlock {
-		return rpc.BlockSubmissionResponse{IngestedBlock: false}
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
 	e.db.StoreBlock(&block)
@@ -137,7 +135,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) rpc.BlockSubmissionResponse
 
 	_, f := e.db.ResolveBlock(block.Header().ParentHash)
 	if !f && e.db.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
-		return rpc.BlockSubmissionResponse{IngestedBlock: false}
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 	blockState := updateState(&block, e.db, e.blockResolver)
 
@@ -147,7 +145,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) rpc.BlockSubmissionResponse
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.db.StoreRollup(r)
 
-	return rpc.BlockSubmissionResponse{
+	return nodecommon.BlockSubmissionResponse{
 		L1Hash:      block.Hash(),
 		L1Height:    uint64(e.blockResolver.HeightBlock(&block)),
 		L1Parent:    blockState.Block.Header().ParentHash,
@@ -347,7 +345,7 @@ type speculativeWork struct {
 	txs []nodecommon.L2Tx
 }
 
-func NewEnclave(id common.Address, mining bool, collector StatsCollector) rpc.Enclave {
+func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodecommon.Enclave {
 	db := NewInMemoryDB()
 	return &enclaveImpl{
 		node:                 id,

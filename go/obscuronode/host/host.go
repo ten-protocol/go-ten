@@ -5,8 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
@@ -66,7 +64,7 @@ type Node struct {
 	rollupsP2PCh chan obscurocommon.EncodedRollup
 
 	// Interface to the logic running inside the TEE
-	Enclave rpc.Enclave
+	Enclave nodecommon.Enclave
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
@@ -265,7 +263,7 @@ type blockAndParent struct {
 }
 
 func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int32) {
-	var result rpc.BlockSubmissionResponse
+	var result nodecommon.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {

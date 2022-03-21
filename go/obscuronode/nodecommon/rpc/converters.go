@@ -18,7 +18,7 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) obscurocommon
 	return obscurocommon.AttestationReport{Owner: common.BytesToAddress(msg.Owner)}
 }
 
-func ToBlockSubmissionResponseMsg(response BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {
+func ToBlockSubmissionResponseMsg(response nodecommon.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {
 	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
 	for _, withdrawal := range response.Withdrawals {
 		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
@@ -41,7 +41,7 @@ func ToBlockSubmissionResponseMsg(response BlockSubmissionResponse) generated.Bl
 	}
 }
 
-func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) BlockSubmissionResponse {
+func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) nodecommon.BlockSubmissionResponse {
 	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range msg.Withdrawals {
 		address := common.BytesToAddress(withdrawalMsg.Address)
@@ -49,7 +49,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) B
 		withdrawals = append(withdrawals, withdrawal)
 	}
 
-	return BlockSubmissionResponse{
+	return nodecommon.BlockSubmissionResponse{
 		L1Hash:            common.BytesToHash(msg.L1Hash),
 		L1Height:          msg.L1Height,
 		L1Parent:          common.BytesToHash(msg.L1Parent),

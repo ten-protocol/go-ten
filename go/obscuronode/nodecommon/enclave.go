@@ -1,10 +1,9 @@
-package rpc
+package nodecommon
 
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // Enclave - The actual implementation of this interface will call an rpc service
@@ -43,22 +42,22 @@ type Enclave interface {
 	SubmitBlock(block types.Block) BlockSubmissionResponse
 
 	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup nodecommon.ExtRollup)
+	SubmitRollup(rollup ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx nodecommon.EncryptedTx) error
+	SubmitTx(tx EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
 	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
-	RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool)
+	RoundWinner(parent obscurocommon.L2RootHash) (ExtRollup, bool)
 
 	// Stop gracefully stops the enclave
 	Stop()
 
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
-	GetTransaction(txHash common.Hash) *nodecommon.L2Tx
+	GetTransaction(txHash common.Hash) *L2Tx
 
 	// StopClient stops the enclave client if one exists
 	StopClient()
@@ -72,9 +71,9 @@ type BlockSubmissionResponse struct {
 	L2Hash      obscurocommon.L2RootHash // The Rollup Hash in the ingested Block
 	L2Height    uint64                   // The Rollup Height in the ingested Block
 	L2Parent    obscurocommon.L2RootHash // The Rollup Hash Parent inside the ingested Block
-	Withdrawals []nodecommon.Withdrawal  // The Withdrawals available in Rollup of the ingested Block
+	Withdrawals []Withdrawal             // The Withdrawals available in Rollup of the ingested Block
 
-	ProducedRollup    nodecommon.ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	IngestedBlock     bool                 // Whether the Block was ingested or discarded
-	IngestedNewRollup bool                 // Whether the Block had a new Rollup and the enclave has ingested it
+	ProducedRollup    ExtRollup // The new Rollup when ingesting the block produces a new Rollup
+	IngestedBlock     bool      // Whether the Block was ingested or discarded
+	IngestedNewRollup bool      // Whether the Block had a new Rollup and the enclave has ingested it
 }
