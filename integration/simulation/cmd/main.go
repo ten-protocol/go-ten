@@ -59,6 +59,7 @@ func main() {
 		l2NetworkCfg,
 		avgBlockDuration,
 		avgGossipPeriod,
+		false,
 		stats,
 	)
 
