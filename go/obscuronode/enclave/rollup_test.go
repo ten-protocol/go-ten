@@ -31,7 +31,7 @@ func TestSerialiseRollup(t *testing.T) {
 	rollup := nodecommon.Rollup{
 		Header:       GenesisRollup.Header,
 		Height:       height,
-		Transactions: encryptTransactions(Transactions{*tx}),
+		Transactions: encryptTransactions(L2Txs{*tx}),
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {

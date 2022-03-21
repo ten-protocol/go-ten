@@ -15,6 +15,9 @@ import (
 
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
 
+// todo - this should become an elaborate data structure
+type SharedEnclaveSecret []byte
+
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)

@@ -46,7 +46,7 @@ type DB interface {
 	Head() BlockState
 	Balance(address common.Address) uint64
 
-	// Transactions
+	// L2Txs
 	FetchTxs() []L2Tx
 	StoreTx(tx L2Tx)
 	PruneTxs(remove map[common.Hash]common.Hash)

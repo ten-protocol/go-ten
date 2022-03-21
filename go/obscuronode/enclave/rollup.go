@@ -3,52 +3,13 @@ package enclave
 import (
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/rlp"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-// L2TxType indicates the type of L2 transaction - either a transfer or a withdrawal for now
-type L2TxType uint8
-
-const (
-	TransferTx L2TxType = iota
-	WithdrawalTx
-)
-
-// L2TxData is the Obscuro transaction data that will be stored encoded in the types.Transaction data field.
-type L2TxData struct {
-	Type   L2TxType
-	From   common.Address
-	To     common.Address
-	Amount uint64
-}
-
-type L2Tx = types.Transaction
-
-// TxData returns the decoded L2 data stored in the transaction's data field.
-func TxData(tx *L2Tx) L2TxData {
-	data := L2TxData{}
-
-	err := rlp.DecodeBytes(tx.Data(), &data)
-	if err != nil {
-		// TODO - Surface this error properly.
-		panic(err)
-	}
-
-	return data
-}
-
 var GenesisRollup = NewRollup(obscurocommon.GenesisBlock, nil, common.HexToAddress("0x0"), []L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
-
-type Transactions []L2Tx
-
-// todo - this should become an elaborate data structure
-type SharedEnclaveSecret []byte
 
 // Rollup Data structure only for the internal use of the enclave since transactions are in clear
 type Rollup struct {
@@ -58,7 +19,7 @@ type Rollup struct {
 	Height atomic.Value
 	// size   atomic.Value
 
-	Transactions Transactions
+	Transactions L2Txs
 }
 
 // Hash returns the keccak256 hash of b's header.
