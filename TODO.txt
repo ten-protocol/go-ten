@@ -38,6 +38,7 @@ Normal:
 - collect statistics when multiple rollups compete (to see what actually happens)
 - When verifying a rollup - check that the withdrawals in the header match the withdrawals as calculated
 - in simulation, add checks around validly and invalidly signed transactions
+- add configuration file support
 
 Future:
 - analyse the POBI round - some inefficient state recalculation for the rollups
