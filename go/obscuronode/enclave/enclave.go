@@ -119,16 +119,19 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
-	headerHash := block.Hash()
-	s, f := e.db.FetchState(headerHash)
-	if !f {
-		panic("state should be calculated")
-	}
-
-	currentHead := s.Head
-	currentState := newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
+	var currentHead *Rollup
+	var currentState RollupState
 	var currentProcessedTxs []L2Tx
 	currentProcessedTxsMap := make(map[common.Hash]L2Tx)
+
+	// determine whether the block where the speculative execution will start already contains Obscuro state
+	blockState, f := e.db.FetchState(block.Hash())
+	if f {
+		currentHead = blockState.Head
+		if currentHead != nil {
+			currentState = newProcessedState(e.db.FetchRollupState(currentHead.Hash()))
+		}
+	}
 
 	// start the speculative rollup execution loop
 	for {
@@ -147,11 +150,14 @@ func (e *enclaveImpl) Start(block types.Block) {
 			currentState = executeTransactions(currentProcessedTxs, currentState)
 
 		case tx := <-e.txCh:
-			_, found := currentProcessedTxsMap[tx.Hash()]
-			if !found {
-				currentProcessedTxsMap[tx.Hash()] = tx
-				currentProcessedTxs = append(currentProcessedTxs, tx)
-				executeTx(&currentState, tx)
+			// only process transactions if there is already a rollup to use as parent
+			if currentHead != nil {
+				_, found := currentProcessedTxsMap[tx.Hash()]
+				if !found {
+					currentProcessedTxsMap[tx.Hash()] = tx
+					currentProcessedTxs = append(currentProcessedTxs, tx)
+					executeTx(&currentState, tx)
+				}
 			}
 
 		case <-e.speculativeWorkInCh:
@@ -313,7 +319,7 @@ func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	return e.db.Balance(address)
 }
 
-func (e *enclaveImpl) produceRollup(b *types.Block, bs BlockState) *Rollup {
+func (e *enclaveImpl) produceRollup(b *types.Block, bs *BlockState) *Rollup {
 	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
 	e.speculativeWorkInCh <- true
 	speculativeRollup := <-e.speculativeWorkOutCh

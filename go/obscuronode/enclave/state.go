@@ -97,23 +97,29 @@ func emptyState() State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolver) BlockState {
+func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolver) *BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := db.FetchState(b.Hash())
 	if found {
 		return val
 	}
 
+	if blockResolver.HeightBlock(b) == 0 {
+		return nil
+	}
+
+	rollups := extractRollups(b, blockResolver)
+
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if b.Hash() == obscurocommon.GenesisBlock.Hash() {
+	if len(rollups) > 0 && rollups[0].Hash() == GenesisRollup.Hash() {
 		bs := BlockState{
 			Block:          b,
 			Head:           &GenesisRollup,
 			State:          emptyState(),
 			foundNewRollup: true,
 		}
-		db.SetState(b.Hash(), bs)
-		return bs
+		db.SetState(b.Hash(), &bs)
+		return &bs
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
@@ -122,12 +128,12 @@ func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolve
 		// go back and calculate the State of the Parent
 		p, f := db.ParentBlock(b)
 		if !f {
-			panic("wtf")
+			panic("Could not find block parent. This should not happen.")
 		}
 		parentState = updateState(p, db, blockResolver)
 	}
 
-	bs := calculateBlockState(b, parentState, db, blockResolver)
+	bs := calculateBlockState(b, parentState, db, blockResolver, rollups)
 
 	db.SetState(b.Hash(), bs)
 
@@ -230,8 +236,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockResolver obscurocommon.BlockResolver) BlockState {
-	rollups := extractRollups(b, blockResolver)
+func calculateBlockState(b *types.Block, parentState *BlockState, db DB, blockResolver obscurocommon.BlockResolver, rollups []*Rollup) *BlockState {
 	newHead, found := FindWinner(parentState.Head, rollups, db, blockResolver)
 
 	s := newProcessedState(parentState.State)
@@ -251,7 +256,7 @@ func calculateBlockState(b *types.Block, parentState BlockState, db DB, blockRes
 		State:          s.s,
 		foundNewRollup: found,
 	}
-	return bs
+	return &bs
 }
 
 func extractRollups(b *types.Block, blockResolver obscurocommon.BlockResolver) []*Rollup {

@@ -39,11 +39,11 @@ type DB interface {
 	StoreBlock(node *types.Block)
 
 	// State
-	FetchState(hash obscurocommon.L1RootHash) (BlockState, bool)
-	SetState(hash obscurocommon.L1RootHash, state BlockState)
+	FetchState(hash obscurocommon.L1RootHash) (*BlockState, bool)
+	SetState(hash obscurocommon.L1RootHash, state *BlockState)
 	FetchRollupState(hash obscurocommon.L2RootHash) State
 	SetRollupState(hash obscurocommon.L2RootHash, state State)
-	Head() BlockState
+	Head() *BlockState
 	Balance(address common.Address) uint64
 
 	// Transactions
@@ -65,7 +65,7 @@ type blockAndHeight struct {
 
 type inMemoryDB struct {
 	// the State is dependent on the L1 block alone
-	statePerBlock  map[obscurocommon.L1RootHash]BlockState
+	statePerBlock  map[obscurocommon.L1RootHash]*BlockState
 	statePerRollup map[obscurocommon.L2RootHash]State
 	headBlock      obscurocommon.L1RootHash
 	stateMutex     sync.RWMutex
@@ -87,7 +87,7 @@ type inMemoryDB struct {
 
 func NewInMemoryDB() DB {
 	return &inMemoryDB{
-		statePerBlock:             make(map[obscurocommon.L1RootHash]BlockState),
+		statePerBlock:             make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:                sync.RWMutex{},
 		rollupsByHeight:           make(map[int][]*Rollup),
 		rollups:                   make(map[obscurocommon.L2RootHash]*Rollup),
@@ -101,7 +101,7 @@ func NewInMemoryDB() DB {
 	}
 }
 
-func (db *inMemoryDB) FetchState(hash obscurocommon.L1RootHash) (BlockState, bool) {
+func (db *inMemoryDB) FetchState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
 	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
@@ -109,7 +109,7 @@ func (db *inMemoryDB) FetchState(hash obscurocommon.L1RootHash) (BlockState, boo
 	return val, found
 }
 
-func (db *inMemoryDB) SetState(hash obscurocommon.L1RootHash, state BlockState) {
+func (db *inMemoryDB) SetState(hash obscurocommon.L1RootHash, state *BlockState) {
 	db.assertSecretAvailable()
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
@@ -131,7 +131,7 @@ func (db *inMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state State)
 	db.statePerRollup[hash] = state
 }
 
-func (db *inMemoryDB) Head() BlockState {
+func (db *inMemoryDB) Head() *BlockState {
 	db.assertSecretAvailable()
 	val, _ := db.FetchState(db.headBlock)
 	return val
