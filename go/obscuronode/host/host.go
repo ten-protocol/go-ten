@@ -135,7 +135,11 @@ func (a *Node) startProcessing() {
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	allblocks := a.L1Node.RPCBlockchainFeed()
 	a.Enclave.IngestBlocks(allblocks)
+
 	// todo - what happens with the blocks received while processing ?
+	if len(allblocks) == 0 {
+		panic("Host has no blocks available to begin processing.")
+	}
 	a.Enclave.Start(*allblocks[len(allblocks)-1])
 
 	if a.genesis {
