@@ -10,7 +10,7 @@ import (
 
 type blockAndHeight struct {
 	b      *types.Block
-	height int
+	height uint64
 }
 
 // Received blocks ar stored here
@@ -30,7 +30,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.m.Lock()
 	defer n.m.Unlock()
 	if block.ParentHash() == obscurocommon.GenesisHash {
-		n.blockCache[block.Hash()] = blockAndHeight{block, 0}
+		n.blockCache[block.Hash()] = blockAndHeight{block, obscurocommon.L1GenesisHeight}
 		return
 	}
 
@@ -50,7 +50,7 @@ func (n *blockResolverInMem) ResolveBlock(hash obscurocommon.L1RootHash) (*types
 	return block.b, f
 }
 
-func (n *blockResolverInMem) HeightBlock(block *types.Block) int {
+func (n *blockResolverInMem) HeightBlock(block *types.Block) uint64 {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	return n.blockCache[block.Hash()].height

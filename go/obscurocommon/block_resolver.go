@@ -6,7 +6,7 @@ import "github.com/ethereum/go-ethereum/core/types"
 type BlockResolver interface {
 	ResolveBlock(hash L1RootHash) (*types.Block, bool)
 	StoreBlock(block *types.Block)
-	HeightBlock(block *types.Block) int
+	HeightBlock(block *types.Block) uint64
 	ParentBlock(block *types.Block) (*types.Block, bool)
 }
 

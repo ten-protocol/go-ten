@@ -63,7 +63,7 @@ type Enclave interface {
 	ProduceGenesis() BlockSubmissionResponse
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(blocks []*types.Block)
+	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
 
 	// Start - start speculative execution
 	Start(block types.Block)
@@ -191,21 +191,49 @@ func (e *enclaveImpl) ProduceGenesis() BlockSubmissionResponse {
 	}
 }
 
-func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) {
-	for _, block := range blocks {
+func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse {
+	result := make([]BlockSubmissionResponse, len(blocks))
+	for i, block := range blocks {
 		e.db.StoreBlock(block)
-		updateState(block, e.db, e.blockResolver)
+		bs := updateState(block, e.db, e.blockResolver)
+		if bs == nil {
+			result[i] = BlockSubmissionResponse{
+				L1Hash:            block.Hash(),
+				L1Height:          e.blockResolver.HeightBlock(block),
+				L1Parent:          block.ParentHash(),
+				IngestedBlock:     true,
+				IngestedNewRollup: false,
+			}
+		} else {
+			var rollup nodecommon.ExtRollup
+			if bs.foundNewRollup {
+				rollup = bs.Head.ToExtRollup()
+			}
+			result[i] = BlockSubmissionResponse{
+				L1Hash:            bs.Block.Hash(),
+				L1Height:          e.blockResolver.HeightBlock(bs.Block),
+				L1Parent:          bs.Block.ParentHash(),
+				L2Hash:            bs.Head.Hash(),
+				L2Height:          e.db.HeightRollup(bs.Head),
+				L2Parent:          bs.Head.Header.ParentHash,
+				ProducedRollup:    rollup,
+				IngestedBlock:     true,
+				IngestedNewRollup: bs.foundNewRollup,
+			}
+		}
 	}
+
+	return result
 }
 
 func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 	// Todo - investigate further why this is needed.
 	// So far this seems to recover correctly
-	defer func() {
-		if r := recover(); r != nil {
-			log.Log(fmt.Sprintf("Agg%d Panic %s", obscurocommon.ShortAddress(e.node), r))
-		}
-	}()
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		log.Log(fmt.Sprintf("Agg%d Panic %s", obscurocommon.ShortAddress(e.node), r))
+	//	}
+	//}()
 
 	_, foundBlock := e.db.ResolveBlock(block.Hash())
 	if foundBlock {
@@ -223,6 +251,16 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 	}
 	blockState := updateState(&block, e.db, e.blockResolver)
 
+	if blockState == nil {
+		return BlockSubmissionResponse{
+			L1Hash:            block.Hash(),
+			L1Height:          e.blockResolver.HeightBlock(&block),
+			L1Parent:          block.ParentHash(),
+			IngestedBlock:     true,
+			IngestedNewRollup: false,
+		}
+	}
+
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	e.db.PruneTxs(historicTxs(blockState.Head, e.db))
 	r := e.produceRollup(&block, blockState)
@@ -231,10 +269,10 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
 
 	return BlockSubmissionResponse{
 		L1Hash:      block.Hash(),
-		L1Height:    uint64(e.blockResolver.HeightBlock(&block)),
+		L1Height:    e.blockResolver.HeightBlock(&block),
 		L1Parent:    blockState.Block.Header().ParentHash,
 		L2Hash:      blockState.Head.Hash(),
-		L2Height:    uint64(blockState.Head.Height.Load().(int)),
+		L2Height:    blockState.Head.Height.Load().(uint64),
 		L2Parent:    blockState.Head.Header.ParentHash,
 		Withdrawals: blockState.Head.Header.Withdrawals,
 

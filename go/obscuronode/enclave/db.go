@@ -26,14 +26,14 @@ type DB interface {
 	FetchRollup(hash obscurocommon.L2RootHash) *Rollup
 	StoreRollup(rollup *Rollup)
 	ParentRollup(*Rollup) *Rollup
-	HeightRollup(*Rollup) int
+	HeightRollup(*Rollup) uint64
 	ExistRollup(hash obscurocommon.L2RootHash) bool
 
 	// Gossip
-	FetchGossipedRollups(height int) []*Rollup
+	FetchGossipedRollups(height uint64) []*Rollup
 
 	// Block resolver
-	HeightBlock(block *types.Block) int
+	HeightBlock(block *types.Block) uint64
 	ParentBlock(block *types.Block) (*types.Block, bool)
 	ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
 	StoreBlock(node *types.Block)
@@ -60,7 +60,7 @@ type DB interface {
 
 type blockAndHeight struct {
 	b      *types.Block
-	height int
+	height uint64
 }
 
 type inMemoryDB struct {
@@ -70,7 +70,7 @@ type inMemoryDB struct {
 	headBlock      obscurocommon.L1RootHash
 	stateMutex     sync.RWMutex
 
-	rollupsByHeight map[int][]*Rollup
+	rollupsByHeight map[uint64][]*Rollup
 	rollups         map[obscurocommon.L2RootHash]*Rollup
 
 	mempool map[common.Hash]L2Tx
@@ -89,7 +89,7 @@ func NewInMemoryDB() DB {
 	return &inMemoryDB{
 		statePerBlock:             make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:                sync.RWMutex{},
-		rollupsByHeight:           make(map[int][]*Rollup),
+		rollupsByHeight:           make(map[uint64][]*Rollup),
 		rollups:                   make(map[obscurocommon.L2RootHash]*Rollup),
 		mempool:                   make(map[common.Hash]L2Tx),
 		mpMutex:                   sync.RWMutex{},
@@ -176,7 +176,7 @@ func (db *inMemoryDB) ExistRollup(hash obscurocommon.L2RootHash) bool {
 	return f
 }
 
-func (db *inMemoryDB) FetchGossipedRollups(height int) []*Rollup {
+func (db *inMemoryDB) FetchGossipedRollups(height uint64) []*Rollup {
 	db.assertSecretAvailable()
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
@@ -229,7 +229,7 @@ func (db *inMemoryDB) StoreBlock(b *types.Block) {
 	defer db.blockM.Unlock()
 
 	if b.ParentHash() == obscurocommon.GenesisHash {
-		db.blockCache[b.Hash()] = &blockAndHeight{b, 0}
+		db.blockCache[b.Hash()] = &blockAndHeight{b, obscurocommon.L1GenesisHeight}
 		return
 	}
 
@@ -272,10 +272,10 @@ func (db *inMemoryDB) ParentRollup(r *Rollup) *Rollup {
 	return db.FetchRollup(r.Header.ParentHash)
 }
 
-func (db *inMemoryDB) HeightRollup(r *Rollup) int {
+func (db *inMemoryDB) HeightRollup(r *Rollup) uint64 {
 	db.assertSecretAvailable()
 	if height := r.Height.Load(); height != nil {
-		return height.(int)
+		return height.(uint64)
 	}
 	if r.Hash() == GenesisRollup.Hash() {
 		r.Height.Store(obscurocommon.L2GenesisHeight)
@@ -300,7 +300,7 @@ func (db *inMemoryDB) assertSecretAvailable() {
 	}
 }
 
-func (db *inMemoryDB) HeightBlock(block *types.Block) int {
+func (db *inMemoryDB) HeightBlock(block *types.Block) uint64 {
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	b, f := db.blockCache[block.Hash()]
@@ -314,5 +314,8 @@ func (db *inMemoryDB) ParentBlock(block *types.Block) (*types.Block, bool) {
 	db.blockM.RLock()
 	defer db.blockM.RUnlock()
 	b, f := db.blockCache[block.ParentHash()]
+	if !f {
+		return nil, false
+	}
 	return b.b, f
 }

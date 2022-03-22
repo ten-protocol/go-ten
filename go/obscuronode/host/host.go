@@ -134,7 +134,11 @@ func (a *Node) startProcessing() {
 	// Todo: This is a naive implementation.
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	allblocks := a.L1Node.RPCBlockchainFeed()
-	a.Enclave.IngestBlocks(allblocks)
+	results := a.Enclave.IngestBlocks(allblocks)
+	for _, result := range results {
+		a.storeBlockProcessingResult(result)
+	}
+
 	// todo - what happens with the blocks received while processing ?
 	a.Enclave.Start(*allblocks[len(allblocks)-1])
 
@@ -170,7 +174,7 @@ func (a *Node) startProcessing() {
 			})
 
 		case <-a.exitNodeCh:
-			a.Enclave.Stop()
+			// a.Enclave.Stop()
 			return
 		}
 	}
@@ -269,28 +273,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 			// submit each block to the enclave for ingestion plus validation
 			result = a.Enclave.SubmitBlock(*block.DecodeBlock())
-
-			// only update the node rollup headers if the enclave has ingested it
-			if result.IngestedNewRollup {
-				// adding a header will update the head if it has a higher height
-				a.DB().AddRollupHeader(
-					&obscuronode.RollupHeader{
-						ID:          result.L2Hash,
-						Parent:      result.L2Parent,
-						Withdrawals: result.Withdrawals,
-						Height:      result.L2Height,
-					},
-				)
-			}
-
-			// adding a header will update the head if it has a higher height
-			a.DB().AddBlockHeader(
-				&obscuronode.BlockHeader{
-					ID:     result.L1Hash,
-					Parent: result.L1Parent,
-					Height: result.L1Height,
-				},
-			)
+			a.storeBlockProcessingResult(result)
 		}
 	}
 
@@ -300,26 +283,53 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		return
 	}
 
-	a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
+	// todo -make this a better check
+	if result.ProducedRollup.Header != nil {
+		a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-	obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
-		if atomic.LoadInt32(a.interrupt) == 1 {
-			return
-		}
-		// Request the round winner for the current head
-		winnerRollup, submit := a.Enclave.RoundWinner(result.L2Hash)
-		if submit {
-			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
-			tx := obscurocommon.NewL1Tx(txData)
-			t, err := obscurocommon.EncodeTx(tx)
-			if err != nil {
-				panic(err)
+		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
+			if atomic.LoadInt32(a.interrupt) == 1 {
+				return
 			}
-			a.L1Node.BroadcastTx(t)
-			// collect Stats
-			// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
-		}
-	})
+			// Request the round winner for the current head
+			winnerRollup, submit := a.Enclave.RoundWinner(result.L2Hash)
+			if submit {
+				txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+				tx := obscurocommon.NewL1Tx(txData)
+				t, err := obscurocommon.EncodeTx(tx)
+				if err != nil {
+					panic(err)
+				}
+				a.L1Node.BroadcastTx(t)
+				// collect Stats
+				// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
+			}
+		})
+	}
+}
+
+func (a *Node) storeBlockProcessingResult(result enclave.BlockSubmissionResponse) {
+	// only update the node rollup headers if the enclave has ingested it
+	if result.IngestedNewRollup {
+		// adding a header will update the head if it has a higher height
+		a.DB().AddRollupHeader(
+			&obscuronode.RollupHeader{
+				ID:          result.L2Hash,
+				Parent:      result.L2Parent,
+				Withdrawals: result.Withdrawals,
+				Height:      result.L2Height,
+			},
+		)
+	}
+
+	// adding a header will update the head if it has a higher height
+	a.DB().AddBlockHeader(
+		&obscuronode.BlockHeader{
+			ID:     result.L1Hash,
+			Parent: result.L1Parent,
+			Height: result.L1Height,
+		},
+	)
 }
 
 // Called only by the first enclave to bootstrap the network

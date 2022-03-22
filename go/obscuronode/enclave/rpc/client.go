@@ -116,7 +116,7 @@ func (c *EnclaveRPCClient) ProduceGenesis() enclave.BlockSubmissionResponse {
 	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
-func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) {
+func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) []enclave.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -125,10 +125,16 @@ func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) {
 		encodedBlock := obscurocommon.EncodeBlock(block)
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
-	_, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
+	response, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
 	if err != nil {
 		panic(fmt.Sprintf("failed to ingest blocks: %v", err))
 	}
+	responses := response.GetBlockSubmissionResponses()
+	result := make([]enclave.BlockSubmissionResponse, len(responses))
+	for i, r := range responses {
+		result[i] = fromBlockSubmissionResponseMsg(r)
+	}
+	return result
 }
 
 func (c *EnclaveRPCClient) Start(block types.Block) {
