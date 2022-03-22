@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -31,7 +33,15 @@ type Simulation struct {
 }
 
 // NewSimulation defines a new simulation network
-func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2NetworkCfg, avgBlockDuration uint64, gossipPeriod uint64, stats *Stats) *Simulation {
+func NewSimulation(
+	nrNodes int,
+	l1NetworkCfg *L1NetworkCfg,
+	l2NetworkCfg *L2NetworkCfg,
+	avgBlockDuration uint64,
+	gossipPeriod uint64,
+	localEnclave bool,
+	stats *Stats,
+) *Simulation {
 	l1NodeCfg := ethereum_mock.MiningConfig{
 		PowTime: func() uint64 {
 			// This formula might feel counter-intuitive, but it is a good approximation for Proof of Work.
@@ -43,7 +53,7 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		},
 	}
 
-	l2NodeCfg := host.AggregatorCfg{GossipRoundDuration: gossipPeriod}
+	l2NodeCfg := host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
 
 	for i := 1; i <= nrNodes; i++ {
 		genesis := false
@@ -53,15 +63,22 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 
 		// create an enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		port := uint64(ENCLAVE_CONN_START_PORT + i)
-		server, err := rpc.StartServer(port, nodeID, stats)
-		if err != nil {
-			panic(fmt.Sprintf("failed to create enclave server: %v", err))
+		var enclaveClient enclave.Enclave
+		if localEnclave {
+			enclaveClient = enclave.NewEnclave(nodeID, true, stats)
+		} else {
+			port := uint64(ENCLAVE_CONN_START_PORT + i)
+			timeout := time.Duration(l2NodeCfg.ClientRPCTimeoutSecs) * time.Second
+			server, err := rpc.StartServer(port, nodeID, stats)
+			if err != nil {
+				panic(fmt.Sprintf("failed to create enclave server: %v", err))
+			}
+			l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
+			enclaveClient = rpc.NewEnclaveRPCClient(port, timeout)
 		}
-		l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
 
 		// create a layer 2 node
-		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, port)
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks

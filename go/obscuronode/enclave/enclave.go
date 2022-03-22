@@ -119,8 +119,14 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
+	// start the speculative rollup execution loop on its own go routine
+	go e.start(block)
+}
+
+func (e *enclaveImpl) start(block types.Block) {
 	var currentHead *Rollup
 	var currentState RollupState
+
 	var currentProcessedTxs []L2Tx
 	currentProcessedTxsMap := make(map[common.Hash]L2Tx)
 

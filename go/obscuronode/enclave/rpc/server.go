@@ -94,7 +94,7 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
 	bl := decodeBlock(request.EncodedBlock)
-	go s.enclave.Start(bl)
+	s.enclave.Start(bl)
 	return &generated.StartResponse{}, nil
 }
 
