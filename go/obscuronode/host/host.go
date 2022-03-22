@@ -77,7 +77,7 @@ func NewAgg(
 	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
-	port uint64,
+	port uint64, // TODO - Change port to address string. Currently only supports localhost.
 ) Node {
 	if cfg.ClientRPCTimeoutSecs == 0 {
 		cfg.ClientRPCTimeoutSecs = clientRPCTimeoutSecs
