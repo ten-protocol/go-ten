@@ -96,13 +96,13 @@ func waitForEnclave(agg host.Node, enclavePort uint64) {
 	}
 }
 
-// TODO - Replace this dummy with actual node interaction once we have implemented P2P and gossiping.
+// TODO - Replace this dummy once we have implemented P2P communication and gossiping between L2 nodes.
 type l2NetworkDummy struct{}
 
 func (l *l2NetworkDummy) BroadcastRollup(obscurocommon.EncodedRollup) {}
 func (l *l2NetworkDummy) BroadcastTx(nodecommon.EncryptedTx)          {}
 
-// todo - joel - explain why
+// TODO - Replace this dummy once we have implemented communication with L1 nodes.
 type l1NodeDummy struct{}
 
 func (l l1NodeDummy) RPCBlockchainFeed() []*types.Block {
