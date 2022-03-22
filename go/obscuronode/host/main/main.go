@@ -9,7 +9,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -22,59 +21,54 @@ const (
 	gossipRoundNanosUsage = "The duration of the gossip round"
 	rpcTimeoutSecsFlag    = "rpcTimeoutSecs"
 	rpcTimeoutSecsUsage   = "The timeout for host <-> enclave RPC communication"
-	usage                 = `CLI application for the ◠.bscuro host. Usage: <executable flag1 ... flagN arg1 ... argN>
+	enclavePortFlag       = "enclavePort"
+	enclavePortUsage      = "The port to use to connect to the Obscuro enclave service"
+	usage                 = `CLI application for the ◠.bscuro host.
 
-Flags:
--%s   string   %s
--%s   bool   %s
--%s   int   %s
--%s   int   %s
+Usage:
 
-Arguments:
-  enclavePort   The port to use to connect to the Obscuro enclave service`
+    <executable> [flags]
+
+The flags are:
+
+    -%s   string   %s
+    -%s   bool   %s
+    -%s   int   %s
+    -%s   int   %s
+    -%s   int   %s`
 )
 
-// todo - joel - can use flags for everything
-
 func main() {
-	nodeAddressBytes, isGenesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort, isInvalid := parseCLIArgs()
-	if isInvalid {
+	if len(os.Args) == 1 {
 		usageFmt := fmt.Sprintf(usage, nodeAddressFlag, nodeAddressUsage, genesisFlag, genesisUsage,
-			gossipRoundNanosFlag, gossipRoundNanosUsage, rpcTimeoutSecsFlag, rpcTimeoutSecsUsage)
+			gossipRoundNanosFlag, gossipRoundNanosUsage, rpcTimeoutSecsFlag, rpcTimeoutSecsUsage, enclavePortFlag,
+			enclavePortUsage)
 		fmt.Println(usageFmt)
 		return
 	}
 
+	nodeAddressBytes, isGenesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort := parseCLIArgs()
+
 	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	l2Network := l2NetworkDummy{}
-	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclavePort)
+	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, *enclavePort)
 
-	waitForEnclave(agg, enclavePort)
+	waitForEnclave(agg, *enclavePort)
+	fmt.Printf("Connected to enclave server on port %d.\n", *enclavePort)
 	agg.Start()
-	// todo - joel - spin here
-	println("connected jjj")
-	defer agg.Stop()
 }
 
 // Parses the CLI flags and arguments.
-func parseCLIArgs() (*string, *bool, *uint64, *uint64, uint64, bool) {
+func parseCLIArgs() (*string, *bool, *uint64, *uint64, *uint64) {
 	var nodeAddressBytes = flag.String(nodeAddressFlag, "", nodeAddressUsage)
 	var genesis = flag.Bool(genesisFlag, true, genesisUsage)
 	var gossipRoundNanos = flag.Uint64(gossipRoundNanosFlag, uint64(25_000/3), gossipRoundNanosUsage)
 	var rpcTimeoutSecs = flag.Uint64(rpcTimeoutSecsFlag, 3, rpcTimeoutSecsUsage)
+	var enclavePort = flag.Uint64(enclavePortFlag, 10000, enclavePortUsage)
 	flag.Parse()
 
-	if flag.NArg() != 1 {
-		return nil, nil, nil, nil, 0, true
-	}
-
-	enclavePort, err := strconv.ParseUint(os.Args[len(os.Args)-1], 10, 64)
-	if err != nil {
-		return nil, nil, nil, nil, 0, true
-	}
-
-	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort, false
+	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort
 }
 
 // Waits for the enclave server to start, printing a wait message every two seconds.
