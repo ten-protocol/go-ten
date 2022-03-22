@@ -33,7 +33,15 @@ type Simulation struct {
 }
 
 // NewSimulation defines a new simulation network
-func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2NetworkCfg, avgBlockDuration uint64, gossipPeriod uint64, virtualEnclave bool, stats *Stats) *Simulation {
+func NewSimulation(
+	nrNodes int,
+	l1NetworkCfg *L1NetworkCfg,
+	l2NetworkCfg *L2NetworkCfg,
+	avgBlockDuration uint64,
+	gossipPeriod uint64,
+	localEnclave bool,
+	stats *Stats,
+) *Simulation {
 	l1NodeCfg := ethereum_mock.MiningConfig{
 		PowTime: func() uint64 {
 			// This formula might feel counter-intuitive, but it is a good approximation for Proof of Work.
@@ -56,8 +64,8 @@ func NewSimulation(nrNodes int, l1NetworkCfg *L1NetworkCfg, l2NetworkCfg *L2Netw
 		// create an enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		var enclaveClient enclave.Enclave
-		if virtualEnclave {
-			enclaveClient = rpc.NewEnclaveFakeRPCClient(nodeID, stats)
+		if localEnclave {
+			enclaveClient = rpc.NewEnclaveTestRPCClient(nodeID, stats)
 		} else {
 			port := uint64(ENCLAVE_CONN_START_PORT + i)
 			timeout := time.Duration(l2NodeCfg.ClientRPCTimeoutSecs) * time.Second

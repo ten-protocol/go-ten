@@ -119,6 +119,11 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
+	// start the speculative rollup execution loop on its own go routine
+	go e.start(block)
+}
+
+func (e *enclaveImpl) start(block types.Block) {
 	headerHash := block.Hash()
 	s, f := e.db.FetchState(headerHash)
 	if !f {
@@ -130,46 +135,43 @@ func (e *enclaveImpl) Start(block types.Block) {
 	var currentProcessedTxs []L2Tx
 	currentProcessedTxsMap := make(map[common.Hash]L2Tx)
 
-	// start the speculative rollup execution loop on its own go routine
-	go func() {
-		for {
-			select {
-			// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
-			case winnerRollup := <-e.roundWinnerCh:
+	for {
+		select {
+		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
+		case winnerRollup := <-e.roundWinnerCh:
 
-				currentHead = winnerRollup
-				currentState = newProcessedState(e.db.FetchRollupState(winnerRollup.Hash()))
+			currentHead = winnerRollup
+			currentState = newProcessedState(e.db.FetchRollupState(winnerRollup.Hash()))
 
-				// determine the transactions that were not yet included
-				currentProcessedTxs = currentTxs(winnerRollup, e.db.FetchTxs(), e.db)
-				currentProcessedTxsMap = makeMap(currentProcessedTxs)
+			// determine the transactions that were not yet included
+			currentProcessedTxs = currentTxs(winnerRollup, e.db.FetchTxs(), e.db)
+			currentProcessedTxsMap = makeMap(currentProcessedTxs)
 
-				// calculate the State after executing them
-				currentState = executeTransactions(currentProcessedTxs, currentState)
+			// calculate the State after executing them
+			currentState = executeTransactions(currentProcessedTxs, currentState)
 
-			case tx := <-e.txCh:
-				_, found := currentProcessedTxsMap[tx.Hash()]
-				if !found {
-					currentProcessedTxsMap[tx.Hash()] = tx
-					currentProcessedTxs = append(currentProcessedTxs, tx)
-					executeTx(&currentState, tx)
-				}
-
-			case <-e.speculativeWorkInCh:
-				b := make([]L2Tx, 0, len(currentProcessedTxs))
-				b = append(b, currentProcessedTxs...)
-				state := copyProcessedState(currentState)
-				e.speculativeWorkOutCh <- speculativeWork{
-					r:   currentHead,
-					s:   &state,
-					txs: b,
-				}
-
-			case <-e.exitCh:
-				return
+		case tx := <-e.txCh:
+			_, found := currentProcessedTxsMap[tx.Hash()]
+			if !found {
+				currentProcessedTxsMap[tx.Hash()] = tx
+				currentProcessedTxs = append(currentProcessedTxs, tx)
+				executeTx(&currentState, tx)
 			}
+
+		case <-e.speculativeWorkInCh:
+			b := make([]L2Tx, 0, len(currentProcessedTxs))
+			b = append(b, currentProcessedTxs...)
+			state := copyProcessedState(currentState)
+			e.speculativeWorkOutCh <- speculativeWork{
+				r:   currentHead,
+				s:   &state,
+				txs: b,
+			}
+
+		case <-e.exitCh:
+			return
 		}
-	}()
+	}
 }
 
 func (e *enclaveImpl) ProduceGenesis() BlockSubmissionResponse {
