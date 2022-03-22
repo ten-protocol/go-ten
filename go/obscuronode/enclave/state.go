@@ -122,6 +122,11 @@ func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolve
 		return &bs
 	}
 
+	// there are no rollups in the current block and there is nothing in the db
+	if db.Head() == nil {
+		return nil
+	}
+
 	// To calculate the state after the current block, we need the state after the parent.
 	parentState, parentFound := db.FetchState(b.ParentHash())
 	if !parentFound {

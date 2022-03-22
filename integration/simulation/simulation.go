@@ -126,6 +126,7 @@ func (s *Simulation) Start(
 
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
 	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
+	time.Sleep(1 * time.Second)
 	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
 
 	// time in micro seconds to run the simulation
