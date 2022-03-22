@@ -5,8 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
-
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode"
 
@@ -20,7 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const clientRPCTimeoutSecs = 5
+const ClientRPCTimeoutSecs = 5
 
 type AggregatorCfg struct {
 	// duration of the gossip round
@@ -82,13 +80,8 @@ func NewAgg(
 	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
-	port uint64,
+	enclaveClient enclave.Enclave,
 ) Node {
-	if cfg.ClientRPCTimeoutSecs == 0 {
-		cfg.ClientRPCTimeoutSecs = clientRPCTimeoutSecs
-	}
-	timeout := time.Duration(cfg.ClientRPCTimeoutSecs) * time.Second
-
 	return Node{
 		// config
 		ID:        id,
@@ -110,7 +103,7 @@ func NewAgg(
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 
 		// State processing
-		Enclave: rpc.NewEnclaveRPCClient(port, timeout),
+		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
 		nodeDB: obscuronode.NewDB(),
