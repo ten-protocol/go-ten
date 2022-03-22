@@ -47,6 +47,11 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
+	// start the speculative rollup execution loop on its own go routine
+	go e.start(block)
+}
+
+func (e *enclaveImpl) start(block types.Block) {
 	headerHash := block.Hash()
 	s, f := e.db.FetchState(headerHash)
 	if !f {
@@ -58,7 +63,6 @@ func (e *enclaveImpl) Start(block types.Block) {
 	var currentProcessedTxs []nodecommon.L2Tx
 	currentProcessedTxsMap := make(map[common.Hash]nodecommon.L2Tx)
 
-	// start the speculative rollup execution loop
 	for {
 		select {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
