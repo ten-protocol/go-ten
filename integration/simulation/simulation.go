@@ -2,9 +2,10 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 

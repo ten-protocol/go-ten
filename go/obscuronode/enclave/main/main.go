@@ -3,16 +3,18 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"os"
 )
 
 const (
+	helpCmd          = "help"
 	nodeAddressFlag  = "nodeAddress"
-	nodeAddressUsage = "The 20 bytes of the node's address"
+	nodeAddressUsage = "The 20 bytes of the node's address (default \"\")"
 	portFlag         = "port"
-	portUsage        = "The port on which to serve the Obscuro enclave service"
+	portUsage        = "The port on which to serve the Obscuro enclave service (default 10000)"
 	usage            = `CLI application for the ◠.bscuro enclave service.
 
 Usage:
@@ -21,12 +23,14 @@ Usage:
 
 The flags are:
 
--%s   string   %s
--%s   int   %s`
+  -%s string
+    	%s
+  -%s uint
+    	%s`
 )
 
 func main() {
-	if len(os.Args) == 1 {
+	if len(os.Args) >= 2 && os.Args[1] == helpCmd {
 		usageFmt := fmt.Sprintf(usage, nodeAddressFlag, nodeAddressUsage, portFlag, portUsage)
 		fmt.Println(usageFmt)
 		return
@@ -45,8 +49,8 @@ func main() {
 
 // Parses the CLI flags and arguments.
 func parseCLIArgs() (*string, *uint64) {
-	var nodeAddressBytes = flag.String(nodeAddressFlag, "", nodeAddressUsage)
-	var port = flag.Uint64(portFlag, 10000, portUsage)
+	nodeAddressBytes := flag.String(nodeAddressFlag, "", nodeAddressUsage)
+	port := flag.Uint64(portFlag, 10000, portUsage)
 	flag.Parse()
 
 	return nodeAddressBytes, port

@@ -3,26 +3,28 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"os"
-	"time"
 )
 
 const (
+	helpCmd               = "help"
 	nodeAddressFlag       = "nodeAddress"
-	nodeAddressUsage      = "The 20 bytes of the node's address"
+	nodeAddressUsage      = "The 20 bytes of the node's address (default \"\")"
 	genesisFlag           = "isGenesis"
-	genesisUsage          = "Whether the node is the first node to join the network"
+	genesisUsage          = "Whether the node is the first node to join the network (default true)"
 	gossipRoundNanosFlag  = "gossipRoundNanos"
-	gossipRoundNanosUsage = "The duration of the gossip round"
+	gossipRoundNanosUsage = "The duration of the gossip round (default 8333)"
 	rpcTimeoutSecsFlag    = "rpcTimeoutSecs"
-	rpcTimeoutSecsUsage   = "The timeout for host <-> enclave RPC communication"
+	rpcTimeoutSecsUsage   = "The timeout for host <-> enclave RPC communication (default 3)"
 	enclavePortFlag       = "enclavePort"
-	enclavePortUsage      = "The port to use to connect to the Obscuro enclave service"
+	enclavePortUsage      = "The port to use to connect to the Obscuro enclave service (default 10000)"
 	usage                 = `CLI application for the ◠.bscuro host.
 
 Usage:
@@ -31,15 +33,20 @@ Usage:
 
 The flags are:
 
-    -%s   string   %s
-    -%s   bool   %s
-    -%s   int   %s
-    -%s   int   %s
-    -%s   int   %s`
+  -%s string
+    	%s
+  -%s bool
+    	%s
+  -%s uint
+    	%s
+  -%s uint
+    	%s
+  -%s uint
+    	%s`
 )
 
 func main() {
-	if len(os.Args) == 1 {
+	if len(os.Args) >= 2 && os.Args[1] == helpCmd {
 		usageFmt := fmt.Sprintf(usage, nodeAddressFlag, nodeAddressUsage, genesisFlag, genesisUsage,
 			gossipRoundNanosFlag, gossipRoundNanosUsage, rpcTimeoutSecsFlag, rpcTimeoutSecsUsage, enclavePortFlag,
 			enclavePortUsage)
@@ -52,7 +59,8 @@ func main() {
 	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	l2Network := l2NetworkDummy{}
-	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, *enclavePort)
+	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
+	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclaveClient)
 
 	waitForEnclave(agg, *enclavePort)
 	fmt.Printf("Connected to enclave server on port %d.\n", *enclavePort)
@@ -61,11 +69,11 @@ func main() {
 
 // Parses the CLI flags and arguments.
 func parseCLIArgs() (*string, *bool, *uint64, *uint64, *uint64) {
-	var nodeAddressBytes = flag.String(nodeAddressFlag, "", nodeAddressUsage)
-	var genesis = flag.Bool(genesisFlag, true, genesisUsage)
-	var gossipRoundNanos = flag.Uint64(gossipRoundNanosFlag, uint64(25_000/3), gossipRoundNanosUsage)
-	var rpcTimeoutSecs = flag.Uint64(rpcTimeoutSecsFlag, 3, rpcTimeoutSecsUsage)
-	var enclavePort = flag.Uint64(enclavePortFlag, 10000, enclavePortUsage)
+	nodeAddressBytes := flag.String(nodeAddressFlag, "", nodeAddressUsage)
+	genesis := flag.Bool(genesisFlag, true, genesisUsage)
+	gossipRoundNanos := flag.Uint64(gossipRoundNanosFlag, uint64(8333), gossipRoundNanosUsage)
+	rpcTimeoutSecs := flag.Uint64(rpcTimeoutSecsFlag, 3, rpcTimeoutSecsUsage)
+	enclavePort := flag.Uint64(enclavePortFlag, 10000, enclavePortUsage)
 	flag.Parse()
 
 	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort

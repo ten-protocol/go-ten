@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"net"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
