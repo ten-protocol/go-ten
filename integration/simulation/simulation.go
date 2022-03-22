@@ -65,7 +65,7 @@ func NewSimulation(
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		var enclaveClient enclave.Enclave
 		if localEnclave {
-			enclaveClient = rpc.NewEnclaveTestRPCClient(nodeID, stats)
+			enclaveClient = enclave.NewEnclave(nodeID, true, stats)
 		} else {
 			port := uint64(ENCLAVE_CONN_START_PORT + i)
 			timeout := time.Duration(l2NodeCfg.ClientRPCTimeoutSecs) * time.Second
