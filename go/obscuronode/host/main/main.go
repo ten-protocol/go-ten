@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -33,6 +34,8 @@ Arguments:
   enclavePort   The port to use to connect to the Obscuro enclave service`
 )
 
+// todo - joel - can use flags for everything
+
 func main() {
 	nodeAddressBytes, isGenesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort, isInvalid := parseCLIArgs()
 	if isInvalid {
@@ -45,15 +48,17 @@ func main() {
 	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	l2Network := l2NetworkDummy{}
-	agg := host.NewAgg(nodeAddress, hostCfg, nil, &l2Network, nil, *isGenesis, *enclavePort)
+	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclavePort)
 
 	waitForEnclave(agg, enclavePort)
 	agg.Start()
+	// todo - joel - spin here
+	println("connected jjj")
 	defer agg.Stop()
 }
 
 // Parses the CLI flags and arguments.
-func parseCLIArgs() (*string, *bool, *uint64, *uint64, *uint64, bool) {
+func parseCLIArgs() (*string, *bool, *uint64, *uint64, uint64, bool) {
 	var nodeAddressBytes = flag.String(nodeAddressFlag, "", nodeAddressUsage)
 	var genesis = flag.Bool(genesisFlag, true, genesisUsage)
 	var gossipRoundNanos = flag.Uint64(gossipRoundNanosFlag, uint64(25_000/3), gossipRoundNanosUsage)
@@ -61,18 +66,19 @@ func parseCLIArgs() (*string, *bool, *uint64, *uint64, *uint64, bool) {
 	flag.Parse()
 
 	if flag.NArg() != 1 {
-		return nil, nil, nil, nil, nil, true
+		return nil, nil, nil, nil, 0, true
 	}
 
 	enclavePort, err := strconv.ParseUint(os.Args[len(os.Args)-1], 10, 64)
 	if err != nil {
-		return nil, nil, nil, nil, nil, true
+		return nil, nil, nil, nil, 0, true
 	}
-	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, &enclavePort, false
+
+	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort, false
 }
 
 // Waits for the enclave server to start, printing a wait message every two seconds.
-func waitForEnclave(agg host.Node, enclavePort *uint64) {
+func waitForEnclave(agg host.Node, enclavePort uint64) {
 	i := 0
 	for {
 		if agg.Enclave.IsReady() == nil {
@@ -93,3 +99,12 @@ type l2NetworkDummy struct{}
 
 func (l *l2NetworkDummy) BroadcastRollup(obscurocommon.EncodedRollup) {}
 func (l *l2NetworkDummy) BroadcastTx(nodecommon.EncryptedTx)          {}
+
+// todo - joel - explain why
+type l1NodeDummy struct{}
+
+func (l l1NodeDummy) RPCBlockchainFeed() []*types.Block {
+	return []*types.Block{}
+}
+
+func (l l1NodeDummy) BroadcastTx(obscurocommon.EncodedL1Tx) {}
