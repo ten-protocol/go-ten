@@ -1,0 +1,1 @@
+This package contains code that is shared between the node host and the node enclave.

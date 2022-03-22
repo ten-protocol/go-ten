@@ -12,9 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// Todo - this has to be a trie root eventually
 type (
-	StateRoot             = string
+	StateRoot             = string // Todo - this has to be a trie root eventually
 	EncryptedTx           []byte
 	L2Tx                  = types.Transaction
 	EncryptedTransactions []EncryptedTx

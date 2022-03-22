@@ -6,7 +6,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// Enclave - The actual implementation of this interface will call an rpc service
+// Enclave is the interface for interacting with the node's enclave
 type Enclave interface {
 	// IsReady checks whether the enclave is ready to process requests
 	IsReady() error

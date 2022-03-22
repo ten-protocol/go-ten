@@ -1,0 +1,1 @@
+These packages contain code related to the simulation and testing an end-to-end Obscuro network.
