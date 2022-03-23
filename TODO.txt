@@ -1,33 +1,31 @@
 
 ----
-PROGRESS
+DONE
 
 - Create a unit test with a checker for the final state of the simulation:
     - all injected transactions were included, and there are no duplicates
     - the state in each rollup matches the transactions (deposits + L1)
     - L1 height, L2 height, how many reorgs, etc - if the efficiency is below a threshold then something could have happened
+- T2: Introduce basic crypto for L2 transactions (Complexity level 4)
+- in simulation, add checks around validly and invalidly signed transactions
 
---------
+----
 TODO
-
-Done:
-
-T2: Introduce basic crypto for L2 transactions (Complexity level 4)
 
 Complex:
 
-T1: Bring in the core ethereum structures (see first task from route to testnet), and connect Obscuro to a real L1 node (Complexity level 3)
-T3: Introduce better mempool logic (Complexity level 4)
-T4: Refactor the Obscuro "database" and introduce something proper that works within an enclave (Depends on T6) (Complexity level 2)
-T5: Create better logic to get L2 node up to speed (Depends on T1) (Complexity level 3)
-T6: Replace the state and transaction execution with code from geth (Depends on T2)
+- T1: Bring in the core ethereum structures (see first task from route to testnet), and connect Obscuro to a real L1 node (Complexity level 3)
+- T3: Introduce better mempool logic (Complexity level 4)
+- T4: Refactor the Obscuro "database" and introduce something proper that works within an enclave (Depends on T6) (Complexity level 2)
+- T5: Create better logic to get L2 node up to speed (Depends on T1) (Complexity level 3)
+- T6: Replace the state and transaction execution with code from geth (Depends on T2)
     (super complex task. Complexity level 1)
-T7: Refactoring create a Blockchain structure (see geth)- to better encapsulate the logic (Complexity level 5)
-T8: Implement the obscuro cryptography: (depends on T4) (Complexity level 2)
+- T7: Refactoring create a Blockchain structure (see geth)- to better encapsulate the logic (Complexity level 5)
+- T8: Implement the obscuro cryptography: (depends on T4) (Complexity level 2)
     - from the master seed derive the keys
     - create the transaction block
-T9: Implement p2p communication, gossiping (Complexity level 3)
-T10: Implement the enclave service (Complexity level 3)
+- T9: Implement p2p communication, gossiping (Complexity level 3)
+- T10: Implement the enclave service (Complexity level 3)
 
 Normal:
 
@@ -37,7 +35,6 @@ Normal:
 - introduce event feeds
 - collect statistics when multiple rollups compete (to see what actually happens)
 - When verifying a rollup - check that the withdrawals in the header match the withdrawals as calculated
-- in simulation, add checks around validly and invalidly signed transactions
 - add configuration file support
 
 Future:
