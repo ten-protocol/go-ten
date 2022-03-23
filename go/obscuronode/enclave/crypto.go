@@ -6,15 +6,15 @@ import (
 )
 
 func decryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
-	t := make([]L2Tx, 0)
+	t := make([]nodecommon.L2Tx, 0)
 	for _, tx := range txs {
 		t = append(t, DecryptTx(tx))
 	}
 	return t
 }
 
-func DecryptTx(tx nodecommon.EncryptedTx) L2Tx {
-	t := L2Tx{}
+func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
+	t := nodecommon.L2Tx{}
 	if err := rlp.DecodeBytes(tx, &t); err != nil {
 		panic("no way")
 	}
@@ -22,7 +22,7 @@ func DecryptTx(tx nodecommon.EncryptedTx) L2Tx {
 	return t
 }
 
-func EncryptTx(tx *L2Tx) nodecommon.EncryptedTx {
+func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic("no!")

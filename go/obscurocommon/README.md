@@ -1,0 +1,1 @@
+This package contains code with no other natural home that is shared between the node and the simulation framework.

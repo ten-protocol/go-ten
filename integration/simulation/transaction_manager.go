@@ -94,7 +94,7 @@ func (m *TransactionManager) trackL1Tx(tx obscurocommon.L1TxData) {
 }
 
 // trackL2Tx adds an enclave.L2Tx to the internal list
-func (m *TransactionManager) trackL2Tx(tx enclave.L2Tx) {
+func (m *TransactionManager) trackL2Tx(tx nodecommon.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
 	m.l2Transactions = append(m.l2Transactions, tx)

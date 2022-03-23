@@ -3,6 +3,8 @@ package enclave
 import (
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -42,15 +44,15 @@ type DB interface {
 	SetRollupState(hash obscurocommon.L2RootHash, state State)
 
 	// FetchMempoolTxs returns all L2 transactions in the mempool
-	FetchMempoolTxs() []L2Tx
+	FetchMempoolTxs() []nodecommon.L2Tx
 	// AddMempoolTx adds an L2 transaction to the mempool
-	AddMempoolTx(tx L2Tx)
+	AddMempoolTx(tx nodecommon.L2Tx)
 	// RemoveMempoolTxs removes any L2 transactions whose hash is keyed in the map from the mempool
 	RemoveMempoolTxs(remove map[common.Hash]common.Hash)
 	// FetchRollupTxs returns all transactions in a given rollup keyed by hash and true, or (nil, false) if the rollup is unknown
-	FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool)
+	FetchRollupTxs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
 	// StoreRollupTxs overwrites the transactions associated with a given rollup
-	StoreRollupTxs(*Rollup, map[common.Hash]L2Tx)
+	StoreRollupTxs(*Rollup, map[common.Hash]nodecommon.L2Tx)
 
 	// FetchSecret returns the enclave's secret
 	FetchSecret() SharedEnclaveSecret
@@ -74,9 +76,9 @@ type inMemoryDB struct {
 	headBlock         obscurocommon.L1RootHash
 	rollupsByHeight   map[int][]*Rollup
 	rollups           map[obscurocommon.L2RootHash]*Rollup
-	mempool           map[common.Hash]L2Tx
+	mempool           map[common.Hash]nodecommon.L2Tx
 	blockCache        map[obscurocommon.L1RootHash]*blockAndHeight
-	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]L2Tx
+	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx
 
 	sharedEnclaveSecret SharedEnclaveSecret
 }
@@ -87,12 +89,12 @@ func NewInMemoryDB() DB {
 		stateMutex:        sync.RWMutex{},
 		rollupsByHeight:   make(map[int][]*Rollup),
 		rollups:           make(map[obscurocommon.L2RootHash]*Rollup),
-		mempool:           make(map[common.Hash]L2Tx),
+		mempool:           make(map[common.Hash]nodecommon.L2Tx),
 		mpMutex:           sync.RWMutex{},
 		statePerRollup:    make(map[obscurocommon.L2RootHash]State),
 		blockCache:        map[obscurocommon.L1RootHash]*blockAndHeight{},
 		blockMutex:        sync.RWMutex{},
-		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]L2Tx),
+		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
 		txMutex:           sync.RWMutex{},
 	}
 }
@@ -172,18 +174,18 @@ func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) State {
 	return db.statePerRollup[hash]
 }
 
-func (db *inMemoryDB) AddMempoolTx(tx L2Tx) {
+func (db *inMemoryDB) AddMempoolTx(tx nodecommon.L2Tx) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
 	db.mempool[tx.Hash()] = tx
 }
 
-func (db *inMemoryDB) FetchMempoolTxs() []L2Tx {
+func (db *inMemoryDB) FetchMempoolTxs() []nodecommon.L2Tx {
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
 
-	mpCopy := make([]L2Tx, 0)
+	mpCopy := make([]nodecommon.L2Tx, 0)
 	for _, tx := range db.mempool {
 		mpCopy = append(mpCopy, tx)
 	}
@@ -194,7 +196,7 @@ func (db *inMemoryDB) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
-	r := make(map[common.Hash]L2Tx)
+	r := make(map[common.Hash]nodecommon.L2Tx)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
 		if !f {
@@ -219,7 +221,7 @@ func (db *inMemoryDB) FetchBlockAndHeight(hash obscurocommon.L1RootHash) (*block
 	return val, f
 }
 
-func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
+func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
 	db.txMutex.RLock()
 	defer db.txMutex.RUnlock()
 
@@ -227,7 +229,7 @@ func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
 	return val, found
 }
 
-func (db *inMemoryDB) StoreRollupTxs(r *Rollup, newMap map[common.Hash]L2Tx) {
+func (db *inMemoryDB) StoreRollupTxs(r *Rollup, newMap map[common.Hash]nodecommon.L2Tx) {
 	db.txMutex.Lock()
 	defer db.txMutex.Unlock()
 

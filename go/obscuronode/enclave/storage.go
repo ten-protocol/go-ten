@@ -3,6 +3,8 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -52,15 +54,15 @@ type Storage interface {
 	SetRollupState(hash obscurocommon.L2RootHash, state State)
 
 	// FetchMempoolTxs returns all L2 transactions in the mempool
-	FetchMempoolTxs() []L2Tx
+	FetchMempoolTxs() []nodecommon.L2Tx
 	// AddMempoolTx adds an L2 transaction to the mempool
-	AddMempoolTx(tx L2Tx)
+	AddMempoolTx(tx nodecommon.L2Tx)
 	// RemoveMempoolTxs removes any L2 transactions whose hash is keyed in the map from the mempool
 	RemoveMempoolTxs(toRemove map[common.Hash]common.Hash)
 	// FetchRollupTxs returns all transactions in a given rollup keyed by hash and true, or (nil, false) if the rollup is unknown
-	FetchRollupTxs(rollup *Rollup) (map[common.Hash]L2Tx, bool)
+	FetchRollupTxs(rollup *Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
 	// StoreRollupTxs overwrites the transactions associated with a given rollup
-	StoreRollupTxs(rollup *Rollup, newTxs map[common.Hash]L2Tx)
+	StoreRollupTxs(rollup *Rollup, newTxs map[common.Hash]nodecommon.L2Tx)
 
 	// FetchSecret returns the enclave's secret
 	FetchSecret() SharedEnclaveSecret
@@ -123,12 +125,12 @@ func (s *storageImpl) FetchRollupState(hash obscurocommon.L2RootHash) State {
 	return s.db.FetchRollupState(hash)
 }
 
-func (s *storageImpl) AddMempoolTx(tx L2Tx) {
+func (s *storageImpl) AddMempoolTx(tx nodecommon.L2Tx) {
 	s.assertSecretAvailable()
 	s.db.AddMempoolTx(tx)
 }
 
-func (s *storageImpl) FetchMempoolTxs() []L2Tx {
+func (s *storageImpl) FetchMempoolTxs() []nodecommon.L2Tx {
 	s.assertSecretAvailable()
 	return s.db.FetchMempoolTxs()
 }
@@ -165,12 +167,12 @@ func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, b
 	return block, f
 }
 
-func (s *storageImpl) FetchRollupTxs(r *Rollup) (map[common.Hash]L2Tx, bool) {
+func (s *storageImpl) FetchRollupTxs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
 	s.assertSecretAvailable()
 	return s.db.FetchRollupTxs(r)
 }
 
-func (s *storageImpl) StoreRollupTxs(r *Rollup, newTxs map[common.Hash]L2Tx) {
+func (s *storageImpl) StoreRollupTxs(r *Rollup, newTxs map[common.Hash]nodecommon.L2Tx) {
 	s.assertSecretAvailable()
 	s.db.StoreRollupTxs(r, newTxs)
 }

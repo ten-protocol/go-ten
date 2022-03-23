@@ -14,7 +14,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	tx1 := L2Tx{}
+	tx1 := nodecommon.L2Tx{}
 	err2 := rlp.DecodeBytes(bytes, &tx1)
 	if err2 != nil {
 		panic(err2)

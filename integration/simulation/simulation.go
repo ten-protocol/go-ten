@@ -5,9 +5,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -63,18 +63,18 @@ func NewSimulation(
 
 		// create an enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		var enclaveClient enclave.Enclave
+		var enclaveClient nodecommon.Enclave
 		if localEnclave {
 			enclaveClient = enclave.NewEnclave(nodeID, true, stats)
 		} else {
 			port := uint64(ENCLAVE_CONN_START_PORT + i)
 			timeout := time.Duration(l2NodeCfg.ClientRPCTimeoutSecs) * time.Second
-			server, err := rpc.StartServer(port, nodeID, stats)
+			server, err := enclave.StartServer(port, nodeID, stats)
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}
 			l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
-			enclaveClient = rpc.NewEnclaveRPCClient(port, timeout)
+			enclaveClient = host.NewEnclaveRPCClient(port, timeout)
 		}
 
 		// create a layer 2 node

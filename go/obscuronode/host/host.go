@@ -5,13 +5,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode"
-
 	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
@@ -67,10 +63,10 @@ type Node struct {
 	rollupsP2PCh chan obscurocommon.EncodedRollup
 
 	// Interface to the logic running inside the TEE
-	Enclave enclave.Enclave
+	Enclave nodecommon.Enclave
 
 	// Node nodeDB - stores the node public available data
-	nodeDB *obscuronode.DB
+	nodeDB *DB
 }
 
 func NewAgg(
@@ -80,7 +76,7 @@ func NewAgg(
 	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
-	enclaveClient enclave.Enclave,
+	enclaveClient nodecommon.Enclave,
 ) Node {
 	return Node{
 		// config
@@ -106,7 +102,7 @@ func NewAgg(
 		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
-		nodeDB: obscuronode.NewDB(),
+		nodeDB: NewDB(),
 	}
 }
 
@@ -226,17 +222,17 @@ func (a *Node) RPCBalance(address common.Address) uint64 {
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
-func (a *Node) RPCCurrentBlockHead() *obscuronode.BlockHeader {
+func (a *Node) RPCCurrentBlockHead() *BlockHeader {
 	return a.nodeDB.GetCurrentBlockHead()
 }
 
 // RPCCurrentRollupHead returns the current head of the rollups (l2)
-func (a *Node) RPCCurrentRollupHead() *obscuronode.RollupHeader {
+func (a *Node) RPCCurrentRollupHead() *RollupHeader {
 	return a.nodeDB.GetCurrentRollupHead()
 }
 
 // DB returns the DB of the node
-func (a *Node) DB() *obscuronode.DB {
+func (a *Node) DB() *DB {
 	return a.nodeDB
 }
 
@@ -265,7 +261,7 @@ type blockAndParent struct {
 }
 
 func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int32) {
-	var result enclave.BlockSubmissionResponse
+	var result nodecommon.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
@@ -278,7 +274,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 			if result.IngestedNewRollup {
 				// adding a header will update the head if it has a higher height
 				a.DB().AddRollupHeader(
-					&obscuronode.RollupHeader{
+					&RollupHeader{
 						ID:          result.L2Hash,
 						Parent:      result.L2Parent,
 						Withdrawals: result.Withdrawals,
@@ -289,7 +285,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 			// adding a header will update the head if it has a higher height
 			a.DB().AddBlockHeader(
-				&obscuronode.BlockHeader{
+				&BlockHeader{
 					ID:     result.L1Hash,
 					Parent: result.L1Parent,
 					Height: result.L1Height,

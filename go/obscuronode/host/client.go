@@ -1,4 +1,4 @@
-package rpc
+package host
 
 import (
 	"bytes"
@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc/generated"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"google.golang.org/grpc"
@@ -57,7 +57,7 @@ func (c *EnclaveRPCClient) Attestation() obscurocommon.AttestationReport {
 	if err != nil {
 		panic(fmt.Sprintf("failed to retrieve attestation: %v", err))
 	}
-	return fromAttestationReportMsg(response.AttestationReportMsg)
+	return rpc.FromAttestationReportMsg(response.AttestationReportMsg)
 }
 
 func (c *EnclaveRPCClient) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
@@ -75,7 +75,7 @@ func (c *EnclaveRPCClient) FetchSecret(report obscurocommon.AttestationReport) o
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	attestationReportMsg := toAttestationReportMsg(report)
+	attestationReportMsg := rpc.ToAttestationReportMsg(report)
 	request := generated.FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
 	response, err := c.protoClient.FetchSecret(timeoutCtx, &request)
 	if err != nil {
@@ -105,7 +105,7 @@ func (c *EnclaveRPCClient) IsInitialised() bool {
 	return response.IsInitialised
 }
 
-func (c *EnclaveRPCClient) ProduceGenesis() enclave.BlockSubmissionResponse {
+func (c *EnclaveRPCClient) ProduceGenesis() nodecommon.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -113,7 +113,7 @@ func (c *EnclaveRPCClient) ProduceGenesis() enclave.BlockSubmissionResponse {
 	if err != nil {
 		panic(fmt.Sprintf("failed to produce genesis: %v", err))
 	}
-	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
+	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
 func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) {
@@ -145,7 +145,7 @@ func (c *EnclaveRPCClient) Start(block types.Block) {
 	}
 }
 
-func (c *EnclaveRPCClient) SubmitBlock(block types.Block) enclave.BlockSubmissionResponse {
+func (c *EnclaveRPCClient) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -158,14 +158,14 @@ func (c *EnclaveRPCClient) SubmitBlock(block types.Block) enclave.BlockSubmissio
 	if err != nil {
 		panic(fmt.Sprintf("failed to submit block: %v", err))
 	}
-	return fromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
+	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
 func (c *EnclaveRPCClient) SubmitRollup(rollup nodecommon.ExtRollup) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	extRollupMsg := toExtRollupMsg(&rollup)
+	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
 	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	if err != nil {
 		panic(fmt.Sprintf("failed to submit rollup: %v", err))
@@ -201,7 +201,7 @@ func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecom
 	}
 
 	if response.Winner {
-		return fromExtRollupMsg(response.ExtRollup), true
+		return rpc.FromExtRollupMsg(response.ExtRollup), true
 	}
 	return nodecommon.ExtRollup{}, false
 }
@@ -216,7 +216,7 @@ func (c *EnclaveRPCClient) Stop() {
 	}
 }
 
-func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *enclave.L2Tx {
+func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -229,7 +229,7 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *enclave.L2Tx {
 		return nil
 	}
 
-	l2Tx := enclave.L2Tx{}
+	l2Tx := nodecommon.L2Tx{}
 	err = l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
 	if err != nil {
 		panic(fmt.Sprintf("failed to decode transaction: %v", err))
