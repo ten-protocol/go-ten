@@ -229,7 +229,7 @@ func (m *TransactionManager) issueInvalidTransfers() {
 
 // Uses one of three approaches to create an invalidly-signed transaction.
 func createInvalidSignature(tx *enclave.L2Tx, fromWallet *wallet_mock.Wallet, toWallet *wallet_mock.Wallet) *enclave.L2Tx {
-	i := rand.Intn(3)
+	i := rand.Intn(3) //nolint:gosec
 	switch i {
 	case 0: // We sign the transaction with the wrong key.
 		return wallet_mock.SignTx(tx, toWallet.Key.PrivateKey)
