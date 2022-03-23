@@ -3,10 +3,11 @@ package ethereummock
 import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
 // LCA - returns the least common ancestor of the 2 blocks
-func LCA(blockA *types.Block, blockB *types.Block, resolver obscurocommon.BlockResolver) *types.Block {
+func LCA(blockA *types.Block, blockB *types.Block, resolver enclave.BlockResolver) *types.Block {
 	if resolver.HeightBlock(blockA) == obscurocommon.L1GenesisHeight || resolver.HeightBlock(blockB) == obscurocommon.L1GenesisHeight {
 		return blockA
 	}
@@ -42,12 +43,12 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver obscurocommon.BlockR
 
 // findNotIncludedTxs - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findNotIncludedTxs(head *types.Block, txs []*obscurocommon.L1Tx, r obscurocommon.BlockResolver, db TxDB) []*obscurocommon.L1Tx {
+func findNotIncludedTxs(head *types.Block, txs []*obscurocommon.L1Tx, r enclave.BlockResolver, db TxDB) []*obscurocommon.L1Tx {
 	included := allIncludedTransactions(head, r, db)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *types.Block, r obscurocommon.BlockResolver, db TxDB) map[obscurocommon.TxHash]*obscurocommon.L1Tx {
+func allIncludedTransactions(b *types.Block, r enclave.BlockResolver, db TxDB) map[obscurocommon.TxHash]*obscurocommon.L1Tx {
 	val, found := db.Txs(b)
 	if found {
 		return val
@@ -88,7 +89,7 @@ func makeMap(txs types.Transactions) map[obscurocommon.TxHash]*obscurocommon.L1T
 	return m
 }
 
-func BlocksBetween(blockA *types.Block, blockB *types.Block, resolver obscurocommon.BlockResolver) []*types.Block {
+func BlocksBetween(blockA *types.Block, blockB *types.Block, resolver enclave.BlockResolver) []*types.Block {
 	if blockA.Hash() == blockB.Hash() {
 		return []*types.Block{blockA}
 	}

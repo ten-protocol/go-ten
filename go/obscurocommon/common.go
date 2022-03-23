@@ -13,9 +13,8 @@ const (
 // Number of blocks deep a transaction must be before being considered safe from reorganisations.
 const HeightCommittedBlocks = 20
 
-type L1RootHash = common.Hash
-
 type (
+	L1RootHash = common.Hash
 	L2RootHash = common.Hash
 	TxHash     = common.Hash
 )

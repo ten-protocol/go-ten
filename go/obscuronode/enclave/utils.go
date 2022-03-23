@@ -10,27 +10,27 @@ import (
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findTxsNotIncluded(head *Rollup, txs []L2Tx, db DB) []L2Tx {
-	included := allIncludedTransactions(head, db)
+func findTxsNotIncluded(head *Rollup, txs []L2Tx, s Storage) []L2Tx {
+	included := allIncludedTransactions(head, s)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *Rollup, db DB) map[common.Hash]L2Tx {
-	val, found := db.Txs(b)
+func allIncludedTransactions(b *Rollup, s Storage) map[common.Hash]L2Tx {
+	val, found := s.FetchRollupTxs(b)
 	if found {
 		return val
 	}
-	if db.HeightRollup(b) == obscurocommon.L2GenesisHeight {
+	if s.HeightRollup(b) == obscurocommon.L2GenesisHeight {
 		return makeMap(b.Transactions)
 	}
 	newMap := make(map[common.Hash]L2Tx)
-	for k, v := range allIncludedTransactions(db.ParentRollup(b), db) {
+	for k, v := range allIncludedTransactions(s.ParentRollup(b), s) {
 		newMap[k] = v
 	}
 	for _, tx := range b.Transactions {
 		newMap[tx.Hash()] = tx
 	}
-	db.AddTxs(b, newMap)
+	s.StoreRollupTxs(b, newMap)
 	return newMap
 }
 
@@ -45,15 +45,15 @@ func removeExisting(base []L2Tx, toRemove map[common.Hash]L2Tx) (r []L2Tx) {
 }
 
 // Returns all transactions found 20 levels below
-func historicTxs(r *Rollup, db DB) map[common.Hash]common.Hash {
+func historicTxs(r *Rollup, s Storage) map[common.Hash]common.Hash {
 	i := obscurocommon.HeightCommittedBlocks
 	c := r
 	for {
-		if i == 0 || db.HeightRollup(c) == obscurocommon.L2GenesisHeight {
+		if i == 0 || s.HeightRollup(c) == obscurocommon.L2GenesisHeight {
 			return toMap(c.Transactions)
 		}
 		i--
-		c = db.ParentRollup(c)
+		c = s.ParentRollup(c)
 	}
 }
 
