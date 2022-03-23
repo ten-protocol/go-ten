@@ -38,7 +38,8 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 
 	p, f := n.blockCache[block.ParentHash()]
 	if !f {
-		panic("ParentBlock not found. Should not happen")
+		panic("Trying to store block but haven't yet stored its parent. Trying increasing the simulation's block " +
+			"time or reducing the number of nodes")
 	}
 	n.blockCache[block.Hash()] = blockAndHeight{block, p.height + 1}
 }

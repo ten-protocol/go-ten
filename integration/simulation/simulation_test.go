@@ -32,7 +32,7 @@ func TestSimulation(t *testing.T) {
 	// define core test parameters
 	numberOfNodes := 10
 	simulationTimeSecs := 15                // in seconds
-	avgBlockDurationUSecs := uint64(20_000) // in u seconds 1 sec = 1e6 usecs
+	avgBlockDurationUSecs := uint64(40_000) // in u seconds 1 sec = 1e6 usecs
 	avgLatency := avgBlockDurationUSecs / 15
 	avgGossipPeriod := avgBlockDurationUSecs / 3
 
@@ -49,6 +49,7 @@ func TestSimulation(t *testing.T) {
 		l2NetworkCfg,
 		avgBlockDurationUSecs,
 		avgGossipPeriod,
+		false,
 		stats,
 	)
 
@@ -59,8 +60,9 @@ func TestSimulation(t *testing.T) {
 	checkBlockchainValidity(t, txManager, simulation)
 
 	// generate and print the final stats
-	t.Logf("%+v\n", NewOutputStats(simulation))
-	// pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	t.Logf("Simulation results:%+v", NewOutputStats(simulation))
+
+	simulation.Stop()
 }
 
 func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, network *Simulation) {
@@ -93,21 +95,21 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2
 func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats) {
-	l1Height := uint(0)
+	l1Height := uint64(0)
 	for header := node.DB().GetCurrentBlockHead(); header != nil; header = node.DB().GetBlockHeader(header.Parent) {
 		l1Height++
 	}
-	l2Height := uint(0)
+	l2Height := uint64(0)
 	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
 		l2Height++
 	}
 
 	if l1Height != node.DB().GetCurrentBlockHead().Height {
-		t.Errorf("unexpected block heigh. expected %d, got %d", l1Height, node.DB().GetCurrentBlockHead().Height)
+		t.Errorf("unexpected block height. expected %d, got %d", l1Height, node.DB().GetCurrentBlockHead().Height)
 	}
 
 	if l2Height != node.DB().GetCurrentRollupHead().Height {
-		t.Errorf("unexpected rollup heigh. expected %d, got %d", l2Height, node.DB().GetCurrentRollupHead().Height)
+		t.Errorf("unexpected rollup height. expected %d, got %d", l2Height, node.DB().GetCurrentRollupHead().Height)
 	}
 
 	if l1Height > stats.totalL1Blocks || l2Height > stats.totalL2Blocks {
@@ -137,8 +139,8 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 		nGroup.Go(func() error {
 			// all transactions should exist on every node
 			for _, transaction := range txManager.GetL2Transactions() {
-				_, found := closureNode.Enclave.GetTransaction(transaction.Hash())
-				if !found {
+				l2tx := closureNode.Enclave.GetTransaction(transaction.Hash())
+				if l2tx == nil {
 					return fmt.Errorf("node %d, unable to find transaction: %+v", closureNode.ID, transaction) // nolint:goerr113
 				}
 			}
@@ -154,13 +156,13 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 // dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
 // We test the results against this threshold to catch eventual protocol errors.
 const (
-	L1EfficiencyThreshold     = 0.22
-	L2EfficiencyThreshold     = 0.38
-	L2ToL1EfficiencyThreshold = 0.3
+	L1EfficiencyThreshold     = 0.2
+	L2EfficiencyThreshold     = 0.3
+	L2ToL1EfficiencyThreshold = 0.32
 )
 
 // validateL1 does a sanity check on the mock implementation of the L1
-func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node) {
+func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
@@ -179,7 +181,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscuro
 				deposits = append(deposits, tr.Hash())
 				totalDeposited += tx.Amount
 			case obscurocommon.RollupTx:
-				r := nodecommon.DecodeRollup(tx.Rollup)
+				r := nodecommon.DecodeRollupOrPanic(tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.Resolver.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
@@ -220,7 +222,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint, l1HeightHash *obscuro
 
 // validateL2WithdrawalStats checks the withdrawal requests by
 // comparing the stats of the generated transactions with the withdrawals on the node headers
-func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint, txManager *TransactionManager) uint64 {
+func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint64, txManager *TransactionManager) uint64 {
 	headerWithdrawalSum := uint64(0)
 	headerWithdrawalTxCount := 0
 

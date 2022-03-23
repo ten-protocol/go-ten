@@ -59,10 +59,12 @@ func main() {
 		l2NetworkCfg,
 		avgBlockDuration,
 		avgGossipPeriod,
+		false,
 		stats,
 	)
 
 	// execute the simulation
 	sim.Start(txManager, simulationTime)
 	fmt.Printf("%s\n", simulation.NewOutputStats(sim))
+	sim.Stop()
 }

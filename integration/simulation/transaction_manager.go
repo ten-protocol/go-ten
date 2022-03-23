@@ -25,7 +25,7 @@ type TransactionManager struct {
 	l1TransactionsLock sync.RWMutex
 	l1Transactions     []obscurocommon.L1TxData
 	l2TransactionsLock sync.RWMutex
-	l2Transactions     enclave.Transactions
+	l2Transactions     enclave.L2Txs
 }
 
 // NewTransactionManager returns a transaction manager with a given number of wallets
@@ -100,14 +100,14 @@ func (m *TransactionManager) trackL2Tx(tx enclave.L2Tx) {
 	m.l2Transactions = append(m.l2Transactions, tx)
 }
 
-// GetL1Transactions returns all generated L1 Transactions
+// GetL1Transactions returns all generated L1 L2Txs
 func (m *TransactionManager) GetL1Transactions() []obscurocommon.L1TxData {
 	return m.l1Transactions
 }
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
-func (m *TransactionManager) GetL2Transactions() enclave.Transactions {
-	var transactions enclave.Transactions
+func (m *TransactionManager) GetL2Transactions() enclave.L2Txs {
+	var transactions enclave.L2Txs
 	for _, req := range m.l2Transactions {
 		if enclave.TxData(&req).Type != enclave.WithdrawalTx { //nolint:gosec
 			transactions = append(transactions, req)

@@ -18,9 +18,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const ClientRPCTimeoutSecs = 5
+
 type AggregatorCfg struct {
 	// duration of the gossip round
 	GossipRoundDuration uint64
+	// timeout duration in seconds for RPC requests to the enclave service
+	ClientRPCTimeoutSecs uint64
 }
 
 type L2Network interface {
@@ -76,6 +80,7 @@ func NewAgg(
 	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
+	enclaveClient enclave.Enclave,
 ) Node {
 	return Node{
 		// config
@@ -98,7 +103,7 @@ func NewAgg(
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 
 		// State processing
-		Enclave: enclave.NewEnclave(id, true, collector),
+		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
 		nodeDB: obscuronode.NewDB(),
@@ -109,10 +114,9 @@ func NewAgg(
 func (a *Node) Start() {
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
-		secret := a.Enclave.GenerateSecret()
 		txData := obscurocommon.L1TxData{
 			TxType:      obscurocommon.StoreSecretTx,
-			Secret:      secret,
+			Secret:      a.Enclave.GenerateSecret(),
 			Attestation: a.Enclave.Attestation(),
 		}
 		a.broadcastTx(*obscurocommon.NewL1Tx(txData))
@@ -131,8 +135,12 @@ func (a *Node) startProcessing() {
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	allblocks := a.L1Node.RPCBlockchainFeed()
 	a.Enclave.IngestBlocks(allblocks)
+
 	// todo - what happens with the blocks received while processing ?
-	go a.Enclave.Start(*allblocks[len(allblocks)-1])
+	if len(allblocks) == 0 {
+		panic("Host has no blocks available to begin processing.")
+	}
+	a.Enclave.Start(*allblocks[len(allblocks)-1])
 
 	if a.genesis {
 		a.initialiseProtocol()
@@ -155,7 +163,11 @@ func (a *Node) startProcessing() {
 			a.processBlocks(f, interrupt)
 
 		case r := <-a.rollupsP2PCh:
-			rol, _ := nodecommon.Decode(r)
+			rol, err := nodecommon.DecodeRollup(r)
+			if err != nil {
+				log.Log(fmt.Sprintf(">   Agg%d: Could not check enclave initialisation: %v", obscurocommon.ShortAddress(a.ID), err))
+			}
+
 			go a.Enclave.SubmitRollup(nodecommon.ExtRollup{
 				Header: rol.Header,
 				Txs:    rol.Transactions,
@@ -201,8 +213,7 @@ func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
 	// Ignore gossiped transactions while the node is still initialising
 	if a.Enclave.IsInitialised() {
 		go func() {
-			err := a.Enclave.SubmitTx(tx)
-			if err != nil {
+			if err := a.Enclave.SubmitTx(tx); err != nil {
 				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
 			}
 		}()
@@ -234,8 +245,11 @@ func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.interrupt, 1)
 	a.Enclave.Stop()
-	time.Sleep(time.Millisecond * 10)
+
+	time.Sleep(time.Millisecond * 1000)
 	a.exitNodeCh <- true
+
+	a.Enclave.StopClient()
 }
 
 func sendInterrupt(interrupt *int32) *int32 {
@@ -251,7 +265,7 @@ type blockAndParent struct {
 }
 
 func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int32) {
-	var result enclave.SubmitBlockResponse
+	var result enclave.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
@@ -307,7 +321,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 			}
 			a.L1Node.BroadcastTx(t)
 			// collect Stats
-			// a.stats.NewRollup(DecodeRollup(winnerRollup))
+			// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
 		}
 	})
 }
@@ -332,9 +346,10 @@ func (a *Node) broadcastTx(tx obscurocommon.L1Tx) {
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
+	attestation := a.Enclave.Attestation()
 	txData := obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,
-		Attestation: a.Enclave.Attestation(),
+		Attestation: attestation,
 	}
 	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 
@@ -347,7 +362,7 @@ func (a *Node) requestSecret() {
 				t := obscurocommon.TxData(tx)
 				if t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
-					a.Enclave.Init(t.Secret)
+					a.Enclave.InitEnclave(t.Secret)
 					return
 				}
 			}

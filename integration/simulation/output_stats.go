@@ -19,7 +19,7 @@ type OutputStats struct {
 	l2Height                  int // Last known l2 block height
 }
 
-// NewOutputStats process the simulation and retrieves the output statistics
+// NewOutputStats processes the simulation and retrieves the output statistics
 func NewOutputStats(simulation *Simulation) *OutputStats {
 	outputStats := &OutputStats{
 		simulation: simulation,
@@ -54,7 +54,7 @@ func (o *OutputStats) countRollups() {
 		for _, tx := range block.Transactions() {
 			txData := obscurocommon.TxData(tx)
 			if txData.TxType == obscurocommon.RollupTx {
-				r := nodecommon.DecodeRollup(txData.Rollup)
+				r := nodecommon.DecodeRollupOrPanic(txData.Rollup)
 				if l1Node.Resolver.IsBlockAncestor(block, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
