@@ -17,7 +17,7 @@ type BlockResolver interface {
 	// StoreBlock persists the L1 block
 	StoreBlock(block *types.Block)
 	// HeightBlock returns the height of the L1 block
-	HeightBlock(block *types.Block) int
+	HeightBlock(block *types.Block) uint64
 	// ParentBlock returns the L1 block's parent and true, or (nil, false)  if no parent block is stored
 	ParentBlock(block *types.Block) (*types.Block, bool)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 block, and false otherwise
@@ -34,20 +34,20 @@ type Storage interface {
 	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored
 	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
 	// FetchRollups returns all the proposed rollups with the given height
-	FetchRollups(height int) []*Rollup
+	FetchRollups(height uint64) []*Rollup
 	// StoreRollup persists the rollup
 	StoreRollup(rollup *Rollup)
 	// HeightRollup returns the height of the rollup
-	HeightRollup(rollup *Rollup) int
+	HeightRollup(rollup *Rollup) uint64
 	// ParentRollup returns the rollup's parent rollup
 	ParentRollup(rollup *Rollup) *Rollup
 
 	// FetchBlockState returns the state after ingesting the L1 block with the given hash
-	FetchBlockState(hash obscurocommon.L1RootHash) (blockState, bool)
+	FetchBlockState(hash obscurocommon.L1RootHash) (*blockState, bool)
 	// FetchHeadState returns the state after ingesting the L1 block at the head of the chain
-	FetchHeadState() blockState
+	FetchHeadState() *blockState
 	// SetBlockState persists the state after ingesting the L1 block with the given hash
-	SetBlockState(hash obscurocommon.L1RootHash, state blockState)
+	SetBlockState(hash obscurocommon.L1RootHash, state *blockState)
 	// FetchRollupState returns the state after adding the rollup with the given hash
 	FetchRollupState(hash obscurocommon.L2RootHash) State
 	// SetRollupState persists the state after adding the rollup with the given hash
@@ -79,12 +79,12 @@ func NewStorage() Storage {
 	return &storageImpl{db: db}
 }
 
-func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (blockState, bool) {
+func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*blockState, bool) {
 	s.assertSecretAvailable()
 	return s.db.FetchBlockState(hash)
 }
 
-func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state blockState) {
+func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *blockState) {
 	s.assertSecretAvailable()
 	if state.foundNewRollup {
 		s.db.SetBlockStateNewRollup(hash, state)
@@ -98,7 +98,7 @@ func (s *storageImpl) SetRollupState(hash obscurocommon.L2RootHash, state State)
 	s.db.SetRollupState(hash, state)
 }
 
-func (s *storageImpl) FetchHeadState() blockState {
+func (s *storageImpl) FetchHeadState() *blockState {
 	s.assertSecretAvailable()
 	val, _ := s.db.FetchBlockState(s.db.FetchHeadBlock())
 	return val
@@ -115,7 +115,7 @@ func (s *storageImpl) FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
 	return s.db.FetchRollup(hash)
 }
 
-func (s *storageImpl) FetchRollups(height int) []*Rollup {
+func (s *storageImpl) FetchRollups(height uint64) []*Rollup {
 	s.assertSecretAvailable()
 	return s.db.FetchRollups(height)
 }
@@ -143,9 +143,9 @@ func (s *storageImpl) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash) {
 func (s *storageImpl) StoreBlock(b *types.Block) {
 	s.assertSecretAvailable()
 
-	var height int
+	var height uint64
 	if b.ParentHash() == obscurocommon.GenesisHash {
-		height = 0
+		height = obscurocommon.L1GenesisHeight
 	} else {
 		bAndHeight, f := s.db.FetchBlockAndHeight(b.ParentHash())
 		if !f {
@@ -185,7 +185,7 @@ func (s *storageImpl) FetchSecret() SharedEnclaveSecret {
 	return s.db.FetchSecret()
 }
 
-func (s *storageImpl) HeightBlock(block *types.Block) int {
+func (s *storageImpl) HeightBlock(block *types.Block) uint64 {
 	s.assertSecretAvailable()
 	val, f := s.db.FetchBlockAndHeight(block.Hash())
 	if !f {
@@ -203,10 +203,10 @@ func (s *storageImpl) ParentRollup(r *Rollup) *Rollup {
 	return parent
 }
 
-func (s *storageImpl) HeightRollup(r *Rollup) int {
+func (s *storageImpl) HeightRollup(r *Rollup) uint64 {
 	s.assertSecretAvailable()
 	if height := r.Height.Load(); height != nil {
-		return height.(int)
+		return height.(uint64)
 	}
 	if r.Hash() == GenesisRollup.Hash() {
 		r.Height.Store(obscurocommon.L2GenesisHeight)
@@ -250,7 +250,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscuroc
 		return true
 	}
 
-	if s.HeightBlock(block) == 0 {
+	if s.HeightBlock(block) == obscurocommon.L1GenesisHeight {
 		return false
 	}
 

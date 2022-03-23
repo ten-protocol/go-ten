@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	L2GenesisHeight = 0
-	L1GenesisHeight = 0
+	L2GenesisHeight = uint64(1)
+	L1GenesisHeight = uint64(1)
 )
 
 // Number of blocks deep a transaction must be before being considered safe from reorganisations.

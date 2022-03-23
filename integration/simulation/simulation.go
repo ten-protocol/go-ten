@@ -124,9 +124,15 @@ func (s *Simulation) Start(
 
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
-	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
-	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
-	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
+	// The sequence of starting the nodes is important to catch various edge cases.
+	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
+	// The reason is to make sure that they catch up correctly.
+	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
+	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
+	// Note: Other simulations might test variations of this pattern.
+	s.l1Network.Start(time.Duration(s.avgBlockDuration / 8))
+	time.Sleep(time.Duration(s.avgBlockDuration * 20))
+	s.l2Network.Start(time.Duration(s.avgBlockDuration / 3))
 
 	// time in micro seconds to run the simulation
 	timeInUs := simulationTime * 1000 * 1000
