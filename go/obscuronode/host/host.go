@@ -2,8 +2,6 @@ package host
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net"
 	"sync/atomic"
 	"time"
 
@@ -66,7 +64,7 @@ type Node struct {
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
 
-	p2pAddress string
+	p2p P2P
 }
 
 func NewAgg(
@@ -77,8 +75,9 @@ func NewAgg(
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
-	p2pAddress string,
+	p2p P2P,
 ) Node {
+	// todo - check p2pAddress is not empty string
 	return Node{
 		// config
 		ID:        id,
@@ -106,7 +105,7 @@ func NewAgg(
 		// Initialized the node nodeDB
 		nodeDB: NewDB(),
 
-		p2pAddress: p2pAddress,
+		p2p: p2p,
 	}
 }
 
@@ -126,12 +125,8 @@ func (a *Node) Start() {
 		a.requestSecret()
 	}
 
-	listener := a.listenForTxs()
-	defer func(listener net.Listener) {
-		if err := listener.Close(); err != nil {
-			panic(err)
-		}
-	}(listener)
+	a.p2p.listenForTxs(a.txP2PCh)
+	defer a.p2p.stopListeningForTxs()
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing()
@@ -400,41 +395,4 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 			a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 		}
 	}
-}
-
-func (a *Node) listenForTxs() net.Listener {
-	if a.p2pAddress == "" {
-		panic("Host must specify an address for P2P connections")
-	}
-	listener, err := net.Listen("tcp", a.p2pAddress)
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		for {
-			a.listen(listener)
-		}
-	}()
-
-	return listener
-}
-
-func (a *Node) listen(listener net.Listener) {
-	conn, err := listener.Accept()
-	if err != nil {
-		println("Could not accept any further connections.")
-	}
-	defer func(conn net.Conn) {
-		if err := conn.Close(); err != nil {
-			panic(err)
-		}
-	}(conn)
-
-	encryptedTx, err := ioutil.ReadAll(conn)
-	if err != nil {
-		panic(err)
-	}
-
-	a.txP2PCh <- encryptedTx
 }

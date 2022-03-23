@@ -61,7 +61,8 @@ func main() {
 	l2Network := l2NetworkDummy{}
 	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
 	// todo - joel - use flag for p2p address
-	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclaveClient, "localhost:10000")
+	p2p := host.P2PImpl{TxAddress: "localhost:10000"}
+	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclaveClient, &p2p)
 
 	waitForEnclave(agg, *enclavePort)
 	fmt.Printf("Connected to enclave server on port %d.\n", *enclavePort)
