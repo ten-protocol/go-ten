@@ -217,10 +217,6 @@ func (m *TransactionManager) issueInvalidWithdrawals() {
 			break
 		}
 		fromWallet := rndWallet(m.wallets)
-		otherWallet := rndWallet(m.wallets)
-		for fromWallet.Address == otherWallet.Address {
-			otherWallet = rndWallet(m.wallets)
-		}
 		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
 		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := enclave.EncryptTx(signedTx)
