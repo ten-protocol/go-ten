@@ -83,6 +83,11 @@ func (m *TransactionManager) Start(us int) {
 		return nil
 	})
 
+	wg.Go(func() error {
+		m.issueInvalidTransfers()
+		return nil
+	})
+
 	_ = wg.Wait() // future proofing to return errors
 }
 
@@ -128,7 +133,7 @@ func (m *TransactionManager) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
 	return withdrawals
 }
 
-// issueRandomTransfers creates and issues a numbers of L2 transfer transactions proportional to the simulation time, such that they can be processed
+// issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (m *TransactionManager) issueRandomTransfers() {
 	n := uint64(m.simulationTimeInUS) / m.avgBlockDuration
 	i := uint64(0)
@@ -137,12 +142,11 @@ func (m *TransactionManager) issueRandomTransfers() {
 			break
 		}
 		fromWallet := rndWallet(m.wallets)
-		from := fromWallet.Address
 		to := rndWallet(m.wallets).Address
-		if from == to {
-			continue
+		for fromWallet.Address == to {
+			to = rndWallet(m.wallets).Address
 		}
-		tx := wallet_mock.NewL2Transfer(from, to, obscurocommon.RndBtw(1, 500))
+		tx := wallet_mock.NewL2Transfer(fromWallet.Address, to, obscurocommon.RndBtw(1, 500))
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
 		encryptedTx := enclave.EncryptTx(signedTx)
 		m.stats.Transfer()
@@ -153,7 +157,7 @@ func (m *TransactionManager) issueRandomTransfers() {
 	}
 }
 
-// issueRandomDeposits creates and issues a numbers transactions proportional to the simulation time, such that they can be processed
+// issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 // Generates L1 common.DepositTx transactions
 func (m *TransactionManager) issueRandomDeposits() {
 	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
@@ -178,7 +182,7 @@ func (m *TransactionManager) issueRandomDeposits() {
 	}
 }
 
-// issueRandomWithdrawals creates and issues a numbers transactions proportional to the simulation time, such that they can be processed
+// issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 // Generates L2 enclave2.WithdrawalTx transactions
 func (m *TransactionManager) issueRandomWithdrawals() {
 	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
@@ -198,6 +202,52 @@ func (m *TransactionManager) issueRandomWithdrawals() {
 		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
 		i++
 	}
+}
+
+// issueInvalidTransfers creates and issues a number of invalidly-signed L2 transfer transactions proportional to the simulation time.
+// These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation stats.
+func (m *TransactionManager) issueInvalidTransfers() {
+	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
+	i := uint64(0)
+	for {
+		if i == n {
+			break
+		}
+		fromWallet := rndWallet(m.wallets)
+		toWallet := rndWallet(m.wallets)
+		for fromWallet.Address == toWallet.Address {
+			toWallet = rndWallet(m.wallets)
+		}
+		tx := wallet_mock.NewL2Transfer(fromWallet.Address, toWallet.Address, obscurocommon.RndBtw(1, 500))
+		signedTx := createInvalidSignature(tx, &fromWallet, &toWallet)
+		encryptedTx := enclave.EncryptTx(signedTx)
+		m.l2NetworkConfig.BroadcastTx(encryptedTx)
+		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration)))
+		i++
+	}
+}
+
+// Uses one of three approaches to create an invalidly-signed transaction.
+func createInvalidSignature(tx *enclave.L2Tx, fromWallet *wallet_mock.Wallet, toWallet *wallet_mock.Wallet) *enclave.L2Tx {
+	i := rand.Intn(3)
+	switch i {
+	case 0: // We sign the transaction with the wrong key.
+		return wallet_mock.SignTx(tx, toWallet.Key.PrivateKey)
+
+	case 1: // We do not sign the transaction.
+		return tx
+
+	case 2: // We modify the transaction after signing.
+		// We create a new transaction, as we need access to the transaction's encapsulated transaction data.
+		txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: fromWallet.Address, To: toWallet.Address, Amount: obscurocommon.RndBtw(1, 500)}
+		newTx := wallet_mock.NewL2Tx(txData)
+		wallet_mock.SignTx(newTx, fromWallet.Key.PrivateKey)
+		// After signing the transaction, we modify its transaction data, breaking the signature.
+		txData.Type = enclave.TransferTx
+		modifiedTx := wallet_mock.NewL2Tx(txData)
+		return modifiedTx
+	}
+	panic("Expected i to be in the range [0,2).")
 }
 
 func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {

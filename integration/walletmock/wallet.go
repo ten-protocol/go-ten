@@ -46,20 +46,20 @@ func New() Wallet {
 // NewL2Transfer creates an enclave.L2Tx of type enclave.TransferTx
 func NewL2Transfer(from common.Address, dest common.Address, amount uint64) *enclave.L2Tx {
 	txData := enclave.L2TxData{Type: enclave.TransferTx, From: from, To: dest, Amount: amount}
-	return newL2Tx(txData)
+	return NewL2Tx(txData)
 }
 
 // NewL2Withdrawal creates an enclave.L2Tx of type enclave.WithdrawalTx
 func NewL2Withdrawal(from common.Address, amount uint64) *enclave.L2Tx {
 	txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: from, Amount: amount}
-	return newL2Tx(txData)
+	return NewL2Tx(txData)
 }
 
-// newL2Tx creates an enclave.L2Tx.
+// NewL2Tx creates an enclave.L2Tx.
 //
 // A random nonce is used to avoid hash collisions. The enclave.L2TxData is encoded and stored in the transaction's
 // data field.
-func newL2Tx(data enclave.L2TxData) *enclave.L2Tx {
+func NewL2Tx(data enclave.L2TxData) *enclave.L2Tx {
 	// We should probably use a deterministic nonce instead, as in the L1.
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 
