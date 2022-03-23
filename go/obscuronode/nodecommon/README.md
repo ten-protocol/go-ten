@@ -1,1 +1,2 @@
-This package contains code that is shared between the node host and the node enclave.
+This package defines the interface between the node host and the node enclave. Any code required for communication 
+between the host and the enclave (e.g. RPC, encoding/decoding, the enclave API) should be placed here.
