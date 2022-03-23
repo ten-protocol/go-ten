@@ -78,7 +78,9 @@ func NewSimulation(
 		}
 
 		// create a layer 2 node
-		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient)
+		p2pAddress := fmt.Sprintf("localhost:%d", 10000+i)
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient, p2pAddress)
+		l2NetworkCfg.nodeP2PAddresses = append(l2NetworkCfg.nodeP2PAddresses, p2pAddress)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks

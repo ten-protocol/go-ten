@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"net"
 	"time"
 
 	"google.golang.org/grpc"
@@ -14,6 +15,7 @@ import (
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
 	nodes            []*host.Node
+	nodeP2PAddresses []string
 	enclaveServers   []*grpc.Server
 	avgLatency       uint64
 	avgBlockDuration uint64
@@ -27,6 +29,7 @@ func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 	}
 }
 
+// todo - joel - send to each node address instead
 // BroadcastRollup Broadcasts the rollup to all L2 peers
 func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	for _, a := range cfg.nodes {
@@ -39,9 +42,31 @@ func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup) {
 }
 
 func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
-	for _, a := range cfg.nodes {
-		t := a
-		obscurocommon.Schedule(cfg.delay()/2, func() { t.P2PReceiveTx(tx) })
+	time.Sleep(1 * time.Second) // todo - joel - get rid of this wait somehow
+
+	for _, a := range cfg.nodeP2PAddresses {
+		address := a
+		obscurocommon.Schedule(cfg.delay()/2, func() {
+			broadcastTxToNode(address, tx)
+		})
+	}
+}
+
+func broadcastTxToNode(address string, tx nodecommon.EncryptedTx) {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		panic(err)
+	}
+
+	defer func(conn net.Conn) {
+		if err := conn.Close(); err != nil {
+			panic(err)
+		}
+	}(conn)
+
+	_, err = conn.Write(tx)
+	if err != nil {
+		panic(err)
 	}
 }
 

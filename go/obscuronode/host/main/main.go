@@ -60,7 +60,8 @@ func main() {
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	l2Network := l2NetworkDummy{}
 	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
-	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclaveClient)
+	// todo - joel - use flag for p2p address
+	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclaveClient, "localhost:10000")
 
 	waitForEnclave(agg, *enclavePort)
 	fmt.Printf("Connected to enclave server on port %d.\n", *enclavePort)

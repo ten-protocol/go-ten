@@ -2,6 +2,8 @@ package host
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net"
 	"sync/atomic"
 	"time"
 
@@ -53,23 +55,18 @@ type Node struct {
 	exitNodeCh chan bool
 	interrupt  *int32
 
-	// blockRPCCh is where the connected L1Node node drops new blocks
-	blockRPCCh chan blockAndParent
-
-	// forkRPCCh is where new forks from the L1 notify the obscuro node
-	forkRPCCh chan []obscurocommon.EncodedBlock
-
-	// rollupsP2PCh is the channel where new rollups are gossiped to
-	rollupsP2PCh chan obscurocommon.EncodedRollup
-
-	// txP2PCh is the channel that new transactions are gossiped to
-	txP2PCh chan nodecommon.EncryptedTx
+	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
+	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
+	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups are gossiped to
+	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions are gossiped to
 
 	// Interface to the logic running inside the TEE
 	Enclave nodecommon.Enclave
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
+
+	p2pAddress string
 }
 
 func NewAgg(
@@ -80,6 +77,7 @@ func NewAgg(
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
+	p2pAddress string,
 ) Node {
 	return Node{
 		// config
@@ -107,6 +105,8 @@ func NewAgg(
 
 		// Initialized the node nodeDB
 		nodeDB: NewDB(),
+
+		p2pAddress: p2pAddress,
 	}
 }
 
@@ -125,6 +125,13 @@ func (a *Node) Start() {
 	if !a.Enclave.IsInitialised() {
 		a.requestSecret()
 	}
+
+	listener := a.listenForTxs()
+	defer func(listener net.Listener) {
+		if err := listener.Close(); err != nil {
+			panic(err)
+		}
+	}(listener)
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing()
@@ -393,4 +400,41 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 			a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 		}
 	}
+}
+
+func (a *Node) listenForTxs() net.Listener {
+	if a.p2pAddress == "" {
+		panic("Host must specify an address for P2P connections")
+	}
+	listener, err := net.Listen("tcp", a.p2pAddress)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		for {
+			a.listen(listener)
+		}
+	}()
+
+	return listener
+}
+
+func (a *Node) listen(listener net.Listener) {
+	conn, err := listener.Accept()
+	if err != nil {
+		println("Could not accept any further connections.")
+	}
+	defer func(conn net.Conn) {
+		if err := conn.Close(); err != nil {
+			panic(err)
+		}
+	}(conn)
+
+	encryptedTx, err := ioutil.ReadAll(conn)
+	if err != nil {
+		panic(err)
+	}
+
+	a.txP2PCh <- encryptedTx
 }
