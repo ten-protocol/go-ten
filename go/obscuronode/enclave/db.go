@@ -10,7 +10,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// TODO - Further generify this interface's methods.
+// TODO - Further generify this interface's methods
+// TODO - Put this in a separate package to enclave
 
 // DB lives purely in the encrypted memory space of an enclave.
 // Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
@@ -135,6 +136,7 @@ func (db *inMemoryDB) FetchHeadBlock() obscurocommon.L1RootHash {
 	return db.headBlock
 }
 
+// TODO - Pull this logic into the storage layer.
 func (db *inMemoryDB) StoreRollup(rollup *Rollup, height int) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
