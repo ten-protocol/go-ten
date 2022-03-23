@@ -62,6 +62,9 @@ type Node struct {
 	// rollupsP2PCh is the channel where new rollups are gossiped to
 	rollupsP2PCh chan obscurocommon.EncodedRollup
 
+	// txP2PCh is the channel that new transactions are gossiped to
+	txP2PCh chan nodecommon.EncryptedTx
+
 	// Interface to the logic running inside the TEE
 	Enclave nodecommon.Enclave
 
@@ -97,6 +100,7 @@ func NewAgg(
 		blockRPCCh:   make(chan blockAndParent),
 		forkRPCCh:    make(chan []obscurocommon.EncodedBlock),
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
+		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
 		// State processing
 		Enclave: enclaveClient,
@@ -169,6 +173,14 @@ func (a *Node) startProcessing() {
 				Txs:    rol.Transactions,
 			})
 
+		case tx := <-a.txP2PCh:
+			// Ignore gossiped transactions while the node is still initialising
+			if a.Enclave.IsInitialised() {
+				if err := a.Enclave.SubmitTx(tx); err != nil {
+					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+				}
+			}
+
 		case <-a.exitNodeCh:
 			a.Enclave.Stop()
 			return
@@ -206,14 +218,7 @@ func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
-	// Ignore gossiped transactions while the node is still initialising
-	if a.Enclave.IsInitialised() {
-		go func() {
-			if err := a.Enclave.SubmitTx(tx); err != nil {
-				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
-			}
-		}()
-	}
+	a.txP2PCh <- tx
 }
 
 // RPCBalance allows to fetch the balance of one address
