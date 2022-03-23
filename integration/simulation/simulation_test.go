@@ -167,7 +167,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscu
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	l1Block, found := node.Resolver.ResolveBlock(*l1HeightHash)
+	l1Block, found := node.Resolver.FetchBlock(*l1HeightHash)
 	if !found {
 		t.Errorf("expected l1 height block not found")
 	}
@@ -183,7 +183,7 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscu
 			case obscurocommon.RollupTx:
 				r := nodecommon.DecodeRollupOrPanic(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if obscurocommon.IsBlockAncestor(r.Header.L1Proof, block, node.Resolver) {
+				if node.Resolver.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					stats.NewRollup(r)
