@@ -129,7 +129,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	return m.setHead(b)
 }
 
-// Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
+// Notifies the Miner to start mining on the new block and the aggregator to produce rollups
 func (m *Node) setHead(b *types.Block) *types.Block {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return b
