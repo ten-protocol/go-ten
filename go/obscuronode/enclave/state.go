@@ -111,7 +111,7 @@ func updateState(b *types.Block, db DB, blockResolver obscurocommon.BlockResolve
 	rollups := extractRollups(b, blockResolver)
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if len(rollups) > 0 && rollups[0].Hash() == GenesisRollup.Hash() {
+	if len(rollups) == 1 && rollups[0].Hash() == GenesisRollup.Hash() {
 		bs := BlockState{
 			Block:          b,
 			Head:           &GenesisRollup,

@@ -227,14 +227,6 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []BlockSubmissionRespo
 }
 
 func (e *enclaveImpl) SubmitBlock(block types.Block) BlockSubmissionResponse {
-	// Todo - investigate further why this is needed.
-	// So far this seems to recover correctly
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		log.Log(fmt.Sprintf("Agg%d Panic %s", obscurocommon.ShortAddress(e.node), r))
-	//	}
-	//}()
-
 	_, foundBlock := e.db.ResolveBlock(block.Hash())
 	if foundBlock {
 		return BlockSubmissionResponse{IngestedBlock: false}

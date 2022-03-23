@@ -174,7 +174,6 @@ func (a *Node) startProcessing() {
 			})
 
 		case <-a.exitNodeCh:
-			// a.Enclave.Stop()
 			return
 		}
 	}
