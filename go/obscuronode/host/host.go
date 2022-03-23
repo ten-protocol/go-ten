@@ -140,6 +140,9 @@ func (a *Node) startProcessing() {
 	}
 
 	// todo - what happens with the blocks received while processing ?
+	if len(allblocks) == 0 {
+		panic("Host has no blocks available to begin processing.")
+	}
 	a.Enclave.Start(*allblocks[len(allblocks)-1])
 
 	if a.genesis {
