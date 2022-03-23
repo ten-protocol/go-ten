@@ -1,9 +1,12 @@
 package simulation
 
 import (
+	"math/big"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -84,7 +87,7 @@ func (m *TransactionManager) Start(us int) {
 	})
 
 	wg.Go(func() error {
-		m.issueInvalidTransfers()
+		m.issueInvalidWithdrawals()
 		return nil
 	})
 
@@ -204,9 +207,9 @@ func (m *TransactionManager) issueRandomWithdrawals() {
 	}
 }
 
-// issueInvalidTransfers creates and issues a number of invalidly-signed L2 transfer transactions proportional to the simulation time.
-// These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation stats.
-func (m *TransactionManager) issueInvalidTransfers() {
+// issueInvalidWithdrawals creates and issues a number of invalidly-signed L2 withdrawal transactions proportional to the simulation time.
+// These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation withdrawal checks.
+func (m *TransactionManager) issueInvalidWithdrawals() {
 	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
 	i := uint64(0)
 	for {
@@ -214,12 +217,12 @@ func (m *TransactionManager) issueInvalidTransfers() {
 			break
 		}
 		fromWallet := rndWallet(m.wallets)
-		toWallet := rndWallet(m.wallets)
-		for fromWallet.Address == toWallet.Address {
-			toWallet = rndWallet(m.wallets)
+		otherWallet := rndWallet(m.wallets)
+		for fromWallet.Address == otherWallet.Address {
+			otherWallet = rndWallet(m.wallets)
 		}
-		tx := wallet_mock.NewL2Transfer(fromWallet.Address, toWallet.Address, obscurocommon.RndBtw(1, 500))
-		signedTx := createInvalidSignature(tx, &fromWallet, &toWallet)
+		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
+		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := enclave.EncryptTx(signedTx)
 		m.l2NetworkConfig.BroadcastTx(encryptedTx)
 		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration)))
@@ -228,24 +231,25 @@ func (m *TransactionManager) issueInvalidTransfers() {
 }
 
 // Uses one of three approaches to create an invalidly-signed transaction.
-func createInvalidSignature(tx *enclave.L2Tx, fromWallet *wallet_mock.Wallet, toWallet *wallet_mock.Wallet) *enclave.L2Tx {
+func createInvalidSignature(tx *enclave.L2Tx, fromWallet *wallet_mock.Wallet) *enclave.L2Tx {
 	i := rand.Intn(3) //nolint:gosec
 	switch i {
-	case 0: // We sign the transaction with the wrong key.
-		return wallet_mock.SignTx(tx, toWallet.Key.PrivateKey)
+	case 0: // We sign the transaction with a bad signer.
+		incorrectChainID := int64(enclave.ChainID + 1)
+		signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
+		signedTx, _ := types.SignTx(tx, signer, fromWallet.Key.PrivateKey)
+		return signedTx
 
 	case 1: // We do not sign the transaction.
 		return tx
 
 	case 2: // We modify the transaction after signing.
 		// We create a new transaction, as we need access to the transaction's encapsulated transaction data.
-		txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: fromWallet.Address, To: toWallet.Address, Amount: obscurocommon.RndBtw(1, 500)}
+		txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: fromWallet.Address, Amount: obscurocommon.RndBtw(1, 100)}
 		newTx := wallet_mock.NewL2Tx(txData)
 		wallet_mock.SignTx(newTx, fromWallet.Key.PrivateKey)
-		// After signing the transaction, we modify its transaction data, breaking the signature.
-		txData.Type = enclave.TransferTx
-		modifiedTx := wallet_mock.NewL2Tx(txData)
-		return modifiedTx
+		// After signing the transaction, we create a new transaction based on the transaction data, breaking the signature.
+		return wallet_mock.NewL2Tx(txData)
 	}
 	panic("Expected i to be in the range [0,2).")
 }
