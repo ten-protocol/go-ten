@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	L2GenesisHeight = uint64(1)
+	L2GenesisHeight = uint64(0)
 	L1GenesisHeight = uint64(1)
 )
 

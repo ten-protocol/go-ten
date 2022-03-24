@@ -22,7 +22,7 @@ func allIncludedTransactions(b *Rollup, s Storage) map[common.Hash]nodecommon.L2
 	if found {
 		return val
 	}
-	if s.HeightRollup(b) == obscurocommon.L2GenesisHeight {
+	if b.Header.Height == obscurocommon.L2GenesisHeight {
 		return makeMap(b.Transactions)
 	}
 	newMap := make(map[common.Hash]nodecommon.L2Tx)
@@ -51,7 +51,7 @@ func historicTxs(r *Rollup, s Storage) map[common.Hash]common.Hash {
 	i := obscurocommon.HeightCommittedBlocks
 	c := r
 	for {
-		if i == 0 || s.HeightRollup(c) == obscurocommon.L2GenesisHeight {
+		if i == 0 || c.Header.Height == obscurocommon.L2GenesisHeight {
 			return toMap(c.Transactions)
 		}
 		i--
