@@ -40,6 +40,9 @@ type P2P interface {
 	BroadcastTx([]byte)
 	// BroadcastRollup broadcasts a rollup to all network peers over P2P.
 	BroadcastRollup([]byte)
+
+	// SendBytes allows issuance of bytes to the network
+	SendBytes(address string, tx []byte)
 }
 
 // NewP2P returns a new P2P object.
@@ -165,12 +168,12 @@ func (p *p2pImpl) broadcast(msgType Type, bytes []byte) {
 	}
 
 	for _, address := range p.PeerAddresses {
-		sendBytes(address, msgEncoded)
+		p.SendBytes(address, msgEncoded)
 	}
 }
 
-// Sends the bytes over P2P to the given address.
-func sendBytes(address string, tx []byte) {
+// SendBytes Sends the bytes over P2P to the given address.
+func (p *p2pImpl) SendBytes(address string, tx []byte) {
 	conn, err := net.Dial("tcp", address)
 	if conn != nil {
 		defer func(conn net.Conn) {

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -38,9 +40,10 @@ func TestSimulation(t *testing.T) {
 	avgGossipPeriod := avgBlockDurationUSecs / 3
 
 	// define network params
+	p2pNetwork := p2p.NewP2P
 	stats := NewStats(numberOfNodes)
 	l1NetworkConfig := NewL1Network(avgBlockDurationUSecs, avgLatency, stats)
-	l2NetworkCfg := NewL2Network(avgBlockDurationUSecs, avgLatency)
+	l2NetworkCfg := NewL2Network(numberOfNodes, avgBlockDurationUSecs, avgLatency, p2pNetwork)
 
 	// define instances of the simulation mechanisms
 	txManager := NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDurationUSecs, stats)
@@ -52,6 +55,7 @@ func TestSimulation(t *testing.T) {
 		avgGossipPeriod,
 		false,
 		stats,
+		p2pNetwork,
 	)
 
 	// execute the simulation

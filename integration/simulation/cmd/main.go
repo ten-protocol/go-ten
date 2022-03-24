@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
@@ -47,21 +49,14 @@ func main() {
 	avgGossipPeriod := avgBlockDuration / DefaultAverageGossipPeriodToBlockRatio
 
 	// define network params
+	p2pNetwork := p2p.NewP2P
 	stats := simulation.NewStats(numberOfNodes)
 	l1NetworkConfig := simulation.NewL1Network(avgBlockDuration, avgLatency, stats)
-	l2NetworkCfg := simulation.NewL2Network(avgBlockDuration, avgLatency)
+	l2NetworkCfg := simulation.NewL2Network(numberOfNodes, avgBlockDuration, avgLatency, p2pNetwork)
 
 	// define instances of the simulation mechanisms
 	txManager := simulation.NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)
-	sim := simulation.NewSimulation(
-		numberOfNodes,
-		l1NetworkConfig,
-		l2NetworkCfg,
-		avgBlockDuration,
-		avgGossipPeriod,
-		false,
-		stats,
-	)
+	sim := simulation.NewSimulation(numberOfNodes, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, avgGossipPeriod, false, stats, p2pNetwork)
 
 	// execute the simulation
 	sim.Start(txManager, simulationTime)

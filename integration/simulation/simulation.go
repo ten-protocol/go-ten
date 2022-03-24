@@ -44,6 +44,7 @@ func NewSimulation(
 	gossipPeriod uint64,
 	localEnclave bool,
 	stats *Stats,
+	newP2P func(ourAddress string, allAddresses []string) p2p.P2P,
 ) *Simulation {
 	l1NodeCfg := ethereum_mock.MiningConfig{
 		PowTime: func() uint64 {
@@ -57,11 +58,6 @@ func NewSimulation(
 	}
 
 	l2NodeCfg := host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
-
-	// We generate the P2P addresses for each node on the network.
-	for i := 1; i <= nrNodes; i++ {
-		l2NetworkCfg.nodeAddresses = append(l2NetworkCfg.nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
-	}
 
 	for i := 1; i <= nrNodes; i++ {
 		genesis := false
@@ -85,7 +81,7 @@ func NewSimulation(
 		}
 
 		// create a layer 2 node
-		aggP2P := p2p.NewP2P(l2NetworkCfg.nodeAddresses[i-1], l2NetworkCfg.nodeAddresses)
+		aggP2P := newP2P(l2NetworkCfg.nodeAddresses[i-1], l2NetworkCfg.nodeAddresses)
 		agg := host.NewAgg(nodeID, l2NodeCfg, nil, stats, genesis, enclaveClient, aggP2P)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 

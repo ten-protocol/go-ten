@@ -1,7 +1,7 @@
 package simulation
 
 import (
-	"net"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -19,13 +19,30 @@ type L2NetworkCfg struct {
 	nodeAddresses    []string
 	avgLatency       uint64
 	avgBlockDuration uint64
+	p2p              p2p.P2P
 }
 
 // NewL2Network returns an instance of a configured L2 Network (no nodes)
-func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
+func NewL2Network(
+	nrNodes int,
+	avgBlockDuration uint64,
+	avgLatency uint64,
+	newP2P func(ourAddress string, allAddresses []string) p2p.P2P,
+) *L2NetworkCfg {
+	// We generate the P2P addresses for each node on the network.
+	var nodeAddresses []string
+	for i := 1; i <= nrNodes; i++ {
+		nodeAddresses = append(nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
+	}
+
+	p2p := newP2P("localhost:11000", nodeAddresses)
+	p2p.Listen(nil, nil)
+
 	return &L2NetworkCfg{
 		avgLatency:       avgLatency,
 		avgBlockDuration: avgBlockDuration,
+		p2p:              p2p,
+		nodeAddresses:    nodeAddresses,
 	}
 }
 
@@ -38,27 +55,10 @@ func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
 
 	for _, a := range cfg.nodeAddresses {
 		address := a
+		// we want to control the delay, so we use the send function
 		obscurocommon.Schedule(cfg.delay()/2, func() {
-			broadcastBytes(address, msgEncoded)
+			cfg.p2p.SendBytes(address, msgEncoded)
 		})
-	}
-}
-
-func broadcastBytes(address string, tx []byte) {
-	conn, err := net.Dial("tcp", address)
-	if err != nil {
-		panic(err)
-	}
-
-	defer func(conn net.Conn) {
-		if err := conn.Close(); err != nil {
-			panic(err)
-		}
-	}(conn)
-
-	_, err = conn.Write(tx)
-	if err != nil {
-		panic(err)
 	}
 }
 
