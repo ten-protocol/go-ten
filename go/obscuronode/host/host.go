@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	p2p2 "github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -23,11 +25,6 @@ type AggregatorCfg struct {
 	ClientRPCTimeoutSecs uint64
 }
 
-type L2Network interface {
-	BroadcastRollup(r obscurocommon.EncodedRollup)
-	BroadcastTx(tx nodecommon.EncryptedTx)
-}
-
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -40,8 +37,7 @@ type StatsCollector interface {
 type Node struct {
 	ID common.Address
 
-	l2Network L2Network
-	L1Node    obscurocommon.L1Node
+	L1Node obscurocommon.L1Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -53,39 +49,36 @@ type Node struct {
 	exitNodeCh chan bool
 	interrupt  *int32
 
-	// blockRPCCh is where the connected L1Node node drops new blocks
-	blockRPCCh chan blockAndParent
-
-	// forkRPCCh is where new forks from the L1 notify the obscuro node
-	forkRPCCh chan []obscurocommon.EncodedBlock
-
-	// rollupsP2PCh is the channel where new rollups are gossiped to
-	rollupsP2PCh chan obscurocommon.EncodedRollup
+	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
+	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
+	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
+	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
 
 	// Interface to the logic running inside the TEE
 	Enclave nodecommon.Enclave
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
+
+	p2p p2p2.P2P
 }
 
 func NewAgg(
 	id common.Address,
 	cfg AggregatorCfg,
 	l1 obscurocommon.L1Node,
-	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
+	p2p p2p2.P2P,
 ) Node {
 	return Node{
 		// config
-		ID:        id,
-		cfg:       cfg,
-		mining:    true,
-		genesis:   genesis,
-		L1Node:    l1,
-		l2Network: l2Network,
+		ID:      id,
+		cfg:     cfg,
+		mining:  true,
+		genesis: genesis,
+		L1Node:  l1,
 
 		stats: collector,
 
@@ -97,17 +90,23 @@ func NewAgg(
 		blockRPCCh:   make(chan blockAndParent),
 		forkRPCCh:    make(chan []obscurocommon.EncodedBlock),
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
+		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
 		// State processing
 		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
 		nodeDB: NewDB(),
+
+		p2p: p2p,
 	}
 }
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
+	a.p2p.Listen(a.txP2PCh, a.rollupsP2PCh)
+	defer a.p2p.StopListening()
+
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
 		txData := obscurocommon.L1TxData{
@@ -172,6 +171,14 @@ func (a *Node) startProcessing() {
 				Txs:    rol.Transactions,
 			})
 
+		case tx := <-a.txP2PCh:
+			// Ignore gossiped transactions while the node is still initialising
+			if a.Enclave.IsInitialised() {
+				if err := a.Enclave.SubmitTx(tx); err != nil {
+					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+				}
+			}
+
 		case <-a.exitNodeCh:
 			return
 		}
@@ -192,30 +199,6 @@ func (a *Node) RPCNewFork(b []obscurocommon.EncodedBlock) {
 		return
 	}
 	a.forkRPCCh <- b
-}
-
-// P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
-// All it does is forward the rollup for processing to the enclave
-func (a *Node) P2PGossipRollup(r obscurocommon.EncodedRollup) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.rollupsP2PCh <- r
-}
-
-// P2PReceiveTx receives a new transactions from the P2P network
-func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	// Ignore gossiped transactions while the node is still initialising
-	if a.Enclave.IsInitialised() {
-		go func() {
-			if err := a.Enclave.SubmitTx(tx); err != nil {
-				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
-			}
-		}()
-	}
 }
 
 // RPCBalance allows to fetch the balance of one address
@@ -283,7 +266,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	// todo -make this a better check
 	if result.ProducedRollup.Header != nil {
-		a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
+		a.p2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
 		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 			if atomic.LoadInt32(a.interrupt) == 1 {

@@ -39,7 +39,7 @@ func main() {
 	nodeAddressBytes, port := parseCLIArgs()
 
 	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
-	if _, err := enclave.StartServer(*port, nodeAddress, nil); err != nil {
+	if err := enclave.StartServer(*port, nodeAddress, nil); err != nil {
 		panic(err)
 	}
 

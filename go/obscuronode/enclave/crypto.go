@@ -16,7 +16,7 @@ func decryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
 func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	t := nodecommon.L2Tx{}
 	if err := rlp.DecodeBytes(tx, &t); err != nil {
-		panic("no way")
+		panic(err)
 	}
 
 	return t

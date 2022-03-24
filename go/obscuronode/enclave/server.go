@@ -22,27 +22,27 @@ import (
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
 type server struct {
 	generated.UnimplementedEnclaveProtoServer
-	enclave nodecommon.Enclave
+	enclave   nodecommon.Enclave
+	rpcServer *grpc.Server
 }
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-func StartServer(port uint64, nodeID common.Address, collector StatsCollector) (*grpc.Server, error) {
+func StartServer(port uint64, nodeID common.Address, collector StatsCollector) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
-		return &grpc.Server{}, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
+		return fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
-	grpcServer := grpc.NewServer()
-	enclaveServer := server{enclave: NewEnclave(nodeID, true, collector)}
-	generated.RegisterEnclaveProtoServer(grpcServer, &enclaveServer)
+	enclaveServer := server{enclave: NewEnclave(nodeID, true, collector), rpcServer: grpc.NewServer()}
+	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 	go func(lis net.Listener) {
-		err = grpcServer.Serve(lis)
+		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
 			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
 		}
 	}(lis)
 
-	return grpcServer, nil
+	return nil
 }
 
 // IsReady returns a nil error to indicate that the server is ready.
@@ -139,6 +139,7 @@ func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRe
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
 	s.enclave.Stop()
+	s.rpcServer.GracefulStop()
 	return &generated.StopResponse{}, nil
 }
 

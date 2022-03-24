@@ -31,8 +31,9 @@ func TestSimulation(t *testing.T) {
 
 	// define core test parameters
 	numberOfNodes := 10
-	simulationTimeSecs := 15                // in seconds
-	avgBlockDurationUSecs := uint64(40_000) // in u seconds 1 sec = 1e6 usecs
+	simulationTimeSecs := 15 // in seconds
+	// This is 25 times the measured time (~6 millis) for sending a rollup over the network when running the simulation.
+	avgBlockDurationUSecs := uint64(150_000) // in u seconds 1 sec = 1e6 usecs.
 	avgLatency := avgBlockDurationUSecs / 15
 	avgGossipPeriod := avgBlockDurationUSecs / 3
 
