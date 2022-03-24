@@ -3,6 +3,8 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -146,7 +148,11 @@ func (s *storageImpl) StoreBlock(b *types.Block) {
 	} else {
 		bAndHeight, f := s.db.FetchBlockAndHeight(b.ParentHash())
 		if !f {
-			panic("Should not happen")
+			// todo this should panic
+			log.Log(fmt.Sprintf("unable to store block: %s without it's parent: %s"))
+			bAndHeight = &blockAndHeight{
+				height: b.Header().Number.Uint64() + 1,
+			}
 		}
 		height = bAndHeight.height + 1
 	}
