@@ -49,8 +49,8 @@ type Node struct {
 
 	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
-	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups are gossiped to
-	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions are gossiped to
+	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
+	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
 
 	// Interface to the logic running inside the TEE
 	Enclave nodecommon.Enclave
@@ -70,7 +70,6 @@ func NewAgg(
 	enclaveClient nodecommon.Enclave,
 	p2p P2P,
 ) Node {
-	// todo - check p2pAddress is not empty string
 	return Node{
 		// config
 		ID:      id,
