@@ -79,9 +79,12 @@ func NewSimulation(
 
 		// create a layer 2 node
 		txP2PAddress := fmt.Sprintf("localhost:%d", 10000+i)
-		p2p := host.P2PImpl{TxAddress: txP2PAddress}
+		rollupP2PAddress := fmt.Sprintf("localhost:%d", 11000+i)
+		p2p := host.P2PImpl{TxAddress: txP2PAddress, RollupAddress: rollupP2PAddress}
 		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient, &p2p)
-		l2NetworkCfg.nodeP2PAddresses = append(l2NetworkCfg.nodeP2PAddresses, txP2PAddress)
+
+		l2NetworkCfg.nodeTxAddresses = append(l2NetworkCfg.nodeTxAddresses, txP2PAddress)
+		l2NetworkCfg.nodeRollupAddresses = append(l2NetworkCfg.nodeRollupAddresses, rollupP2PAddress)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks

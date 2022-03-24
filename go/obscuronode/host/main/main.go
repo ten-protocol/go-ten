@@ -60,7 +60,8 @@ func main() {
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	l2Network := l2NetworkDummy{}
 	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
-	// todo - joel - use flag for p2p address
+	// todo - joel - use flag for tx address
+	// todo - joel - add rollup address
 	p2p := host.P2PImpl{TxAddress: "localhost:10000"}
 	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclaveClient, &p2p)
 
@@ -101,8 +102,8 @@ func waitForEnclave(agg host.Node, enclavePort uint64) {
 // TODO - Replace this dummy once we have implemented P2P communication and gossiping between L2 nodes.
 type l2NetworkDummy struct{}
 
-func (l *l2NetworkDummy) BroadcastRollup(obscurocommon.EncodedRollup) {}
-func (l *l2NetworkDummy) BroadcastTx(nodecommon.EncryptedTx)          {}
+func (l *l2NetworkDummy) BroadcastRollup(obscurocommon.EncodedRollup, common.Address) {}
+func (l *l2NetworkDummy) BroadcastTx(nodecommon.EncryptedTx)                          {}
 
 // TODO - Replace this dummy once we have implemented communication with L1 nodes.
 type l1NodeDummy struct{}

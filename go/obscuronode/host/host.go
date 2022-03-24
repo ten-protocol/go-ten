@@ -24,7 +24,7 @@ type AggregatorCfg struct {
 }
 
 type L2Network interface {
-	BroadcastRollup(r obscurocommon.EncodedRollup)
+	BroadcastRollup(r obscurocommon.EncodedRollup, ourID common.Address) // todo - joel - revert this crutch
 	BroadcastTx(tx nodecommon.EncryptedTx)
 }
 
@@ -111,6 +111,11 @@ func NewAgg(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
+	a.p2p.listenForTxs(a.txP2PCh)
+	defer a.p2p.stopListeningForTxs()
+	a.p2p.listenForRollups(a.rollupsP2PCh)
+	defer a.p2p.stopListeningForRollups()
+
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
 		txData := obscurocommon.L1TxData{
@@ -124,9 +129,6 @@ func (a *Node) Start() {
 	if !a.Enclave.IsInitialised() {
 		a.requestSecret()
 	}
-
-	a.p2p.listenForTxs(a.txP2PCh)
-	defer a.p2p.stopListeningForTxs()
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing()
@@ -204,23 +206,6 @@ func (a *Node) RPCNewFork(b []obscurocommon.EncodedBlock) {
 		return
 	}
 	a.forkRPCCh <- b
-}
-
-// P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
-// All it does is forward the rollup for processing to the enclave
-func (a *Node) P2PGossipRollup(r obscurocommon.EncodedRollup) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.rollupsP2PCh <- r
-}
-
-// P2PReceiveTx receives a new transactions from the P2P network
-func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.txP2PCh <- tx
 }
 
 // RPCBalance allows to fetch the balance of one address
@@ -307,7 +292,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		return
 	}
 
-	a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
+	a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()), a.ID)
 
 	obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {

@@ -4,6 +4,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"google.golang.org/grpc"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -14,11 +16,12 @@ import (
 
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
-	nodes            []*host.Node
-	nodeP2PAddresses []string
-	enclaveServers   []*grpc.Server
-	avgLatency       uint64
-	avgBlockDuration uint64
+	nodes               []*host.Node
+	nodeTxAddresses     []string
+	nodeRollupAddresses []string
+	enclaveServers      []*grpc.Server
+	avgLatency          uint64
+	avgBlockDuration    uint64
 }
 
 // NewL2Network returns an instance of a configured L2 Network (no nodes)
@@ -29,14 +32,15 @@ func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 	}
 }
 
-// todo - joel - send to each node address instead
 // BroadcastRollup Broadcasts the rollup to all L2 peers
-func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup) {
-	for _, a := range cfg.nodes {
-		rol := nodecommon.DecodeRollupOrPanic(r)
-		if a.ID != rol.Header.Agg {
-			t := a
-			obscurocommon.Schedule(cfg.delay(), func() { t.P2PGossipRollup(r) })
+func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup, ourID common.Address) {
+	for _, a := range cfg.nodeRollupAddresses {
+		rol := nodecommon.DecodeRollupOrPanic(r) // todo - joel - more elegant way to not send to self
+		if ourID != rol.Header.Agg {
+			address := a
+			obscurocommon.Schedule(cfg.delay(), func() {
+				broadcastBytes(address, r)
+			})
 		}
 	}
 }
@@ -44,15 +48,15 @@ func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup) {
 func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
 	time.Sleep(1 * time.Second) // todo - joel - get rid of this wait somehow
 
-	for _, a := range cfg.nodeP2PAddresses {
+	for _, a := range cfg.nodeTxAddresses { // todo - joel - do not send to self
 		address := a
 		obscurocommon.Schedule(cfg.delay()/2, func() {
-			broadcastTxToNode(address, tx)
+			broadcastBytes(address, tx)
 		})
 	}
 }
 
-func broadcastTxToNode(address string, tx nodecommon.EncryptedTx) {
+func broadcastBytes(address string, tx []byte) {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
