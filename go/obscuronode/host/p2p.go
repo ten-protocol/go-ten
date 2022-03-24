@@ -116,9 +116,13 @@ func (p *p2pImpl) handleTxs(txP2PCh chan nodecommon.EncryptedTx, listener net.Li
 	for {
 		encryptedTx := readAllBytes(listener)
 		tx := nodecommon.L2Tx{}
+		err := rlp.DecodeBytes(encryptedTx, &tx)
+		
 		// We only post the transaction if it decodes correctly.
-		if err := rlp.DecodeBytes(encryptedTx, &tx); err == nil {
+		if err == nil {
 			txP2PCh <- encryptedTx
+		} else {
+			log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
 		}
 	}
 }
@@ -127,9 +131,13 @@ func (p *p2pImpl) handleRollups(rollupsP2PCh chan obscurocommon.EncodedRollup, l
 	for {
 		encodedRollup := readAllBytes(listener)
 		r := nodecommon.Rollup{}
+		err := rlp.DecodeBytes(readAllBytes(listener), &r)
+
 		// We only post the rollup if it decodes correctly.
-		if err := rlp.DecodeBytes(readAllBytes(listener), &r); err == nil {
+		if err == nil {
 			rollupsP2PCh <- encodedRollup
+		} else {
+			log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
 		}
 	}
 }
