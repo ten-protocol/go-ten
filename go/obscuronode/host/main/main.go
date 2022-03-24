@@ -58,7 +58,7 @@ func main() {
 	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
-	// todo - joel - use flag for tx address, rollup address and peer addresses
+	// TODO - Provide flags for tx address, rollup address and peer addresses
 	p2p := host.NewP2P("localhost:10000", "localhost:11000", []string{}, []string{})
 	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, nil, *isGenesis, enclaveClient, p2p)
 
