@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"io/ioutil"
 	"net"
 
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
@@ -73,7 +73,7 @@ func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan 
 		panic(err)
 	}
 	p.txListener = txListener
-	go p.handle(txP2PCh, rollupsP2PCh, txListener)
+	go p.handleConnections(txP2PCh, rollupsP2PCh, txListener)
 }
 
 func (p *p2pImpl) StopListening() {
@@ -100,37 +100,58 @@ func (p *p2pImpl) BroadcastRollup(bytes []byte) {
 	p.broadcast(Rollup, bytes)
 }
 
-// Receives and decodes a P2P message, and pushes it to the correct channel.
-func (p *p2pImpl) handle(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
+// Listens for connections and handles them in a separate goroutine.
+func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
 	for {
-		encodedMsg := acceptConnAndReadAllBytes(listener)
-		msg := Message{}
-		err := rlp.DecodeBytes(encodedMsg, &msg)
+		conn, err := listener.Accept()
 		if err != nil {
-			panic(err)
+			panic("Could not accept any further connections.")
 		}
+		go handle(conn, txP2PCh, rollupsP2PCh)
+	}
+}
 
-		switch msg.Type {
-		case Tx:
-			tx := nodecommon.L2Tx{}
-			err := rlp.DecodeBytes(msg.MsgContents, &tx)
-
-			// We only post the transaction if it decodes correctly.
-			if err == nil {
-				txP2PCh <- msg.MsgContents
-			} else {
-				log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
+// Receives and decodes a P2P message, and pushes it to the correct channel.
+func handle(conn net.Conn, txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
+	if conn != nil {
+		defer func(conn net.Conn) {
+			if closeErr := conn.Close(); closeErr != nil {
+				panic(closeErr)
 			}
-		case Rollup:
-			rollup := nodecommon.Rollup{}
-			err := rlp.DecodeBytes(msg.MsgContents, &rollup)
+		}(conn)
+	}
 
-			// We only post the rollup if it decodes correctly.
-			if err == nil {
-				rollupsP2PCh <- msg.MsgContents
-			} else {
-				log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
-			}
+	encodedMsg, err := ioutil.ReadAll(conn)
+	if err != nil {
+		panic(err)
+	}
+
+	msg := Message{}
+	err = rlp.DecodeBytes(encodedMsg, &msg)
+	if err != nil {
+		panic(err)
+	}
+
+	switch msg.Type {
+	case Tx:
+		tx := nodecommon.L2Tx{}
+		err := rlp.DecodeBytes(msg.MsgContents, &tx)
+
+		// We only post the transaction if it decodes correctly.
+		if err == nil {
+			txP2PCh <- msg.MsgContents
+		} else {
+			log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
+		}
+	case Rollup:
+		rollup := nodecommon.Rollup{}
+		err := rlp.DecodeBytes(msg.MsgContents, &rollup)
+
+		// We only post the rollup if it decodes correctly.
+		if err == nil {
+			rollupsP2PCh <- msg.MsgContents
+		} else {
+			log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
 		}
 	}
 }
@@ -146,27 +167,6 @@ func (p *p2pImpl) broadcast(msgType Type, bytes []byte) {
 	for _, address := range p.PeerAddresses {
 		sendBytes(address, msgEncoded)
 	}
-}
-
-// Accepts the next connection, and reads all bytes from it.
-func acceptConnAndReadAllBytes(listener net.Listener) []byte {
-	conn, err := listener.Accept()
-	if conn != nil {
-		defer func(conn net.Conn) {
-			if closeErr := conn.Close(); closeErr != nil {
-				panic(closeErr)
-			}
-		}(conn)
-	}
-	if err != nil {
-		panic("Could not accept any further connections.")
-	}
-
-	bytes, err := ioutil.ReadAll(conn)
-	if err != nil {
-		panic(err)
-	}
-	return bytes
 }
 
 // Sends the bytes over P2P to the given address.
