@@ -4,8 +4,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"google.golang.org/grpc"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -29,19 +27,6 @@ func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 	return &L2NetworkCfg{
 		avgLatency:       avgLatency,
 		avgBlockDuration: avgBlockDuration,
-	}
-}
-
-// BroadcastRollup Broadcasts the rollup to all L2 peers
-func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup, ourID common.Address) {
-	for _, a := range cfg.nodeRollupAddresses {
-		rol := nodecommon.DecodeRollupOrPanic(r) // todo - joel - more elegant way to not send to self
-		if ourID != rol.Header.Agg {
-			address := a
-			obscurocommon.Schedule(cfg.delay(), func() {
-				broadcastBytes(address, r)
-			})
-		}
 	}
 }
 

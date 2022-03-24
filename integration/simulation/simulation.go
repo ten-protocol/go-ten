@@ -57,6 +57,11 @@ func NewSimulation(
 	l2NodeCfg := host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
 
 	for i := 1; i <= nrNodes; i++ {
+		l2NetworkCfg.nodeTxAddresses = append(l2NetworkCfg.nodeTxAddresses, fmt.Sprintf("localhost:%d", 10000+i))
+		l2NetworkCfg.nodeRollupAddresses = append(l2NetworkCfg.nodeRollupAddresses, fmt.Sprintf("localhost:%d", 11000+i))
+	}
+
+	for i := 1; i <= nrNodes; i++ {
 		genesis := false
 		if i == 1 {
 			genesis = true
@@ -79,13 +84,8 @@ func NewSimulation(
 		}
 
 		// create a layer 2 node
-		txP2PAddress := fmt.Sprintf("localhost:%d", 10000+i)
-		rollupP2PAddress := fmt.Sprintf("localhost:%d", 11000+i)
-		p2p := host.P2PImpl{TxAddress: txP2PAddress, RollupAddress: rollupP2PAddress}
-		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient, &p2p)
-
-		l2NetworkCfg.nodeTxAddresses = append(l2NetworkCfg.nodeTxAddresses, txP2PAddress)
-		l2NetworkCfg.nodeRollupAddresses = append(l2NetworkCfg.nodeRollupAddresses, rollupP2PAddress)
+		p2p := host.NewP2P(i-1, l2NetworkCfg.nodeTxAddresses, l2NetworkCfg.nodeRollupAddresses)
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, stats, genesis, enclaveClient, p2p)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
@@ -122,7 +122,7 @@ func (s *Simulation) Start(
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
 	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
 	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
-	waitForP2PServers(s.l2Network)
+	//waitForP2PServers(s.l2Network) // todo - joel - renable this
 
 	// time in micro seconds to run the simulation
 	timeInUs := simulationTime * 1000 * 1000
@@ -158,11 +158,16 @@ func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
 
 // Returns once all host P2P servers are ready.
 func waitForP2PServers(l2NetworkCfg *L2NetworkCfg) {
-	allP2PAddress := append(l2NetworkCfg.nodeTxAddresses, l2NetworkCfg.nodeRollupAddresses...)
-	for _, address := range allP2PAddress {
+	allP2PAddresses := append(l2NetworkCfg.nodeTxAddresses, l2NetworkCfg.nodeRollupAddresses...)
+	for _, address := range allP2PAddresses {
 		for {
-			_, err := net.Dial("tcp", address)
-			if err == nil {
+			conn, err := net.Dial("tcp", address)
+			if conn != nil {
+				if closeErr := conn.Close(); closeErr != nil {
+					panic(closeErr)
+				}
+			}
+			if err != nil {
 				break
 			}
 		}

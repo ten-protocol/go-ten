@@ -23,11 +23,6 @@ type AggregatorCfg struct {
 	ClientRPCTimeoutSecs uint64
 }
 
-type L2Network interface {
-	BroadcastRollup(r obscurocommon.EncodedRollup, ourID common.Address) // todo - joel - revert this crutch
-	BroadcastTx(tx nodecommon.EncryptedTx)
-}
-
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -40,8 +35,7 @@ type StatsCollector interface {
 type Node struct {
 	ID common.Address
 
-	l2Network L2Network
-	L1Node    obscurocommon.L1Node
+	L1Node obscurocommon.L1Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -71,7 +65,6 @@ func NewAgg(
 	id common.Address,
 	cfg AggregatorCfg,
 	l1 obscurocommon.L1Node,
-	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
@@ -80,12 +73,11 @@ func NewAgg(
 	// todo - check p2pAddress is not empty string
 	return Node{
 		// config
-		ID:        id,
-		cfg:       cfg,
-		mining:    true,
-		genesis:   genesis,
-		L1Node:    l1,
-		l2Network: l2Network,
+		ID:      id,
+		cfg:     cfg,
+		mining:  true,
+		genesis: genesis,
+		L1Node:  l1,
 
 		stats: collector,
 
@@ -292,7 +284,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		return
 	}
 
-	a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()), a.ID)
+	a.p2p.broadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
 	obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
