@@ -4,6 +4,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -12,11 +15,10 @@ import (
 
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
-	nodes               []*host.Node
-	nodeTxAddresses     []string
-	nodeRollupAddresses []string
-	avgLatency          uint64
-	avgBlockDuration    uint64
+	nodes            []*host.Node
+	nodeAddresses    []string
+	avgLatency       uint64
+	avgBlockDuration uint64
 }
 
 // NewL2Network returns an instance of a configured L2 Network (no nodes)
@@ -28,10 +30,16 @@ func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 }
 
 func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
-	for _, a := range cfg.nodeTxAddresses {
+	msg := p2p.Message{Type: p2p.Tx, MsgContents: tx}
+	msgEncoded, err := rlp.EncodeToBytes(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, a := range cfg.nodeAddresses {
 		address := a
 		obscurocommon.Schedule(cfg.delay()/2, func() {
-			broadcastBytes(address, tx)
+			broadcastBytes(address, msgEncoded)
 		})
 	}
 }

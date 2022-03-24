@@ -22,9 +22,8 @@ import (
 
 const (
 	INITIAL_BALANCE         = 5000  // nolint:revive,stylecheck
-	TX_P2P_START_PORT       = 10000 // nolint:revive,stylecheck
-	ROLLUP_P2P_START_PORT   = 11000 // nolint:revive,stylecheck
-	ENCLAVE_CONN_START_PORT = 12000 // nolint:revive,stylecheck
+	P2P_START_PORT          = 10000 // nolint:revive,stylecheck
+	ENCLAVE_CONN_START_PORT = 11000 // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
@@ -61,8 +60,7 @@ func NewSimulation(
 
 	// We generate the P2P addresses for each node on the network.
 	for i := 1; i <= nrNodes; i++ {
-		l2NetworkCfg.nodeTxAddresses = append(l2NetworkCfg.nodeTxAddresses, fmt.Sprintf("localhost:%d", TX_P2P_START_PORT+i))
-		l2NetworkCfg.nodeRollupAddresses = append(l2NetworkCfg.nodeRollupAddresses, fmt.Sprintf("localhost:%d", ROLLUP_P2P_START_PORT+i))
+		l2NetworkCfg.nodeAddresses = append(l2NetworkCfg.nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
 	}
 
 	for i := 1; i <= nrNodes; i++ {
@@ -87,8 +85,8 @@ func NewSimulation(
 		}
 
 		// create a layer 2 node
-		p2p := p2p.NewP2P(l2NetworkCfg.nodeTxAddresses[i-1], l2NetworkCfg.nodeRollupAddresses[i-1], l2NetworkCfg.nodeTxAddresses, l2NetworkCfg.nodeRollupAddresses)
-		agg := host.NewAgg(nodeID, l2NodeCfg, nil, stats, genesis, enclaveClient, p2p)
+		aggP2P := p2p.NewP2P(l2NetworkCfg.nodeAddresses[i-1], l2NetworkCfg.nodeAddresses)
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, stats, genesis, enclaveClient, aggP2P)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks

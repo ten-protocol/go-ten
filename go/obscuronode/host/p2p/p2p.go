@@ -16,6 +16,20 @@ import (
 
 // TODO - Provide configurable timeouts on P2P connections.
 
+// Type indicates the type of a P2P message.
+type Type uint8
+
+const (
+	Tx Type = iota
+	Rollup
+)
+
+// Message associates an encoded message to its type.
+type Message struct {
+	Type        Type
+	MsgContents []byte
+}
+
 // P2P manages P2P communication between L2 nodes.
 type P2P interface {
 	// Listen starts listening for transaction and rollup P2P connections.
@@ -30,60 +44,37 @@ type P2P interface {
 }
 
 // NewP2P returns a new P2P object.
-// allTxAddresses is a list of all the transaction P2P addresses on the network, possibly including out own.
-// allRollupAddresses is a list of all the rollup P2P addresses on the network, possibly including out own.
-// TODO - Consolidate `ourTxAddress` and `ourRollupAddress` into a single address.
-// todo - joel - consolidate
-func NewP2P(ourTxAddress string, ourRollupAddress string, allTxAddresses []string, allRollupAddresses []string) P2P {
-	// We filter out our transaction P2P address if it's contained in the list of all transaction P2P addresses.
-	var peerTxAddresses []string
-	for _, a := range allTxAddresses {
-		if a != ourTxAddress {
-			peerTxAddresses = append(peerTxAddresses, a)
-		}
-	}
-
-	// We filter out our rollup P2P address if it's contained in the list of all rollup P2P addresses.
-	var peerRollupAddresses []string
-	for _, a := range allRollupAddresses {
-		if a != ourRollupAddress {
-			peerRollupAddresses = append(peerRollupAddresses, a)
+// allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
+func NewP2P(ourAddress string, allAddresses []string) P2P {
+	// We filter out our P2P address if it's contained in the list of all P2P addresses.
+	var peerAddresses []string
+	for _, a := range allAddresses {
+		if a != ourAddress {
+			peerAddresses = append(peerAddresses, a)
 		}
 	}
 
 	return &p2pImpl{
-		TxAddress:           ourTxAddress,
-		RollupAddress:       ourRollupAddress,
-		PeerTxAddresses:     peerTxAddresses,
-		PeerRollupAddresses: peerRollupAddresses,
+		OurAddress:    ourAddress,
+		PeerAddresses: peerAddresses,
 	}
 }
 
 type p2pImpl struct {
-	TxAddress           string
-	RollupAddress       string
-	PeerTxAddresses     []string
-	PeerRollupAddresses []string
-	txListener          net.Listener
-	rollupListener      net.Listener
+	OurAddress     string
+	PeerAddresses  []string
+	txListener     net.Listener
+	rollupListener net.Listener
 }
 
 func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
-	// We listen for transaction P2P connections.
-	txListener, err := net.Listen("tcp", p.TxAddress)
+	// We listen for P2P connections.
+	txListener, err := net.Listen("tcp", p.OurAddress)
 	if err != nil {
 		panic(err)
 	}
 	p.txListener = txListener
-	go p.handleTxs(txP2PCh, txListener)
-
-	// We listen for rollup P2P connections.
-	rollupListener, err := net.Listen("tcp", p.RollupAddress)
-	if err != nil {
-		panic(err)
-	}
-	p.rollupListener = rollupListener
-	go p.handleRollups(rollupsP2PCh, rollupListener)
+	go p.handle(txP2PCh, rollupsP2PCh, txListener)
 }
 
 func (p *p2pImpl) StopListening() {
@@ -103,49 +94,63 @@ func (p *p2pImpl) StopListening() {
 }
 
 func (p *p2pImpl) BroadcastTx(bytes []byte) {
-	for _, address := range p.PeerTxAddresses {
-		sendBytes(address, bytes)
-	}
+	p.broadcast(Tx, bytes)
 }
 
 func (p *p2pImpl) BroadcastRollup(bytes []byte) {
-	for _, address := range p.PeerRollupAddresses {
-		sendBytes(address, bytes)
-	}
+	p.broadcast(Rollup, bytes)
 }
 
-func (p *p2pImpl) handleTxs(txP2PCh chan nodecommon.EncryptedTx, listener net.Listener) {
+// Receives and decodes a P2P message, and pushes it to the correct channel.
+func (p *p2pImpl) handle(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
 	for {
-		encryptedTx := readAllBytes(listener)
-		tx := nodecommon.L2Tx{}
-		err := rlp.DecodeBytes(encryptedTx, &tx)
+		encodedMsg := acceptConnAndReadAllBytes(listener)
+		msg := Message{}
+		err := rlp.DecodeBytes(encodedMsg, &msg)
+		if err != nil {
+			panic(err)
+		}
 
-		// We only post the transaction if it decodes correctly.
-		if err == nil {
-			txP2PCh <- encryptedTx
-		} else {
-			log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
+		switch msg.Type {
+		case Tx:
+			tx := nodecommon.L2Tx{}
+			err := rlp.DecodeBytes(msg.MsgContents, &tx)
+
+			// We only post the transaction if it decodes correctly.
+			if err == nil {
+				txP2PCh <- msg.MsgContents
+			} else {
+				log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
+			}
+		case Rollup:
+			rollup := nodecommon.Rollup{}
+			err := rlp.DecodeBytes(msg.MsgContents, &rollup)
+
+			// We only post the rollup if it decodes correctly.
+			if err == nil {
+				rollupsP2PCh <- msg.MsgContents
+			} else {
+				log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
+			}
 		}
 	}
 }
 
-func (p *p2pImpl) handleRollups(rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
-	for {
-		encodedRollup := readAllBytes(listener)
-		r := nodecommon.Rollup{}
-		err := rlp.DecodeBytes(readAllBytes(listener), &r)
+// Creates a P2P message and broadcasts it to all peers.
+func (p *p2pImpl) broadcast(msgType Type, bytes []byte) {
+	msg := Message{Type: msgType, MsgContents: bytes}
+	msgEncoded, err := rlp.EncodeToBytes(msg)
+	if err != nil {
+		panic(err)
+	}
 
-		// We only post the rollup if it decodes correctly.
-		if err == nil {
-			rollupsP2PCh <- encodedRollup
-		} else {
-			log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
-		}
+	for _, address := range p.PeerAddresses {
+		sendBytes(address, msgEncoded)
 	}
 }
 
-// Accepts the next connection, and reads and returns all bytes.
-func readAllBytes(listener net.Listener) []byte {
+// Accepts the next connection, and reads all bytes from it.
+func acceptConnAndReadAllBytes(listener net.Listener) []byte {
 	conn, err := listener.Accept()
 	if conn != nil {
 		defer func(conn net.Conn) {
