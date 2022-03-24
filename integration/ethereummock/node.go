@@ -70,8 +70,8 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	head := m.setHead(obscurocommon.GenesisBlock)
 	m.Resolver.StoreBlock(obscurocommon.GenesisBlock)
+	head := m.setHead(obscurocommon.GenesisBlock)
 
 	for {
 		select {
@@ -138,7 +138,7 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		if m.Resolver.HeightBlock(b) == 0 {
+		if m.Resolver.HeightBlock(b) == obscurocommon.L1GenesisHeight {
 			go t.RPCNewHead(obscurocommon.EncodeBlock(b), nil)
 		} else {
 			p, f := m.Resolver.ParentBlock(b)

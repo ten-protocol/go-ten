@@ -95,7 +95,9 @@ message ProduceGenesisResponse {
 message IngestBlocksRequest {
   repeated bytes encodedBlocks = 1;
 }
-message IngestBlocksResponse {}
+message IngestBlocksResponse {
+  repeated BlockSubmissionResponseMsg blockSubmissionResponses = 1;
+}
 
 message StartRequest {
   bytes encodedBlock = 1;

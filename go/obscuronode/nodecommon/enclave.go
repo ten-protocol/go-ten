@@ -30,7 +30,7 @@ type Enclave interface {
 	ProduceGenesis() BlockSubmissionResponse
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(blocks []*types.Block)
+	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
 
 	// Start - start speculative execution
 	Start(block types.Block)
