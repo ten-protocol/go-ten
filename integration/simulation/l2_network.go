@@ -4,8 +4,6 @@ import (
 	"net"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -17,7 +15,6 @@ type L2NetworkCfg struct {
 	nodes               []*host.Node
 	nodeTxAddresses     []string
 	nodeRollupAddresses []string
-	enclaveServers      []*grpc.Server
 	avgLatency          uint64
 	avgBlockDuration    uint64
 }
@@ -70,10 +67,6 @@ func (cfg *L2NetworkCfg) Start(delay time.Duration) {
 func (cfg *L2NetworkCfg) Stop() {
 	for _, n := range cfg.nodes {
 		n.Stop()
-	}
-
-	for _, es := range cfg.enclaveServers {
-		es.GracefulStop()
 	}
 }
 

@@ -77,11 +77,10 @@ func NewSimulation(
 		} else {
 			port := uint64(ENCLAVE_CONN_START_PORT + i)
 			timeout := time.Duration(l2NodeCfg.ClientRPCTimeoutSecs) * time.Second
-			server, err := enclave.StartServer(port, nodeID, stats)
+			err := enclave.StartServer(port, nodeID, stats)
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}
-			l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
 			enclaveClient = host.NewEnclaveRPCClient(port, timeout)
 		}
 
