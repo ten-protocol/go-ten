@@ -33,7 +33,7 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	return v
 }
 
-func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) *Rollup {
 	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -50,7 +50,7 @@ func NewRollup(b *types.Block, parent *Rollup, a common.Address, txs []nodecommo
 		Header:       &h,
 		Transactions: txs,
 	}
-	return r
+	return &r
 }
 
 // ProofHeight - return the height of the L1 proof, or GenesisHeight-1 - if the block is not known

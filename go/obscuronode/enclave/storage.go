@@ -68,10 +68,18 @@ type Storage interface {
 	FetchSecret() SharedEnclaveSecret
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret SharedEnclaveSecret)
+
+	// todo remove this
+	SetRollupGenesis(hash common.Hash)
 }
 
 type storageImpl struct {
-	db DB
+	db            DB
+	rollupGenesis *Rollup
+}
+
+func (s *storageImpl) SetRollupGenesis(hash common.Hash) {
+	s.rollupGenesis, _ = s.FetchRollup(hash)
 }
 
 func NewStorage() Storage {
@@ -208,7 +216,7 @@ func (s *storageImpl) HeightRollup(r *Rollup) uint64 {
 	if height := r.Height.Load(); height != nil {
 		return height.(uint64)
 	}
-	if r.Hash() == GenesisRollup.Hash() {
+	if s.rollupGenesis != nil && r.Hash() == s.rollupGenesis.Hash() {
 		r.Height.Store(obscurocommon.L2GenesisHeight)
 		return obscurocommon.L2GenesisHeight
 	}

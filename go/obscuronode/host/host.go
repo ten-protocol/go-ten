@@ -141,10 +141,15 @@ func (a *Node) startProcessing() {
 	}
 	a.Enclave.Start(*allblocks[len(allblocks)-1])
 
+	go a.waitForBlocks()
+
 	if a.genesis {
 		a.initialiseProtocol()
 	}
 
+}
+
+func (a *Node) waitForBlocks() {
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
 	i := int32(0)
 	interrupt := &i
@@ -333,7 +338,7 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol() obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
-	genesis := a.Enclave.ProduceGenesis()
+	genesis := a.Enclave.ProduceGenesis(a.DB().GetCurrentBlockHead().ID)
 	txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
 	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 

@@ -97,7 +97,7 @@ func emptyState() State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockState {
+func updateState(b *types.Block, s Storage, blockResolver BlockResolver, genesisRollup *Rollup) *blockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := s.FetchBlockState(b.Hash())
 	if found {
@@ -111,10 +111,10 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 	rollups := extractRollups(b, blockResolver)
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if len(rollups) == 1 && rollups[0].Hash() == GenesisRollup.Hash() {
+	if len(rollups) == 1 && genesisRollup != nil && rollups[0].Hash() == genesisRollup.Hash() {
 		bs := blockState{
 			block:          b,
-			head:           &GenesisRollup,
+			head:           genesisRollup,
 			state:          emptyState(),
 			foundNewRollup: true,
 		}
@@ -135,7 +135,7 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 		if !f {
 			panic("Could not find block parent. This should not happen.")
 		}
-		parentState = updateState(p, s, blockResolver)
+		parentState = updateState(p, s, blockResolver, genesisRollup)
 	}
 
 	bs := calculateBlockState(b, parentState, s, blockResolver, rollups)

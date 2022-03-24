@@ -36,6 +36,7 @@ type enclaveImpl struct {
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
+	genesisRollup        *Rollup
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -107,11 +108,18 @@ func (e *enclaveImpl) start(block types.Block) {
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis() nodecommon.BlockSubmissionResponse {
+func (e *enclaveImpl) ProduceGenesis(blockHash common.Hash) nodecommon.BlockSubmissionResponse {
+	block, found := e.storage.FetchBlock(blockHash)
+	if !found {
+		panic("block should be available in the enclave storage")
+	}
+
+	e.genesisRollup = NewRollup(block, nil, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
+	e.storage.SetRollupGenesis(e.genesisRollup.Hash())
 	return nodecommon.BlockSubmissionResponse{
-		L2Hash:         GenesisRollup.Header.Hash(),
-		L1Hash:         obscurocommon.GenesisHash,
-		ProducedRollup: GenesisRollup.ToExtRollup(),
+		L2Hash:         e.genesisRollup.Header.Hash(),
+		L1Hash:         blockHash,
+		ProducedRollup: e.genesisRollup.ToExtRollup(),
 		IngestedBlock:  true,
 	}
 }
@@ -120,7 +128,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.storage, e.blockResolver)
+		bs := updateState(block, e.storage, e.blockResolver, e.genesisRollup)
 		if bs == nil {
 			result[i] = nodecommon.BlockSubmissionResponse{
 				L1Hash:            block.Hash(),
@@ -166,7 +174,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
-	blockState := updateState(&block, e.storage, e.blockResolver)
+	blockState := updateState(&block, e.storage, e.blockResolver, e.genesisRollup)
 
 	if blockState == nil {
 		return nodecommon.BlockSubmissionResponse{
@@ -179,7 +187,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
-	e.storage.RemoveMempoolTxs(historicTxs(blockState.head, e.storage))
+	e.storage.RemoveMempoolTxs(historicTxs(blockState.head, e.storage, e.genesisRollup))
 	r := e.produceRollup(&block, blockState)
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
@@ -315,7 +323,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
 	r := NewRollup(b, bs.head, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
-	return &r
+	return r
 }
 
 func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
