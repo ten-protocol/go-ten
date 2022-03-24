@@ -32,8 +32,8 @@ func TestSimulation(t *testing.T) {
 	// define core test parameters
 	numberOfNodes := 10
 	simulationTimeSecs := 15 // in seconds
-	// todo - joel - if I don't bump this, open ports start to build up and eventually can't be assigned
-	avgBlockDurationUSecs := uint64(160_000) // in u seconds 1 sec = 1e6 usecs
+	// This is 25 times the measured time (~4 millis) for sending a rollup over the network when running the simulation.
+	avgBlockDurationUSecs := uint64(100_000) // in u seconds 1 sec = 1e6 usecs.
 	avgLatency := avgBlockDurationUSecs / 15
 	avgGossipPeriod := avgBlockDurationUSecs / 3
 
@@ -160,8 +160,8 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 // We test the results against this threshold to catch eventual protocol errors.
 const (
 	L1EfficiencyThreshold     = 0.2
-	L2EfficiencyThreshold     = 0.65 // todo - joel - had to bump this now there are P2P delays
-	L2ToL1EfficiencyThreshold = 0.36 // todo - joel - had to bump this now there are P2P delays
+	L2EfficiencyThreshold     = 0.3
+	L2ToL1EfficiencyThreshold = 0.32
 )
 
 // validateL1 does a sanity check on the mock implementation of the L1

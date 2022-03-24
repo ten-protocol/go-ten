@@ -2,10 +2,9 @@ package p2p
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"io/ioutil"
 	"net"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -172,7 +171,6 @@ func acceptConnAndReadAllBytes(listener net.Listener) []byte {
 
 // Sends the bytes over P2P to the given address.
 func sendBytes(address string, tx []byte) {
-	// todo - joel - use connection pool
 	conn, err := net.Dial("tcp", address)
 	if conn != nil {
 		defer func(conn net.Conn) {

@@ -80,5 +80,5 @@ func (cfg *L2NetworkCfg) Stop() {
 
 // delay returns an expected delay on the l2
 func (cfg *L2NetworkCfg) delay() uint64 {
-	return obscurocommon.RndBtw(cfg.avgLatency/10, 2*cfg.avgLatency)
+	return obscurocommon.RndBtw((cfg.avgBlockDuration/25)/10, (cfg.avgBlockDuration/25)*2)
 }
