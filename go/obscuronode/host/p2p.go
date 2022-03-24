@@ -1,8 +1,11 @@
 package host
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -11,25 +14,47 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-type P2P interface {
-	listenForTxs(txP2PCh chan nodecommon.EncryptedTx)
-	listenForRollups(rollupsP2PCh chan obscurocommon.EncodedRollup)
-	stopListeningForTxs()
-	stopListeningForRollups()
+// TODO - Provide configurable timeouts on P2P connections.
 
-	broadcastRollup(r obscurocommon.EncodedRollup)
+// P2P manages P2P communication between L2 nodes.
+type P2P interface {
+	// Starts listening for transaction and rollup P2P connections.
+	listen(chan nodecommon.EncryptedTx, chan obscurocommon.EncodedRollup)
+	// Stops listening.
+	stopListening()
+
+	// Broadcasts a transaction to all network peers over P2P.
+	broadcastTx([]byte)
+	// Broadcasts a rollup to all network peers over P2P.
+	broadcastRollup([]byte)
 }
 
-func NewP2P(idx int, txAddresses []string, rollupAddresses []string) P2P {
-	txAddrsCopy := make([]string, len(txAddresses))
-	copy(txAddrsCopy, txAddresses)
-	peerTxAddresses := append(txAddrsCopy[0:idx], txAddrsCopy[idx+1:]...)
+// NewP2P returns a new P2P object.
+// allTxAddresses is a list of all the transaction P2P addresses on the network, possibly including out own.
+// allRollupAddresses is a list of all the rollup P2P addresses on the network, possibly including out own.
+func NewP2P(ourTxAddress string, ourRollupAddress string, allTxAddresses []string, allRollupAddresses []string) P2P {
+	// We filter out our transaction P2P address if it's contained in the list of all transaction P2P addresses.
+	var peerTxAddresses []string
+	for _, a := range allTxAddresses {
+		if a != ourTxAddress {
+			peerTxAddresses = append(peerTxAddresses, a)
+		}
+	}
 
-	rollupAddrsCopy := make([]string, len(rollupAddresses))
-	copy(rollupAddrsCopy, rollupAddresses)
-	peerRollupAddresses := append(rollupAddrsCopy[0:idx], rollupAddrsCopy[idx+1:]...)
+	// We filter out our rollup P2P address if it's contained in the list of all rollup P2P addresses.
+	var peerRollupAddresses []string
+	for _, a := range allRollupAddresses {
+		if a != ourRollupAddress {
+			peerRollupAddresses = append(peerRollupAddresses, a)
+		}
+	}
 
-	return &p2pImpl{TxAddress: txAddresses[idx], RollupAddress: rollupAddresses[idx], PeerTxAddresses: peerTxAddresses, PeerRollupAddresses: peerRollupAddresses}
+	return &p2pImpl{
+		TxAddress:           ourTxAddress,
+		RollupAddress:       ourRollupAddress,
+		PeerTxAddresses:     peerTxAddresses,
+		PeerRollupAddresses: peerRollupAddresses,
+	}
 }
 
 type p2pImpl struct {
@@ -41,63 +66,76 @@ type p2pImpl struct {
 	rollupListener      net.Listener
 }
 
-func (p *p2pImpl) listenForTxs(txP2PCh chan nodecommon.EncryptedTx) {
-	listener, err := net.Listen("tcp", p.TxAddress)
+func (p *p2pImpl) listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
+	// We listen for transaction P2P connections.
+	txListener, err := net.Listen("tcp", p.TxAddress)
 	if err != nil {
 		panic(err)
 	}
-	p.txListener = listener
+	p.txListener = txListener
+	go p.handleTxs(txP2PCh, txListener)
 
-	go func() {
-		for {
-			p.handleTx(txP2PCh, listener)
-		}
-	}()
-}
-
-func (p *p2pImpl) listenForRollups(rollupsP2PCh chan obscurocommon.EncodedRollup) {
-	listener, err := net.Listen("tcp", p.RollupAddress)
+	// We listen for rollup P2P connections.
+	rollupListener, err := net.Listen("tcp", p.RollupAddress)
 	if err != nil {
 		panic(err)
 	}
-	p.rollupListener = listener
+	p.rollupListener = rollupListener
+	go p.handleRollups(rollupsP2PCh, rollupListener)
+}
 
-	go func() {
-		for {
-			p.handleRollup(rollupsP2PCh, listener)
+func (p *p2pImpl) stopListening() {
+	if p.txListener != nil {
+		if err := p.txListener.Close(); err != nil {
+			log.Log(fmt.Sprintf("failed to close transaction P2P listener cleanly: %v", err))
 		}
-	}()
-}
+		p.txListener = nil
+	}
 
-func (p *p2pImpl) stopListeningForTxs() {
-	// todo - joel - implement
-}
-
-func (p *p2pImpl) stopListeningForRollups() {
-	// todo - joel - implement
-}
-
-func (p *p2pImpl) handleTx(txP2PCh chan nodecommon.EncryptedTx, listener net.Listener) {
-	encryptedTx := readBytes(listener)
-
-	t := nodecommon.L2Tx{}
-	// We only post the transaction if it decodes correctly.
-	if err := rlp.DecodeBytes(encryptedTx, &t); err == nil {
-		txP2PCh <- encryptedTx
+	if p.rollupListener != nil {
+		if err := p.rollupListener.Close(); err != nil {
+			log.Log(fmt.Sprintf("failed to close rollup P2P listener cleanly: %v", err))
+		}
+		p.rollupListener = nil
 	}
 }
 
-func (p *p2pImpl) handleRollup(rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
-	encodedRollup := readBytes(listener)
-
-	r := nodecommon.Rollup{}
-	// We only post the rollup if it decodes correctly.
-	if err := rlp.DecodeBytes(encodedRollup, &r); err == nil {
-		rollupsP2PCh <- encodedRollup
+func (p *p2pImpl) broadcastTx(bytes []byte) {
+	for _, address := range p.PeerTxAddresses {
+		sendBytes(address, bytes)
 	}
 }
 
-func readBytes(listener net.Listener) []byte {
+func (p *p2pImpl) broadcastRollup(bytes []byte) {
+	for _, address := range p.PeerRollupAddresses {
+		sendBytes(address, bytes)
+	}
+}
+
+func (p *p2pImpl) handleTxs(txP2PCh chan nodecommon.EncryptedTx, listener net.Listener) {
+	for {
+		encryptedTx := readAllBytes(listener)
+		tx := nodecommon.L2Tx{}
+		// We only post the transaction if it decodes correctly.
+		if err := rlp.DecodeBytes(encryptedTx, &tx); err == nil {
+			txP2PCh <- encryptedTx
+		}
+	}
+}
+
+func (p *p2pImpl) handleRollups(rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
+	for {
+		encodedRollup := readAllBytes(listener)
+		r := nodecommon.Rollup{}
+		// We only post the rollup if it decodes correctly.
+		if err := rlp.DecodeBytes(readAllBytes(listener), &r); err == nil {
+			rollupsP2PCh <- encodedRollup
+		}
+	}
+}
+
+// Accepts the next connection, and reads and returns all bytes.
+func readAllBytes(listener net.Listener) []byte {
 	conn, err := listener.Accept()
 	if conn != nil {
 		defer func(conn net.Conn) {
@@ -117,21 +155,8 @@ func readBytes(listener net.Listener) []byte {
 	return bytes
 }
 
-// BroadcastRollup Broadcasts the rollup to all L2 peers
-func (p *p2pImpl) broadcastRollup(r obscurocommon.EncodedRollup) {
-	for _, a := range p.PeerRollupAddresses {
-		address := a
-		obscurocommon.Schedule(delay(), func() { broadcastBytes(address, r) })
-	}
-}
-
-// todo - joel - pulled this over from l2 network. need to decide on proper latency
-func delay() uint64 {
-	avgLatency := uint64(40_000)
-	return obscurocommon.RndBtw(avgLatency/10, 2*avgLatency)
-}
-
-func broadcastBytes(address string, tx []byte) {
+// Sends the bytes over P2P to the given address.
+func sendBytes(address string, tx []byte) {
 	conn, err := net.Dial("tcp", address)
 	if conn != nil {
 		defer func(conn net.Conn) {

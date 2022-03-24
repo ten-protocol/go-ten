@@ -31,7 +31,7 @@ func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 }
 
 func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
-	for _, a := range cfg.nodeTxAddresses { // todo - joel - do not send to self
+	for _, a := range cfg.nodeTxAddresses {
 		address := a
 		obscurocommon.Schedule(cfg.delay()/2, func() {
 			broadcastBytes(address, tx)

@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 const (
@@ -58,12 +57,10 @@ func main() {
 
 	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
-	l2Network := l2NetworkDummy{}
 	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
-	// todo - joel - use flag for tx address
-	// todo - joel - add rollup address
-	p2p := host.P2PImpl{TxAddress: "localhost:10000"}
-	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, &l2Network, nil, *isGenesis, enclaveClient, &p2p)
+	// todo - joel - use flag for tx address, rollup address and peer addresses
+	p2p := host.NewP2P("localhost:10000", "localhost:11000", []string{}, []string{})
+	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, nil, *isGenesis, enclaveClient, p2p)
 
 	waitForEnclave(agg, *enclavePort)
 	fmt.Printf("Connected to enclave server on port %d.\n", *enclavePort)
@@ -98,12 +95,6 @@ func waitForEnclave(agg host.Node, enclavePort uint64) {
 		}
 	}
 }
-
-// TODO - Replace this dummy once we have implemented P2P communication and gossiping between L2 nodes.
-type l2NetworkDummy struct{}
-
-func (l *l2NetworkDummy) BroadcastRollup(obscurocommon.EncodedRollup, common.Address) {}
-func (l *l2NetworkDummy) BroadcastTx(nodecommon.EncryptedTx)                          {}
 
 // TODO - Replace this dummy once we have implemented communication with L1 nodes.
 type l1NodeDummy struct{}

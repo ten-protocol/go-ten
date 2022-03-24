@@ -103,10 +103,8 @@ func NewAgg(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
-	a.p2p.listenForTxs(a.txP2PCh)
-	defer a.p2p.stopListeningForTxs()
-	a.p2p.listenForRollups(a.rollupsP2PCh)
-	defer a.p2p.stopListeningForRollups()
+	a.p2p.listen(a.txP2PCh, a.rollupsP2PCh)
+	defer a.p2p.stopListening()
 
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage

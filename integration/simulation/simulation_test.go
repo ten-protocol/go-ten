@@ -31,8 +31,9 @@ func TestSimulation(t *testing.T) {
 
 	// define core test parameters
 	numberOfNodes := 10
-	simulationTimeSecs := 15                // in seconds
-	avgBlockDurationUSecs := uint64(40_000) // in u seconds 1 sec = 1e6 usecs
+	simulationTimeSecs := 15 // in seconds
+	// todo - joel - if I don't bump this, open ports start to build up and eventually can't be assigned
+	avgBlockDurationUSecs := uint64(160_000) // in u seconds 1 sec = 1e6 usecs
 	avgLatency := avgBlockDurationUSecs / 15
 	avgGossipPeriod := avgBlockDurationUSecs / 3
 
@@ -157,7 +158,7 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 // We test the results against this threshold to catch eventual protocol errors.
 const (
 	L1EfficiencyThreshold     = 0.2
-	L2EfficiencyThreshold     = 1.0 // todo - joel - revert this
+	L2EfficiencyThreshold     = 0.5 // todo - joel - had to bump this now there are P2P delays
 	L2ToL1EfficiencyThreshold = 0.32
 )
 
@@ -249,8 +250,6 @@ func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2He
 
 	// you should not have % difference between the # of rollups and the # of blocks
 	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
-	println("jjj")
-	println(efficiency)
 	if efficiency > L2EfficiencyThreshold {
 		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreshold)
 	}
