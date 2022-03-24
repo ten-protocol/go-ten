@@ -3,6 +3,7 @@ package simulation
 import (
 	"fmt"
 	"math/big"
+	"net"
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -106,18 +107,6 @@ func NewSimulation(
 	}
 }
 
-// Returns once all the enclave servers are ready.
-func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
-	for _, node := range l2NetworkCfg.nodes {
-		for {
-			if node.Enclave.IsReady() == nil {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
-}
-
 // RunSimulation executes the simulation given all the params
 // todo - introduce 2 parameters for nrNodes and random L1-L2 allocation
 // todo - random add or remove l1 or l2 nodes - logic for catching up
@@ -133,6 +122,7 @@ func (s *Simulation) Start(
 	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
 	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
 	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
+	waitForP2PServers(s.l2Network)
 
 	// time in micro seconds to run the simulation
 	timeInUs := simulationTime * 1000 * 1000
@@ -152,4 +142,30 @@ func (s *Simulation) Stop() {
 	// stop L2 first and then L1
 	go s.l2Network.Stop()
 	go s.l1Network.Stop()
+}
+
+// Returns once all the enclave servers are ready.
+func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
+	for _, node := range l2NetworkCfg.nodes {
+		for {
+			if node.Enclave.IsReady() == nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+// Returns once all host P2P servers are ready.
+func waitForP2PServers(l2NetworkCfg *L2NetworkCfg) {
+	allP2PAddress := append(l2NetworkCfg.nodeTxAddresses, l2NetworkCfg.nodeRollupAddresses...)
+	for _, address := range allP2PAddress {
+		for {
+			_, err := net.Dial("tcp", address)
+			if err == nil {
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }

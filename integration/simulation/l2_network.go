@@ -46,8 +46,6 @@ func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup, ourID co
 }
 
 func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
-	time.Sleep(1 * time.Second) // todo - joel - get rid of this wait somehow
-
 	for _, a := range cfg.nodeTxAddresses { // todo - joel - do not send to self
 		address := a
 		obscurocommon.Schedule(cfg.delay()/2, func() {

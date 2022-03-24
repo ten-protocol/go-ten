@@ -249,6 +249,8 @@ func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2He
 
 	// you should not have % difference between the # of rollups and the # of blocks
 	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
+	println("jjj")
+	println(efficiency)
 	if efficiency > L2EfficiencyThreshold {
 		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreshold)
 	}

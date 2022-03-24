@@ -4,6 +4,8 @@ import (
 	"io/ioutil"
 	"net"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -60,39 +62,39 @@ func (p *P2PImpl) stopListeningForRollups() {
 }
 
 func (p *P2PImpl) handleTx(txP2PCh chan nodecommon.EncryptedTx, listener net.Listener) {
-	conn, err := listener.Accept()
-	if err != nil {
-		println("Could not accept any further connections.")
-	}
-	defer func(conn net.Conn) {
-		if err := conn.Close(); err != nil {
-			panic(err)
-		}
-	}(conn)
+	encryptedTx := readBytes(listener)
 
-	encryptedTx, err := ioutil.ReadAll(conn)
-	if err != nil {
-		panic(err)
+	t := nodecommon.L2Tx{}
+	// We only post the transaction if it decodes correctly.
+	if err := rlp.DecodeBytes(encryptedTx, &t); err == nil {
+		txP2PCh <- encryptedTx
 	}
-
-	txP2PCh <- encryptedTx
 }
 
 func (p *P2PImpl) handleRollup(rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
+	encodedRollup := readBytes(listener)
+
+	r := nodecommon.Rollup{}
+	// We only post the rollup if it decodes correctly.
+	if err := rlp.DecodeBytes(encodedRollup, &r); err == nil {
+		rollupsP2PCh <- encodedRollup
+	}
+}
+
+func readBytes(listener net.Listener) []byte {
 	conn, err := listener.Accept()
 	if err != nil {
-		println("Could not accept any further connections.")
+		panic("Could not accept any further connections.")
 	}
 	defer func(conn net.Conn) {
-		if err := conn.Close(); err != nil {
+		if err = conn.Close(); err != nil {
 			panic(err)
 		}
 	}(conn)
 
-	encryptedTx, err := ioutil.ReadAll(conn)
+	bytes, err := ioutil.ReadAll(conn)
 	if err != nil {
 		panic(err)
 	}
-
-	rollupsP2PCh <- encryptedTx
+	return bytes
 }
