@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	p2p2 "github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -58,7 +60,7 @@ type Node struct {
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
 
-	p2p P2P
+	p2p p2p2.P2P
 }
 
 func NewAgg(
@@ -68,7 +70,7 @@ func NewAgg(
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
-	p2p P2P,
+	p2p p2p2.P2P,
 ) Node {
 	return Node{
 		// config
@@ -102,8 +104,8 @@ func NewAgg(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
-	a.p2p.listen(a.txP2PCh, a.rollupsP2PCh)
-	defer a.p2p.stopListening()
+	a.p2p.Listen(a.txP2PCh, a.rollupsP2PCh)
+	defer a.p2p.StopListening()
 
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
@@ -264,7 +266,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	// todo -make this a better check
 	if result.ProducedRollup.Header != nil {
-		a.p2p.broadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
+		a.p2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
 		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 			if atomic.LoadInt32(a.interrupt) == 1 {

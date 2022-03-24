@@ -1,4 +1,4 @@
-package host
+package p2p
 
 import (
 	"fmt"
@@ -18,20 +18,22 @@ import (
 
 // P2P manages P2P communication between L2 nodes.
 type P2P interface {
-	// Starts listening for transaction and rollup P2P connections.
-	listen(chan nodecommon.EncryptedTx, chan obscurocommon.EncodedRollup)
-	// Stops listening.
-	stopListening()
+	// Listen starts listening for transaction and rollup P2P connections.
+	Listen(chan nodecommon.EncryptedTx, chan obscurocommon.EncodedRollup)
+	// StopListening stops listening for transaction and rollup P2P connections.
+	StopListening()
 
-	// Broadcasts a transaction to all network peers over P2P.
-	broadcastTx([]byte)
-	// Broadcasts a rollup to all network peers over P2P.
-	broadcastRollup([]byte)
+	// BroadcastTx broadcasts a transaction to all network peers over P2P.
+	BroadcastTx([]byte)
+	// BroadcastRollup broadcasts a rollup to all network peers over P2P.
+	BroadcastRollup([]byte)
 }
 
 // NewP2P returns a new P2P object.
 // allTxAddresses is a list of all the transaction P2P addresses on the network, possibly including out own.
 // allRollupAddresses is a list of all the rollup P2P addresses on the network, possibly including out own.
+// TODO - Consolidate `ourTxAddress` and `ourRollupAddress` into a single address.
+// todo - joel - consolidate
 func NewP2P(ourTxAddress string, ourRollupAddress string, allTxAddresses []string, allRollupAddresses []string) P2P {
 	// We filter out our transaction P2P address if it's contained in the list of all transaction P2P addresses.
 	var peerTxAddresses []string
@@ -66,7 +68,7 @@ type p2pImpl struct {
 	rollupListener      net.Listener
 }
 
-func (p *p2pImpl) listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
+func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
 	// We listen for transaction P2P connections.
 	txListener, err := net.Listen("tcp", p.TxAddress)
 	if err != nil {
@@ -84,7 +86,7 @@ func (p *p2pImpl) listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan 
 	go p.handleRollups(rollupsP2PCh, rollupListener)
 }
 
-func (p *p2pImpl) stopListening() {
+func (p *p2pImpl) StopListening() {
 	if p.txListener != nil {
 		if err := p.txListener.Close(); err != nil {
 			log.Log(fmt.Sprintf("failed to close transaction P2P listener cleanly: %v", err))
@@ -100,13 +102,13 @@ func (p *p2pImpl) stopListening() {
 	}
 }
 
-func (p *p2pImpl) broadcastTx(bytes []byte) {
+func (p *p2pImpl) BroadcastTx(bytes []byte) {
 	for _, address := range p.PeerTxAddresses {
 		sendBytes(address, bytes)
 	}
 }
 
-func (p *p2pImpl) broadcastRollup(bytes []byte) {
+func (p *p2pImpl) BroadcastRollup(bytes []byte) {
 	for _, address := range p.PeerRollupAddresses {
 		sendBytes(address, bytes)
 	}
@@ -117,7 +119,7 @@ func (p *p2pImpl) handleTxs(txP2PCh chan nodecommon.EncryptedTx, listener net.Li
 		encryptedTx := readAllBytes(listener)
 		tx := nodecommon.L2Tx{}
 		err := rlp.DecodeBytes(encryptedTx, &tx)
-		
+
 		// We only post the transaction if it decodes correctly.
 		if err == nil {
 			txP2PCh <- encryptedTx
@@ -165,6 +167,7 @@ func readAllBytes(listener net.Listener) []byte {
 
 // Sends the bytes over P2P to the given address.
 func sendBytes(address string, tx []byte) {
+	// todo - joel - use connection pool
 	conn, err := net.Dial("tcp", address)
 	if conn != nil {
 		defer func(conn net.Conn) {

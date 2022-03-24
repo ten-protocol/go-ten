@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -59,7 +61,7 @@ func main() {
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
 	// TODO - Provide flags for tx address, rollup address and peer addresses
-	p2p := host.NewP2P("localhost:10000", "localhost:11000", []string{}, []string{})
+	p2p := p2p.NewP2P("localhost:10000", "localhost:11000", []string{}, []string{})
 	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, nil, *isGenesis, enclaveClient, p2p)
 
 	waitForEnclave(agg, *enclavePort)

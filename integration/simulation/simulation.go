@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -85,7 +87,7 @@ func NewSimulation(
 		}
 
 		// create a layer 2 node
-		p2p := host.NewP2P(l2NetworkCfg.nodeTxAddresses[i-1], l2NetworkCfg.nodeRollupAddresses[i-1], l2NetworkCfg.nodeTxAddresses, l2NetworkCfg.nodeRollupAddresses)
+		p2p := p2p.NewP2P(l2NetworkCfg.nodeTxAddresses[i-1], l2NetworkCfg.nodeRollupAddresses[i-1], l2NetworkCfg.nodeTxAddresses, l2NetworkCfg.nodeRollupAddresses)
 		agg := host.NewAgg(nodeID, l2NodeCfg, nil, stats, genesis, enclaveClient, p2p)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
