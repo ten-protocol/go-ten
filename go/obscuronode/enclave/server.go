@@ -90,8 +90,15 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 		blocks = append(blocks, &bl)
 	}
 
-	s.enclave.IngestBlocks(blocks)
-	return &generated.IngestBlocksResponse{}, nil
+	r := s.enclave.IngestBlocks(blocks)
+	blockSubmissionResponses := make([]*generated.BlockSubmissionResponseMsg, len(r))
+	for i, response := range r {
+		b := rpc.ToBlockSubmissionResponseMsg(response)
+		blockSubmissionResponses[i] = &b
+	}
+	return &generated.IngestBlocksResponse{
+		BlockSubmissionResponses: blockSubmissionResponses,
+	}, nil
 }
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {

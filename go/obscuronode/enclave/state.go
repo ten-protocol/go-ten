@@ -97,23 +97,34 @@ func emptyState() State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, s Storage, blockResolver BlockResolver) blockState {
+func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := s.FetchBlockState(b.Hash())
 	if found {
 		return val
 	}
 
+	if blockResolver.HeightBlock(b) == 0 {
+		return nil
+	}
+
+	rollups := extractRollups(b, blockResolver)
+
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if b.Hash() == obscurocommon.GenesisBlock.Hash() {
+	if len(rollups) == 1 && rollups[0].Hash() == GenesisRollup.Hash() {
 		bs := blockState{
 			block:          b,
 			head:           &GenesisRollup,
 			state:          emptyState(),
 			foundNewRollup: true,
 		}
-		s.SetBlockState(b.Hash(), bs)
-		return bs
+		s.SetBlockState(b.Hash(), &bs)
+		return &bs
+	}
+
+	// there are no rollups in the current block and there is nothing in the db
+	if s.FetchHeadState() == nil {
+		return nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
@@ -122,12 +133,12 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) blockSt
 		// go back and calculate the State of the Parent
 		p, f := s.FetchBlock(b.ParentHash())
 		if !f {
-			panic("wtf")
+			panic("Could not find block parent. This should not happen.")
 		}
 		parentState = updateState(p, s, blockResolver)
 	}
 
-	bs := calculateBlockState(b, parentState, s, blockResolver)
+	bs := calculateBlockState(b, parentState, s, blockResolver, rollups)
 
 	s.SetBlockState(b.Hash(), bs)
 
@@ -230,8 +241,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState blockState, s Storage, blockResolver BlockResolver) blockState {
-	rollups := extractRollups(b, blockResolver)
+func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup) *blockState {
 	newHead, found := FindWinner(parentState.head, rollups, s, blockResolver)
 
 	state := newProcessedState(parentState.state)
@@ -251,7 +261,7 @@ func calculateBlockState(b *types.Block, parentState blockState, s Storage, bloc
 		state:          state.s,
 		foundNewRollup: found,
 	}
-	return bs
+	return &bs
 }
 
 func extractRollups(b *types.Block, blockResolver BlockResolver) []*Rollup {
