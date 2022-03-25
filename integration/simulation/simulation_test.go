@@ -97,17 +97,19 @@ func checkBlockchainValidity(t *testing.T, txManager *TransactionManager, networ
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2
 func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats) {
 	l1Height := obscurocommon.L1GenesisHeight
+	blkCounter := uint64(0)
 	for header := node.DB().GetCurrentBlockHead(); header != nil; header = node.DB().GetBlockHeader(header.Parent) {
-		l1Height++
+		blkCounter++
 	}
 	//  If GetCurrentBlockHead is block height 10 and it stops at block 0 it counts 11. 11 - 1 = 10
-	l1Height--
+	l1Height += blkCounter - 1
 
 	l2Height := obscurocommon.L2GenesisHeight // GetCurrentBlockHead also counts
+	blkCounter = uint64(0)
 	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
-		l2Height++
+		blkCounter++
 	}
-	l2Height--
+	l2Height += blkCounter - 1
 
 	if l1Height != node.DB().GetCurrentBlockHead().Height {
 		t.Errorf("unexpected block height. expected %d, got %d", l1Height, node.DB().GetCurrentBlockHead().Height)
