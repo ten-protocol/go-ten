@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	INITIAL_BALANCE         = 5000  // nolint:revive,stylecheck
-	P2P_START_PORT          = 10000 // nolint:revive,stylecheck
-	ENCLAVE_CONN_START_PORT = 11000 // nolint:revive,stylecheck
+	INITIAL_BALANCE         = 5000        // nolint:revive,stylecheck
+	P2P_START_PORT          = 10000       // nolint:revive,stylecheck
+	ENCLAVE_CONN_START_PORT = 11000       // nolint:revive,stylecheck
+	LOCALHOST               = "localhost" // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
@@ -60,7 +61,7 @@ func NewSimulation(
 
 	// We generate the P2P addresses for each node on the network.
 	for i := 1; i <= nrNodes; i++ {
-		l2NetworkCfg.nodeAddresses = append(l2NetworkCfg.nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
+		l2NetworkCfg.nodeAddresses = append(l2NetworkCfg.nodeAddresses, fmt.Sprintf("%s:%d", LOCALHOST, P2P_START_PORT+i))
 	}
 
 	for i := 1; i <= nrNodes; i++ {
@@ -81,7 +82,7 @@ func NewSimulation(
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}
-			enclaveClient = host.NewEnclaveRPCClient(port, timeout)
+			enclaveClient = host.NewEnclaveRPCClient(fmt.Sprintf("%s:%d", LOCALHOST, port), timeout)
 		}
 
 		// create a layer 2 node

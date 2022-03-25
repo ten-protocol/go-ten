@@ -25,7 +25,7 @@ const (
 	rpcTimeoutSecsFlag    = "rpcTimeoutSecs"
 	rpcTimeoutSecsUsage   = "The timeout for host <-> enclave RPC communication (default 3)"
 	enclavePortFlag       = "enclavePort"
-	enclavePortUsage      = "The port to use to connect to the Obscuro enclave service (default 10000)"
+	enclavePortUsage      = "The address to use to connect to the Obscuro enclave service (default \"localhost:10000\")"
 	usage                 = `CLI application for the ◠.bscuro host.
 
 Usage:
@@ -55,34 +55,34 @@ func main() {
 		return
 	}
 
-	nodeAddressBytes, isGenesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort := parseCLIArgs()
+	nodeAddressBytes, isGenesis, gossipRoundNanos, rpcTimeoutSecs, enclaveAddress := parseCLIArgs()
 
 	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
-	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
+	enclaveClient := host.NewEnclaveRPCClient(*enclaveAddress, host.ClientRPCTimeoutSecs*time.Second)
 	// TODO - Provide flags for our address and peer addresses
 	aggP2P := p2p.NewP2P("localhost:10000", []string{})
 	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, nil, *isGenesis, enclaveClient, aggP2P)
 
-	waitForEnclave(agg, *enclavePort)
-	fmt.Printf("Connected to enclave server on port %d.\n", *enclavePort)
+	waitForEnclave(agg, *enclaveAddress)
+	fmt.Printf("Connected to enclave server on port %s.\n", *enclaveAddress)
 	agg.Start()
 }
 
 // Parses the CLI flags and arguments.
-func parseCLIArgs() (*string, *bool, *uint64, *uint64, *uint64) {
+func parseCLIArgs() (*string, *bool, *uint64, *uint64, *string) {
 	nodeAddressBytes := flag.String(nodeAddressFlag, "", nodeAddressUsage)
 	genesis := flag.Bool(genesisFlag, true, genesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosFlag, uint64(8333), gossipRoundNanosUsage)
 	rpcTimeoutSecs := flag.Uint64(rpcTimeoutSecsFlag, 3, rpcTimeoutSecsUsage)
-	enclavePort := flag.Uint64(enclavePortFlag, 10000, enclavePortUsage)
+	enclaveAddress := flag.String(enclavePortFlag, "localhost:10000", enclavePortUsage)
 	flag.Parse()
 
-	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort
+	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, enclaveAddress
 }
 
 // Waits for the enclave server to start, printing a wait message every two seconds.
-func waitForEnclave(agg host.Node, enclavePort uint64) {
+func waitForEnclave(agg host.Node, enclaveAddress string) {
 	i := 0
 	for {
 		if agg.Enclave.IsReady() == nil {
@@ -92,7 +92,7 @@ func waitForEnclave(agg host.Node, enclavePort uint64) {
 		i++
 
 		if i >= 20 {
-			fmt.Printf("Trying to connect to enclave on port %d...\n", enclavePort)
+			fmt.Printf("Trying to connect to enclave on address %s...\n", enclaveAddress)
 			i = 0
 		}
 	}

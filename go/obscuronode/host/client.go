@@ -26,9 +26,9 @@ type EnclaveRPCClient struct {
 	timeout     time.Duration
 }
 
-func NewEnclaveRPCClient(port uint64, timeout time.Duration) *EnclaveRPCClient {
+func NewEnclaveRPCClient(address string, timeout time.Duration) *EnclaveRPCClient {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	connection, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), opts...)
+	connection, err := grpc.Dial(address, opts...)
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to enclave RPC service: %v", err))
 	}
