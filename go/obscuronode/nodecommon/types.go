@@ -20,12 +20,14 @@ type (
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup
+// Making changes to this struct will require GRPC + GRPC Converters regen
 type Header struct {
 	ParentHash  obscurocommon.L2RootHash
 	Agg         common.Address
 	Nonce       obscurocommon.Nonce
 	L1Proof     obscurocommon.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
+	Height      uint64 // the rollup height
 	Withdrawals []Withdrawal
 }
 

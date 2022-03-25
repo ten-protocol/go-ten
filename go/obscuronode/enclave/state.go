@@ -156,7 +156,7 @@ func FindWinner(parent *Rollup, rollups []*Rollup, s Storage, blockResolver Bloc
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case s.HeightRollup(r) <= s.HeightRollup(parent): // ignore rollups that are older than the parent
+		case r.Header.Height <= parent.Header.Height: // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
 		case r.ProofHeight(blockResolver) < rollups[win].ProofHeight(blockResolver): // ignore rollups generated with an older proof
