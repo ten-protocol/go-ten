@@ -74,7 +74,8 @@ func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan 
 		panic(err)
 	}
 
-	atomic.StoreInt32(p.listenerInterrupt, 0)
+	i := int32(0)
+	p.listenerInterrupt = &i
 	p.listener = listener
 
 	go p.handleConnections(txP2PCh, rollupsP2PCh, listener)
