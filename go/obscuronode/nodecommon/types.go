@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// Todo - this has to be a trie root eventually
-type StateRoot = string
-type EncryptedTx []byte
-
-type EncryptedTransactions []EncryptedTx
+type (
+	StateRoot             = string // Todo - this has to be a trie root eventually
+	EncryptedTx           []byte
+	L2Tx                  = types.Transaction
+	EncryptedTransactions []EncryptedTx
+)
 
 // Header is a public / plaintext struct that holds common properties of the Rollup
 type Header struct {

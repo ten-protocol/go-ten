@@ -14,7 +14,7 @@ var hasherPool = sync.Pool{
 	New: func() interface{} { return sha3.NewLegacyKeccak256() },
 }
 
-// RLPHash encodes x, hashes the encoded bytes and returns the hash.
+// RLPHash encodes value, hashes the encoded bytes and returns the hash.
 func RLPHash(value interface{}) (common.Hash, error) {
 	var hash common.Hash
 

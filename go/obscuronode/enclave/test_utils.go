@@ -5,13 +5,15 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // Creates a dummy L2Tx for testing
-func createL2Tx() *L2Tx {
+func createL2Tx() *nodecommon.L2Tx {
 	return types.NewTx(createL2TxData())
 }
 

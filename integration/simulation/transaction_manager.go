@@ -102,7 +102,7 @@ func (m *TransactionManager) trackL1Tx(tx obscurocommon.L1TxData) {
 }
 
 // trackL2Tx adds an enclave.L2Tx to the internal list
-func (m *TransactionManager) trackL2Tx(tx enclave.L2Tx) {
+func (m *TransactionManager) trackL2Tx(tx nodecommon.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
 	m.l2Transactions = append(m.l2Transactions, tx)
@@ -227,7 +227,7 @@ func (m *TransactionManager) issueInvalidWithdrawals() {
 }
 
 // Uses one of three approaches to create an invalidly-signed transaction.
-func createInvalidSignature(tx *enclave.L2Tx, fromWallet *wallet_mock.Wallet) *enclave.L2Tx {
+func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet) *nodecommon.L2Tx {
 	i := rand.Intn(3) //nolint:gosec
 	switch i {
 	case 0: // We sign the transaction with a bad signer.

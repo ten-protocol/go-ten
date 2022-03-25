@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -41,7 +43,7 @@ type Node struct {
 	network  L1Network
 	mining   bool
 	stats    StatsCollector
-	Resolver obscurocommon.BlockResolver
+	Resolver enclave.BlockResolver
 	db       TxDB
 
 	// Channels
@@ -68,13 +70,13 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	head := m.setHead(obscurocommon.GenesisBlock)
 	m.Resolver.StoreBlock(obscurocommon.GenesisBlock)
+	head := m.setHead(obscurocommon.GenesisBlock)
 
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, received := m.Resolver.ResolveBlock(p2pb.Hash())
+			_, received := m.Resolver.FetchBlock(p2pb.Hash())
 			// only process blocks if they haven't been processed before
 			if !received {
 				head = m.processBlock(p2pb, head)
@@ -99,7 +101,7 @@ func (m *Node) Start() {
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	m.Resolver.StoreBlock(b)
-	_, f := m.Resolver.ResolveBlock(b.Header().ParentHash)
+	_, f := m.Resolver.FetchBlock(b.Header().ParentHash)
 
 	// only proceed if the parent is available
 	if !f {
@@ -113,7 +115,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	}
 
 	// Check for Reorgs
-	if !obscurocommon.IsAncestor(head, b, m.Resolver) {
+	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
 		log.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), obscurocommon.ShortHash(head.Hash()), m.Resolver.HeightBlock(head), obscurocommon.ShortHash(fork.Hash()), m.Resolver.HeightBlock(fork)))
@@ -127,7 +129,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	return m.setHead(b)
 }
 
-// Notifies the Miner to start mining on the new block and the aggregtor to produce rollups
+// Notifies the Miner to start mining on the new block and the aggregator to produce rollups
 func (m *Node) setHead(b *types.Block) *types.Block {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return b
@@ -136,7 +138,7 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		if m.Resolver.HeightBlock(b) == 0 {
+		if m.Resolver.HeightBlock(b) == obscurocommon.L1GenesisHeight {
 			go t.RPCNewHead(obscurocommon.EncodeBlock(b), nil)
 		} else {
 			p, f := m.Resolver.ParentBlock(b)

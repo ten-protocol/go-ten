@@ -5,13 +5,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode"
+	p2p2 "github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 
 	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
@@ -27,11 +25,6 @@ type AggregatorCfg struct {
 	ClientRPCTimeoutSecs uint64
 }
 
-type L2Network interface {
-	BroadcastRollup(r obscurocommon.EncodedRollup)
-	BroadcastTx(tx nodecommon.EncryptedTx)
-}
-
 type StatsCollector interface {
 	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -44,8 +37,7 @@ type StatsCollector interface {
 type Node struct {
 	ID common.Address
 
-	l2Network L2Network
-	L1Node    obscurocommon.L1Node
+	L1Node obscurocommon.L1Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -57,39 +49,36 @@ type Node struct {
 	exitNodeCh chan bool
 	interrupt  *int32
 
-	// blockRPCCh is where the connected L1Node node drops new blocks
-	blockRPCCh chan blockAndParent
-
-	// forkRPCCh is where new forks from the L1 notify the obscuro node
-	forkRPCCh chan []obscurocommon.EncodedBlock
-
-	// rollupsP2PCh is the channel where new rollups are gossiped to
-	rollupsP2PCh chan obscurocommon.EncodedRollup
+	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
+	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
+	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
+	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
 
 	// Interface to the logic running inside the TEE
-	Enclave enclave.Enclave
+	Enclave nodecommon.Enclave
 
 	// Node nodeDB - stores the node public available data
-	nodeDB *obscuronode.DB
+	nodeDB *DB
+
+	p2p p2p2.P2P
 }
 
 func NewAgg(
 	id common.Address,
 	cfg AggregatorCfg,
 	l1 obscurocommon.L1Node,
-	l2Network L2Network,
 	collector StatsCollector,
 	genesis bool,
-	enclaveClient enclave.Enclave,
+	enclaveClient nodecommon.Enclave,
+	p2p p2p2.P2P,
 ) Node {
 	return Node{
 		// config
-		ID:        id,
-		cfg:       cfg,
-		mining:    true,
-		genesis:   genesis,
-		L1Node:    l1,
-		l2Network: l2Network,
+		ID:      id,
+		cfg:     cfg,
+		mining:  true,
+		genesis: genesis,
+		L1Node:  l1,
 
 		stats: collector,
 
@@ -101,17 +90,23 @@ func NewAgg(
 		blockRPCCh:   make(chan blockAndParent),
 		forkRPCCh:    make(chan []obscurocommon.EncodedBlock),
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
+		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
 		// State processing
 		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
-		nodeDB: obscuronode.NewDB(),
+		nodeDB: NewDB(),
+
+		p2p: p2p,
 	}
 }
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
+	a.p2p.Listen(a.txP2PCh, a.rollupsP2PCh)
+	defer a.p2p.StopListening()
+
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
 		txData := obscurocommon.L1TxData{
@@ -134,7 +129,10 @@ func (a *Node) startProcessing() {
 	// Todo: This is a naive implementation.
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	allblocks := a.L1Node.RPCBlockchainFeed()
-	a.Enclave.IngestBlocks(allblocks)
+	results := a.Enclave.IngestBlocks(allblocks)
+	for _, result := range results {
+		a.storeBlockProcessingResult(result)
+	}
 
 	// todo - what happens with the blocks received while processing ?
 	if len(allblocks) == 0 {
@@ -173,8 +171,15 @@ func (a *Node) startProcessing() {
 				Txs:    rol.Transactions,
 			})
 
+		case tx := <-a.txP2PCh:
+			// Ignore gossiped transactions while the node is still initialising
+			if a.Enclave.IsInitialised() {
+				if err := a.Enclave.SubmitTx(tx); err != nil {
+					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+				}
+			}
+
 		case <-a.exitNodeCh:
-			a.Enclave.Stop()
 			return
 		}
 	}
@@ -196,47 +201,23 @@ func (a *Node) RPCNewFork(b []obscurocommon.EncodedBlock) {
 	a.forkRPCCh <- b
 }
 
-// P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
-// All it does is forward the rollup for processing to the enclave
-func (a *Node) P2PGossipRollup(r obscurocommon.EncodedRollup) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.rollupsP2PCh <- r
-}
-
-// P2PReceiveTx receives a new transactions from the P2P network
-func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	// Ignore gossiped transactions while the node is still initialising
-	if a.Enclave.IsInitialised() {
-		go func() {
-			if err := a.Enclave.SubmitTx(tx); err != nil {
-				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
-			}
-		}()
-	}
-}
-
 // RPCBalance allows to fetch the balance of one address
 func (a *Node) RPCBalance(address common.Address) uint64 {
 	return a.Enclave.Balance(address)
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
-func (a *Node) RPCCurrentBlockHead() *obscuronode.BlockHeader {
+func (a *Node) RPCCurrentBlockHead() *BlockHeader {
 	return a.nodeDB.GetCurrentBlockHead()
 }
 
 // RPCCurrentRollupHead returns the current head of the rollups (l2)
-func (a *Node) RPCCurrentRollupHead() *obscuronode.RollupHeader {
+func (a *Node) RPCCurrentRollupHead() *RollupHeader {
 	return a.nodeDB.GetCurrentRollupHead()
 }
 
 // DB returns the DB of the node
-func (a *Node) DB() *obscuronode.DB {
+func (a *Node) DB() *DB {
 	return a.nodeDB
 }
 
@@ -265,7 +246,7 @@ type blockAndParent struct {
 }
 
 func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int32) {
-	var result enclave.BlockSubmissionResponse
+	var result nodecommon.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
@@ -273,28 +254,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 			// submit each block to the enclave for ingestion plus validation
 			result = a.Enclave.SubmitBlock(*block.DecodeBlock())
-
-			// only update the node rollup headers if the enclave has ingested it
-			if result.IngestedNewRollup {
-				// adding a header will update the head if it has a higher height
-				a.DB().AddRollupHeader(
-					&obscuronode.RollupHeader{
-						ID:          result.L2Hash,
-						Parent:      result.L2Parent,
-						Withdrawals: result.Withdrawals,
-						Height:      result.L2Height,
-					},
-				)
-			}
-
-			// adding a header will update the head if it has a higher height
-			a.DB().AddBlockHeader(
-				&obscuronode.BlockHeader{
-					ID:     result.L1Hash,
-					Parent: result.L1Parent,
-					Height: result.L1Height,
-				},
-			)
+			a.storeBlockProcessingResult(result)
 		}
 	}
 
@@ -304,26 +264,53 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		return
 	}
 
-	a.l2Network.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
+	// todo -make this a better check
+	if result.ProducedRollup.Header != nil {
+		a.p2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-	obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
-		if atomic.LoadInt32(a.interrupt) == 1 {
-			return
-		}
-		// Request the round winner for the current head
-		winnerRollup, submit := a.Enclave.RoundWinner(result.L2Hash)
-		if submit {
-			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
-			tx := obscurocommon.NewL1Tx(txData)
-			t, err := obscurocommon.EncodeTx(tx)
-			if err != nil {
-				panic(err)
+		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
+			if atomic.LoadInt32(a.interrupt) == 1 {
+				return
 			}
-			a.L1Node.BroadcastTx(t)
-			// collect Stats
-			// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
-		}
-	})
+			// Request the round winner for the current head
+			winnerRollup, submit := a.Enclave.RoundWinner(result.L2Hash)
+			if submit {
+				txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+				tx := obscurocommon.NewL1Tx(txData)
+				t, err := obscurocommon.EncodeTx(tx)
+				if err != nil {
+					panic(err)
+				}
+				a.L1Node.BroadcastTx(t)
+				// collect Stats
+				// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
+			}
+		})
+	}
+}
+
+func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionResponse) {
+	// only update the node rollup headers if the enclave has ingested it
+	if result.IngestedNewRollup {
+		// adding a header will update the head if it has a higher height
+		a.DB().AddRollupHeader(
+			&RollupHeader{
+				ID:          result.L2Hash,
+				Parent:      result.L2Parent,
+				Withdrawals: result.Withdrawals,
+				Height:      result.L2Height,
+			},
+		)
+	}
+
+	// adding a header will update the head if it has a higher height
+	a.DB().AddBlockHeader(
+		&BlockHeader{
+			ID:     result.L1Hash,
+			Parent: result.L1Parent,
+			Height: result.L1Height,
+		},
+	)
 }
 
 // Called only by the first enclave to bootstrap the network

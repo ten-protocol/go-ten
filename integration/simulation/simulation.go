@@ -5,9 +5,11 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpc"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -20,7 +22,8 @@ import (
 
 const (
 	INITIAL_BALANCE         = 5000  // nolint:revive,stylecheck
-	ENCLAVE_CONN_START_PORT = 15000 // nolint:revive,stylecheck
+	P2P_START_PORT          = 10000 // nolint:revive,stylecheck
+	ENCLAVE_CONN_START_PORT = 11000 // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
@@ -55,6 +58,11 @@ func NewSimulation(
 
 	l2NodeCfg := host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
 
+	// We generate the P2P addresses for each node on the network.
+	for i := 1; i <= nrNodes; i++ {
+		l2NetworkCfg.nodeAddresses = append(l2NetworkCfg.nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
+	}
+
 	for i := 1; i <= nrNodes; i++ {
 		genesis := false
 		if i == 1 {
@@ -63,22 +71,22 @@ func NewSimulation(
 
 		// create an enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		var enclaveClient enclave.Enclave
+		var enclaveClient nodecommon.Enclave
 		if localEnclave {
 			enclaveClient = enclave.NewEnclave(nodeID, true, stats)
 		} else {
 			port := uint64(ENCLAVE_CONN_START_PORT + i)
 			timeout := time.Duration(l2NodeCfg.ClientRPCTimeoutSecs) * time.Second
-			server, err := rpc.StartServer(port, nodeID, stats)
+			err := enclave.StartServer(port, nodeID, stats)
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}
-			l2NetworkCfg.enclaveServers = append(l2NetworkCfg.enclaveServers, server)
-			enclaveClient = rpc.NewEnclaveRPCClient(port, timeout)
+			enclaveClient = host.NewEnclaveRPCClient(port, timeout)
 		}
 
 		// create a layer 2 node
-		agg := host.NewAgg(nodeID, l2NodeCfg, nil, l2NetworkCfg, stats, genesis, enclaveClient)
+		aggP2P := p2p.NewP2P(l2NetworkCfg.nodeAddresses[i-1], l2NetworkCfg.nodeAddresses)
+		agg := host.NewAgg(nodeID, l2NodeCfg, nil, stats, genesis, enclaveClient, aggP2P)
 		l2NetworkCfg.nodes = append(l2NetworkCfg.nodes, &agg)
 
 		// create a layer 1 node responsible with notifying the layer 2 node about blocks
@@ -100,18 +108,6 @@ func NewSimulation(
 	}
 }
 
-// Returns once all the enclave servers are ready.
-func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
-	for _, node := range l2NetworkCfg.nodes {
-		for {
-			if node.Enclave.IsReady() == nil {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
-}
-
 // RunSimulation executes the simulation given all the params
 // todo - introduce 2 parameters for nrNodes and random L1-L2 allocation
 // todo - random add or remove l1 or l2 nodes - logic for catching up
@@ -124,9 +120,15 @@ func (s *Simulation) Start(
 
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
-	// todo - changing from time to common will delay the node start and it will not catch the first few blocks
-	s.l1Network.Start(time.Duration(s.avgBlockDuration / 4))
-	s.l2Network.Start(time.Duration(s.avgBlockDuration / 4))
+	// The sequence of starting the nodes is important to catch various edge cases.
+	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
+	// The reason is to make sure that they catch up correctly.
+	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
+	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
+	// Note: Other simulations might test variations of this pattern.
+	s.l1Network.Start(time.Duration(s.avgBlockDuration / 8))
+	time.Sleep(time.Duration(s.avgBlockDuration * 20))
+	s.l2Network.Start(time.Duration(s.avgBlockDuration / 3))
 
 	// time in micro seconds to run the simulation
 	timeInUs := simulationTime * 1000 * 1000
@@ -146,4 +148,16 @@ func (s *Simulation) Stop() {
 	// stop L2 first and then L1
 	go s.l2Network.Stop()
 	go s.l1Network.Stop()
+}
+
+// Returns once all the enclave servers are ready.
+func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
+	for _, node := range l2NetworkCfg.nodes {
+		for {
+			if node.Enclave.IsReady() == nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 }

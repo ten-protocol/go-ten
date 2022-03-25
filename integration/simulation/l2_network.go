@@ -1,9 +1,11 @@
 package simulation
 
 import (
+	"net"
 	"time"
 
-	"google.golang.org/grpc"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
@@ -14,7 +16,7 @@ import (
 // L2NetworkCfg - models a full network including artificial random latencies
 type L2NetworkCfg struct {
 	nodes            []*host.Node
-	enclaveServers   []*grpc.Server
+	nodeAddresses    []string
 	avgLatency       uint64
 	avgBlockDuration uint64
 }
@@ -27,21 +29,36 @@ func NewL2Network(avgBlockDuration uint64, avgLatency uint64) *L2NetworkCfg {
 	}
 }
 
-// BroadcastRollup Broadcasts the rollup to all L2 peers
-func (cfg *L2NetworkCfg) BroadcastRollup(r obscurocommon.EncodedRollup) {
-	for _, a := range cfg.nodes {
-		rol := nodecommon.DecodeRollupOrPanic(r)
-		if a.ID != rol.Header.Agg {
-			t := a
-			obscurocommon.Schedule(cfg.delay(), func() { t.P2PGossipRollup(r) })
-		}
+func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
+	msg := p2p.Message{Type: p2p.Tx, MsgContents: tx}
+	msgEncoded, err := rlp.EncodeToBytes(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, a := range cfg.nodeAddresses {
+		address := a
+		obscurocommon.Schedule(cfg.delay()/2, func() {
+			broadcastBytes(address, msgEncoded)
+		})
 	}
 }
 
-func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
-	for _, a := range cfg.nodes {
-		t := a
-		obscurocommon.Schedule(cfg.delay()/2, func() { t.P2PReceiveTx(tx) })
+func broadcastBytes(address string, tx []byte) {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		panic(err)
+	}
+
+	defer func(conn net.Conn) {
+		if err := conn.Close(); err != nil {
+			panic(err)
+		}
+	}(conn)
+
+	_, err = conn.Write(tx)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -59,13 +76,9 @@ func (cfg *L2NetworkCfg) Stop() {
 	for _, n := range cfg.nodes {
 		n.Stop()
 	}
-
-	for _, es := range cfg.enclaveServers {
-		es.GracefulStop()
-	}
 }
 
 // delay returns an expected delay on the l2
 func (cfg *L2NetworkCfg) delay() uint64 {
-	return obscurocommon.RndBtw(cfg.avgLatency/10, 2*cfg.avgLatency)
+	return obscurocommon.RndBtw((cfg.avgBlockDuration/25)/10, (cfg.avgBlockDuration/25)*2)
 }

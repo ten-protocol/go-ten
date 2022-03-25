@@ -3,6 +3,8 @@ package ethereummock
 import (
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -10,7 +12,7 @@ import (
 
 type blockAndHeight struct {
 	b      *types.Block
-	height int
+	height uint64
 }
 
 // Received blocks ar stored here
@@ -19,7 +21,7 @@ type blockResolverInMem struct {
 	m          sync.RWMutex
 }
 
-func NewResolver() obscurocommon.BlockResolver {
+func NewResolver() enclave.BlockResolver {
 	return &blockResolverInMem{
 		blockCache: map[obscurocommon.L1RootHash]blockAndHeight{},
 		m:          sync.RWMutex{},
@@ -30,7 +32,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.m.Lock()
 	defer n.m.Unlock()
 	if block.ParentHash() == obscurocommon.GenesisHash {
-		n.blockCache[block.Hash()] = blockAndHeight{block, 0}
+		n.blockCache[block.Hash()] = blockAndHeight{block, obscurocommon.L1GenesisHeight}
 		return
 	}
 
@@ -42,7 +44,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.blockCache[block.Hash()] = blockAndHeight{block, p.height + 1}
 }
 
-func (n *blockResolverInMem) ResolveBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
+func (n *blockResolverInMem) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
@@ -50,14 +52,63 @@ func (n *blockResolverInMem) ResolveBlock(hash obscurocommon.L1RootHash) (*types
 	return block.b, f
 }
 
-func (n *blockResolverInMem) HeightBlock(block *types.Block) int {
+func (n *blockResolverInMem) HeightBlock(block *types.Block) uint64 {
 	n.m.RLock()
 	defer n.m.RUnlock()
-	return n.blockCache[block.Hash()].height
+	b, f := n.blockCache[block.Hash()]
+	if f {
+		return b.height
+	}
+	panic("block not stored")
 }
 
-func (n *blockResolverInMem) ParentBlock(block *types.Block) (*types.Block, bool) {
-	return obscurocommon.Parent(n, block)
+func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {
+	return n.FetchBlock(b.Header().ParentHash)
+}
+
+func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
+	if maybeAncestor.Hash() == block.Hash() {
+		return true
+	}
+
+	if n.HeightBlock(maybeAncestor) >= n.HeightBlock(block) {
+		return false
+	}
+
+	p, f := n.ParentBlock(block)
+	if !f {
+		return false
+	}
+
+	return n.IsAncestor(p, maybeAncestor)
+}
+
+func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+	if maybeAncestor == block.Hash() {
+		return true
+	}
+
+	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+		return true
+	}
+
+	if n.HeightBlock(block) == obscurocommon.L1GenesisHeight {
+		return false
+	}
+
+	resolvedBlock, found := n.FetchBlock(maybeAncestor)
+	if found {
+		if n.HeightBlock(resolvedBlock) >= n.HeightBlock(block) {
+			return false
+		}
+	}
+
+	p, f := n.ParentBlock(block)
+	if !f {
+		return false
+	}
+
+	return n.IsBlockAncestor(p, maybeAncestor)
 }
 
 // The cache of included transactions
@@ -92,7 +143,7 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[obscurocommon.TxHash]*obsc
 func removeCommittedTransactions(
 	cb *types.Block,
 	mempool []*obscurocommon.L1Tx,
-	resolver obscurocommon.BlockResolver,
+	resolver enclave.BlockResolver,
 	db TxDB,
 ) []*obscurocommon.L1Tx {
 	if resolver.HeightBlock(cb) <= obscurocommon.HeightCommittedBlocks {
