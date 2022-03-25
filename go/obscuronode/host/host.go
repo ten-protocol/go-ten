@@ -132,17 +132,17 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	// todo - what happens with the blocks received while processing ?
 	allBlocks := a.L1Node.RPCBlockchainFeed()
-	i := 0
+	counter := 0
 
 	for len(allBlocks) == 0 {
-		i++
-		if i >= 20 {
+		if counter >= 20 {
 			log.Log(fmt.Sprintf(">   Agg%d: Waiting for blocks from L1 node...", obscurocommon.ShortAddress(a.ID)))
-			i = 0
+			counter = 0
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		allBlocks = a.L1Node.RPCBlockchainFeed()
+		counter++
 	}
 
 	return allBlocks
