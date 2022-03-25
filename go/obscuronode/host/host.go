@@ -104,6 +104,8 @@ func NewAgg(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
+	a.waitForEnclave()
+
 	a.p2p.Listen(a.txP2PCh, a.rollupsP2PCh)
 	defer a.p2p.StopListening()
 
@@ -125,6 +127,20 @@ func (a *Node) Start() {
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing(allBlocks)
+}
+
+// Waits for enclave to be available, printing a wait message every two seconds.
+func (a *Node) waitForEnclave() {
+	counter := 0
+	for a.Enclave.IsReady() != nil {
+		if counter >= 20 {
+			log.Log(fmt.Sprintf(">   Agg%d: Waiting for enclave. Error: %v", obscurocommon.ShortAddress(a.ID), a.Enclave.IsReady()))
+			counter = 0
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		counter++
+	}
 }
 
 // Waits for blocks from the L1 node, printing a wait message every two seconds.

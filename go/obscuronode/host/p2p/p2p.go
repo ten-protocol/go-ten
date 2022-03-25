@@ -105,7 +105,8 @@ func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollups
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			panic(fmt.Errorf("could not accept any further connections: %w", err))
+			log.Log(fmt.Sprintf("host is not accepting any further P2P connections: %v", err))
+			return
 		}
 		go handle(conn, txP2PCh, rollupsP2PCh)
 	}
@@ -180,7 +181,8 @@ func sendBytes(address string, tx []byte) {
 		}(conn)
 	}
 	if err != nil {
-		panic(err)
+		log.Log(fmt.Sprintf("could not send message to peer on address %s: %v", address, err))
+		return
 	}
 
 	_, err = conn.Write(tx)

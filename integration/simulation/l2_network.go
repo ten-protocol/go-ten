@@ -1,8 +1,11 @@
 package simulation
 
 import (
+	"fmt"
 	"net"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
@@ -47,9 +50,9 @@ func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
 func broadcastBytes(address string, tx []byte) {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		panic(err)
+		log.Log(fmt.Sprintf("could not send message to peer on address %s: %v", address, err))
+		return
 	}
-
 	defer func(conn net.Conn) {
 		if err := conn.Close(); err != nil {
 			panic(err)
