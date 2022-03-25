@@ -15,18 +15,29 @@ import (
 )
 
 const (
-	helpCmd               = "help"
-	nodeAddressFlag       = "nodeAddress"
-	nodeAddressUsage      = "The 20 bytes of the node's address (default \"\")"
-	genesisFlag           = "isGenesis"
-	genesisUsage          = "Whether the node is the first node to join the network (default true)"
-	gossipRoundNanosFlag  = "gossipRoundNanos"
-	gossipRoundNanosUsage = "The duration of the gossip round (default 8333)"
-	rpcTimeoutSecsFlag    = "rpcTimeoutSecs"
+	// Flag names, defaults and usages.
+	nodeIDName    = "nodeID"
+	nodeIDDefault = ""
+	nodeIDUsage   = "The 20 bytes of the node's address (default \"\")"
+
+	genesisName    = "isGenesis"
+	genesisDefault = true
+	genesisUsage   = "Whether the node is the first node to join the network (default true)"
+
+	gossipRoundNanosName    = "gossipRoundNanos"
+	gossipRoundNanosDefault = 8333
+	gossipRoundNanosUsage   = "The duration of the gossip round (default 8333)"
+
+	rpcTimeoutSecsName    = "rpcTimeoutSecs"
+	rpcTimeoutSecsDefault = 3
 	rpcTimeoutSecsUsage   = "The timeout for host <-> enclave RPC communication (default 3)"
-	enclavePortFlag       = "enclavePort"
-	enclavePortUsage      = "The port to use to connect to the Obscuro enclave service (default 10000)"
-	usage                 = `CLI application for the ◠.bscuro host.
+
+	enclavePortName    = "enclavePort"
+	enclavePortDefault = 10000
+	enclavePortUsage   = "The port to use to connect to the Obscuro enclave service (default 10000)"
+
+	helpCmd = "help"
+	usage   = `CLI application for the ◠.bscuro host.
 
 Usage:
 
@@ -48,8 +59,8 @@ The flags are:
 
 func main() {
 	if len(os.Args) >= 2 && os.Args[1] == helpCmd {
-		usageFmt := fmt.Sprintf(usage, nodeAddressFlag, nodeAddressUsage, genesisFlag, genesisUsage,
-			gossipRoundNanosFlag, gossipRoundNanosUsage, rpcTimeoutSecsFlag, rpcTimeoutSecsUsage, enclavePortFlag,
+		usageFmt := fmt.Sprintf(usage, nodeIDName, nodeIDUsage, genesisName, genesisUsage,
+			gossipRoundNanosName, gossipRoundNanosUsage, rpcTimeoutSecsName, rpcTimeoutSecsUsage, enclavePortName,
 			enclavePortUsage)
 		fmt.Println(usageFmt)
 		return
@@ -57,12 +68,12 @@ func main() {
 
 	nodeAddressBytes, isGenesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort := parseCLIArgs()
 
-	nodeAddress := common.BytesToAddress([]byte(*nodeAddressBytes))
+	nodeID := common.BytesToAddress([]byte(*nodeAddressBytes))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *gossipRoundNanos, ClientRPCTimeoutSecs: *rpcTimeoutSecs}
 	enclaveClient := host.NewEnclaveRPCClient(*enclavePort, host.ClientRPCTimeoutSecs*time.Second)
 	// TODO - Provide flags for our address and peer addresses
 	aggP2P := p2p.NewP2P("localhost:10000", []string{})
-	agg := host.NewAgg(nodeAddress, hostCfg, l1NodeDummy{}, nil, *isGenesis, enclaveClient, aggP2P)
+	agg := host.NewAgg(nodeID, hostCfg, l1NodeDummy{}, nil, *isGenesis, enclaveClient, aggP2P)
 
 	waitForEnclave(agg, *enclavePort)
 	fmt.Printf("Connected to enclave server on port %d.\n", *enclavePort)
@@ -71,14 +82,14 @@ func main() {
 
 // Parses the CLI flags and arguments.
 func parseCLIArgs() (*string, *bool, *uint64, *uint64, *uint64) {
-	nodeAddressBytes := flag.String(nodeAddressFlag, "", nodeAddressUsage)
-	genesis := flag.Bool(genesisFlag, true, genesisUsage)
-	gossipRoundNanos := flag.Uint64(gossipRoundNanosFlag, uint64(8333), gossipRoundNanosUsage)
-	rpcTimeoutSecs := flag.Uint64(rpcTimeoutSecsFlag, 3, rpcTimeoutSecsUsage)
-	enclavePort := flag.Uint64(enclavePortFlag, 10000, enclavePortUsage)
+	nodeID := flag.String(nodeIDName, nodeIDDefault, nodeIDUsage)
+	genesis := flag.Bool(genesisName, genesisDefault, genesisUsage)
+	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(gossipRoundNanosDefault), gossipRoundNanosUsage)
+	rpcTimeoutSecs := flag.Uint64(rpcTimeoutSecsName, rpcTimeoutSecsDefault, rpcTimeoutSecsUsage)
+	enclavePort := flag.Uint64(enclavePortName, enclavePortDefault, enclavePortUsage)
 	flag.Parse()
 
-	return nodeAddressBytes, genesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort
+	return nodeID, genesis, gossipRoundNanos, rpcTimeoutSecs, enclavePort
 }
 
 // Waits for the enclave server to start, printing a wait message every two seconds.
