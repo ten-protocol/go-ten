@@ -9,7 +9,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-var GenesisRollup = NewRollup(obscurocommon.GenesisBlock, nil, 0, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
+var GenesisRollup = NewRollup(obscurocommon.GenesisBlock, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
 
 // Rollup Data structure only for the internal use of the enclave since transactions are in clear
 type Rollup struct {
