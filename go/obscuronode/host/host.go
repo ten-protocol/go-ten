@@ -304,13 +304,15 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 	}
 
 	// adding a header will update the head if it has a higher height
-	a.DB().AddBlockHeader(
-		&BlockHeader{
-			ID:     result.L1Hash,
-			Parent: result.L1Parent,
-			Height: result.L1Height,
-		},
-	)
+	if result.IngestedBlock {
+		a.DB().AddBlockHeader(
+			&BlockHeader{
+				ID:     result.L1Hash,
+				Parent: result.L1Parent,
+				Height: result.L1Height,
+			},
+		)
+	}
 }
 
 // Called only by the first enclave to bootstrap the network
