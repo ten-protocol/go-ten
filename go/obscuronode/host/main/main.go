@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 
@@ -13,6 +16,7 @@ import (
 )
 
 func main() {
+	setLogs()
 	config := parseCLIArgs()
 
 	nodeID := common.BytesToAddress([]byte(*config.nodeID))
@@ -23,6 +27,15 @@ func main() {
 
 	waitForEnclave(agg, *config.enclaveAddr)
 	agg.Start()
+}
+
+// Sets the log file.
+func setLogs() {
+	logFile, err := os.Create("host_logs.txt")
+	if err != nil {
+		panic(err)
+	}
+	log.SetLog(logFile)
 }
 
 // Waits for the enclave server to start, printing a wait message every two seconds.
