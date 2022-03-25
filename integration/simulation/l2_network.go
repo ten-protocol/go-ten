@@ -23,19 +23,14 @@ type L2NetworkCfg struct {
 }
 
 // NewL2Network returns an instance of a configured L2 Network (no nodes)
-func NewL2Network(
-	nrNodes int,
-	avgBlockDuration uint64,
-	avgLatency uint64,
-	newP2P func(ourAddress string, allAddresses []string) p2p.P2P,
-) *L2NetworkCfg {
+func NewL2Network(nrNodes int, avgBlockDuration uint64, avgLatency uint64, p2pFactory *p2p.Factory) *L2NetworkCfg {
 	// We generate the P2P addresses for each node on the network.
 	var nodeAddresses []string
 	for i := 1; i <= nrNodes; i++ {
 		nodeAddresses = append(nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
 	}
 
-	p2pNetwork := newP2P(fmt.Sprintf("localhost:%d", P2P_START_PORT+100), nodeAddresses)
+	p2pNetwork := p2pFactory.NewP2P(fmt.Sprintf("localhost:%d", P2P_START_PORT+100), nodeAddresses)
 	p2pNetwork.Listen(nil, nil)
 
 	return &L2NetworkCfg{

@@ -40,10 +40,10 @@ func TestSimulation(t *testing.T) {
 	avgGossipPeriod := avgBlockDurationUSecs / 3
 
 	// define network params
-	p2pNetwork := p2p.NewP2P
+	p2pNetworkFactory := p2p.NewP2PFactory(p2p.NewP2P)
 	stats := NewStats(numberOfNodes)
 	l1NetworkConfig := NewL1Network(avgBlockDurationUSecs, avgLatency, stats)
-	l2NetworkCfg := NewL2Network(numberOfNodes, avgBlockDurationUSecs, avgLatency, p2pNetwork)
+	l2NetworkCfg := NewL2Network(numberOfNodes, avgBlockDurationUSecs, avgLatency, p2pNetworkFactory)
 
 	// define instances of the simulation mechanisms
 	txManager := NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDurationUSecs, stats)
@@ -55,7 +55,7 @@ func TestSimulation(t *testing.T) {
 		avgGossipPeriod,
 		false,
 		stats,
-		p2pNetwork,
+		p2pNetworkFactory,
 	)
 
 	// execute the simulation

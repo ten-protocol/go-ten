@@ -49,14 +49,14 @@ func main() {
 	avgGossipPeriod := avgBlockDuration / DefaultAverageGossipPeriodToBlockRatio
 
 	// define network params
-	p2pNetwork := p2p.NewP2P
+	p2pNetworkFactory := p2p.NewP2PFactory(p2p.NewP2P)
 	stats := simulation.NewStats(numberOfNodes)
 	l1NetworkConfig := simulation.NewL1Network(avgBlockDuration, avgLatency, stats)
-	l2NetworkCfg := simulation.NewL2Network(numberOfNodes, avgBlockDuration, avgLatency, p2pNetwork)
+	l2NetworkCfg := simulation.NewL2Network(numberOfNodes, avgBlockDuration, avgLatency, p2pNetworkFactory)
 
 	// define instances of the simulation mechanisms
 	txManager := simulation.NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)
-	sim := simulation.NewSimulation(numberOfNodes, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, avgGossipPeriod, false, stats, p2pNetwork)
+	sim := simulation.NewSimulation(numberOfNodes, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, avgGossipPeriod, false, stats, p2pNetworkFactory)
 
 	// execute the simulation
 	sim.Start(txManager, simulationTime)
