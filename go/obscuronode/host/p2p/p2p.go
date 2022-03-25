@@ -60,35 +60,32 @@ func NewP2P(ourAddress string, allAddresses []string) P2P {
 }
 
 type p2pImpl struct {
-	OurAddress     string
-	PeerAddresses  []string
-	txListener     net.Listener
-	rollupListener net.Listener
+	OurAddress        string
+	PeerAddresses     []string
+	listener          net.Listener
+	listenerInterrupt chan bool
 }
 
 func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
 	// We listen for P2P connections.
-	txListener, err := net.Listen("tcp", p.OurAddress)
+	listener, err := net.Listen("tcp", p.OurAddress)
 	if err != nil {
 		panic(err)
 	}
-	p.txListener = txListener
-	go p.handleConnections(txP2PCh, rollupsP2PCh, txListener)
+	p.listener = listener
+	p.listenerInterrupt = make(chan bool)
+	go p.handleConnections(p.listenerInterrupt, txP2PCh, rollupsP2PCh, listener)
 }
 
 func (p *p2pImpl) StopListening() {
-	if p.txListener != nil {
-		if err := p.txListener.Close(); err != nil {
+	if p.listener != nil {
+		if p.listenerInterrupt != nil {
+			p.listenerInterrupt <- true
+		}
+		if err := p.listener.Close(); err != nil {
 			log.Log(fmt.Sprintf("failed to close transaction P2P listener cleanly: %v", err))
 		}
-		p.txListener = nil
-	}
-
-	if p.rollupListener != nil {
-		if err := p.rollupListener.Close(); err != nil {
-			log.Log(fmt.Sprintf("failed to close rollup P2P listener cleanly: %v", err))
-		}
-		p.rollupListener = nil
+		p.listener = nil
 	}
 }
 
@@ -101,14 +98,19 @@ func (p *p2pImpl) BroadcastRollup(bytes []byte) {
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
+func (p *p2pImpl) handleConnections(interrupt chan bool, txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Log(fmt.Sprintf("host is not accepting any further P2P connections: %v", err))
+		select {
+		case <-interrupt:
 			return
+		default:
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Log(fmt.Sprintf("host is not accepting any further P2P connections: %v", err))
+				return
+			}
+			go handle(conn, txP2PCh, rollupsP2PCh)
 		}
-		go handle(conn, txP2PCh, rollupsP2PCh)
 	}
 }
 
