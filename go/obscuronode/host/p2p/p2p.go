@@ -82,7 +82,7 @@ func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan 
 
 func (p *p2pImpl) StopListening() {
 	atomic.StoreInt32(p.listenerInterrupt, 1)
-	
+
 	if p.listener != nil {
 		if err := p.listener.Close(); err != nil {
 			log.Log(fmt.Sprintf("failed to close transaction P2P listener cleanly: %v", err))
