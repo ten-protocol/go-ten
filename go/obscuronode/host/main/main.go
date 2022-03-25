@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"os"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 

@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"os"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
