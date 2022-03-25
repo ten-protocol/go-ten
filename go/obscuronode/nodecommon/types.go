@@ -28,7 +28,7 @@ type Header struct {
 	L1Proof     obscurocommon.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
 	Height      uint64 // the rollup height
-	Withdrawals []Withdrawalgit
+	Withdrawals []Withdrawal
 }
 
 type Withdrawal struct {
