@@ -34,8 +34,7 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 	signer := types.NewLondonSigner(big.NewInt(ChainID))
 	_, _ = types.SignTx(tx, signer, privateKey)
 
-	// We modify the transaction's nonce after signing, breaking the signature.
-	txData.Nonce = 0
+	// We create a new transaction around the transaction data, breaking the signature.
 	modifiedTx := types.NewTx(txData)
 
 	if err := verifySignature(modifiedTx); err == nil {

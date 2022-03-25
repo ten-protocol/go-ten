@@ -2,11 +2,13 @@
 ----
 DONE
 
+- T2: Introduce basic crypto for L2 transactions (Complexity level 4)
+- T9: Implement p2p communication, gossiping between L2 nodes (Complexity level 3)
+- T10: Implement the enclave service (Complexity level 3)
 - Create a unit test with a checker for the final state of the simulation:
     - all injected transactions were included, and there are no duplicates
     - the state in each rollup matches the transactions (deposits + L1)
     - L1 height, L2 height, how many reorgs, etc - if the efficiency is below a threshold then something could have happened
-- T2: Introduce basic crypto for L2 transactions (Complexity level 4)
 - in simulation, add checks around validly and invalidly signed transactions
 
 ----
@@ -24,8 +26,6 @@ Complex:
 - T8: Implement the obscuro cryptography: (depends on T4) (Complexity level 2)
     - from the master seed derive the keys
     - create the transaction block
-- T9: Implement p2p communication, gossiping between L2 nodes (Complexity level 3)
-- T10: Implement the enclave service (Complexity level 3)
 
 Normal:
 
