@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -63,7 +64,7 @@ type p2pImpl struct {
 	OurAddress        string
 	PeerAddresses     []string
 	listener          net.Listener
-	listenerInterrupt chan bool
+	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 }
 
 func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
@@ -72,20 +73,22 @@ func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan 
 	if err != nil {
 		panic(err)
 	}
+
+	i := int32(0)
+	p.listenerInterrupt = &i
 	p.listener = listener
-	p.listenerInterrupt = make(chan bool)
-	go p.handleConnections(p.listenerInterrupt, txP2PCh, rollupsP2PCh, listener)
+
+	go p.handleConnections(txP2PCh, rollupsP2PCh, listener)
 }
 
 func (p *p2pImpl) StopListening() {
+	i := int32(1)
+	p.listenerInterrupt = &i
+
 	if p.listener != nil {
-		if p.listenerInterrupt != nil {
-			p.listenerInterrupt <- true
-		}
 		if err := p.listener.Close(); err != nil {
 			log.Log(fmt.Sprintf("failed to close transaction P2P listener cleanly: %v", err))
 		}
-		p.listener = nil
 	}
 }
 
@@ -98,19 +101,16 @@ func (p *p2pImpl) BroadcastRollup(bytes []byte) {
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(interrupt chan bool, txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
+func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
 	for {
-		select {
-		case <-interrupt:
-			return
-		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Log(fmt.Sprintf("host is not accepting any further P2P connections: %v", err))
-				return
+		conn, err := listener.Accept()
+		if err != nil {
+			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
+				panic(fmt.Errorf("host could not handle P2P connection: %w", err))
 			}
-			go handle(conn, txP2PCh, rollupsP2PCh)
+			return
 		}
+		go handle(conn, txP2PCh, rollupsP2PCh)
 	}
 }
 
