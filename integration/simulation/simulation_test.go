@@ -165,7 +165,7 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 const (
 	L1EfficiencyThreshold     = 0.2
 	L2EfficiencyThreshold     = 0.3
-	L2ToL1EfficiencyThreshold = 0.32
+	L2ToL1EfficiencyThreshold = 0.4
 )
 
 // validateL1 does a sanity check on the mock implementation of the L1
