@@ -105,7 +105,7 @@ func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollups
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			panic("Could not accept any further connections.")
+			panic(fmt.Errorf("could not accept any further connections: %w", err))
 		}
 		go handle(conn, txP2PCh, rollupsP2PCh)
 	}
