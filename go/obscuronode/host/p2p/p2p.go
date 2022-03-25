@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -60,35 +61,33 @@ func NewP2P(ourAddress string, allAddresses []string) P2P {
 }
 
 type p2pImpl struct {
-	OurAddress     string
-	PeerAddresses  []string
-	txListener     net.Listener
-	rollupListener net.Listener
+	OurAddress        string
+	PeerAddresses     []string
+	listener          net.Listener
+	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 }
 
 func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
 	// We listen for P2P connections.
-	txListener, err := net.Listen("tcp", p.OurAddress)
+	listener, err := net.Listen("tcp", p.OurAddress)
 	if err != nil {
 		panic(err)
 	}
-	p.txListener = txListener
-	go p.handleConnections(txP2PCh, rollupsP2PCh, txListener)
+
+	i := int32(0)
+	p.listenerInterrupt = &i
+	p.listener = listener
+
+	go p.handleConnections(txP2PCh, rollupsP2PCh)
 }
 
 func (p *p2pImpl) StopListening() {
-	if p.txListener != nil {
-		if err := p.txListener.Close(); err != nil {
+	atomic.StoreInt32(p.listenerInterrupt, 1)
+
+	if p.listener != nil {
+		if err := p.listener.Close(); err != nil {
 			log.Log(fmt.Sprintf("failed to close transaction P2P listener cleanly: %v", err))
 		}
-		p.txListener = nil
-	}
-
-	if p.rollupListener != nil {
-		if err := p.rollupListener.Close(); err != nil {
-			log.Log(fmt.Sprintf("failed to close rollup P2P listener cleanly: %v", err))
-		}
-		p.rollupListener = nil
 	}
 }
 
@@ -101,11 +100,14 @@ func (p *p2pImpl) BroadcastRollup(bytes []byte) {
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
+func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
 	for {
-		conn, err := listener.Accept()
+		conn, err := p.listener.Accept()
 		if err != nil {
-			panic(fmt.Errorf("could not accept any further connections: %w", err))
+			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
+				panic(fmt.Errorf("host could not handle P2P connection: %w", err))
+			}
+			return
 		}
 		go handle(conn, txP2PCh, rollupsP2PCh)
 	}
@@ -180,7 +182,8 @@ func sendBytes(address string, tx []byte) {
 		}(conn)
 	}
 	if err != nil {
-		panic(err)
+		log.Log(fmt.Sprintf("could not send message to peer on address %s: %v", address, err))
+		return
 	}
 
 	_, err = conn.Write(tx)

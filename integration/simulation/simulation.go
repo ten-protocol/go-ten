@@ -96,8 +96,6 @@ func NewSimulation(
 		agg.L1Node = &miner
 	}
 
-	waitForEnclaveServers(l2NetworkCfg)
-
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	return &Simulation{
@@ -149,16 +147,4 @@ func (s *Simulation) Stop() {
 	// stop L2 first and then L1
 	go s.l2Network.Stop()
 	go s.l1Network.Stop()
-}
-
-// Returns once all the enclave servers are ready.
-func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
-	for _, node := range l2NetworkCfg.nodes {
-		for {
-			if node.Enclave.IsReady() == nil {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
 }

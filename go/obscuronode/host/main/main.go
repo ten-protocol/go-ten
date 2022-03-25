@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -25,7 +24,6 @@ func main() {
 	aggP2P := p2p.NewP2P(*config.ourP2PAddr, config.peerP2PAddrs)
 	agg := host.NewAgg(nodeID, hostCfg, l1NodeDummy{}, nil, *config.isGenesis, enclaveClient, aggP2P)
 
-	waitForEnclave(agg, *config.enclaveAddr)
 	agg.Start()
 }
 
@@ -36,24 +34,6 @@ func setLogs() {
 		panic(err)
 	}
 	log.SetLog(logFile)
-}
-
-// Waits for the enclave server to start, printing a wait message every two seconds.
-func waitForEnclave(agg host.Node, enclaveAddr string) {
-	i := 0
-	for {
-		if agg.Enclave.IsReady() == nil {
-			fmt.Printf("Connected to enclave server on address %s.\n", enclaveAddr)
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-		i++
-
-		if i >= 20 {
-			fmt.Printf("Trying to connect to enclave server on address %s...\n", enclaveAddr)
-			i = 0
-		}
-	}
 }
 
 // TODO - Replace this dummy once we have implemented communication with L1 nodes.
