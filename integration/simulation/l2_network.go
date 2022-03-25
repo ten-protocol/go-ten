@@ -35,13 +35,13 @@ func NewL2Network(
 		nodeAddresses = append(nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
 	}
 
-	p2p := newP2P("localhost:11000", nodeAddresses)
-	p2p.Listen(nil, nil)
+	p2pNetwork := newP2P(fmt.Sprintf("localhost:%d", P2P_START_PORT+100), nodeAddresses)
+	p2pNetwork.Listen(nil, nil)
 
 	return &L2NetworkCfg{
 		avgLatency:       avgLatency,
 		avgBlockDuration: avgBlockDuration,
-		p2p:              p2p,
+		p2p:              p2pNetwork,
 		nodeAddresses:    nodeAddresses,
 	}
 }

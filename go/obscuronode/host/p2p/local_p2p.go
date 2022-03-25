@@ -9,7 +9,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-// fake multicast network
+// networkLayer is a fake multicast network
+// it's shared across the p2p package and allows for each instance to receive comms
 var networkLayer = make(map[string]chan []byte)
 
 // localP2PImpl implements the P2P in a channel based approach
@@ -30,7 +31,7 @@ func NewLocalP2P(ourAddress string, allAddresses []string) P2P {
 		}
 	}
 
-	// ensure all network chans have been created
+	// ensure the current client network layer has been created
 	if _, found := networkLayer[ourAddress]; !found {
 		networkLayer[ourAddress] = make(chan []byte, 1000)
 	}
@@ -105,7 +106,7 @@ func (l *localP2PImpl) handle(data []byte) {
 		// We only post the transaction if it decodes correctly.
 		if err != nil {
 			log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
-			break
+			return
 		}
 		l.txChan <- msg.MsgContents
 
@@ -115,7 +116,7 @@ func (l *localP2PImpl) handle(data []byte) {
 		// We only post the rollup if it decodes correctly.
 		if err != nil {
 			log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
-			break
+			return
 		}
 		l.rollupChan <- msg.MsgContents
 	default:
