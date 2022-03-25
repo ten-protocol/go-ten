@@ -50,7 +50,7 @@ func TestSimulation(t *testing.T) {
 		l2NetworkCfg,
 		avgBlockDurationUSecs,
 		avgGossipPeriod,
-		true,
+		false,
 		stats,
 	)
 

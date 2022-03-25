@@ -12,6 +12,7 @@ import (
 var GenesisRollup = NewRollup(obscurocommon.GenesisBlock, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
 
 // Rollup Data structure only for the internal use of the enclave since transactions are in clear
+// Making changes to this struct will require GRPC + GRPC Converters regen
 type Rollup struct {
 	Header *nodecommon.Header
 
