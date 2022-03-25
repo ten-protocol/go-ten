@@ -121,23 +121,40 @@ func (a *Node) Start() {
 		a.requestSecret()
 	}
 
+	allBlocks := a.waitForL1Blocks()
+
 	// todo create a channel between request secret and start processing
-	a.startProcessing()
+	a.startProcessing(allBlocks)
 }
 
-func (a *Node) startProcessing() {
-	// Todo: This is a naive implementation.
+// Waits for blocks from the L1 node, printing a wait message every two seconds.
+func (a *Node) waitForL1Blocks() []*types.Block {
 	// It feeds the entire L1 blockchain into the enclave when it starts
-	allblocks := a.L1Node.RPCBlockchainFeed()
+	// todo - what happens with the blocks received while processing ?
+	allBlocks := a.L1Node.RPCBlockchainFeed()
+	i := 0
+
+	for len(allBlocks) == 0 {
+		i++
+		if i >= 20 {
+			log.Log(fmt.Sprintf(">   Agg%d: Waiting for blocks from L1 node...", obscurocommon.ShortAddress(a.ID)))
+			i = 0
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		allBlocks = a.L1Node.RPCBlockchainFeed()
+	}
+
+	return allBlocks
+}
+
+func (a *Node) startProcessing(allblocks []*types.Block) {
+	// Todo: This is a naive implementation.
 	results := a.Enclave.IngestBlocks(allblocks)
 	for _, result := range results {
 		a.storeBlockProcessingResult(result)
 	}
 
-	// todo - what happens with the blocks received while processing ?
-	if len(allblocks) == 0 {
-		panic("Host has no blocks available to begin processing.")
-	}
 	a.Enclave.Start(*allblocks[len(allblocks)-1])
 
 	if a.genesis {
