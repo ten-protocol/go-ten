@@ -78,7 +78,7 @@ func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan 
 	p.listenerInterrupt = &i
 	p.listener = listener
 
-	go p.handleConnections(txP2PCh, rollupsP2PCh, listener)
+	go p.handleConnections(txP2PCh, rollupsP2PCh)
 }
 
 func (p *p2pImpl) StopListening() {
@@ -100,9 +100,9 @@ func (p *p2pImpl) BroadcastRollup(bytes []byte) {
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup, listener net.Listener) {
+func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
 	for {
-		conn, err := listener.Accept()
+		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
 				panic(fmt.Errorf("host could not handle P2P connection: %w", err))
