@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -30,7 +29,11 @@ func NewL2Network(nrNodes int, avgBlockDuration uint64, avgLatency uint64, p2pFa
 		nodeAddresses = append(nodeAddresses, fmt.Sprintf("localhost:%d", P2P_START_PORT+i))
 	}
 
-	p2pNetwork := p2pFactory.NewP2P(fmt.Sprintf("localhost:%d", P2P_START_PORT+100), nodeAddresses)
+	p2pNetwork := p2p.NewDelayP2P(
+		p2pFactory.NewP2P(fmt.Sprintf("localhost:%d", P2P_START_PORT+100), nodeAddresses),
+		func() uint64 {
+			return obscurocommon.RndBtw((avgBlockDuration/25)/10, (avgBlockDuration/25)*2)
+		})
 	p2pNetwork.Listen(nil, nil)
 
 	return &L2NetworkCfg{
@@ -42,19 +45,7 @@ func NewL2Network(nrNodes int, avgBlockDuration uint64, avgLatency uint64, p2pFa
 }
 
 func (cfg *L2NetworkCfg) BroadcastTx(tx nodecommon.EncryptedTx) {
-	msg := p2p.Message{Type: p2p.Tx, MsgContents: tx}
-	msgEncoded, err := rlp.EncodeToBytes(msg)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, a := range cfg.nodeAddresses {
-		address := a
-		// we want to control the delay, so we use the send function
-		obscurocommon.Schedule(cfg.delay()/2, func() {
-			cfg.p2p.SendBytes(address, msgEncoded)
-		})
-	}
+	cfg.p2p.BroadcastTx(tx)
 }
 
 // Start kicks off the l2 nodes waiting a delay between each node
@@ -71,9 +62,4 @@ func (cfg *L2NetworkCfg) Stop() {
 	for _, n := range cfg.nodes {
 		n.Stop()
 	}
-}
-
-// delay returns an expected delay on the l2
-func (cfg *L2NetworkCfg) delay() uint64 {
-	return obscurocommon.RndBtw((cfg.avgBlockDuration/25)/10, (cfg.avgBlockDuration/25)*2)
 }

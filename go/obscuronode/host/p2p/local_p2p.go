@@ -72,8 +72,8 @@ func (l *localP2PImpl) BroadcastRollup(bytes []byte) {
 	l.broadcast(Rollup, bytes)
 }
 
-// SendBytes issues bytes across the network
-func (l *localP2PImpl) SendBytes(address string, data []byte) {
+// sendBytes issues bytes across the network
+func (l *localP2PImpl) sendBytes(address string, data []byte) {
 	networkLayer[address] <- data
 }
 
@@ -87,7 +87,7 @@ func (l *localP2PImpl) broadcast(msgType Type, bytes []byte) {
 
 	for _, a := range l.peerAddresses {
 		address := a
-		l.SendBytes(address, msgEncoded)
+		l.sendBytes(address, msgEncoded)
 	}
 }
 
