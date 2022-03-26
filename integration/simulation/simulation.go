@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	INITIAL_BALANCE         = 5000  // nolint:revive,stylecheck
-	P2P_START_PORT          = 10000 // nolint:revive,stylecheck
-	ENCLAVE_CONN_START_PORT = 11000 // nolint:revive,stylecheck
+	INITIAL_BALANCE         = 5000        // nolint:revive,stylecheck
+	P2P_START_PORT          = 10000       // nolint:revive,stylecheck
+	ENCLAVE_CONN_START_PORT = 11000       // nolint:revive,stylecheck
+	LOCALHOST               = "localhost" // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
@@ -59,6 +60,11 @@ func NewSimulation(
 
 	l2NodeCfg := host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
 
+	// We generate the P2P addresses for each node on the network.
+	for i := 1; i <= nrNodes; i++ {
+		l2NetworkCfg.nodeAddresses = append(l2NetworkCfg.nodeAddresses, fmt.Sprintf("%s:%d", LOCALHOST, P2P_START_PORT+i))
+	}
+
 	for i := 1; i <= nrNodes; i++ {
 		genesis := false
 		if i == 1 {
@@ -77,7 +83,7 @@ func NewSimulation(
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}
-			enclaveClient = host.NewEnclaveRPCClient(port, timeout)
+			enclaveClient = host.NewEnclaveRPCClient(fmt.Sprintf("%s:%d", LOCALHOST, port), timeout)
 		}
 
 		// create a layer 2 node
@@ -90,8 +96,6 @@ func NewSimulation(
 		l1NetworkCfg.nodes = append(l1NetworkCfg.nodes, &miner)
 		agg.L1Node = &miner
 	}
-
-	waitForEnclaveServers(l2NetworkCfg)
 
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
@@ -144,16 +148,4 @@ func (s *Simulation) Stop() {
 	// stop L2 first and then L1
 	go s.l2Network.Stop()
 	go s.l1Network.Stop()
-}
-
-// Returns once all the enclave servers are ready.
-func waitForEnclaveServers(l2NetworkCfg *L2NetworkCfg) {
-	for _, node := range l2NetworkCfg.nodes {
-		for {
-			if node.Enclave.IsReady() == nil {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
 }

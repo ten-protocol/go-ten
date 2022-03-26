@@ -37,8 +37,6 @@ type Storage interface {
 	FetchRollups(height uint64) []*Rollup
 	// StoreRollup persists the rollup
 	StoreRollup(rollup *Rollup)
-	// HeightRollup returns the height of the rollup
-	HeightRollup(rollup *Rollup) uint64
 	// ParentRollup returns the rollup's parent rollup
 	ParentRollup(rollup *Rollup) *Rollup
 
@@ -106,8 +104,7 @@ func (s *storageImpl) FetchHeadState() *blockState {
 
 func (s *storageImpl) StoreRollup(rollup *Rollup) {
 	s.assertSecretAvailable()
-	height := s.HeightRollup(rollup)
-	s.db.StoreRollup(rollup, height)
+	s.db.StoreRollup(rollup)
 }
 
 func (s *storageImpl) FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool) {
@@ -149,7 +146,7 @@ func (s *storageImpl) StoreBlock(b *types.Block) {
 	} else {
 		bAndHeight, f := s.db.FetchBlockAndHeight(b.ParentHash())
 		if !f {
-			panic("Should not happen")
+			panic(fmt.Sprintf("unable to store block: %s without it's parent: %s", b.Hash(), b.ParentHash()))
 		}
 		height = bAndHeight.height + 1
 	}
@@ -201,20 +198,6 @@ func (s *storageImpl) ParentRollup(r *Rollup) *Rollup {
 		panic(fmt.Sprintf("Could not find rollup: r_%s", r.Hash()))
 	}
 	return parent
-}
-
-func (s *storageImpl) HeightRollup(r *Rollup) uint64 {
-	s.assertSecretAvailable()
-	if height := r.Height.Load(); height != nil {
-		return height.(uint64)
-	}
-	if r.Hash() == GenesisRollup.Hash() {
-		r.Height.Store(obscurocommon.L2GenesisHeight)
-		return obscurocommon.L2GenesisHeight
-	}
-	v := s.HeightRollup(s.ParentRollup(r)) + 1
-	r.Height.Store(v)
-	return v
 }
 
 func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, bool) {

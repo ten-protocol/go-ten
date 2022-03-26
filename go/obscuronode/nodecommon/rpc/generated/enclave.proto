@@ -177,7 +177,8 @@ message HeaderMsg {
   uint64 nonce = 3;
   bytes l1Proof = 4;
   string stateRoot = 5;
-  repeated WithdrawalMsg withdrawals = 6;
+  uint64 height = 6;
+  repeated WithdrawalMsg withdrawals = 7;
 }
 
 message WithdrawalMsg {

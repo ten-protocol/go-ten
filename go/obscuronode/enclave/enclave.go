@@ -139,7 +139,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 				L1Height:          e.blockResolver.HeightBlock(bs.block),
 				L1Parent:          bs.block.ParentHash(),
 				L2Hash:            bs.head.Hash(),
-				L2Height:          e.storage.HeightRollup(bs.head),
+				L2Height:          bs.head.Header.Height,
 				L2Parent:          bs.head.Header.ParentHash,
 				ProducedRollup:    rollup,
 				IngestedBlock:     true,
@@ -189,7 +189,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		L1Height:    e.blockResolver.HeightBlock(&block),
 		L1Parent:    blockState.block.Header().ParentHash,
 		L2Hash:      blockState.head.Hash(),
-		L2Height:    blockState.head.Height.Load().(uint64),
+		L2Height:    blockState.head.Header.Height,
 		L2Parent:    blockState.head.Header.ParentHash,
 		Withdrawals: blockState.head.Header.Withdrawals,
 
@@ -238,7 +238,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		panic(fmt.Sprintf("Could not find rollup: r_%s", parent))
 	}
 
-	rollupsReceivedFromPeers := e.storage.FetchRollups(e.storage.HeightRollup(head) + 1)
+	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*Rollup
 	for _, rol := range rollupsReceivedFromPeers {
@@ -261,7 +261,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		w := e.storage.ParentRollup(winnerRollup)
 		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
 			obscurocommon.ShortAddress(e.node),
-			obscurocommon.ShortHash(winnerRollup.Hash()), e.storage.HeightRollup(winnerRollup),
+			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Height,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
 			printTxs(winnerRollup.Transactions),
@@ -296,9 +296,9 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-				e.storage.HeightRollup(speculativeRollup.r),
+				speculativeRollup.r.Header.Height,
 				obscurocommon.ShortHash(bs.head.Hash()),
-				e.storage.HeightRollup(bs.head)),
+				bs.head.Header.Height),
 			)
 			e.statsCollector.L2Recalc(e.node)
 		}
@@ -314,7 +314,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.blockResolver)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := NewRollup(b, bs.head, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
+	r := NewRollup(b, bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
 	return &r
 }
 
@@ -335,7 +335,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 		if !found {
 			panic(fmt.Sprintf("Could not find rollup: r_%s", rollup.Hash()))
 		}
-		if rollup.Height.Load() == obscurocommon.L2GenesisHeight {
+		if rollup.Header.Height == obscurocommon.L2GenesisHeight {
 			return nil
 		}
 	}

@@ -30,7 +30,7 @@ type DB interface {
 	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height uint64) []*Rollup
 	// StoreRollup persists the rollup
-	StoreRollup(rollup *Rollup, height uint64)
+	StoreRollup(rollup *Rollup)
 
 	// FetchBlockState returns the state after ingesting the L1 block with the given hash
 	FetchBlockState(hash obscurocommon.L1RootHash) (*blockState, bool)
@@ -139,16 +139,16 @@ func (db *inMemoryDB) FetchHeadBlock() obscurocommon.L1RootHash {
 }
 
 // TODO - Pull this logic into the storage layer.
-func (db *inMemoryDB) StoreRollup(rollup *Rollup, height uint64) {
+func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
 	db.rollups[rollup.Hash()] = rollup
-	val, found := db.rollupsByHeight[height]
+	val, found := db.rollupsByHeight[rollup.Header.Height]
 	if found {
-		db.rollupsByHeight[height] = append(val, rollup)
+		db.rollupsByHeight[rollup.Header.Height] = append(val, rollup)
 	} else {
-		db.rollupsByHeight[height] = []*Rollup{rollup}
+		db.rollupsByHeight[rollup.Header.Height] = []*Rollup{rollup}
 	}
 }
 

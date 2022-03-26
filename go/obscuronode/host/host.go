@@ -104,6 +104,8 @@ func NewAgg(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
+	a.waitForEnclave()
+
 	a.p2p.Listen(a.txP2PCh, a.rollupsP2PCh)
 	defer a.p2p.StopListening()
 
@@ -121,23 +123,54 @@ func (a *Node) Start() {
 		a.requestSecret()
 	}
 
+	allBlocks := a.waitForL1Blocks()
+
 	// todo create a channel between request secret and start processing
-	a.startProcessing()
+	a.startProcessing(allBlocks)
 }
 
-func (a *Node) startProcessing() {
-	// Todo: This is a naive implementation.
+// Waits for enclave to be available, printing a wait message every two seconds.
+func (a *Node) waitForEnclave() {
+	counter := 0
+	for a.Enclave.IsReady() != nil {
+		if counter >= 20 {
+			log.Log(fmt.Sprintf(">   Agg%d: Waiting for enclave. Error: %v", obscurocommon.ShortAddress(a.ID), a.Enclave.IsReady()))
+			counter = 0
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		counter++
+	}
+}
+
+// Waits for blocks from the L1 node, printing a wait message every two seconds.
+func (a *Node) waitForL1Blocks() []*types.Block {
 	// It feeds the entire L1 blockchain into the enclave when it starts
-	allblocks := a.L1Node.RPCBlockchainFeed()
+	// todo - what happens with the blocks received while processing ?
+	allBlocks := a.L1Node.RPCBlockchainFeed()
+	counter := 0
+
+	for len(allBlocks) == 0 {
+		if counter >= 20 {
+			log.Log(fmt.Sprintf(">   Agg%d: Waiting for blocks from L1 node...", obscurocommon.ShortAddress(a.ID)))
+			counter = 0
+		}
+
+		time.Sleep(100 * time.Millisecond)
+		allBlocks = a.L1Node.RPCBlockchainFeed()
+		counter++
+	}
+
+	return allBlocks
+}
+
+func (a *Node) startProcessing(allblocks []*types.Block) {
+	// Todo: This is a naive implementation.
 	results := a.Enclave.IngestBlocks(allblocks)
 	for _, result := range results {
 		a.storeBlockProcessingResult(result)
 	}
 
-	// todo - what happens with the blocks received while processing ?
-	if len(allblocks) == 0 {
-		panic("Host has no blocks available to begin processing.")
-	}
 	a.Enclave.Start(*allblocks[len(allblocks)-1])
 
 	if a.genesis {
@@ -304,13 +337,15 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 	}
 
 	// adding a header will update the head if it has a higher height
-	a.DB().AddBlockHeader(
-		&BlockHeader{
-			ID:     result.L1Hash,
-			Parent: result.L1Parent,
-			Height: result.L1Height,
-		},
-	)
+	if result.IngestedBlock {
+		a.DB().AddBlockHeader(
+			&BlockHeader{
+				ID:     result.L1Hash,
+				Parent: result.L1Parent,
+				Height: result.L1Height,
+			},
+		)
+	}
 }
 
 // Called only by the first enclave to bootstrap the network
