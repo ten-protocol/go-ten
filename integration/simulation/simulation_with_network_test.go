@@ -12,7 +12,7 @@ func TestStandaloneNodesMonteCarloSimulation(t *testing.T) {
 	avgBlockDurationUSecs := uint64(250_000) // in u seconds 1 sec = 1e6 usecs.
 
 	createNetwork := CreateBasicNetworkOfStandaloneNodes
-	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.38}
+	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
 	testSimulation(t, avgBlockDurationUSecs, createNetwork, efficiencies)
 }
