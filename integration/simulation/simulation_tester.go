@@ -24,6 +24,7 @@ type SimParams struct {
 	SimulationTimeUSecs int // SimulationTimeSecs converted to Us
 }
 
+// An alias for a function that creates a group of Ethereum and Obscuro nodes.
 type createNetworkFunc = func(params SimParams, stats *Stats) ([]*ethereummock.Node, []*host.Node)
 
 // testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
