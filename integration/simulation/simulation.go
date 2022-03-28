@@ -13,9 +13,6 @@ import (
 
 const (
 	INITIAL_BALANCE = 5000 // nolint:revive,stylecheck
-	// P2P_START_PORT          = 10000       // nolint:revive,stylecheck
-	// ENCLAVE_CONN_START_PORT = 11000       // nolint:revive,stylecheck
-	// LOCALHOST               = "localhost" // nolint:revive,stylecheck
 )
 
 // Simulation represents the data which to set up and run a simulated network
@@ -28,7 +25,7 @@ type Simulation struct {
 	Stats              *Stats
 }
 
-// RunSimulation executes the simulation given all the params
+// Start executes the simulation given all the params. Starts all nodes, and injects transactions.
 func (s *Simulation) Start() {
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 

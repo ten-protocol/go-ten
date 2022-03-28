@@ -24,12 +24,14 @@ type AggregatorCfg struct {
 	ClientRPCTimeoutSecs uint64
 }
 
+// P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
 type P2PCallback interface {
-	P2PGossipRollup(r obscurocommon.EncodedRollup)
-	P2PReceiveTx(tx nodecommon.EncryptedTx)
+	ReceiveRollup(r obscurocommon.EncodedRollup)
+	ReceiveTx(tx nodecommon.EncryptedTx)
 }
 
-type ObscuroNetwork interface {
+// P2P - represents the P2P layer. Responsible for sending and receiving messages to the other Obscuro Network Peers
+type P2P interface {
 	StartListening(callback P2PCallback)
 	StopListening()
 	BroadcastRollup(r obscurocommon.EncodedRollup)
@@ -37,7 +39,7 @@ type ObscuroNetwork interface {
 }
 
 type StatsCollector interface {
-	// Register when a node has to discard the speculative work built on top of the winner of the gossip round.
+	// L2Recalc - called when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
 	NewBlock(block *types.Block)
 	NewRollup(rollup *nodecommon.Rollup)
@@ -48,7 +50,7 @@ type StatsCollector interface {
 type Node struct {
 	ID common.Address
 
-	P2p          ObscuroNetwork
+	P2p          P2P
 	ethereumNode obscurocommon.L1Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
@@ -80,7 +82,7 @@ func NewObscuroAggregator(
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
-	obscuroNetwork ObscuroNetwork,
+	p2p P2P,
 ) Node {
 	return Node{
 		// config
@@ -89,7 +91,7 @@ func NewObscuroAggregator(
 		mining:       true,
 		genesis:      genesis,
 		ethereumNode: l1,
-		P2p:          obscuroNetwork,
+		P2p:          p2p,
 
 		stats: collector,
 
@@ -245,7 +247,7 @@ func (a *Node) RPCNewFork(b []obscurocommon.EncodedBlock) {
 
 // P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
 // All it does is forward the rollup for processing to the enclave
-func (a *Node) P2PGossipRollup(r obscurocommon.EncodedRollup) {
+func (a *Node) ReceiveRollup(r obscurocommon.EncodedRollup) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
@@ -253,7 +255,7 @@ func (a *Node) P2PGossipRollup(r obscurocommon.EncodedRollup) {
 }
 
 // P2PReceiveTx receives a new transactions from the P2P network
-func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
+func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}

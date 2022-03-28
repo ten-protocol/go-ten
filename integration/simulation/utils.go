@@ -46,7 +46,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDurationUSecs uint64, avgN
 }
 
 func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgBlockDurationUSecs uint64, avgNetworkLatency uint64, stats *Stats) *host.Node {
-	obscuroInMemNetwork := NewObscuroInMemNetwork(avgBlockDurationUSecs, avgNetworkLatency)
+	obscuroInMemNetwork := NewMockP2P(avgBlockDurationUSecs, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 
@@ -99,7 +99,7 @@ func CreateBasicNetworkOfInMemoryNodes(nrNodes int, avgGossipPeriod uint64, avgB
 	// populate the nodes field of each network
 	for i := 0; i < nrNodes; i++ {
 		l1Nodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = l1Nodes
-		l2Nodes[i].P2p.(*ObscuroInMemNetwork).Nodes = l2Nodes
+		l2Nodes[i].P2p.(*MockP2P).Nodes = l2Nodes
 	}
 
 	return l1Nodes, l2Nodes
