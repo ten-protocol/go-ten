@@ -9,6 +9,8 @@ import (
 )
 
 // This test creates a network of standalone L2 nodes, then injects transactions, and finally checks the resulting output blockchain
+// The L2 nodes communicate via sockets, and with standalone enclave servers via RPC.
+// All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestStandaloneNodesMonteCarloSimulation(t *testing.T) {
 	// todo - joel - pull some of this setup into a common method
 	// define core test parameters

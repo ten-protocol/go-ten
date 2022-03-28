@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	localhost    = "localhost"
-	p2pStartPort = 10000
+	localhost        = "localhost"
+	p2pStartPort     = 10000
+	enclaveStartPort = 11000
 )
 
 func setupTestLog(baseDir string) *os.File {
@@ -60,17 +61,25 @@ func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgB
 	return &node
 }
 
-func createStandaloneObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *Stats, nodeAddr string, peerAddrs []string) *host.Node {
-	nodeP2p := p2p.NewSocketP2PLayer(nodeAddr, peerAddrs)
-
-	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-
+func createStandaloneObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *Stats, peerAddrs []string) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
-	// todo - joel - switch to standalone enclave
-	enclaveClient := enclave.NewEnclave(nodeID, true, stats)
+
+	// create a remote enclave server
+	enclavePort := uint64(enclaveStartPort + id)
+	err := enclave.StartServer(enclavePort, nodeID, stats)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create enclave server: %v", err))
+	}
+
+	// create an enclave client
+	enclaveAddr := fmt.Sprintf("%s:%d", localhost, enclavePort)
+	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, host.ClientRPCTimeoutSecs*time.Second)
 
 	// create a standalone memory obscuro node
+	nodeP2p := p2p.NewSocketP2PLayer(peerAddrs[id-1], peerAddrs)
+	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p)
+
 	return &node
 }
 
@@ -127,7 +136,7 @@ func CreateBasicNetworkOfStandaloneNodes(nrNodes int, avgGossipPeriod uint64, av
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), nrNodes, avgBlockDurationUSecs, avgLatency, stats)
-		agg := createStandaloneObscuroNode(int64(i), genesis, avgGossipPeriod, stats, nodeAddrs[i-1], nodeAddrs)
+		agg := createStandaloneObscuroNode(int64(i), genesis, avgGossipPeriod, stats, nodeAddrs)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
