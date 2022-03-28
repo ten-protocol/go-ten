@@ -32,9 +32,9 @@ type Message struct {
 	MsgContents []byte
 }
 
-// NewSocketObscuroNetwork - returns the Socket implementation of the ObscuroNetwork
+// NewSocketP2PLayer - returns the Socket implementation of the P2P
 // allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
-func NewSocketObscuroNetwork(ourAddress string, allAddresses []string) host.ObscuroNetwork {
+func NewSocketP2PLayer(ourAddress string, allAddresses []string) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
 	var peerAddresses []string
 	for _, a := range allAddresses {
@@ -130,7 +130,7 @@ func handle(conn net.Conn, callback host.P2PCallback) {
 
 		// We only post the transaction if it decodes correctly.
 		if err == nil {
-			callback.P2PReceiveTx(msg.MsgContents)
+			callback.ReceiveTx(msg.MsgContents)
 		} else {
 			log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
 		}
@@ -140,7 +140,7 @@ func handle(conn net.Conn, callback host.P2PCallback) {
 
 		// We only post the rollup if it decodes correctly.
 		if err == nil {
-			callback.P2PGossipRollup(msg.MsgContents)
+			callback.ReceiveRollup(msg.MsgContents)
 		} else {
 			log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
 		}

@@ -9,10 +9,10 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-// ObscuroInMemNetwork - models a full network of in memory nodes including artificial random latencies
+// MockP2P - models a full network of in memory nodes including artificial random latencies
 // Implements the P2p interface
 // Will be plugged into each node
-type ObscuroInMemNetwork struct {
+type MockP2P struct {
 	currentNode *host.Node
 	Nodes       []*host.Node
 
@@ -22,26 +22,26 @@ type ObscuroInMemNetwork struct {
 	listenerInterrupt *int32
 }
 
-// NewObscuroInMemNetwork returns an instance of a configured L2 Network (no nodes)
-func NewObscuroInMemNetwork(avgBlockDuration uint64, avgLatency uint64) *ObscuroInMemNetwork {
+// NewMockP2P returns an instance of a configured L2 Network (no nodes)
+func NewMockP2P(avgBlockDuration uint64, avgLatency uint64) *MockP2P {
 	i := int32(0)
-	return &ObscuroInMemNetwork{
+	return &MockP2P{
 		avgLatency:        avgLatency,
 		avgBlockDuration:  avgBlockDuration,
 		listenerInterrupt: &i,
 	}
 }
 
-func (netw *ObscuroInMemNetwork) StartListening(callback host.P2PCallback) {
+func (netw *MockP2P) StartListening(host.P2PCallback) {
 	// nothing to do here, since communication is direct through the in memory objects
 }
 
-func (netw *ObscuroInMemNetwork) StopListening() {
+func (netw *MockP2P) StopListening() {
 	atomic.StoreInt32(netw.listenerInterrupt, 1)
 }
 
 // BroadcastRollup Broadcasts the rollup to all L2 peers
-func (netw *ObscuroInMemNetwork) BroadcastRollup(r obscurocommon.EncodedRollup) {
+func (netw *MockP2P) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return
 	}
@@ -49,12 +49,12 @@ func (netw *ObscuroInMemNetwork) BroadcastRollup(r obscurocommon.EncodedRollup) 
 	for _, a := range netw.Nodes {
 		if a.ID != netw.currentNode.ID {
 			t := a
-			obscurocommon.Schedule(netw.delay(), func() { t.P2PGossipRollup(r) })
+			obscurocommon.Schedule(netw.delay(), func() { t.ReceiveRollup(r) })
 		}
 	}
 }
 
-func (netw *ObscuroInMemNetwork) BroadcastTx(tx nodecommon.EncryptedTx) {
+func (netw *MockP2P) BroadcastTx(tx nodecommon.EncryptedTx) {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return
 	}
@@ -62,12 +62,12 @@ func (netw *ObscuroInMemNetwork) BroadcastTx(tx nodecommon.EncryptedTx) {
 	for _, a := range netw.Nodes {
 		if a.ID != netw.currentNode.ID {
 			t := a
-			obscurocommon.Schedule(netw.delay()/2, func() { t.P2PReceiveTx(tx) })
+			obscurocommon.Schedule(netw.delay()/2, func() { t.ReceiveTx(tx) })
 		}
 	}
 }
 
 // delay returns an expected delay on the l2
-func (netw *ObscuroInMemNetwork) delay() uint64 {
+func (netw *MockP2P) delay() uint64 {
 	return obscurocommon.RndBtw(netw.avgLatency/10, 2*netw.avgLatency)
 }

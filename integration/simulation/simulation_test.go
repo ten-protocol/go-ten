@@ -21,7 +21,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simulationTimeSecs := 15 // in seconds
 
 	// This is a critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
-	avgBlockDurationUSecs := uint64(20_000) // in u seconds 1 sec = 1e6 usecs.
+	avgBlockDurationUSecs := uint64(25_000) // in u seconds 1 sec = 1e6 usecs.
 
 	avgNetworkLatency := avgBlockDurationUSecs / 15 // artificial latency injected between sending and receiving messages on the mock network
 	avgGossipPeriod := avgBlockDurationUSecs / 3    // POBI protocol setting
