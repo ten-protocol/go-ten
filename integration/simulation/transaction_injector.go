@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -17,44 +20,47 @@ import (
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
-// TransactionManager is a structure that generates, issues and tracks transactions
-type TransactionManager struct {
-	l1NetworkConfig    *L1NetworkCfg
-	l2NetworkConfig    *L2NetworkCfg
-	avgBlockDuration   uint64
-	simulationTimeInUS int
-	stats              *Stats
-	wallets            []wallet_mock.Wallet
+// TransactionInjector is a structure that generates, issues and tracks transactions
+type TransactionInjector struct {
+	// settings
+	avgBlockDuration uint64
+	injectionTimeUs  int
+	stats            *Stats
+	wallets          []wallet_mock.Wallet
+
+	l1Nodes []*ethereum_mock.Node
+	l2Nodes []*host.Node
+
 	l1TransactionsLock sync.RWMutex
 	l1Transactions     []obscurocommon.L1TxData
+
 	l2TransactionsLock sync.RWMutex
 	l2Transactions     enclave.L2Txs
 }
 
-// NewTransactionManager returns a transaction manager with a given number of wallets
+// NewTransactionInjector returns a transaction manager with a given number of wallets
 // todo Add methods that generate deterministic scenarios
-func NewTransactionManager(numberWallets uint, l1 *L1NetworkCfg, l2 *L2NetworkCfg, avgBlockDuration uint64, stats *Stats) *TransactionManager {
+func NewTransactionInjector(numberWallets int, avgBlockDuration uint64, stats *Stats, injectionTimeUs int, l1Nodes []*ethereum_mock.Node, l2Nodes []*host.Node) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
-	for i := uint(0); i < numberWallets; i++ {
+	for i := 0; i < numberWallets; i++ {
 		wallets[i] = wallet_mock.New()
 	}
 
-	return &TransactionManager{
+	return &TransactionInjector{
 		wallets:          wallets,
-		l1NetworkConfig:  l1,
-		l2NetworkConfig:  l2,
 		avgBlockDuration: avgBlockDuration,
 		stats:            stats,
+		injectionTimeUs:  injectionTimeUs,
+		l1Nodes:          l1Nodes,
+		l2Nodes:          l2Nodes,
 	}
 }
 
-// Start begins the execution on the TransactionManager
+// Start begins the execution on the TransactionInjector
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
-func (m *TransactionManager) Start(us int) {
-	m.simulationTimeInUS = us
-
+func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every user
 	for _, u := range m.wallets {
 		txData := obscurocommon.L1TxData{
@@ -64,7 +70,7 @@ func (m *TransactionManager) Start(us int) {
 		}
 		tx := obscurocommon.NewL1Tx(txData)
 		t, _ := obscurocommon.EncodeTx(tx)
-		m.l1NetworkConfig.BroadcastTx(t)
+		m.rndL1Node().Network.BroadcastTx(t)
 		m.stats.Deposit(INITIAL_BALANCE)
 		time.Sleep(obscurocommon.Duration(m.avgBlockDuration / 3))
 	}
@@ -95,26 +101,26 @@ func (m *TransactionManager) Start(us int) {
 }
 
 // trackL1Tx adds a common.L1Tx to the internal list
-func (m *TransactionManager) trackL1Tx(tx obscurocommon.L1TxData) {
+func (m *TransactionInjector) trackL1Tx(tx obscurocommon.L1TxData) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
 	m.l1Transactions = append(m.l1Transactions, tx)
 }
 
 // trackL2Tx adds an enclave.L2Tx to the internal list
-func (m *TransactionManager) trackL2Tx(tx nodecommon.L2Tx) {
+func (m *TransactionInjector) trackL2Tx(tx nodecommon.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
 	m.l2Transactions = append(m.l2Transactions, tx)
 }
 
 // GetL1Transactions returns all generated L1 L2Txs
-func (m *TransactionManager) GetL1Transactions() []obscurocommon.L1TxData {
+func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1TxData {
 	return m.l1Transactions
 }
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
-func (m *TransactionManager) GetL2Transactions() enclave.L2Txs {
+func (m *TransactionInjector) GetL2Transactions() enclave.L2Txs {
 	var transactions enclave.L2Txs
 	for _, req := range m.l2Transactions {
 		if enclave.TxData(&req).Type != enclave.WithdrawalTx { //nolint:gosec
@@ -125,7 +131,7 @@ func (m *TransactionManager) GetL2Transactions() enclave.L2Txs {
 }
 
 // GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions
-func (m *TransactionManager) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
+func (m *TransactionInjector) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
 	var withdrawals []nodecommon.Withdrawal
 	for _, req := range m.l2Transactions {
 		tx := enclave.TxData(&req) //nolint:gosec
@@ -137,8 +143,8 @@ func (m *TransactionManager) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
 }
 
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
-func (m *TransactionManager) issueRandomTransfers() {
-	n := uint64(m.simulationTimeInUS) / m.avgBlockDuration
+func (m *TransactionInjector) issueRandomTransfers() {
+	n := uint64(m.injectionTimeUs) / m.avgBlockDuration
 	i := uint64(0)
 	for {
 		if i == n {
@@ -153,7 +159,7 @@ func (m *TransactionManager) issueRandomTransfers() {
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
 		encryptedTx := enclave.EncryptTx(signedTx)
 		m.stats.Transfer()
-		m.l2NetworkConfig.BroadcastTx(encryptedTx)
+		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
 		go m.trackL2Tx(*signedTx)
 		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration)))
 		i++
@@ -162,8 +168,8 @@ func (m *TransactionManager) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 // Generates L1 common.DepositTx transactions
-func (m *TransactionManager) issueRandomDeposits() {
-	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
+func (m *TransactionInjector) issueRandomDeposits() {
+	n := uint64(m.injectionTimeUs) / (m.avgBlockDuration * 3)
 	i := uint64(0)
 	for {
 		if i == n {
@@ -177,7 +183,7 @@ func (m *TransactionManager) issueRandomDeposits() {
 		}
 		tx := obscurocommon.NewL1Tx(txData)
 		t, _ := obscurocommon.EncodeTx(tx)
-		m.l1NetworkConfig.BroadcastTx(t)
+		m.rndL1Node().BroadcastTx(t)
 		m.stats.Deposit(v)
 		go m.trackL1Tx(txData)
 		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
@@ -187,8 +193,8 @@ func (m *TransactionManager) issueRandomDeposits() {
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 // Generates L2 enclave2.WithdrawalTx transactions
-func (m *TransactionManager) issueRandomWithdrawals() {
-	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
+func (m *TransactionInjector) issueRandomWithdrawals() {
+	n := uint64(m.injectionTimeUs) / (m.avgBlockDuration * 3)
 	i := uint64(0)
 	for {
 		if i == n {
@@ -199,7 +205,7 @@ func (m *TransactionManager) issueRandomWithdrawals() {
 		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := enclave.EncryptTx(signedTx)
-		m.l2NetworkConfig.BroadcastTx(encryptedTx)
+		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
 		m.stats.Withdrawal(v)
 		go m.trackL2Tx(*signedTx)
 		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
@@ -209,8 +215,8 @@ func (m *TransactionManager) issueRandomWithdrawals() {
 
 // issueInvalidWithdrawals creates and issues a number of invalidly-signed L2 withdrawal transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation withdrawal checks.
-func (m *TransactionManager) issueInvalidWithdrawals() {
-	n := uint64(m.simulationTimeInUS) / (m.avgBlockDuration * 3)
+func (m *TransactionInjector) issueInvalidWithdrawals() {
+	n := uint64(m.injectionTimeUs) / (m.avgBlockDuration * 3)
 	i := uint64(0)
 	for {
 		if i == n {
@@ -220,7 +226,7 @@ func (m *TransactionManager) issueInvalidWithdrawals() {
 		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
 		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := enclave.EncryptTx(signedTx)
-		m.l2NetworkConfig.BroadcastTx(encryptedTx)
+		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
 		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration)))
 		i++
 	}
@@ -252,4 +258,12 @@ func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet)
 
 func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
 	return wallets[rand.Intn(len(wallets))] //nolint:gosec
+}
+
+func (m *TransactionInjector) rndL1Node() *ethereum_mock.Node {
+	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
+}
+
+func (m *TransactionInjector) rndL2Node() *host.Node {
+	return m.l2Nodes[rand.Intn(len(m.l2Nodes))] //nolint:gosec
 }

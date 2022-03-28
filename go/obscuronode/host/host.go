@@ -5,8 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	p2p2 "github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -18,11 +16,24 @@ import (
 
 const ClientRPCTimeoutSecs = 5
 
+// todo - this has to be replaced with a proper cfg framework
 type AggregatorCfg struct {
 	// duration of the gossip round
 	GossipRoundDuration uint64
 	// timeout duration in seconds for RPC requests to the enclave service
 	ClientRPCTimeoutSecs uint64
+}
+
+type P2PCallback interface {
+	P2PGossipRollup(r obscurocommon.EncodedRollup)
+	P2PReceiveTx(tx nodecommon.EncryptedTx)
+}
+
+type ObscuroNetwork interface {
+	StartListening(callback P2PCallback)
+	StopListening()
+	BroadcastRollup(r obscurocommon.EncodedRollup)
+	BroadcastTx(tx nodecommon.EncryptedTx)
 }
 
 type StatsCollector interface {
@@ -37,7 +48,8 @@ type StatsCollector interface {
 type Node struct {
 	ID common.Address
 
-	L1Node obscurocommon.L1Node
+	P2p          ObscuroNetwork
+	ethereumNode obscurocommon.L1Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -59,26 +71,25 @@ type Node struct {
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
-
-	p2p p2p2.P2P
 }
 
-func NewAgg(
+func NewObscuroAggregator(
 	id common.Address,
 	cfg AggregatorCfg,
 	l1 obscurocommon.L1Node,
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
-	p2p p2p2.P2P,
+	obscuroNetwork ObscuroNetwork,
 ) Node {
 	return Node{
 		// config
-		ID:      id,
-		cfg:     cfg,
-		mining:  true,
-		genesis: genesis,
-		L1Node:  l1,
+		ID:           id,
+		cfg:          cfg,
+		mining:       true,
+		genesis:      genesis,
+		ethereumNode: l1,
+		P2p:          obscuroNetwork,
 
 		stats: collector,
 
@@ -97,17 +108,12 @@ func NewAgg(
 
 		// Initialized the node nodeDB
 		nodeDB: NewDB(),
-
-		p2p: p2p,
 	}
 }
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
 	a.waitForEnclave()
-
-	a.p2p.Listen(a.txP2PCh, a.rollupsP2PCh)
-	defer a.p2p.StopListening()
 
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
@@ -147,7 +153,7 @@ func (a *Node) waitForEnclave() {
 func (a *Node) waitForL1Blocks() []*types.Block {
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	// todo - what happens with the blocks received while processing ?
-	allBlocks := a.L1Node.RPCBlockchainFeed()
+	allBlocks := a.ethereumNode.RPCBlockchainFeed()
 	counter := 0
 
 	for len(allBlocks) == 0 {
@@ -157,7 +163,7 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 		}
 
 		time.Sleep(100 * time.Millisecond)
-		allBlocks = a.L1Node.RPCBlockchainFeed()
+		allBlocks = a.ethereumNode.RPCBlockchainFeed()
 		counter++
 	}
 
@@ -176,6 +182,9 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 	if a.genesis {
 		a.initialiseProtocol()
 	}
+
+	// Only open the p2p connection when the node is fully initialised
+	a.P2p.StartListening(a)
 
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
 	i := int32(0)
@@ -218,7 +227,7 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 	}
 }
 
-// RPCNewHead receives the notification of new blocks from the L1Node Node
+// RPCNewHead receives the notification of new blocks from the ethereumNode Node
 func (a *Node) RPCNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
@@ -226,12 +235,29 @@ func (a *Node) RPCNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedB
 	a.blockRPCCh <- blockAndParent{b, p}
 }
 
-// RPCNewFork receives the notification of a new fork from the L1Node
+// RPCNewFork receives the notification of a new fork from the ethereumNode
 func (a *Node) RPCNewFork(b []obscurocommon.EncodedBlock) {
 	if atomic.LoadInt32(a.interrupt) == 1 {
 		return
 	}
 	a.forkRPCCh <- b
+}
+
+// P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
+// All it does is forward the rollup for processing to the enclave
+func (a *Node) P2PGossipRollup(r obscurocommon.EncodedRollup) {
+	if atomic.LoadInt32(a.interrupt) == 1 {
+		return
+	}
+	a.rollupsP2PCh <- r
+}
+
+// P2PReceiveTx receives a new transactions from the P2P network
+func (a *Node) P2PReceiveTx(tx nodecommon.EncryptedTx) {
+	if atomic.LoadInt32(a.interrupt) == 1 {
+		return
+	}
+	a.txP2PCh <- tx
 }
 
 // RPCBalance allows to fetch the balance of one address
@@ -258,12 +284,18 @@ func (a *Node) DB() *DB {
 func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.interrupt, 1)
+	a.P2p.StopListening()
+
 	a.Enclave.Stop()
 
 	time.Sleep(time.Millisecond * 1000)
 	a.exitNodeCh <- true
 
 	a.Enclave.StopClient()
+}
+
+func (a *Node) ConnectToEthNode(node obscurocommon.L1Node) {
+	a.ethereumNode = node
 }
 
 func sendInterrupt(interrupt *int32) *int32 {
@@ -299,7 +331,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	// todo -make this a better check
 	if result.ProducedRollup.Header != nil {
-		a.p2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
+		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
 		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
 			if atomic.LoadInt32(a.interrupt) == 1 {
@@ -314,7 +346,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 				if err != nil {
 					panic(err)
 				}
-				a.L1Node.BroadcastTx(t)
+				a.ethereumNode.BroadcastTx(t)
 				// collect Stats
 				// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
 			}
@@ -363,7 +395,7 @@ func (a *Node) broadcastTx(tx obscurocommon.L1Tx) {
 	if err != nil {
 		panic(err)
 	}
-	a.L1Node.BroadcastTx(t)
+	a.ethereumNode.BroadcastTx(t)
 }
 
 // This method implements the procedure by which a node obtains the secret

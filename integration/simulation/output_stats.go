@@ -32,13 +32,13 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	o.l1Height = int(o.simulation.l2Network.nodes[0].DB().GetCurrentBlockHead().Height)
-	o.l2Height = int(o.simulation.l2Network.nodes[0].DB().GetCurrentRollupHead().Height)
+	o.l1Height = int(o.simulation.InMemObscuroNodes[0].DB().GetCurrentBlockHead().Height)
+	o.l2Height = int(o.simulation.InMemObscuroNodes[0].DB().GetCurrentRollupHead().Height)
 }
 
 func (o *OutputStats) countRollups() {
-	l1Node := o.simulation.l1Network.nodes[0]
-	l2Node := o.simulation.l2Network.nodes[0]
+	l1Node := o.simulation.MockEthNodes[0]
+	l2Node := o.simulation.InMemObscuroNodes[0]
 
 	// iterate the Node Headers and get the rollups
 	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.Parent) {
@@ -83,22 +83,22 @@ func (o *OutputStats) String() string {
 		"totalWithdrawnAmount: %d\n"+
 		"rollupWithMoreRecentProof: %d\n"+
 		"nrTransferTransactions: %d\n",
-		o.simulation.l1Network.Stats.nrMiners,
+		o.simulation.Stats.nrMiners,
 		o.l1Height,
 		o.l2Height,
-		o.simulation.l1Network.Stats.totalL1Blocks,
-		o.simulation.l1Network.Stats.totalL2Blocks,
+		o.simulation.Stats.totalL1Blocks,
+		o.simulation.Stats.totalL2Blocks,
 		o.l2RollupCountInHeaders,
 		o.l2RollupCountInL1Blocks,
 		o.l2RollupTxCountInL1Blocks,
-		o.simulation.l1Network.Stats.maxRollupsPerBlock,
-		o.simulation.l1Network.Stats.nrEmptyBlocks,
-		o.simulation.l1Network.Stats.totalL2Blocks,
-		o.simulation.l1Network.Stats.noL1Reorgs,
-		o.simulation.l1Network.Stats.noL2Recalcs,
-		o.simulation.l1Network.Stats.totalDepositedAmount,
-		o.simulation.l1Network.Stats.totalWithdrawnAmount,
-		o.simulation.l1Network.Stats.rollupWithMoreRecentProof,
-		o.simulation.l1Network.Stats.nrTransferTransactions,
+		o.simulation.Stats.maxRollupsPerBlock,
+		o.simulation.Stats.nrEmptyBlocks,
+		o.simulation.Stats.totalL2Blocks,
+		o.simulation.Stats.noL1Reorgs,
+		o.simulation.Stats.noL2Recalcs,
+		o.simulation.Stats.totalDepositedAmount,
+		o.simulation.Stats.totalWithdrawnAmount,
+		o.simulation.Stats.rollupWithMoreRecentProof,
+		o.simulation.Stats.nrTransferTransactions,
 	)
 }

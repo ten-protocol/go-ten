@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
-
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
@@ -43,23 +41,33 @@ func main() {
 
 	// define core test parameters
 	numberOfNodes := 10
-	simulationTime := 15
-	avgBlockDuration := uint64(25_000)
-	avgLatency := avgBlockDuration / DefaultAverageLatencyToBlockRatio
-	avgGossipPeriod := avgBlockDuration / DefaultAverageGossipPeriodToBlockRatio
+	numberOfWallets := 5
+	simulationTimeSecs := 15
+	avgBlockDurationUSecs := uint64(25_000)
+	avgLatency := avgBlockDurationUSecs / DefaultAverageLatencyToBlockRatio
+	avgGossipPeriod := avgBlockDurationUSecs / DefaultAverageGossipPeriodToBlockRatio
+
+	// converted to Us
+	simulationTimeUSecs := simulationTimeSecs * 1000 * 1000
 
 	// define network params
-	p2pNetworkFactory := p2p.NewP2PFactory(p2p.NewP2P)
 	stats := simulation.NewStats(numberOfNodes)
-	l1NetworkConfig := simulation.NewL1Network(avgBlockDuration, avgLatency, stats)
-	l2NetworkCfg := simulation.NewL2Network(numberOfNodes, avgBlockDuration, avgLatency, p2pNetworkFactory)
 
-	// define instances of the simulation mechanisms
-	txManager := simulation.NewTransactionManager(5, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, stats)
-	sim := simulation.NewSimulation(numberOfNodes, l1NetworkConfig, l2NetworkCfg, avgBlockDuration, avgGossipPeriod, false, stats, p2pNetworkFactory)
+	mockEthNodes, obscuroInMemNodes := simulation.CreateBasicNetworkOfInMemoryNodes(numberOfNodes, avgGossipPeriod, avgBlockDurationUSecs, avgLatency, stats)
+
+	txInjector := simulation.NewTransactionInjector(numberOfWallets, avgBlockDurationUSecs, stats, simulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
+
+	sim := simulation.Simulation{
+		MockEthNodes:       mockEthNodes,      // the list of mock ethereum nodes
+		InMemObscuroNodes:  obscuroInMemNodes, //  the list of in memory obscuro nodes
+		AvgBlockDuration:   avgBlockDurationUSecs,
+		TxInjector:         txInjector,
+		SimulationTimeSecs: simulationTimeSecs,
+		Stats:              stats,
+	}
 
 	// execute the simulation
-	sim.Start(txManager, simulationTime)
-	fmt.Printf("%s\n", simulation.NewOutputStats(sim))
+	sim.Start()
+	fmt.Printf("%s\n", simulation.NewOutputStats(&sim))
 	sim.Stop()
 }
