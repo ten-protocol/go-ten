@@ -70,13 +70,12 @@ func (o *OutputStats) String() string {
 		"l1Height: %d\n"+
 		"l2Height: %d\n"+
 		"totalL1Blocks: %d\n"+
-		"totalL2Blocks: %d\n"+
+		"totalL2Blocks: %v\n"+
 		"l2RollupCountInHeaders: %d\n"+
 		"l2RollupCountInL1Blocks: %d\n"+
 		"l2RollupTxCountInL1Blocks: %d\n"+
 		"maxRollupsPerBlock: %d \n"+
 		"nrEmptyBlocks: %d\n"+
-		"totalL2Txs: %d\n"+
 		"noL1Reorgs: %+v\n"+
 		"noL2Recalcs: %+v\n"+
 		"totalDepositedAmount: %d\n"+
@@ -87,17 +86,16 @@ func (o *OutputStats) String() string {
 		o.l1Height,
 		o.l2Height,
 		o.simulation.Stats.totalL1Blocks,
-		o.simulation.Stats.totalL2Blocks,
+		o.simulation.Stats.noL2Blocks,
 		o.l2RollupCountInHeaders,
 		o.l2RollupCountInL1Blocks,
 		o.l2RollupTxCountInL1Blocks,
 		o.simulation.Stats.maxRollupsPerBlock,
 		o.simulation.Stats.nrEmptyBlocks,
-		o.simulation.Stats.totalL2Blocks,
 		o.simulation.Stats.noL1Reorgs,
 		o.simulation.Stats.noL2Recalcs,
 		o.simulation.Stats.totalDepositedAmount,
-		o.simulation.Stats.totalWithdrawnAmount,
+		o.simulation.Stats.totalWithdrawalRequestedAmount,
 		o.simulation.Stats.rollupWithMoreRecentProof,
 		o.simulation.Stats.nrTransferTransactions,
 	)

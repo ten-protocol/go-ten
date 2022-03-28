@@ -1,16 +1,16 @@
 package simulation
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
-	"golang.org/x/sync/errgroup"
+	collect "github.com/sxyazi/go-collection"
 )
 
 // EfficiencyThresholds represents an acceptable "dead blocks" percentage for this simulation.
@@ -22,107 +22,100 @@ type EfficiencyThresholds struct {
 	L2ToL1EfficiencyThreshold float64
 }
 
-func checkBlockchainValidity(t *testing.T, s *Simulation, efficiencies EfficiencyThresholds) {
-	// TODO check all nodes are the same height ?
-	// pick one node to draw height
-	l1Node := s.MockEthNodes[0]
-	obscuroNode := s.ObscuroNodes[0]
-	currentBlockHead := obscuroNode.DB().GetCurrentBlockHead()
-	currentRollupHead := obscuroNode.DB().GetCurrentRollupHead()
-
-	l1Height := currentBlockHead.Height
-	l1HeightHash := currentBlockHead.ID
-	l2Height := currentRollupHead.Height
-
-	// ensure the L1 blocks are valid
-	validateL1(t, s.Stats, l1Height, &l1HeightHash, l1Node, efficiencies)
-
-	// ensure the validity of l1 vs l2 stats
-	validateL1L2Stats(t, obscuroNode, s.Stats, efficiencies)
-
-	// ensure the generated withdrawal stats match the l2 blockchain state (withdrawals)
-	totalWithdrawn := validateL2WithdrawalStats(t, obscuroNode, s.Stats, l2Height, s.TxInjector, efficiencies)
-
-	// ensure that each node has the expected total balance computed above
-	validateL2NodeBalances(t, s.ObscuroNodes, s.Stats, totalWithdrawn, s.TxInjector.wallets)
-
-	// ensure that each node can fetch each of the generated transactions
-	validateL2TxsExist(t, s.ObscuroNodes, s.TxInjector)
+// After a simulation has run, check as much as possible that everything has
+func checkNetworkValidity(t *testing.T, s *Simulation, params *SimParams, efficiencies EfficiencyThresholds) {
+	l1MaxHeight := checkEthereumBlockchainValidity(t, s, params, efficiencies)
+	checkObscuroBlockchainValidity(t, s, params, efficiencies, l1MaxHeight)
 }
 
-// validateL1L2Stats validates blockchain wide properties between L1 and the L2
-func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats, efficiencies EfficiencyThresholds) {
-	l1Height := obscurocommon.L1GenesisHeight
-	for header := node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = node.DB().GetBlockHeader(header.Parent) {
-		l1Height++
-	}
-	l2Height := obscurocommon.L2GenesisHeight
-	for header := node.DB().GetCurrentRollupHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = node.DB().GetRollupHeader(header.Parent) {
-		l2Height++
+// checkEthereumBlockchainValidity: sanity check on the mock implementation of the L1 on all nodes
+// - minimum height - the chain has a minimum number of blocks
+// - check height is similar
+// - check no duplicate txs
+// - check efficiency - no of created blocks/ height
+// - noReorgs
+func checkEthereumBlockchainValidity(t *testing.T, s *Simulation, params *SimParams, efficiencies EfficiencyThresholds) uint64 {
+	// Sanity check number for a minimum height
+	minHeight := uint64(float64(params.SimulationTimeUSecs) / (2 * float64(params.AvgBlockDurationUSecs)))
+
+	heights := make([]uint64, len(s.MockEthNodes))
+	for i, node := range s.MockEthNodes {
+		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s, efficiencies)
 	}
 
-	// todo - figure out why +1
-	if l1Height != node.DB().GetCurrentBlockHead().Height+1 {
-		t.Errorf("unexpected block height. expected %d, got %d", l1Height, node.DB().GetCurrentBlockHead().Height)
+	min := collect.Min(heights)
+	max := collect.Max(heights)
+	if max-min > max/10 {
+		t.Errorf("There is a problem with the Mock ethereum chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
 
-	// todo - figure out why +1
-	if l2Height != node.DB().GetCurrentRollupHead().Height+1 {
-		t.Errorf("unexpected rollup height. expected %d, got %d", l2Height, node.DB().GetCurrentRollupHead().Height)
+	return max
+}
+
+// checkObscuroBlockchainValidity - perform the following checks
+// - minimum height - the chain has a minimum number of rollups
+// - check height is similar
+// - check no duplicate txs
+// - check efficiency - no of created blocks/ height
+// - check amount in the system
+// - check withdrawals/deposits
+func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, params *SimParams, efficiencies EfficiencyThresholds, maxL1Height uint64) {
+	// Sanity check number for a minimum height
+	minHeight := uint64(float64(params.SimulationTimeUSecs) / (2 * float64(params.AvgBlockDurationUSecs)))
+
+	heights := make([]uint64, len(s.ObscuroNodes))
+	for i, node := range s.ObscuroNodes {
+		heights[i] = checkBlockchainOfObscuroNode(t, node, minHeight, maxL1Height, s, efficiencies)
 	}
 
-	if l1Height > stats.totalL1Blocks || l2Height > stats.totalL2Blocks {
-		t.Errorf("should not have more blocks/rollups in stats than in the node header "+
-			"- Blocks: Header %d, Stats %d - Rollups: Header %d, Stats %d ",
-			l1Height,
-			stats.totalL1Blocks,
-			l2Height,
-			stats.totalL2Blocks,
-		)
-	}
-
-	efficiency := float64(l1Height-l2Height) / float64(l1Height)
-	if efficiency > efficiencies.L2ToL1EfficiencyThreshold {
-		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, efficiencies.L2ToL1EfficiencyThreshold)
+	min := collect.Min(heights)
+	max := collect.Max(heights)
+	if max-min > max/10 {
+		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
 }
 
-// validateL2TxsExist tests that all transaction in the transaction Manager are found in the blockchain state of each node
-func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *TransactionInjector) {
-	// Parallelize this check
-	var nGroup errgroup.Group
+func checkBlockchainOfEthereumNode(t *testing.T, node *ethereum_mock.Node, minHeight uint64, s *Simulation, efficiencies EfficiencyThresholds) uint64 {
+	head, height := node.Resolver.FetchHeadBlock()
 
-	// Create a go routine to check each node
-	for _, node := range nodes {
-		closureNode := node
-		nGroup.Go(func() error {
-			// all transactions should exist on every node
-			for _, transaction := range txManager.GetL2Transactions() {
-				l2tx := closureNode.Enclave.GetTransaction(transaction.Hash())
-				if l2tx == nil {
-					return fmt.Errorf("node %d, unable to find transaction: %+v", closureNode.ID, transaction) // nolint:goerr113
-				}
-			}
-			return nil
-		})
+	if height < minHeight {
+		t.Errorf("Node %d. There were only %d blocks mined. Expected at least: %d.", obscurocommon.ShortAddress(node.ID), height, minHeight)
 	}
-	if err := nGroup.Wait(); err != nil {
-		t.Error(err)
+
+	deposits, rollups, totalDeposited := extractDataFromEthereumChain(head, node, s)
+
+	if len(obscurocommon.FindHashDups(deposits)) > 0 {
+		dups := obscurocommon.FindHashDups(deposits)
+		t.Errorf("Found Deposit duplicates: %v", dups)
 	}
+	if len(obscurocommon.FindRollupDups(rollups)) > 0 {
+		dups := obscurocommon.FindRollupDups(rollups)
+		t.Errorf("Found Rollup duplicates: %v", dups)
+	}
+	if totalDeposited != s.Stats.totalDepositedAmount {
+		t.Errorf("Node %d. Deposit amounts don't match. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), totalDeposited, s.Stats.totalDepositedAmount)
+	}
+
+	efficiency := float64(s.Stats.totalL1Blocks-height) / float64(s.Stats.totalL1Blocks)
+	if efficiency > efficiencies.L1EfficiencyThreshold {
+		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.ID), efficiency, efficiencies.L1EfficiencyThreshold, height)
+	}
+
+	// compare the number of reorgs for this node against the height
+	reorgs := s.Stats.noL1Reorgs[node.ID]
+	eff := float64(reorgs) / float64(height)
+	if eff > efficiencies.L1EfficiencyThreshold {
+		t.Errorf("Node %d. The number of reorgs is too high: %d. ", obscurocommon.ShortAddress(node.ID), reorgs)
+	}
+	return height
 }
 
-// validateL1 does a sanity check on the mock implementation of the L1
-func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node, efficiencies EfficiencyThresholds) {
+func extractDataFromEthereumChain(head *types.Block, node *ethereum_mock.Node, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	l1Block, found := node.Resolver.FetchBlock(*l1HeightHash)
-	if !found {
-		t.Errorf("expected l1 height block not found")
-	}
-
-	blockchain := ethereum_mock.BlocksBetween(obscurocommon.GenesisBlock, l1Block, node.Resolver)
+	blockchain := ethereum_mock.BlocksBetween(obscurocommon.GenesisBlock, head, node.Resolver)
 	for _, block := range blockchain {
 		for _, tr := range block.Transactions() {
 			tx := obscurocommon.TxData(tr)
@@ -136,100 +129,90 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscu
 				if node.Resolver.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					stats.NewRollup(r)
+					s.Stats.NewRollup(node.ID, r)
 				}
 			case obscurocommon.RequestSecretTx:
 			case obscurocommon.StoreSecretTx:
 			}
 		}
 	}
-
-	if len(obscurocommon.FindHashDups(deposits)) > 0 {
-		dups := obscurocommon.FindHashDups(deposits)
-		t.Errorf("Found Deposit duplicates: %v", dups)
-	}
-	if len(obscurocommon.FindRollupDups(rollups)) > 0 {
-		dups := obscurocommon.FindRollupDups(rollups)
-		t.Errorf("Found Rollup duplicates: %v", dups)
-	}
-	if totalDeposited != stats.totalDepositedAmount {
-		t.Errorf("Deposit amounts don't match. Found %d , expected %d", totalDeposited, stats.totalDepositedAmount)
-	}
-
-	efficiency := float64(stats.totalL1Blocks-l1Height) / float64(stats.totalL1Blocks)
-	if efficiency > efficiencies.L1EfficiencyThreshold {
-		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, efficiencies.L1EfficiencyThreshold)
-	}
-
-	// todo
-	for nodeID, reorgs := range stats.noL1Reorgs {
-		eff := float64(reorgs) / float64(l1Height)
-		if eff > efficiencies.L1EfficiencyThreshold {
-			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeID, eff, efficiencies.L1EfficiencyThreshold)
-		}
-	}
+	return deposits, rollups, totalDeposited
 }
 
-// validateL2WithdrawalStats checks the withdrawal requests by
-// comparing the stats of the generated transactions with the withdrawals on the node headers
-func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint64, txManager *TransactionInjector, efficiencies EfficiencyThresholds) uint64 {
-	headerWithdrawalSum := uint64(0)
-	headerWithdrawalTxCount := 0
+// MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
+const MAX_BLOCK_DELAY = 5
 
-	// todo - check that proofs are on the canonical chain
-	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for header := node.DB().GetCurrentRollupHead(); header != nil; header = node.DB().GetRollupHeader(header.Parent) {
-		for _, w := range header.Withdrawals {
-			headerWithdrawalSum += w.Amount
-			headerWithdrawalTxCount++
+func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, efficiencies EfficiencyThresholds) uint64 {
+	l1Height := node.DB().GetCurrentBlockHead().Height
+
+	// check that the L1 view is consistent with the L1 network.
+	if maxEthereumHeight-l1Height > MAX_BLOCK_DELAY {
+		t.Errorf("Obscuro node %d fell behind %d blocks.", obscurocommon.ShortAddress(node.ID), maxEthereumHeight-l1Height)
+	}
+
+	// check that the height of the Rollup chain is higher than a minimum expected value.
+	l2Height := node.DB().GetCurrentRollupHead().Height
+	if l2Height < minObscuroHeight {
+		t.Errorf("There were only %d blocks mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
+	}
+
+	totalL2Blocks := s.Stats.noL2Blocks[node.ID]
+	efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
+	if efficiencyL2 > efficiencies.L2EfficiencyThreshold {
+		t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, efficiencies.L2EfficiencyThreshold)
+	}
+
+	// check that the pobi protocol doesn't waste too many blocks.
+	// todo- find the block where the genesis was published)
+	efficiency := float64(l1Height-l2Height) / float64(l1Height)
+	if efficiency > efficiencies.L2ToL1EfficiencyThreshold {
+		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, efficiencies.L2ToL1EfficiencyThreshold)
+	}
+
+	// check that all expected transactions were included.
+	for _, transaction := range s.TxInjector.GetL2Transactions() {
+		l2tx := node.Enclave.GetTransaction(transaction.Hash())
+		if l2tx == nil {
+			t.Errorf("node %d, unable to find transaction: %+v", node.ID, transaction) // nolint:goerr113
 		}
 	}
 
-	// get all generated withdrawal txs
-	if headerWithdrawalTxCount > len(txManager.GetL2WithdrawalRequests()) {
+	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(node)
+
+	// sanity check number of withdrawal transaction
+	if numberOfWithdrawalRequests > len(s.TxInjector.GetL2WithdrawalRequests()) {
 		t.Errorf("found more transactions in the blockchain than the generated by the tx manager")
 	}
 
 	// expected condition : some Txs (stats) did not make it to the blockchain
 	// best condition : all Txs (stats) were issue and consumed in the blockchain
 	// can't happen : sum of headers withdraws greater than issued Txs (stats)
-	if headerWithdrawalSum > stats.totalWithdrawnAmount {
-		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", headerWithdrawalSum, stats.totalWithdrawnAmount)
+	if totalSuccessfullyWithdrawn > s.Stats.totalWithdrawalRequestedAmount {
+		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.totalWithdrawalRequestedAmount)
 	}
 
-	// you should not have % difference between the # of rollups and the # of blocks
-	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
-	if efficiency > efficiencies.L2EfficiencyThreshold {
-		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, efficiencies.L2EfficiencyThreshold)
+	// check that the sum of all balances matches the total amount of money that must be in the system
+	totalAmountInSystem := s.Stats.totalDepositedAmount - totalSuccessfullyWithdrawn
+	total := uint64(0)
+	for _, wallet := range s.TxInjector.wallets {
+		total += node.Enclave.Balance(wallet.Address)
 	}
-
-	return headerWithdrawalSum
-}
-
-func validateL2NodeBalances(t *testing.T, l2Nodes []*host.Node, s *Stats, totalWithdrawn uint64, wallets []wallet_mock.Wallet) {
-	finalAmount := s.totalDepositedAmount - totalWithdrawn
-
-	// Parallelize this check
-	var nGroup errgroup.Group
-
-	// Check the balance of all nodes adds up with the balance in the stats
-	for _, node := range l2Nodes {
-		closureNode := node
-		nGroup.Go(func() error {
-			// add up all balances
-			total := uint64(0)
-			for _, wallet := range wallets {
-				total += closureNode.Enclave.Balance(wallet.Address)
-			}
-			if total != finalAmount {
-				return fmt.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", closureNode.ID, total, finalAmount) // nolint:goerr113
-			}
-			return nil
-		})
-	}
-	if err := nGroup.Wait(); err != nil {
-		t.Error(err)
+	if total != totalAmountInSystem {
+		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", node.ID, total, totalAmountInSystem) // nolint:goerr113
 	}
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
+
+	return l2Height
+}
+
+func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+	// sum all the withdrawals by traversing the node headers from Head to Genesis
+	for r := node.DB().GetCurrentRollupHead(); r != nil; r = node.DB().GetRollupHeader(r.Parent) {
+		for _, w := range r.Withdrawals {
+			totalSuccessfullyWithdrawn += w.Amount
+			numberOfWithdrawalRequests++
+		}
+	}
+	return
 }

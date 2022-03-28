@@ -52,12 +52,12 @@ func testSimulation(t *testing.T, createNetwork createNetworkFunc, params SimPar
 
 	// execute the simulation
 	simulation.Start()
+	simulation.Stop()
 
 	// run tests
-	checkBlockchainValidity(t, &simulation, efficiencies)
+	checkNetworkValidity(t, &simulation, &params, efficiencies)
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
 
-	simulation.Stop()
 }
