@@ -118,7 +118,6 @@ func CreateBasicNetworkOfInMemoryNodes(nrNodes int, avgGossipPeriod uint64, avgB
 // creates the nodes, wires them up, and populates the network objects
 func CreateBasicNetworkOfStandaloneNodes(nrNodes int, avgGossipPeriod uint64, avgBlockDurationUSecs uint64, avgLatency uint64, stats *Stats) ([]*ethereum_mock.Node, []*host.Node) {
 	// todo - add observer nodes
-	// todo - joel - connect to real L1 nodes
 	l1Nodes := make([]*ethereum_mock.Node, nrNodes)
 	l2Nodes := make([]*host.Node, nrNodes)
 

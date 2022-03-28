@@ -6,22 +6,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
-// This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
-// Running it long enough with various parameters will test many corner cases without having to explicitly write individual tests for them.
-// The unit of time is the "avgBlockDurationUSecs" - which is the average time between L1 blocks, which are the carriers of rollups.
-// Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
-// the CPU usage will be very high during the simulation which might result in inconclusive results.
-func TestInMemoryMonteCarloSimulation(t *testing.T) {
+type createNetworkFunc = func(nrNodes int, avgGossipPeriod uint64, avgBlockDurationUSecs uint64, avgLatency uint64, stats *Stats) ([]*ethereummock.Node, []*host.Node)
+
+// testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
+func testSimulation(t *testing.T, avgBlockDurationUSecs uint64, createNetwork createNetworkFunc, efficiencies EfficiencyThresholds) {
 	// define core test parameters
 	numberOfNodes := 10
 	numberOfWallets := 5
 
 	simulationTimeSecs := 15 // in seconds
-
-	// This is a critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
-	avgBlockDurationUSecs := uint64(40_000) // in u seconds 1 sec = 1e6 usecs.
 
 	avgNetworkLatency := avgBlockDurationUSecs / 15 // artificial latency injected between sending and receiving messages on the mock network
 	avgGossipPeriod := avgBlockDurationUSecs / 3    // POBI protocol setting
@@ -37,7 +34,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 
 	stats := NewStats(numberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
-	mockEthNodes, obscuroInMemNodes := CreateBasicNetworkOfInMemoryNodes(numberOfNodes, avgGossipPeriod, avgBlockDurationUSecs, avgNetworkLatency, stats)
+	mockEthNodes, obscuroInMemNodes := createNetwork(numberOfNodes, avgGossipPeriod, avgBlockDurationUSecs, avgNetworkLatency, stats)
 
 	txInjector := NewTransactionInjector(numberOfWallets, avgBlockDurationUSecs, stats, simulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
 
@@ -54,7 +51,6 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simulation.Start()
 
 	// run tests
-	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.32}
 	checkBlockchainValidity(t, &simulation, efficiencies)
 
 	// generate and print the final stats
