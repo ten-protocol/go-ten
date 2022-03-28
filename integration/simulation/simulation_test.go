@@ -54,7 +54,8 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simulation.Start()
 
 	// run tests
-	checkBlockchainValidity(t, &simulation)
+	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.32}
+	checkBlockchainValidity(t, &simulation, efficiencies)
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))

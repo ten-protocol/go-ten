@@ -18,7 +18,8 @@ func TestStandaloneNodesMonteCarloSimulation(t *testing.T) {
 	simulationTimeSecs := 15 // in seconds
 
 	// This is a critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
-	avgBlockDurationUSecs := uint64(100_000) // in u seconds 1 sec = 1e6 usecs.
+	// todo - joel - too high?
+	avgBlockDurationUSecs := uint64(250_000) // in u seconds 1 sec = 1e6 usecs.
 
 	avgNetworkLatency := avgBlockDurationUSecs / 15 // artificial latency injected between sending and receiving messages on the mock network
 	avgGossipPeriod := avgBlockDurationUSecs / 3    // POBI protocol setting
@@ -52,7 +53,9 @@ func TestStandaloneNodesMonteCarloSimulation(t *testing.T) {
 	simulation.Start()
 
 	// run tests
-	checkBlockchainValidity(t, &simulation)
+	// todo - joel - approx. correct values?
+	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.38}
+	checkBlockchainValidity(t, &simulation, efficiencies)
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
