@@ -43,7 +43,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 
 	simulation := Simulation{
 		MockEthNodes:       mockEthNodes,      // the list of mock ethereum nodes
-		InMemObscuroNodes:  obscuroInMemNodes, //  the list of in memory obscuro nodes
+		ObscuroNodes:       obscuroInMemNodes, //  the list of in memory obscuro nodes
 		AvgBlockDuration:   avgBlockDurationUSecs,
 		TxInjector:         txInjector,
 		SimulationTimeSecs: simulationTimeSecs,

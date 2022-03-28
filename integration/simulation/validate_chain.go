@@ -17,7 +17,7 @@ func checkBlockchainValidity(t *testing.T, s *Simulation) {
 	// TODO check all nodes are the same height ?
 	// pick one node to draw height
 	l1Node := s.MockEthNodes[0]
-	obscuroNode := s.InMemObscuroNodes[0]
+	obscuroNode := s.ObscuroNodes[0]
 	currentBlockHead := obscuroNode.DB().GetCurrentBlockHead()
 	currentRollupHead := obscuroNode.DB().GetCurrentRollupHead()
 
@@ -35,10 +35,10 @@ func checkBlockchainValidity(t *testing.T, s *Simulation) {
 	totalWithdrawn := validateL2WithdrawalStats(t, obscuroNode, s.Stats, l2Height, s.TxInjector)
 
 	// ensure that each node has the expected total balance computed above
-	validateL2NodeBalances(t, s.InMemObscuroNodes, s.Stats, totalWithdrawn, s.TxInjector.wallets)
+	validateL2NodeBalances(t, s.ObscuroNodes, s.Stats, totalWithdrawn, s.TxInjector.wallets)
 
 	// ensure that each node can fetch each of the generated transactions
-	validateL2TxsExist(t, s.InMemObscuroNodes, s.TxInjector)
+	validateL2TxsExist(t, s.ObscuroNodes, s.TxInjector)
 }
 
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2

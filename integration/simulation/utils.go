@@ -2,10 +2,11 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -60,7 +61,7 @@ func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgB
 }
 
 func createStandaloneObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *Stats, nodeAddr string, peerAddrs []string) *host.Node {
-	nodeP2p := p2p.NewSocketObscuroNetwork(nodeAddr, peerAddrs)
+	nodeP2p := p2p.NewSocketP2PLayer(nodeAddr, peerAddrs)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 

@@ -1,10 +1,11 @@
 package simulation
 
 import (
-	"github.com/google/uuid"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // This test creates a network of standalone L2 nodes, then injects transactions, and finally checks the resulting output blockchain
@@ -37,10 +38,10 @@ func TestStandaloneNodesMonteCarloSimulation(t *testing.T) {
 
 	txInjector := NewTransactionInjector(numberOfWallets, avgBlockDurationUSecs, stats, simulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
 
-	// todo - joel - change `InMemObscuroNodes` to just `ObscuroNodes`
+	// todo - joel - change `ObscuroNodes` to just `ObscuroNodes`
 	simulation := Simulation{
 		MockEthNodes:       mockEthNodes,      // the list of mock ethereum nodes
-		InMemObscuroNodes:  obscuroInMemNodes, // the list of in memory obscuro nodes
+		ObscuroNodes:       obscuroInMemNodes, // the list of in memory obscuro nodes
 		AvgBlockDuration:   avgBlockDurationUSecs,
 		TxInjector:         txInjector,
 		SimulationTimeSecs: simulationTimeSecs,
