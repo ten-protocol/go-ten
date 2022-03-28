@@ -18,7 +18,7 @@ const (
 // Simulation represents the data which to set up and run a simulated network
 type Simulation struct {
 	MockEthNodes       []*ethereum_mock.Node // the list of mock ethereum nodes
-	InMemObscuroNodes  []*host.Node          //  the list of in memory obscuro nodes
+	ObscuroNodes       []*host.Node          //  the list of in memory obscuro nodes
 	AvgBlockDuration   uint64
 	TxInjector         *TransactionInjector
 	SimulationTimeSecs int
@@ -44,7 +44,7 @@ func (s *Simulation) Start() {
 	}
 
 	time.Sleep(time.Duration(s.AvgBlockDuration * 20))
-	for _, m := range s.InMemObscuroNodes {
+	for _, m := range s.ObscuroNodes {
 		t := m
 		go t.Start()
 		time.Sleep(time.Duration(s.AvgBlockDuration / 3))
@@ -67,7 +67,7 @@ func (s *Simulation) Start() {
 func (s *Simulation) Stop() {
 	// stop L2 first and then L1
 	go func() {
-		for _, n := range s.InMemObscuroNodes {
+		for _, n := range s.ObscuroNodes {
 			n.Stop()
 		}
 	}()

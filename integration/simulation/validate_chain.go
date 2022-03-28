@@ -13,11 +13,20 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func checkBlockchainValidity(t *testing.T, s *Simulation) {
+// EfficiencyThresholds represents an acceptable "dead blocks" percentage for this simulation.
+// dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
+// We test the results against this threshold to catch eventual protocol errors.
+type EfficiencyThresholds struct {
+	L1EfficiencyThreshold     float64
+	L2EfficiencyThreshold     float64
+	L2ToL1EfficiencyThreshold float64
+}
+
+func checkBlockchainValidity(t *testing.T, s *Simulation, efficiencies EfficiencyThresholds) {
 	// TODO check all nodes are the same height ?
 	// pick one node to draw height
 	l1Node := s.MockEthNodes[0]
-	obscuroNode := s.InMemObscuroNodes[0]
+	obscuroNode := s.ObscuroNodes[0]
 	currentBlockHead := obscuroNode.DB().GetCurrentBlockHead()
 	currentRollupHead := obscuroNode.DB().GetCurrentRollupHead()
 
@@ -26,23 +35,23 @@ func checkBlockchainValidity(t *testing.T, s *Simulation) {
 	l2Height := currentRollupHead.Height
 
 	// ensure the L1 blocks are valid
-	validateL1(t, s.Stats, l1Height, &l1HeightHash, l1Node)
+	validateL1(t, s.Stats, l1Height, &l1HeightHash, l1Node, efficiencies)
 
 	// ensure the validity of l1 vs l2 stats
-	validateL1L2Stats(t, obscuroNode, s.Stats)
+	validateL1L2Stats(t, obscuroNode, s.Stats, efficiencies)
 
 	// ensure the generated withdrawal stats match the l2 blockchain state (withdrawals)
-	totalWithdrawn := validateL2WithdrawalStats(t, obscuroNode, s.Stats, l2Height, s.TxInjector)
+	totalWithdrawn := validateL2WithdrawalStats(t, obscuroNode, s.Stats, l2Height, s.TxInjector, efficiencies)
 
 	// ensure that each node has the expected total balance computed above
-	validateL2NodeBalances(t, s.InMemObscuroNodes, s.Stats, totalWithdrawn, s.TxInjector.wallets)
+	validateL2NodeBalances(t, s.ObscuroNodes, s.Stats, totalWithdrawn, s.TxInjector.wallets)
 
 	// ensure that each node can fetch each of the generated transactions
-	validateL2TxsExist(t, s.InMemObscuroNodes, s.TxInjector)
+	validateL2TxsExist(t, s.ObscuroNodes, s.TxInjector)
 }
 
 // validateL1L2Stats validates blockchain wide properties between L1 and the L2
-func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats) {
+func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats, efficiencies EfficiencyThresholds) {
 	l1Height := obscurocommon.L1GenesisHeight
 	for header := node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = node.DB().GetBlockHeader(header.Parent) {
 		l1Height++
@@ -73,8 +82,8 @@ func validateL1L2Stats(t *testing.T, node *host.Node, stats *Stats) {
 	}
 
 	efficiency := float64(l1Height-l2Height) / float64(l1Height)
-	if efficiency > L2ToL1EfficiencyThreshold {
-		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, L2ToL1EfficiencyThreshold)
+	if efficiency > efficiencies.L2ToL1EfficiencyThreshold {
+		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, efficiencies.L2ToL1EfficiencyThreshold)
 	}
 }
 
@@ -102,17 +111,8 @@ func validateL2TxsExist(t *testing.T, nodes []*host.Node, txManager *Transaction
 	}
 }
 
-// For this simulation, this represents an acceptable "dead blocks" percentage.
-// dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
-// We test the results against this threshold to catch eventual protocol errors.
-const (
-	L1EfficiencyThreshold     = 0.2
-	L2EfficiencyThreshold     = 0.3
-	L2ToL1EfficiencyThreshold = 0.32
-)
-
 // validateL1 does a sanity check on the mock implementation of the L1
-func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node) {
+func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscurocommon.L1RootHash, node *ethereum_mock.Node, efficiencies EfficiencyThresholds) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
@@ -157,22 +157,22 @@ func validateL1(t *testing.T, stats *Stats, l1Height uint64, l1HeightHash *obscu
 	}
 
 	efficiency := float64(stats.totalL1Blocks-l1Height) / float64(stats.totalL1Blocks)
-	if efficiency > L1EfficiencyThreshold {
-		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, L1EfficiencyThreshold)
+	if efficiency > efficiencies.L1EfficiencyThreshold {
+		t.Errorf("Efficiency in L1 is %f. Expected:%f", efficiency, efficiencies.L1EfficiencyThreshold)
 	}
 
 	// todo
 	for nodeID, reorgs := range stats.noL1Reorgs {
 		eff := float64(reorgs) / float64(l1Height)
-		if eff > L1EfficiencyThreshold {
-			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeID, eff, L1EfficiencyThreshold)
+		if eff > efficiencies.L1EfficiencyThreshold {
+			t.Errorf("Efficiency for node %d in L1 is %f. Expected:%f", nodeID, eff, efficiencies.L1EfficiencyThreshold)
 		}
 	}
 }
 
 // validateL2WithdrawalStats checks the withdrawal requests by
 // comparing the stats of the generated transactions with the withdrawals on the node headers
-func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint64, txManager *TransactionInjector) uint64 {
+func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2Height uint64, txManager *TransactionInjector, efficiencies EfficiencyThresholds) uint64 {
 	headerWithdrawalSum := uint64(0)
 	headerWithdrawalTxCount := 0
 
@@ -199,8 +199,8 @@ func validateL2WithdrawalStats(t *testing.T, node *host.Node, stats *Stats, l2He
 
 	// you should not have % difference between the # of rollups and the # of blocks
 	efficiency := float64(stats.totalL2Blocks-l2Height) / float64(stats.totalL2Blocks)
-	if efficiency > L2EfficiencyThreshold {
-		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, L2EfficiencyThreshold)
+	if efficiency > efficiencies.L2EfficiencyThreshold {
+		t.Errorf("Efficiency in L2 is %f. Expected:%f", efficiency, efficiencies.L2EfficiencyThreshold)
 	}
 
 	return headerWithdrawalSum
