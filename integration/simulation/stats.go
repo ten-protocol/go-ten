@@ -20,7 +20,7 @@ type Stats struct {
 	maxRollupsPerBlock uint32
 	nrEmptyBlocks      int
 
-	//totalL2Txs  int
+	// totalL2Txs  int
 	noL1Reorgs  map[common.Address]int
 	noL2Recalcs map[common.Address]int
 	noL2Blocks  map[common.Address]uint64
@@ -69,7 +69,7 @@ func (s *Stats) NewBlock(b *types.Block) {
 func (s *Stats) NewRollup(node common.Address, r *nodecommon.Rollup) {
 	s.statsMu.Lock()
 	s.noL2Blocks[node]++
-	//s.totalL2Txs += len(r.Transactions)
+	// s.totalL2Txs += len(r.Transactions)
 	s.statsMu.Unlock()
 }
 

@@ -49,7 +49,7 @@ type Rollup struct {
 
 	hash   atomic.Value
 	Height atomic.Value
-	size   atomic.Value //nolint
+	size   atomic.Value
 
 	Transactions EncryptedTransactions
 }

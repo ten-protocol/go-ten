@@ -59,5 +59,4 @@ func testSimulation(t *testing.T, createNetwork createNetworkFunc, params SimPar
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
-
 }

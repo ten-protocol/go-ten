@@ -68,8 +68,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, params *SimPara
 		heights[i] = checkBlockchainOfObscuroNode(t, node, minHeight, maxL1Height, s, efficiencies)
 	}
 
-	min := collect.Min(heights)
-	max := collect.Max(heights)
+	min := collect.Min(heights) // nolint:ifshort
+	max := collect.Max(heights) // nolint:ifshort
 	if max-min > max/10 {
 		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
@@ -140,7 +140,7 @@ func extractDataFromEthereumChain(head *types.Block, node *ethereum_mock.Node, s
 }
 
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
-const MAX_BLOCK_DELAY = 5
+const MAX_BLOCK_DELAY = 5 // nolint:revive
 
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, efficiencies EfficiencyThresholds) uint64 {
 	l1Height := node.DB().GetCurrentBlockHead().Height
@@ -173,7 +173,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	for _, transaction := range s.TxInjector.GetL2Transactions() {
 		l2tx := node.Enclave.GetTransaction(transaction.Hash())
 		if l2tx == nil {
-			t.Errorf("node %d, unable to find transaction: %+v", node.ID, transaction) // nolint:goerr113
+			t.Errorf("node %d, unable to find transaction: %+v", node.ID, transaction)
 		}
 	}
 
@@ -198,7 +198,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		total += node.Enclave.Balance(wallet.Address)
 	}
 	if total != totalAmountInSystem {
-		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", node.ID, total, totalAmountInSystem) // nolint:goerr113
+		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", node.ID, total, totalAmountInSystem)
 	}
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
