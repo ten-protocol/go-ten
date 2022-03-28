@@ -146,7 +146,7 @@ func (s *storageImpl) StoreBlock(b *types.Block) {
 	} else {
 		bAndHeight, f := s.db.FetchBlockAndHeight(b.ParentHash())
 		if !f {
-			panic(fmt.Sprintf("unable to store block: %s without it's parent: %s", b.Hash(), b.ParentHash()))
+			panic(fmt.Sprintf("unable to store block: %s without its parent: %s", b.Hash(), b.ParentHash()))
 		}
 		height = bAndHeight.height + 1
 	}

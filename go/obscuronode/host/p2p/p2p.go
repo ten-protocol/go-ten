@@ -6,6 +6,8 @@ import (
 	"net"
 	"sync/atomic"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -30,22 +32,9 @@ type Message struct {
 	MsgContents []byte
 }
 
-// P2P manages P2P communication between L2 nodes.
-type P2P interface {
-	// Listen starts listening for transaction and rollup P2P connections.
-	Listen(chan nodecommon.EncryptedTx, chan obscurocommon.EncodedRollup)
-	// StopListening stops listening for transaction and rollup P2P connections.
-	StopListening()
-
-	// BroadcastTx broadcasts a transaction to all network peers over P2P.
-	BroadcastTx([]byte)
-	// BroadcastRollup broadcasts a rollup to all network peers over P2P.
-	BroadcastRollup([]byte)
-}
-
-// NewP2P returns a new P2P object.
+// NewSocketP2PLayer - returns the Socket implementation of the P2P
 // allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
-func NewP2P(ourAddress string, allAddresses []string) P2P {
+func NewSocketP2PLayer(ourAddress string, allAddresses []string) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
 	var peerAddresses []string
 	for _, a := range allAddresses {
@@ -67,7 +56,7 @@ type p2pImpl struct {
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 }
 
-func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
+func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.OurAddress)
 	if err != nil {
@@ -78,7 +67,7 @@ func (p *p2pImpl) Listen(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan 
 	p.listenerInterrupt = &i
 	p.listener = listener
 
-	go p.handleConnections(txP2PCh, rollupsP2PCh)
+	go p.handleConnections(callback)
 }
 
 func (p *p2pImpl) StopListening() {
@@ -91,16 +80,16 @@ func (p *p2pImpl) StopListening() {
 	}
 }
 
-func (p *p2pImpl) BroadcastTx(bytes []byte) {
-	p.broadcast(Tx, bytes)
+func (p *p2pImpl) BroadcastTx(tx nodecommon.EncryptedTx) {
+	p.broadcast(Tx, tx)
 }
 
-func (p *p2pImpl) BroadcastRollup(bytes []byte) {
-	p.broadcast(Rollup, bytes)
+func (p *p2pImpl) BroadcastRollup(r obscurocommon.EncodedRollup) {
+	p.broadcast(Rollup, r)
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
+func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
 	for {
 		conn, err := p.listener.Accept()
 		if err != nil {
@@ -109,12 +98,12 @@ func (p *p2pImpl) handleConnections(txP2PCh chan nodecommon.EncryptedTx, rollups
 			}
 			return
 		}
-		go handle(conn, txP2PCh, rollupsP2PCh)
+		go handle(conn, callback)
 	}
 }
 
 // Receives and decodes a P2P message, and pushes it to the correct channel.
-func handle(conn net.Conn, txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh chan obscurocommon.EncodedRollup) {
+func handle(conn net.Conn, callback host.P2PCallback) {
 	if conn != nil {
 		defer func(conn net.Conn) {
 			if closeErr := conn.Close(); closeErr != nil {
@@ -141,7 +130,7 @@ func handle(conn net.Conn, txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh cha
 
 		// We only post the transaction if it decodes correctly.
 		if err == nil {
-			txP2PCh <- msg.MsgContents
+			callback.ReceiveTx(msg.MsgContents)
 		} else {
 			log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
 		}
@@ -151,7 +140,7 @@ func handle(conn net.Conn, txP2PCh chan nodecommon.EncryptedTx, rollupsP2PCh cha
 
 		// We only post the rollup if it decodes correctly.
 		if err == nil {
-			rollupsP2PCh <- msg.MsgContents
+			callback.ReceiveRollup(msg.MsgContents)
 		} else {
 			log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
 		}
@@ -167,12 +156,12 @@ func (p *p2pImpl) broadcast(msgType Type, bytes []byte) {
 	}
 
 	for _, address := range p.PeerAddresses {
-		sendBytes(address, msgEncoded)
+		p.sendBytes(address, msgEncoded)
 	}
 }
 
-// Sends the bytes over P2P to the given address.
-func sendBytes(address string, tx []byte) {
+// sendBytes Sends the bytes over P2P to the given address.
+func (p *p2pImpl) sendBytes(address string, tx []byte) {
 	conn, err := net.Dial("tcp", address)
 	if conn != nil {
 		defer func(conn net.Conn) {

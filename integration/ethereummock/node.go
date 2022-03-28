@@ -40,7 +40,7 @@ type Node struct {
 	ID       common.Address
 	cfg      MiningConfig
 	clients  []obscurocommon.NotifyNewBlock
-	network  L1Network
+	Network  L1Network
 	mining   bool
 	stats    StatsCollector
 	Resolver enclave.BlockResolver
@@ -89,7 +89,7 @@ func (m *Node) Start() {
 				if !found {
 					panic("noo")
 				}
-				m.network.BroadcastBlock(obscurocommon.EncodeBlock(mb), obscurocommon.EncodeBlock(p))
+				m.Network.BroadcastBlock(obscurocommon.EncodeBlock(mb), obscurocommon.EncodeBlock(p))
 			}
 		case <-m.headInCh:
 			m.headOutCh <- head
@@ -239,7 +239,7 @@ func (m *Node) P2PGossipTx(tx obscurocommon.EncodedL1Tx) {
 }
 
 func (m *Node) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
-	m.network.BroadcastTx(tx)
+	m.Network.BroadcastTx(tx)
 }
 
 func (m *Node) RPCBlockchainFeed() []*types.Block {
@@ -257,10 +257,13 @@ func (m *Node) Stop() {
 	m.exitCh <- true
 }
 
+func (m *Node) AddClient(client obscurocommon.NotifyNewBlock) {
+	m.clients = append(m.clients, client)
+}
+
 func NewMiner(
 	id common.Address,
 	cfg MiningConfig,
-	client obscurocommon.NotifyNewBlock,
 	network L1Network,
 	statsCollector StatsCollector,
 ) Node {
@@ -271,8 +274,7 @@ func NewMiner(
 		stats:        statsCollector,
 		Resolver:     NewResolver(),
 		db:           NewTxDB(),
-		clients:      []obscurocommon.NotifyNewBlock{client},
-		network:      network,
+		Network:      network,
 		exitCh:       make(chan bool),
 		exitMiningCh: make(chan bool),
 		interrupt:    new(int32),
