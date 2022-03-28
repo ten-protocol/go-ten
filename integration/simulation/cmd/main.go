@@ -40,29 +40,29 @@ func main() {
 	log.SetLog(f1)
 
 	// define core test parameters
-	numberOfNodes := 10
-	numberOfWallets := 5
-	simulationTimeSecs := 15
-	avgBlockDurationUSecs := uint64(25_000)
-	avgLatency := avgBlockDurationUSecs / DefaultAverageLatencyToBlockRatio
-	avgGossipPeriod := avgBlockDurationUSecs / DefaultAverageGossipPeriodToBlockRatio
-
-	// converted to Us
-	simulationTimeUSecs := simulationTimeSecs * 1000 * 1000
+	params := simulation.SimParams{
+		NumberOfNodes:         10,
+		NumberOfWallets:       5,
+		AvgBlockDurationUSecs: uint64(25_000),
+		SimulationTimeSecs:    15,
+	}
+	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / DefaultAverageLatencyToBlockRatio
+	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / DefaultAverageGossipPeriodToBlockRatio
+	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
 	// define network params
-	stats := simulation.NewStats(numberOfNodes)
+	stats := simulation.NewStats(params.NumberOfNodes)
 
-	mockEthNodes, obscuroInMemNodes := simulation.CreateBasicNetworkOfInMemoryNodes(numberOfNodes, avgGossipPeriod, avgBlockDurationUSecs, avgLatency, stats)
+	mockEthNodes, obscuroInMemNodes := simulation.CreateBasicNetworkOfInMemoryNodes(params, stats)
 
-	txInjector := simulation.NewTransactionInjector(numberOfWallets, avgBlockDurationUSecs, stats, simulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
+	txInjector := simulation.NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
 
 	sim := simulation.Simulation{
 		MockEthNodes:       mockEthNodes,      // the list of mock ethereum nodes
 		ObscuroNodes:       obscuroInMemNodes, //  the list of in memory obscuro nodes
-		AvgBlockDuration:   avgBlockDurationUSecs,
+		AvgBlockDuration:   params.AvgBlockDurationUSecs,
 		TxInjector:         txInjector,
-		SimulationTimeSecs: simulationTimeSecs,
+		SimulationTimeSecs: params.SimulationTimeSecs,
 		Stats:              stats,
 	}
 

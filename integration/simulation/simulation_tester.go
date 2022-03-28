@@ -10,40 +10,42 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
-type createNetworkFunc = func(nrNodes int, avgGossipPeriod uint64, avgBlockDurationUSecs uint64, avgLatency uint64, stats *Stats) ([]*ethereummock.Node, []*host.Node)
+// SimParams are the parameters for setting up the simulation.
+type SimParams struct {
+	NumberOfNodes   int
+	NumberOfWallets int
+
+	// A critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
+	AvgBlockDurationUSecs uint64
+	AvgNetworkLatency     uint64 // artificial latency injected between sending and receiving messages on the mock network
+	AvgGossipPeriod       uint64 // POBI protocol setting
+
+	SimulationTimeSecs  int // in seconds
+	SimulationTimeUSecs int // SimulationTimeSecs converted to Us
+}
+
+type createNetworkFunc = func(params SimParams, stats *Stats) ([]*ethereummock.Node, []*host.Node)
 
 // testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
-func testSimulation(t *testing.T, avgBlockDurationUSecs uint64, createNetwork createNetworkFunc, efficiencies EfficiencyThresholds) {
-	// define core test parameters
-	numberOfNodes := 10
-	numberOfWallets := 5
-
-	simulationTimeSecs := 15 // in seconds
-
-	avgNetworkLatency := avgBlockDurationUSecs / 15 // artificial latency injected between sending and receiving messages on the mock network
-	avgGossipPeriod := avgBlockDurationUSecs / 3    // POBI protocol setting
-
-	// converted to Us
-	simulationTimeUSecs := simulationTimeSecs * 1000 * 1000
-
+func testSimulation(t *testing.T, createNetwork createNetworkFunc, params SimParams, efficiencies EfficiencyThresholds) {
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
 	logFile := setupTestLog("../.build/simulations/")
 	defer logFile.Close()
 
-	stats := NewStats(numberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
+	stats := NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
-	mockEthNodes, obscuroInMemNodes := createNetwork(numberOfNodes, avgGossipPeriod, avgBlockDurationUSecs, avgNetworkLatency, stats)
+	mockEthNodes, obscuroNodes := createNetwork(params, stats)
 
-	txInjector := NewTransactionInjector(numberOfWallets, avgBlockDurationUSecs, stats, simulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
+	txInjector := NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTimeUSecs, mockEthNodes, obscuroNodes)
 
 	simulation := Simulation{
-		MockEthNodes:       mockEthNodes,      // the list of mock ethereum nodes
-		ObscuroNodes:       obscuroInMemNodes, //  the list of in memory obscuro nodes
-		AvgBlockDuration:   avgBlockDurationUSecs,
+		MockEthNodes:       mockEthNodes, // the list of mock ethereum nodes
+		ObscuroNodes:       obscuroNodes, //  the list of obscuro nodes
+		AvgBlockDuration:   params.AvgBlockDurationUSecs,
 		TxInjector:         txInjector,
-		SimulationTimeSecs: simulationTimeSecs,
+		SimulationTimeSecs: params.SimulationTimeSecs,
 		Stats:              stats,
 	}
 
