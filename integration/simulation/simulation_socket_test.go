@@ -18,8 +18,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
-	createNetwork := CreateBasicNetworkOfSocketNodes
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
-	testSimulation(t, createNetwork, params, efficiencies)
+	testSimulation(t, CreateBasicNetworkOfSocketNodes, params, efficiencies)
 }

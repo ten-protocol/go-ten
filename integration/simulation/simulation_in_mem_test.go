@@ -20,8 +20,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
-	createNetwork := CreateBasicNetworkOfInMemoryNodes
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.32}
 
-	testSimulation(t, createNetwork, params, efficiencies)
+	testSimulation(t, CreateBasicNetworkOfInMemoryNodes, params, efficiencies)
 }
