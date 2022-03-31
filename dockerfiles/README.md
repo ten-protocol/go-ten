@@ -1,6 +1,6 @@
 # Obscuro enclave service Docker image
 
-To create the Obscuro enclave service Docker image:
+To create the Docker image for an Obscuro enclave service running in SGX simulation mode:
 
     docker build -t obscuro_enclave - < enclave
 
