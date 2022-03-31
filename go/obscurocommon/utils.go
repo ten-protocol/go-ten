@@ -55,7 +55,7 @@ func Duration(us uint64) time.Duration {
 }
 
 func GenerateNonce() Nonce {
-	return uint64(rand.Int63n(math.MaxInt)) //nolint:gosec
+	return uint64(rand.Int63n(math.MaxInt64)) //nolint:gosec
 }
 
 func Max(x, y uint64) uint64 {
