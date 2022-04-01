@@ -139,7 +139,7 @@ func extractDataFromEthereumChain(head *types.Block, node *ethereum_mock.Node, s
 }
 
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
-const MAX_BLOCK_DELAY = 5 // nolint:revive
+const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, efficiencies EfficiencyThresholds) uint64 {
 	l1Height := node.DB().GetCurrentBlockHead().Height
