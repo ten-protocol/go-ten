@@ -31,7 +31,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation, params *SimParams, effici
 
 // checkEthereumBlockchainValidity: sanity check on the mock implementation of the L1 on all nodes
 // - minimum height - the chain has a minimum number of blocks
-// - check height is similar accross all Mock ethereum nodes
+// - check height is similar across all Mock ethereum nodes
 // - check no duplicate txs
 // - check efficiency - no of created blocks/ height
 // - noReorgs
@@ -68,7 +68,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, params *SimPara
 		heights[i] = checkBlockchainOfObscuroNode(t, node, minHeight, maxL1Height, s, efficiencies)
 	}
 
-	min, max := minMax(heights) // nolint:ifshort
+	min, max := minMax(heights)
 	if max-min > max/10 {
 		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
