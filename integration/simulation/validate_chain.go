@@ -10,7 +10,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-	collect "github.com/sxyazi/go-collection"
 )
 
 // EfficiencyThresholds represents an acceptable "dead blocks" percentage for this simulation.
@@ -22,7 +21,9 @@ type EfficiencyThresholds struct {
 	L2ToL1EfficiencyThreshold float64
 }
 
-// After a simulation has run, check as much as possible that everything has
+// After a simulation has run, check as much as possible that the outputs of the simulation are expected.
+// For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
+// time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation, params *SimParams, efficiencies EfficiencyThresholds) {
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s, params, efficiencies)
 	checkObscuroBlockchainValidity(t, s, params, efficiencies, l1MaxHeight)
@@ -30,7 +31,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation, params *SimParams, effici
 
 // checkEthereumBlockchainValidity: sanity check on the mock implementation of the L1 on all nodes
 // - minimum height - the chain has a minimum number of blocks
-// - check height is similar
+// - check height is similar accross all Mock ethereum nodes
 // - check no duplicate txs
 // - check efficiency - no of created blocks/ height
 // - noReorgs
@@ -43,8 +44,7 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation, params *SimPar
 		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s, efficiencies)
 	}
 
-	min := collect.Min(heights)
-	max := collect.Max(heights)
+	min, max := minMax(heights)
 	if max-min > max/10 {
 		t.Errorf("There is a problem with the Mock ethereum chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
@@ -68,8 +68,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, params *SimPara
 		heights[i] = checkBlockchainOfObscuroNode(t, node, minHeight, maxL1Height, s, efficiencies)
 	}
 
-	min := collect.Min(heights) // nolint:ifshort
-	max := collect.Max(heights) // nolint:ifshort
+	min, max := minMax(heights) // nolint:ifshort
 	if max-min > max/10 {
 		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
@@ -201,7 +200,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", node.ID, total, totalAmountInSystem)
 	}
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
-	// walk the blocks in reverse direction, execute deposits and transactions and compare to the state in the rollup
+	// (execute deposits and transactions and compare to the state in the rollup)
 
 	return l2Height
 }
