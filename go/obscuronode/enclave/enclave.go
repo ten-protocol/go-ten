@@ -166,10 +166,13 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	println("jjj after storing block")
 
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
+	println("jjj after fetching block")
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
+	println("jjj after getting height of block")
 	blockState := updateState(&block, e.storage, e.blockResolver)
+	println("jjj after updating state")
 
 	if blockState == nil {
 		return nodecommon.BlockSubmissionResponse{
