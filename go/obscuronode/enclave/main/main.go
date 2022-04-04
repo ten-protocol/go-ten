@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	println(os.Args)
 	config := parseCLIArgs()
 	setLogs(*config.writeToLogs)
 

@@ -2,8 +2,11 @@ package simulation
 
 import (
 	"context"
+	"fmt"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"testing"
 	"time"
 )
@@ -25,39 +28,41 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
-	//ctx := context.Background()
-	//cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//var enclavePorts []string
-	//for i := 0; i < params.NumberOfNodes; i++ {
-	//	// We assign an enclave port to each enclave service on the network.
-	//	enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
-	//}
-	//
-	//var containerIDs []string
-	//for _, port := range enclavePorts {
-	//	containerConfig := &container.Config{Image: "obscuro_enclave"}
-	//	hostConfig := &container.HostConfig{
-	//		PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"localhost", port}}},
-	//	}
-	//
-	//	resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	containerIDs = append(containerIDs, resp.ID)
-	//}
-	//
-	//defer terminateDockerContainers(err, cli, ctx, containerIDs)
-	//
-	//for _, id := range containerIDs {
-	//	if err = cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
-	//		panic(err)
-	//	}
-	//}
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	var enclavePorts []string
+	for i := 0; i < params.NumberOfNodes; i++ {
+		// We assign an enclave port to each enclave service on the network.
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
+	}
+
+	// todo - joel - node IDs are misconfigured
+
+	var containerIDs []string
+	for _, port := range enclavePorts {
+		containerConfig := &container.Config{Image: "obscuro_enclave", Cmd: []string{"--address", "xyz"}}
+		hostConfig := &container.HostConfig{
+			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"localhost", port}}},
+		}
+
+		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
+		if err != nil {
+			panic(err)
+		}
+		containerIDs = append(containerIDs, resp.ID)
+	}
+
+	defer terminateDockerContainers(err, cli, ctx, containerIDs)
+
+	for _, id := range containerIDs {
+		if err = cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
+			panic(err)
+		}
+	}
 
 	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)
 }
