@@ -44,7 +44,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	for _, port := range enclavePorts {
 		containerConfig := &container.Config{Image: "obscuro_enclave"}
 		hostConfig := &container.HostConfig{
-			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"0.0.0.0", port}}},
+			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"localhost", port}}},
 		}
 
 		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
@@ -60,10 +60,6 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		if err = cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
 			panic(err)
 		}
-	}
-
-	for _, id := range containerIDs {
-		cli.ContainerWait(ctx, id, container.WaitConditionNotRunning)
 	}
 
 	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)

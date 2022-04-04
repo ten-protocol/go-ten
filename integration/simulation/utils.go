@@ -175,7 +175,7 @@ func CreateBasicNetworkOfDockerNodes(params SimParams, stats *Stats) ([]*ethereu
 		}
 
 		// create the in memory l1 and l2 node
-		enclavePort := uint64(enclaveStartPort)
+		enclavePort := uint64(enclaveStartPort + i - 1)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
 		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeAddrs, enclavePort)
 
