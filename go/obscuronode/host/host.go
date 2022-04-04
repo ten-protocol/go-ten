@@ -406,24 +406,35 @@ func (a *Node) broadcastTx(tx obscurocommon.L1Tx) {
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
+	println(fmt.Sprintf("waiting for secret as %s", a.ID))
 	attestation := a.Enclave.Attestation()
 	txData := obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,
 		Attestation: attestation,
 	}
 	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+	println(fmt.Sprintf("requested secret as %s", a.ID))
 
 	// start listening for l1 blocks that contain the response to the request
 	for {
 		select {
 		case b := <-a.blockRPCCh:
+			println(fmt.Sprintf("got a potential secret as %s", a.ID))
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
 				t := obscurocommon.TxData(tx)
+				if t.TxType == obscurocommon.StoreSecretTx {
+					println(fmt.Sprintf("it was a store secret tx as %s", a.ID))
+					println(t.Attestation.Owner.Hex())
+					println(a.ID.Hex())
+				}
 				if t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
+					println(fmt.Sprintf("received confirmed secret as %s", a.ID))
 					// someone has replied
 					a.Enclave.InitEnclave(t.Secret)
 					return
+				} else {
+					println(fmt.Sprintf("ignored secret as %s", a.ID))
 				}
 			}
 

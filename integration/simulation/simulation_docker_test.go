@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -28,6 +29,9 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
+	// todo - joel - other enclaves are not initialised, only the first one is. find out why
+	// todo - joel - with the code below, other enclaves don't even start. find out why
+
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -40,11 +44,10 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
 	}
 
-	// todo - joel - node IDs are misconfigured
-
 	var containerIDs []string
-	for _, port := range enclavePorts {
-		containerConfig := &container.Config{Image: "obscuro_enclave", Cmd: []string{"--address", "xyz"}}
+	for i, port := range enclavePorts {
+		nodeID := strconv.FormatInt(int64(i+1), 10)
+		containerConfig := &container.Config{Image: "obscuro_enclave", Cmd: []string{"--nodeID", nodeID}}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"localhost", port}}},
 		}

@@ -2,21 +2,19 @@ package main
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"math/big"
 	"os"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
 func main() {
-	println(os.Args)
 	config := parseCLIArgs()
 	setLogs(*config.writeToLogs)
 
 	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
+	println(nodeAddress.Hex())
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}
