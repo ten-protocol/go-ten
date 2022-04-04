@@ -340,8 +340,11 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 				return
 			}
 			// Request the round winner for the current head
-			winnerRollup, submit := a.Enclave.RoundWinner(result.L2Hash)
-			if submit {
+			winnerRollup, winner, err := a.Enclave.RoundWinner(result.L2Hash)
+			if err != nil {
+				panic(err)
+			}
+			if winner {
 				txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
 				tx := obscurocommon.NewL1Tx(txData)
 				t, err := obscurocommon.EncodeTx(tx)

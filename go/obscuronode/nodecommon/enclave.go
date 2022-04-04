@@ -51,7 +51,7 @@ type Enclave interface {
 	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
-	RoundWinner(parent obscurocommon.L2RootHash) (ExtRollup, bool)
+	RoundWinner(parent obscurocommon.L2RootHash) (ExtRollup, bool, error)
 
 	// Stop gracefully stops the enclave
 	Stop()

@@ -197,7 +197,7 @@ func (c *EnclaveRPCClient) Balance(address common.Address) uint64 {
 	return response.Balance
 }
 
-func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
+func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -207,9 +207,9 @@ func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecom
 	}
 
 	if response.Winner {
-		return rpc.FromExtRollupMsg(response.ExtRollup), true
+		return rpc.FromExtRollupMsg(response.ExtRollup), true, nil
 	}
-	return nodecommon.ExtRollup{}, false
+	return nodecommon.ExtRollup{}, false, nil
 }
 
 func (c *EnclaveRPCClient) Stop() {

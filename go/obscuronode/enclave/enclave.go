@@ -232,10 +232,10 @@ func verifySignature(decryptedTx *nodecommon.L2Tx) error {
 	return err
 }
 
-func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
+func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	head, found := e.storage.FetchRollup(parent)
 	if !found {
-		panic(fmt.Sprintf("Could not find rollup: r_%s", parent))
+		return nodecommon.ExtRollup{}, false, fmt.Errorf("could not find rollup: r_%s", parent)
 	}
 
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)
@@ -267,9 +267,9 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State),
 		)
-		return winnerRollup.ToExtRollup(), true
+		return winnerRollup.ToExtRollup(), true, nil
 	}
-	return nodecommon.ExtRollup{}, false
+	return nodecommon.ExtRollup{}, false, nil
 }
 
 func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
