@@ -15,6 +15,7 @@ func main() {
 	setLogs(*config.writeToLogs)
 
 	nodeAddress := common.BytesToAddress([]byte(*config.nodeID))
+	// todo - joel - collector can't be nil
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}

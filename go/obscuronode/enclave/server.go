@@ -107,7 +107,6 @@ func (s *server) Start(_ context.Context, request *generated.StartRequest) (*gen
 	return &generated.StartResponse{}, nil
 }
 
-// todo - joel - revert "jjj..." printing
 func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := decodeBlock(request.EncodedBlock)
 	blockSubmissionResponse := s.enclave.SubmitBlock(bl)
