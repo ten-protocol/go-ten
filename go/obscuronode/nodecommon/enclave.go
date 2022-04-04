@@ -54,7 +54,7 @@ type Enclave interface {
 	RoundWinner(parent obscurocommon.L2RootHash) (ExtRollup, bool, error)
 
 	// Stop gracefully stops the enclave
-	Stop()
+	Stop() error
 
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
 	GetTransaction(txHash common.Hash) *L2Tx
@@ -73,7 +73,8 @@ type BlockSubmissionResponse struct {
 	L2Parent    obscurocommon.L2RootHash // The Rollup Hash Parent inside the ingested Block
 	Withdrawals []Withdrawal             // The Withdrawals available in Rollup of the ingested Block
 
-	ProducedRollup    ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	IngestedBlock     bool      // Whether the Block was ingested or discarded
-	IngestedNewRollup bool      // Whether the Block had a new Rollup and the enclave has ingested it
+	ProducedRollup        ExtRollup // The new Rollup when ingesting the block produces a new Rollup
+	IngestedBlock         bool      // Whether the Block was ingested or discarded
+	BlockNotIngestedCause string    // The reason the block was not ingested
+	IngestedNewRollup     bool      // Whether the Block had a new Rollup and the enclave has ingested it
 }

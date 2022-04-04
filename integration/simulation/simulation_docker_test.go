@@ -1,7 +1,14 @@
 package simulation
 
 import (
+	"context"
+	"fmt"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"testing"
+	"time"
 )
 
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
@@ -19,8 +26,57 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
-
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	var enclavePorts []string
+	for i := 0; i < params.NumberOfNodes; i++ {
+		// We assign an enclave port to each enclave service on the network.
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
+	}
+
+	var containerIDs []string
+	for _, port := range enclavePorts {
+		containerConfig := &container.Config{Image: "obscuro_enclave"}
+		hostConfig := &container.HostConfig{
+			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"0.0.0.0", port}}},
+		}
+
+		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
+		if err != nil {
+			panic(err)
+		}
+		containerIDs = append(containerIDs, resp.ID)
+	}
+
+	defer terminateDockerContainers(err, cli, ctx, containerIDs)
+
+	for _, id := range containerIDs {
+		if err = cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
+			panic(err)
+		}
+	}
+
+	for _, id := range containerIDs {
+		cli.ContainerWait(ctx, id, container.WaitConditionNotRunning)
+	}
+
 	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)
+}
+
+func terminateDockerContainers(err error, cli *client.Client, ctx context.Context, containerIDs []string) {
+	// todo - joel - not being called - why?
+	time.Sleep(3 * time.Second)
+	println("jjj calling defer block")
+	for _, id := range containerIDs {
+		println("jjj handling a container")
+		timeout := 1 * time.Second
+		err = cli.ContainerStop(ctx, id, &timeout)
+		err = cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{})
+	}
 }

@@ -327,7 +327,8 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		log.Log(fmt.Sprintf(">   Agg%d: Could not process block b_%d", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(b.Hash())))
+		logMsg := fmt.Sprintf(">   Agg%d: Could not process block b_%d. Cause: %s", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause)
+		log.Log(logMsg)
 		return
 	}
 

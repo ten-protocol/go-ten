@@ -154,7 +154,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
 	_, foundBlock := e.storage.FetchBlock(block.Hash())
 	if foundBlock {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
 	}
 
 	e.storage.StoreBlock(&block)
@@ -164,10 +164,10 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
-	blockState := updateState(&block, e.storage, e.blockResolver)
 
+	blockState := updateState(&block, e.storage, e.blockResolver)
 	if blockState == nil {
 		return nodecommon.BlockSubmissionResponse{
 			L1Hash:            block.Hash(),
@@ -342,8 +342,9 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	}
 }
 
-func (e *enclaveImpl) Stop() {
+func (e *enclaveImpl) Stop() error {
 	e.exitCh <- true
+	return nil
 }
 
 func (e *enclaveImpl) Attestation() obscurocommon.AttestationReport {
