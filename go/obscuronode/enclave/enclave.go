@@ -107,11 +107,13 @@ func (e *enclaveImpl) start(block types.Block) {
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis() nodecommon.BlockSubmissionResponse {
+func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
+	rolGenesis := NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
+	e.storage.StoreRollupGenesis(&rolGenesis)
 	return nodecommon.BlockSubmissionResponse{
-		L2Hash:         GenesisRollup.Header.Hash(),
-		L1Hash:         obscurocommon.GenesisHash,
-		ProducedRollup: GenesisRollup.ToExtRollup(),
+		L2Hash:         rolGenesis.Header.Hash(),
+		L1Hash:         blkHash,
+		ProducedRollup: rolGenesis.ToExtRollup(),
 		IngestedBlock:  true,
 	}
 }
@@ -317,7 +319,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.blockResolver)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := NewRollup(b, bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
+	r := NewRollup(b.Hash(), bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
 	return &r
 }
 

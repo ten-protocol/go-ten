@@ -29,8 +29,6 @@ type Simulation struct {
 func (s *Simulation) Start() {
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
-	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
-
 	// The sequence of starting the nodes is important to catch various edge cases.
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
 	// The reason is to make sure that they catch up correctly.

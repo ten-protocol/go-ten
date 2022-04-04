@@ -110,16 +110,28 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 
 	rollups := extractRollups(b, blockResolver)
 
-	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	if len(rollups) == 1 && rollups[0].Hash() == GenesisRollup.Hash() {
-		bs := blockState{
-			block:          b,
-			head:           &GenesisRollup,
-			state:          emptyState(),
-			foundNewRollup: true,
+	genesisRollup := s.FetchRollupGenesis()
+	if len(rollups) == 1 {
+		rol := rollups[0]
+
+		// the incoming block might hold the genesis rollup
+		// todo change this to an hardcoded hash on testnet/mainnet
+		if genesisRollup == nil && rol.Header.Height == obscurocommon.L2GenesisHeight {
+			s.StoreRollupGenesis(rol)
+			genesisRollup = rol
 		}
-		s.SetBlockState(b.Hash(), &bs)
-		return &bs
+
+		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
+		if rol.Hash() == genesisRollup.Hash() {
+			bs := blockState{
+				block:          b,
+				head:           rol,
+				state:          emptyState(),
+				foundNewRollup: true,
+			}
+			s.SetBlockState(b.Hash(), &bs)
+			return &bs
+		}
 	}
 
 	// there are no rollups in the current block and there is nothing in the db

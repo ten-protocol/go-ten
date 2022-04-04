@@ -58,6 +58,11 @@ type DB interface {
 	FetchSecret() SharedEnclaveSecret
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret SharedEnclaveSecret)
+
+	// StoreRollupGenesis stores the rollup genesis
+	StoreRollupGenesis(rol *Rollup)
+	// FetchRollupGenesis returns the rollup genesis
+	FetchRollupGenesis() *Rollup
 }
 
 type blockAndHeight struct {
@@ -66,6 +71,8 @@ type blockAndHeight struct {
 }
 
 type inMemoryDB struct {
+	rollupGenesisHash common.Hash // TODO add lock protection, not needed atm
+
 	stateMutex sync.RWMutex // Controls access to `statePerBlock`, `statePerRollup`, `headBlock`, `rollupsByHeight` and `rollups`
 	mpMutex    sync.RWMutex // Controls access to `mempool`
 	blockMutex sync.RWMutex // Controls access to `blockCache`
@@ -97,6 +104,16 @@ func NewInMemoryDB() DB {
 		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
 		txMutex:           sync.RWMutex{},
 	}
+}
+
+func (db *inMemoryDB) StoreRollupGenesis(rol *Rollup) {
+	db.rollupGenesisHash = rol.Hash()
+	db.StoreRollup(rol)
+}
+
+func (db *inMemoryDB) FetchRollupGenesis() *Rollup {
+	r, _ := db.FetchRollup(db.rollupGenesisHash)
+	return r
 }
 
 func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (*blockState, bool) {
