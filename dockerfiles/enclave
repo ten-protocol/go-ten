@@ -8,6 +8,6 @@ RUN cd obscuro-playground && git checkout joel/enclave_docker_file
 RUN cd obscuro-playground && ego-go mod download && ego-go get github.com/VictoriaMetrics/fastcache@v1.6.0
 RUN cd obscuro-playground/go/obscuronode/enclave/main && ego-go build && ego sign main
 
-ENTRYPOINT cd obscuro-playground/go/obscuronode/enclave/main && OE_SIMULATION=1 ego run main
+ENTRYPOINT OE_SIMULATION=1 ego run obscuro-playground/go/obscuronode/enclave/main/main
 
 EXPOSE 11000
