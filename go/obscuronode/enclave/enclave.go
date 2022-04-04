@@ -184,11 +184,16 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		}
 	}
 
+	println("jjj after creating default")
+
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	e.storage.RemoveMempoolTxs(historicTxs(blockState.head, e.storage))
+	println("jjj after removing mempool txs")
 	r := e.produceRollup(&block, blockState)
+	println("jjj after producing rollup")
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
+	println("jjj after storing rollup (again?)")
 
 	return nodecommon.BlockSubmissionResponse{
 		L1Hash:      block.Hash(),
