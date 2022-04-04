@@ -25,9 +25,10 @@ func main() {
 
 // Sets the log file.
 func setLogs() {
-	logFile, err := os.Create("enclave_logs.txt")
-	if err != nil {
-		panic(err)
-	}
-	log.SetLog(logFile)
+	// todo - joel - support non-stdout as well
+	//logFile, err := os.Create("enclave_logs.txt")
+	//if err != nil {
+	//	panic(err)
+	//}
+	log.SetLog(os.Stdout)
 }
