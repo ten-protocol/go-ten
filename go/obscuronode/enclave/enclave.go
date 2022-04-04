@@ -156,11 +156,14 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	if foundBlock {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
+	println("jjj after fetching block")
 
 	e.storage.StoreBlock(&block)
 	// this is where much more will actually happen.
 	// the "blockchain" logic from geth has to be executed here,
 	// to determine the total proof of work, to verify some key aspects, etc
+
+	println("jjj after storing block")
 
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
