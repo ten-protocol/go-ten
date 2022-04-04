@@ -15,9 +15,9 @@ RUN apt -y install ./ego_0.4.2_amd64.deb build-essential libssl-dev
 # joel - todo - revert
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
 RUN git clone https://github.com/obscuronet/obscuro-playground
-RUN cd obscuro-playground && ego-go mod download && ego-go get github.com/VictoriaMetrics/fastcache@v1.6.0
 # joel - todo - revert
 RUN cd obscuro-playground && git checkout joel/enclave_docker_file
+RUN cd obscuro-playground && ego-go mod download && ego-go get github.com/VictoriaMetrics/fastcache@v1.6.0
 RUN cd obscuro-playground/go/obscuronode/enclave/main && ego-go build && ego sign main
 
 ENTRYPOINT cd obscuro-playground/go/obscuronode/enclave/main && OE_SIMULATION=1 ego run main
