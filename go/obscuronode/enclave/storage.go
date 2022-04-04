@@ -3,6 +3,8 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -15,7 +17,7 @@ type BlockResolver interface {
 	// FetchBlock returns the L1 block with the given hash and true, or (nil, false) if no such block is stored
 	FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
 	// StoreBlock persists the L1 block
-	StoreBlock(block *types.Block)
+	StoreBlock(block *types.Block) bool
 	// HeightBlock returns the height of the L1 block
 	HeightBlock(block *types.Block) uint64
 	// ParentBlock returns the L1 block's parent and true, or (nil, false)  if no parent block is stored
@@ -25,6 +27,8 @@ type BlockResolver interface {
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 block, and false otherwise
 	// Takes into consideration that the block to verify might be on a branch we haven't received yet
 	IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool
+	// FetchHeadBlock - returns the head of the current chain
+	FetchHeadBlock() (*types.Block, uint64)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore
@@ -137,7 +141,7 @@ func (s *storageImpl) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash) {
 	s.db.RemoveMempoolTxs(toRemove)
 }
 
-func (s *storageImpl) StoreBlock(b *types.Block) {
+func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	s.assertSecretAvailable()
 
 	var height uint64
@@ -146,12 +150,14 @@ func (s *storageImpl) StoreBlock(b *types.Block) {
 	} else {
 		bAndHeight, f := s.db.FetchBlockAndHeight(b.ParentHash())
 		if !f {
-			panic(fmt.Sprintf("unable to store block: %s without its parent: %s", b.Hash(), b.ParentHash()))
+			log.Log(fmt.Sprintf("unable to store block: %s without its parent: %s", b.Hash(), b.ParentHash()))
+			return false
 		}
 		height = bAndHeight.height + 1
 	}
 
 	s.db.StoreBlock(b, height)
+	return true
 }
 
 func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
@@ -162,6 +168,12 @@ func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, b
 		block = val.b
 	}
 	return block, f
+}
+
+func (s *storageImpl) FetchHeadBlock() (*types.Block, uint64) {
+	s.assertSecretAvailable()
+	bh, _ := s.db.FetchBlockAndHeight(s.db.FetchHeadBlock())
+	return bh.b, bh.height
 }
 
 func (s *storageImpl) FetchRollupTxs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {

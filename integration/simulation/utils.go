@@ -169,3 +169,16 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration uint64) ethereum_mock.M
 		},
 	}
 }
+
+func minMax(arr []uint64) (min uint64, max uint64) {
+	min = ^uint64(0)
+	for _, no := range arr {
+		if no < min {
+			min = no
+		}
+		if no > max {
+			max = no
+		}
+	}
+	return
+}
