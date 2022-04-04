@@ -156,23 +156,17 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	if foundBlock {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
-	println("jjj after fetching block")
 
 	e.storage.StoreBlock(&block)
 	// this is where much more will actually happen.
 	// the "blockchain" logic from geth has to be executed here,
 	// to determine the total proof of work, to verify some key aspects, etc
 
-	println("jjj after storing block")
-
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
-	println("jjj after fetching block")
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
-	println("jjj after getting height of block")
 	blockState := updateState(&block, e.storage, e.blockResolver)
-	println("jjj after updating state")
 
 	if blockState == nil {
 		return nodecommon.BlockSubmissionResponse{
@@ -184,8 +178,6 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		}
 	}
 
-	println("jjj after creating default")
-
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	e.storage.RemoveMempoolTxs(historicTxs(blockState.head, e.storage))
 	println("jjj after removing mempool txs")
@@ -193,7 +185,6 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	println("jjj after producing rollup")
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
-	println("jjj after storing rollup (again?)")
 
 	return nodecommon.BlockSubmissionResponse{
 		L1Hash:      block.Hash(),
@@ -301,8 +292,8 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	newRollupState := *speculativeRollup.s
 
 	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-	// if true {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.head.Hash()) {
+		println("jjj in if")
 		if speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
@@ -313,19 +304,26 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 			)
 			e.statsCollector.L2Recalc(e.node)
 		}
+		println("jjj in if, after recalc")
 
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(bs.head, e.storage.FetchMempoolTxs(), e.storage)
+		println("jjj in if, after current txs")
 		newRollupState = executeTransactions(newRollupTxs, newProcessedState(bs.state))
+		println("jjj in if, after execute txs")
 	}
+	println("jjj after if")
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.head.Proof(e.blockResolver)
+	println("jjj after proof")
 	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.blockResolver)
+	println("jjj after process deposits")
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
 	r := NewRollup(b, bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
+	println("jjj after new rollup")
 	return &r
 }
 
