@@ -1,21 +1,9 @@
-FROM ubuntu:latest
+FROM ghcr.io/edgelesssys/ego-dev:latest
 
-RUN apt -y update
-RUN apt -y upgrade
-RUN apt -y install git
-RUN apt -y install gnupg
-RUN DEBIAN_FRONTEND='noninteractive' apt -y install software-properties-common
-RUN apt -y install wget
-
-RUN wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add
-RUN add-apt-repository "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu `lsb_release -cs` main"
-RUN wget https://github.com/edgelesssys/ego/releases/download/v0.4.2/ego_0.4.2_amd64.deb
-RUN apt -y install ./ego_0.4.2_amd64.deb build-essential libssl-dev
-
-# joel - todo - revert
+## joel - todo - revert - used to prevent caching
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
 RUN git clone https://github.com/obscuronet/obscuro-playground
-# joel - todo - revert
+## joel - todo - revert
 RUN cd obscuro-playground && git checkout joel/enclave_docker_file
 RUN cd obscuro-playground && ego-go mod download && ego-go get github.com/VictoriaMetrics/fastcache@v1.6.0
 RUN cd obscuro-playground/go/obscuronode/enclave/main && ego-go build && ego sign main
