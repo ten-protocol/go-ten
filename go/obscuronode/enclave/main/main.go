@@ -11,10 +11,8 @@ import (
 )
 
 func main() {
+	setLogs()
 	config := parseCLIArgs()
-	if *config.writeToLogs {
-		setLogs()
-	}
 
 	nodeAddress := common.BytesToAddress([]byte(*config.nodeID))
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
