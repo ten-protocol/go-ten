@@ -13,7 +13,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params := SimParams{
 		NumberOfNodes:         3,
 		NumberOfWallets:       5,
-		AvgBlockDurationUSecs: uint64(250_000),
+		AvgBlockDurationUSecs: uint64(1_000_000),
 		SimulationTimeSecs:    15,
 	}
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15

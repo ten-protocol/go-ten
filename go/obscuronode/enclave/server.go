@@ -107,11 +107,15 @@ func (s *server) Start(_ context.Context, request *generated.StartRequest) (*gen
 	return &generated.StartResponse{}, nil
 }
 
+// todo - joel - revert "jjj..." printing
 func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := decodeBlock(request.EncodedBlock)
+	println("jjj after decoding block 2")
 	blockSubmissionResponse := s.enclave.SubmitBlock(bl)
+	println("jjj after submitting block")
 
 	msg := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
+	println("jjj after convert msg")
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
@@ -159,6 +163,7 @@ func (s *server) GetTransaction(_ context.Context, request *generated.GetTransac
 func decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
+	println("jjj after decoding block")
 	if err != nil {
 		log.Log(fmt.Sprintf("failed to decode block sent to enclave: %v", err))
 	}
