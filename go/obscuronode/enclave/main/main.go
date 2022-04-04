@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"os"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -14,7 +15,7 @@ func main() {
 	config := parseCLIArgs()
 	setLogs(*config.writeToLogs)
 
-	nodeAddress := common.BytesToAddress([]byte(*config.nodeID))
+	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}

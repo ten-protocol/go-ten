@@ -7,8 +7,8 @@ import (
 const (
 	// Flag names, defaults and usages.
 	nodeIDName    = "nodeID"
-	nodeIDDefault = ""
-	nodeIDUsage   = "The 20 bytes of the node's address (default \"\")"
+	nodeIDDefault = 1
+	nodeIDUsage   = "A integer representing the 20 bytes of the node's address (default 1)"
 
 	addressName    = "address"
 	addressDefault = ":11000"
@@ -20,13 +20,13 @@ const (
 )
 
 type enclaveConfig struct {
-	nodeID      *string
+	nodeID      *int64
 	address     *string
 	writeToLogs *bool
 }
 
 func parseCLIArgs() enclaveConfig {
-	nodeID := flag.String(nodeIDName, nodeIDDefault, nodeIDUsage)
+	nodeID := flag.Int64(nodeIDName, nodeIDDefault, nodeIDUsage)
 	port := flag.String(addressName, addressDefault, addressUsage)
 	writeToLogs := flag.Bool(writeToLogsName, writeToLogsDefault, writeToLogsUsage)
 	flag.Parse()
