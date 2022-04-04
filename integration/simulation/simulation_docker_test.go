@@ -29,8 +29,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
-	// todo - joel - other enclaves are not initialised, only the first one is. find out why
-	// todo - joel - with the code below, other enclaves don't even start. find out why
+	// todo - joel - when using api below, other enclaves are not initialised, only the first one is. is due to a mismatch in the address
 
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())

@@ -14,7 +14,6 @@ func main() {
 	setLogs(*config.writeToLogs)
 
 	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
-	println(nodeAddress.Hex())
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}
