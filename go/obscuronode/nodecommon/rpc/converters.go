@@ -28,16 +28,17 @@ func ToBlockSubmissionResponseMsg(response nodecommon.BlockSubmissionResponse) g
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
 
 	return generated.BlockSubmissionResponseMsg{
-		L1Hash:            response.L1Hash.Bytes(),
-		L1Height:          response.L1Height,
-		L1Parent:          response.L1Parent.Bytes(),
-		L2Hash:            response.L2Hash.Bytes(),
-		L2Height:          response.L2Height,
-		L2Parent:          response.L2Parent.Bytes(),
-		Withdrawals:       withdrawalMsgs,
-		ProducedRollup:    &producedRollupMsg,
-		IngestedBlock:     response.IngestedBlock,
-		IngestedNewRollup: response.IngestedNewRollup,
+		L1Hash:                response.L1Hash.Bytes(),
+		L1Height:              response.L1Height,
+		L1Parent:              response.L1Parent.Bytes(),
+		L2Hash:                response.L2Hash.Bytes(),
+		L2Height:              response.L2Height,
+		L2Parent:              response.L2Parent.Bytes(),
+		Withdrawals:           withdrawalMsgs,
+		ProducedRollup:        &producedRollupMsg,
+		IngestedBlock:         response.IngestedBlock,
+		BlockNotIngestedCause: response.BlockNotIngestedCause,
+		IngestedNewRollup:     response.IngestedNewRollup,
 	}
 }
 
