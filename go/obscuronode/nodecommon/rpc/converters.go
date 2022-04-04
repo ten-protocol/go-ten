@@ -50,16 +50,17 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) n
 	}
 
 	return nodecommon.BlockSubmissionResponse{
-		L1Hash:            common.BytesToHash(msg.L1Hash),
-		L1Height:          msg.L1Height,
-		L1Parent:          common.BytesToHash(msg.L1Parent),
-		L2Hash:            common.BytesToHash(msg.L2Hash),
-		L2Height:          msg.L2Height,
-		L2Parent:          common.BytesToHash(msg.L2Parent),
-		Withdrawals:       withdrawals,
-		ProducedRollup:    FromExtRollupMsg(msg.ProducedRollup),
-		IngestedBlock:     msg.IngestedBlock,
-		IngestedNewRollup: msg.IngestedNewRollup,
+		L1Hash:                common.BytesToHash(msg.L1Hash),
+		L1Height:              msg.L1Height,
+		L1Parent:              common.BytesToHash(msg.L1Parent),
+		L2Hash:                common.BytesToHash(msg.L2Hash),
+		L2Height:              msg.L2Height,
+		L2Parent:              common.BytesToHash(msg.L2Parent),
+		Withdrawals:           withdrawals,
+		ProducedRollup:        FromExtRollupMsg(msg.ProducedRollup),
+		IngestedBlock:         msg.IngestedBlock,
+		BlockNotIngestedCause: msg.BlockNotIngestedCause,
+		IngestedNewRollup:     msg.IngestedNewRollup,
 	}
 }
 
