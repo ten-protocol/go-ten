@@ -31,14 +31,14 @@ func NewEnclaveRPCClient(address string, timeout time.Duration, nodeID common.Ad
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(address, opts...)
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to connect to enclave RPC service: %v", obscurocommon.ShortAddress(nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to connect to enclave RPC service: %w", obscurocommon.ShortAddress(nodeID), err))
 	}
 	return &EnclaveRPCClient{generated.NewEnclaveProtoClient(connection), connection, timeout, nodeID}
 }
 
 func (c *EnclaveRPCClient) StopClient() {
 	if err := c.connection.Close(); err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to stop enclave RPC service: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to stop enclave RPC service: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 }
 
@@ -56,7 +56,7 @@ func (c *EnclaveRPCClient) Attestation() obscurocommon.AttestationReport {
 
 	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to retrieve attestation: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to retrieve attestation: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	return rpc.FromAttestationReportMsg(response.AttestationReportMsg)
 }
@@ -67,7 +67,7 @@ func (c *EnclaveRPCClient) GenerateSecret() obscurocommon.EncryptedSharedEnclave
 
 	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to generate secret: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to generate secret: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	return response.EncryptedSharedEnclaveSecret
 }
@@ -80,7 +80,7 @@ func (c *EnclaveRPCClient) FetchSecret(report obscurocommon.AttestationReport) o
 	request := generated.FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
 	response, err := c.protoClient.FetchSecret(timeoutCtx, &request)
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to fetch secret: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to fetch secret: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	return response.EncryptedSharedEnclaveSecret
 }
@@ -91,7 +91,7 @@ func (c *EnclaveRPCClient) InitEnclave(secret obscurocommon.EncryptedSharedEncla
 
 	_, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to initialise enclave: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to initialise enclave: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 }
 
@@ -101,7 +101,7 @@ func (c *EnclaveRPCClient) IsInitialised() bool {
 
 	response, err := c.protoClient.IsInitialised(timeoutCtx, &generated.IsInitialisedRequest{})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to establish enclave initialisation status: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to establish enclave initialisation status: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	return response.IsInitialised
 }
@@ -112,7 +112,7 @@ func (c *EnclaveRPCClient) ProduceGenesis(common.Hash) nodecommon.BlockSubmissio
 
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to produce genesis: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to produce genesis: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
@@ -128,7 +128,7 @@ func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) []nodecommon.Bloc
 	}
 	response, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to ingest blocks: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to ingest blocks: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	responses := response.GetBlockSubmissionResponses()
 	result := make([]nodecommon.BlockSubmissionResponse, len(responses))
@@ -144,11 +144,11 @@ func (c *EnclaveRPCClient) Start(block types.Block) {
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to encode block: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to encode block: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	_, err := c.protoClient.Start(timeoutCtx, &generated.StartRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to start enclave: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to start enclave: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 }
 
@@ -158,12 +158,12 @@ func (c *EnclaveRPCClient) SubmitBlock(block types.Block) nodecommon.BlockSubmis
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to encode block: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to encode block: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to submit block: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to submit block: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
@@ -175,7 +175,7 @@ func (c *EnclaveRPCClient) SubmitRollup(rollup nodecommon.ExtRollup) {
 	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
 	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to submit rollup: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to submit rollup: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 }
 
@@ -193,7 +193,7 @@ func (c *EnclaveRPCClient) Balance(address common.Address) uint64 {
 
 	response, err := c.protoClient.Balance(timeoutCtx, &generated.BalanceRequest{Address: address.Bytes()})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to retrieve balance: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to retrieve balance: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 	return response.Balance
 }
@@ -204,7 +204,7 @@ func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecom
 
 	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to determine round winner: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to determine round winner: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 
 	if response.Winner {
@@ -227,7 +227,7 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 
 	response, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{TxHash: txHash.Bytes()})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to get transaction: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to get transaction: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 
 	if !response.Known {
@@ -237,7 +237,7 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	l2Tx := nodecommon.L2Tx{}
 	err = l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to decode transaction: %v", obscurocommon.ShortAddress(c.nodeID), err))
+		panic(fmt.Errorf(">   Agg%d: Failed to decode transaction: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}
 
 	return &l2Tx
