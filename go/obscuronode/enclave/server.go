@@ -135,10 +135,10 @@ func (s *server) Balance(_ context.Context, request *generated.BalanceRequest) (
 
 func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
 	extRollup, winner, err := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
-	extRollupMsg := rpc.ToExtRollupMsg(&extRollup)
 	if err != nil {
 		return nil, err
 	}
+	extRollupMsg := rpc.ToExtRollupMsg(&extRollup)
 	return &generated.RoundWinnerResponse{Winner: winner, ExtRollup: &extRollupMsg}, nil
 }
 
