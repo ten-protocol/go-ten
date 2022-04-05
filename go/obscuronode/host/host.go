@@ -149,6 +149,7 @@ func (a *Node) waitForEnclave() {
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
+	log.Log(fmt.Sprintf(">   Agg%d: Connected to enclave service...", obscurocommon.ShortAddress(a.ID)))
 }
 
 // Waits for blocks from the L1 node, printing a wait message every two seconds.
