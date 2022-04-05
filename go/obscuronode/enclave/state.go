@@ -110,14 +110,14 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 
 	rollups := extractRollups(b, blockResolver)
 
-	genesisRollup := s.FetchRollupGenesis()
+	genesisRollup := s.FetchGenesisRollup()
 	if len(rollups) == 1 {
 		rol := rollups[0]
 
 		// the incoming block might hold the genesis rollup
 		// todo change this to an hardcoded hash on testnet/mainnet
 		if genesisRollup == nil && rol.Header.Height == obscurocommon.L2GenesisHeight {
-			s.StoreRollupGenesis(rol)
+			s.StoreGenesisRollup(rol)
 			genesisRollup = rol
 		}
 

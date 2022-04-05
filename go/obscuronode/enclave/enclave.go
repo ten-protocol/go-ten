@@ -109,7 +109,7 @@ func (e *enclaveImpl) start(block types.Block) {
 
 func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
 	rolGenesis := NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
-	e.storage.StoreRollupGenesis(&rolGenesis)
+	e.storage.StoreGenesisRollup(&rolGenesis)
 	return nodecommon.BlockSubmissionResponse{
 		L2Hash:         rolGenesis.Header.Hash(),
 		L1Hash:         blkHash,

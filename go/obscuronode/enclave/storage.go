@@ -71,22 +71,22 @@ type Storage interface {
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret SharedEnclaveSecret)
 
-	// StoreRollupGenesis stores the rollup genesis
-	StoreRollupGenesis(rol *Rollup)
-	// FetchRollupGenesis returns the rollup genesis
-	FetchRollupGenesis() *Rollup
+	// StoreGenesisRollup stores the rollup genesis
+	StoreGenesisRollup(rol *Rollup)
+	// FetchGenesisRollup returns the rollup genesis
+	FetchGenesisRollup() *Rollup
 }
 
 type storageImpl struct {
 	db DB
 }
 
-func (s *storageImpl) StoreRollupGenesis(rol *Rollup) {
-	s.db.StoreRollupGenesis(rol)
+func (s *storageImpl) StoreGenesisRollup(rol *Rollup) {
+	s.db.StoreGenesisRollup(rol)
 }
 
-func (s *storageImpl) FetchRollupGenesis() *Rollup {
-	return s.db.FetchRollupGenesis()
+func (s *storageImpl) FetchGenesisRollup() *Rollup {
+	return s.db.FetchGenesisRollup()
 }
 
 func NewStorage() Storage {

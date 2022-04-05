@@ -59,10 +59,10 @@ type DB interface {
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret SharedEnclaveSecret)
 
-	// StoreRollupGenesis stores the rollup genesis
-	StoreRollupGenesis(rol *Rollup)
-	// FetchRollupGenesis returns the rollup genesis
-	FetchRollupGenesis() *Rollup
+	// StoreGenesisRollup stores the rollup genesis
+	StoreGenesisRollup(rol *Rollup)
+	// FetchGenesisRollup returns the rollup genesis
+	FetchGenesisRollup() *Rollup
 }
 
 type blockAndHeight struct {
@@ -106,12 +106,12 @@ func NewInMemoryDB() DB {
 	}
 }
 
-func (db *inMemoryDB) StoreRollupGenesis(rol *Rollup) {
+func (db *inMemoryDB) StoreGenesisRollup(rol *Rollup) {
 	db.rollupGenesisHash = rol.Hash()
 	db.StoreRollup(rol)
 }
 
-func (db *inMemoryDB) FetchRollupGenesis() *Rollup {
+func (db *inMemoryDB) FetchGenesisRollup() *Rollup {
 	r, _ := db.FetchRollup(db.rollupGenesisHash)
 	return r
 }
