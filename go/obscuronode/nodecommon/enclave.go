@@ -23,7 +23,7 @@ type Enclave interface {
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret)
 
-	// IsInitialised - true if the shared secret is avaible
+	// IsInitialised - true if the shared secret is available
 	IsInitialised() bool
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup

@@ -63,6 +63,7 @@ func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 		panic(err)
 	}
 
+	log.Log(fmt.Sprintf("Start listening on port: %s", p.OurAddress))
 	i := int32(0)
 	p.listenerInterrupt = &i
 	p.listener = listener

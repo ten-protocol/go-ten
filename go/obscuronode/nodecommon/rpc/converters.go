@@ -83,17 +83,24 @@ func ToExtRollupMsg(rollup *nodecommon.ExtRollup) generated.ExtRollupMsg {
 			Height:      rollup.Header.Height,
 			Withdrawals: withdrawalMsgs,
 		}
+
+		txs := make([][]byte, 0)
+		for _, tx := range rollup.Txs {
+			txs = append(txs, tx)
+		}
+
+		return generated.ExtRollupMsg{Header: &headerMsg, Txs: txs}
 	}
 
-	txs := make([][]byte, 0)
-	for _, tx := range rollup.Txs {
-		txs = append(txs, tx)
-	}
-
-	return generated.ExtRollupMsg{Header: &headerMsg, Txs: txs}
+	return generated.ExtRollupMsg{Header: nil}
 }
 
 func FromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
+	if msg.Header == nil {
+		return nodecommon.ExtRollup{
+			Header: nil,
+		}
+	}
 	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range msg.Header.Withdrawals {
 		address := common.BytesToAddress(withdrawalMsg.Address)
