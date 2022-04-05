@@ -105,11 +105,11 @@ func (c *EnclaveRPCClient) IsInitialised() bool {
 	return response.IsInitialised
 }
 
-func (c *EnclaveRPCClient) ProduceGenesis(common.Hash) nodecommon.BlockSubmissionResponse {
+func (c *EnclaveRPCClient) ProduceGenesis(h common.Hash) nodecommon.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{})
+	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: h.Bytes()})
 	if err != nil {
 		panic(fmt.Sprintf("failed to produce genesis: %v", err))
 	}

@@ -18,7 +18,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
-	// todo
+	// todo - Joel - please uncomment once merged on your branch
 	// efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
 	// testSimulation(t, CreateBasicNetworkOfSocketNodes, params, efficiencies)
