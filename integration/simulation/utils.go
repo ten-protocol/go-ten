@@ -66,7 +66,7 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, sta
 
 	// create an enclave client
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, enclavePort)
-	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, host.ClientRPCTimeoutSecs*time.Second)
+	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(peerAddrs[id-1], peerAddrs)
