@@ -15,9 +15,11 @@ import (
 
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
 
-var enclaveDockerImg = "obscuro_enclave"
-var nodeIDFlag = "--nodeID"
-var enclaveDockerPort = "11000/tcp"
+var (
+	enclaveDockerImg  = "obscuro_enclave"
+	nodeIDFlag        = "--nodeID"
+	enclaveDockerPort = "11000/tcp"
+)
 
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
