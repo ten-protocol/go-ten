@@ -157,7 +157,10 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
 	}
 
-	e.storage.StoreBlock(&block)
+	stored := e.storage.StoreBlock(&block)
+	if !stored {
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
+	}
 	// this is where much more will actually happen.
 	// the "blockchain" logic from geth has to be executed here,
 	// to determine the total proof of work, to verify some key aspects, etc

@@ -3,6 +3,8 @@ package ethereummock
 import (
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -28,20 +30,22 @@ func NewResolver() enclave.BlockResolver {
 	}
 }
 
-func (n *blockResolverInMem) StoreBlock(block *types.Block) {
+func (n *blockResolverInMem) StoreBlock(block *types.Block) bool {
 	n.m.Lock()
 	defer n.m.Unlock()
 	if block.ParentHash() == obscurocommon.GenesisHash {
 		n.blockCache[block.Hash()] = blockAndHeight{block, obscurocommon.L1GenesisHeight}
-		return
+		return true
 	}
 
 	p, f := n.blockCache[block.ParentHash()]
 	if !f {
-		panic("Trying to store block but haven't yet stored its parent. Trying increasing the simulation's block " +
+		log.Log("Trying to store block but haven't yet stored its parent. Trying increasing the simulation's block " +
 			"time or reducing the number of nodes")
+		return false
 	}
 	n.blockCache[block.Hash()] = blockAndHeight{block, p.height + 1}
+	return true
 }
 
 func (n *blockResolverInMem) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
@@ -50,6 +54,18 @@ func (n *blockResolverInMem) FetchBlock(hash obscurocommon.L1RootHash) (*types.B
 	block, f := n.blockCache[hash]
 
 	return block.b, f
+}
+
+func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, uint64) {
+	n.m.RLock()
+	defer n.m.RUnlock()
+	var max blockAndHeight
+	for _, bh := range n.blockCache {
+		if max.height < bh.height {
+			max = bh
+		}
+	}
+	return max.b, max.height
 }
 
 func (n *blockResolverInMem) HeightBlock(block *types.Block) uint64 {

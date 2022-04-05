@@ -17,21 +17,19 @@ type Stats struct {
 
 	totalL1Blocks uint64
 
-	totalL2Blocks      uint64
-	l2Head             *nodecommon.Rollup
 	maxRollupsPerBlock uint32
 	nrEmptyBlocks      int
 
-	totalL2Txs  int
 	noL1Reorgs  map[common.Address]int
 	noL2Recalcs map[common.Address]int
+	noL2Blocks  map[common.Address]uint64
 	// todo - actual avg block Duration
 
-	totalDepositedAmount      uint64
-	totalWithdrawnAmount      uint64
-	rollupWithMoreRecentProof uint64
-	nrTransferTransactions    int
-	statsMu                   *sync.RWMutex
+	totalDepositedAmount           uint64
+	totalWithdrawalRequestedAmount uint64
+	rollupWithMoreRecentProof      uint64
+	nrTransferTransactions         int
+	statsMu                        *sync.RWMutex
 }
 
 func NewStats(nrMiners int) *Stats {
@@ -39,6 +37,7 @@ func NewStats(nrMiners int) *Stats {
 		nrMiners:    nrMiners,
 		noL1Reorgs:  map[common.Address]int{},
 		noL2Recalcs: map[common.Address]int{},
+		noL2Blocks:  map[common.Address]uint64{},
 		statsMu:     &sync.RWMutex{},
 	}
 }
@@ -66,11 +65,9 @@ func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(r *nodecommon.Rollup) {
+func (s *Stats) NewRollup(node common.Address, r *nodecommon.Rollup) {
 	s.statsMu.Lock()
-	s.l2Head = r
-	s.totalL2Blocks++
-	s.totalL2Txs += len(r.Transactions)
+	s.noL2Blocks[node]++
 	s.statsMu.Unlock()
 }
 
@@ -88,7 +85,7 @@ func (s *Stats) Transfer() {
 
 func (s *Stats) Withdrawal(v uint64) {
 	s.statsMu.Lock()
-	s.totalWithdrawnAmount += v
+	s.totalWithdrawalRequestedAmount += v
 	s.statsMu.Unlock()
 }
 

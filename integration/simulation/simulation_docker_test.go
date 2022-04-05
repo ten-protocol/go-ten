@@ -32,7 +32,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	// todo - joel - when using api below, other enclaves are not initialised, only the first one is. is due to a mismatch in the address
 
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.NewClientWithOpts()
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"localhost", port}}},
 		}
 
-		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
+		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")
 		if err != nil {
 			panic(err)
 		}
