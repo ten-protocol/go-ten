@@ -29,8 +29,6 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
-	// todo - joel - when using api below, other enclaves are not initialised, only the first one is. is due to a mismatch in the address
-
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts()
 	if err != nil {
@@ -58,6 +56,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		containerIDs = append(containerIDs, resp.ID)
 	}
 
+	// todo - joel - this is being called before blockchain validation is finished. Understand why
 	defer terminateDockerContainers(err, cli, ctx, containerIDs)
 
 	for _, id := range containerIDs {
@@ -69,13 +68,10 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)
 }
 
+// Stops and removes the test Docker containers.
 func terminateDockerContainers(err error, cli *client.Client, ctx context.Context, containerIDs []string) {
-	// todo - joel - not being called - why?
-	time.Sleep(3 * time.Second)
-	println("jjj calling defer block")
 	for _, id := range containerIDs {
-		println("jjj handling a container")
-		timeout := 1 * time.Second
+		timeout := -time.Nanosecond // A negative timeout means forceful termination.
 		err = cli.ContainerStop(ctx, id, &timeout)
 		err = cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{})
 	}

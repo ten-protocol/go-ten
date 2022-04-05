@@ -1,9 +1,7 @@
 FROM ghcr.io/edgelesssys/ego-dev:latest
 
-## joel - todo - revert - used to prevent caching
-ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
 RUN git clone https://github.com/obscuronet/obscuro-playground
-## joel - todo - revert
+## todo - joel - revert this as a follow-up once branch is merged
 RUN cd obscuro-playground && git checkout joel/enclave_docker_file
 RUN cd obscuro-playground && ego-go mod download && ego-go get github.com/VictoriaMetrics/fastcache@v1.6.0
 RUN cd obscuro-playground/go/obscuronode/enclave/main && ego-go build && ego sign main
