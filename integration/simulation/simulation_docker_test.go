@@ -41,28 +41,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	var enclavePorts []string
-	for i := 0; i < params.NumberOfNodes; i++ {
-		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
-	}
-
-	containerIDs := make([]string, len(enclavePorts))
-	for idx, port := range enclavePorts {
-		nodeID := strconv.FormatInt(int64(idx+1), 10)
-		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID}}
-		hostConfig := &container.HostConfig{
-			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: localhost, HostPort: port}}},
-		}
-
-		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")
-		if err != nil {
-			panic(err)
-		}
-		containerIDs[idx] = resp.ID
-	}
-
+	containerIDs := startDockerContainers(ctx, cli, params.NumberOfNodes)
 	// todo - joel - this is being called before blockchain validation is finished. Understand why
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
@@ -75,11 +54,41 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)
 }
 
+// Starts the test Docker containers.
+func startDockerContainers(ctx context.Context, client *client.Client, numOfNodes int) []string {
+	var enclavePorts []string
+	for i := 0; i < numOfNodes; i++ {
+		// We assign an enclave port to each enclave service on the network.
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
+	}
+
+	containerIDs := make([]string, len(enclavePorts))
+	for idx, port := range enclavePorts {
+		nodeID := strconv.FormatInt(int64(idx+1), 10)
+		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID}}
+		hostConfig := &container.HostConfig{
+			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: localhost, HostPort: port}}},
+		}
+
+		resp, err := client.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")
+		if err != nil {
+			panic(err)
+		}
+		containerIDs[idx] = resp.ID
+	}
+
+	return containerIDs
+}
+
 // Stops and removes the test Docker containers.
 func terminateDockerContainers(ctx context.Context, cli *client.Client, containerIDs []string) {
 	for _, id := range containerIDs {
 		timeout := -time.Nanosecond // A negative timeout means forceful termination.
 		_ = cli.ContainerStop(ctx, id, &timeout)
 		_ = cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{})
+	}
+
+	if err := cli.Close(); err != nil {
+		panic(err)
 	}
 }

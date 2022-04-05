@@ -289,8 +289,7 @@ func (a *Node) Stop() {
 	atomic.StoreInt32(a.interrupt, 1)
 	a.P2p.StopListening()
 
-	err := a.Enclave.Stop()
-	if err != nil {
+	if err := a.Enclave.Stop(); err != nil {
 		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
 	}
 

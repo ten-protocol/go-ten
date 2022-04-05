@@ -19,7 +19,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
 	// todo
-	// efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
+	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
-	// testSimulation(t, CreateBasicNetworkOfSocketNodes, params, efficiencies)
+	testSimulation(t, CreateBasicNetworkOfSocketNodes, params, efficiencies)
 }
