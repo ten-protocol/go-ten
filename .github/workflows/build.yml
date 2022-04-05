@@ -20,5 +20,9 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Build Docker images
+        uses: docker/setup-buildx-action@v1
+        run: docker build -t obscuro_enclave - < dockerfiles/enclave
+
       - name: Test
         run: go test -v ./...
