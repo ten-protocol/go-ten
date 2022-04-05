@@ -46,7 +46,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		panic(err)
 	}
 
-	if !dockerImagesAvailable(err, cli, ctx) {
+	if !dockerImagesAvailable(ctx, cli) {
 		return // We end the test if the required Docker images are not available.
 	}
 
@@ -63,8 +63,8 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 }
 
 // Checks the required Docker images exist.
-func dockerImagesAvailable(err error, cli *client.Client, ctx context.Context) bool {
-	images, err := cli.ImageList(ctx, types.ImageListOptions{})
+func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
+	images, _ := cli.ImageList(ctx, types.ImageListOptions{})
 	for _, image := range images {
 		for _, tag := range image.RepoTags {
 			if strings.Contains(tag, enclaveDockerImg) {
