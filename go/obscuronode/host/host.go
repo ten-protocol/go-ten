@@ -290,7 +290,9 @@ func (a *Node) Stop() {
 	a.P2p.StopListening()
 
 	err := a.Enclave.Stop()
-	log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
+	if err != nil {
+		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
+	}
 
 	time.Sleep(time.Millisecond * 1000)
 	a.exitNodeCh <- true
