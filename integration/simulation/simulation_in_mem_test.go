@@ -16,7 +16,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	params := SimParams{
 		NumberOfNodes:         10,
 		NumberOfWallets:       5,
-		AvgBlockDurationUSecs: uint64(30_000),
+		AvgBlockDurationUSecs: uint64(40_000),
 		SimulationTimeSecs:    15,
 	}
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
