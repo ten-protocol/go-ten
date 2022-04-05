@@ -4,6 +4,9 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -29,7 +32,7 @@ func TestSerialiseRollup(t *testing.T) {
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := nodecommon.Rollup{
-		Header:       GenesisRollup.Header,
+		Header:       NewRollup(obscurocommon.GenesisBlock.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "").Header,
 		Height:       height,
 		Transactions: encryptTransactions(L2Txs{*tx}),
 	}

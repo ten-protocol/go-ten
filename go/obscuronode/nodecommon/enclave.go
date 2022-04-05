@@ -27,7 +27,7 @@ type Enclave interface {
 	IsInitialised() bool
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis() BlockSubmissionResponse
+	ProduceGenesis(blkHash common.Hash) BlockSubmissionResponse
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
 	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse

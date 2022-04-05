@@ -87,7 +87,10 @@ message IsInitialisedResponse {
   bool isInitialised = 1;
 }
 
-message ProduceGenesisRequest {}
+message ProduceGenesisRequest {
+  bytes blockHash = 1;
+}
+
 message ProduceGenesisResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
 }
