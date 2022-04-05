@@ -38,6 +38,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
+
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
 	ctx := context.Background()
