@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -47,6 +48,7 @@ func (s *Simulation) Start() {
 		go t.Start()
 		time.Sleep(time.Duration(s.AvgBlockDuration / 3))
 	}
+	s.waitForP2p()
 
 	timer := time.Now()
 	go s.TxInjector.Start()
@@ -76,4 +78,22 @@ func (s *Simulation) Stop() {
 			// fmt.Printf("Stopped L1 node: %d.\n", m.ID)
 		}
 	}()
+}
+
+// Waits for the L2 nodes to be ready to process P2P messages.
+func (s *Simulation) waitForP2p() {
+	if s.ObscuroNodes[0].P2pAddress != placeholderAddress { // We check we aren't dealing with in-memory nodes.
+		for _, node := range s.ObscuroNodes {
+			for {
+				conn, _ := net.Dial("tcp", node.P2pAddress)
+				if conn != nil {
+					if closeErr := conn.Close(); closeErr != nil {
+						panic(closeErr)
+					}
+					break
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
 }

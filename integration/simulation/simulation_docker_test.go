@@ -29,7 +29,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	defer logFile.Close()
 
 	params := SimParams{
-		NumberOfNodes:         3,
+		NumberOfNodes:         10,
 		NumberOfWallets:       5,
 		AvgBlockDurationUSecs: uint64(250_000),
 		SimulationTimeSecs:    15,

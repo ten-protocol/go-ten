@@ -49,10 +49,11 @@ func testSimulation(t *testing.T, createNetwork createNetworkFunc, params SimPar
 
 	// execute the simulation
 	simulation.Start()
-	simulation.Stop()
 
 	// run tests
 	checkNetworkValidity(t, &simulation, &params, efficiencies)
+
+	simulation.Stop()
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))

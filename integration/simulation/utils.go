@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	localhost        = "localhost"
-	p2pStartPort     = 10000
-	enclaveStartPort = 11000
-	testLogs         = "../.build/simulations/"
+	localhost          = "localhost"
+	p2pStartPort       = 10000
+	enclaveStartPort   = 11000
+	testLogs           = "../.build/simulations/"
+	placeholderAddress = "placeholder"
 )
 
 func setupTestLog() *os.File {
@@ -57,7 +58,7 @@ func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgB
 	enclaveClient := enclave.NewEnclave(nodeID, true, stats)
 
 	// create an in memory obscuro node
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork, placeholderAddress)
 	obscuroInMemNetwork.currentNode = &node
 	return &node
 }
@@ -72,7 +73,7 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, sta
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(peerAddrs[id-1], peerAddrs)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p, peerAddrs[id-1])
 
 	return &node
 }
