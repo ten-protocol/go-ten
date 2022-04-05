@@ -143,9 +143,9 @@ func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRe
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
-	s.enclave.Stop()
+	err := s.enclave.Stop()
 	s.rpcServer.GracefulStop()
-	return &generated.StopResponse{}, nil
+	return &generated.StopResponse{}, err
 }
 
 func (s *server) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {

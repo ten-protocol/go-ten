@@ -288,7 +288,8 @@ func (a *Node) Stop() {
 	atomic.StoreInt32(a.interrupt, 1)
 	a.P2p.StopListening()
 
-	a.Enclave.Stop()
+	err := a.Enclave.Stop()
+	log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
 
 	time.Sleep(time.Millisecond * 1000)
 	a.exitNodeCh <- true
@@ -336,27 +337,30 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
-			if atomic.LoadInt32(a.interrupt) == 1 {
-				return
-			}
-			// Request the round winner for the current head
-			winnerRollup, winner, err := a.Enclave.RoundWinner(result.L2Hash)
+		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, a.handleHeader(result))
+	}
+}
+
+func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
+	return func() {
+		if atomic.LoadInt32(a.interrupt) == 1 {
+			return
+		}
+		// Request the round winner for the current head
+		winnerRollup, winner, err := a.Enclave.RoundWinner(result.L2Hash)
+		if err != nil {
+			panic(err)
+		}
+		if winner {
+			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+			tx := obscurocommon.NewL1Tx(txData)
+			t, err := obscurocommon.EncodeTx(tx)
 			if err != nil {
 				panic(err)
 			}
-			if winner {
-				txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
-				tx := obscurocommon.NewL1Tx(txData)
-				t, err := obscurocommon.EncodeTx(tx)
-				if err != nil {
-					panic(err)
-				}
-				a.ethereumNode.BroadcastTx(t)
-				// collect Stats
-				// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
-			}
-		})
+			a.ethereumNode.BroadcastTx(t)
+			// collect Stats
+		}
 	}
 }
 
@@ -420,8 +424,6 @@ func (a *Node) requestSecret() {
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
 				t := obscurocommon.TxData(tx)
-				if t.TxType == obscurocommon.StoreSecretTx {
-				}
 				if t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
 					a.Enclave.InitEnclave(t.Secret)

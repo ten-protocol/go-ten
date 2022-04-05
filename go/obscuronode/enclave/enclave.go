@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -14,6 +15,13 @@ import (
 )
 
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
+
+var errRollupNotFound = errors.New("rollup not found")
+
+// Formats errRollupNotFound.
+func rollupNotFound(parent obscurocommon.L2RootHash) error {
+	return fmt.Errorf("%w: r_%s", errRollupNotFound, parent)
+}
 
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
@@ -238,7 +246,7 @@ func verifySignature(decryptedTx *nodecommon.L2Tx) error {
 func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	head, found := e.storage.FetchRollup(parent)
 	if !found {
-		return nodecommon.ExtRollup{}, false, fmt.Errorf("could not find rollup: r_%s", parent)
+		return nodecommon.ExtRollup{}, false, rollupNotFound(parent)
 	}
 
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)

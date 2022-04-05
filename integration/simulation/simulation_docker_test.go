@@ -42,23 +42,23 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
 	}
 
-	var containerIDs []string
-	for i, port := range enclavePorts {
-		nodeID := strconv.FormatInt(int64(i+1), 10)
+	containerIDs := make([]string, len(enclavePorts))
+	for idx, port := range enclavePorts {
+		nodeID := strconv.FormatInt(int64(idx+1), 10)
 		containerConfig := &container.Config{Image: "obscuro_enclave", Cmd: []string{"--nodeID", nodeID}}
 		hostConfig := &container.HostConfig{
-			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{"localhost", port}}},
+			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{HostIP: "localhost", HostPort: port}}},
 		}
 
 		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")
 		if err != nil {
 			panic(err)
 		}
-		containerIDs = append(containerIDs, resp.ID)
+		containerIDs[idx] = resp.ID
 	}
 
 	// todo - joel - this is being called before blockchain validation is finished. Understand why
-	defer terminateDockerContainers(err, cli, ctx, containerIDs)
+	defer terminateDockerContainers(ctx, cli, containerIDs)
 
 	for _, id := range containerIDs {
 		if err = cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
@@ -70,10 +70,10 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 }
 
 // Stops and removes the test Docker containers.
-func terminateDockerContainers(err error, cli *client.Client, ctx context.Context, containerIDs []string) {
+func terminateDockerContainers(ctx context.Context, cli *client.Client, containerIDs []string) {
 	for _, id := range containerIDs {
 		timeout := -time.Nanosecond // A negative timeout means forceful termination.
-		err = cli.ContainerStop(ctx, id, &timeout)
-		err = cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{})
+		_ = cli.ContainerStop(ctx, id, &timeout)
+		_ = cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{})
 	}
 }
