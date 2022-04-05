@@ -15,6 +15,10 @@ import (
 
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
 
+var enclaveDockerImg = "obscuro_enclave"
+var nodeIDFlag = "--nodeID"
+var enclaveDockerPort = "11000/tcp"
+
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
@@ -45,9 +49,9 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	containerIDs := make([]string, len(enclavePorts))
 	for idx, port := range enclavePorts {
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
-		containerConfig := &container.Config{Image: "obscuro_enclave", Cmd: []string{"--nodeID", nodeID}}
+		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID}}
 		hostConfig := &container.HostConfig{
-			PortBindings: nat.PortMap{"11000/tcp": []nat.PortBinding{{HostIP: "localhost", HostPort: port}}},
+			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: localhost, HostPort: port}}},
 		}
 
 		resp, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")
