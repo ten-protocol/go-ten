@@ -9,8 +9,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-var GenesisRollup = NewRollup(obscurocommon.GenesisBlock, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
-
 // Rollup Data structure only for the internal use of the enclave since transactions are in clear
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Rollup struct {
@@ -33,7 +31,7 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	return v
 }
 
-func NewRollup(b *types.Block, parent *Rollup, height uint64, a common.Address, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Address, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
 	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -41,7 +39,7 @@ func NewRollup(b *types.Block, parent *Rollup, height uint64, a common.Address, 
 	h := nodecommon.Header{
 		Agg:         a,
 		ParentHash:  parentHash,
-		L1Proof:     b.Hash(),
+		L1Proof:     blkHash,
 		Nonce:       nonce,
 		State:       state,
 		Height:      height,

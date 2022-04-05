@@ -105,7 +105,7 @@ func (c *EnclaveRPCClient) IsInitialised() bool {
 	return response.IsInitialised
 }
 
-func (c *EnclaveRPCClient) ProduceGenesis() nodecommon.BlockSubmissionResponse {
+func (c *EnclaveRPCClient) ProduceGenesis(common.Hash) nodecommon.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 

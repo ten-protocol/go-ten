@@ -179,10 +179,11 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 		a.storeBlockProcessingResult(result)
 	}
 
-	a.Enclave.Start(*allblocks[len(allblocks)-1])
+	lastBlock := *allblocks[len(allblocks)-1]
+	a.Enclave.Start(lastBlock)
 
 	if a.genesis {
-		a.initialiseProtocol()
+		a.initialiseProtocol(lastBlock.Hash())
 	}
 
 	// Only open the p2p connection when the node is fully initialised
@@ -328,8 +329,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		logMsg := fmt.Sprintf(">   Agg%d: Could not process block b_%d. Cause: %s", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause)
-		log.Log(logMsg)
+		log.Log(fmt.Sprintf(">   Agg%d: Did not ingest block b_%d. Cause: %s", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause))
 		return
 	}
 
@@ -391,9 +391,9 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol() obscurocommon.L2RootHash {
+func (a *Node) initialiseProtocol(blockHash common.Hash) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
-	genesis := a.Enclave.ProduceGenesis()
+	genesis := a.Enclave.ProduceGenesis(blockHash)
 	txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
 	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 
