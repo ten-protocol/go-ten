@@ -1,8 +1,6 @@
 name: Build
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -19,12 +17,6 @@ jobs:
 
       - name: Build
         run: go build -v ./...
-
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v1
-
-      - name: Build Docker images
-        run: docker build -t obscuro_enclave - < dockerfiles/enclave
 
       - name: Test
         run: go test -v ./...

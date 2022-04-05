@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,8 +45,12 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+
+	if !dockerImagesAvailable(err, cli, ctx) {
+		return // We end the test if the required Docker images are not available.
+	}
+
 	containerIDs := startDockerContainers(ctx, cli, params.NumberOfNodes)
-	// todo - joel - this is often not executed in the case of a panic. Understand why
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
 	for _, id := range containerIDs {
@@ -55,6 +60,19 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)
+}
+
+// Checks the required Docker images exist.
+func dockerImagesAvailable(err error, cli *client.Client, ctx context.Context) bool {
+	images, err := cli.ImageList(ctx, types.ImageListOptions{})
+	for _, image := range images {
+		for _, tag := range image.RepoTags {
+			if strings.Contains(tag, enclaveDockerImg) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Starts the test Docker containers.
