@@ -48,7 +48,8 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	if !dockerImagesAvailable(ctx, cli) {
-		return // We end the test if the required Docker images are not available.
+		println(fmt.Sprintf("This test requires the `%s` Docker image to be built using the `dockerfiles/enclave` Dockerfile. Terminating.", enclaveDockerImg))
+		return
 	}
 
 	containerIDs := startDockerContainers(ctx, cli, params.NumberOfNodes)
