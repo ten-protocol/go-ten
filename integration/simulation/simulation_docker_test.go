@@ -25,6 +25,9 @@ var (
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
+	logFile := setupTestLog()
+	defer logFile.Close()
+
 	params := SimParams{
 		NumberOfNodes:         3,
 		NumberOfWallets:       5,
@@ -42,7 +45,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		panic(err)
 	}
 	containerIDs := startDockerContainers(ctx, cli, params.NumberOfNodes)
-	// todo - joel - this is being called before blockchain validation is finished. Understand why
+	// todo - joel - this is often not executed in the case of a panic. Understand why
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
 	for _, id := range containerIDs {

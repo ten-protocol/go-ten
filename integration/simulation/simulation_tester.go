@@ -32,9 +32,6 @@ func testSimulation(t *testing.T, createNetwork createNetworkFunc, params SimPar
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
-	logFile := setupTestLog("../.build/simulations/")
-	defer logFile.Close()
-
 	stats := NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
 	mockEthNodes, obscuroNodes := createNetwork(params, stats)

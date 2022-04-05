@@ -10,6 +10,9 @@ import (
 // Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
 // the CPU usage will be very high during the simulation which might result in inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
+	logFile := setupTestLog()
+	defer logFile.Close()
+
 	params := SimParams{
 		NumberOfNodes:         10,
 		NumberOfWallets:       5,

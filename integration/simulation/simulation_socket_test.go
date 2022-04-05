@@ -8,6 +8,9 @@ import (
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestSocketNodesMonteCarloSimulation(t *testing.T) {
+	logFile := setupTestLog()
+	defer logFile.Close()
+
 	params := SimParams{
 		NumberOfNodes:         10,
 		NumberOfWallets:       5,

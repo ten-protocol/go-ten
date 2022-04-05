@@ -22,15 +22,16 @@ const (
 	localhost        = "localhost"
 	p2pStartPort     = 10000
 	enclaveStartPort = 11000
+	testLogs         = "../.build/simulations/"
 )
 
-func setupTestLog(baseDir string) *os.File {
+func setupTestLog() *os.File {
 	// create a folder specific for the test
-	err := os.MkdirAll(baseDir, 0o700)
+	err := os.MkdirAll(testLogs, 0o700)
 	if err != nil {
 		panic(err)
 	}
-	f, err := os.CreateTemp(baseDir, fmt.Sprintf("simulation-result-%d-*.txt", time.Now().Unix()))
+	f, err := os.CreateTemp(testLogs, fmt.Sprintf("simulation-result-%d-*.txt", time.Now().Unix()))
 	if err != nil {
 		panic(err)
 	}
