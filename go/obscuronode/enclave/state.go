@@ -295,8 +295,6 @@ func extractRollups(b *types.Block, blockResolver BlockResolver) []*Rollup {
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 				rollups = append(rollups, toEnclaveRollup(r))
-			} else {
-				log.Log("wtf")
 			}
 		}
 	}
