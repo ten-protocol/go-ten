@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -17,7 +16,6 @@ func main() {
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}
-	fmt.Printf("Enclave server for node %s listening on address %s.\n", nodeAddress, *config.address)
 
 	select {}
 }

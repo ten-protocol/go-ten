@@ -35,7 +35,9 @@ func StartServer(address string, nodeID common.Address, collector StatsCollector
 	}
 	enclaveServer := server{enclave: NewEnclave(nodeID, true, collector), rpcServer: grpc.NewServer()}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
+
 	go func(lis net.Listener) {
+		log.Log(fmt.Sprintf("Enclave server for node %s listening on address %s.", nodeID, address))
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
 			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
