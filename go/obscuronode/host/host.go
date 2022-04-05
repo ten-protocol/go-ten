@@ -180,6 +180,7 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 	}
 
 	lastBlock := *allblocks[len(allblocks)-1]
+	log.Log(fmt.Sprintf("Agg%d:> Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
 	a.Enclave.Start(lastBlock)
 
 	if a.genesis {
@@ -332,7 +333,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		return
 	}
 
-	// todo -make this a better check
+	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
@@ -387,6 +388,7 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 func (a *Node) initialiseProtocol(blockHash common.Hash) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis(blockHash)
+	log.Log(fmt.Sprintf("Agg%d:> Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesis.ProducedRollup.Header.Hash())))
 	txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
 	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 

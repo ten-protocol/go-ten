@@ -3,6 +3,8 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -109,33 +111,34 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 	}
 
 	rollups := extractRollups(b, blockResolver)
-
 	genesisRollup := s.FetchGenesisRollup()
-	if len(rollups) == 1 {
-		rol := rollups[0]
 
-		// the incoming block might hold the genesis rollup
-		// todo change this to an hardcoded hash on testnet/mainnet
-		if genesisRollup == nil && rol.Header.Height == obscurocommon.L2GenesisHeight {
-			s.StoreGenesisRollup(rol)
-			genesisRollup = rol
-		}
-
-		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-		if rol.Hash() == genesisRollup.Hash() {
-			bs := blockState{
-				block:          b,
-				head:           rol,
-				state:          emptyState(),
-				foundNewRollup: true,
-			}
-			s.SetBlockState(b.Hash(), &bs)
-			return &bs
-		}
+	// processing blocks before genesis, so there is nothing to do
+	if genesisRollup == nil && len(rollups) == 0 {
+		return nil
 	}
 
-	// there are no rollups in the current block and there is nothing in the db
-	if s.FetchHeadState() == nil {
+	// the incoming block holds the genesis rollup
+	// todo change this to an hardcoded hash on testnet/mainnet
+	if genesisRollup == nil && len(rollups) == 1 {
+		log.Log("Found genesis rollup")
+
+		genesis := rollups[0]
+		s.StoreGenesisRollup(genesis)
+
+		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
+		bs := blockState{
+			block:          b,
+			head:           genesis,
+			state:          emptyState(),
+			foundNewRollup: true,
+		}
+		s.SetBlockState(b.Hash(), &bs)
+		return &bs
+	}
+
+	// re-processing the block that contains the rollup
+	if genesisRollup != nil && len(rollups) == 1 && rollups[0].Header.Hash() == genesisRollup.Hash() {
 		return nil
 	}
 
@@ -254,7 +257,11 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup) *blockState {
-	newHead, found := FindWinner(parentState.head, rollups, s, blockResolver)
+	var currentHead *Rollup
+	if parentState != nil {
+		currentHead = parentState.head
+	}
+	newHead, found := FindWinner(currentHead, rollups, s, blockResolver)
 
 	state := newProcessedState(parentState.state)
 
@@ -288,6 +295,8 @@ func extractRollups(b *types.Block, blockResolver BlockResolver) []*Rollup {
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 				rollups = append(rollups, toEnclaveRollup(r))
+			} else {
+				log.Log("wtf")
 			}
 		}
 	}

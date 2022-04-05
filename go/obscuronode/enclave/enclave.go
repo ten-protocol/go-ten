@@ -109,7 +109,6 @@ func (e *enclaveImpl) start(block types.Block) {
 
 func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
 	rolGenesis := NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "")
-	e.storage.StoreGenesisRollup(&rolGenesis)
 	return nodecommon.BlockSubmissionResponse{
 		L2Hash:         rolGenesis.Header.Hash(),
 		L1Hash:         blkHash,
@@ -188,6 +187,8 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	r := e.produceRollup(&block, blockState)
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
+
+	log.Log(fmt.Sprintf("Agg%d:> Processed block: b_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash())))
 
 	return nodecommon.BlockSubmissionResponse{
 		L1Hash:      block.Hash(),
