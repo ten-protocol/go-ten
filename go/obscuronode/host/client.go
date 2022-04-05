@@ -218,7 +218,10 @@ func (c *EnclaveRPCClient) Stop() error {
 	defer cancel()
 
 	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
-	return fmt.Errorf("failed to stop enclave: %w", err)
+	if err != nil {
+		return fmt.Errorf("failed to stop enclave: %w", err)
+	}
+	return nil
 }
 
 func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
