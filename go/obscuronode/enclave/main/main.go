@@ -1,11 +1,12 @@
 package main
 
 import (
+	"math/big"
+	"os"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"math/big"
-	"os"
 )
 
 func main() {

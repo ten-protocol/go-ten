@@ -3,13 +3,14 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"strconv"
-	"testing"
-	"time"
 )
 
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
