@@ -28,16 +28,17 @@ func ToBlockSubmissionResponseMsg(response nodecommon.BlockSubmissionResponse) g
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
 
 	return generated.BlockSubmissionResponseMsg{
-		L1Hash:            response.L1Hash.Bytes(),
-		L1Height:          response.L1Height,
-		L1Parent:          response.L1Parent.Bytes(),
-		L2Hash:            response.L2Hash.Bytes(),
-		L2Height:          response.L2Height,
-		L2Parent:          response.L2Parent.Bytes(),
-		Withdrawals:       withdrawalMsgs,
-		ProducedRollup:    &producedRollupMsg,
-		IngestedBlock:     response.IngestedBlock,
-		IngestedNewRollup: response.IngestedNewRollup,
+		L1Hash:                response.L1Hash.Bytes(),
+		L1Height:              response.L1Height,
+		L1Parent:              response.L1Parent.Bytes(),
+		L2Hash:                response.L2Hash.Bytes(),
+		L2Height:              response.L2Height,
+		L2Parent:              response.L2Parent.Bytes(),
+		Withdrawals:           withdrawalMsgs,
+		ProducedRollup:        &producedRollupMsg,
+		IngestedBlock:         response.IngestedBlock,
+		BlockNotIngestedCause: response.BlockNotIngestedCause,
+		IngestedNewRollup:     response.IngestedNewRollup,
 	}
 }
 
@@ -50,16 +51,17 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) n
 	}
 
 	return nodecommon.BlockSubmissionResponse{
-		L1Hash:            common.BytesToHash(msg.L1Hash),
-		L1Height:          msg.L1Height,
-		L1Parent:          common.BytesToHash(msg.L1Parent),
-		L2Hash:            common.BytesToHash(msg.L2Hash),
-		L2Height:          msg.L2Height,
-		L2Parent:          common.BytesToHash(msg.L2Parent),
-		Withdrawals:       withdrawals,
-		ProducedRollup:    FromExtRollupMsg(msg.ProducedRollup),
-		IngestedBlock:     msg.IngestedBlock,
-		IngestedNewRollup: msg.IngestedNewRollup,
+		L1Hash:                common.BytesToHash(msg.L1Hash),
+		L1Height:              msg.L1Height,
+		L1Parent:              common.BytesToHash(msg.L1Parent),
+		L2Hash:                common.BytesToHash(msg.L2Hash),
+		L2Height:              msg.L2Height,
+		L2Parent:              common.BytesToHash(msg.L2Parent),
+		Withdrawals:           withdrawals,
+		ProducedRollup:        FromExtRollupMsg(msg.ProducedRollup),
+		IngestedBlock:         msg.IngestedBlock,
+		BlockNotIngestedCause: msg.BlockNotIngestedCause,
+		IngestedNewRollup:     msg.IngestedNewRollup,
 	}
 }
 

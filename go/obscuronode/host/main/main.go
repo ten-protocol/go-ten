@@ -20,7 +20,7 @@ func main() {
 
 	nodeID := common.BytesToAddress([]byte(*config.nodeID))
 	hostCfg := host.AggregatorCfg{GossipRoundDuration: *config.gossipRoundNanos, ClientRPCTimeoutSecs: *config.rpcTimeoutSecs}
-	enclaveClient := host.NewEnclaveRPCClient(*config.enclaveAddr, host.ClientRPCTimeoutSecs*time.Second)
+	enclaveClient := host.NewEnclaveRPCClient(*config.enclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 	aggP2P := p2p.NewSocketP2PLayer(*config.ourP2PAddr, config.peerP2PAddrs)
 	agg := host.NewObscuroAggregator(nodeID, hostCfg, l1NodeDummy{}, nil, *config.isGenesis, enclaveClient, aggP2P)
 

@@ -100,14 +100,14 @@ func (m *TransactionInjector) Start() {
 	_ = wg.Wait() // future proofing to return errors
 }
 
-// trackL1Tx adds a common.L1Tx to the internal list
+// trackL1Tx adds an L1Tx to the internal list
 func (m *TransactionInjector) trackL1Tx(tx obscurocommon.L1TxData) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
 	m.l1Transactions = append(m.l1Transactions, tx)
 }
 
-// trackL2Tx adds an enclave.L2Tx to the internal list
+// trackL2Tx adds an L2Tx to the internal list
 func (m *TransactionInjector) trackL2Tx(tx nodecommon.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()

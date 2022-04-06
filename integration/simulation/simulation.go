@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -18,7 +19,8 @@ const (
 // Simulation represents the data which to set up and run a simulated network
 type Simulation struct {
 	MockEthNodes       []*ethereum_mock.Node // the list of mock ethereum nodes
-	ObscuroNodes       []*host.Node          //  the list of in memory obscuro nodes
+	ObscuroNodes       []*host.Node          // the list of Obscuro nodes
+	ObscuroP2PAddrs    []string              // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration   uint64
 	TxInjector         *TransactionInjector
 	SimulationTimeSecs int
@@ -47,6 +49,8 @@ func (s *Simulation) Start() {
 		go t.Start()
 		time.Sleep(time.Duration(s.AvgBlockDuration / 3))
 	}
+	// TODO - Remove this waiting period. The ability for nodes to catch up should be part of the tests.
+	s.waitForP2p()
 
 	timer := time.Now()
 	go s.TxInjector.Start()
@@ -73,7 +77,22 @@ func (s *Simulation) Stop() {
 		for _, m := range s.MockEthNodes {
 			t := m
 			go t.Stop()
-			// fmt.Printf("Stopped L1 node: %d.\n", m.ID)
 		}
 	}()
+}
+
+// Waits for the L2 nodes to be ready to process P2P messages.
+func (s *Simulation) waitForP2p() {
+	for _, addr := range s.ObscuroP2PAddrs {
+		for {
+			conn, _ := net.Dial("tcp", addr)
+			if conn != nil {
+				if closeErr := conn.Close(); closeErr != nil {
+					panic(closeErr)
+				}
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }

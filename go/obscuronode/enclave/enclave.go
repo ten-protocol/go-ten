@@ -155,7 +155,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
 	_, foundBlock := e.storage.FetchBlock(block.Hash())
 	if foundBlock {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
 	}
 
 	stored := e.storage.StoreBlock(&block)
@@ -168,10 +168,10 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
-	blockState := updateState(&block, e.storage, e.blockResolver)
 
+	blockState := updateState(&block, e.storage, e.blockResolver)
 	if blockState == nil {
 		return nodecommon.BlockSubmissionResponse{
 			L1Hash:            block.Hash(),
@@ -238,10 +238,10 @@ func verifySignature(decryptedTx *nodecommon.L2Tx) error {
 	return err
 }
 
-func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool) {
+func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	head, found := e.storage.FetchRollup(parent)
 	if !found {
-		panic(fmt.Sprintf("Could not find rollup: r_%s", parent))
+		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent) //nolint
 	}
 
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)
@@ -273,9 +273,9 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State),
 		)
-		return winnerRollup.ToExtRollup(), true
+		return winnerRollup.ToExtRollup(), true, nil
 	}
-	return nodecommon.ExtRollup{}, false
+	return nodecommon.ExtRollup{}, false, nil
 }
 
 func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
@@ -296,7 +296,6 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	newRollupState := *speculativeRollup.s
 
 	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-	// if true {
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.head.Hash()) {
 		if speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
@@ -306,7 +305,9 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 				obscurocommon.ShortHash(bs.head.Hash()),
 				bs.head.Header.Height),
 			)
-			e.statsCollector.L2Recalc(e.node)
+			if e.statsCollector != nil {
+				e.statsCollector.L2Recalc(e.node)
+			}
 		}
 
 		// determine transactions to include in new rollup and process them
@@ -347,8 +348,9 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	}
 }
 
-func (e *enclaveImpl) Stop() {
+func (e *enclaveImpl) Stop() error {
 	e.exitCh <- true
+	return nil
 }
 
 func (e *enclaveImpl) Attestation() obscurocommon.AttestationReport {

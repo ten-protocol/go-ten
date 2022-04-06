@@ -53,13 +53,14 @@ func main() {
 	// define network params
 	stats := simulation.NewStats(params.NumberOfNodes)
 
-	mockEthNodes, obscuroInMemNodes := simulation.CreateBasicNetworkOfInMemoryNodes(params, stats)
+	mockEthNodes, obscuroInMemNodes, p2pAddrs := simulation.CreateBasicNetworkOfInMemoryNodes(params, stats)
 
 	txInjector := simulation.NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
 
 	sim := simulation.Simulation{
-		MockEthNodes:       mockEthNodes,      // the list of mock ethereum nodes
-		ObscuroNodes:       obscuroInMemNodes, //  the list of in memory obscuro nodes
+		MockEthNodes:       mockEthNodes,
+		ObscuroNodes:       obscuroInMemNodes,
+		ObscuroP2PAddrs:    p2pAddrs,
 		AvgBlockDuration:   params.AvgBlockDurationUSecs,
 		TxInjector:         txInjector,
 		SimulationTimeSecs: params.SimulationTimeSecs,

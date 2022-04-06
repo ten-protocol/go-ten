@@ -6,24 +6,30 @@ import (
 
 const (
 	// Flag names, defaults and usages.
-	nodeIDName    = "nodeAddress"
-	nodeIDDefault = ""
-	nodeIDUsage   = "The 20 bytes of the node's address (default \"\")"
+	nodeIDName    = "nodeID"
+	nodeIDDefault = 1
+	nodeIDUsage   = "A integer representing the 20 bytes of the node's address (default 1)"
 
-	portName    = "port"
-	portDefault = 11000
-	portUsage   = "The port on which to serve the Obscuro enclave service"
+	addressName    = "address"
+	addressDefault = "localhost:11000"
+	addressUsage   = "The address on which to serve the Obscuro enclave service"
+
+	writeToLogsName    = "writeToLogs"
+	writeToLogsDefault = false
+	writeToLogsUsage   = "Whether to redirect the output to the log file."
 )
 
 type enclaveConfig struct {
-	nodeID *string
-	port   *uint64
+	nodeID      *int64
+	address     *string
+	writeToLogs *bool
 }
 
 func parseCLIArgs() enclaveConfig {
-	nodeID := flag.String(nodeIDName, nodeIDDefault, nodeIDUsage)
-	port := flag.Uint64(portName, portDefault, portUsage)
+	nodeID := flag.Int64(nodeIDName, nodeIDDefault, nodeIDUsage)
+	port := flag.String(addressName, addressDefault, addressUsage)
+	writeToLogs := flag.Bool(writeToLogsName, writeToLogsDefault, writeToLogsUsage)
 	flag.Parse()
 
-	return enclaveConfig{nodeID, port}
+	return enclaveConfig{nodeID, port, writeToLogs}
 }

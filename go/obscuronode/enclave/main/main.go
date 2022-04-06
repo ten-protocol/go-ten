@@ -1,33 +1,43 @@
 package main
 
 import (
-	"fmt"
+	"math/big"
 	"os"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
-func main() {
-	setLogs()
-	config := parseCLIArgs()
+const logPath = "enclave_logs.txt"
 
-	nodeAddress := common.BytesToAddress([]byte(*config.nodeID))
-	if err := enclave.StartServer(*config.port, nodeAddress, nil); err != nil {
+func main() {
+	config := parseCLIArgs()
+	setLogs(true)
+
+	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
+	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}
-	fmt.Printf("Enclave server listening on port %d.\n", *config.port)
+
+	log.Log("joel")
 
 	select {}
 }
 
-// Sets the log file.
-func setLogs() {
-	logFile, err := os.Create("enclave_logs.txt")
-	if err != nil {
-		panic(err)
+// Sets the log file, defaulting to stdout if writeToLogs is false.
+func setLogs(writeToLogs bool) {
+	var logFile *os.File
+	var err error
+
+	if writeToLogs {
+		logFile, err = os.Create(logPath)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		logFile = os.Stdout
 	}
+
 	log.SetLog(logFile)
 }

@@ -8,6 +8,9 @@ import (
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestSocketNodesMonteCarloSimulation(t *testing.T) {
+	logFile := setupTestLog()
+	defer logFile.Close()
+
 	params := SimParams{
 		NumberOfNodes:         10,
 		NumberOfWallets:       5,
@@ -18,8 +21,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
-	// todo - Joel - please uncomment once merged on your branch
-	// efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
+	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
-	// testSimulation(t, CreateBasicNetworkOfSocketNodes, params, efficiencies)
+	testSimulation(t, CreateBasicNetworkOfSocketNodes, params, efficiencies)
 }

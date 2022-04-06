@@ -166,7 +166,8 @@ message BlockSubmissionResponseMsg {
   repeated WithdrawalMsg withdrawals = 7;
   ExtRollupMsg producedRollup = 8;
   bool ingestedBlock = 9;
-  bool ingestedNewRollup = 10;
+  string blockNotIngestedCause = 10;
+  bool ingestedNewRollup = 11;
 }
 
 message ExtRollupMsg {

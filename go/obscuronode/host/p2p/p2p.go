@@ -121,7 +121,8 @@ func handle(conn net.Conn, callback host.P2PCallback) {
 	msg := Message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		panic(err)
+		log.Log(fmt.Sprintf("failed to decode message received from peer: %v", err))
+		return
 	}
 
 	switch msg.Type {

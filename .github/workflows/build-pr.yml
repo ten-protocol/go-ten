@@ -1,10 +1,10 @@
-name: Build
+name: Build PR
+# Builds and runs tests on each push to a branch PR'ed against main.
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:

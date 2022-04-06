@@ -149,6 +149,7 @@ func (a *Node) waitForEnclave() {
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
+	log.Log(fmt.Sprintf(">   Agg%d: Connected to enclave service...", obscurocommon.ShortAddress(a.ID)))
 }
 
 // Waits for blocks from the L1 node, printing a wait message every two seconds.
@@ -290,7 +291,9 @@ func (a *Node) Stop() {
 	atomic.StoreInt32(a.interrupt, 1)
 	a.P2p.StopListening()
 
-	a.Enclave.Stop()
+	if err := a.Enclave.Stop(); err != nil {
+		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
+	}
 
 	time.Sleep(time.Millisecond * 1000)
 	a.exitNodeCh <- true
@@ -329,7 +332,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		log.Log(fmt.Sprintf(">   Agg%d: Did not ingest block b_%d", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(b.Hash())))
+		log.Log(fmt.Sprintf(">   Agg%d: Did not ingest block b_%d. Cause: %s", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause))
 		return
 	}
 
@@ -337,24 +340,30 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, func() {
-			if atomic.LoadInt32(a.interrupt) == 1 {
-				return
+		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, a.handleHeader(result))
+	}
+}
+
+func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
+	return func() {
+		if atomic.LoadInt32(a.interrupt) == 1 {
+			return
+		}
+		// Request the round winner for the current head
+		winnerRollup, isWinner, err := a.Enclave.RoundWinner(result.L2Hash)
+		if err != nil {
+			panic(err)
+		}
+		if isWinner {
+			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+			tx := obscurocommon.NewL1Tx(txData)
+			t, err := obscurocommon.EncodeTx(tx)
+			if err != nil {
+				panic(err)
 			}
-			// Request the round winner for the current head
-			winnerRollup, submit := a.Enclave.RoundWinner(result.L2Hash)
-			if submit {
-				txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
-				tx := obscurocommon.NewL1Tx(txData)
-				t, err := obscurocommon.EncodeTx(tx)
-				if err != nil {
-					panic(err)
-				}
-				a.ethereumNode.BroadcastTx(t)
-				// collect Stats
-				// a.stats.NewRollup(DecodeRollupOrPanic(winnerRollup))
-			}
-		})
+			a.ethereumNode.BroadcastTx(t)
+			// collect Stats
+		}
 	}
 }
 

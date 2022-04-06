@@ -28,14 +28,16 @@ type server struct {
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-func StartServer(port uint64, nodeID common.Address, collector StatsCollector) error {
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+func StartServer(address string, nodeID common.Address, collector StatsCollector) error {
+	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 	enclaveServer := server{enclave: NewEnclave(nodeID, true, collector), rpcServer: grpc.NewServer()}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
+
 	go func(lis net.Listener) {
+		log.Log(fmt.Sprintf("Enclave server for node %s listening on address %s.", nodeID, address))
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
 			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
@@ -132,15 +134,18 @@ func (s *server) Balance(_ context.Context, request *generated.BalanceRequest) (
 }
 
 func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
-	extRollup, winner := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
+	extRollup, winner, err := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
+	if err != nil {
+		return nil, err
+	}
 	extRollupMsg := rpc.ToExtRollupMsg(&extRollup)
 	return &generated.RoundWinnerResponse{Winner: winner, ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
-	s.enclave.Stop()
+	err := s.enclave.Stop()
 	s.rpcServer.GracefulStop()
-	return &generated.StopResponse{}, nil
+	return &generated.StopResponse{}, err
 }
 
 func (s *server) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
