@@ -118,6 +118,33 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 		return nil
 	}
 
+	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
+	// Handle the case of the block containing the genesis being processed multiple times.
+	genesisState, isGenesis := handleGenesisRollup(b, s, rollups, genesisRollup)
+	if isGenesis {
+		return genesisState
+	}
+
+	// To calculate the state after the current block, we need the state after the parent.
+	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
+	parentState, parentFound := s.FetchBlockState(b.ParentHash())
+	if !parentFound {
+		// go back and calculate the State of the Parent
+		p, f := s.FetchBlock(b.ParentHash())
+		if !f {
+			panic("Could not find block parent. This should not happen.")
+		}
+		parentState = updateState(p, s, blockResolver)
+	}
+
+	bs := calculateBlockState(b, parentState, s, blockResolver, rollups)
+
+	s.SetBlockState(b.Hash(), bs)
+
+	return bs
+}
+
+func handleGenesisRollup(b *types.Block, s Storage, rollups []*Rollup, genesisRollup *Rollup) (genesisState *blockState, isGenesis bool) {
 	// the incoming block holds the genesis rollup
 	// todo change this to an hardcoded hash on testnet/mainnet
 	if genesisRollup == nil && len(rollups) == 1 {
@@ -134,30 +161,14 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 			foundNewRollup: true,
 		}
 		s.SetBlockState(b.Hash(), &bs)
-		return &bs
+		return &bs, true
 	}
 
 	// re-processing the block that contains the rollup
 	if genesisRollup != nil && len(rollups) == 1 && rollups[0].Header.Hash() == genesisRollup.Hash() {
-		return nil
+		return nil, true
 	}
-
-	// To calculate the state after the current block, we need the state after the parent.
-	parentState, parentFound := s.FetchBlockState(b.ParentHash())
-	if !parentFound {
-		// go back and calculate the State of the Parent
-		p, f := s.FetchBlock(b.ParentHash())
-		if !f {
-			panic("Could not find block parent. This should not happen.")
-		}
-		parentState = updateState(p, s, blockResolver)
-	}
-
-	bs := calculateBlockState(b, parentState, s, blockResolver, rollups)
-
-	s.SetBlockState(b.Hash(), bs)
-
-	return bs
+	return nil, false
 }
 
 // Calculate transactions to be included in the current rollup
@@ -257,10 +268,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup) *blockState {
-	var currentHead *Rollup
-	if parentState != nil {
-		currentHead = parentState.head
-	}
+	currentHead := parentState.head
 	newHead, found := FindWinner(currentHead, rollups, s, blockResolver)
 
 	state := newProcessedState(parentState.state)
