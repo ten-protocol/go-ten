@@ -164,7 +164,8 @@ func handleGenesisRollup(b *types.Block, s Storage, rollups []*Rollup, genesisRo
 		return &bs, true
 	}
 
-	// re-processing the block that contains the rollup
+	// Re-processing the block that contains the rollup. This can happen as blocks can be fed to the enclave multiple times.
+	// In this case we don't update the state and move on.
 	if genesisRollup != nil && len(rollups) == 1 && rollups[0].Header.Hash() == genesisRollup.Hash() {
 		return nil, true
 	}
