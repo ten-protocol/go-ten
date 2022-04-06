@@ -26,6 +26,15 @@ Complex:
     - from the master seed derive the keys
     - create the transaction block
 
+- T11: Create a stand-alone running aggregator with RPC endpoints + enclave connection + client for connections (lib)
+      . Reuse/Inspire on the geth servers
+      . Depends on T1-part4
+- T12: Create block verification that runs inside the enclave
+      . Investigate current geth block verification and discuss results
+      . Reuse/Inspire on the geth block verification
+      . Might colide with T1-part4
+      . Might need to change the simulation/mock eth blocks    
+
 Normal:
 
 - update the readme
