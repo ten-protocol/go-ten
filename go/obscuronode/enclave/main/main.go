@@ -9,14 +9,18 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
+const logPath = "enclave_logs.txt"
+
 func main() {
 	config := parseCLIArgs()
-	setLogs(*config.writeToLogs)
+	setLogs(true)
 
 	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}
+
+	log.Log("joel")
 
 	select {}
 }
@@ -27,7 +31,7 @@ func setLogs(writeToLogs bool) {
 	var err error
 
 	if writeToLogs {
-		logFile, err = os.Create("enclave_logs.txt")
+		logFile, err = os.Create(logPath)
 		if err != nil {
 			panic(err)
 		}

@@ -1,8 +1,10 @@
-name: Build
+name: Build after merge
+# Builds and runs tests after a PR is merged to main.
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:
