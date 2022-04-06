@@ -146,6 +146,7 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 
 func handleGenesisRollup(b *types.Block, s Storage, rollups []*Rollup, genesisRollup *Rollup) (genesisState *blockState, isGenesis bool) {
 	// the incoming block holds the genesis rollup
+	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
 	if genesisRollup == nil && len(rollups) == 1 {
 		log.Log("Found genesis rollup")
