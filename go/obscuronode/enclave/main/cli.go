@@ -11,7 +11,7 @@ const (
 	nodeIDUsage   = "A integer representing the 20 bytes of the node's address (default 1)"
 
 	addressName    = "address"
-	addressDefault = ":11000"
+	addressDefault = "localhost:11000"
 	addressUsage   = "The address on which to serve the Obscuro enclave service"
 
 	writeToLogsName    = "writeToLogs"

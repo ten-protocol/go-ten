@@ -48,6 +48,7 @@ func (s *Simulation) Start() {
 		go t.Start()
 		time.Sleep(time.Duration(s.AvgBlockDuration / 3))
 	}
+	// TODO - Remove this waiting period. The ability for nodes to catch up should be part of the tests.
 	s.waitForP2p()
 
 	timer := time.Now()

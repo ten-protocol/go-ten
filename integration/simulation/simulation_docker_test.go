@@ -19,6 +19,8 @@ import (
 var (
 	enclaveDockerImg  = "obscuro_enclave"
 	nodeIDFlag        = "--nodeID"
+	addressFlag       = "--address"
+	address           = ":11000"
 	enclaveDockerPort = "11000/tcp"
 )
 
@@ -50,6 +52,8 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 
 	// We check the required Docker images are available.
 	if !dockerImagesAvailable(ctx, cli) {
+		// We don't cause the test to fail here, because we want users to be able to run all the tests in the repo
+		// without having to build the Docker images.
 		println(fmt.Sprintf("This test requires the `%s` Docker image to be built using the `dockerfiles/enclave` Dockerfile. Terminating.", enclaveDockerImg))
 		return
 	}
@@ -92,7 +96,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	containerIDs := make([]string, len(enclavePorts))
 	for idx, port := range enclavePorts {
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
-		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID}}
+		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID, addressFlag, address}}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: localhost, HostPort: port}}},
 		}
