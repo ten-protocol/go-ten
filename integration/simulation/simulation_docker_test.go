@@ -41,20 +41,24 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 
 	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
 
+	// We create a Docker client.
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts()
 	if err != nil {
 		panic(err)
 	}
 
+	// We check the required Docker images are available.
 	if !dockerImagesAvailable(ctx, cli) {
 		println(fmt.Sprintf("This test requires the `%s` Docker image to be built using the `dockerfiles/enclave` Dockerfile. Terminating.", enclaveDockerImg))
 		return
 	}
 
-	containerIDs := startDockerContainers(ctx, cli, params.NumberOfNodes)
+	// We create the Docker containers and set up a hook to terminate them at the end of the test.
+	containerIDs := createDockerContainers(ctx, cli, params.NumberOfNodes)
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
+	// We start the Docker containers.
 	for _, id := range containerIDs {
 		if err = cli.ContainerStart(ctx, id, types.ContainerStartOptions{}); err != nil {
 			panic(err)
@@ -77,8 +81,8 @@ func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
 	return false
 }
 
-// Starts the test Docker containers.
-func startDockerContainers(ctx context.Context, client *client.Client, numOfNodes int) []string {
+// Creates the test Docker containers.
+func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int) []string {
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.

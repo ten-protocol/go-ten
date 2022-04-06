@@ -353,11 +353,11 @@ func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
 			return
 		}
 		// Request the round winner for the current head
-		winnerRollup, winner, err := a.Enclave.RoundWinner(result.L2Hash)
+		winnerRollup, isWinner, err := a.Enclave.RoundWinner(result.L2Hash)
 		if err != nil {
 			panic(err)
 		}
-		if winner {
+		if isWinner {
 			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
 			tx := obscurocommon.NewL1Tx(txData)
 			t, err := obscurocommon.EncodeTx(tx)

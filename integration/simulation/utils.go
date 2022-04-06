@@ -63,7 +63,7 @@ func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgB
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *Stats, peerAddrs []string, enclavePort uint64) *host.Node {
+func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *Stats, p2pAddr string, peerAddrs []string, enclavePort uint64) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
@@ -71,9 +71,9 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, sta
 	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 
 	// create a socket obscuro node
-	nodeP2p := p2p.NewSocketP2PLayer(peerAddrs[id-1], peerAddrs)
+	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p, peerAddrs[id-1])
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p, p2pAddr)
 
 	return &node
 }
@@ -139,7 +139,7 @@ func CreateBasicNetworkOfSocketNodes(params SimParams, stats *Stats) ([]*ethereu
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeAddrs, enclavePort)
+		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeAddrs[i-1], nodeAddrs, enclavePort)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
@@ -179,7 +179,7 @@ func CreateBasicNetworkOfDockerNodes(params SimParams, stats *Stats) ([]*ethereu
 		// create the in memory l1 and l2 node
 		enclavePort := uint64(enclaveStartPort + i - 1)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeAddrs, enclavePort)
+		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeAddrs[i-1], nodeAddrs, enclavePort)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
