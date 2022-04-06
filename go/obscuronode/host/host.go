@@ -51,7 +51,6 @@ type Node struct {
 	ID common.Address
 
 	P2p          P2P
-	P2pAddress   string
 	ethereumNode obscurocommon.L1Node
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
@@ -84,7 +83,6 @@ func NewObscuroAggregator(
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
 	p2p P2P,
-	p2pAddress string,
 ) Node {
 	return Node{
 		// config
@@ -94,7 +92,6 @@ func NewObscuroAggregator(
 		genesis:      genesis,
 		ethereumNode: l1,
 		P2p:          p2p,
-		P2pAddress:   p2pAddress,
 
 		stats: collector,
 
