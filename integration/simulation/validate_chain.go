@@ -145,8 +145,9 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	l1Height := node.DB().GetCurrentBlockHead().Height
 
 	// check that the L1 view is consistent with the L1 network.
-	// we cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
-	// produced since maxEthereumHeight was calculated).
+	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
+	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
+	// new blocks might have been added in the meantime).
 	if int64(maxEthereumHeight)-int64(l1Height) > MAX_BLOCK_DELAY {
 		t.Errorf("Obscuro node %d fell behind %d blocks.", obscurocommon.ShortAddress(node.ID), maxEthereumHeight-l1Height)
 	}

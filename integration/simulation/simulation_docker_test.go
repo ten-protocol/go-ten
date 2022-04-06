@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ var (
 
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
-// All nodes livewefgwefw in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
+// All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	logFile := setupTestLog()
 	defer logFile.Close()
@@ -52,6 +53,14 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		panic(err)
 	}
 
+	// We check the required Docker images are available.
+	if !dockerImagesAvailable(ctx, cli) {
+		// We don't cause the test to fail here, because we want users to be able to run all the tests in the repo
+		// without having to build the Docker images.
+		println(fmt.Sprintf("This test requires the `%s` Docker image to be built using `dockerfiles/enclave.Dockerfile`. Terminating.", enclaveDockerImg))
+		return
+	}
+
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
 	containerIDs := createDockerContainers(ctx, cli, params.NumberOfNodes)
 	defer terminateDockerContainers(ctx, cli, containerIDs)
@@ -64,6 +73,19 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)
+}
+
+// Checks the required Docker images exist.
+func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
+	images, _ := cli.ImageList(ctx, types.ImageListOptions{})
+	for _, image := range images {
+		for _, tag := range image.RepoTags {
+			if strings.Contains(tag, enclaveDockerImg) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Creates the test Docker containers.
