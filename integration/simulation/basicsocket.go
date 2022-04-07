@@ -18,7 +18,7 @@ type basicNetworkOfSocketNodes struct {
 	obscuroAddresses []string
 }
 
-func NewBasicNetworkOfSocketNodes() *basicNetworkOfSocketNodes {
+func NewBasicNetworkOfSocketNodes() Network {
 	return &basicNetworkOfSocketNodes{}
 }
 

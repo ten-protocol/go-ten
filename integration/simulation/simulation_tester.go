@@ -9,7 +9,7 @@ import (
 )
 
 // testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
-func testSimulation(t *testing.T, netw SimulationNetwork, params SimParams) {
+func testSimulation(t *testing.T, netw Network, params SimParams) {
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 

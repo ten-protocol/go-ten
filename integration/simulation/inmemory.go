@@ -13,7 +13,7 @@ type basicNetworkOfInMemoryNodes struct {
 	obscuroAddresses []string
 }
 
-func NewBasicNetworkOfInMemoryNodes() *basicNetworkOfInMemoryNodes {
+func NewBasicNetworkOfInMemoryNodes() Network {
 	return &basicNetworkOfInMemoryNodes{}
 }
 

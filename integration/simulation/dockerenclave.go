@@ -15,7 +15,7 @@ type basicNetworkOfNodesWithDockerEnclave struct {
 	obscuroAddresses []string
 }
 
-func NewBasicNetworkOfNodesWithDockerEnclave() *basicNetworkOfNodesWithDockerEnclave {
+func NewBasicNetworkOfNodesWithDockerEnclave() Network {
 	return &basicNetworkOfNodesWithDockerEnclave{}
 }
 
