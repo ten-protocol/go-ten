@@ -43,7 +43,7 @@ type SimParams struct {
 // - This is a work in progress, so there is a lot of code duplication in the implementations
 // - Once we implement a few more versions: for example using Ganache, or using enclaves running in azure, etc, we'll revisit and create better abstractions.
 type SimulationNetwork interface {
-	//Create - returns a group of started Ethereum nodes, a group of started Obscuro nodes, and the Obscuro nodes' P2P addresses.
+	// Create - returns a group of started Ethereum nodes, a group of started Obscuro nodes, and the Obscuro nodes' P2P addresses.
 	// todo - return interfaces to RPC handles to the nodes
 	Create(params SimParams, stats *Stats) ([]*ethereum_mock.Node, []*host.Node, []string)
 	TearDown()

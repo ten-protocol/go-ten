@@ -1,9 +1,10 @@
 package simulation
 
 import (
+	"time"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-	"time"
 )
 
 type basicNetworkOfInMemoryNodes struct {

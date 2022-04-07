@@ -2,14 +2,15 @@ package simulation
 
 import (
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-	"math/big"
-	"time"
 )
 
 const (
