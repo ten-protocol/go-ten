@@ -13,14 +13,12 @@ const logPath = "enclave_logs.txt"
 
 func main() {
 	config := parseCLIArgs()
-	setLogs(true)
+	setLogs(*config.writeToLogs)
 
 	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
 	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
 		panic(err)
 	}
-
-	log.Log("joel")
 
 	select {}
 }
