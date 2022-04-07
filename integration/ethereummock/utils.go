@@ -88,28 +88,3 @@ func makeMap(txs types.Transactions) map[obscurocommon.TxHash]*obscurocommon.L1T
 	}
 	return m
 }
-
-func BlocksBetween(blockA *types.Block, blockB *types.Block, resolver enclave.BlockResolver) []*types.Block {
-	if blockA.Hash() == blockB.Hash() {
-		return []*types.Block{blockA}
-	}
-	blocks := make([]*types.Block, 0)
-	tempBlock := blockB
-	var found bool
-	for {
-		blocks = append(blocks, tempBlock)
-		if tempBlock.Hash() == blockA.Hash() {
-			break
-		}
-		tempBlock, found = resolver.ParentBlock(tempBlock)
-		if !found {
-			panic("should not happen")
-		}
-	}
-	n := len(blocks)
-	result := make([]*types.Block, n)
-	for i, block := range blocks {
-		result[n-i-1] = block
-	}
-	return result
-}

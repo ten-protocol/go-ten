@@ -37,7 +37,7 @@ func (o *OutputStats) populateHeights() {
 }
 
 func (o *OutputStats) countRollups() {
-	l1Node := o.simulation.MockEthNodes[0]
+	l1Node := o.simulation.EthNodes[0]
 	l2Node := o.simulation.ObscuroNodes[0]
 
 	// iterate the Node Headers and get the rollups
@@ -47,7 +47,7 @@ func (o *OutputStats) countRollups() {
 
 	// iterate the L1 Blocks and get the rollups
 	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetBlockHeader(header.Parent) {
-		block, found := l1Node.Resolver.FetchBlock(header.ID)
+		block, found := l1Node.Client().FetchBlock(header.ID)
 		if !found {
 			panic("expected l1 block not found")
 		}
@@ -55,7 +55,7 @@ func (o *OutputStats) countRollups() {
 			txData := obscurocommon.TxData(tx)
 			if txData.TxType == obscurocommon.RollupTx {
 				r := nodecommon.DecodeRollupOrPanic(txData.Rollup)
-				if l1Node.Resolver.IsBlockAncestor(block, r.Header.L1Proof) {
+				if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}

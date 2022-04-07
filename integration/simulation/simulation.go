@@ -5,11 +5,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/integration/exec"
 )
 
 const (
@@ -18,9 +17,9 @@ const (
 
 // Simulation represents the data which to set up and run a simulated network
 type Simulation struct {
-	MockEthNodes       []*ethereum_mock.Node // the list of mock ethereum nodes
-	ObscuroNodes       []*host.Node          // the list of Obscuro nodes
-	ObscuroP2PAddrs    []string              // the P2P addresses of the Obscuro nodes
+	EthNodes           []exec.EthNode // the list of ethereum nodes
+	ObscuroNodes       []*host.Node   // the list of Obscuro nodes
+	ObscuroP2PAddrs    []string       // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration   uint64
 	TxInjector         *TransactionInjector
 	SimulationTimeSecs int
@@ -37,7 +36,7 @@ func (s *Simulation) Start() {
 	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
 	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
 	// Note: Other simulations might test variations of this pattern.
-	for _, m := range s.MockEthNodes {
+	for _, m := range s.EthNodes {
 		t := m
 		go t.Start()
 		time.Sleep(time.Duration(s.AvgBlockDuration / 8))
@@ -74,7 +73,7 @@ func (s *Simulation) Stop() {
 		}
 	}()
 	go func() {
-		for _, m := range s.MockEthNodes {
+		for _, m := range s.EthNodes {
 			t := m
 			go t.Stop()
 		}

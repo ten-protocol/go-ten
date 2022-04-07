@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
+	"github.com/obscuronet/obscuro-playground/integration/exec"
 )
 
 // SimParams are the parameters for setting up the simulation.
@@ -25,7 +25,7 @@ type SimParams struct {
 }
 
 // An alias for a function that returns a group of Ethereum nodes, a group of Obscuro nodes, and the Obscuro nodes' P2P addresses.
-type createNetworkFunc = func(params SimParams, stats *Stats) ([]*ethereummock.Node, []*host.Node, []string)
+type createNetworkFunc = func(params SimParams, stats *Stats) ([]exec.EthNode, []*host.Node, []string)
 
 // testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
 func testSimulation(t *testing.T, createNetwork createNetworkFunc, params SimParams, efficiencies EfficiencyThresholds) {
@@ -34,12 +34,19 @@ func testSimulation(t *testing.T, createNetwork createNetworkFunc, params SimPar
 
 	stats := NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
-	mockEthNodes, obscuroNodes, p2pAddrs := createNetwork(params, stats)
+	ethNodes, obscuroNodes, p2pAddrs := createNetwork(params, stats)
 
-	txInjector := NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTimeUSecs, mockEthNodes, obscuroNodes)
+	txInjector := NewTransactionInjector(
+		params.NumberOfWallets,
+		params.AvgBlockDurationUSecs,
+		stats,
+		params.SimulationTimeUSecs,
+		ethNodes,
+		obscuroNodes,
+	)
 
 	simulation := Simulation{
-		MockEthNodes:       mockEthNodes, // the list of mock ethereum nodes
+		EthNodes:           ethNodes, // the list of ethereum nodes
 		ObscuroNodes:       obscuroNodes,
 		ObscuroP2PAddrs:    p2pAddrs,
 		AvgBlockDuration:   params.AvgBlockDurationUSecs,

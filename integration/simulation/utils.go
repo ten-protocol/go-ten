@@ -6,15 +6,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+	"github.com/obscuronet/obscuro-playground/integration/exec"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
@@ -77,10 +76,10 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, sta
 	return &node
 }
 
-// creates the nodes, wires them up, and populates the network objects
-func CreateBasicNetworkOfInMemoryNodes(params SimParams, stats *Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+// CreateBasicNetworkOfInMemoryNodes creates the nodes, wires them up, and populates the network objects
+func CreateBasicNetworkOfInMemoryNodes(params SimParams, stats *Stats) ([]exec.EthNode, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
+	l1Nodes := make([]exec.EthNode, params.NumberOfNodes)
 	l2Nodes := make([]*host.Node, params.NumberOfNodes)
 	for i := 1; i <= params.NumberOfNodes; i++ {
 		genesis := false
@@ -96,23 +95,23 @@ func CreateBasicNetworkOfInMemoryNodes(params SimParams, stats *Stats) ([]*ether
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i-1] = miner
+		l1Nodes[i-1] = exec.NewMockEthNode(miner)
 		l2Nodes[i-1] = agg
 	}
 
-	// populate the nodes field of each network
+	// inject the nodes peer addresses
 	for i := 0; i < params.NumberOfNodes; i++ {
-		l1Nodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = l1Nodes
+		l1Nodes[i].KnownPeers(l1Nodes)
 		l2Nodes[i].P2p.(*MockP2P).Nodes = l2Nodes
 	}
 
 	return l1Nodes, l2Nodes, nil
 }
 
-// creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
-func CreateBasicNetworkOfSocketNodes(params SimParams, stats *Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+// CreateBasicNetworkOfSocketNodes creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
+func CreateBasicNetworkOfSocketNodes(params SimParams, stats *Stats) ([]exec.EthNode, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
+	l1Nodes := make([]exec.EthNode, params.NumberOfNodes)
 	l2Nodes := make([]*host.Node, params.NumberOfNodes)
 
 	var nodeP2pAddrs []string
@@ -144,23 +143,23 @@ func CreateBasicNetworkOfSocketNodes(params SimParams, stats *Stats) ([]*ethereu
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i-1] = miner
+		l1Nodes[i-1] = exec.NewMockEthNode(miner)
 		l2Nodes[i-1] = agg
 	}
 
-	// populate the nodes field of the L1 network
+	// inject the nodes peer addresses
 	for i := 0; i < params.NumberOfNodes; i++ {
-		l1Nodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = l1Nodes
+		l1Nodes[i].KnownPeers(l1Nodes)
 	}
 
 	return l1Nodes, l2Nodes, nodeP2pAddrs
 }
 
+// CreateBasicNetworkOfDockerNodes creates Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-// creates Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
-func CreateBasicNetworkOfDockerNodes(params SimParams, stats *Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+func CreateBasicNetworkOfDockerNodes(params SimParams, stats *Stats) ([]exec.EthNode, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
+	l1Nodes := make([]exec.EthNode, params.NumberOfNodes)
 	l2Nodes := make([]*host.Node, params.NumberOfNodes)
 
 	var nodeP2pAddrs []string
@@ -184,13 +183,13 @@ func CreateBasicNetworkOfDockerNodes(params SimParams, stats *Stats) ([]*ethereu
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i-1] = miner
+		l1Nodes[i-1] = exec.NewMockEthNode(miner)
 		l2Nodes[i-1] = agg
 	}
 
-	// populate the nodes field of the L1 network
+	// inject the nodes peer addresses
 	for i := 0; i < params.NumberOfNodes; i++ {
-		l1Nodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = l1Nodes
+		l1Nodes[i].KnownPeers(l1Nodes)
 	}
 
 	return l1Nodes, l2Nodes, nodeP2pAddrs
