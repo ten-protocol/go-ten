@@ -65,6 +65,7 @@ func main() {
 		TxInjector:         txInjector,
 		SimulationTimeSecs: params.SimulationTimeSecs,
 		Stats:              stats,
+		Params:             &params,
 	}
 
 	// execute the simulation

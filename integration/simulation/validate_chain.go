@@ -12,21 +12,12 @@ import (
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
-// EfficiencyThresholds represents an acceptable "dead blocks" percentage for this simulation.
-// dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
-// We test the results against this threshold to catch eventual protocol errors.
-type EfficiencyThresholds struct {
-	L1EfficiencyThreshold     float64
-	L2EfficiencyThreshold     float64
-	L2ToL1EfficiencyThreshold float64
-}
-
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
-func checkNetworkValidity(t *testing.T, s *Simulation, params *SimParams, efficiencies EfficiencyThresholds) {
-	l1MaxHeight := checkEthereumBlockchainValidity(t, s, params, efficiencies)
-	checkObscuroBlockchainValidity(t, s, params, efficiencies, l1MaxHeight)
+func checkNetworkValidity(t *testing.T, s *Simulation) {
+	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
+	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
 }
 
 // checkEthereumBlockchainValidity: sanity check on the mock implementation of the L1 on all nodes
@@ -35,13 +26,13 @@ func checkNetworkValidity(t *testing.T, s *Simulation, params *SimParams, effici
 // - check no duplicate txs
 // - check efficiency - no of created blocks/ height
 // - noReorgs
-func checkEthereumBlockchainValidity(t *testing.T, s *Simulation, params *SimParams, efficiencies EfficiencyThresholds) uint64 {
+func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 	// Sanity check number for a minimum height
-	minHeight := uint64(float64(params.SimulationTimeUSecs) / (2 * float64(params.AvgBlockDurationUSecs)))
+	minHeight := uint64(float64(s.Params.SimulationTimeUSecs) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
 
 	heights := make([]uint64, len(s.MockEthNodes))
 	for i, node := range s.MockEthNodes {
-		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s, efficiencies)
+		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s)
 	}
 
 	min, max := minMax(heights)
@@ -59,13 +50,13 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation, params *SimPar
 // - check efficiency - no of created blocks/ height
 // - check amount in the system
 // - check withdrawals/deposits
-func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, params *SimParams, efficiencies EfficiencyThresholds, maxL1Height uint64) {
+func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64) {
 	// Sanity check number for a minimum height
-	minHeight := uint64(float64(params.SimulationTimeUSecs) / (2 * float64(params.AvgBlockDurationUSecs)))
+	minHeight := uint64(float64(s.Params.SimulationTimeUSecs) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
 
 	heights := make([]uint64, len(s.ObscuroNodes))
 	for i, node := range s.ObscuroNodes {
-		heights[i] = checkBlockchainOfObscuroNode(t, node, minHeight, maxL1Height, s, efficiencies)
+		heights[i] = checkBlockchainOfObscuroNode(t, node, minHeight, maxL1Height, s)
 	}
 
 	min, max := minMax(heights)
@@ -74,7 +65,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, params *SimPara
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node *ethereum_mock.Node, minHeight uint64, s *Simulation, efficiencies EfficiencyThresholds) uint64 {
+func checkBlockchainOfEthereumNode(t *testing.T, node *ethereum_mock.Node, minHeight uint64, s *Simulation) uint64 {
 	head, height := node.Resolver.FetchHeadBlock()
 
 	if height < minHeight {
@@ -96,14 +87,14 @@ func checkBlockchainOfEthereumNode(t *testing.T, node *ethereum_mock.Node, minHe
 	}
 
 	efficiency := float64(s.Stats.totalL1Blocks-height) / float64(s.Stats.totalL1Blocks)
-	if efficiency > efficiencies.L1EfficiencyThreshold {
-		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.ID), efficiency, efficiencies.L1EfficiencyThreshold, height)
+	if efficiency > s.Params.L1EfficiencyThreshold {
+		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.ID), efficiency, s.Params.L1EfficiencyThreshold, height)
 	}
 
 	// compare the number of reorgs for this node against the height
 	reorgs := s.Stats.noL1Reorgs[node.ID]
 	eff := float64(reorgs) / float64(height)
-	if eff > efficiencies.L1EfficiencyThreshold {
+	if eff > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d. The number of reorgs is too high: %d. ", obscurocommon.ShortAddress(node.ID), reorgs)
 	}
 	return height
@@ -141,7 +132,7 @@ func extractDataFromEthereumChain(head *types.Block, node *ethereum_mock.Node, s
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
-func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, efficiencies EfficiencyThresholds) uint64 {
+func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation) uint64 {
 	l1Height := node.DB().GetCurrentBlockHead().Height
 
 	// check that the L1 view is consistent with the L1 network.
@@ -160,15 +151,15 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 
 	totalL2Blocks := s.Stats.noL2Blocks[node.ID]
 	efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
-	if efficiencyL2 > efficiencies.L2EfficiencyThreshold {
-		t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, efficiencies.L2EfficiencyThreshold)
+	if efficiencyL2 > s.Params.L2EfficiencyThreshold {
+		t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, s.Params.L2EfficiencyThreshold)
 	}
 
 	// check that the pobi protocol doesn't waste too many blocks.
 	// todo- find the block where the genesis was published)
 	efficiency := float64(l1Height-l2Height) / float64(l1Height)
-	if efficiency > efficiencies.L2ToL1EfficiencyThreshold {
-		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, efficiencies.L2ToL1EfficiencyThreshold)
+	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
+		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
 
 	// check that all expected transactions were included.

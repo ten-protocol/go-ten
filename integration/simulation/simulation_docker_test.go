@@ -35,16 +35,17 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	defer logFile.Close()
 
 	params := SimParams{
-		NumberOfNodes:         10,
-		NumberOfWallets:       5,
-		AvgBlockDurationUSecs: uint64(250_000),
-		SimulationTimeSecs:    15,
+		NumberOfNodes:             10,
+		NumberOfWallets:           5,
+		AvgBlockDurationUSecs:     uint64(250_000),
+		SimulationTimeSecs:        15,
+		L1EfficiencyThreshold:     0.2,
+		L2EfficiencyThreshold:     0.3,
+		L2ToL1EfficiencyThreshold: 0.5,
 	}
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
-
-	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.5}
 
 	// We create a Docker client.
 	ctx := context.Background()
@@ -72,7 +73,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		}
 	}
 
-	testSimulation(t, CreateBasicNetworkOfDockerNodes, params, efficiencies)
+	testSimulation(t, NewBasicNetworkOfNodesWithDockerEnclave(), params)
 }
 
 // Checks the required Docker images exist.
@@ -93,7 +94,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", enclaveStartPort+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", EnclaveStartPort+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))
@@ -101,7 +102,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
 		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID, addressFlag, enclaveAddress}}
 		hostConfig := &container.HostConfig{
-			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: localhost, HostPort: port}}},
+			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: Localhost, HostPort: port}}},
 		}
 
 		resp, err := client.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")
