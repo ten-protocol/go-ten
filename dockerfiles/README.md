@@ -1,6 +1,7 @@
 # Obscuro enclave service Docker image
 
-The Docker image defined by `enclave.Dockerfile` creates a Docker image for an Obscuro enclave service running in SGX. To build the image, run:
+The Docker image defined by `enclave.Dockerfile` creates a Docker image for an Obscuro enclave service running in SGX. 
+To build the image, run:
 
     docker build -t obscuro_enclave - < dockerfiles/enclave.Dockerfile
 
@@ -11,6 +12,7 @@ local machine, and `YYY` is the address of the node that this enclave service is
 
     docker run -p XXX:11000/tcp obscuro_enclave --nodeID YYY --address :11000
 
-By default, the image runs the Obscuro enclave service in SGX simulation mode. To run the enclave service in non-simulation mode instead, run:
+By default, the image runs the Obscuro enclave service in SGX simulation mode. To run the enclave service in 
+non-simulation mode instead, run:
 
-    docker run -e OE_SIMULATION=0 -p XXX:11000/tcp obscuro_enclave --nodeID YYY --address :11000
+    docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p XXX:11000/tcp obscuro_enclave --nodeID YYY --address :11000
