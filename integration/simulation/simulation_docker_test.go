@@ -44,7 +44,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
-	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.4}
+	efficiencies := EfficiencyThresholds{0.2, 0.3, 0.5}
 
 	// We create a Docker client.
 	ctx := context.Background()
