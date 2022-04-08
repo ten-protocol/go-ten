@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 
 	"github.com/docker/docker/api/types"
@@ -36,11 +38,11 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	logFile := setupTestLog()
 	defer logFile.Close()
 
-	params := SimParams{
+	params := params.SimParams{
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
 		AvgBlockDurationUSecs:     uint64(250_000),
-		SimulationTimeSecs:        15 * time.Second,
+		SimulationTime:            15 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
