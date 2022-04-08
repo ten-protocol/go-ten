@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"testing"
+	"time"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -19,14 +20,13 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
 		AvgBlockDurationUSecs:     uint64(250_000),
-		SimulationTimeSecs:        15,
+		SimulationTime:            15 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
 	}
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
-	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
 	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), params)
 }

@@ -22,14 +22,14 @@ const (
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	MockEthNodes       []*ethereum_mock.Node // the list of mock ethereum nodes - todo - need to be interfaces to rpc handles
-	ObscuroNodes       []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
-	ObscuroP2PAddrs    []string              // the P2P addresses of the Obscuro nodes
-	AvgBlockDuration   uint64
-	TxInjector         *TransactionInjector
-	SimulationTimeSecs int
-	Stats              *stats.Stats
-	Params             *params.SimParams
+	MockEthNodes     []*ethereum_mock.Node // the list of mock ethereum nodes - todo - need to be interfaces to rpc handles
+	ObscuroNodes     []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
+	ObscuroP2PAddrs  []string              // the P2P addresses of the Obscuro nodes
+	AvgBlockDuration uint64
+	TxInjector       *TransactionInjector
+	SimulationTime   time.Duration
+	Stats            *stats.Stats
+	Params           *params.SimParams
 }
 
 // Start executes the simulation given all the Params. Injects transactions.
@@ -42,13 +42,10 @@ func (s *Simulation) Start() {
 	timer := time.Now()
 	go s.TxInjector.Start()
 
-	// converted to Us
-	simulationTimeUSecs := s.SimulationTimeSecs * 1000 * 1000
-
 	// Wait for the simulation time
-	time.Sleep(obscurocommon.Duration(uint64(simulationTimeUSecs)))
+	time.Sleep(s.SimulationTime)
 
-	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), obscurocommon.Duration(uint64(simulationTimeUSecs)))
+	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
 	time.Sleep(time.Second)
 }
 

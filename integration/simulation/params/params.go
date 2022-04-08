@@ -1,5 +1,7 @@
 package params
 
+import "time"
+
 // SimParams are the parameters for setting up the simulation.
 type SimParams struct {
 	NumberOfNodes   int
@@ -10,8 +12,7 @@ type SimParams struct {
 	AvgNetworkLatency     uint64 // artificial latency injected between sending and receiving messages on the mock network
 	AvgGossipPeriod       uint64 // POBI protocol setting
 
-	SimulationTimeSecs  int // in seconds
-	SimulationTimeUSecs int // SimulationTimeSecs converted to Us
+	SimulationTime time.Duration // how long the simulations should run for
 
 	// EfficiencyThresholds represents an acceptable "dead blocks" percentage for this simulation.
 	// dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.

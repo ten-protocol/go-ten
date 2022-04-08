@@ -22,17 +22,17 @@ func testSimulation(t *testing.T, netw network.Network, params params.SimParams)
 
 	mockEthNodes, obscuroNodes, p2pAddrs := netw.Create(params, stats)
 
-	txInjector := NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTimeUSecs, mockEthNodes, obscuroNodes)
+	txInjector := NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTime, mockEthNodes, obscuroNodes)
 
 	simulation := Simulation{
-		MockEthNodes:       mockEthNodes, // the list of mock ethereum nodes
-		ObscuroNodes:       obscuroNodes,
-		ObscuroP2PAddrs:    p2pAddrs,
-		AvgBlockDuration:   params.AvgBlockDurationUSecs,
-		TxInjector:         txInjector,
-		SimulationTimeSecs: params.SimulationTimeSecs,
-		Stats:              stats,
-		Params:             &params,
+		MockEthNodes:     mockEthNodes, // the list of mock ethereum nodes
+		ObscuroNodes:     obscuroNodes,
+		ObscuroP2PAddrs:  p2pAddrs,
+		AvgBlockDuration: params.AvgBlockDurationUSecs,
+		TxInjector:       txInjector,
+		SimulationTime:   params.SimulationTime,
+		Stats:            stats,
+		Params:           &params,
 	}
 
 	// execute the simulation
