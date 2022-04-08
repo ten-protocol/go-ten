@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
@@ -25,7 +27,7 @@ type TransactionInjector struct {
 	// settings
 	avgBlockDuration uint64
 	injectionTimeUs  int
-	stats            *Stats
+	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
 	l1Nodes []*ethereum_mock.Node
@@ -40,7 +42,7 @@ type TransactionInjector struct {
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
 // todo Add methods that generate deterministic scenarios
-func NewTransactionInjector(numberWallets int, avgBlockDuration uint64, stats *Stats, injectionTimeUs int, l1Nodes []*ethereum_mock.Node, l2Nodes []*host.Node) *TransactionInjector {
+func NewTransactionInjector(numberWallets int, avgBlockDuration uint64, stats *stats2.Stats, injectionTimeUs int, l1Nodes []*ethereum_mock.Node, l2Nodes []*host.Node) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
 	for i := 0; i < numberWallets; i++ {

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -73,7 +75,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		}
 	}
 
-	testSimulation(t, NewBasicNetworkOfNodesWithDockerEnclave(), params)
+	testSimulation(t, network.NewBasicNetworkOfNodesWithDockerEnclave(), params)
 }
 
 // Checks the required Docker images exist.
@@ -94,7 +96,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", EnclaveStartPort+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", network.EnclaveStartPort+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))
@@ -102,7 +104,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
 		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID, addressFlag, enclaveAddress}}
 		hostConfig := &container.HostConfig{
-			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: Localhost, HostPort: port}}},
+			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: network.Localhost, HostPort: port}}},
 		}
 
 		resp, err := client.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")

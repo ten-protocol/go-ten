@@ -1,4 +1,4 @@
-package simulation
+package stats
 
 import (
 	"sync"
@@ -13,84 +13,84 @@ import (
 // Stats - collects information during the simulation. It can be checked programmatically.
 // Todo - this is a temporary placeholder until we introduce a proper metrics framework like prometheus
 type Stats struct {
-	nrMiners int
+	NrMiners int
 
-	totalL1Blocks uint64
+	TotalL1Blocks uint64
 
-	maxRollupsPerBlock uint32
-	nrEmptyBlocks      int
+	MaxRollupsPerBlock uint32
+	NrEmptyBlocks      int
 
-	noL1Reorgs  map[common.Address]int
-	noL2Recalcs map[common.Address]int
-	noL2Blocks  map[common.Address]uint64
+	NoL1Reorgs  map[common.Address]int
+	NoL2Recalcs map[common.Address]int
+	NoL2Blocks  map[common.Address]uint64
 	// todo - actual avg block Duration
 
-	totalDepositedAmount           uint64
-	totalWithdrawalRequestedAmount uint64
-	rollupWithMoreRecentProof      uint64
-	nrTransferTransactions         int
+	TotalDepositedAmount           uint64
+	TotalWithdrawalRequestedAmount uint64
+	RollupWithMoreRecentProofCount uint64
+	NrTransferTransactions         int
 	statsMu                        *sync.RWMutex
 }
 
 func NewStats(nrMiners int) *Stats {
 	return &Stats{
-		nrMiners:    nrMiners,
-		noL1Reorgs:  map[common.Address]int{},
-		noL2Recalcs: map[common.Address]int{},
-		noL2Blocks:  map[common.Address]uint64{},
+		NrMiners:    nrMiners,
+		NoL1Reorgs:  map[common.Address]int{},
+		NoL2Recalcs: map[common.Address]int{},
+		NoL2Blocks:  map[common.Address]uint64{},
 		statsMu:     &sync.RWMutex{},
 	}
 }
 
 func (s *Stats) L1Reorg(id common.Address) {
 	s.statsMu.Lock()
-	s.noL1Reorgs[id]++
+	s.NoL1Reorgs[id]++
 	s.statsMu.Unlock()
 }
 
 func (s *Stats) L2Recalc(id common.Address) {
 	s.statsMu.Lock()
-	s.noL2Recalcs[id]++
+	s.NoL2Recalcs[id]++
 	s.statsMu.Unlock()
 }
 
 func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Lock()
 	// s.l1Height = nodecommon.MaxInt(s.l1Height, b.Height)
-	s.totalL1Blocks++
-	s.maxRollupsPerBlock = obscurocommon.MaxInt(s.maxRollupsPerBlock, uint32(len(b.Transactions())))
+	s.TotalL1Blocks++
+	s.MaxRollupsPerBlock = obscurocommon.MaxInt(s.MaxRollupsPerBlock, uint32(len(b.Transactions())))
 	if len(b.Transactions()) == 0 {
-		s.nrEmptyBlocks++
+		s.NrEmptyBlocks++
 	}
 	s.statsMu.Unlock()
 }
 
 func (s *Stats) NewRollup(node common.Address, r *nodecommon.Rollup) {
 	s.statsMu.Lock()
-	s.noL2Blocks[node]++
+	s.NoL2Blocks[node]++
 	s.statsMu.Unlock()
 }
 
 func (s *Stats) Deposit(v uint64) {
 	s.statsMu.Lock()
-	s.totalDepositedAmount += v
+	s.TotalDepositedAmount += v
 	s.statsMu.Unlock()
 }
 
 func (s *Stats) Transfer() {
 	s.statsMu.Lock()
-	s.nrTransferTransactions++
+	s.NrTransferTransactions++
 	s.statsMu.Unlock()
 }
 
 func (s *Stats) Withdrawal(v uint64) {
 	s.statsMu.Lock()
-	s.totalWithdrawalRequestedAmount += v
+	s.TotalWithdrawalRequestedAmount += v
 	s.statsMu.Unlock()
 }
 
 func (s *Stats) RollupWithMoreRecentProof() {
 	s.statsMu.Lock()
-	s.rollupWithMoreRecentProof++
+	s.RollupWithMoreRecentProofCount++
 	s.statsMu.Unlock()
 }

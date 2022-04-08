@@ -1,27 +1,32 @@
-package simulation
+package network
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
-type basicNetworkOfNodesWithDockerEnclave struct {
+type basicNetworkOfSocketNodes struct {
 	ethNodes         []*ethereum_mock.Node
 	obscuroNodes     []*host.Node
 	obscuroAddresses []string
 }
 
-func NewBasicNetworkOfNodesWithDockerEnclave() Network {
-	return &basicNetworkOfNodesWithDockerEnclave{}
+func NewBasicNetworkOfSocketNodes() Network {
+	return &basicNetworkOfSocketNodes{}
 }
 
-// TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-// creates Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params SimParams, stats *Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
 	// todo - add observer nodes
 	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
 	l2Nodes := make([]*host.Node, params.NumberOfNodes)
@@ -38,8 +43,16 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params SimParams, stats *S
 			genesis = true
 		}
 
+		// create a remote enclave server
+		nodeID := common.BigToAddress(big.NewInt(int64(i)))
+		enclavePort := uint64(EnclaveStartPort + i)
+		enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
+		err := enclave.StartServer(enclaveAddress, nodeID, stats)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create enclave server: %v", err))
+		}
+
 		// create the in memory l1 and l2 node
-		enclavePort := uint64(EnclaveStartPort + i - 1)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
 		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i-1], nodeP2pAddrs, enclavePort)
 
@@ -82,7 +95,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params SimParams, stats *S
 	return l1Nodes, l2Nodes, nodeP2pAddrs
 }
 
-func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
+func (n *basicNetworkOfSocketNodes) TearDown() {
 	go func() {
 		for _, n := range n.obscuroNodes {
 			n.Stop()

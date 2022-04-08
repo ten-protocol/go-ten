@@ -1,4 +1,4 @@
-package simulation
+package p2p
 
 import (
 	"sync/atomic"
@@ -13,7 +13,7 @@ import (
 // Implements the P2p interface
 // Will be plugged into each node
 type MockP2P struct {
-	currentNode *host.Node
+	CurrentNode *host.Node
 	Nodes       []*host.Node
 
 	avgLatency       uint64
@@ -47,7 +47,7 @@ func (netw *MockP2P) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	}
 
 	for _, a := range netw.Nodes {
-		if a.ID != netw.currentNode.ID {
+		if a.ID != netw.CurrentNode.ID {
 			t := a
 			obscurocommon.Schedule(netw.delay(), func() { t.ReceiveRollup(r) })
 		}
@@ -60,7 +60,7 @@ func (netw *MockP2P) BroadcastTx(tx nodecommon.EncryptedTx) {
 	}
 
 	for _, a := range netw.Nodes {
-		if a.ID != netw.currentNode.ID {
+		if a.ID != netw.CurrentNode.ID {
 			t := a
 			obscurocommon.Schedule(netw.delay()/2, func() { t.ReceiveTx(tx) })
 		}

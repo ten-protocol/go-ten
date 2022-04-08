@@ -5,15 +5,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
+	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+
 	"github.com/google/uuid"
 )
 
 // testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
-func testSimulation(t *testing.T, netw Network, params SimParams) {
+func testSimulation(t *testing.T, netw network.Network, params params.SimParams) {
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
-	stats := NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
+	stats := stats2.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
 	mockEthNodes, obscuroNodes, p2pAddrs := netw.Create(params, stats)
 

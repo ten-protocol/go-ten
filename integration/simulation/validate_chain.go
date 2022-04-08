@@ -82,17 +82,17 @@ func checkBlockchainOfEthereumNode(t *testing.T, node *ethereum_mock.Node, minHe
 		dups := obscurocommon.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
-	if totalDeposited != s.Stats.totalDepositedAmount {
-		t.Errorf("Node %d. Deposit amounts don't match. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), totalDeposited, s.Stats.totalDepositedAmount)
+	if totalDeposited != s.Stats.TotalDepositedAmount {
+		t.Errorf("Node %d. Deposit amounts don't match. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), totalDeposited, s.Stats.TotalDepositedAmount)
 	}
 
-	efficiency := float64(s.Stats.totalL1Blocks-height) / float64(s.Stats.totalL1Blocks)
+	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
 	if efficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.ID), efficiency, s.Params.L1EfficiencyThreshold, height)
 	}
 
 	// compare the number of reorgs for this node against the height
-	reorgs := s.Stats.noL1Reorgs[node.ID]
+	reorgs := s.Stats.NoL1Reorgs[node.ID]
 	eff := float64(reorgs) / float64(height)
 	if eff > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d. The number of reorgs is too high: %d. ", obscurocommon.ShortAddress(node.ID), reorgs)
@@ -149,7 +149,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		t.Errorf("There were only %d blocks mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
 	}
 
-	totalL2Blocks := s.Stats.noL2Blocks[node.ID]
+	totalL2Blocks := s.Stats.NoL2Blocks[node.ID]
 	efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
 	if efficiencyL2 > s.Params.L2EfficiencyThreshold {
 		t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, s.Params.L2EfficiencyThreshold)
@@ -180,12 +180,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// expected condition : some Txs (stats) did not make it to the blockchain
 	// best condition : all Txs (stats) were issue and consumed in the blockchain
 	// can't happen : sum of headers withdraws greater than issued Txs (stats)
-	if totalSuccessfullyWithdrawn > s.Stats.totalWithdrawalRequestedAmount {
-		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.totalWithdrawalRequestedAmount)
+	if totalSuccessfullyWithdrawn > s.Stats.TotalWithdrawalRequestedAmount {
+		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
 	// check that the sum of all balances matches the total amount of money that must be in the system
-	totalAmountInSystem := s.Stats.totalDepositedAmount - totalSuccessfullyWithdrawn
+	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.TxInjector.wallets {
 		total += node.Enclave.Balance(wallet.Address)

@@ -2,6 +2,10 @@ package simulation
 
 import (
 	"testing"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 )
 
 // This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
@@ -13,7 +17,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	logFile := setupTestLog()
 	defer logFile.Close()
 
-	params := SimParams{
+	params := params.SimParams{
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
 		AvgBlockDurationUSecs:     uint64(40_000),
@@ -27,5 +31,5 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
-	testSimulation(t, NewBasicNetworkOfInMemoryNodes(), params)
+	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), params)
 }
