@@ -1,7 +1,12 @@
 package enclave
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -71,6 +76,8 @@ func executeTx(s *RollupState, tx nodecommon.L2Tx) {
 		executeTransfer(s, tx)
 	case WithdrawalTx:
 		executeWithdrawal(s, tx)
+	case DepositTx:
+		executeDeposit(s, tx)
 	default:
 		panic("Invalid transaction type")
 	}
@@ -90,6 +97,16 @@ func executeTransfer(s *RollupState, tx nodecommon.L2Tx) {
 	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
 		s.s[txData.From] -= txData.Amount
 		s.s[txData.To] += txData.Amount
+	}
+}
+
+func executeDeposit(s *RollupState, tx nodecommon.L2Tx) {
+	t := TxData(&tx)
+	v, f := s.s[t.To]
+	if f {
+		s.s[t.To] = v + t.Amount
+	} else {
+		s.s[t.To] = t.Amount
 	}
 }
 
@@ -207,10 +224,10 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	}
 	// calculate the state to compare with what is in the Rollup
 	state := newProcessedState(parentState)
-	state = executeTransactions(win.Transactions, state)
-
 	p := s.ParentRollup(win).Proof(blockResolver)
-	state = processDeposits(p, win.Proof(blockResolver), state, blockResolver)
+	depositTxs := processDeposits(p, win.Proof(blockResolver), blockResolver)
+
+	state = executeTransactions(append(win.Transactions, depositTxs...), state)
 
 	if serialize(state.s) != win.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
@@ -228,17 +245,18 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 
 // mutates the state
 // process deposits from the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState, blockResolver BlockResolver) RollupState {
+func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver BlockResolver) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
 		height = blockResolver.HeightBlock(fromBlock)
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
-			panic("wtf")
+			panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
 	}
 
+	allDeposits := make([]nodecommon.L2Tx, 0)
 	b := toBlock
 	for {
 		if b.Hash() == from {
@@ -248,12 +266,12 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 			t := obscurocommon.TxData(tx)
 			// transactions to a hardcoded bridge address
 			if t.TxType == obscurocommon.DepositTx {
-				v, f := s.s[t.Dest]
-				if f {
-					s.s[t.Dest] = v + t.Amount
-				} else {
-					s.s[t.Dest] = t.Amount
+				depL2TxData := L2TxData{
+					Type:   DepositTx,
+					To:     t.Dest,
+					Amount: t.Amount,
 				}
+				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
 			}
 		}
 		if blockResolver.HeightBlock(b) < height {
@@ -261,11 +279,12 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, s RollupState
 		}
 		p, f := blockResolver.ParentBlock(b)
 		if !f {
-			panic("wtf")
+			panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
 		b = p
 	}
-	return s
+
+	return allDeposits
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
@@ -277,9 +296,17 @@ func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blo
 
 	// only change the state if there is a new l2 Head in the current block
 	if found {
-		state = executeTransactions(newHead.Transactions, state)
+		// Preprocessing before passing to the vm
+		// todo transform into an eth block structure
+
 		p := s.ParentRollup(newHead).Proof(blockResolver)
-		state = processDeposits(p, newHead.Proof(blockResolver), state, blockResolver)
+		depositTxs := processDeposits(p, newHead.Proof(blockResolver), blockResolver)
+
+		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
+		txsToProcess := append(newHead.Transactions, depositTxs...)
+		state = executeTransactions(txsToProcess, state)
+
+		// Postprocessing - witdrawals todo
 	} else {
 		newHead = parentState.head
 	}
@@ -316,4 +343,23 @@ func toEnclaveRollup(r *nodecommon.Rollup) *Rollup {
 		Header:       r.Header,
 		Transactions: decryptTransactions(r.Transactions),
 	}
+}
+
+func newL2Tx(data L2TxData) *nodecommon.L2Tx {
+	// We should probably use a deterministic nonce instead, as in the L1.
+	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+
+	enc, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		// TODO - Surface this error properly.
+		panic(err)
+	}
+
+	return types.NewTx(&types.LegacyTx{
+		Nonce:    nonce.Uint64(),
+		Value:    big.NewInt(1),
+		Gas:      1,
+		GasPrice: big.NewInt(1),
+		Data:     enc,
+	})
 }

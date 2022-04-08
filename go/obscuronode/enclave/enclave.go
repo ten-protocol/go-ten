@@ -318,7 +318,8 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.head.Proof(e.blockResolver)
-	newRollupState = processDeposits(proof, b, copyProcessedState(newRollupState), e.blockResolver)
+	depositTxs := processDeposits(proof, b, e.blockResolver)
+	newRollupState = executeTransactions(depositTxs, copyProcessedState(newRollupState))
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
 	r := NewRollup(b.Hash(), bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))

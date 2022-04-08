@@ -89,6 +89,8 @@ func printTx(t nodecommon.L2Tx, txsString []string) []string {
 		txsString = append(txsString, fmt.Sprintf("%d->%d(%d){%d}", obscurocommon.ShortAddress(txData.From), obscurocommon.ShortAddress(txData.To), txData.Amount, obscurocommon.ShortHash(t.Hash())))
 	case WithdrawalTx:
 		txsString = append(txsString, fmt.Sprintf("%d->*(%d){%d}", obscurocommon.ShortAddress(txData.From), txData.Amount, obscurocommon.ShortHash(t.Hash())))
+	case DepositTx:
+		txsString = append(txsString, fmt.Sprintf("*->%d(%d){%d}", obscurocommon.ShortAddress(txData.To), txData.Amount, obscurocommon.ShortHash(t.Hash())))
 	}
 	return txsString
 }
