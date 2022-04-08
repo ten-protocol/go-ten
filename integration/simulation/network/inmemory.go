@@ -31,9 +31,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
 	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
 	l2Nodes := make([]*host.Node, params.NumberOfNodes)
-	for i := 1; i <= params.NumberOfNodes; i++ {
+	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false
-		if i == 1 {
+		if i == 0 {
 			genesis = true
 		}
 
@@ -45,9 +45,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i-1] = miner
-		l2Nodes[i-1] = agg
-		l1Clients[i-1] = ethereum_mock.NewEthClient(miner)
+		l1Nodes[i] = miner
+		l2Nodes[i] = agg
+		l1Clients[i] = ethereum_mock.NewEthClient(miner)
 	}
 
 	// populate the nodes field of each network

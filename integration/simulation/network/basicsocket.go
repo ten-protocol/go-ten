@@ -40,9 +40,9 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 		nodeP2pAddrs = append(nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i))
 	}
 
-	for i := 1; i <= params.NumberOfNodes; i++ {
+	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false
-		if i == 1 {
+		if i == 0 {
 			genesis = true
 		}
 
@@ -57,15 +57,15 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i-1], nodeP2pAddrs, enclavePort)
+		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclavePort)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i-1] = miner
-		l2Nodes[i-1] = agg
-		l1Clients[i-1] = ethereum_mock.NewEthClient(miner)
+		l1Nodes[i] = miner
+		l2Nodes[i] = agg
+		l1Clients[i] = ethereum_mock.NewEthClient(miner)
 	}
 
 	// populate the nodes field of the L1 network
