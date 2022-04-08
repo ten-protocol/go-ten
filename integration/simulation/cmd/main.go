@@ -53,7 +53,7 @@ func main() {
 	// define network params
 	stats := simulation.NewStats(params.NumberOfNodes)
 
-	mockEthNodes, obscuroInMemNodes, p2pAddrs := simulation.CreateBasicNetworkOfInMemoryNodes(params, stats)
+	mockEthNodes, obscuroInMemNodes, p2pAddrs := simulation.NewBasicNetworkOfInMemoryNodes().Create(params, stats)
 
 	txInjector := simulation.NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTimeUSecs, mockEthNodes, obscuroInMemNodes)
 
@@ -65,6 +65,7 @@ func main() {
 		TxInjector:         txInjector,
 		SimulationTimeSecs: params.SimulationTimeSecs,
 		Stats:              stats,
+		Params:             &params,
 	}
 
 	// execute the simulation

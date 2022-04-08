@@ -14,16 +14,18 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	defer logFile.Close()
 
 	params := SimParams{
-		NumberOfNodes:         10,
-		NumberOfWallets:       5,
-		AvgBlockDurationUSecs: uint64(40_000),
-		SimulationTimeSecs:    15,
+		NumberOfNodes:             10,
+		NumberOfWallets:           5,
+		AvgBlockDurationUSecs:     uint64(40_000),
+		SimulationTimeSecs:        15,
+		L1EfficiencyThreshold:     0.2,
+		L2EfficiencyThreshold:     0.32,
+		L2ToL1EfficiencyThreshold: 0.34,
 	}
+
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
-	efficiencies := EfficiencyThresholds{0.2, 0.32, 0.34}
-
-	testSimulation(t, CreateBasicNetworkOfInMemoryNodes, params, efficiencies)
+	testSimulation(t, NewBasicNetworkOfInMemoryNodes(), params)
 }
