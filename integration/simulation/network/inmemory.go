@@ -29,8 +29,9 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
 	// todo - add observer nodes
 	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
-	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
-	l2Nodes := make([]*host.Node, params.NumberOfNodes)
+	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
+	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
+
 	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false
 		if i == 0 {
@@ -45,19 +46,17 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i] = miner
-		l2Nodes[i] = agg
-		l1Clients[i] = ethereum_mock.NewEthClient(miner)
+		n.ethNodes[i] = miner
+		n.obscuroNodes[i] = agg
+		l1Clients[i] = miner
 	}
 
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
-		l1Nodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = l1Nodes
-		l2Nodes[i].P2p.(*p2p.MockP2P).Nodes = l2Nodes
+		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
+		n.obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = n.obscuroNodes
 	}
 
-	n.ethNodes = l1Nodes
-	n.obscuroNodes = l2Nodes
 	n.obscuroAddresses = nil
 
 	// The sequence of starting the nodes is important to catch various edge cases.
@@ -79,7 +78,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
 	}
 
-	return l1Clients, l2Nodes, nil
+	return l1Clients, n.obscuroNodes, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {

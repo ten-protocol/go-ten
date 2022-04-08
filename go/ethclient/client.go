@@ -19,7 +19,7 @@ type Client interface {
 	// BlocksBetween returns the blocks between two blocks
 	BlocksBetween(block *types.Block, head *types.Block) []*types.Block
 	// IsBlockAncestor checks if the node recognizes a block like the ancestor
-	IsBlockAncestor(block types.Block, proof obscurocommon.L1RootHash) bool
+	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool
 }
 
 // Info forces the RPC Client returns the data in the same format (independently of it's implementation)

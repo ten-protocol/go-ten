@@ -117,7 +117,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.Client, s *S
 			case obscurocommon.RollupTx:
 				r := nodecommon.DecodeRollupOrPanic(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if node.IsBlockAncestor(*block, r.Header.L1Proof) {
+				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					s.Stats.NewRollup(node.Info().ID, r)

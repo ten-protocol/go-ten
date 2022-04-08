@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -59,6 +61,28 @@ type Node struct {
 	// internal
 	headInCh  chan bool
 	headOutCh chan *types.Block
+}
+
+func (m *Node) FetchBlock(id common.Hash) (*types.Block, bool) {
+	return m.Resolver.FetchBlock(id)
+}
+
+func (m *Node) FetchHeadBlock() (*types.Block, uint64) {
+	return m.Resolver.FetchHeadBlock()
+}
+
+func (m *Node) IssueTx(tx obscurocommon.EncodedL1Tx) {
+	m.Network.BroadcastTx(tx)
+}
+
+func (m *Node) Info() ethclient.Info {
+	return ethclient.Info{
+		ID: m.ID,
+	}
+}
+
+func (m *Node) IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool {
+	return m.Resolver.IsBlockAncestor(block, proof)
 }
 
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
