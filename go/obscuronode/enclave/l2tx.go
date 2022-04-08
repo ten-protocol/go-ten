@@ -16,6 +16,7 @@ type (
 const (
 	TransferTx L2TxType = iota
 	WithdrawalTx
+	DepositTx
 )
 
 // L2TxData is the Obscuro transaction data that will be stored encoded in the types.Transaction data field.
