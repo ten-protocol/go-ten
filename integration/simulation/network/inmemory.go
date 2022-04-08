@@ -1,7 +1,15 @@
-package simulation
+package network
 
 import (
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
@@ -17,14 +25,16 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 	return &basicNetworkOfInMemoryNodes{}
 }
 
-// creates and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params SimParams, stats *Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+// Create inits and starts the nodes, wires them up, and populates the network objects
+func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
-	l2Nodes := make([]*host.Node, params.NumberOfNodes)
-	for i := 1; i <= params.NumberOfNodes; i++ {
+	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
+	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
+	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
+
+	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false
-		if i == 1 {
+		if i == 0 {
 			genesis = true
 		}
 
@@ -36,18 +46,17 @@ func (n *basicNetworkOfInMemoryNodes) Create(params SimParams, stats *Stats) ([]
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i-1] = miner
-		l2Nodes[i-1] = agg
+		n.ethNodes[i] = miner
+		n.obscuroNodes[i] = agg
+		l1Clients[i] = miner
 	}
 
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
-		l1Nodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = l1Nodes
-		l2Nodes[i].P2p.(*MockP2P).Nodes = l2Nodes
+		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
+		n.obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = n.obscuroNodes
 	}
 
-	n.ethNodes = l1Nodes
-	n.obscuroNodes = l2Nodes
 	n.obscuroAddresses = nil
 
 	// The sequence of starting the nodes is important to catch various edge cases.
@@ -69,7 +78,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params SimParams, stats *Stats) ([]
 		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
 	}
 
-	return l1Nodes, l2Nodes, nil
+	return l1Clients, n.obscuroNodes, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {

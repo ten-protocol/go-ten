@@ -3,13 +3,14 @@ package simulation
 import (
 	"testing"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
@@ -28,10 +29,10 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 // - noReorgs
 func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 	// Sanity check number for a minimum height
-	minHeight := uint64(float64(s.Params.SimulationTimeUSecs) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
+	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
 
-	heights := make([]uint64, len(s.MockEthNodes))
-	for i, node := range s.MockEthNodes {
+	heights := make([]uint64, len(s.EthClients))
+	for i, node := range s.EthClients {
 		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s)
 	}
 
@@ -52,7 +53,7 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 // - check withdrawals/deposits
 func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64) {
 	// Sanity check number for a minimum height
-	minHeight := uint64(float64(s.Params.SimulationTimeUSecs) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
+	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
 
 	heights := make([]uint64, len(s.ObscuroNodes))
 	for i, node := range s.ObscuroNodes {
@@ -65,11 +66,11 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node *ethereum_mock.Node, minHeight uint64, s *Simulation) uint64 {
-	head, height := node.Resolver.FetchHeadBlock()
+func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.Client, minHeight uint64, s *Simulation) uint64 {
+	head, height := node.FetchHeadBlock()
 
 	if height < minHeight {
-		t.Errorf("Node %d. There were only %d blocks mined. Expected at least: %d.", obscurocommon.ShortAddress(node.ID), height, minHeight)
+		t.Errorf("Node %d. There were only %d blocks mined. Expected at least: %d.", obscurocommon.ShortAddress(node.Info().ID), height, minHeight)
 	}
 
 	deposits, rollups, totalDeposited := extractDataFromEthereumChain(head, node, s)
@@ -82,30 +83,30 @@ func checkBlockchainOfEthereumNode(t *testing.T, node *ethereum_mock.Node, minHe
 		dups := obscurocommon.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
-	if totalDeposited != s.Stats.totalDepositedAmount {
-		t.Errorf("Node %d. Deposit amounts don't match. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), totalDeposited, s.Stats.totalDepositedAmount)
+	if totalDeposited != s.Stats.TotalDepositedAmount {
+		t.Errorf("Node %d. Deposit amounts don't match. Found %d , expected %d", obscurocommon.ShortAddress(node.Info().ID), totalDeposited, s.Stats.TotalDepositedAmount)
 	}
 
-	efficiency := float64(s.Stats.totalL1Blocks-height) / float64(s.Stats.totalL1Blocks)
+	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
 	if efficiency > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.ID), efficiency, s.Params.L1EfficiencyThreshold, height)
+		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.Info().ID), efficiency, s.Params.L1EfficiencyThreshold, height)
 	}
 
 	// compare the number of reorgs for this node against the height
-	reorgs := s.Stats.noL1Reorgs[node.ID]
+	reorgs := s.Stats.NoL1Reorgs[node.Info().ID]
 	eff := float64(reorgs) / float64(height)
 	if eff > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d. The number of reorgs is too high: %d. ", obscurocommon.ShortAddress(node.ID), reorgs)
+		t.Errorf("Node %d. The number of reorgs is too high: %d. ", obscurocommon.ShortAddress(node.Info().ID), reorgs)
 	}
 	return height
 }
 
-func extractDataFromEthereumChain(head *types.Block, node *ethereum_mock.Node, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64) {
+func extractDataFromEthereumChain(head *types.Block, node ethclient.Client, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	blockchain := ethereum_mock.BlocksBetween(obscurocommon.GenesisBlock, head, node.Resolver)
+	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
 	for _, block := range blockchain {
 		for _, tr := range block.Transactions() {
 			tx := obscurocommon.TxData(tr)
@@ -116,10 +117,10 @@ func extractDataFromEthereumChain(head *types.Block, node *ethereum_mock.Node, s
 			case obscurocommon.RollupTx:
 				r := nodecommon.DecodeRollupOrPanic(tx.Rollup)
 				rollups = append(rollups, r.Hash())
-				if node.Resolver.IsBlockAncestor(block, r.Header.L1Proof) {
+				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					s.Stats.NewRollup(node.ID, r)
+					s.Stats.NewRollup(node.Info().ID, r)
 				}
 			case obscurocommon.RequestSecretTx:
 			case obscurocommon.StoreSecretTx:
@@ -149,7 +150,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		t.Errorf("There were only %d blocks mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
 	}
 
-	totalL2Blocks := s.Stats.noL2Blocks[node.ID]
+	totalL2Blocks := s.Stats.NoL2Blocks[node.ID]
 	efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
 	if efficiencyL2 > s.Params.L2EfficiencyThreshold {
 		t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, s.Params.L2EfficiencyThreshold)
@@ -180,12 +181,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// expected condition : some Txs (stats) did not make it to the blockchain
 	// best condition : all Txs (stats) were issue and consumed in the blockchain
 	// can't happen : sum of headers withdraws greater than issued Txs (stats)
-	if totalSuccessfullyWithdrawn > s.Stats.totalWithdrawalRequestedAmount {
-		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.totalWithdrawalRequestedAmount)
+	if totalSuccessfullyWithdrawn > s.Stats.TotalWithdrawalRequestedAmount {
+		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
 	// check that the sum of all balances matches the total amount of money that must be in the system
-	totalAmountInSystem := s.Stats.totalDepositedAmount - totalSuccessfullyWithdrawn
+	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.TxInjector.wallets {
 		total += node.Enclave.Balance(wallet.Address)

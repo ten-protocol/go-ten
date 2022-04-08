@@ -1,8 +1,14 @@
-package simulation
+package network
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
@@ -19,12 +25,13 @@ func NewBasicNetworkOfNodesWithDockerEnclave() Network {
 	return &basicNetworkOfNodesWithDockerEnclave{}
 }
 
+// Create initializes Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-// creates Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params SimParams, stats *Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+func (n *basicNetworkOfNodesWithDockerEnclave) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
-	l2Nodes := make([]*host.Node, params.NumberOfNodes)
+	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
+	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
+	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
 	var nodeP2pAddrs []string
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -32,32 +39,31 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params SimParams, stats *S
 		nodeP2pAddrs = append(nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i))
 	}
 
-	for i := 1; i <= params.NumberOfNodes; i++ {
+	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false
-		if i == 1 {
+		if i == 0 {
 			genesis = true
 		}
 
 		// create the in memory l1 and l2 node
 		enclavePort := uint64(EnclaveStartPort + i - 1)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i-1], nodeP2pAddrs, enclavePort)
+		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclavePort)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Nodes[i-1] = miner
-		l2Nodes[i-1] = agg
+		n.ethNodes[i] = miner
+		n.obscuroNodes[i] = agg
+		l1Clients[i] = miner
 	}
 
 	// populate the nodes field of the L1 network
 	for i := 0; i < params.NumberOfNodes; i++ {
-		l1Nodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = l1Nodes
+		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
 	}
 
-	n.ethNodes = l1Nodes
-	n.obscuroNodes = l2Nodes
 	n.obscuroAddresses = nodeP2pAddrs
 
 	// The sequence of starting the nodes is important to catch various edge cases.
@@ -79,7 +85,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params SimParams, stats *S
 		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
 	}
 
-	return l1Nodes, l2Nodes, nodeP2pAddrs
+	return l1Clients, n.obscuroNodes, nodeP2pAddrs
 }
 
 func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {

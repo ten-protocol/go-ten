@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -38,14 +40,13 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
 		AvgBlockDurationUSecs:     uint64(250_000),
-		SimulationTimeSecs:        15,
+		SimulationTimeSecs:        15 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
 	}
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
-	params.SimulationTimeUSecs = params.SimulationTimeSecs * 1000 * 1000
 
 	// We create a Docker client.
 	ctx := context.Background()
@@ -73,7 +74,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		}
 	}
 
-	testSimulation(t, NewBasicNetworkOfNodesWithDockerEnclave(), params)
+	testSimulation(t, network.NewBasicNetworkOfNodesWithDockerEnclave(), params)
 }
 
 // Checks the required Docker images exist.
@@ -94,7 +95,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", EnclaveStartPort+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", network.EnclaveStartPort+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))
@@ -102,7 +103,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
 		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID, addressFlag, enclaveAddress}}
 		hostConfig := &container.HostConfig{
-			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: Localhost, HostPort: port}}},
+			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: network.Localhost, HostPort: port}}},
 		}
 
 		resp, err := client.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")

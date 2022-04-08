@@ -1,9 +1,13 @@
-package simulation
+package network
 
 import (
 	"fmt"
 	"math/big"
 	"time"
+
+	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -19,7 +23,7 @@ const (
 	EnclaveStartPort = 11000
 )
 
-func createMockEthNode(id int64, nrNodes int, avgBlockDurationUSecs uint64, avgNetworkLatency uint64, stats *Stats) *ethereum_mock.Node {
+func createMockEthNode(id int64, nrNodes int, avgBlockDurationUSecs uint64, avgNetworkLatency uint64, stats *stats.Stats) *ethereum_mock.Node {
 	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDurationUSecs, avgNetworkLatency, stats)
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDurationUSecs)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
@@ -28,8 +32,8 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDurationUSecs uint64, avgN
 	return &miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgBlockDurationUSecs uint64, avgNetworkLatency uint64, stats *Stats) *host.Node {
-	obscuroInMemNetwork := NewMockP2P(avgBlockDurationUSecs, avgNetworkLatency)
+func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgBlockDurationUSecs uint64, avgNetworkLatency uint64, stats *stats.Stats) *host.Node {
+	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDurationUSecs, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 
@@ -38,11 +42,11 @@ func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgB
 
 	// create an in memory obscuro node
 	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork)
-	obscuroInMemNetwork.currentNode = &node
+	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *Stats, p2pAddr string, peerAddrs []string, enclavePort uint64) *host.Node {
+func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclavePort uint64) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
