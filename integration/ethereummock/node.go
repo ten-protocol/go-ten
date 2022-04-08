@@ -119,7 +119,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
 		log.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), obscurocommon.ShortHash(head.Hash()), m.Resolver.HeightBlock(head), obscurocommon.ShortHash(fork.Hash()), m.Resolver.HeightBlock(fork)))
-		return m.setFork(BlocksBetween(fork, b, m.Resolver))
+		return m.setFork(m.BlocksBetween(fork, b))
 	}
 
 	if m.Resolver.HeightBlock(b) > (m.Resolver.HeightBlock(head) + 1) {
@@ -245,7 +245,7 @@ func (m *Node) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
 func (m *Node) RPCBlockchainFeed() []*types.Block {
 	m.headInCh <- true
 	h := <-m.headOutCh
-	return BlocksBetween(obscurocommon.GenesisBlock, h, m.Resolver)
+	return m.BlocksBetween(obscurocommon.GenesisBlock, h)
 }
 
 func (m *Node) Stop() {
@@ -259,6 +259,31 @@ func (m *Node) Stop() {
 
 func (m *Node) AddClient(client obscurocommon.NotifyNewBlock) {
 	m.clients = append(m.clients, client)
+}
+
+func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.Block {
+	if blockA.Hash() == blockB.Hash() {
+		return []*types.Block{blockA}
+	}
+	blocks := make([]*types.Block, 0)
+	tempBlock := blockB
+	var found bool
+	for {
+		blocks = append(blocks, tempBlock)
+		if tempBlock.Hash() == blockA.Hash() {
+			break
+		}
+		tempBlock, found = m.Resolver.ParentBlock(tempBlock)
+		if !found {
+			panic("should not happen")
+		}
+	}
+	n := len(blocks)
+	result := make([]*types.Block, n)
+	for i, block := range blocks {
+		result[n-i-1] = block
+	}
+	return result
 }
 
 func NewMiner(

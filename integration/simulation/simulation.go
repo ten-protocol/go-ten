@@ -5,15 +5,15 @@ import (
 	"net"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 )
 
 const (
@@ -22,9 +22,9 @@ const (
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	MockEthNodes     []*ethereum_mock.Node // the list of mock ethereum nodes - todo - need to be interfaces to rpc handles
-	ObscuroNodes     []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
-	ObscuroP2PAddrs  []string              // the P2P addresses of the Obscuro nodes
+	EthClients       []ethclient.Client // the list of mock ethereum clients
+	ObscuroNodes     []*host.Node       // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
+	ObscuroP2PAddrs  []string           // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration

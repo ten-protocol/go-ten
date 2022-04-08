@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -30,7 +30,7 @@ type TransactionInjector struct {
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
-	l1Nodes []*ethereum_mock.Node
+	l1Nodes []ethclient.Client
 	l2Nodes []*host.Node
 
 	l1TransactionsLock sync.RWMutex
@@ -42,7 +42,14 @@ type TransactionInjector struct {
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
 // todo Add methods that generate deterministic scenarios
-func NewTransactionInjector(numberWallets int, avgBlockDuration uint64, stats *stats2.Stats, injectionTime time.Duration, l1Nodes []*ethereum_mock.Node, l2Nodes []*host.Node) *TransactionInjector {
+func NewTransactionInjector(
+	numberWallets int,
+	avgBlockDuration uint64,
+	stats *stats2.Stats,
+	injectionTime time.Duration,
+	l1Nodes []ethclient.Client,
+	l2Nodes []*host.Node,
+) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
 	for i := 0; i < numberWallets; i++ {
@@ -72,7 +79,7 @@ func (m *TransactionInjector) Start() {
 		}
 		tx := obscurocommon.NewL1Tx(txData)
 		t, _ := obscurocommon.EncodeTx(tx)
-		m.rndL1Node().Network.BroadcastTx(t)
+		m.rndL1Node().IssueTx(t)
 		m.stats.Deposit(INITIAL_BALANCE)
 		time.Sleep(obscurocommon.Duration(m.avgBlockDuration / 3))
 	}
@@ -185,7 +192,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 		}
 		tx := obscurocommon.NewL1Tx(txData)
 		t, _ := obscurocommon.EncodeTx(tx)
-		m.rndL1Node().BroadcastTx(t)
+		m.rndL1Node().IssueTx(t)
 		m.stats.Deposit(v)
 		go m.trackL1Tx(txData)
 		time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2)))
@@ -262,7 +269,7 @@ func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
 	return wallets[rand.Intn(len(wallets))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL1Node() *ethereum_mock.Node {
+func (m *TransactionInjector) rndL1Node() ethclient.Client {
 	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
 }
 

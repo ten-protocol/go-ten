@@ -20,12 +20,12 @@ func testSimulation(t *testing.T, netw network.Network, params params.SimParams)
 
 	stats := stats2.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
-	mockEthNodes, obscuroNodes, p2pAddrs := netw.Create(params, stats)
+	ethClients, obscuroNodes, p2pAddrs := netw.Create(params, stats)
 
-	txInjector := NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTime, mockEthNodes, obscuroNodes)
+	txInjector := NewTransactionInjector(params.NumberOfWallets, params.AvgBlockDurationUSecs, stats, params.SimulationTime, ethClients, obscuroNodes)
 
 	simulation := Simulation{
-		MockEthNodes:     mockEthNodes, // the list of mock ethereum nodes
+		EthClients:       ethClients,
 		ObscuroNodes:     obscuroNodes,
 		ObscuroP2PAddrs:  p2pAddrs,
 		AvgBlockDuration: params.AvgBlockDurationUSecs,

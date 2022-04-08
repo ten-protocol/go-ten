@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
@@ -26,8 +28,9 @@ func NewBasicNetworkOfSocketNodes() Network {
 	return &basicNetworkOfSocketNodes{}
 }
 
-func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
 	// todo - add observer nodes
+	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
 	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
 	l2Nodes := make([]*host.Node, params.NumberOfNodes)
 
@@ -62,6 +65,7 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 
 		l1Nodes[i-1] = miner
 		l2Nodes[i-1] = agg
+		l1Clients[i-1] = ethereum_mock.NewEthClient(miner)
 	}
 
 	// populate the nodes field of the L1 network
@@ -92,7 +96,7 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
 	}
 
-	return l1Nodes, l2Nodes, nodeP2pAddrs
+	return l1Clients, l2Nodes, nodeP2pAddrs
 }
 
 func (n *basicNetworkOfSocketNodes) TearDown() {

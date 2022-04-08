@@ -3,6 +3,8 @@ package network
 import (
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -24,8 +26,9 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]*ethereum_mock.Node, []*host.Node, []string) {
+func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
 	// todo - add observer nodes
+	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
 	l1Nodes := make([]*ethereum_mock.Node, params.NumberOfNodes)
 	l2Nodes := make([]*host.Node, params.NumberOfNodes)
 	for i := 1; i <= params.NumberOfNodes; i++ {
@@ -44,6 +47,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 
 		l1Nodes[i-1] = miner
 		l2Nodes[i-1] = agg
+		l1Clients[i-1] = ethereum_mock.NewEthClient(miner)
 	}
 
 	// populate the nodes field of each network
@@ -75,7 +79,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
 	}
 
-	return l1Nodes, l2Nodes, nil
+	return l1Clients, l2Nodes, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
