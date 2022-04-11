@@ -3,8 +3,8 @@
 DONE
 
 - T2: Introduce basic crypto for L2 transactions (Complexity level 4)
-- T9: Implement p2p communication, gossiping between L2 nodes (Complexity level 3)
-- T10: Implement the enclave service (Complexity level 3)
+- T9: Simple implement p2p communication to connect to remote node and pass blocks between L2 nodes (Complexity level 3)
+    - current implementation us using a super basic approach using socket connection using a hardcoded list of nodes. Fine for TN1
 - Create a unit test with a checker for the final state of the simulation:
     - all injected transactions were included, and there are no duplicates
     - the state in each rollup matches the transactions (deposits + L1)
@@ -18,14 +18,26 @@ Complex:
 
 - T1: Bring in the core ethereum structures (see first task from route to testnet), and connect Obscuro to a real L1 node (Complexity level 3)
 - T3: Introduce better mempool logic (Complexity level 4)
+    - geth mempool looks to be too complicated for Obscuro (e.g. gas considerations are included)
+    - basic mempool to be made ready for TN1
+    - make a choice on how to approach gas (how exactly charge mempool txns) and mempool once TN1 launched
 - T4: Refactor the Obscuro "database" and introduce something proper that works within an enclave (Depends on T6) (Complexity level 2)
+    - match to the execution engine
+    - align the data structures
 - T5: Create better logic to get L2 node up to speed (Depends on T1) (Complexity level 3)
+    - primative logic in place now, needs some refinement for TN1
 - T6: Replace the state and transaction execution with code from geth (Depends on T2) (super complex task) (Complexity level 1)
 - T7: Refactoring create a Blockchain structure (see geth)- to better encapsulate the logic (Complexity level 5)
+    - required to handle rollups data structure and maintain the structure
+    - might have to use the blockchain data structure in geth
 - T8: Implement the obscuro cryptography (Depends on T4) (Complexity level 2):
+    - TN1 will us a light version of this
     - from the master seed derive the keys
     - create the transaction block
-
+    - this is a hot spot for auditing to make sure the implmentation is correct
+- T10: Implement the enclave service (Complexity level 3)
+    - deploy Docker instances to Azure and proper SGX in non-simulation mode with ego
+    - automate it from CI: setup a network on VMs in Azure
 - T11: Create a stand-alone running aggregator with RPC endpoints + enclave connection + client for connections (lib)
       . Reuse/Inspire on the geth servers
       . Depends on T1-part4
@@ -34,6 +46,7 @@ Complex:
       . Reuse/Inspire on the geth block verification
       . Might colide with T1-part4
       . Might need to change the simulation/mock eth blocks    
+- T13: Dynamic identification of other nodes and gossiping their status
 
 Normal:
 
