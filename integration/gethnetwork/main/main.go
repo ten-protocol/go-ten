@@ -7,15 +7,13 @@ import (
 )
 
 const (
-	// TODO - Use agnostic paths.
-	gethBinaryPath = "/Users/joeldudley/Desktop/repos/go-ethereum/cmd/geth/geth"
-	nodesDir       = "../.build/12847t/"
+	gethBinaryPath = "/path/to/geth/binary"
 	numNodes       = 5
 	peerCountCmd   = "net.peerCount"
 )
 
 func main() {
-	network := gethnetwork.NewGethNetwork(gethBinaryPath, nodesDir, numNodes)
+	network := gethnetwork.NewGethNetwork(gethBinaryPath, numNodes)
 
 	// Example usage:
 	peerCountStr := network.IssueCommand(0, peerCountCmd)

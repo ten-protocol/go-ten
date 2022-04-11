@@ -2,6 +2,7 @@ package gethnetwork
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -32,8 +33,8 @@ type GethNetwork struct {
 }
 
 // NewGethNetwork using the provided Geth binary to create a private Ethereum network with numNodes Geth nodes.
-func NewGethNetwork(gethBinaryPath string, nodesDir string, numNodes int) GethNetwork {
-	err := os.MkdirAll(nodesDir, 0o700)
+func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
+	nodesDir, err := ioutil.TempDir("", "geth_nodes")
 	if err != nil {
 		panic(err)
 	}
