@@ -17,60 +17,54 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-type State = map[common.Address]uint64
+// State - this is a placeholder for the real Trie based state
+//- people send transactions to an ObsERC20 that was a withdraw(amount, from, destination) method
+//In the EVM, there will be a smart contract that does the following:
+//- the tokens are deducted from the "from" address , and burned
+//- add to the "withdrawals" transactions - this info will be taken from the state
+//Post processing, outside the evm:
+//- generate withdrawal instructions (amount, destination), based on which withdrawal transaction were executed successfully
+type State struct {
+	balances    map[common.Address]uint64
+	withdrawals []obscurocommon.TxHash
+}
 
 // blockState - Represents the state after an L1 block was processed.
 type blockState struct {
 	block          *types.Block
 	head           *Rollup
-	state          State
+	state          *State
 	foundNewRollup bool
 }
 
-// RollupState - State after an L2 rollup was processed
-type RollupState struct {
-	s State
-	w []nodecommon.Withdrawal
-}
-
-func newProcessedState(s State) RollupState {
-	return RollupState{
-		s: copyState(s),
-		w: []nodecommon.Withdrawal{},
+func copyState(state *State) *State {
+	s := emptyState()
+	if state == nil {
+		return s
 	}
-}
-
-func copyState(state State) State {
-	s := make(State)
-	for address, balance := range state {
-		s[address] = balance
+	for address, balance := range state.balances {
+		s.balances[address] = balance
 	}
+	s.withdrawals = append(s.withdrawals, state.withdrawals...)
 	return s
 }
 
-func copyProcessedState(s RollupState) RollupState {
-	return RollupState{
-		s: copyState(s.s),
-		w: s.w,
-	}
-}
-
-func serialize(state State) string {
+func serialize(state *State) string {
 	return fmt.Sprintf("%v", state)
 }
 
 // returns a modified copy of the State
-func executeTransactions(txs []nodecommon.L2Tx, state RollupState) RollupState {
-	ps := copyProcessedState(state)
+func executeTransactions(txs []nodecommon.L2Tx, state *State) *State {
+	s := copyState(state)
 	for _, tx := range txs {
-		executeTx(&ps, tx)
+		executeTx(s, tx)
 	}
 	// fmt.Printf("w1: %v\n", is.w)
-	return ps
+	return s
 }
 
 // mutates the state
-func executeTx(s *RollupState, tx nodecommon.L2Tx) {
+func executeTx(s *State, tx nodecommon.L2Tx) {
 	switch TxData(&tx).Type {
 	case TransferTx:
 		executeTransfer(s, tx)
@@ -83,35 +77,34 @@ func executeTx(s *RollupState, tx nodecommon.L2Tx) {
 	}
 }
 
-func executeWithdrawal(s *RollupState, tx nodecommon.L2Tx) {
-	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
-		s.s[txData.From] -= txData.Amount
-		s.w = append(s.w, nodecommon.Withdrawal{
-			Amount:  txData.Amount,
-			Address: txData.From,
-		})
+func executeWithdrawal(s *State, tx nodecommon.L2Tx) {
+	if txData := TxData(&tx); s.balances[txData.From] >= txData.Amount {
+		s.balances[txData.From] -= txData.Amount
+		s.withdrawals = append(s.withdrawals, tx.Hash())
 	}
 }
 
-func executeTransfer(s *RollupState, tx nodecommon.L2Tx) {
-	if txData := TxData(&tx); s.s[txData.From] >= txData.Amount {
-		s.s[txData.From] -= txData.Amount
-		s.s[txData.To] += txData.Amount
+func executeTransfer(s *State, tx nodecommon.L2Tx) {
+	if txData := TxData(&tx); s.balances[txData.From] >= txData.Amount {
+		s.balances[txData.From] -= txData.Amount
+		s.balances[txData.To] += txData.Amount
 	}
 }
 
-func executeDeposit(s *RollupState, tx nodecommon.L2Tx) {
+func executeDeposit(s *State, tx nodecommon.L2Tx) {
 	t := TxData(&tx)
-	v, f := s.s[t.To]
+	v, f := s.balances[t.To]
 	if f {
-		s.s[t.To] = v + t.Amount
+		s.balances[t.To] = v + t.Amount
 	} else {
-		s.s[t.To] = t.Amount
+		s.balances[t.To] = t.Amount
 	}
 }
 
-func emptyState() State {
-	return make(State)
+func emptyState() *State {
+	return &State{
+		balances: map[common.Address]uint64{},
+	}
 }
 
 // Determine the new canonical L2 head and calculate the State
@@ -152,6 +145,10 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 			panic("Could not find block parent. This should not happen.")
 		}
 		parentState = updateState(p, s, blockResolver)
+	}
+
+	if parentState == nil {
+		panic("Something went wrong. There should be parent here.")
 	}
 
 	bs := calculateBlockState(b, parentState, s, blockResolver, rollups)
@@ -217,21 +214,20 @@ func FindWinner(parent *Rollup, rollups []*Rollup, s Storage, blockResolver Bloc
 	return rollups[win], true
 }
 
-func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState State, s Storage, blockResolver BlockResolver) (*Rollup, State) {
+func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State, s Storage, blockResolver BlockResolver) (*Rollup, *State) {
 	win, found := FindWinner(parent, receivedRollups, s, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
 	}
 	// calculate the state to compare with what is in the Rollup
-	state := newProcessedState(parentState)
 	p := s.ParentRollup(win).Proof(blockResolver)
 	depositTxs := processDeposits(p, win.Proof(blockResolver), blockResolver)
 
-	state = executeTransactions(append(win.Transactions, depositTxs...), state)
+	state := executeTransactions(append(win.Transactions, depositTxs...), parentState)
 
-	if serialize(state.s) != win.Header.State {
+	if serialize(state) != win.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
-			serialize(state.s),
+			serialize(state),
 			win.Header.State,
 			parentState,
 			parent.Header.State,
@@ -240,7 +236,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState Stat
 	}
 	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
-	return win, state.s
+	return win, state
 }
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
@@ -290,34 +286,47 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup) *blockState {
 	currentHead := parentState.head
-	newHead, found := FindWinner(currentHead, rollups, s, blockResolver)
-
-	state := newProcessedState(parentState.state)
-
+	newHeadRollup, found := FindWinner(currentHead, rollups, s, blockResolver)
+	newState := parentState.state
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		// Preprocessing before passing to the vm
 		// todo transform into an eth block structure
 
-		p := s.ParentRollup(newHead).Proof(blockResolver)
-		depositTxs := processDeposits(p, newHead.Proof(blockResolver), blockResolver)
+		p := s.ParentRollup(newHeadRollup).Proof(blockResolver)
+		depositTxs := processDeposits(p, newHeadRollup.Proof(blockResolver), blockResolver)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
-		txsToProcess := append(newHead.Transactions, depositTxs...)
-		state = executeTransactions(txsToProcess, state)
-
-		// Postprocessing - witdrawals todo
+		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
+		newState = executeTransactions(txsToProcess, parentState.state)
 	} else {
-		newHead = parentState.head
+		newHeadRollup = parentState.head
 	}
 
 	bs := blockState{
 		block:          b,
-		head:           newHead,
-		state:          state.s,
+		head:           newHeadRollup,
+		state:          newState,
 		foundNewRollup: found,
 	}
 	return &bs
+}
+
+// Todo - this has to be implemented differently based on how we define the ObsERC20
+func rollupPostProcessingWithdrawals(newHeadRollup *Rollup, newState *State) []nodecommon.Withdrawal {
+	w := make([]nodecommon.Withdrawal, 0)
+
+	// go through each transaction and check if the withdrawal was processed correctly
+	for i, t := range newHeadRollup.Transactions {
+		txData := TxData(&newHeadRollup.Transactions[i])
+		if txData.Type == WithdrawalTx && contains(newState.withdrawals, t.Hash()) {
+			w = append(w, nodecommon.Withdrawal{
+				Amount:  txData.Amount,
+				Address: txData.From,
+			})
+		}
+	}
+	return w
 }
 
 func extractRollups(b *types.Block, blockResolver BlockResolver) []*Rollup {

@@ -151,9 +151,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[node.ID]
-	efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
-	if efficiencyL2 > s.Params.L2EfficiencyThreshold {
-		t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, s.Params.L2EfficiencyThreshold)
+	// in case the blockchain has advanced above what was collected, there is no longer a point to this check
+	if l2Height <= totalL2Blocks {
+		efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
+		if efficiencyL2 > s.Params.L2EfficiencyThreshold {
+			t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, s.Params.L2EfficiencyThreshold)
+		}
 	}
 
 	// check that the pobi protocol doesn't waste too many blocks.

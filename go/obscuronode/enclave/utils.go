@@ -94,3 +94,12 @@ func printTx(t nodecommon.L2Tx, txsString []string) []string {
 	}
 	return txsString
 }
+
+func contains(s []obscurocommon.TxHash, e obscurocommon.TxHash) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}

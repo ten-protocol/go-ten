@@ -53,7 +53,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 
 func (e *enclaveImpl) start(block types.Block) {
 	var currentHead *Rollup
-	var currentState RollupState
+	var currentState *State
 	var currentProcessedTxs []nodecommon.L2Tx
 	currentProcessedTxsMap := make(map[common.Hash]nodecommon.L2Tx)
 	// determine whether the block where the speculative execution will start already contains Obscuro state
@@ -61,7 +61,7 @@ func (e *enclaveImpl) start(block types.Block) {
 	if f {
 		currentHead = blockState.head
 		if currentHead != nil {
-			currentState = newProcessedState(e.storage.FetchRollupState(currentHead.Hash()))
+			currentState = copyState(e.storage.FetchRollupState(currentHead.Hash()))
 		}
 	}
 
@@ -71,7 +71,7 @@ func (e *enclaveImpl) start(block types.Block) {
 		case winnerRollup := <-e.roundWinnerCh:
 
 			currentHead = winnerRollup
-			currentState = newProcessedState(e.storage.FetchRollupState(winnerRollup.Hash()))
+			currentState = copyState(e.storage.FetchRollupState(winnerRollup.Hash()))
 
 			// determine the transactions that were not yet included
 			currentProcessedTxs = currentTxs(winnerRollup, e.storage.FetchMempoolTxs(), e.storage)
@@ -87,17 +87,17 @@ func (e *enclaveImpl) start(block types.Block) {
 				if !found {
 					currentProcessedTxsMap[tx.Hash()] = tx
 					currentProcessedTxs = append(currentProcessedTxs, tx)
-					executeTx(&currentState, tx)
+					executeTx(currentState, tx)
 				}
 			}
 
 		case <-e.speculativeWorkInCh:
 			b := make([]nodecommon.L2Tx, 0, len(currentProcessedTxs))
 			b = append(b, currentProcessedTxs...)
-			state := copyProcessedState(currentState)
+			state := copyState(currentState)
 			e.speculativeWorkOutCh <- speculativeWork{
 				r:   currentHead,
-				s:   &state,
+				s:   state,
 				txs: b,
 			}
 
@@ -284,7 +284,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *Rollup) {
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
-	return e.storage.FetchHeadState().state[address]
+	return e.storage.FetchHeadState().state.balances[address]
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
@@ -293,7 +293,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	speculativeRollup := <-e.speculativeWorkOutCh
 
 	newRollupTxs := speculativeRollup.txs
-	newRollupState := *speculativeRollup.s
+	newRollupState := speculativeRollup.s
 
 	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
 	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.head.Hash()) {
@@ -312,17 +312,20 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(bs.head, e.storage.FetchMempoolTxs(), e.storage)
-		newRollupState = executeTransactions(newRollupTxs, newProcessedState(bs.state))
+		newRollupState = executeTransactions(newRollupTxs, bs.state)
 	}
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.head.Proof(e.blockResolver)
 	depositTxs := processDeposits(proof, b, e.blockResolver)
-	newRollupState = executeTransactions(depositTxs, copyProcessedState(newRollupState))
+	newRollupState = executeTransactions(depositTxs, newRollupState)
+
+	// Postprocessing - withdrawals
+	withdrawals := rollupPostProcessingWithdrawals(bs.head, newRollupState)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := NewRollup(b.Hash(), bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, newRollupState.w, obscurocommon.GenerateNonce(), serialize(newRollupState.s))
+	r := NewRollup(b.Hash(), bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, withdrawals, obscurocommon.GenerateNonce(), serialize(newRollupState))
 	return &r
 }
 
@@ -396,7 +399,7 @@ func encryptSecret(secret SharedEnclaveSecret) obscurocommon.EncryptedSharedEncl
 // internal structure to pass information.
 type speculativeWork struct {
 	r   *Rollup
-	s   *RollupState
+	s   *State
 	txs []nodecommon.L2Tx
 }
 

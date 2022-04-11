@@ -51,9 +51,9 @@ type Storage interface {
 	// SetBlockState persists the state after ingesting the L1 block with the given hash
 	SetBlockState(hash obscurocommon.L1RootHash, state *blockState)
 	// FetchRollupState returns the state after adding the rollup with the given hash
-	FetchRollupState(hash obscurocommon.L2RootHash) State
+	FetchRollupState(hash obscurocommon.L2RootHash) *State
 	// SetRollupState persists the state after adding the rollup with the given hash
-	SetRollupState(hash obscurocommon.L2RootHash, state State)
+	SetRollupState(hash obscurocommon.L2RootHash, state *State)
 
 	// FetchMempoolTxs returns all L2 transactions in the mempool
 	FetchMempoolTxs() []nodecommon.L2Tx
@@ -108,7 +108,7 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *blockS
 	}
 }
 
-func (s *storageImpl) SetRollupState(hash obscurocommon.L2RootHash, state State) {
+func (s *storageImpl) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
 	s.assertSecretAvailable()
 	s.db.SetRollupState(hash, state)
 }
@@ -134,7 +134,7 @@ func (s *storageImpl) FetchRollups(height uint64) []*Rollup {
 	return s.db.FetchRollups(height)
 }
 
-func (s *storageImpl) FetchRollupState(hash obscurocommon.L2RootHash) State {
+func (s *storageImpl) FetchRollupState(hash obscurocommon.L2RootHash) *State {
 	s.assertSecretAvailable()
 	return s.db.FetchRollupState(hash)
 }
