@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// TODO - Use platform-agnostic separators, instead of forward-slashes.
+// TODO - Create genesis file from string on-the-fly, rather than pointing to a real location.
 
 const (
-	genesisFileRelPath = "/integration/gethnetwork/genesis.json"
-	nodeFolderName     = "/node%d_datadir/"
-	ipcFileName        = "geth.ipc"
+	genesisFileName = "genesis.json"
+	nodeFolderName  = string(os.PathSeparator) + "node%d_datadir" + string(os.PathSeparator)
+	ipcFileName     = "geth.ipc"
 
 	dataDirFlag = "--datadir"
 	execFlag    = "--exec"
@@ -89,7 +89,7 @@ func (network *GethNetwork) initGethNode(dataDirPath string) {
 		panic(err)
 	}
 
-	args := []string{dataDirFlag, dataDirPath, initCmd, workingDir + genesisFileRelPath}
+	args := []string{dataDirFlag, dataDirPath, initCmd, workingDir + string(os.PathSeparator) + genesisFileName}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
 	err = cmd.Run()
