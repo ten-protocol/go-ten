@@ -4,7 +4,7 @@ DONE
 
 - T2: Introduce basic crypto for L2 transactions (Complexity level 4)
 - T9: Simple implement p2p communication to connect to remote node and pass blocks between L2 nodes (Complexity level 3)
-    - current implementation us using a super basic approach using socket connection using a hardcoded list of nodes. Fine for TN1
+    - current implementation is using a super basic approach using socket connection using a hardcoded list of nodes. Fine for TN1
 - Create a unit test with a checker for the final state of the simulation:
     - all injected transactions were included, and there are no duplicates
     - the state in each rollup matches the transactions (deposits + L1)
