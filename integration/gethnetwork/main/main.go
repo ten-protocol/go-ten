@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"strconv"
+
+	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 )
 
 const (
@@ -19,6 +20,6 @@ func main() {
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
 	if peerCount != numNodes-1 {
-		panic(fmt.Errorf("wrong number of peers on the network. Found %d, expected %d", peerCount, numNodes))
+		panic(fmt.Errorf("wrong number of peers on the network. Found %d, expected %d", peerCount, numNodes)) //nolint
 	}
 }
