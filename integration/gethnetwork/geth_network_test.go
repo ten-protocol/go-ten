@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	gethBinaryPath = "/Users/joeldudley/Desktop/repos/go-ethereum/cmd/geth/geth"
+	gethBinaryPath = "path/to/geth/binary"
 	numNodes       = 5
 	peerCountCmd   = "net.peerCount"
 )
