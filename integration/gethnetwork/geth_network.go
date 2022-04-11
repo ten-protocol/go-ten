@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -12,7 +13,7 @@ import (
 const (
 	genesisFileRelPath = "/integration/gethnetwork/genesis.json"
 	nodeFolderName     = "/node%d_datadir/"
-	ipcFilePath        = "geth.ipc"
+	ipcFileName        = "geth.ipc"
 
 	dataDirFlag = "--datadir"
 	execFlag    = "--exec"
@@ -31,7 +32,7 @@ type GethNetwork struct {
 }
 
 // NewGethNetwork using the provided Geth binary to create a private Ethereum network with numNodes Geth nodes.
-func NewGethNetwork(gethBinaryPath string, numNodes int, nodesDir string) GethNetwork {
+func NewGethNetwork(gethBinaryPath string, nodesDir string, numNodes int) GethNetwork {
 	err := os.MkdirAll(nodesDir, 0o700)
 	if err != nil {
 		panic(err)
@@ -40,8 +41,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int, nodesDir string) GethNe
 	// Each Geth node needs its own data directory.
 	dataDirs := make([]string, numNodes)
 	for i := 0; i < numNodes; i++ {
-		dataDir := fmt.Sprintf(nodesDir+nodeFolderName, i+1)
-		dataDirs[i] = dataDir
+		dataDirs[i] = fmt.Sprintf(nodesDir+nodeFolderName, i+1)
 	}
 
 	network := GethNetwork{
@@ -50,7 +50,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int, nodesDir string) GethNe
 	}
 
 	for i, dataDir := range dataDirs {
-		_ = os.Remove(dataDir + ipcFilePath) // We delete leftover IPC files from previous runs.
+		_ = os.Remove(dataDir + ipcFileName) // We delete leftover IPC files from previous runs.
 		go network.createGethNode(dataDir, 30303+i)
 	}
 
@@ -64,7 +64,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int, nodesDir string) GethNe
 func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 	dataDir := network.dataDirs[nodeIdx]
 
-	args := []string{dataDirFlag, dataDir, attachCmd, dataDir + ipcFilePath, execFlag, command}
+	args := []string{dataDirFlag, dataDir, attachCmd, dataDir + ipcFileName, execFlag, command}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
 	output, err := cmd.Output()
@@ -72,7 +72,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 		panic(err)
 	}
 
-	return string(output)
+	return strings.TrimSpace(string(output))
 }
 
 // Initialises and starts a Geth node.
@@ -127,7 +127,7 @@ func (network *GethNetwork) joinNodesToNetwork(dataDirs []string) {
 // Waits for a node's IPC file to exist.
 func waitForIPC(dataDir string) {
 	for {
-		_, err := os.Stat(dataDir + ipcFilePath)
+		_, err := os.Stat(dataDir + ipcFileName)
 		if err == nil {
 			break
 		}
