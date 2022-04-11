@@ -39,9 +39,9 @@ type DB interface {
 	// SetBlockStateNewRollup persists the state after ingesting the L1 block with the given hash that contains a new rollup
 	SetBlockStateNewRollup(hash obscurocommon.L1RootHash, state *blockState)
 	// FetchRollupState returns the state after adding the rollup with the given hash
-	FetchRollupState(hash obscurocommon.L2RootHash) State
+	FetchRollupState(hash obscurocommon.L2RootHash) *State
 	// SetRollupState persists the state after adding the rollup with the given hash
-	SetRollupState(hash obscurocommon.L2RootHash, state State)
+	SetRollupState(hash obscurocommon.L2RootHash, state *State)
 
 	// FetchMempoolTxs returns all L2 transactions in the mempool
 	FetchMempoolTxs() []nodecommon.L2Tx
@@ -79,7 +79,7 @@ type inMemoryDB struct {
 	txMutex    sync.RWMutex // Controls access to `txsPerRollupCache`
 
 	statePerBlock     map[obscurocommon.L1RootHash]*blockState
-	statePerRollup    map[obscurocommon.L2RootHash]State
+	statePerRollup    map[obscurocommon.L2RootHash]*State
 	headBlock         obscurocommon.L1RootHash
 	rollupsByHeight   map[uint64][]*Rollup
 	rollups           map[obscurocommon.L2RootHash]*Rollup
@@ -98,7 +98,7 @@ func NewInMemoryDB() DB {
 		rollups:           make(map[obscurocommon.L2RootHash]*Rollup),
 		mempool:           make(map[common.Hash]nodecommon.L2Tx),
 		mpMutex:           sync.RWMutex{},
-		statePerRollup:    make(map[obscurocommon.L2RootHash]State),
+		statePerRollup:    make(map[obscurocommon.L2RootHash]*State),
 		blockCache:        map[obscurocommon.L1RootHash]*blockAndHeight{},
 		blockMutex:        sync.RWMutex{},
 		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
@@ -144,7 +144,7 @@ func (db *inMemoryDB) SetBlockStateNewRollup(hash obscurocommon.L1RootHash, stat
 	db.headBlock = hash
 }
 
-func (db *inMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state State) {
+func (db *inMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
@@ -184,7 +184,7 @@ func (db *inMemoryDB) FetchRollups(height uint64) []*Rollup {
 	return db.rollupsByHeight[height]
 }
 
-func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) State {
+func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
