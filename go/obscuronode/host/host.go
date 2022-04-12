@@ -19,7 +19,7 @@ const ClientRPCTimeoutSecs = 5
 // todo - this has to be replaced with a proper cfg framework
 type AggregatorCfg struct {
 	// duration of the gossip round
-	GossipRoundDuration uint64
+	GossipRoundDuration time.Duration
 	// timeout duration in seconds for RPC requests to the enclave service
 	ClientRPCTimeoutSecs uint64
 }
@@ -340,7 +340,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, a.handleHeader(result))
+		obscurocommon.ScheduleInterrupt(uint64(a.cfg.GossipRoundDuration.Nanoseconds()), interrupt, a.handleHeader(result))
 	}
 }
 
