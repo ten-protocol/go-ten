@@ -47,7 +47,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params params.SimParams, s
 
 		// create the in memory l1 and l2 node
 		enclavePort := uint64(EnclaveStartPort + i - 1)
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
+		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclavePort)
 
 		// and connect them to each other
@@ -75,14 +75,14 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params params.SimParams, s
 	for _, m := range n.ethNodes {
 		t := m
 		go t.Start()
-		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 8))
+		time.Sleep(params.AvgBlockDuration / 8)
 	}
 
-	time.Sleep(time.Duration(params.AvgBlockDurationUSecs * 20))
+	time.Sleep(params.AvgBlockDuration * 20)
 	for _, m := range n.obscuroNodes {
 		t := m
 		go t.Start()
-		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
+		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
 	return l1Clients, n.obscuroNodes, nodeP2pAddrs

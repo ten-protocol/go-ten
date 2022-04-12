@@ -23,17 +23,17 @@ const (
 	EnclaveStartPort = 11000
 )
 
-func createMockEthNode(id int64, nrNodes int, avgBlockDurationUSecs time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
-	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDurationUSecs, avgNetworkLatency, stats)
-	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDurationUSecs)
+func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
+	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
+	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
 	miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
 	mockEthNetwork.CurrentNode = &miner
 	return &miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, avgBlockDurationUSecs time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
-	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDurationUSecs, avgNetworkLatency)
+func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
+	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 
