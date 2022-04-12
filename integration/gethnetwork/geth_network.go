@@ -42,7 +42,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 
 	// We write out the `genesis.json` file to be used by the network.
 	genesisFilePath := nodesDir + string(os.PathSeparator) + genesisFileName
-	err = os.WriteFile(genesisFilePath, []byte(genesisConfig), 0o700)
+	err = os.WriteFile(genesisFilePath, []byte(genesisConfig), 0o600)
 	if err != nil {
 		panic(err)
 	}
@@ -96,8 +96,7 @@ func (network *GethNetwork) initGethNode(dataDirPath string) {
 	args := []string{dataDirFlag, dataDirPath, initCmd, network.genesisFilePath}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		panic(err)
 	}
 }
