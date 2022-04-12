@@ -24,7 +24,7 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
 	if peerCount != numNodes-1 {
-		t.Fatalf("Wrong number of peers on the network. Found %d, expected %d.", peerCount, numNodes)
+		t.Fatalf("Wrong number of peers on the network. Found %d, expected %d.", peerCount, numNodes-1)
 	}
 }
 
