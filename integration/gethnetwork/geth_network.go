@@ -11,19 +11,51 @@ import (
 
 const (
 	genesisFileName = "genesis.json"
-	genesisConfig   = "{\n  \"config\": {\n    \"chainId\": 777,\n    \"homesteadBlock\": 0,\n    \"eip150Block\": 0,\n    \"eip155Block\": 0,\n    \"eip158Block\": 0,\n    \"byzantiumBlock\": 0,\n    \"constantinopleBlock\": 0,\n    \"petersburgBlock\": 0,\n    \"istanbulBlock\": 0,\n    \"berlinBlock\": 0,\n    \"londonBlock\": 0\n  },\n  \"alloc\": {\n    \"0x0000000000000000000000000000000000000001\": {\n      \"balance\": \"111111111\"\n    }\n  },\n  \"coinbase\": \"0x0000000000000000000000000000000000000000\",\n  \"difficulty\": \"0x20000\",\n  \"extraData\": \"\",\n  \"gasLimit\": \"0x2fefd8\",\n  \"nonce\": \"0x0000000000000042\",\n  \"mixhash\": \"0x0000000000000000000000000000000000000000000000000000000000000000\",\n  \"parentHash\": \"0x0000000000000000000000000000000000000000000000000000000000000000\",\n  \"timestamp\": \"0x00\"\n}"
 	nodeFolderName  = string(os.PathSeparator) + "node%d_datadir" + string(os.PathSeparator)
 	ipcFileName     = "geth.ipc"
 	tempDirPrefix   = "geth_nodes"
-
-	dataDirFlag = "--datadir"
-	execFlag    = "--exec"
-	portFlag    = "--port"
 
 	addPeerCmd = "admin.addPeer(%s)"
 	attachCmd  = "attach"
 	enodeCmd   = "admin.nodeInfo.enode"
 	initCmd    = "init"
+
+	dataDirFlag      = "--datadir"
+	execFlag         = "--exec"
+	portFlag         = "--port"
+	mineFlag         = "--mine"
+	minerThreadsFlag = "--miner.threads=1"
+	minerEthbaseFlag = "--miner.etherbase=0x0000000000000000000000000000000000000001"
+
+	// We pre-allocate a single wallet, which is shared by all nodes.
+	genesisConfig = `{
+	  "config": {
+		"chainId": 777,
+		"homesteadBlock": 0,
+		"eip150Block": 0,
+		"eip155Block": 0,
+		"eip158Block": 0,
+		"byzantiumBlock": 0,
+		"constantinopleBlock": 0,
+		"petersburgBlock": 0,
+		"istanbulBlock": 0,
+		"berlinBlock": 0,
+		"londonBlock": 0
+	  },
+	  "alloc": {
+		"0x0000000000000000000000000000000000000001": {
+		  "balance": "111111111"
+		}
+	  },
+	  "coinbase": "0x0000000000000000000000000000000000000000",
+	  "difficulty": "0x20000",
+	  "extraData": "",
+	  "gasLimit": "0x2fefd8",
+	  "nonce": "0x0000000000000042",
+	  "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+	  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+	  "timestamp": "0x00"
+  }`
 )
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
@@ -61,7 +93,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 
 	for i, dataDir := range dataDirs {
 		_ = os.Remove(dataDir + ipcFileName) // We delete leftover IPC files from previous runs.
-		go network.createGethNode(dataDir, 30303+i)
+		go network.createMiner(dataDir, 30303+i)
 	}
 
 	// We need to manually tell the nodes about one another.
@@ -86,13 +118,13 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 }
 
 // Initialises and starts a Geth node.
-func (network *GethNetwork) createGethNode(dataDir string, port int) {
-	network.initGethNode(dataDir)
-	network.startGethNode(dataDir, port)
+func (network *GethNetwork) createMiner(dataDir string, port int) {
+	network.initNode(dataDir)
+	network.startMiner(dataDir, port)
 }
 
 // Initialises a Geth node based on the network genesis file.
-func (network *GethNetwork) initGethNode(dataDirPath string) {
+func (network *GethNetwork) initNode(dataDirPath string) {
 	args := []string{dataDirFlag, dataDirPath, initCmd, network.genesisFilePath}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
@@ -102,8 +134,8 @@ func (network *GethNetwork) initGethNode(dataDirPath string) {
 }
 
 // Starts a Geth node.
-func (network *GethNetwork) startGethNode(dataDirPath string, port int) {
-	args := []string{dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port)}
+func (network *GethNetwork) startMiner(dataDirPath string, port int) {
+	args := []string{dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port), mineFlag, minerThreadsFlag, minerEthbaseFlag}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
 	if err := cmd.Start(); err != nil {
