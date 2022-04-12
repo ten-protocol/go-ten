@@ -15,6 +15,8 @@ const (
 	nodeFolderName  = "node%d_datadir"
 	ipcFileName     = "geth.ipc"
 	tempDirPrefix   = "geth_nodes"
+	buildDir        = "../.build/geth"
+	nodeLogs        = "node_logs.txt"
 	startPort       = 30303
 
 	addPeerCmd = "admin.addPeer(%s)"
@@ -65,6 +67,7 @@ type GethNetwork struct {
 	gethBinaryPath  string
 	genesisFilePath string
 	dataDirs        []string
+	logFile         *os.File
 }
 
 // NewGethNetwork using the provided Geth binary to create a private Ethereum network with numNodes Geth nodes.
@@ -88,10 +91,18 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 		dataDirs[i] = path.Join(nodesDir, nodeFolder)
 	}
 
+	// All the Geth node logs are pushed to a single log file.
+	err = os.MkdirAll(buildDir, 0o700)
+	if err != nil {
+		panic(err)
+	}
+	logFile, _ := os.Create(path.Join(buildDir, nodeLogs))
+
 	network := GethNetwork{
 		gethBinaryPath:  gethBinaryPath,
 		genesisFilePath: genesisFilePath,
 		dataDirs:        dataDirs,
+		logFile:         logFile,
 	}
 
 	for i, dataDir := range dataDirs {
@@ -111,6 +122,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 	args := []string{dataDirFlag, dataDir, attachCmd, path.Join(dataDir, ipcFileName), execFlag, command}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd.Stderr = network.logFile
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -131,6 +143,8 @@ func (network *GethNetwork) createMiner(dataDir string, port int) {
 func (network *GethNetwork) initNode(dataDirPath string) {
 	args := []string{dataDirFlag, dataDirPath, initCmd, network.genesisFilePath}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd.Stdout = network.logFile
+	cmd.Stderr = network.logFile
 
 	if err := cmd.Run(); err != nil {
 		panic(err)
@@ -141,6 +155,8 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 func (network *GethNetwork) startMiner(dataDirPath string, port int) {
 	args := []string{dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port), mineFlag, minerThreadsFlag, minerEthbaseFlag}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd.Stdout = network.logFile
+	cmd.Stderr = network.logFile
 
 	if err := cmd.Start(); err != nil {
 		panic(err)
