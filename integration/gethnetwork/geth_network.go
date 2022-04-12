@@ -5,15 +5,17 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"time"
 )
 
 const (
 	genesisFileName = "genesis.json"
-	nodeFolderName  = string(os.PathSeparator) + "node%d_datadir" + string(os.PathSeparator)
+	nodeFolderName  = "node%d_datadir"
 	ipcFileName     = "geth.ipc"
 	tempDirPrefix   = "geth_nodes"
+	startPort       = 30303
 
 	addPeerCmd = "admin.addPeer(%s)"
 	attachCmd  = "attach"
@@ -73,7 +75,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 	}
 
 	// We write out the `genesis.json` file to be used by the network.
-	genesisFilePath := nodesDir + string(os.PathSeparator) + genesisFileName
+	genesisFilePath := path.Join(nodesDir, genesisFileName)
 	err = os.WriteFile(genesisFilePath, []byte(genesisConfig), 0o600)
 	if err != nil {
 		panic(err)
@@ -82,7 +84,8 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 	// Each Geth node needs its own data directory.
 	dataDirs := make([]string, numNodes)
 	for i := 0; i < numNodes; i++ {
-		dataDirs[i] = fmt.Sprintf(nodesDir+nodeFolderName, i+1)
+		nodeFolder := fmt.Sprintf(nodeFolderName, i+1)
+		dataDirs[i] = path.Join(nodesDir, nodeFolder)
 	}
 
 	network := GethNetwork{
@@ -92,8 +95,8 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 	}
 
 	for i, dataDir := range dataDirs {
-		_ = os.Remove(dataDir + ipcFileName) // We delete leftover IPC files from previous runs.
-		go network.createMiner(dataDir, 30303+i)
+		_ = os.Remove(path.Join(dataDir, ipcFileName)) // We delete leftover IPC files from previous runs.
+		go network.createMiner(dataDir, startPort+i)
 	}
 
 	// We need to manually tell the nodes about one another.
@@ -106,7 +109,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 	dataDir := network.dataDirs[nodeIdx]
 
-	args := []string{dataDirFlag, dataDir, attachCmd, dataDir + ipcFileName, execFlag, command}
+	args := []string{dataDirFlag, dataDir, attachCmd, path.Join(dataDir, ipcFileName), execFlag, command}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
 	output, err := cmd.Output()
@@ -119,6 +122,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 // Initialises and starts a Geth node.
 func (network *GethNetwork) createMiner(dataDir string, port int) {
+	// The node must create its initial config based on the network's genesis file before it can be started.
 	network.initNode(dataDir)
 	network.startMiner(dataDir, port)
 }
@@ -162,11 +166,19 @@ func (network *GethNetwork) joinNodesToNetwork(dataDirs []string) {
 
 // Waits for a node's IPC file to exist.
 func waitForIPC(dataDir string) {
+	counter := 0
 	for {
-		_, err := os.Stat(dataDir + ipcFileName)
+		ipcFilePath := path.Join(dataDir, ipcFileName)
+		_, err := os.Stat(ipcFilePath)
 		if err == nil {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
+
+		if counter > 20 {
+			fmt.Printf("Waiting for .ipc file of node at %s", dataDir)
+			counter = 0
+		}
+		counter++
 	}
 }
