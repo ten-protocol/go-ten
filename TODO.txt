@@ -37,7 +37,7 @@ Complex:
     - this is a hot spot for auditing to make sure the implmentation is correct
 - T10: Implement the enclave service (Complexity level 3)
     - deploy Docker instances to Azure and proper SGX in non-simulation mode with ego
-    - automate it from CI: setup a network on VMs in Azure
+    - automate it, ideally from CI: setup a network on VMs in Azure
 - T11: Create a stand-alone running aggregator with RPC endpoints + enclave connection + client for connections (lib)
       . Reuse/Inspire on the geth servers
       . Depends on T1-part4
