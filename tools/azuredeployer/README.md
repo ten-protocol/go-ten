@@ -8,8 +8,12 @@ simulation mode.
 
 ## Usage
 
-* Update the `vm_password` and `email_recipient` fields in the `vm-params.json` file
-  * `vm_password` will be the Azure VM's SSH password, while `email_recipient` will be the email used for notifications
+* Set up authentication
+  * Install the Azure CLI by following the instructions [here](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+  * Set up file-based authentication by following the instructions [here](https://docs.microsoft.com/en-us/azure/developer/go/azure-sdk-authorization#use-file-based-authentication)
+* Choose values for the `vm_password` and `email_recipient` fields in the `vm-params.json` file
+  * `vm_password` will be the Azure VM's SSH password. It can be anything, as long as it meets the requirements set out [here](https://docs.microsoft.com/en-us/azure/virtual-machines/windows/faq#what-are-the-password-requirements-when-creating-a-vm-)
+  * `email_recipient` will be the email used for notifications
 * Create the VM using the `main` method under `main/azure_deployer.go`
 * SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`)
 * Start the enclave service outside of simulation mode using the following command, replacing `$1` with an integer 
