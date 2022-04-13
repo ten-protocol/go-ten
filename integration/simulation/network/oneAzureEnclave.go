@@ -18,17 +18,18 @@ import (
 )
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
-type basicNetworkOfSocketNodes struct {
+type networkWithOneAzureEnclave struct {
 	ethNodes         []*ethereum_mock.Node
 	obscuroNodes     []*host.Node
 	obscuroAddresses []string
+	enclaveAddress   string
 }
 
-func NewBasicNetworkOfSocketNodes() Network {
-	return &basicNetworkOfSocketNodes{}
+func NewNetworkWithOneAzureEnclave(enclaveAddress string) Network {
+	return &networkWithOneAzureEnclave{enclaveAddress: enclaveAddress}
 }
 
-func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
+func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
 	// todo - add observer nodes
 	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
@@ -44,28 +45,40 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 		genesis := false
 		if i == 0 {
 			genesis = true
+			// create the in memory l1 and l2 node
+			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
+			agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, n.enclaveAddress)
+
+			// and connect them to each other
+			agg.ConnectToEthNode(miner)
+			miner.AddClient(agg)
+
+			n.ethNodes[i] = miner
+			n.obscuroNodes[i] = agg
+			l1Clients[i] = miner
+
+		} else {
+			// create a remote enclave server
+			nodeID := common.BigToAddress(big.NewInt(int64(i)))
+			enclavePort := uint64(EnclaveStartPort + i)
+			enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
+			err := enclave.StartServer(enclaveAddress, nodeID, stats)
+			if err != nil {
+				panic(fmt.Sprintf("failed to create enclave server: %v", err))
+			}
+
+			// create the in memory l1 and l2 node
+			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
+			agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress)
+
+			// and connect them to each other
+			agg.ConnectToEthNode(miner)
+			miner.AddClient(agg)
+
+			n.ethNodes[i] = miner
+			n.obscuroNodes[i] = agg
+			l1Clients[i] = miner
 		}
-
-		// create a remote enclave server
-		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		enclavePort := uint64(EnclaveStartPort + i)
-		enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
-		err := enclave.StartServer(enclaveAddress, nodeID, stats)
-		if err != nil {
-			panic(fmt.Sprintf("failed to create enclave server: %v", err))
-		}
-
-		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress)
-
-		// and connect them to each other
-		agg.ConnectToEthNode(miner)
-		miner.AddClient(agg)
-
-		n.ethNodes[i] = miner
-		n.obscuroNodes[i] = agg
-		l1Clients[i] = miner
 	}
 
 	// populate the nodes field of the L1 network
@@ -96,7 +109,7 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 	return l1Clients, n.obscuroNodes, nodeP2pAddrs
 }
 
-func (n *basicNetworkOfSocketNodes) TearDown() {
+func (n *networkWithOneAzureEnclave) TearDown() {
 	go func() {
 		for _, n := range n.obscuroNodes {
 			n.Stop()
