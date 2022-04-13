@@ -29,7 +29,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 // - noReorgs
 func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 	// Sanity check number for a minimum height
-	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
+	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
 	heights := make([]uint64, len(s.EthClients))
 	for i, node := range s.EthClients {
@@ -53,7 +53,7 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 // - check withdrawals/deposits
 func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64) {
 	// Sanity check number for a minimum height
-	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDurationUSecs)))
+	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
 	heights := make([]uint64, len(s.ObscuroNodes))
 	for i, node := range s.ObscuroNodes {

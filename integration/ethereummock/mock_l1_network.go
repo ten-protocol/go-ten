@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -19,14 +20,14 @@ type MockEthNetwork struct {
 	AllNodes []*Node
 
 	// config
-	avgLatency       uint64
-	avgBlockDuration uint64
+	avgLatency       time.Duration
+	avgBlockDuration time.Duration
 
 	Stats host.StatsCollector
 }
 
 // NewMockEthNetwork returns an instance of a configured L1 Network (no nodes)
-func NewMockEthNetwork(avgBlockDuration uint64, avgLatency uint64, stats host.StatsCollector) *MockEthNetwork {
+func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration, stats host.StatsCollector) *MockEthNetwork {
 	return &MockEthNetwork{
 		Stats:            stats,
 		avgLatency:       avgLatency,
@@ -64,7 +65,7 @@ func (n *MockEthNetwork) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
 
 // delay returns an expected delay on the l1 network
 func (n *MockEthNetwork) delay() uint64 {
-	return obscurocommon.RndBtw(n.avgLatency/10, 2*n.avgLatency)
+	return obscurocommon.RndBtw(uint64(n.avgLatency.Nanoseconds()/10), uint64(2*n.avgLatency.Nanoseconds()))
 }
 
 func printBlock(b *types.Block, m Node) string {

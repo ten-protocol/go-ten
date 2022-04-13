@@ -23,17 +23,17 @@ const (
 	EnclaveStartPort = 11000
 )
 
-func createMockEthNode(id int64, nrNodes int, avgBlockDurationUSecs uint64, avgNetworkLatency uint64, stats *stats.Stats) *ethereum_mock.Node {
-	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDurationUSecs, avgNetworkLatency, stats)
-	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDurationUSecs)
+func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
+	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
+	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
 	miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
 	mockEthNetwork.CurrentNode = &miner
 	return &miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgBlockDurationUSecs uint64, avgNetworkLatency uint64, stats *stats.Stats) *host.Node {
-	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDurationUSecs, avgNetworkLatency)
+func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
+	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 
@@ -46,7 +46,7 @@ func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, avgB
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclavePort uint64) *host.Node {
+func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclavePort uint64) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
@@ -61,11 +61,11 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod uint64, sta
 	return &node
 }
 
-func defaultObscuroNodeCfg(gossipPeriod uint64) host.AggregatorCfg {
+func defaultObscuroNodeCfg(gossipPeriod time.Duration) host.AggregatorCfg {
 	return host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
 }
 
-func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration uint64) ethereum_mock.MiningConfig {
+func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {
 	return ethereum_mock.MiningConfig{
 		PowTime: func() uint64 {
 			// This formula might feel counter-intuitive, but it is a good approximation for Proof of Work.
@@ -73,7 +73,7 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration uint64) ethereum_mock.M
 			// Which means on average, every round, the winner (miner who gets the lowest nonce) will pick a number around "avgDuration"
 			// while everyone else will have higher values.
 			// Over a large number of rounds, the actual average block duration will be around the desired value, while the number of miners who get very close numbers will be limited.
-			return obscurocommon.RndBtw(avgBlockDuration/uint64(nrNodes), uint64(nrNodes)*avgBlockDuration)
+			return obscurocommon.RndBtw(uint64(avgBlockDuration.Nanoseconds()/int64(nrNodes)), uint64(int64(nrNodes)*avgBlockDuration.Nanoseconds()))
 		},
 	}
 }
