@@ -22,7 +22,7 @@ import (
 const (
 	resourceGroupName     = "ObscuroEnclaveService"
 	deploymentName        = "ObscuroEnclaveService"
-	deploymentIpName      = "enclave-service-sgx-ip"
+	deploymentIPName      = "enclave-service-sgx-ip"
 	resourceGroupLocation = "uksouth"
 	vmUsername            = "obscuro"
 
@@ -129,7 +129,7 @@ func createDeployment(ctx context.Context, client resources.DeploymentsClient) {
 
 // Get the IP address of the deployment.
 func getIPAddress(ctx context.Context, client network.PublicIPAddressesClient) string {
-	ipAddress, err := client.Get(ctx, resourceGroupName, deploymentIpName, "")
+	ipAddress, err := client.Get(ctx, resourceGroupName, deploymentIPName, "")
 	if err != nil {
 		log.Fatalf("could not retrieve deployment's IP address")
 	}
