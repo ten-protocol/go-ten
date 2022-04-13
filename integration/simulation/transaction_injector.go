@@ -117,7 +117,7 @@ func (m *TransactionInjector) Start() {
 
 func (m *TransactionInjector) Stop() {
 	atomic.StoreInt32(m.interruptRun, 1)
-	for _ = range m.fullyStoppedChan {
+	for range m.fullyStoppedChan {
 		log.Log("TransactionInjector stopped successfully")
 		return
 	}
