@@ -22,6 +22,7 @@ import (
 const (
 	resourceGroupName     = "ObscuroEnclaveService"
 	deploymentName        = "ObscuroEnclaveService"
+	deploymentIpName      = "enclave-service-sgx-ip"
 	resourceGroupLocation = "uksouth"
 	vmUsername            = "obscuro"
 
@@ -127,10 +128,10 @@ func createDeployment(ctx context.Context, client resources.DeploymentsClient) {
 }
 
 // Get the IP address of the deployment.
-func getIPAddress(ctx context.Context, client network.PublicIPAddressesClient) string { // todo - joel - move this method down
-	ipAddress, err := client.Get(ctx, resourceGroupName, "enclave-service-sgx-ip", "")
+func getIPAddress(ctx context.Context, client network.PublicIPAddressesClient) string {
+	ipAddress, err := client.Get(ctx, resourceGroupName, deploymentIpName, "")
 	if err != nil {
-		log.Fatalf("Unable to get IP information. Try using `az network public-ip list -g %s", resourceGroupName)
+		log.Fatalf("could not retrieve deployment's IP address")
 	}
 
 	return *ipAddress.PublicIPAddressPropertiesFormat.IPAddress
@@ -156,7 +157,7 @@ func runSetupScript(ipAddress string) {
 		if err == nil {
 			break
 		}
-		time.Sleep(sshTimeout) // todo - joel - stick timeout in const
+		time.Sleep(sshTimeout)
 		log.Printf("Waiting for VM to be ready...")
 	}
 
