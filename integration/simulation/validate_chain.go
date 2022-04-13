@@ -61,7 +61,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 
 	min, max := minMax(heights)
-	if max-min > max/10 {
+	if max-min > max/3 {
 		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
 }
