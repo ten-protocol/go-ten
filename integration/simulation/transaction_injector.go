@@ -63,7 +63,7 @@ func NewTransactionInjector(
 
 	return &TransactionInjector{
 		wallets:          wallets,
-		avgBlockDuration: avgBlockDuration * time.Microsecond,
+		avgBlockDuration: avgBlockDuration * time.Microsecond, // nolint:durationcheck
 		stats:            stats,
 		l1Nodes:          l1Nodes,
 		l2Nodes:          l2Nodes,
