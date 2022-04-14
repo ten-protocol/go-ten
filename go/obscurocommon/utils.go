@@ -18,6 +18,13 @@ type (
 	ScheduledFunc func()
 )
 
+func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
+	if min <= 0 || max <= 0 {
+		panic("invalid durations")
+	}
+	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds())))
+}
+
 func RndBtw(min uint64, max uint64) uint64 {
 	if min >= max {
 		panic(fmt.Sprintf("RndBtw requires min (%d) to be greater than max (%d)", min, max))

@@ -28,7 +28,7 @@ import (
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
 	// settings
-	avgBlockDuration uint64
+	avgBlockDuration time.Duration
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
@@ -49,7 +49,7 @@ type TransactionInjector struct {
 // todo Add methods that generate deterministic scenarios
 func NewTransactionInjector(
 	numberWallets int,
-	avgBlockDuration uint64,
+	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
 	l1Nodes []ethclient.Client,
 	l2Nodes []*host.Node,
@@ -59,14 +59,16 @@ func NewTransactionInjector(
 	for i := 0; i < numberWallets; i++ {
 		wallets[i] = wallet_mock.New()
 	}
+	interrupt := int32(0)
 
 	return &TransactionInjector{
-		wallets:          wallets,
-		avgBlockDuration: avgBlockDuration,
+		wallets: wallets,
+		// the current avgBlockDuration at the Microsecond level which is too fast for Txs to be issued
+		avgBlockDuration: avgBlockDuration * 1000,
 		stats:            stats,
 		l1Nodes:          l1Nodes,
 		l2Nodes:          l2Nodes,
-		interruptRun:     new(int32),
+		interruptRun:     &interrupt,
 		fullyStoppedChan: make(chan bool),
 	}
 }
@@ -86,7 +88,7 @@ func (m *TransactionInjector) Start() {
 		t, _ := obscurocommon.EncodeTx(tx)
 		m.rndL1Node().IssueTx(t)
 		m.stats.Deposit(INITIAL_BALANCE)
-		time.Sleep(obscurocommon.Duration(m.avgBlockDuration / 3))
+		time.Sleep(m.avgBlockDuration / 3)
 	}
 
 	// start transactions issuance
@@ -167,7 +169,7 @@ func (m *TransactionInjector) GetL2WithdrawalRequests() []nodecommon.Withdrawal 
 
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (m *TransactionInjector) issueRandomTransfers() {
-	for ; atomic.LoadInt32(m.interruptRun) == 1; time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration))) {
+	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
 		fromWallet := rndWallet(m.wallets)
 		to := rndWallet(m.wallets).Address
 		for fromWallet.Address == to {
@@ -185,7 +187,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 // Generates L1 common.DepositTx transactions
 func (m *TransactionInjector) issueRandomDeposits() {
-	for ; atomic.LoadInt32(m.interruptRun) == 1; time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2))) {
+	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
 		txData := obscurocommon.L1TxData{
 			TxType: obscurocommon.DepositTx,
@@ -203,7 +205,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 // Generates L2 enclave2.WithdrawalTx transactions
 func (m *TransactionInjector) issueRandomWithdrawals() {
-	for ; atomic.LoadInt32(m.interruptRun) == 1; time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration, m.avgBlockDuration*2))) {
+	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
 		wallet := rndWallet(m.wallets)
 		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
@@ -218,7 +220,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 // issueInvalidWithdrawals creates and issues a number of invalidly-signed L2 withdrawal transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation withdrawal checks.
 func (m *TransactionInjector) issueInvalidWithdrawals() {
-	for ; atomic.LoadInt32(m.interruptRun) == 1; time.Sleep(obscurocommon.Duration(obscurocommon.RndBtw(m.avgBlockDuration/4, m.avgBlockDuration))) {
+	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
 		fromWallet := rndWallet(m.wallets)
 		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
 		signedTx := createInvalidSignature(tx, &fromWallet)
