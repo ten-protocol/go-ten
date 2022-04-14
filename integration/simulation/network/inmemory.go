@@ -39,8 +39,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 		}
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
-		agg := createInMemObscuroNode(int64(i), genesis, params.AvgGossipPeriod, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
+		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		agg := createInMemObscuroNode(int64(i), genesis, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
@@ -68,14 +68,14 @@ func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *sta
 	for _, m := range n.ethNodes {
 		t := m
 		go t.Start()
-		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 8))
+		time.Sleep(params.AvgBlockDuration / 8)
 	}
 
-	time.Sleep(time.Duration(params.AvgBlockDurationUSecs * 20))
+	time.Sleep(params.AvgBlockDuration * 20)
 	for _, m := range n.obscuroNodes {
 		t := m
 		go t.Start()
-		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
+		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
 	return l1Clients, n.obscuroNodes, nil

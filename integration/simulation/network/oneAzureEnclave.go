@@ -46,7 +46,7 @@ func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stat
 		if i == 0 {
 			genesis = true
 			// create the in memory l1 and l2 node
-			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
+			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 			agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, n.enclaveAddress)
 
 			// and connect them to each other
@@ -56,7 +56,6 @@ func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stat
 			n.ethNodes[i] = miner
 			n.obscuroNodes[i] = agg
 			l1Clients[i] = miner
-
 		} else {
 			// create a remote enclave server
 			nodeID := common.BigToAddress(big.NewInt(int64(i)))
@@ -68,7 +67,7 @@ func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stat
 			}
 
 			// create the in memory l1 and l2 node
-			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDurationUSecs, params.AvgNetworkLatency, stats)
+			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 			agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress)
 
 			// and connect them to each other
@@ -96,14 +95,14 @@ func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stat
 	for _, m := range n.ethNodes {
 		t := m
 		go t.Start()
-		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 8))
+		time.Sleep(params.AvgBlockDuration / 8)
 	}
 
-	time.Sleep(time.Duration(params.AvgBlockDurationUSecs * 20))
+	time.Sleep(params.AvgBlockDuration * 20)
 	for _, m := range n.obscuroNodes {
 		t := m
 		go t.Start()
-		time.Sleep(time.Duration(params.AvgBlockDurationUSecs / 3))
+		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
 	return l1Clients, n.obscuroNodes, nodeP2pAddrs

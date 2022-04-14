@@ -45,6 +45,8 @@ func (s *Simulation) Start() {
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime)
 
+	s.TxInjector.Stop()
+
 	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
 	time.Sleep(time.Second)
 }

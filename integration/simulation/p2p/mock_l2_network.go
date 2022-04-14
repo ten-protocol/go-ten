@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"sync/atomic"
+	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
@@ -16,14 +17,14 @@ type MockP2P struct {
 	CurrentNode *host.Node
 	Nodes       []*host.Node
 
-	avgLatency       uint64
-	avgBlockDuration uint64
+	avgLatency       time.Duration
+	avgBlockDuration time.Duration
 
 	listenerInterrupt *int32
 }
 
 // NewMockP2P returns an instance of a configured L2 Network (no nodes)
-func NewMockP2P(avgBlockDuration uint64, avgLatency uint64) *MockP2P {
+func NewMockP2P(avgBlockDuration time.Duration, avgLatency time.Duration) *MockP2P {
 	i := int32(0)
 	return &MockP2P{
 		avgLatency:        avgLatency,
@@ -69,5 +70,5 @@ func (netw *MockP2P) BroadcastTx(tx nodecommon.EncryptedTx) {
 
 // delay returns an expected delay on the l2
 func (netw *MockP2P) delay() uint64 {
-	return obscurocommon.RndBtw(netw.avgLatency/10, 2*netw.avgLatency)
+	return obscurocommon.RndBtw(uint64(netw.avgLatency.Nanoseconds()/10), uint64(2*netw.avgLatency.Nanoseconds()))
 }

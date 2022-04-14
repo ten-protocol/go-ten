@@ -19,7 +19,7 @@ const (
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
-func TestOnAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
+func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	logFile := setupTestLog()
 	defer logFile.Close()
 
