@@ -4,6 +4,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"math/big"
 	"testing"
 )
 
@@ -23,7 +25,7 @@ func TestBlockInclusion(t *testing.T) {
 
 	// Check all inserted blocks are included.
 	for i, block := range blocks {
-		if !blockchain.HasBlock(block.Hash(), uint64(i)) {
+		if !blockchain.HasBlock(block.Hash(), uint64(i+1)) {
 			t.Error("Block was inserted into blockchain, but was not included.")
 		}
 	}
@@ -34,33 +36,33 @@ func TestBlockInclusion(t *testing.T) {
 	}
 }
 
-//func TestTransactionExecution(t *testing.T) {
-//	blockchain, db := createBlockchain()
-//
-//	key, err := crypto.GenerateKey()
-//	panicIfErr(err)
-//	address := crypto.PubkeyToAddress(key.PublicKey)
-//	account := core.GenesisAccount{Balance: big.NewInt(1000000)}
-//
-//	genesisWithPrealloc := core.DefaultGenesisBlock()
-//	alloc := map[common.Address]core.GenesisAccount{
-//		address: account,
-//	}
-//	genesisWithPrealloc.Alloc = alloc
-//
-//	err = blockchain.ResetWithGenesisBlock(genesisWithPrealloc.ToBlock(db))
-//	panicIfErr(err)
-//
-//	// todo - joel - need to prefund some gas
-//	txData := &types.LegacyTx{
-//		Nonce: uint64(0),
-//		Gas:   uint64(21000),
-//	}
-//	tx := newSignedTransaction(blockchain, key, txData)
-//
-//	parentBlock := genesisWithPrealloc.ToBlock(db)
-//	block := newChildBlock(parentBlock, []*types.Transaction{tx})
-//
-//	_, err = blockchain.InsertChain([]*types.Block{block})
-//	panicIfErr(err)
-//}
+func TestTransactionExecution(t *testing.T) {
+	blockchain, db := createBlockchain()
+
+	key, err := crypto.GenerateKey()
+	panicIfErr(err)
+	address := crypto.PubkeyToAddress(key.PublicKey)
+	account := core.GenesisAccount{Balance: big.NewInt(1000000)}
+
+	genesisWithPrealloc := core.DefaultGenesisBlock()
+	alloc := map[common.Address]core.GenesisAccount{
+		address: account,
+	}
+	genesisWithPrealloc.Alloc = alloc
+
+	err = blockchain.ResetWithGenesisBlock(genesisWithPrealloc.ToBlock(db))
+	panicIfErr(err)
+
+	// todo - joel - need to prefund some gas
+	txData := &types.LegacyTx{
+		Nonce: uint64(0),
+		Gas:   uint64(21000),
+	}
+	tx := newSignedTransaction(blockchain, key, txData)
+
+	parentBlock := genesisWithPrealloc.ToBlock(db)
+	block := newChildBlock(parentBlock, []*types.Transaction{tx})
+
+	_, err = blockchain.InsertChain([]*types.Block{block})
+	panicIfErr(err)
+}

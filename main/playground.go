@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"path"
@@ -30,7 +31,7 @@ func newChildBlock(parentBlock *types.Block, txs []*types.Transaction) *types.Bl
 		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
 		ParentHash: parentBlock.Hash(),
 		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
-		BaseFee:    big.NewInt(100000000),      // todo - joel - required to be set this way, but not sure why
+		BaseFee:    big.NewInt(1000000000),     // todo - joel - required to be set this way, but not sure why
 		Root:       parentBlock.Root(),
 	}
 	block := types.NewBlock(header, txs, nil, nil, trie.NewStackTrie(nil))
@@ -38,7 +39,10 @@ func newChildBlock(parentBlock *types.Block, txs []*types.Transaction) *types.Bl
 }
 
 func createBlockchain() (*core.BlockChain, ethdb.Database) {
-	dataDir := os.TempDir()
+	dataDir, err := ioutil.TempDir(os.TempDir(), "")
+	if err != nil {
+		panic(err)
+	}
 
 	db := createDB(dataDir)
 	cacheConfig := createCacheConfig(dataDir)
