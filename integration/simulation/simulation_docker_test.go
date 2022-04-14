@@ -35,8 +35,7 @@ var (
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
-	logFile := setupTestLog()
-	defer logFile.Close()
+	setupTestLog()
 
 	params := params.SimParams{
 		NumberOfNodes:             10,
