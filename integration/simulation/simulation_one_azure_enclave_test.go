@@ -25,14 +25,14 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	params := params.SimParams{
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
-		AvgBlockDurationUSecs:     uint64(1_000_000),
+		AvgBlockDuration:          time.Millisecond,
 		SimulationTime:            30 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
 	}
-	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
-	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
+	params.AvgNetworkLatency = params.AvgBlockDuration / 15
+	params.AvgGossipPeriod = params.AvgBlockDuration / 3
 
-	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIp+":11000"), params)
+	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIP+":11000"), params)
 }
