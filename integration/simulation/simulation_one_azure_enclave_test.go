@@ -12,10 +12,14 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 )
 
+const (
+	vmIP = "20.90.208.251" // Todo: replace with the IP of the vm
+)
+
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
-func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
+func TestOnAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	logFile := setupTestLog()
 	defer logFile.Close()
 
@@ -31,6 +35,5 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgNetworkLatency = params.AvgBlockDurationUSecs / 15
 	params.AvgGossipPeriod = params.AvgBlockDurationUSecs / 3
 
-	// Todo: replace with the ip of the vm
-	testSimulation(t, network.NewNetworkWithOneAzureEnclave("20.90.208.251:11000"), params)
+	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIp+":11000"), params)
 }
