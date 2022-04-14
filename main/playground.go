@@ -1,6 +1,7 @@
 package playground
 
 import (
+	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -8,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
@@ -17,10 +17,7 @@ import (
 	"path"
 )
 
-func newSignedTransaction(blockchain *core.BlockChain, data types.TxData) *types.Transaction {
-	key, err := crypto.GenerateKey()
-	panicIfErr(err)
-
+func newSignedTransaction(blockchain *core.BlockChain, key *ecdsa.PrivateKey, data types.TxData) *types.Transaction {
 	signer := types.MakeSigner(blockchain.Config(), blockchain.CurrentBlock().Number())
 	tx, err := types.SignNewTx(key, signer, data)
 	panicIfErr(err)
@@ -33,7 +30,7 @@ func newChildBlock(parentBlock *types.Block, txs []*types.Transaction) *types.Bl
 		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
 		ParentHash: parentBlock.Hash(),
 		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
-		BaseFee:    big.NewInt(1000000000),     // todo - joel - required to be set this way, but not sure why
+		BaseFee:    big.NewInt(100000000),      // todo - joel - required to be set this way, but not sure why
 		Root:       parentBlock.Root(),
 	}
 	block := types.NewBlock(header, txs, nil, nil, trie.NewStackTrie(nil))
@@ -84,7 +81,6 @@ func createCacheConfig(dataDir string) *core.CacheConfig {
 }
 
 func createChainConfig(db ethdb.Database) *params.ChainConfig {
-	// todo - joel - panic with err here, rather than returning
 	chainConfig, _, genesisErr := core.SetupGenesisBlockWithOverride(
 		db,
 		nil, // Default.

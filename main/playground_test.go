@@ -34,19 +34,33 @@ func TestBlockInclusion(t *testing.T) {
 	}
 }
 
-func TestTransactionExecution(t *testing.T) {
-	blockchain, db := createBlockchain()
-
-	// todo - joel - need to prefund some gas
-	txData := &types.LegacyTx{
-		Nonce: uint64(0),
-		Gas:   uint64(21000),
-	}
-	tx := newSignedTransaction(blockchain, txData)
-
-	parentBlock := core.DefaultGenesisBlock().ToBlock(db)
-	block := newChildBlock(parentBlock, []*types.Transaction{tx})
-
-	_, err := blockchain.InsertChain([]*types.Block{block})
-	panicIfErr(err)
-}
+//func TestTransactionExecution(t *testing.T) {
+//	blockchain, db := createBlockchain()
+//
+//	key, err := crypto.GenerateKey()
+//	panicIfErr(err)
+//	address := crypto.PubkeyToAddress(key.PublicKey)
+//	account := core.GenesisAccount{Balance: big.NewInt(1000000)}
+//
+//	genesisWithPrealloc := core.DefaultGenesisBlock()
+//	alloc := map[common.Address]core.GenesisAccount{
+//		address: account,
+//	}
+//	genesisWithPrealloc.Alloc = alloc
+//
+//	err = blockchain.ResetWithGenesisBlock(genesisWithPrealloc.ToBlock(db))
+//	panicIfErr(err)
+//
+//	// todo - joel - need to prefund some gas
+//	txData := &types.LegacyTx{
+//		Nonce: uint64(0),
+//		Gas:   uint64(21000),
+//	}
+//	tx := newSignedTransaction(blockchain, key, txData)
+//
+//	parentBlock := genesisWithPrealloc.ToBlock(db)
+//	block := newChildBlock(parentBlock, []*types.Transaction{tx})
+//
+//	_, err = blockchain.InsertChain([]*types.Block{block})
+//	panicIfErr(err)
+//}
