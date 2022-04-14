@@ -26,15 +26,21 @@ func newSignedTransaction(blockchain *core.BlockChain, key *ecdsa.PrivateKey, da
 	return tx
 }
 
-func newChildBlock(parentBlock *types.Block, txs []*types.Transaction) *types.Block {
-	header := &types.Header{
-		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
-		ParentHash: parentBlock.Hash(),
-		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
-		BaseFee:    big.NewInt(1000000000),     // todo - joel - required to be set this way, but not sure why
-		Root:       parentBlock.Root(),
+func newChildBlock(parentBlock *types.Block, txs []*types.Transaction, receipts types.Receipts) *types.Block {
+	gasUsed := uint64(0)
+	for _, tx := range txs {
+		gasUsed += tx.Gas()
 	}
-	block := types.NewBlock(header, txs, nil, nil, trie.NewStackTrie(nil))
+
+	header := &types.Header{
+		ParentHash: parentBlock.Hash(),
+		Root:       statedb.IntermediateRoot,
+		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
+		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
+		GasUsed:    gasUsed,
+		BaseFee:    big.NewInt(1000000000), // todo - joel - required to be set this way, but not sure why
+	}
+	block := types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil))
 	return block
 }
 
