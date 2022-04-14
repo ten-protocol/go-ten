@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"math/big"
 	"time"
 
@@ -46,11 +45,10 @@ func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duratio
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclavePort uint64) *host.Node {
+func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
-	enclaveAddr := fmt.Sprintf("%s:%d", Localhost, enclavePort)
 	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 
 	// create a socket obscuro node
