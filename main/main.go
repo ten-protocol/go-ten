@@ -11,10 +11,15 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"os"
+	"path"
 )
 
 func main() {
-	db := createDB()
+	dataDir := os.TempDir()
+
+	db := createDB(dataDir)
 	cacheConfig := createCacheConfig()
 	chainConfig, _, _ := createChainConfig(db)
 	engine := createEngine()
@@ -28,12 +33,26 @@ func main() {
 	}
 
 	// We print the genesis block hash.
-	println(blockchain.Genesis().Hash().String())
+	blocks := []*types.Block{obscurocommon.GenesisBlock}
+	_, err = blockchain.InsertChain(blocks)
+	if err != nil {
+		panic(err)
+	}
 }
 
-// Non-ephemeral nodes use `rawdb.NewLevelDBDatabaseWithFreezer` instead.
-func createDB() ethdb.Database {
-	return rawdb.NewMemoryDatabase()
+func createDB(dataDir string) ethdb.Database {
+	root := path.Join(dataDir, "geth/chaindata")            // Defaults to `geth/chaindata` in the node's data directory.
+	cache := 2048                                           // Default.
+	handles := 2048                                         // Default.
+	freezer := path.Join(dataDir, "geth/chaindata/ancient") // Defaults to `geth/chaindata/ancient` in the node's data directory.
+	namespace := ""                                         // Defaults to `eth/db/chaindata`.
+	readonly := false                                       // Default.
+
+	db, err := rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace, readonly)
+	if err != nil {
+		panic(err)
+	}
+	return db
 }
 
 func createCacheConfig() *core.CacheConfig {
