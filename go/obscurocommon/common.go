@@ -31,4 +31,6 @@ type NotifyNewBlock interface {
 type L1Node interface {
 	RPCBlockchainFeed() []*types.Block
 	BroadcastTx(t EncodedL1Tx)
+	BlockListener() chan *types.Header
+	FetchBlock(hash common.Hash) (*types.Block, error)
 }

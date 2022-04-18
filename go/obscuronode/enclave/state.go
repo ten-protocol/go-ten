@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -214,7 +216,9 @@ func FindWinner(parent *Rollup, rollups []*Rollup, s Storage, blockResolver Bloc
 	return rollups[win], true
 }
 
-func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State, s Storage, blockResolver BlockResolver) (*Rollup, *State) {
+func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State, s Storage, blockResolver BlockResolver) (*Rollup, *State, bool) {
+	var hasTxs bool
+
 	win, found := FindWinner(parent, receivedRollups, s, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
@@ -222,7 +226,6 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *Sta
 	// calculate the state to compare with what is in the Rollup
 	p := s.ParentRollup(win).Proof(blockResolver)
 	depositTxs := processDeposits(p, win.Proof(blockResolver), blockResolver)
-
 	state := executeTransactions(append(win.Transactions, depositTxs...), parentState)
 
 	if serialize(state) != win.Header.State {
@@ -236,7 +239,8 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *Sta
 	}
 	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
-	return win, state
+	hasTxs = len(win.Transactions) > 0 || len(depositTxs) > 0
+	return win, state, hasTxs
 }
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
@@ -259,9 +263,9 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 			break
 		}
 		for _, tx := range b.Transactions() {
-			t := obscurocommon.TxData(tx)
+			t := helpertypes.UnpackL1Tx(tx)
 			// transactions to a hardcoded bridge address
-			if t.TxType == obscurocommon.DepositTx {
+			if t != nil && t.TxType == obscurocommon.DepositTx {
 				depL2TxData := L2TxData{
 					Type:   DepositTx,
 					To:     t.Dest,
@@ -331,11 +335,11 @@ func rollupPostProcessingWithdrawals(newHeadRollup *Rollup, newState *State) []n
 
 func extractRollups(b *types.Block, blockResolver BlockResolver) []*Rollup {
 	rollups := make([]*Rollup, 0)
-	for _, t := range b.Transactions() {
+	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
-		data := obscurocommon.TxData(t)
-		if data.TxType == obscurocommon.RollupTx {
-			r := nodecommon.DecodeRollupOrPanic(obscurocommon.TxData(t).Rollup)
+		t := helpertypes.UnpackL1Tx(tx)
+		if t != nil && t.TxType == obscurocommon.RollupTx {
+			r := nodecommon.DecodeRollupOrPanic(t.Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork

@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -73,6 +75,9 @@ type Node struct {
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
+
+	// is the node ready
+	readyForWork bool
 }
 
 func NewObscuroAggregator(
@@ -127,14 +132,13 @@ func (a *Node) Start() {
 		a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 	}
 
-	if !a.Enclave.IsInitialised() {
-		a.requestSecret()
-	}
-
-	allBlocks := a.waitForL1Blocks()
+	// TODO review this
+	//if !a.Enclave.IsInitialised() {
+	//	a.requestSecret()
+	//}
 
 	// todo create a channel between request secret and start processing
-	a.startProcessing(allBlocks)
+	a.startProcessing()
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
@@ -173,16 +177,21 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 	return allBlocks
 }
 
-func (a *Node) startProcessing(allblocks []*types.Block) {
+func (a *Node) startProcessing() {
+	allBlocks := a.waitForL1Blocks()
+
 	// Todo: This is a naive implementation.
-	results := a.Enclave.IngestBlocks(allblocks)
+	results := a.Enclave.IngestBlocks(allBlocks)
 	for _, result := range results {
 		a.storeBlockProcessingResult(result)
 	}
 
-	lastBlock := *allblocks[len(allblocks)-1]
+	lastBlock := *allBlocks[len(allBlocks)-1]
 	log.Log(fmt.Sprintf("Agg%d:> Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
 	a.Enclave.Start(lastBlock)
+
+	// Start monitoring L1 blocks
+	go a.monitorBlocks()
 
 	if a.genesis {
 		a.initialiseProtocol(lastBlock.Hash())
@@ -194,6 +203,7 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
 	i := int32(0)
 	interrupt := &i
+	a.readyForWork = true
 
 	// Main loop - Listen for notifications From the L1 node and process them
 	// Note that during processing, more recent notifications can be received.
@@ -220,10 +230,8 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 
 		case tx := <-a.txP2PCh:
 			// Ignore gossiped transactions while the node is still initialising
-			if a.Enclave.IsInitialised() {
-				if err := a.Enclave.SubmitTx(tx); err != nil {
-					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
-				}
+			if err := a.Enclave.SubmitTx(tx); err != nil {
+				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
 			}
 
 		case <-a.exitNodeCh:
@@ -427,8 +435,8 @@ func (a *Node) requestSecret() {
 		case b := <-a.blockRPCCh:
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
-				t := obscurocommon.TxData(tx)
-				if t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
+				t := helpertypes.UnpackL1Tx(tx)
+				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
 					a.Enclave.InitEnclave(t.Secret)
 					return
@@ -450,8 +458,8 @@ func (a *Node) requestSecret() {
 func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	b := block.DecodeBlock()
 	for _, tx := range b.Transactions() {
-		t := obscurocommon.TxData(tx)
-		if t.TxType == obscurocommon.RequestSecretTx {
+		t := helpertypes.UnpackL1Tx(tx)
+		if t != nil && t.TxType == obscurocommon.RequestSecretTx {
 			txData := obscurocommon.L1TxData{
 				TxType:      obscurocommon.StoreSecretTx,
 				Secret:      a.Enclave.FetchSecret(t.Attestation),
@@ -460,4 +468,29 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 			a.broadcastTx(*obscurocommon.NewL1Tx(txData))
 		}
 	}
+}
+
+func (a *Node) monitorBlocks() {
+	listener := a.ethereumNode.BlockListener()
+	log.Log("Started the L1 to L2 listener")
+	for {
+		select {
+		case latestBlkHeader := <-listener:
+			block, err := a.ethereumNode.FetchBlock(latestBlkHeader.Hash())
+			if err != nil {
+				panic(err)
+			}
+			blockParent, err := a.ethereumNode.FetchBlock(block.ParentHash())
+			if err != nil {
+				panic(err)
+			}
+
+			log.Log(fmt.Sprintf("Agg0:> %d - Received a new block %s", obscurocommon.ShortAddress(a.ID), latestBlkHeader.Hash()))
+			a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
+		}
+	}
+}
+
+func (a *Node) IsReady() bool {
+	return a.readyForWork
 }

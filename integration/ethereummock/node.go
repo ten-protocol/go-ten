@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	"fmt"
+	"math/big"
 	"sync/atomic"
 	"time"
 
@@ -63,8 +64,36 @@ type Node struct {
 	headOutCh chan *types.Block
 }
 
-func (m *Node) FetchBlock(id common.Hash) (*types.Block, bool) {
-	return m.Resolver.FetchBlock(id)
+// BlockListener is not used in the mock
+func (m *Node) BlockListener() chan *types.Header {
+	return make(chan *types.Header)
+}
+
+func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+	if n.Int64() == 0 {
+		return obscurocommon.GenesisBlock, nil
+	}
+	// TODO this should be a method in the resolver
+	var f bool
+	for blk, _ := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash; {
+		if blk.Number() == n {
+			return blk, nil
+		}
+
+		blk, f = m.Resolver.FetchBlock(blk.ParentHash())
+		if !f {
+			return nil, fmt.Errorf("block in the chain without a parent")
+		}
+	}
+	return nil, nil
+}
+
+func (m *Node) FetchBlock(id common.Hash) (*types.Block, error) {
+	blk, f := m.Resolver.FetchBlock(id)
+	if !f {
+		return nil, fmt.Errorf("blk not found")
+	}
+	return blk, nil
 }
 
 func (m *Node) FetchHeadBlock() (*types.Block, uint64) {

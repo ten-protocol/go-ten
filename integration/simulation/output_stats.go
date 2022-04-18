@@ -3,6 +3,8 @@ package simulation
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
+
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -47,13 +49,16 @@ func (o *OutputStats) countRollups() {
 
 	// iterate the L1 Blocks and get the rollups
 	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetBlockHeader(header.Parent) {
-		block, found := l1Node.FetchBlock(header.ID)
-		if !found {
+		block, err := l1Node.FetchBlock(header.ID)
+		if err != nil {
+			panic(err)
+		}
+		if block == nil {
 			panic("expected l1 block not found")
 		}
 		for _, tx := range block.Transactions() {
-			txData := obscurocommon.TxData(tx)
-			if txData.TxType == obscurocommon.RollupTx {
+			txData := helpertypes.UnpackL1Tx(tx)
+			if txData != nil && txData.TxType == obscurocommon.RollupTx {
 				r := nodecommon.DecodeRollupOrPanic(txData.Rollup)
 				if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++

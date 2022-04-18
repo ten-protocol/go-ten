@@ -1,6 +1,8 @@
 package ethclient
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -9,8 +11,9 @@ import (
 // Client defines the interface for RPC communications with the ethereum nodes
 // Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
 type Client interface {
-	FetchBlock(id common.Hash) (*types.Block, bool) // retrieves a block
-	FetchHeadBlock() (*types.Block, uint64)         // retrieves the block at head height
+	FetchBlock(id common.Hash) (*types.Block, error)     // retrieves a block
+	FetchBlockByNumber(n *big.Int) (*types.Block, error) // retrieves a block given a number - returns head block if n is nil
+	FetchHeadBlock() (*types.Block, uint64)              // retrieves the block at head height
 
 	IssueTx(tx obscurocommon.EncodedL1Tx) // requests the node to broadcast a transaction
 

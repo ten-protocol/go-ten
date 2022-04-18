@@ -256,23 +256,23 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 
 	parentState := e.storage.FetchRollupState(head.Hash())
 	// determine the winner of the round
-	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
+	winnerRollup, s, hasTxs := findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
 
 	e.storage.SetRollupState(winnerRollup.Hash(), s)
 	go e.notifySpeculative(winnerRollup)
 
 	// we are the winner
-	if winnerRollup.Header.Agg == e.node {
+	// and the rollup has either transfer or deposit transactions to publish
+	if winnerRollup.Header.Agg == e.node && hasTxs {
 		v := winnerRollup.Proof(e.blockResolver)
 		w := e.storage.ParentRollup(winnerRollup)
-		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
+		log.Log(fmt.Sprintf(">   Agg%d: publish rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %d. ",
 			obscurocommon.ShortAddress(e.node),
 			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Height,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
-			printTxs(winnerRollup.Transactions),
-			winnerRollup.Header.State),
-		)
+			len(winnerRollup.Transactions),
+		))
 		return winnerRollup.ToExtRollup(), true, nil
 	}
 	return nodecommon.ExtRollup{}, false, nil

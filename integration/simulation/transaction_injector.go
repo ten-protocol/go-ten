@@ -145,14 +145,17 @@ func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1TxData {
 }
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
-func (m *TransactionInjector) GetL2Transactions() enclave.L2Txs {
-	var transactions enclave.L2Txs
+func (m *TransactionInjector) GetL2Transactions() (enclave.L2Txs, enclave.L2Txs) {
+	var deposits, transfers enclave.L2Txs
 	for _, req := range m.l2Transactions {
-		if enclave.TxData(&req).Type != enclave.WithdrawalTx { //nolint:gosec
-			transactions = append(transactions, req)
+		switch enclave.TxData(&req).Type {
+		case enclave.TransferTx:
+			transfers = append(transfers, req)
+		case enclave.DepositTx:
+			deposits = append(deposits, req)
 		}
 	}
-	return transactions
+	return deposits, transfers
 }
 
 // GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions

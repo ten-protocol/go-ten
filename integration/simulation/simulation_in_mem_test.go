@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -24,11 +26,32 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		SimulationTime:            15 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
-		L2ToL1EfficiencyThreshold: 0.34,
+		L2ToL1EfficiencyThreshold: 0.5,
 	}
 
 	params.AvgNetworkLatency = params.AvgBlockDuration / 15
 	params.AvgGossipPeriod = params.AvgBlockDuration / 3
 
 	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), params)
+}
+
+func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
+	t.Skip("test under construction")
+	setupTestLog()
+
+	helpertypes.IsRealEth = true
+	params := params.SimParams{
+		NumberOfNodes:             2,
+		NumberOfWallets:           2,
+		AvgBlockDuration:          40 * time.Microsecond,
+		SimulationTime:            15 * time.Second,
+		L1EfficiencyThreshold:     0.9, // todo review this
+		L2EfficiencyThreshold:     0.9,
+		L2ToL1EfficiencyThreshold: 0.9,
+	}
+
+	params.AvgNetworkLatency = params.AvgBlockDuration / 15
+	params.AvgGossipPeriod = params.AvgBlockDuration / 2
+
+	testSimulation(t, network.NewNetworkInMemoryGeth(), params)
 }

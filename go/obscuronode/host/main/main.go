@@ -39,6 +39,16 @@ func setLogs() {
 // TODO - Replace this dummy once we have implemented communication with L1 nodes.
 type l1NodeDummy struct{}
 
+func (l l1NodeDummy) BlockListener() chan *types.Header {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l l1NodeDummy) FetchBlock(hash common.Hash) (*types.Block, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (l l1NodeDummy) RPCBlockchainFeed() []*types.Block {
 	return []*types.Block{}
 }
