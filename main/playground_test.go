@@ -13,20 +13,28 @@ import (
 
 func TestBlockInclusion(t *testing.T) {
 	blockchain, _ := NewBlockchain()
-	blocks := newChainOfEmptyBlocks(blockchain, blockchain.Genesis())
+	blocks := newChainOfEmptyBlocks(blockchain, blockchain.Genesis(), 5)
 	panicIfAnyErr(blockchain.InsertChain(blocks))
 
 	assertBlocksIncludedInChain(t, blockchain, blocks)
 	assertRandomBlockNotIncludedInChain(t, blockchain)
 }
 
-func TestTransactionExecution(t *testing.T) {
+func TestTransactionInclusion(t *testing.T) {
 	blockchain, db := NewBlockchain()
 	key, err := crypto.GenerateKey()
 	panicIfErr(err)
 	fundAccount(blockchain, key, db)
-	blocks := []*types.Block{NewChildBlock(blockchain, blockchain.Genesis(), newTxs(blockchain, key))}
-	panicIfAnyErr(blockchain.InsertChain(blocks))
+
+	// This fails if we create the three blocks first, then insert them all at once. This is because to create the
+	// blocks, we have to process each one to calculate the receipts, but this process complains if the previous block
+	// hasn't been inserted yet, due to the nonce mismatch.
+	blocks := make([]*types.Block, 3)
+	for i := 0; i < 3; i++ {
+		block := NewChildBlock(blockchain, blockchain.Genesis(), newTxs(blockchain, key, 5))
+		panicIfAnyErr(blockchain.InsertChain([]*types.Block{block}))
+		blocks[i] = block
+	}
 
 	assertBlocksIncludedInChain(t, blockchain, blocks)
 	assertRandomBlockNotIncludedInChain(t, blockchain)
@@ -34,10 +42,10 @@ func TestTransactionExecution(t *testing.T) {
 	// TODO - Check transactions are present in blockchain.
 }
 
-func newChainOfEmptyBlocks(blockchain *core.BlockChain, firstParent *types.Block) []*types.Block {
-	blocks := make([]*types.Block, 5)
+func newChainOfEmptyBlocks(blockchain *core.BlockChain, firstParent *types.Block, len int) []*types.Block {
+	blocks := make([]*types.Block, len)
 	parentBlock := firstParent
-	for i := 0; i < 5; i++ {
+	for i := 0; i < len; i++ {
 		block := NewChildBlock(blockchain, parentBlock, []*types.Transaction{})
 		blocks[i] = block
 		parentBlock = block
@@ -56,9 +64,9 @@ func fundAccount(blockchain *core.BlockChain, key *ecdsa.PrivateKey, db ethdb.Da
 	panicIfErr(blockchain.ResetWithGenesisBlock(genesisWithPrealloc.ToBlock(db)))
 }
 
-func newTxs(blockchain *core.BlockChain, key *ecdsa.PrivateKey) []*types.Transaction {
-	txs := make([]*types.Transaction, 5)
-	for i := 0; i < 5; i++ {
+func newTxs(blockchain *core.BlockChain, key *ecdsa.PrivateKey, len int) []*types.Transaction {
+	txs := make([]*types.Transaction, len)
+	for i := 0; i < len; i++ {
 		txData := &types.LegacyTx{
 			Nonce: uint64(i),
 			Gas:   uint64(21000),
