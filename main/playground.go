@@ -19,44 +19,7 @@ import (
 	"path"
 )
 
-func newSignedTransaction(blockchain *core.BlockChain, key *ecdsa.PrivateKey, data types.TxData) *types.Transaction {
-	signer := types.MakeSigner(blockchain.Config(), blockchain.CurrentBlock().Number())
-	tx, err := types.SignNewTx(key, signer, data)
-	panicIfErr(err)
-
-	return tx
-}
-
-func newChildBlock(blockchain *core.BlockChain, parentBlock *types.Block, txs []*types.Transaction) *types.Block {
-	// I have to create the block once with no receipts, in order to produce the receipts, in order to add the receipts to the block.
-	stateDb, err := blockchain.State()
-	panicIfErr(err)
-	blockForReceipts := newChildBlockInternal(stateDb, parentBlock, txs, nil)
-	receipts, _, _, err := blockchain.Processor().Process(blockForReceipts, stateDb, vm.Config{})
-	panicIfErr(err)
-
-	return newChildBlockInternal(stateDb, parentBlock, txs, receipts)
-}
-
-func newChildBlockInternal(stateDb *state.StateDB, parentBlock *types.Block, txs []*types.Transaction, receipts types.Receipts) *types.Block {
-	gasUsed := uint64(0)
-	for _, tx := range txs {
-		gasUsed += tx.Gas()
-	}
-
-	header := &types.Header{
-		ParentHash: parentBlock.Hash(),
-		Root:       stateDb.IntermediateRoot(false),
-		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
-		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
-		GasUsed:    gasUsed,
-		BaseFee:    big.NewInt(1000000000), // todo - joel - required to be set this way, but not sure why
-	}
-	block := types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil))
-	return block
-}
-
-func createBlockchain() (*core.BlockChain, ethdb.Database) {
+func NewBlockchain() (*core.BlockChain, ethdb.Database) {
 	dataDir, err := ioutil.TempDir(os.TempDir(), "")
 	if err != nil {
 		panic(err)
@@ -73,6 +36,25 @@ func createBlockchain() (*core.BlockChain, ethdb.Database) {
 	blockchain, err := core.NewBlockChain(db, cacheConfig, chainConfig, engine, vmConfig, shouldPreserve, &txLookupLimit)
 	panicIfErr(err)
 	return blockchain, db
+}
+
+func NewSignedTransaction(blockchain *core.BlockChain, key *ecdsa.PrivateKey, data types.TxData) *types.Transaction {
+	signer := types.MakeSigner(blockchain.Config(), blockchain.CurrentBlock().Number())
+	tx, err := types.SignNewTx(key, signer, data)
+	panicIfErr(err)
+
+	return tx
+}
+
+func NewChildBlock(blockchain *core.BlockChain, parentBlock *types.Block, txs []*types.Transaction) *types.Block {
+	// I have to create the block once with no receipts, in order to produce the receipts, in order to add the receipts to the block.
+	stateDb, err := blockchain.State()
+	panicIfErr(err)
+	blockForReceipts := newChildBlockWithReceipts(stateDb, parentBlock, txs, nil)
+	receipts, _, _, err := blockchain.Processor().Process(blockForReceipts, stateDb, vm.Config{})
+	panicIfErr(err)
+
+	return newChildBlockWithReceipts(stateDb, parentBlock, txs, receipts)
 }
 
 func createDB(dataDir string) ethdb.Database {
@@ -145,8 +127,20 @@ func createShouldPreserve() func(header *types.Header) bool {
 	}
 }
 
-func panicIfErr(err error) {
-	if err != nil {
-		panic(err)
+func newChildBlockWithReceipts(stateDb *state.StateDB, parentBlock *types.Block, txs []*types.Transaction, receipts types.Receipts) *types.Block {
+	gasUsed := uint64(0)
+	for _, tx := range txs {
+		gasUsed += tx.Gas()
 	}
+
+	header := &types.Header{
+		ParentHash: parentBlock.Hash(),
+		Root:       stateDb.IntermediateRoot(false),
+		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
+		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
+		GasUsed:    gasUsed,
+		BaseFee:    big.NewInt(1000000000), // todo - joel - required to be set this way, but not sure why
+	}
+	block := types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil))
+	return block
 }
