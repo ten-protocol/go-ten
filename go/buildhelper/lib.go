@@ -10,10 +10,10 @@ import (
 
 var CONNECTION_TIMEOUT = 15 * time.Second
 
-// ethAPI struct
+// EthAPI struct
 // based on https://eth.wiki/json-rpc/API
-type ethAPI struct {
-	apiClient *ethclient.Client
+type EthAPI struct {
+	ApiClient *ethclient.Client
 	retry     int
 	timeout   time.Duration
 	ipaddress string
@@ -21,8 +21,8 @@ type ethAPI struct {
 	ctx       context.Context
 }
 
-func newEthAPI(ipaddress string, port uint) *ethAPI {
-	return &ethAPI{
+func NewEthAPI(ipaddress string, port uint) *EthAPI {
+	return &EthAPI{
 		timeout:   CONNECTION_TIMEOUT,
 		ipaddress: ipaddress,
 		port:      port,
@@ -30,10 +30,10 @@ func newEthAPI(ipaddress string, port uint) *ethAPI {
 	}
 }
 
-func (e *ethAPI) connect() error {
+func (e *EthAPI) Connect() error {
 	var err error
 	for start := time.Now(); time.Since(start) < CONNECTION_TIMEOUT; time.Sleep(time.Second) {
-		e.apiClient, err = ethclient.Dial(fmt.Sprintf("ws://%s:%d", e.ipaddress, e.port))
+		e.ApiClient, err = ethclient.Dial(fmt.Sprintf("ws://%s:%d", e.ipaddress, e.port))
 		if err == nil {
 			break
 		}

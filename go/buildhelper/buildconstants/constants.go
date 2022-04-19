@@ -2,12 +2,12 @@ package buildconstants
 
 import "github.com/ethereum/go-ethereum/common"
 
-const ADDR1PK = "f6b8ec4aed6edb5fd6087cbef005d4d2d89707228a4633499ad04fbeb99d3701"
-const ADDR2PK = "15c1b11f3545f8f6e482b9656d2e163b7383c6fddb089a98ba3090733c5f1f3d"
-const ADDR3PK = "4ce7bb228134edd313fd1041b1cd8d20bbc9c1a109d0e43e934d5cafda4d603a"
+const ADDR1PK = "5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae"
+const ADDR2PK = "b728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7"
+const ADDR3PK = "1e1e76d5c0ea1382b6acf76e873977fd223c7fa2a6dc57db2b94e93eb303ba85"
 
 var (
-	CONTRACT_ADDRESS = common.HexToAddress("0x7e6B032d74AA8afE44441987b6b3691adAee98FD")
+	CONTRACT_ADDRESS = common.HexToAddress("0x63eA4F258791234606F9d11C0C66D83c99bfC7CA")
 )
 
 const CONTRACT_ABI = `[

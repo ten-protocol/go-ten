@@ -8,7 +8,7 @@ contract RollupStorage {
     mapping(address => uint256) public deposits;
     string secret;
 
-    function AddRollup(string memory rollupData) public {
+    function AddRollup(string calldata rollupData) public {
         rollups[block.number].push(rollupData);
     }
 

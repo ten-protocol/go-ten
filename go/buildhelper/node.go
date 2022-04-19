@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/obscuronet/obscuro-playground/go/buildhelper/buildconstants"
 	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
 
@@ -27,13 +29,13 @@ var (
 type EthNode struct {
 	port      uint
 	ipaddress string
-	apiClient *ethAPI
+	apiClient *EthAPI
 	id        common.Address
 }
 
 func NewEthNode(id common.Address, ipaddress string, port uint) (obscurocommon.L1Node, error) {
-	apiClient := newEthAPI(ipaddress, port)
-	err := apiClient.connect()
+	apiClient := NewEthAPI(ipaddress, port)
+	err := apiClient.Connect()
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
@@ -50,7 +52,7 @@ func NewEthNode(id common.Address, ipaddress string, port uint) (obscurocommon.L
 func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 	var availBlocks []*types.Block
 
-	block, err := e.apiClient.apiClient.BlockByNumber(context.Background(), nil)
+	block, err := e.apiClient.ApiClient.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +65,7 @@ func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 			break
 		}
 
-		block, err = e.apiClient.apiClient.BlockByHash(context.Background(), block.ParentHash())
+		block, err = e.apiClient.ApiClient.BlockByHash(context.Background(), block.ParentHash())
 		if err != nil {
 			fmt.Printf("ERROR %v\n", err)
 		}
@@ -90,7 +92,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	nonce, err := e.apiClient.apiClient.PendingNonceAt(context.Background(), fromAddress)
+	nonce, err := e.apiClient.ApiClient.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +106,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 
 	ethTx := &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: big.NewInt(225),
+		GasPrice: big.NewInt(20000000000),
 		Gas:      1024_000_000,
 		To:       &buildconstants.CONTRACT_ADDRESS,
 	}
@@ -140,6 +142,21 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 		ethTx.Data = data
 		derolled, _ := nodecommon.DecodeRollup(l1txData.Rollup)
 
+		msg := ethereum.CallMsg{
+			From:     Addr1(),
+			To:       &common.Address{},
+			GasPrice: big.NewInt(20000000000),
+			Gas:      1024_000_000,
+			Data:     data,
+		}
+
+		estimate, err := e.apiClient.ApiClient.EstimateGas(context.Background(), msg)
+		if err != nil {
+			panic(err)
+		}
+		log.Log(fmt.Sprintf("Estimated Cost of: %d\n", estimate))
+		ethTx.Gas = estimate + 10
+
 		log.Log(fmt.Sprintf("BROADCAST TX - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(derolled.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:
@@ -163,7 +180,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 		panic(err)
 	}
 
-	err = e.apiClient.apiClient.SendTransaction(context.Background(), signedTx)
+	err = e.apiClient.ApiClient.SendTransaction(context.Background(), signedTx)
 	if err != nil {
 		panic(err)
 	}
@@ -171,7 +188,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 
 func (e *EthNode) BlockListener() chan *types.Header {
 	ch := make(chan *types.Header, 1)
-	subs, err := e.apiClient.apiClient.SubscribeNewHead(context.Background(), ch)
+	subs, err := e.apiClient.ApiClient.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
 		panic(err)
 	}
@@ -182,9 +199,9 @@ func (e *EthNode) BlockListener() chan *types.Header {
 }
 
 func (e *EthNode) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
-	return e.apiClient.apiClient.BlockByNumber(context.Background(), n)
+	return e.apiClient.ApiClient.BlockByNumber(context.Background(), n)
 }
 
 func (e *EthNode) FetchBlock(hash common.Hash) (*types.Block, error) {
-	return e.apiClient.apiClient.BlockByHash(context.Background(), hash)
+	return e.apiClient.ApiClient.BlockByHash(context.Background(), hash)
 }
