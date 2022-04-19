@@ -10,7 +10,10 @@ import (
 )
 
 func TestBlockInclusion(t *testing.T) {
-	blockchain, _ := NewBlockchain()
+	genesisJson, err := core.DefaultGenesisBlock().MarshalJSON()
+	panicIfErr(err)
+	blockchain, _ := NewBlockchain(genesisJson)
+
 	txs := make([][]*types.Transaction, 5)
 	for i := 0; i < 5; i++ {
 		txs[i] = []*types.Transaction{}
@@ -23,7 +26,10 @@ func TestBlockInclusion(t *testing.T) {
 }
 
 func TestTransactionInclusion(t *testing.T) {
-	blockchain, db := NewBlockchain()
+	genesisJson, err := core.DefaultGenesisBlock().MarshalJSON()
+	panicIfErr(err)
+	blockchain, db := NewBlockchain(genesisJson)
+
 	key, err := crypto.GenerateKey()
 	panicIfErr(err)
 	PrefundKeys(blockchain, []*ecdsa.PrivateKey{key}, db)

@@ -21,7 +21,9 @@ import (
 	"path"
 )
 
-func NewBlockchain() (*core.BlockChain, ethdb.Database) {
+// NewBlockchain creates a Geth BlockChain object. `genesisJson` is the Genesis block config in JSON format. A Geth
+// node can be made to output this using the `dumpgenesis` startup command.
+func NewBlockchain(genesisJson []byte) (*core.BlockChain, ethdb.Database) {
 	dataDir, err := ioutil.TempDir(os.TempDir(), "")
 	if err != nil {
 		panic(err)
@@ -29,7 +31,7 @@ func NewBlockchain() (*core.BlockChain, ethdb.Database) {
 
 	db := createDB(dataDir)
 	cacheConfig := createCacheConfig(dataDir)
-	chainConfig := createChainConfig(db)
+	chainConfig := createChainConfig(db, genesisJson)
 	engine := createEngine(dataDir)
 	vmConfig := createVMConfig()
 	shouldPreserve := createShouldPreserve()
@@ -116,10 +118,13 @@ func createCacheConfig(dataDir string) *core.CacheConfig {
 	}
 }
 
-func createChainConfig(db ethdb.Database) *params.ChainConfig {
+func createChainConfig(db ethdb.Database, genesisJson []byte) *params.ChainConfig {
+	genesis := &core.Genesis{}
+	panicIfErr(genesis.UnmarshalJSON(genesisJson))
+
 	chainConfig, _, genesisErr := core.SetupGenesisBlockWithOverride(
 		db,
-		nil, // Default.
+		genesis,
 		nil, // Default.
 		nil, // Default.
 	)
