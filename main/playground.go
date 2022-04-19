@@ -2,7 +2,6 @@ package playground
 
 import (
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -11,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
@@ -42,20 +40,6 @@ func NewBlockchain(genesisJson []byte) (*core.BlockChain, ethdb.Database) {
 	return blockchain, db
 }
 
-func PrefundKeys(blockchain *core.BlockChain, keys []*ecdsa.PrivateKey, db ethdb.Database) {
-	alloc := map[common.Address]core.GenesisAccount{}
-	for _, key := range keys {
-		alloc[crypto.PubkeyToAddress(key.PublicKey)] = core.GenesisAccount{Balance: big.NewInt(1000000)}
-	}
-	genesisWithPrealloc := core.Genesis{
-		Config: core.DefaultGenesisBlock().Config,
-		Alloc:  alloc,
-	}
-
-	// TODO - Can we prealloc at `BlockChain` creation time, rather than setting the genesis block after the fact?
-	panicIfErr(blockchain.ResetWithGenesisBlock(genesisWithPrealloc.ToBlock(db)))
-}
-
 func NewChildBlock(blockchain *core.BlockChain, parentBlock *types.Block, txs []*types.Transaction) *types.Block {
 	// We have to create the block once with no receipts, in order to produce the receipts, in order to add the receipts
 	// to the block. Otherwise, we will get an `invalid receipt root hash` error, due to an incorrect receipts trie.
@@ -84,7 +68,7 @@ func NewTxs(blockchain *core.BlockChain, key *ecdsa.PrivateKey, len int) []*type
 	for i := 0; i < len; i++ {
 		txData := &types.LegacyTx{
 			Nonce: uint64(i),
-			Gas:   uint64(21000),
+			Gas:   uint64(21000), // This is the intrinsic gas for any transaction.
 		}
 		txs[i] = newSignedTransaction(blockchain, key, txData)
 	}

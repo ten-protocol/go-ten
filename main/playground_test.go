@@ -6,12 +6,12 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"math/big"
 	"testing"
 )
 
 func TestBlockInclusion(t *testing.T) {
-	genesisJson, err := core.DefaultGenesisBlock().MarshalJSON()
-	panicIfErr(err)
+	genesisJson := createTestGenesisJson(nil)
 	blockchain, _ := NewBlockchain(genesisJson)
 
 	txs := make([][]*types.Transaction, 5)
@@ -26,13 +26,10 @@ func TestBlockInclusion(t *testing.T) {
 }
 
 func TestTransactionInclusion(t *testing.T) {
-	genesisJson, err := core.DefaultGenesisBlock().MarshalJSON()
-	panicIfErr(err)
-	blockchain, db := NewBlockchain(genesisJson)
-
 	key, err := crypto.GenerateKey()
 	panicIfErr(err)
-	PrefundKeys(blockchain, []*ecdsa.PrivateKey{key}, db)
+	genesisJson := createTestGenesisJson([]*ecdsa.PrivateKey{key})
+	blockchain, _ := NewBlockchain(genesisJson)
 
 	// When handcrafting transactions, we have to create and insert each block in turn. We cannot prepare a series of
 	// blocks, then insert them all at once. This is because we use `BlockChain.Processor().Process` when creating a
@@ -52,6 +49,18 @@ func TestTransactionInclusion(t *testing.T) {
 	assertBlocksIncludedInChain(t, blockchain, blocks)
 	assertTxsIncludedInChain(t, blockchain, blocks, txsPerBlock)
 	assertRandomBlockNotIncludedInChain(t, blockchain)
+}
+
+func createTestGenesisJson(preallocKeys []*ecdsa.PrivateKey) []byte {
+	genesis := core.DefaultGenesisBlock()
+	for _, key := range preallocKeys {
+		genesis.Alloc[crypto.PubkeyToAddress(key.PublicKey)] = core.GenesisAccount{Balance: big.NewInt(1000000)}
+	}
+	genesis.GasLimit = 500000 // Increase this if we get "gas limit reached" errors.
+
+	genesisJson, err := genesis.MarshalJSON()
+	panicIfErr(err)
+	return genesisJson
 }
 
 func assertBlocksIncludedInChain(t *testing.T, blockchain *core.BlockChain, blocks []*types.Block) {
