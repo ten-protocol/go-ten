@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -26,7 +27,18 @@ func newSignedTransaction(blockchain *core.BlockChain, key *ecdsa.PrivateKey, da
 	return tx
 }
 
-func newChildBlock(parentBlock *types.Block, txs []*types.Transaction, receipts types.Receipts) *types.Block {
+func newChildBlock(blockchain *core.BlockChain, parentBlock *types.Block, txs []*types.Transaction) *types.Block {
+	// I have to create the block once with no receipts, in order to produce the receipts, in order to add the receipts to the block.
+	stateDb, err := blockchain.State()
+	panicIfErr(err)
+	blockForReceipts := newChildBlockInternal(stateDb, parentBlock, txs, nil)
+	receipts, _, _, err := blockchain.Processor().Process(blockForReceipts, stateDb, vm.Config{})
+	panicIfErr(err)
+
+	return newChildBlockInternal(stateDb, parentBlock, txs, receipts)
+}
+
+func newChildBlockInternal(stateDb *state.StateDB, parentBlock *types.Block, txs []*types.Transaction, receipts types.Receipts) *types.Block {
 	gasUsed := uint64(0)
 	for _, tx := range txs {
 		gasUsed += tx.Gas()
@@ -34,7 +46,7 @@ func newChildBlock(parentBlock *types.Block, txs []*types.Transaction, receipts 
 
 	header := &types.Header{
 		ParentHash: parentBlock.Hash(),
-		Root:       statedb.IntermediateRoot,
+		Root:       stateDb.IntermediateRoot(false),
 		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
 		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
 		GasUsed:    gasUsed,
