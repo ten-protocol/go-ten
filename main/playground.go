@@ -2,6 +2,11 @@ package playground
 
 import (
 	"crypto/ecdsa"
+	"io/ioutil"
+	"math/big"
+	"os"
+	"path"
+
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -14,10 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
-	"io/ioutil"
-	"math/big"
-	"os"
-	"path"
 )
 
 // NewBlockchain creates a Geth BlockChain object. `genesisJson` is the Genesis block config in JSON format. A Geth
