@@ -26,9 +26,11 @@ func TestTransactionInclusion(t *testing.T) {
 	panicIfErr(err)
 	fundAccount(blockchain, key, db)
 
-	// This fails if we create the three blocks first, then insert them all at once. This is because to create the
-	// blocks, we have to process each one to calculate the receipts, but this process complains if the previous block
-	// hasn't been inserted yet, due to the nonce mismatch.
+	// When handcrafting transactions, we have to create and insert each block in turn. We cannot prepare a series of
+	// blocks, then insert them all at once. This is because we use `BlockChain.Processor().Process` when creating a
+	// block to generate the tx receipts for us. If we don't update the blockchain after each block creation, `Process`
+	// will expect each block to use tx nonce starting from the same initial value. But this nonce reuse will then be
+	// rejected when we attempt to insert the blocks into the chain.
 	blocks := make([]*types.Block, 3)
 	for i := 0; i < 3; i++ {
 		block := NewChildBlock(blockchain, blockchain.Genesis(), newTxs(blockchain, key, 5))
