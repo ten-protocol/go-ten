@@ -6,14 +6,16 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"math/big"
 	"testing"
 )
 
 func TestBlockInclusion(t *testing.T) {
 	blockchain, _ := NewBlockchain()
-	blocks := newChainOfEmptyBlocks(blockchain, blockchain.Genesis(), 5)
+	txs := make([][]*types.Transaction, 5)
+	for i := 0; i < 5; i++ {
+		txs[i] = []*types.Transaction{}
+	}
+	blocks := NewChainOfBlocks(blockchain, blockchain.Genesis(), txs)
 	panicIfAnyErr(blockchain.InsertChain(blocks))
 
 	assertBlocksIncludedInChain(t, blockchain, blocks)
@@ -24,7 +26,7 @@ func TestTransactionInclusion(t *testing.T) {
 	blockchain, db := NewBlockchain()
 	key, err := crypto.GenerateKey()
 	panicIfErr(err)
-	fundAccount(blockchain, key, db)
+	PrefundKeys(blockchain, []*ecdsa.PrivateKey{key}, db)
 
 	// When handcrafting transactions, we have to create and insert each block in turn. We cannot prepare a series of
 	// blocks, then insert them all at once. This is because we use `BlockChain.Processor().Process` when creating a
@@ -32,56 +34,36 @@ func TestTransactionInclusion(t *testing.T) {
 	// will expect each block to use tx nonce starting from the same initial value. But this nonce reuse will then be
 	// rejected when we attempt to insert the blocks into the chain.
 	blocks := make([]*types.Block, 3)
+	txsPerBlock := make([][]*types.Transaction, 3)
 	for i := 0; i < 3; i++ {
-		block := NewChildBlock(blockchain, blockchain.Genesis(), newTxs(blockchain, key, 5))
+		txs := NewTxs(blockchain, key, 5)
+		block := NewChildBlock(blockchain, blockchain.Genesis(), txs)
 		panicIfAnyErr(blockchain.InsertChain([]*types.Block{block}))
 		blocks[i] = block
+		txsPerBlock[i] = txs
 	}
 
 	assertBlocksIncludedInChain(t, blockchain, blocks)
+	assertTxsIncludedInChain(t, blockchain, blocks, txsPerBlock)
 	assertRandomBlockNotIncludedInChain(t, blockchain)
-
-	// TODO - Check transactions are present in blockchain.
-}
-
-func newChainOfEmptyBlocks(blockchain *core.BlockChain, firstParent *types.Block, len int) []*types.Block {
-	blocks := make([]*types.Block, len)
-	parentBlock := firstParent
-	for i := 0; i < len; i++ {
-		block := NewChildBlock(blockchain, parentBlock, []*types.Transaction{})
-		blocks[i] = block
-		parentBlock = block
-	}
-	return blocks
-}
-
-func fundAccount(blockchain *core.BlockChain, key *ecdsa.PrivateKey, db ethdb.Database) {
-	genesisWithPrealloc := core.Genesis{
-		Config: core.DefaultGenesisBlock().Config,
-		Alloc: map[common.Address]core.GenesisAccount{
-			crypto.PubkeyToAddress(key.PublicKey): {Balance: big.NewInt(1000000)},
-		},
-	}
-	// TODO - Can we prealloc at `BlockChain` creation time, rather than setting the genesis block after the fact?
-	panicIfErr(blockchain.ResetWithGenesisBlock(genesisWithPrealloc.ToBlock(db)))
-}
-
-func newTxs(blockchain *core.BlockChain, key *ecdsa.PrivateKey, len int) []*types.Transaction {
-	txs := make([]*types.Transaction, len)
-	for i := 0; i < len; i++ {
-		txData := &types.LegacyTx{
-			Nonce: uint64(i),
-			Gas:   uint64(21000),
-		}
-		txs[i] = NewSignedTransaction(blockchain, key, txData)
-	}
-	return txs
 }
 
 func assertBlocksIncludedInChain(t *testing.T, blockchain *core.BlockChain, blocks []*types.Block) {
 	for i, block := range blocks {
 		if !blockchain.HasBlock(block.Hash(), uint64(i+1)) {
 			t.Error("Block was inserted into blockchain, but was not included.")
+		}
+	}
+}
+
+func assertTxsIncludedInChain(t *testing.T, blockchain *core.BlockChain, blocks []*types.Block, txsPerBlock [][]*types.Transaction) {
+	for i, block := range blocks {
+		retrievedBlock := blockchain.GetBlockByHash(block.Hash())
+
+		for _, tx := range txsPerBlock[i] {
+			if retrievedBlock.Transaction(tx.Hash()) == nil {
+				t.Error("Transactions were inserted into blockchain, but were not included.")
+			}
 		}
 	}
 }

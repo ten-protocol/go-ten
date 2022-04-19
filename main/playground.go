@@ -2,6 +2,7 @@ package playground
 
 import (
 	"crypto/ecdsa"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
@@ -38,16 +40,23 @@ func NewBlockchain() (*core.BlockChain, ethdb.Database) {
 	return blockchain, db
 }
 
-func NewSignedTransaction(blockchain *core.BlockChain, key *ecdsa.PrivateKey, data types.TxData) *types.Transaction {
-	signer := types.MakeSigner(blockchain.Config(), blockchain.CurrentBlock().Number())
-	tx, err := types.SignNewTx(key, signer, data)
-	panicIfErr(err)
+func PrefundKeys(blockchain *core.BlockChain, keys []*ecdsa.PrivateKey, db ethdb.Database) {
+	alloc := map[common.Address]core.GenesisAccount{}
+	for _, key := range keys {
+		alloc[crypto.PubkeyToAddress(key.PublicKey)] = core.GenesisAccount{Balance: big.NewInt(1000000)}
+	}
+	genesisWithPrealloc := core.Genesis{
+		Config: core.DefaultGenesisBlock().Config,
+		Alloc:  alloc,
+	}
 
-	return tx
+	// TODO - Can we prealloc at `BlockChain` creation time, rather than setting the genesis block after the fact?
+	panicIfErr(blockchain.ResetWithGenesisBlock(genesisWithPrealloc.ToBlock(db)))
 }
 
 func NewChildBlock(blockchain *core.BlockChain, parentBlock *types.Block, txs []*types.Transaction) *types.Block {
-	// I have to create the block once with no receipts, in order to produce the receipts, in order to add the receipts to the block.
+	// We have to create the block once with no receipts, in order to produce the receipts, in order to add the receipts
+	// to the block. Otherwise, we will get an `invalid receipt root hash` error, due to an incorrect receipts trie.
 	stateDb, err := blockchain.State()
 	panicIfErr(err)
 	blockForReceipts := newChildBlockWithReceipts(stateDb, parentBlock, txs, nil)
@@ -55,6 +64,29 @@ func NewChildBlock(blockchain *core.BlockChain, parentBlock *types.Block, txs []
 	panicIfErr(err)
 
 	return newChildBlockWithReceipts(stateDb, parentBlock, txs, receipts)
+}
+
+func NewChainOfBlocks(blockchain *core.BlockChain, firstParent *types.Block, txsPerBlock [][]*types.Transaction) []*types.Block {
+	blocks := make([]*types.Block, len(txsPerBlock))
+	parentBlock := firstParent
+	for i, txs := range txsPerBlock {
+		block := NewChildBlock(blockchain, parentBlock, txs)
+		blocks[i] = block
+		parentBlock = block
+	}
+	return blocks
+}
+
+func NewTxs(blockchain *core.BlockChain, key *ecdsa.PrivateKey, len int) []*types.Transaction {
+	txs := make([]*types.Transaction, len)
+	for i := 0; i < len; i++ {
+		txData := &types.LegacyTx{
+			Nonce: uint64(i),
+			Gas:   uint64(21000),
+		}
+		txs[i] = newSignedTransaction(blockchain, key, txData)
+	}
+	return txs
 }
 
 func createDB(dataDir string) ethdb.Database {
@@ -137,10 +169,18 @@ func newChildBlockWithReceipts(stateDb *state.StateDB, parentBlock *types.Block,
 		ParentHash: parentBlock.Hash(),
 		Root:       stateDb.IntermediateRoot(false),
 		Number:     big.NewInt(parentBlock.Number().Int64() + 1),
-		GasLimit:   parentBlock.GasLimit() * 2, // todo - joel - required to be set this way, but not sure why
+		GasLimit:   parentBlock.GasLimit() * 2, // TODO - Investigate why this is the correct value.
 		GasUsed:    gasUsed,
-		BaseFee:    big.NewInt(1000000000), // todo - joel - required to be set this way, but not sure why
+		BaseFee:    big.NewInt(1000000000), // TODO - Investigate why this is the correct value.
 	}
 	block := types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil))
 	return block
+}
+
+func newSignedTransaction(blockchain *core.BlockChain, key *ecdsa.PrivateKey, data types.TxData) *types.Transaction {
+	signer := types.MakeSigner(blockchain.Config(), blockchain.CurrentBlock().Number())
+	tx, err := types.SignNewTx(key, signer, data)
+	panicIfErr(err)
+
+	return tx
 }
