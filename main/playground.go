@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
@@ -33,7 +34,7 @@ func NewBlockchain(genesisJson []byte) *core.BlockChain {
 	engine := createEngine(dataDir)
 	vmConfig := createVMConfig()
 	shouldPreserve := createShouldPreserve()
-	txLookupLimit := uint64(2_350_000) // Default.
+	txLookupLimit := ethconfig.Defaults.TxLookupLimit // Default.
 
 	blockchain, err := core.NewBlockChain(db, cacheConfig, chainConfig, engine, vmConfig, shouldPreserve, &txLookupLimit)
 	panicIfErr(err)
@@ -68,7 +69,7 @@ func NewTxs(blockchain *core.BlockChain, key *ecdsa.PrivateKey, len int) []*type
 	for i := 0; i < len; i++ {
 		txData := &types.LegacyTx{
 			Nonce: uint64(i),
-			Gas:   uint64(21000), // This is the intrinsic gas for any transaction.
+			Gas:   params.TxGas,
 		}
 		txs[i] = newSignedTransaction(blockchain, key, txData)
 	}
@@ -90,15 +91,15 @@ func createDB(dataDir string) ethdb.Database {
 
 func createCacheConfig(dataDir string) *core.CacheConfig {
 	return &core.CacheConfig{
-		TrieCleanLimit:      614,                                  // Default.
-		TrieCleanJournal:    path.Join(dataDir, "geth/triecache"), // Defaults to `geth/triecache` in the node's data directory.
-		TrieCleanRejournal:  3600000000000,                        // Default.
-		TrieCleanNoPrefetch: false,                                // Default.
-		TrieDirtyLimit:      1024,                                 // Default.
-		TrieDirtyDisabled:   false,                                // Default.
-		TrieTimeLimit:       3600000000000,                        // Default.
-		SnapshotLimit:       409,                                  // Default.
-		Preimages:           false,                                // Default.
+		TrieCleanLimit:      4096 * 15 / 100,                            // Default. 15% of 4096MB allowance for internal caching on mainnet.
+		TrieCleanJournal:    path.Join(dataDir, "geth/triecache"),       // Defaults to `geth/triecache` in the node's data directory.
+		TrieCleanRejournal:  ethconfig.Defaults.TrieCleanCacheRejournal, // Default.
+		TrieCleanNoPrefetch: false,                                      // Default.
+		TrieDirtyLimit:      4096 * 25 / 100,                            // Default. 25% of 4096MB allowance for internal caching on mainnet.
+		TrieDirtyDisabled:   false,                                      // Default.
+		TrieTimeLimit:       ethconfig.Defaults.TrieTimeout,             // Default.
+		SnapshotLimit:       4096 * 10 / 100,                            // Default. 10% of 4096MB allowance for internal caching on mainnet.
+		Preimages:           false,                                      // Default.
 	}
 }
 
@@ -116,20 +117,20 @@ func createChainConfig(db ethdb.Database, genesisJson []byte) *params.ChainConfi
 	return chainConfig
 }
 
-// Recreates the standard path through `eth/ethconfig/config.go/CreateConsensusEngine()`.
+// Recreates the golden path through `eth/ethconfig/config.go/CreateConsensusEngine()`.
 func createEngine(dataDir string) consensus.Engine {
 	var engine consensus.Engine
 	engine = ethash.New(ethash.Config{
-		PowMode:          ethash.ModeNormal,                 // Default.
-		CacheDir:         path.Join(dataDir, "geth/ethash"), // Defaults to `geth/ethash` in the node's data directory.
-		CachesInMem:      2,                                 // Default.
-		CachesOnDisk:     3,                                 // Default.
-		CachesLockMmap:   false,                             // Default.
-		DatasetDir:       "",                                // Defaults to `~/Library/Ethash` in the node's data directory.
-		DatasetsInMem:    1,                                 // Default.
-		DatasetsOnDisk:   2,                                 // Default.
-		DatasetsLockMmap: false,                             // Default.
-		NotifyFull:       false,                             // Default.
+		PowMode:          ethash.ModeNormal,                          // Default.
+		CacheDir:         path.Join(dataDir, "geth/ethash"),          // Defaults to `geth/ethash` in the node's data directory.
+		CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
+		CachesOnDisk:     ethconfig.Defaults.Ethash.CachesOnDisk,     // Default.
+		CachesLockMmap:   ethconfig.Defaults.Ethash.CachesLockMmap,   // Default.
+		DatasetDir:       "",                                         // Defaults to `~/Library/Ethash` in the node's data directory.
+		DatasetsInMem:    ethconfig.Defaults.Ethash.DatasetsInMem,    // Default.
+		DatasetsOnDisk:   ethconfig.Defaults.Ethash.DatasetsOnDisk,   // Default.
+		DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
+		NotifyFull:       false,                                      // Default.
 	}, nil, false) // Defaults.
 	engine.(*ethash.Ethash).SetThreads(-1)
 	return beacon.New(engine)
