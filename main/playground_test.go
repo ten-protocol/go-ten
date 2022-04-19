@@ -12,7 +12,7 @@ import (
 
 func TestBlockInclusion(t *testing.T) {
 	genesisJson := createTestGenesisJson(nil)
-	blockchain, _ := NewBlockchain(genesisJson)
+	blockchain := NewBlockchain(genesisJson)
 
 	txs := make([][]*types.Transaction, 5)
 	for i := 0; i < 5; i++ {
@@ -29,7 +29,7 @@ func TestTransactionInclusion(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	panicIfErr(err)
 	genesisJson := createTestGenesisJson([]*ecdsa.PrivateKey{key})
-	blockchain, _ := NewBlockchain(genesisJson)
+	blockchain := NewBlockchain(genesisJson)
 
 	// When handcrafting transactions, we have to create and insert each block in turn. We cannot prepare a series of
 	// blocks, then insert them all at once. This is because we use `BlockChain.Processor().Process` when creating a
