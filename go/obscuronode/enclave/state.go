@@ -242,7 +242,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *Sta
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
 // starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
 func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver BlockResolver) []nodecommon.L2Tx {
-	from := obscurocommon.GenesisBlock.Hash()
+	from := obscurocommon.GenesisHash
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()

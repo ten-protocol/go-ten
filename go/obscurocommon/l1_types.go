@@ -72,7 +72,8 @@ type (
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-var GenesisHash = core.DefaultGenesisBlock().ToBlock(nil).Hash()
+var GenesisBlock = core.DefaultGenesisBlock().ToBlock(nil)
+var GenesisHash = GenesisBlock.Hash()
 
 func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *types.Block {
 	parentHash := GenesisHash
@@ -100,8 +101,6 @@ func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L
 
 	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
 }
-
-var GenesisBlock = NewBlock(nil, 0, common.HexToAddress("0x0"), []*L1Tx{})
 
 type EncryptedSharedEnclaveSecret []byte
 
