@@ -1,10 +1,10 @@
 package obscurocommon
 
 import (
-	"github.com/ethereum/go-ethereum/core"
 	"math/big"
 	"math/rand"
 
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -72,26 +72,28 @@ type (
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-var GenesisBlock = core.DefaultGenesisBlock().ToBlock(nil)
-var GenesisHash = GenesisBlock.Hash()
+var (
+	GenesisBlock = core.DefaultGenesisBlock().ToBlock(nil)
+	GenesisHash  = GenesisBlock.Hash()
+)
 
-func NewBlock(parentHash common.Hash, nonce uint64, nodeID common.Address, txs []*L1Tx) *types.Block {
+func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Block {
 	header := types.Header{
-		ParentHash:  parentHash,
+		ParentHash:  parent.Hash(),
 		Coinbase:    nodeID,
 		Root:        common.Hash{},
 		TxHash:      common.Hash{},
 		ReceiptHash: common.Hash{},
 		Bloom:       types.Bloom{},
 		Difficulty:  big.NewInt(0),
-		Number:      big.NewInt(0),
-		GasLimit:    0,
+		Number:      big.NewInt(0).Add(parent.Number(), big.NewInt(1)),
+		GasLimit:    parent.GasLimit() * 2, // todo - joel - i don't understand why this is the correct value
 		GasUsed:     0,
 		Time:        0,
 		Extra:       nil,
 		MixDigest:   common.Hash{},
-		Nonce:       types.EncodeNonce(nonce),
-		BaseFee:     nil,
+		Nonce:       types.EncodeNonce(0),   // 0 is the Beacon nonce.
+		BaseFee:     big.NewInt(1000000000), // todo - joel - i don't understand why this is the correct value
 	}
 
 	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
