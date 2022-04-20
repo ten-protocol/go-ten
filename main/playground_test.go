@@ -22,7 +22,11 @@ func TestBlockInclusion(t *testing.T) {
 	blocks := NewChainOfBlocks(blockchain, blockchain.Genesis(), txs)
 	panicIfAnyErr(blockchain.InsertChain(blocks))
 
-	assertBlocksIncludedInChain(t, blockchain, blocks)
+	// We check that we can insert a second round of blocks, building on the first.
+	blocks2 := NewChainOfBlocks(blockchain, blocks[len(blocks)-1], txs)
+	panicIfAnyErr(blockchain.InsertChain(blocks2))
+
+	assertBlocksIncludedInChain(t, blockchain, append(blocks, blocks2...))
 	assertRandomBlockNotIncludedInChain(t, blockchain)
 }
 
