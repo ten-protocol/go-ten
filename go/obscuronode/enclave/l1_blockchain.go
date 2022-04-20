@@ -2,6 +2,10 @@ package enclave
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
+
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -12,14 +16,11 @@ import (
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
-	"io/ioutil"
-	"os"
-	"path"
 )
 
-// NewL1Blockchain creates a Geth BlockChain object. `genesisJson` is the Genesis block config in JSON format. A Geth
+// NewL1Blockchain creates a Geth BlockChain object. `genesisJSON` is the Genesis block config in JSON format. A Geth
 // node can be made to output this using the `dumpgenesis` startup command.
-func NewL1Blockchain(genesisJson []byte) *core.BlockChain {
+func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 	dataDir, err := ioutil.TempDir(os.TempDir(), "")
 	println("jjj")
 	println(dataDir)
@@ -29,7 +30,7 @@ func NewL1Blockchain(genesisJson []byte) *core.BlockChain {
 
 	db := createDB(dataDir)
 	cacheConfig := createCacheConfig(dataDir)
-	chainConfig := createChainConfig(db, genesisJson)
+	chainConfig := createChainConfig(db, genesisJSON)
 	engine := createEngine(dataDir)
 	vmConfig := createVMConfig()
 	shouldPreserve := createShouldPreserve()
@@ -37,7 +38,7 @@ func NewL1Blockchain(genesisJson []byte) *core.BlockChain {
 
 	blockchain, err := core.NewBlockChain(db, cacheConfig, chainConfig, engine, vmConfig, shouldPreserve, &txLookupLimit)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain could not be created: %v", err))
+		panic(fmt.Errorf("l1 blockchain could not be created: %w", err))
 	}
 	return blockchain
 }
@@ -52,7 +53,7 @@ func createDB(dataDir string) ethdb.Database {
 
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace, readonly)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain database could not be created: %v", err))
+		panic(fmt.Errorf("l1 blockchain database could not be created: %w", err))
 	}
 	return db
 }
@@ -71,11 +72,11 @@ func createCacheConfig(dataDir string) *core.CacheConfig {
 	}
 }
 
-func createChainConfig(db ethdb.Database, genesisJson []byte) *params.ChainConfig {
+func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfig {
 	genesis := &core.Genesis{}
-	err := genesis.UnmarshalJSON(genesisJson)
+	err := genesis.UnmarshalJSON(genesisJSON)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain genesis JSON could not be parsed: %v", err))
+		panic(fmt.Errorf("l1 blockchain genesis JSON could not be parsed: %w", err))
 	}
 
 	chainConfig, _, err := core.SetupGenesisBlockWithOverride(
@@ -85,15 +86,14 @@ func createChainConfig(db ethdb.Database, genesisJson []byte) *params.ChainConfi
 		nil, // Default.
 	)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain genesis block could not be created: %v", err))
+		panic(fmt.Errorf("l1 blockchain genesis block could not be created: %w", err))
 	}
 	return chainConfig
 }
 
 // Recreates the golden path through `eth/ethconfig/config.go/CreateConsensusEngine()`.
 func createEngine(dataDir string) consensus.Engine {
-	var engine consensus.Engine
-	engine = ethash.New(ethash.Config{
+	engine := ethash.New(ethash.Config{
 		PowMode:          ethash.ModeNormal,                          // Default.
 		CacheDir:         path.Join(dataDir, "geth/ethash"),          // Defaults to `geth/ethash` in the node's data directory.
 		CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
@@ -105,7 +105,7 @@ func createEngine(dataDir string) consensus.Engine {
 		DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
 		NotifyFull:       false,                                      // Default.
 	}, nil, false) // Defaults.
-	engine.(*ethash.Ethash).SetThreads(-1)
+	interface{}(engine).(*ethash.Ethash).SetThreads(-1)
 	return beacon.New(engine)
 }
 

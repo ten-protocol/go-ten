@@ -3,8 +3,9 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/core"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -170,9 +171,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
-	// this is where much more will actually happen.
-	// the "blockchain" logic from geth has to be executed here,
-	// to determine the total proof of work, to verify some key aspects, etc
+	// we check that the block is a valid Ethereum block
 	_, err := e.l1Blockchain.InsertChain(types.Blocks{&block})
 	if err != nil {
 		panic(err)
@@ -413,9 +412,9 @@ type speculativeWork struct {
 func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodecommon.Enclave {
 	storage := NewStorage()
 	// todo - joel - allow this to be passed in, instead of forcing default genesis JSON
-	genesisJson, err := core.DefaultGenesisBlock().MarshalJSON()
+	genesisJSON, err := core.DefaultGenesisBlock().MarshalJSON()
 	if err != nil {
-		panic(fmt.Errorf("could not retrieve genesis block JSON to set up L1 blockchain: %v", err))
+		panic(fmt.Errorf("could not retrieve genesis block JSON to set up L1 blockchain: %w", err))
 	}
 
 	return &enclaveImpl{
@@ -424,7 +423,7 @@ func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodeco
 		storage:        storage,
 		blockResolver:  storage,
 		statsCollector: collector,
-		l1Blockchain:   NewL1Blockchain(genesisJson),
+		l1Blockchain:   NewL1Blockchain(genesisJSON),
 
 		txCh:                 make(chan nodecommon.L2Tx),
 		roundWinnerCh:        make(chan *Rollup),
