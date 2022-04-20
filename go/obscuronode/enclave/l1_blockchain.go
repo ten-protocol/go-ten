@@ -3,6 +3,7 @@ package enclave
 import (
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"path"
 
@@ -86,6 +87,10 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 	if err != nil {
 		panic(fmt.Errorf("l1 blockchain genesis block could not be created: %w", err))
 	}
+	// TODO - Joel - Revert this hack. If we do not do this, every block before the London block is treated as the
+	//  transition from non-London to London, and thus a doubling of the gas fee is expected. After ~50 blocks, the max
+	//  gas fee is hit.
+	chainConfig.LondonBlock = big.NewInt(1)
 	return chainConfig
 }
 
