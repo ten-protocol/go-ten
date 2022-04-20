@@ -75,12 +75,7 @@ type EncodedBlock []byte
 var GenesisBlock = core.DefaultGenesisBlock().ToBlock(nil)
 var GenesisHash = GenesisBlock.Hash()
 
-func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *types.Block {
-	parentHash := GenesisHash
-	if parent != nil {
-		parentHash = parent.Hash()
-	}
-
+func NewBlock(parentHash common.Hash, nonce uint64, nodeID common.Address, txs []*L1Tx) *types.Block {
 	header := types.Header{
 		ParentHash:  parentHash,
 		Coinbase:    nodeID,
