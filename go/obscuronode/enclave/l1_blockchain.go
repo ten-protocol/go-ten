@@ -22,8 +22,6 @@ import (
 // node can be made to output this using the `dumpgenesis` startup command.
 func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 	dataDir, err := ioutil.TempDir(os.TempDir(), "")
-	println("jjj")
-	println(dataDir)
 	if err != nil {
 		panic(err)
 	}

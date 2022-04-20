@@ -1,6 +1,7 @@
 package obscurocommon
 
 import (
+	"github.com/ethereum/go-ethereum/core"
 	"math/big"
 	"math/rand"
 
@@ -71,7 +72,7 @@ type (
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-var GenesisHash = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
+var GenesisHash = core.DefaultGenesisBlock().ToBlock(nil).Hash()
 
 func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *types.Block {
 	parentHash := GenesisHash
