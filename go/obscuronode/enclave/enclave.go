@@ -3,6 +3,7 @@ package enclave
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core"
 	"math/big"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -30,6 +31,7 @@ type enclaveImpl struct {
 	storage        Storage
 	blockResolver  BlockResolver
 	statsCollector StatsCollector
+	l1Blockchain   *core.BlockChain
 
 	txCh                 chan nodecommon.L2Tx
 	roundWinnerCh        chan *Rollup
@@ -162,13 +164,18 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	if !stored {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
-	// this is where much more will actually happen.
-	// the "blockchain" logic from geth has to be executed here,
-	// to determine the total proof of work, to verify some key aspects, etc
 
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
+	}
+
+	// this is where much more will actually happen.
+	// the "blockchain" logic from geth has to be executed here,
+	// to determine the total proof of work, to verify some key aspects, etc
+	_, err := e.l1Blockchain.InsertChain(types.Blocks{&block})
+	if err != nil {
+		panic(err)
 	}
 
 	blockState := updateState(&block, e.storage, e.blockResolver)
@@ -405,16 +412,24 @@ type speculativeWork struct {
 
 func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodecommon.Enclave {
 	storage := NewStorage()
+	// todo - joel - allow this to be passed in, instead of forcing default genesis JSON
+	genesisJson, err := core.DefaultGenesisBlock().MarshalJSON()
+	if err != nil {
+		panic(fmt.Errorf("could not retrieve genesis block JSON to set up L1 blockchain: %v", err))
+	}
+
 	return &enclaveImpl{
-		node:                 id,
-		storage:              storage,
-		blockResolver:        storage,
-		mining:               mining,
+		node:           id,
+		mining:         mining,
+		storage:        storage,
+		blockResolver:  storage,
+		statsCollector: collector,
+		l1Blockchain:   NewL1Blockchain(genesisJson),
+
 		txCh:                 make(chan nodecommon.L2Tx),
 		roundWinnerCh:        make(chan *Rollup),
 		exitCh:               make(chan bool),
 		speculativeWorkInCh:  make(chan bool),
 		speculativeWorkOutCh: make(chan speculativeWork),
-		statsCollector:       collector,
 	}
 }
