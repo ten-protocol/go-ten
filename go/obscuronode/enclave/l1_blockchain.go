@@ -92,8 +92,7 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 // Recreates the golden path through `eth/ethconfig/config.go/CreateConsensusEngine()`.
 func createEngine(dataDir string) consensus.Engine {
 	engine := ethash.New(ethash.Config{
-		// todo - joel - document use of modefake
-		PowMode:          ethash.ModeFake,                            // Default.
+		PowMode:          ethash.ModeNormal,                          // Default.
 		CacheDir:         path.Join(dataDir, "geth/ethash"),          // Defaults to `geth/ethash` in the node's data directory.
 		CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
 		CachesOnDisk:     ethconfig.Defaults.Ethash.CachesOnDisk,     // Default.

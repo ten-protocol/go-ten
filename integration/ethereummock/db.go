@@ -33,7 +33,7 @@ func NewResolver() enclave.BlockResolver {
 func (n *blockResolverInMem) StoreBlock(block *types.Block) bool {
 	n.m.Lock()
 	defer n.m.Unlock()
-	if block.Hash() == obscurocommon.GenesisHash {
+	if block.Hash() == obscurocommon.GenesisBlock.Hash() {
 		n.blockCache[block.Hash()] = blockAndHeight{block, obscurocommon.L1GenesisHeight}
 		return true
 	}
@@ -104,7 +104,7 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor o
 		return true
 	}
 
-	if maybeAncestor == obscurocommon.GenesisHash {
+	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
 		return true
 	}
 

@@ -171,10 +171,13 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
-	// we check that the block is a valid Ethereum block
-	_, err := e.l1Blockchain.InsertChain(types.Blocks{&block})
-	if err != nil {
-		panic(err) // todo - joel - switch to reporting a block ingestion failure
+	// If configured to do so, we check that the block is a valid Ethereum block.
+	if e.l1Blockchain != nil {
+		_, err := e.l1Blockchain.InsertChain(types.Blocks{&block})
+		if err != nil {
+			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
+			return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
+		}
 	}
 
 	blockState := updateState(&block, e.storage, e.blockResolver)
@@ -409,12 +412,15 @@ type speculativeWork struct {
 	txs []nodecommon.L2Tx
 }
 
-func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodecommon.Enclave {
+// NewEnclave creates a new enclave.
+// `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
+// received from the L1 node. If nil, incoming blocks are not validated.
+func NewEnclave(id common.Address, mining bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
 	storage := NewStorage()
-	// todo - joel - allow this to be passed in, instead of forcing default genesis JSON
-	genesisJSON, err := core.DefaultGenesisBlock().MarshalJSON()
-	if err != nil {
-		panic(fmt.Errorf("could not retrieve genesis block JSON to set up L1 blockchain: %w", err))
+
+	var l1Blockchain *core.BlockChain
+	if genesisJSON != nil {
+		l1Blockchain = NewL1Blockchain(genesisJSON)
 	}
 
 	return &enclaveImpl{
@@ -423,7 +429,7 @@ func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodeco
 		storage:        storage,
 		blockResolver:  storage,
 		statsCollector: collector,
-		l1Blockchain:   NewL1Blockchain(genesisJSON),
+		l1Blockchain:   l1Blockchain,
 
 		txCh:                 make(chan nodecommon.L2Tx),
 		roundWinnerCh:        make(chan *Rollup),

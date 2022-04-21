@@ -16,7 +16,9 @@ func main() {
 	setLogs(*config.writeToLogs)
 
 	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
-	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
+	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
+	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
+	if err := enclave.StartServer(*config.address, nodeAddress, nil, nil); err != nil {
 		panic(err)
 	}
 

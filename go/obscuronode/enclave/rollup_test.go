@@ -32,7 +32,7 @@ func TestSerialiseRollup(t *testing.T) {
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := nodecommon.Rollup{
-		Header:       NewRollup(obscurocommon.GenesisHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "").Header,
+		Header:       NewRollup(obscurocommon.GenesisBlock.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "").Header,
 		Height:       height,
 		Transactions: encryptTransactions(L2Txs{*tx}),
 	}

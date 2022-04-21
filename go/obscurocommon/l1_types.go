@@ -1,11 +1,11 @@
 package obscurocommon
 
 import (
-	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"math/big"
 	"math/rand"
 
 	"github.com/ethereum/go-ethereum/core"
+
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -73,25 +73,31 @@ type (
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-var (
-	Genesis      = core.DefaultGenesisBlock()
-	GenesisBlock = Genesis.ToBlock(nil)
-	GenesisHash  = GenesisBlock.Hash()
-)
+var GenesisBlock = core.DefaultGenesisBlock().ToBlock(nil)
 
-// todo - joel - move this and other sim stuff to integration folder
 func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Block {
-	time := parent.Time() + 1
+	parentHash := GenesisBlock.Hash()
+	if parent != nil {
+		parentHash = parent.Hash()
+	}
 
-	// todo - joel - document any constants used here
 	header := types.Header{
-		ParentHash: parent.Hash(),
-		Coinbase:   nodeID,
-		Root:       common.HexToHash("34eca9cd7324e3a1df317e439a18119ad9a3c988fbf4d20783bb7bee56bafd64"),
-		Difficulty: ethash.CalcDifficulty(Genesis.Config, time, parent.Header()),
-		Number:     big.NewInt(0).Add(parent.Number(), big.NewInt(1)),
-		GasLimit:   5000,
-		Time:       time,
+		ParentHash:  parentHash,
+		UncleHash:   common.Hash{},
+		Coinbase:    nodeID,
+		Root:        common.Hash{},
+		TxHash:      common.Hash{},
+		ReceiptHash: common.Hash{},
+		Bloom:       types.Bloom{},
+		Difficulty:  big.NewInt(0),
+		Number:      big.NewInt(0),
+		GasLimit:    0,
+		GasUsed:     0,
+		Time:        0,
+		Extra:       nil,
+		MixDigest:   common.Hash{},
+		Nonce:       types.BlockNonce{},
+		BaseFee:     nil,
 	}
 
 	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
