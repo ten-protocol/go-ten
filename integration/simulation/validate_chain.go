@@ -66,9 +66,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 
 	min, max := minMax(heights)
-	// TODO investigate the impact of txinjection and heights production
-	// TODO where the first nodes have a smaller height than the last nodes in the heights array.
-	if max-min > max/3 {
+	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
+	if max-min > max/10 {
 		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
 }
@@ -177,7 +176,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	for _, transaction := range s.TxInjector.GetL2Transactions() {
 		l2tx := node.Enclave.GetTransaction(transaction.Hash())
 		if l2tx == nil {
-			t.Errorf("node %d, unable to find transaction: %+v", node.ID, transaction)
+			t.Errorf("node %d, unable to find transaction: %+v", obscurocommon.ShortAddress(node.ID), transaction)
 		}
 	}
 
@@ -202,7 +201,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		total += node.Enclave.Balance(wallet.Address)
 	}
 	if total != totalAmountInSystem {
-		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", node.ID, total, totalAmountInSystem)
+		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), total, totalAmountInSystem)
 	}
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// (execute deposits and transactions and compare to the state in the rollup)

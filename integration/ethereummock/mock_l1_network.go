@@ -57,15 +57,15 @@ func (n *MockEthNetwork) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
 			t := m
 			// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 			// todo - find a better way to express this
-			d := obscurocommon.Max(n.delay()/2, 1)
+			d := n.delay() / 2
 			obscurocommon.Schedule(d, func() { t.P2PGossipTx(tx) })
 		}
 	}
 }
 
 // delay returns an expected delay on the l1 network
-func (n *MockEthNetwork) delay() uint64 {
-	return obscurocommon.RndBtw(uint64(n.avgLatency.Nanoseconds()/10), uint64(2*n.avgLatency.Nanoseconds()))
+func (n *MockEthNetwork) delay() time.Duration {
+	return obscurocommon.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
 }
 
 func printBlock(b *types.Block, m Node) string {
