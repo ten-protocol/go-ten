@@ -79,7 +79,7 @@ func ToExtRollupMsg(rollup *nodecommon.ExtRollup) generated.ExtRollupMsg {
 			Agg:         rollup.Header.Agg.Bytes(),
 			Nonce:       rollup.Header.Nonce,
 			L1Proof:     rollup.Header.L1Proof.Bytes(),
-			StateRoot:   rollup.Header.State,
+			StateRoot:   rollup.Header.State.Bytes(),
 			Height:      rollup.Header.Height,
 			Withdrawals: withdrawalMsgs,
 		}
@@ -113,7 +113,7 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
 		Agg:         common.BytesToAddress(msg.Header.Agg),
 		Nonce:       msg.Header.Nonce,
 		L1Proof:     common.BytesToHash(msg.Header.L1Proof),
-		State:       msg.Header.StateRoot,
+		State:       common.BytesToHash(msg.Header.StateRoot),
 		Height:      msg.Header.Height,
 		Withdrawals: withdrawals,
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	StateRoot             = string // Todo - this has to be a trie root eventually
+	StateRoot             = common.Hash
 	EncryptedTx           []byte
 	L2Tx                  = types.Transaction
 	EncryptedTransactions []EncryptedTx

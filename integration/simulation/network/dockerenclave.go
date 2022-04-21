@@ -78,7 +78,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params params.SimParams, s
 		time.Sleep(params.AvgBlockDuration / 8)
 	}
 
-	time.Sleep(params.AvgBlockDuration * 20)
+	time.Sleep(params.AvgBlockDuration * 2)
 	for _, m := range n.obscuroNodes {
 		t := m
 		go t.Start()

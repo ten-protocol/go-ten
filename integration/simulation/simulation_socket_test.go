@@ -15,17 +15,17 @@ import (
 func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
-	params := params.SimParams{
+	simParams := params.SimParams{
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
-		AvgBlockDuration:          250 * time.Microsecond,
-		SimulationTime:            15 * time.Second,
+		AvgBlockDuration:          250 * time.Millisecond,
+		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
 	}
-	params.AvgNetworkLatency = params.AvgBlockDuration / 15
-	params.AvgGossipPeriod = params.AvgBlockDuration / 3
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
+	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 4
 
-	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), params)
+	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), simParams)
 }

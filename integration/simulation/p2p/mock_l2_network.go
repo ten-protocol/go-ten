@@ -69,6 +69,6 @@ func (netw *MockP2P) BroadcastTx(tx nodecommon.EncryptedTx) {
 }
 
 // delay returns an expected delay on the l2
-func (netw *MockP2P) delay() uint64 {
-	return obscurocommon.RndBtw(uint64(netw.avgLatency.Nanoseconds()/10), uint64(2*netw.avgLatency.Nanoseconds()))
+func (netw *MockP2P) delay() time.Duration {
+	return obscurocommon.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)
 }

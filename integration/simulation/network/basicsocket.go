@@ -86,7 +86,7 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 		time.Sleep(params.AvgBlockDuration / 8)
 	}
 
-	time.Sleep(params.AvgBlockDuration * 20)
+	time.Sleep(params.AvgBlockDuration * 2)
 	for _, m := range n.obscuroNodes {
 		t := m
 		go t.Start()

@@ -8,6 +8,8 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
 
+	"github.com/obscuronet/obscuro-playground/go/hashing"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -51,8 +53,12 @@ func copyState(state *State) *State {
 	return s
 }
 
-func serialize(state *State) string {
-	return fmt.Sprintf("%v", state)
+func serialize(state *State) nodecommon.StateRoot {
+	hash, err := hashing.RLPHash(fmt.Sprintf("%v", state))
+	if err != nil {
+		panic(err)
+	}
+	return hash
 }
 
 // returns a modified copy of the State

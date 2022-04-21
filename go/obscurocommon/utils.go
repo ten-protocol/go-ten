@@ -14,7 +14,7 @@ import (
 )
 
 type (
-	Latency       func() uint64
+	Latency       func() time.Duration
 	ScheduledFunc func()
 )
 
@@ -22,7 +22,7 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 	if min <= 0 || max <= 0 {
 		panic("invalid durations")
 	}
-	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds())))
+	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
 }
 
 func RndBtw(min uint64, max uint64) uint64 {
@@ -33,8 +33,8 @@ func RndBtw(min uint64, max uint64) uint64 {
 }
 
 // ScheduleInterrupt runs the function after the delay and can be interrupted
-func ScheduleInterrupt(delay uint64, interrupt *int32, fun ScheduledFunc) {
-	ticker := time.NewTicker(Duration(delay))
+func ScheduleInterrupt(delay time.Duration, interrupt *int32, fun ScheduledFunc) {
+	ticker := time.NewTicker(delay)
 
 	go func() {
 		<-ticker.C
@@ -48,8 +48,8 @@ func ScheduleInterrupt(delay uint64, interrupt *int32, fun ScheduledFunc) {
 }
 
 // Schedule runs the function after the delay
-func Schedule(delay uint64, fun ScheduledFunc) {
-	ticker := time.NewTicker(Duration(delay))
+func Schedule(delay time.Duration, fun ScheduledFunc) {
+	ticker := time.NewTicker(delay)
 	go func() {
 		<-ticker.C
 		ticker.Stop()
@@ -57,19 +57,8 @@ func Schedule(delay uint64, fun ScheduledFunc) {
 	}()
 }
 
-func Duration(us uint64) time.Duration {
-	return time.Duration(us) * time.Microsecond
-}
-
 func GenerateNonce() Nonce {
 	return uint64(rand.Int63n(math.MaxInt64)) //nolint:gosec
-}
-
-func Max(x, y uint64) uint64 {
-	if x < y {
-		return y
-	}
-	return x
 }
 
 func MaxInt(x, y uint32) uint32 {

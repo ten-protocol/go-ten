@@ -30,20 +30,20 @@ import (
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
-	params := params.SimParams{
+	simParams := params.SimParams{
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
-		AvgBlockDuration:          40 * time.Microsecond,
+		AvgBlockDuration:          50 * time.Millisecond,
 		SimulationTime:            15 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
 		L2ToL1EfficiencyThreshold: 0.5,
 	}
 
-	params.AvgNetworkLatency = params.AvgBlockDuration / 15
-	params.AvgGossipPeriod = params.AvgBlockDuration / 3
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
+	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
 
-	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), params)
+	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), simParams)
 }
 
 // TestMemObscuroRealEthMonteCarloSimulation runs the simulation against a ganache network

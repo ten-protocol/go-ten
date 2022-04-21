@@ -306,7 +306,7 @@ func (a *Node) Stop() {
 		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
 	}
 
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Second)
 	a.exitNodeCh <- true
 
 	a.Enclave.StopClient()
@@ -351,7 +351,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-		obscurocommon.ScheduleInterrupt(uint64(a.cfg.GossipRoundDuration.Nanoseconds()), interrupt, a.handleHeader(result))
+		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, a.handleHeader(result))
 	}
 }
 
