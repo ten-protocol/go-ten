@@ -37,7 +37,7 @@ var (
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
-	params := params.SimParams{
+	simParams := params.SimParams{
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
 		AvgBlockDuration:          300 * time.Millisecond,
@@ -46,8 +46,8 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
 	}
-	params.AvgNetworkLatency = params.AvgBlockDuration / 15
-	params.AvgGossipPeriod = params.AvgBlockDuration / 3
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
+	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
 
 	// We create a Docker client.
 	ctx := context.Background()
@@ -65,7 +65,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
-	containerIDs := createDockerContainers(ctx, cli, params.NumberOfNodes)
+	containerIDs := createDockerContainers(ctx, cli, simParams.NumberOfNodes)
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
 	// We start the Docker containers.
@@ -75,7 +75,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		}
 	}
 
-	testSimulation(t, network.NewBasicNetworkOfNodesWithDockerEnclave(), params)
+	testSimulation(t, network.NewBasicNetworkOfNodesWithDockerEnclave(), simParams)
 }
 
 // Checks the required Docker images exist.

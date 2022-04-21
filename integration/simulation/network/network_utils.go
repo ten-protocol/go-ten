@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	Localhost        = "Localhost"
+	Localhost        = "localhost"
 	p2pStartPort     = 10000
 	EnclaveStartPort = 11000
 )
