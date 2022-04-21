@@ -23,7 +23,6 @@ linters:
     - gocognit
     - goconst
     - gocyclo
-    - goerr113
     - gofmt
     - gofumpt # https://github.com/mvdan/gofumpt#gofumpt -> gofumpt -l -w .
     - goheader
@@ -74,6 +73,7 @@ linters:
     # - gochecknoglobals Should enable this at some stage too
     # - godot
     # - godox
+    # - goerr113
     # - testpackage
     # - thelper
     # - nlreturn

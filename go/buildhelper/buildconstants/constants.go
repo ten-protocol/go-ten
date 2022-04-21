@@ -4,15 +4,15 @@ import "github.com/ethereum/go-ethereum/common"
 
 // TODO these will be loaded from a keyset
 const (
-	ADDR1PK = "5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae"
-	ADDR2PK = "b728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7"
-	ADDR3PK = "1e1e76d5c0ea1382b6acf76e873977fd223c7fa2a6dc57db2b94e93eb303ba85"
+	Addr1PK = "5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae"
+	Addr2PK = "b728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7"
+	Addr3PK = "1e1e76d5c0ea1382b6acf76e873977fd223c7fa2a6dc57db2b94e93eb303ba85"
 )
 
-// TODO this will be dynamic once the deployment of multiple enviroments is a feature
-var CONTRACT_ADDRESS = common.HexToAddress("0x63eA4F258791234606F9d11C0C66D83c99bfC7CA")
+// ContractAddress TODO this will be dynamic once the deployment of multiple environments is a feature
+var ContractAddress = common.HexToAddress("0x63eA4F258791234606F9d11C0C66D83c99bfC7CA")
 
-const CONTRACT_ABI = `[
+const ContractAbi = `[
 	{
 		"inputs": [
 			{

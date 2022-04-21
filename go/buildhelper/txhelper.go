@@ -52,7 +52,7 @@ func Transfer(obsNode host.Node, from common.Address, to common.Address, amount 
 	encryptedTx := enclave.EncryptTx(signedTx)
 
 	obsNode.ReceiveTx(encryptedTx)
-	fmt.Printf("Transfered %d from: %s -> %s\n", amount, from, to)
+	fmt.Printf("Transferred %d from: %s -> %s\n", amount, from, to)
 }
 
 func CheckBalance(obsNode host.Node, addr common.Address) {

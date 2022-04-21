@@ -25,16 +25,15 @@ func UnpackL1Tx(tx *types.Transaction) *obscurocommon.L1TxData {
 		return &t
 	}
 	// ignore transactions that are not calling the contract
-	if tx.To() == nil || tx.To().Hex() != buildconstants.CONTRACT_ADDRESS.Hex() || len(tx.Data()) == 0 {
+	if tx.To() == nil || tx.To().Hex() != buildconstants.ContractAddress.Hex() || len(tx.Data()) == 0 {
 		return nil
 	}
 
-	contractABI, err := abi.JSON(strings.NewReader(buildconstants.CONTRACT_ABI))
+	contractABI, err := abi.JSON(strings.NewReader(buildconstants.ContractAbi))
 	if err != nil {
 		panic(err)
 	}
 
-	//log.Log(fmt.Sprintf("Unpacking data: %b", tx.Data()))
 	method, err := contractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
@@ -87,7 +86,6 @@ func UnpackL1Tx(tx *types.Transaction) *obscurocommon.L1TxData {
 		}
 		l1txData.Secret = DecodeFromString(callData.(string))
 		l1txData.TxType = obscurocommon.StoreSecretTx
-
 	}
 
 	return &l1txData

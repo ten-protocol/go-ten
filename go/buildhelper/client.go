@@ -38,7 +38,7 @@ func (b *HelperClient) Info() ethclient.Info {
 }
 
 func (b *HelperClient) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
-	//TODO this should be a stream
+	// TODO this should be a stream
 	var blocksBetween []*types.Block
 	var err error
 

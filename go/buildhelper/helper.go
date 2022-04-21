@@ -9,17 +9,17 @@ import (
 )
 
 func Addr1PK() *ecdsa.PrivateKey {
-	privateKey, _ := crypto.HexToECDSA(buildconstants.ADDR1PK)
+	privateKey, _ := crypto.HexToECDSA(buildconstants.Addr1PK)
 	return privateKey
 }
 
 func Addr2PK() *ecdsa.PrivateKey {
-	privateKey, _ := crypto.HexToECDSA(buildconstants.ADDR2PK)
+	privateKey, _ := crypto.HexToECDSA(buildconstants.Addr2PK)
 	return privateKey
 }
 
 func Addr3PK() *ecdsa.PrivateKey {
-	privateKey, _ := crypto.HexToECDSA(buildconstants.ADDR3PK)
+	privateKey, _ := crypto.HexToECDSA(buildconstants.Addr3PK)
 	return privateKey
 }
 

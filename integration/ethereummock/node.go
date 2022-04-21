@@ -85,7 +85,7 @@ func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 			return nil, fmt.Errorf("block in the chain without a parent")
 		}
 	}
-	return nil, nil
+	return nil, nil // nolint:nilnil
 }
 
 func (m *Node) FetchBlock(id common.Hash) (*types.Block, error) {

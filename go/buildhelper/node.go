@@ -34,12 +34,11 @@ type EthNode struct {
 // TODO remove the id common.Address
 func NewEthNode(id common.Address, ipaddress string, port uint) (obscurocommon.L1Node, error) {
 	apiClient := NewEthAPI(ipaddress, port)
-	err := apiClient.Connect()
-	if err != nil {
+	if err := apiClient.Connect(); err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	log.Log(fmt.Sprintf("Initializing eth node at contract: %s", buildconstants.CONTRACT_ADDRESS))
+	log.Log(fmt.Sprintf("Initializing eth node at contract: %s", buildconstants.ContractAddress))
 	return &EthNode{
 		ipaddress: ipaddress,
 		port:      port,
@@ -51,7 +50,7 @@ func NewEthNode(id common.Address, ipaddress string, port uint) (obscurocommon.L
 func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 	var availBlocks []*types.Block
 
-	block, err := e.apiClient.ApiClient.BlockByNumber(context.Background(), nil)
+	block, err := e.apiClient.APIClient.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +63,7 @@ func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 			break
 		}
 
-		block, err = e.apiClient.ApiClient.BlockByHash(context.Background(), block.ParentHash())
+		block, err = e.apiClient.APIClient.BlockByHash(context.Background(), block.ParentHash())
 		if err != nil {
 			fmt.Printf("ERROR %v\n", err)
 		}
@@ -93,7 +92,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	nonce, err := e.apiClient.ApiClient.PendingNonceAt(context.Background(), fromAddress)
+	nonce, err := e.apiClient.APIClient.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -109,10 +108,10 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 		Nonce:    nonce,
 		GasPrice: big.NewInt(20000000000),
 		Gas:      1024_000_000,
-		To:       &buildconstants.CONTRACT_ADDRESS,
+		To:       &buildconstants.ContractAddress,
 	}
 
-	contractABI, err := abi.JSON(strings.NewReader(buildconstants.CONTRACT_ABI))
+	contractABI, err := abi.JSON(strings.NewReader(buildconstants.ContractAbi))
 	if err != nil {
 		panic(err)
 	}
@@ -154,7 +153,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 			Data:     data,
 		}
 
-		estimate, err := e.apiClient.ApiClient.EstimateGas(context.Background(), msg)
+		estimate, err := e.apiClient.APIClient.EstimateGas(context.Background(), msg)
 		if err != nil {
 			panic(err)
 		}
@@ -174,7 +173,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("BROADCAST TX: Issuing RequestSecret"))
+		log.Log("BROADCAST TX: Issuing RequestSecret")
 	}
 
 	signedTx, err := types.SignNewTx(privateKey, types.NewEIP155Signer(big.NewInt(1337)), ethTx)
@@ -182,7 +181,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 		panic(err)
 	}
 
-	err = e.apiClient.ApiClient.SendTransaction(context.Background(), signedTx)
+	err = e.apiClient.APIClient.SendTransaction(context.Background(), signedTx)
 	if err != nil {
 		panic(err)
 	}
@@ -190,7 +189,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 
 func (e *EthNode) BlockListener() chan *types.Header {
 	ch := make(chan *types.Header, 1)
-	subs, err := e.apiClient.ApiClient.SubscribeNewHead(context.Background(), ch)
+	subs, err := e.apiClient.APIClient.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
 		panic(err)
 	}
@@ -201,9 +200,9 @@ func (e *EthNode) BlockListener() chan *types.Header {
 }
 
 func (e *EthNode) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
-	return e.apiClient.ApiClient.BlockByNumber(context.Background(), n)
+	return e.apiClient.APIClient.BlockByNumber(context.Background(), n)
 }
 
 func (e *EthNode) FetchBlock(hash common.Hash) (*types.Block, error) {
-	return e.apiClient.ApiClient.BlockByHash(context.Background(), hash)
+	return e.apiClient.APIClient.BlockByHash(context.Background(), hash)
 }

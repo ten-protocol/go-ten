@@ -66,5 +66,4 @@ func waitForNodesReady(obsNodes []*host.Node) {
 			time.Sleep(time.Millisecond)
 		}
 	}
-
 }

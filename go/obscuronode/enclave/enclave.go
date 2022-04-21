@@ -241,7 +241,7 @@ func verifySignature(decryptedTx *nodecommon.L2Tx) error {
 func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	head, found := e.storage.FetchRollup(parent)
 	if !found {
-		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent) //nolint
+		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)

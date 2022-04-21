@@ -422,7 +422,7 @@ func (a *Node) broadcastTx(tx obscurocommon.L1Tx) {
 }
 
 // This method implements the procedure by which a node obtains the secret
-func (a *Node) requestSecret() {
+func (a *Node) requestSecret() { //nolint:unused
 	attestation := a.Enclave.Attestation()
 	txData := obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,
@@ -475,20 +475,18 @@ func (a *Node) monitorBlocks() {
 	listener := a.ethereumNode.BlockListener()
 	log.Log("Started the L1 to L2 listener")
 	for {
-		select {
-		case latestBlkHeader := <-listener:
-			block, err := a.ethereumNode.FetchBlock(latestBlkHeader.Hash())
-			if err != nil {
-				panic(err)
-			}
-			blockParent, err := a.ethereumNode.FetchBlock(block.ParentHash())
-			if err != nil {
-				panic(err)
-			}
-
-			log.Log(fmt.Sprintf("Agg0:> %d - Received a new block %s", obscurocommon.ShortAddress(a.ID), latestBlkHeader.Hash()))
-			a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
+		latestBlkHeader := <-listener
+		block, err := a.ethereumNode.FetchBlock(latestBlkHeader.Hash())
+		if err != nil {
+			panic(err)
 		}
+		blockParent, err := a.ethereumNode.FetchBlock(block.ParentHash())
+		if err != nil {
+			panic(err)
+		}
+
+		log.Log(fmt.Sprintf("Agg0:> %d - Received a new block %s", obscurocommon.ShortAddress(a.ID), latestBlkHeader.Hash()))
+		a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
 	}
 }
 
