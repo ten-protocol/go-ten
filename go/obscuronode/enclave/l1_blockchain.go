@@ -2,8 +2,6 @@ package enclave
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path"
 
 	"github.com/ethereum/go-ethereum/consensus"
@@ -18,14 +16,20 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
+const (
+	gethDir             = "geth"
+	chainDataDir        = "chaindata"
+	chainDataAncientDir = "chaindata/ancient"
+	trieCacheDir        = "triecache"
+	ethashDir           = "ethash"
+	dataDir             = "gethDataDir"
+)
+
+// TODO - Add the constants used in this file to the config framework.
+
 // NewL1Blockchain creates a Geth BlockChain object. `genesisJSON` is the Genesis block config in JSON format. A Geth
 // node can be made to output this using the `dumpgenesis` startup command.
 func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
-	dataDir, err := ioutil.TempDir(os.TempDir(), "")
-	if err != nil {
-		panic(err)
-	}
-
 	db := createDB(dataDir)
 	cacheConfig := createCacheConfig(dataDir)
 	chainConfig := createChainConfig(db, genesisJSON)
@@ -42,12 +46,12 @@ func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 }
 
 func createDB(dataDir string) ethdb.Database {
-	root := path.Join(dataDir, "geth/chaindata")            // Defaults to `geth/chaindata` in the node's data directory.
-	cache := 2048                                           // Default.
-	handles := 2048                                         // Default.
-	freezer := path.Join(dataDir, "geth/chaindata/ancient") // Defaults to `geth/chaindata/ancient` in the node's data directory.
-	namespace := ""                                         // Defaults to `eth/db/chaindata`.
-	readonly := false                                       // Default.
+	root := path.Join(dataDir, gethDir, chainDataDir)           // Defaults to `geth/chaindata` in the node's data directory.
+	cache := 2048                                               // Default.
+	handles := 2048                                             // Default.
+	freezer := path.Join(dataDir, gethDir, chainDataAncientDir) // Defaults to `geth/chaindata/ancient` in the node's data directory.
+	namespace := ""                                             // Defaults to `eth/db/chaindata`.
+	readonly := false                                           // Default.
 
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace, readonly)
 	if err != nil {
@@ -59,7 +63,7 @@ func createDB(dataDir string) ethdb.Database {
 func createCacheConfig(dataDir string) *core.CacheConfig {
 	return &core.CacheConfig{
 		TrieCleanLimit:      4096 * 15 / 100,                            // Default. 15% of 4096MB allowance for internal caching on mainnet.
-		TrieCleanJournal:    path.Join(dataDir, "geth/triecache"),       // Defaults to `geth/triecache` in the node's data directory.
+		TrieCleanJournal:    path.Join(dataDir, gethDir, trieCacheDir),  // Defaults to `geth/triecache` in the node's data directory.
 		TrieCleanRejournal:  ethconfig.Defaults.TrieCleanCacheRejournal, // Default.
 		TrieCleanNoPrefetch: false,                                      // Default.
 		TrieDirtyLimit:      4096 * 25 / 100,                            // Default. 25% of 4096MB allowance for internal caching on mainnet.
@@ -93,7 +97,7 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 func createEngine(dataDir string) consensus.Engine {
 	engine := ethash.New(ethash.Config{
 		PowMode:          ethash.ModeNormal,                          // Default.
-		CacheDir:         path.Join(dataDir, "geth/ethash"),          // Defaults to `geth/ethash` in the node's data directory.
+		CacheDir:         path.Join(dataDir, gethDir, ethashDir),     // Defaults to `geth/ethash` in the node's data directory.
 		CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
 		CachesOnDisk:     ethconfig.Defaults.Ethash.CachesOnDisk,     // Default.
 		CachesLockMmap:   ethconfig.Defaults.Ethash.CachesLockMmap,   // Default.
@@ -103,7 +107,7 @@ func createEngine(dataDir string) consensus.Engine {
 		DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
 		NotifyFull:       false,                                      // Default.
 	}, nil, false) // Defaults.
-	interface{}(engine).(*ethash.Ethash).SetThreads(-1)
+	interface{}(engine).(*ethash.Ethash).SetThreads(-1) // Disables CPU mining.
 	return beacon.New(engine)
 }
 
