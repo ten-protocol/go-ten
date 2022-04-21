@@ -242,7 +242,7 @@ func (m *Node) startMining() {
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				b := obscurocommon.NewBlock(canonicalBlock, nonce, m.ID, toInclude)
+				b := obscurocommon.NewBlock(canonicalBlock, uint64(nonce.Nanoseconds()), m.ID, toInclude)
 				m.miningCh <- b
 			})
 		}

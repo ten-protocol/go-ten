@@ -65,13 +65,13 @@ func defaultObscuroNodeCfg(gossipPeriod time.Duration) host.AggregatorCfg {
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {
 	return ethereum_mock.MiningConfig{
-		PowTime: func() uint64 {
+		PowTime: func() time.Duration {
 			// This formula might feel counter-intuitive, but it is a good approximation for Proof of Work.
 			// It creates a uniform distribution up to nrMiners*avgDuration
 			// Which means on average, every round, the winner (miner who gets the lowest nonce) will pick a number around "avgDuration"
 			// while everyone else will have higher values.
 			// Over a large number of rounds, the actual average block duration will be around the desired value, while the number of miners who get very close numbers will be limited.
-			return obscurocommon.RndBtw(uint64(avgBlockDuration.Nanoseconds()/int64(nrNodes)), uint64(int64(nrNodes)*avgBlockDuration.Nanoseconds()))
+			return obscurocommon.RndBtwTime(avgBlockDuration/time.Duration(nrNodes), avgBlockDuration*time.Duration(nrNodes))
 		},
 	}
 }
