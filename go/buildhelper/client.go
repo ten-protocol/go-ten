@@ -85,6 +85,6 @@ func (b *HelperClient) IsBlockAncestor(block *types.Block, maybeAncestor obscuro
 
 func NewClient(node obscurocommon.L1Node) l1client.Client {
 	return &HelperClient{
-		node: node,
+		node: node.(*EthNode),
 	}
 }
