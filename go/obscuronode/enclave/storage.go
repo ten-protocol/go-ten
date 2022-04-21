@@ -158,7 +158,7 @@ func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	s.assertSecretAvailable()
 
 	var height uint64
-	if b.Hash() == obscurocommon.GenesisBlock.Hash() {
+	if b.ParentHash() == obscurocommon.GenesisHash {
 		height = obscurocommon.L1GenesisHeight
 	} else {
 		bAndHeight, f := s.db.FetchBlockAndHeight(b.ParentHash())

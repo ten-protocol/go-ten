@@ -4,8 +4,6 @@ import (
 	"math/big"
 	"math/rand"
 
-	"github.com/ethereum/go-ethereum/core"
-
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -73,10 +71,13 @@ type (
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-var GenesisBlock = core.DefaultGenesisBlock().ToBlock(nil)
+var (
+	GenesisHash  = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
+	GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*L1Tx{})
+)
 
 func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Block {
-	parentHash := GenesisBlock.Hash()
+	parentHash := GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
 	}

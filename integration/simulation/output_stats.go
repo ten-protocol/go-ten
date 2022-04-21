@@ -41,12 +41,12 @@ func (o *OutputStats) countRollups() {
 	l2Node := o.simulation.ObscuroNodes[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.ID != obscurocommon.GenesisBlock.Hash(); header = l2Node.DB().GetRollupHeader(header.Parent) {
+	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.Parent) {
 		o.l2RollupCountInHeaders++
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisBlock.Hash(); header = l2Node.DB().GetBlockHeader(header.Parent) {
+	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetBlockHeader(header.Parent) {
 		block, found := l1Node.FetchBlock(header.ID)
 		if !found {
 			panic("expected l1 block not found")

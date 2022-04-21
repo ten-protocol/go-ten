@@ -32,7 +32,7 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 }
 
 func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Address, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
-	parentHash := obscurocommon.GenesisBlock.Hash()
+	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
 	}
