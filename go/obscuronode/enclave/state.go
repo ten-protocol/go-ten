@@ -52,8 +52,7 @@ func copyState(state *State) *State {
 }
 
 func serialize(state *State) nodecommon.StateRoot {
-	str := fmt.Sprintf("%v", state)
-	hash, err := hashing.RLPHash(str)
+	hash, err := hashing.RLPHash(fmt.Sprintf("%v", state))
 	if err != nil {
 		panic(err)
 	}

@@ -7,7 +7,7 @@ Install Protobuf and Protoc-gen-go with:
 
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
-Add this to the bash file:
+Add this to the environment, because there are some binaries in ``$HOME/go``
 
     export GOROOT=/usr/local/go
     export GOPATH=$HOME/go
