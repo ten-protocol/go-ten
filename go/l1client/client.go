@@ -23,6 +23,10 @@ type Client interface {
 	BlocksBetween(block *types.Block, head *types.Block) []*types.Block
 	// IsBlockAncestor checks if the node recognizes a block like the ancestor
 	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool
+
+	RPCBlockchainFeed() []*types.Block
+	BroadcastTx(t obscurocommon.EncodedL1Tx)
+	BlockListener() chan *types.Header
 }
 
 // Info forces the RPC Client returns the data in the same format (independently of it's implementation)

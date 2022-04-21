@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/l1client"
+
 	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -53,7 +55,7 @@ type Node struct {
 	ID common.Address
 
 	P2p          P2P
-	ethereumNode obscurocommon.L1Node
+	ethereumNode l1client.Client
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -83,7 +85,7 @@ type Node struct {
 func NewObscuroAggregator(
 	id common.Address,
 	cfg AggregatorCfg,
-	l1 obscurocommon.L1Node,
+	l1 l1client.Client,
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
@@ -310,7 +312,7 @@ func (a *Node) Stop() {
 	a.Enclave.StopClient()
 }
 
-func (a *Node) ConnectToEthNode(node obscurocommon.L1Node) {
+func (a *Node) ConnectToEthNode(node l1client.Client) {
 	a.ethereumNode = node
 }
 

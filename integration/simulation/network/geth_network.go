@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
-	"github.com/obscuronet/obscuro-playground/go/buildhelper"
 	"github.com/obscuronet/obscuro-playground/go/l1client"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
@@ -44,7 +42,7 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 		agg.ConnectToEthNode(miner)
 
 		n.obscuroNodes[i] = agg
-		l1Clients[i] = buildhelper.NewClient(miner)
+		l1Clients[i] = miner
 	}
 
 	// populate the nodes field of each network
@@ -68,7 +66,7 @@ func (n *networkInMemGeth) TearDown() {
 	// Nop
 }
 
-func createRealEthNode(id int64) obscurocommon.L1Node {
+func createRealEthNode(id int64) l1client.Client {
 	ethnode, err := l1client.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545)
 	if err != nil {
 		panic(err)

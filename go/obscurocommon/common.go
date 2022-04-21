@@ -2,7 +2,6 @@ package obscurocommon
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 const (
@@ -26,11 +25,4 @@ type EncodedRollup []byte
 type NotifyNewBlock interface {
 	RPCNewHead(b EncodedBlock, p EncodedBlock)
 	RPCNewFork(b []EncodedBlock)
-}
-
-type L1Node interface {
-	RPCBlockchainFeed() []*types.Block
-	BroadcastTx(t EncodedL1Tx)
-	BlockListener() chan *types.Header
-	FetchBlock(hash common.Hash) (*types.Block, error)
 }

@@ -32,8 +32,33 @@ type EthNode struct {
 	chainID int
 }
 
-// NewEthClient instantiates a new obscurocommon.L1Node that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, port uint) (obscurocommon.L1Node, error) {
+func (e *EthNode) FetchHeadBlock() (*types.Block, uint64) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *EthNode) IssueTx(tx obscurocommon.EncodedL1Tx) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *EthNode) Info() Info {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *EthNode) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *EthNode) IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+// NewEthClient instantiates a new l1client.Client that connects to an ethereum node
+func NewEthClient(id common.Address, ipaddress string, port uint) (Client, error) {
 	client, err := connect(ipaddress, port)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
