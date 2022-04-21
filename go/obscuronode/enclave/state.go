@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/hashing"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -49,8 +51,13 @@ func copyState(state *State) *State {
 	return s
 }
 
-func serialize(state *State) string {
-	return fmt.Sprintf("%v", state)
+func serialize(state *State) nodecommon.StateRoot {
+	str := fmt.Sprintf("%v", state)
+	hash, err := hashing.RLPHash(str)
+	if err != nil {
+		panic(err)
+	}
+	return hash
 }
 
 // returns a modified copy of the State
