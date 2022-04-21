@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -74,7 +72,7 @@ func printBlock(b *types.Block, m Node) string {
 	// This is just for printing
 	var txs []string
 	for _, tx := range b.Transactions() {
-		t := helpertypes.UnpackL1Tx(tx)
+		t := m.txHandler.UnPackTx(tx)
 		if t != nil && t.TxType == obscurocommon.RollupTx {
 			r := nodecommon.DecodeRollupOrPanic(t.Rollup)
 			txs = append(txs, fmt.Sprintf("r_%d", obscurocommon.ShortHash(r.Hash())))

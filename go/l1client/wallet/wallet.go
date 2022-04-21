@@ -12,7 +12,7 @@ import (
 
 type Wallet interface {
 	Address() common.Address
-	SignTransaction(chainID int, tx *types.LegacyTx) (*types.Transaction, error)
+	SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error)
 }
 
 type InMemoryWallet struct {
@@ -26,7 +26,7 @@ func NewInMemoryWallet() Wallet {
 	}
 }
 
-func (m *InMemoryWallet) SignTransaction(chainID int, tx *types.LegacyTx) (*types.Transaction, error) {
+func (m *InMemoryWallet) SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error) {
 	return types.SignNewTx(m.pk, types.NewEIP155Signer(big.NewInt(int64(chainID))), tx)
 }
 

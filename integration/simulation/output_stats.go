@@ -3,8 +3,6 @@ package simulation
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
-
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -57,7 +55,7 @@ func (o *OutputStats) countRollups() {
 			panic("expected l1 block not found")
 		}
 		for _, tx := range block.Transactions() {
-			txData := helpertypes.UnpackL1Tx(tx)
+			txData := o.simulation.Params.TxHandler.UnPackTx(tx)
 			if txData != nil && txData.TxType == obscurocommon.RollupTx {
 				r := nodecommon.DecodeRollupOrPanic(txData.Rollup)
 				if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {

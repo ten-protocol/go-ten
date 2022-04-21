@@ -3,8 +3,6 @@ package simulation
 import (
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
-
 	"github.com/obscuronet/obscuro-playground/go/l1client"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -122,7 +120,7 @@ func extractDataFromEthereumChain(head *types.Block, node l1client.Client, s *Si
 	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
-			t := helpertypes.UnpackL1Tx(tx)
+			t := s.Params.TxHandler.UnPackTx(tx)
 			if t == nil {
 				continue
 			}

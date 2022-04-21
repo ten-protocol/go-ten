@@ -15,8 +15,6 @@ type Client interface {
 	FetchBlockByNumber(n *big.Int) (*types.Block, error) // retrieves a block given a number - returns head block if n is nil
 	FetchHeadBlock() (*types.Block, uint64)              // retrieves the block at head height
 
-	IssueTx(tx obscurocommon.EncodedL1Tx) // requests the node to broadcast a transaction
-
 	Info() Info // retrieves the node Info
 
 	// BlocksBetween returns the blocks between two blocks

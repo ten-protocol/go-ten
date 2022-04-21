@@ -5,9 +5,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
 
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
+	"github.com/obscuronet/obscuro-playground/go/l1client"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -80,6 +80,9 @@ type Node struct {
 
 	// A node is marked as ready after it has bootstrapped existing blocks and has the enclave secret
 	readyForWork *int32
+
+	// Handles tx conversion from eth to L1Data
+	txHandler txhandler.TxHandler
 }
 
 func NewObscuroAggregator(
@@ -118,6 +121,8 @@ func NewObscuroAggregator(
 		// Initialized the node nodeDB
 		nodeDB:       NewDB(),
 		readyForWork: new(int32),
+
+		txHandler: txhandler.NewEthTxHandler(),
 	}
 }
 
@@ -430,7 +435,7 @@ func (a *Node) requestSecret() { //nolint:unused
 		case b := <-a.blockRPCCh:
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
-				t := helpertypes.UnpackL1Tx(tx)
+				t := a.txHandler.UnPackTx(tx)
 				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
 					a.Enclave.InitEnclave(t.Secret)
@@ -453,7 +458,7 @@ func (a *Node) requestSecret() { //nolint:unused
 func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	b := block.DecodeBlock()
 	for _, tx := range b.Transactions() {
-		t := helpertypes.UnpackL1Tx(tx)
+		t := a.txHandler.UnPackTx(tx)
 		if t != nil && t.TxType == obscurocommon.RequestSecretTx {
 			txData := &obscurocommon.L1TxData{
 				TxType:      obscurocommon.StoreSecretTx,

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,6 +38,7 @@ type enclaveImpl struct {
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
+	txHandler            txhandler.TxHandler
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -121,7 +124,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.storage, e.blockResolver)
+		bs := updateState(block, e.storage, e.blockResolver, e.txHandler)
 		if bs == nil {
 			result[i] = nodecommon.BlockSubmissionResponse{
 				L1Hash:            block.Hash(),
@@ -171,7 +174,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
-	blockState := updateState(&block, e.storage, e.blockResolver)
+	blockState := updateState(&block, e.storage, e.blockResolver, e.txHandler)
 	if blockState == nil {
 		return nodecommon.BlockSubmissionResponse{
 			L1Hash:            block.Hash(),
@@ -256,7 +259,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 
 	parentState := e.storage.FetchRollupState(head.Hash())
 	// determine the winner of the round
-	winnerRollup, s, hasTxs := findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
+	winnerRollup, s, hasTxs := e.findRoundWinner(usefulRollups, head, parentState)
 
 	e.storage.SetRollupState(winnerRollup.Hash(), s)
 	go e.notifySpeculative(winnerRollup)
@@ -318,7 +321,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.head.Proof(e.blockResolver)
-	depositTxs := processDeposits(proof, b, e.blockResolver)
+	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
 	newRollupState = executeTransactions(depositTxs, newRollupState)
 
 	// Postprocessing - withdrawals
@@ -386,6 +389,33 @@ func (e *enclaveImpl) IsInitialised() bool {
 	return e.storage.FetchSecret() != nil
 }
 
+func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State) (*Rollup, *State, bool) {
+	var hasTxs bool
+
+	win, found := FindWinner(parent, receivedRollups, e.storage, e.blockResolver)
+	if !found {
+		panic("This should not happen for gossip rounds.")
+	}
+	// calculate the state to compare with what is in the Rollup
+	p := e.storage.ParentRollup(win).Proof(e.blockResolver)
+	depositTxs := processDeposits(p, win.Proof(e.blockResolver), e.blockResolver, e.txHandler)
+	state := executeTransactions(append(win.Transactions, depositTxs...), parentState)
+
+	if serialize(state) != win.Header.State {
+		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
+			serialize(state),
+			win.Header.State,
+			parentState,
+			parent.Header.State,
+			printTxs(win.Transactions)),
+		)
+	}
+	// todo - check that the withdrawals in the header match the withdrawals as calculated
+
+	hasTxs = len(win.Transactions) > 0 || len(depositTxs) > 0 // don't publish rollups that do not have operations
+	return win, state, hasTxs
+}
+
 // Todo - implement with crypto
 func decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) SharedEnclaveSecret {
 	return SharedEnclaveSecret(secret)
@@ -416,5 +446,6 @@ func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodeco
 		speculativeWorkInCh:  make(chan bool),
 		speculativeWorkOutCh: make(chan speculativeWork),
 		statsCollector:       collector,
+		txHandler:            txhandler.NewEthTxHandler(),
 	}
 }

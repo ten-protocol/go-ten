@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+
 	"github.com/obscuronet/obscuro-playground/go/l1client"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -62,6 +64,7 @@ type Node struct {
 	// internal
 	headInCh  chan bool
 	headOutCh chan *types.Block
+	txHandler txhandler.TxHandler
 }
 
 // BlockListener is not used in the mock
@@ -364,5 +367,6 @@ func NewMiner(
 		mempoolCh:    make(chan obscurocommon.L1Tx),
 		headInCh:     make(chan bool),
 		headOutCh:    make(chan *types.Block),
+		txHandler:    NewMockTxHandler(),
 	}
 }

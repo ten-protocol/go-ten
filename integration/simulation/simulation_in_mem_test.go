@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+
+	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
+
 	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,8 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/buildhelper"
-
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -38,6 +40,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
 		L2ToL1EfficiencyThreshold: 0.5,
+		TxHandler:                 ethereummock.NewMockTxHandler(),
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
@@ -54,7 +57,6 @@ func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 	deployContract(t)
 
-	helpertypes.IsRealEth = true
 	params := params.SimParams{
 		NumberOfNodes:             2,
 		NumberOfWallets:           2,
@@ -63,6 +65,7 @@ func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.9, // todo review this
 		L2EfficiencyThreshold:     0.9,
 		L2ToL1EfficiencyThreshold: 0.9,
+		TxHandler:                 txhandler.NewEthTxHandler(),
 	}
 
 	params.AvgNetworkLatency = params.AvgBlockDuration / 15

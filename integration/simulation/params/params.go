@@ -1,6 +1,10 @@
 package params
 
-import "time"
+import (
+	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+)
 
 // SimParams are the parameters for setting up the simulation.
 type SimParams struct {
@@ -20,4 +24,7 @@ type SimParams struct {
 	L1EfficiencyThreshold     float64
 	L2EfficiencyThreshold     float64
 	L2ToL1EfficiencyThreshold float64
+
+	// TxHandler defines how the simulation should unpack transactions
+	TxHandler txhandler.TxHandler
 }

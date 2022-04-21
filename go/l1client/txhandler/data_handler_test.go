@@ -1,4 +1,4 @@
-package helpertypes
+package txhandler
 
 import (
 	"testing"
@@ -16,7 +16,7 @@ func TestSerialization(t *testing.T) {
 			Agg:         common.Address{},
 			Nonce:       2,
 			L1Proof:     obscurocommon.L1RootHash{},
-			State:       "",
+			State:       nodecommon.StateRoot{},
 			Height:      0,
 			Withdrawals: nil,
 		},
@@ -42,7 +42,7 @@ func TestCompression(t *testing.T) {
 			Agg:         common.Address{},
 			Nonce:       2,
 			L1Proof:     obscurocommon.L1RootHash{},
-			State:       "",
+			State:       nodecommon.StateRoot{},
 			Height:      0,
 			Withdrawals: nil,
 		},

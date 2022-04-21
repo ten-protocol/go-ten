@@ -6,7 +6,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
 
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 
@@ -117,7 +117,7 @@ func emptyState() *State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockState {
+func updateState(b *types.Block, s Storage, blockResolver BlockResolver, txHandler txhandler.TxHandler) *blockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := s.FetchBlockState(b.Hash())
 	if found {
@@ -128,7 +128,7 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 		return nil
 	}
 
-	rollups := extractRollups(b, blockResolver)
+	rollups := extractRollups(b, blockResolver, txHandler)
 	genesisRollup := s.FetchGenesisRollup()
 
 	// processing blocks before genesis, so there is nothing to do
@@ -152,14 +152,14 @@ func updateState(b *types.Block, s Storage, blockResolver BlockResolver) *blockS
 		if !f {
 			panic("Could not find block parent. This should not happen.")
 		}
-		parentState = updateState(p, s, blockResolver)
+		parentState = updateState(p, s, blockResolver, txHandler)
 	}
 
 	if parentState == nil {
 		panic("Something went wrong. There should be parent here.")
 	}
 
-	bs := calculateBlockState(b, parentState, s, blockResolver, rollups)
+	bs := calculateBlockState(b, parentState, s, blockResolver, rollups, txHandler)
 
 	s.SetBlockState(b.Hash(), bs)
 
@@ -222,36 +222,9 @@ func FindWinner(parent *Rollup, rollups []*Rollup, s Storage, blockResolver Bloc
 	return rollups[win], true
 }
 
-func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State, s Storage, blockResolver BlockResolver) (*Rollup, *State, bool) {
-	var hasTxs bool
-
-	win, found := FindWinner(parent, receivedRollups, s, blockResolver)
-	if !found {
-		panic("This should not happen for gossip rounds.")
-	}
-	// calculate the state to compare with what is in the Rollup
-	p := s.ParentRollup(win).Proof(blockResolver)
-	depositTxs := processDeposits(p, win.Proof(blockResolver), blockResolver)
-	state := executeTransactions(append(win.Transactions, depositTxs...), parentState)
-
-	if serialize(state) != win.Header.State {
-		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
-			serialize(state),
-			win.Header.State,
-			parentState,
-			parent.Header.State,
-			printTxs(win.Transactions)),
-		)
-	}
-	// todo - check that the withdrawals in the header match the withdrawals as calculated
-
-	hasTxs = len(win.Transactions) > 0 || len(depositTxs) > 0 // don't publish rollups that do not have operations
-	return win, state, hasTxs
-}
-
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
 // starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver BlockResolver) []nodecommon.L2Tx {
+func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver BlockResolver, txHandler txhandler.TxHandler) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
@@ -269,7 +242,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 			break
 		}
 		for _, tx := range b.Transactions() {
-			t := helpertypes.UnpackL1Tx(tx)
+			t := txHandler.UnPackTx(tx)
 			// transactions to a hardcoded bridge address
 			if t != nil && t.TxType == obscurocommon.DepositTx {
 				depL2TxData := L2TxData{
@@ -294,7 +267,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup) *blockState {
+func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup, txHandler txhandler.TxHandler) *blockState {
 	currentHead := parentState.head
 	newHeadRollup, found := FindWinner(currentHead, rollups, s, blockResolver)
 	newState := parentState.state
@@ -304,7 +277,7 @@ func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blo
 		// todo transform into an eth block structure
 
 		p := s.ParentRollup(newHeadRollup).Proof(blockResolver)
-		depositTxs := processDeposits(p, newHeadRollup.Proof(blockResolver), blockResolver)
+		depositTxs := processDeposits(p, newHeadRollup.Proof(blockResolver), blockResolver, txHandler)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
@@ -339,11 +312,11 @@ func rollupPostProcessingWithdrawals(newHeadRollup *Rollup, newState *State) []n
 	return w
 }
 
-func extractRollups(b *types.Block, blockResolver BlockResolver) []*Rollup {
+func extractRollups(b *types.Block, blockResolver BlockResolver, handler txhandler.TxHandler) []*Rollup {
 	rollups := make([]*Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
-		t := helpertypes.UnpackL1Tx(tx)
+		t := handler.UnPackTx(tx)
 		if t != nil && t.TxType == obscurocommon.RollupTx {
 			r := nodecommon.DecodeRollupOrPanic(t.Rollup)
 

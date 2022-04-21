@@ -4,57 +4,28 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
-
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/buildhelper/buildconstants"
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/helpertypes"
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 var connectionTimeout = 15 * time.Second
 var nonceLock sync.RWMutex
 
 type EthNode struct {
-	client  *ethclient.Client
-	id      common.Address // TODO remove the id common.Address
-	wallet  wallet.Wallet
-	chainID int
-}
-
-func (e *EthNode) FetchHeadBlock() (*types.Block, uint64) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (e *EthNode) IssueTx(tx obscurocommon.EncodedL1Tx) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (e *EthNode) Info() Info {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (e *EthNode) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (e *EthNode) IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool {
-	//TODO implement me
-	panic("implement me")
+	client    *ethclient.Client
+	id        common.Address // TODO remove the id common.Address
+	wallet    wallet.Wallet
+	chainID   int
+	txHandler txhandler.TxHandler
 }
 
 // NewEthClient instantiates a new l1client.Client that connects to an ethereum node
@@ -66,11 +37,72 @@ func NewEthClient(id common.Address, ipaddress string, port uint) (Client, error
 
 	log.Log(fmt.Sprintf("Initializing eth node at contract: %s", buildconstants.ContractAddress))
 	return &EthNode{
-		client:  client,
-		id:      id,
-		wallet:  wallet.NewInMemoryWallet(),
-		chainID: 1337,
+		client:    client,
+		id:        id,
+		wallet:    wallet.NewInMemoryWallet(),
+		chainID:   1337,
+		txHandler: txhandler.NewEthTxHandler(),
 	}, nil
+}
+
+func (e *EthNode) FetchHeadBlock() (*types.Block, uint64) {
+	blk, err := e.client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		panic(err)
+	}
+	return blk, blk.Number().Uint64()
+}
+
+func (e *EthNode) Info() Info {
+	return Info{
+		ID: e.id,
+	}
+}
+
+func (e *EthNode) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
+	// TODO this should be a stream
+	var blocksBetween []*types.Block
+	var err error
+
+	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
+		currentBlk, err = e.FetchBlock(currentBlk.ParentHash())
+		if err != nil {
+			panic(err)
+		}
+		blocksBetween = append(blocksBetween, currentBlk)
+	}
+
+	return blocksBetween
+}
+
+func (e *EthNode) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+	if maybeAncestor == block.Hash() || maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+		return true
+	}
+
+	if block.Number().Int64() == int64(obscurocommon.L1GenesisHeight) {
+		return false
+	}
+
+	resolvedBlock, err := e.FetchBlock(maybeAncestor)
+	if err != nil {
+		panic(err)
+	}
+	if resolvedBlock == nil {
+		if resolvedBlock.Number().Int64() >= block.Number().Int64() {
+			return false
+		}
+	}
+
+	p, err := e.FetchBlock(block.ParentHash())
+	if err != nil {
+		panic(err)
+	}
+	if p == nil {
+		return false
+	}
+
+	return e.IsBlockAncestor(p, maybeAncestor)
 }
 
 func (e *EthNode) RPCBlockchainFeed() []*types.Block {
@@ -115,79 +147,12 @@ func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 		panic(err)
 	}
 
-	ethTx := &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: big.NewInt(20000000000),
-		Gas:      1024_000_000,
-		To:       &buildconstants.ContractAddress,
-	}
-
-	contractABI, err := abi.JSON(strings.NewReader(buildconstants.ContractAbi))
+	formattedTx, err := e.txHandler.PackTx(tx, fromAddr, nonce)
 	if err != nil {
 		panic(err)
 	}
 
-	// TODO each of these cases should be a function:
-	// TODO like: func createRollupTx() or func createDepositTx()
-	// TODO And then eventually, these functions would be called directly, when we get rid of our special format. (we'll have to change the mock thing as well for that)
-	switch tx.TxType {
-	case obscurocommon.DepositTx:
-		ethTx.Value = big.NewInt(int64(tx.Amount))
-		data, err := contractABI.Pack("Deposit", tx.Dest)
-		if err != nil {
-			panic(err)
-		}
-		ethTx.Data = data
-		log.Log(fmt.Sprintf("BROADCAST TX: Issuing DepositTx - Addr: %s deposited %d to %s ",
-			fromAddr, tx.Amount, tx.Dest))
-
-	case obscurocommon.RollupTx:
-		r, err := nodecommon.DecodeRollup(tx.Rollup)
-		if err != nil {
-			panic(err)
-		}
-		zipped := helpertypes.Compress(tx.Rollup)
-		encRollupData := helpertypes.EncodeToString(zipped)
-		data, err := contractABI.Pack("AddRollup", encRollupData)
-		if err != nil {
-			panic(err)
-		}
-
-		ethTx.Data = data
-		derolled, _ := nodecommon.DecodeRollup(tx.Rollup)
-
-		msg := ethereum.CallMsg{
-			From:     fromAddr,
-			To:       &common.Address{},
-			GasPrice: big.NewInt(20000000000),
-			Gas:      1024_000_000,
-			Data:     data,
-		}
-
-		estimate, err := e.client.EstimateGas(context.Background(), msg)
-		if err != nil {
-			panic(err)
-		}
-		log.Log(fmt.Sprintf("Estimated Cost of: %d\n", estimate))
-		log.Log(fmt.Sprintf("BROADCAST TX - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(derolled.Transactions), len(data), ethTx.Gas))
-
-	case obscurocommon.StoreSecretTx:
-		data, err := contractABI.Pack("StoreSecret", helpertypes.EncodeToString(tx.Secret))
-		if err != nil {
-			panic(err)
-		}
-		ethTx.Data = data
-		log.Log(fmt.Sprintf("BROADCAST TX: Issuing StoreSecretTx: encoded as %s", helpertypes.EncodeToString(tx.Secret)))
-	case obscurocommon.RequestSecretTx:
-		data, err := contractABI.Pack("RequestSecret")
-		if err != nil {
-			panic(err)
-		}
-		ethTx.Data = data
-		log.Log("BROADCAST TX: Issuing RequestSecret")
-	}
-
-	signedTx, err := e.wallet.SignTransaction(e.chainID, ethTx)
+	signedTx, err := e.wallet.SignTransaction(e.chainID, formattedTx)
 	if err != nil {
 		panic(err)
 	}
