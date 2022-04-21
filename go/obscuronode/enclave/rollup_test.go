@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"math/big"
 	"sync/atomic"
 	"testing"
 
@@ -32,7 +33,7 @@ func TestSerialiseRollup(t *testing.T) {
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := nodecommon.Rollup{
-		Header:       NewRollup(obscurocommon.GenesisBlock.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), "").Header,
+		Header:       NewRollup(obscurocommon.GenesisBlock.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0))).Header,
 		Height:       height,
 		Transactions: encryptTransactions(L2Txs{*tx}),
 	}
