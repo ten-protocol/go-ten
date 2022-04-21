@@ -13,6 +13,7 @@ func SetLog(f *os.File) {
 }
 
 func Log(msg string) {
+	fmt.Println(msg)
 	_, err := logFile.WriteString(fmt.Sprintf("%d %s\n", makeTimestamp(), msg))
 	if err != nil {
 		if logFile == nil {

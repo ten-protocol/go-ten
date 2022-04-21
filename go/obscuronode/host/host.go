@@ -127,12 +127,12 @@ func (a *Node) Start() {
 
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
-		txData := obscurocommon.L1TxData{
+		tx := &obscurocommon.L1TxData{
 			TxType:      obscurocommon.StoreSecretTx,
 			Secret:      a.Enclave.GenerateSecret(),
 			Attestation: a.Enclave.Attestation(),
 		}
-		a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+		a.broadcastTx(tx)
 	}
 
 	// TODO review this
@@ -366,13 +366,8 @@ func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
 			panic(err)
 		}
 		if isWinner {
-			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
-			tx := obscurocommon.NewL1Tx(txData)
-			t, err := obscurocommon.EncodeTx(tx)
-			if err != nil {
-				panic(err)
-			}
-			a.ethereumNode.BroadcastTx(t)
+			tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+			a.broadcastTx(tx)
 			// collect Stats
 		}
 	}
@@ -409,28 +404,25 @@ func (a *Node) initialiseProtocol(blockHash common.Hash) obscurocommon.L2RootHas
 	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis(blockHash)
 	log.Log(fmt.Sprintf("Agg%d:> Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesis.ProducedRollup.Header.Hash())))
-	txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
-	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
+	a.broadcastTx(tx)
 
 	return genesis.L2Hash
 }
 
-func (a *Node) broadcastTx(tx obscurocommon.L1Tx) {
-	t, err := obscurocommon.EncodeTx(&tx)
-	if err != nil {
-		panic(err)
-	}
-	a.ethereumNode.BroadcastTx(t)
+func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {
+	// TODO add retry and deal with failures
+	a.ethereumNode.BroadcastTx(tx)
 }
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() { //nolint:unused
 	attestation := a.Enclave.Attestation()
-	txData := obscurocommon.L1TxData{
+	tx := &obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,
 		Attestation: attestation,
 	}
-	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+	a.broadcastTx(tx)
 
 	// start listening for l1 blocks that contain the response to the request
 	for {
@@ -463,12 +455,12 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	for _, tx := range b.Transactions() {
 		t := helpertypes.UnpackL1Tx(tx)
 		if t != nil && t.TxType == obscurocommon.RequestSecretTx {
-			txData := obscurocommon.L1TxData{
+			txData := &obscurocommon.L1TxData{
 				TxType:      obscurocommon.StoreSecretTx,
 				Secret:      a.Enclave.FetchSecret(t.Attestation),
 				Attestation: t.Attestation,
 			}
-			a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+			a.broadcastTx(txData)
 		}
 	}
 }

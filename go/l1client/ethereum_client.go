@@ -105,7 +105,7 @@ func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
-func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
+func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 	nonceLock.Lock()
 	defer nonceLock.Unlock()
 
@@ -114,13 +114,6 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 	if err != nil {
 		panic(err)
 	}
-
-	l1tx, err := t.Decode()
-	if err != nil {
-		panic(err)
-	}
-
-	l1txData := obscurocommon.TxData(&l1tx)
 
 	ethTx := &types.LegacyTx{
 		Nonce:    nonce,
@@ -137,23 +130,23 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 	// TODO each of these cases should be a function:
 	// TODO like: func createRollupTx() or func createDepositTx()
 	// TODO And then eventually, these functions would be called directly, when we get rid of our special format. (we'll have to change the mock thing as well for that)
-	switch l1txData.TxType {
+	switch tx.TxType {
 	case obscurocommon.DepositTx:
-		ethTx.Value = big.NewInt(int64(l1txData.Amount))
-		data, err := contractABI.Pack("Deposit", l1txData.Dest)
+		ethTx.Value = big.NewInt(int64(tx.Amount))
+		data, err := contractABI.Pack("Deposit", tx.Dest)
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
 		log.Log(fmt.Sprintf("BROADCAST TX: Issuing DepositTx - Addr: %s deposited %d to %s ",
-			fromAddr, l1txData.Amount, l1txData.Dest))
+			fromAddr, tx.Amount, tx.Dest))
 
 	case obscurocommon.RollupTx:
-		r, err := nodecommon.DecodeRollup(l1txData.Rollup)
+		r, err := nodecommon.DecodeRollup(tx.Rollup)
 		if err != nil {
 			panic(err)
 		}
-		zipped := helpertypes.Compress(l1txData.Rollup)
+		zipped := helpertypes.Compress(tx.Rollup)
 		encRollupData := helpertypes.EncodeToString(zipped)
 		data, err := contractABI.Pack("AddRollup", encRollupData)
 		if err != nil {
@@ -161,7 +154,7 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 		}
 
 		ethTx.Data = data
-		derolled, _ := nodecommon.DecodeRollup(l1txData.Rollup)
+		derolled, _ := nodecommon.DecodeRollup(tx.Rollup)
 
 		msg := ethereum.CallMsg{
 			From:     fromAddr,
@@ -179,12 +172,12 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 		log.Log(fmt.Sprintf("BROADCAST TX - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(derolled.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:
-		data, err := contractABI.Pack("StoreSecret", helpertypes.EncodeToString(l1txData.Secret))
+		data, err := contractABI.Pack("StoreSecret", helpertypes.EncodeToString(tx.Secret))
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("BROADCAST TX: Issuing StoreSecretTx: encoded as %s", helpertypes.EncodeToString(l1txData.Secret)))
+		log.Log(fmt.Sprintf("BROADCAST TX: Issuing StoreSecretTx: encoded as %s", helpertypes.EncodeToString(tx.Secret)))
 	case obscurocommon.RequestSecretTx:
 		data, err := contractABI.Pack("RequestSecret")
 		if err != nil {

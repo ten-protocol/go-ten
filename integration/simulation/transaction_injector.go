@@ -78,14 +78,12 @@ func NewTransactionInjector(
 func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every user
 	for _, u := range m.wallets {
-		txData := obscurocommon.L1TxData{
+		txData := &obscurocommon.L1TxData{
 			TxType: obscurocommon.DepositTx,
 			Amount: INITIAL_BALANCE,
 			Dest:   u.Address,
 		}
-		tx := obscurocommon.NewL1Tx(txData)
-		t, _ := obscurocommon.EncodeTx(tx)
-		m.rndL1Node().IssueTx(t)
+		m.rndL1Node().BroadcastTx(txData)
 		m.stats.Deposit(INITIAL_BALANCE)
 		time.Sleep(m.avgBlockDuration / 3)
 	}
@@ -197,9 +195,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 			Amount: v,
 			Dest:   rndWallet(m.wallets).Address,
 		}
-		tx := obscurocommon.NewL1Tx(txData)
-		t, _ := obscurocommon.EncodeTx(tx)
-		m.rndL1Node().IssueTx(t)
+		m.rndL1Node().BroadcastTx(&txData)
 		m.stats.Deposit(v)
 		go m.trackL1Tx(txData)
 	}

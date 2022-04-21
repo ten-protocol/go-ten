@@ -291,8 +291,10 @@ func (m *Node) P2PGossipTx(tx obscurocommon.EncodedL1Tx) {
 	m.mempoolCh <- t
 }
 
-func (m *Node) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
-	m.Network.BroadcastTx(tx)
+func (m *Node) BroadcastTx(txData *obscurocommon.L1TxData) {
+	tx := obscurocommon.NewL1Tx(*txData)
+	t, _ := obscurocommon.EncodeTx(tx)
+	m.Network.BroadcastTx(t)
 }
 
 func (m *Node) RPCBlockchainFeed() []*types.Block {

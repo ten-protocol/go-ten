@@ -25,7 +25,7 @@ type Client interface {
 	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool
 
 	RPCBlockchainFeed() []*types.Block
-	BroadcastTx(t obscurocommon.EncodedL1Tx)
+	BroadcastTx(t *obscurocommon.L1TxData)
 	BlockListener() chan *types.Header
 }
 
