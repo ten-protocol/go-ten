@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/ethereum/go-ethereum/consensus"
@@ -22,7 +23,8 @@ const (
 	chainDataAncientDir = "chaindata/ancient"
 	trieCacheDir        = "triecache"
 	ethashDir           = "ethash"
-	dataDir             = "gethDataDir"
+	// TODO - Use a constant that makes sense outside of the simulation.
+	dataDirRoot = "../.build/simulations/gethDataDir"
 )
 
 // TODO - Add the constants used in this file to the config framework.
@@ -30,6 +32,8 @@ const (
 // NewL1Blockchain creates a Geth BlockChain object. `genesisJSON` is the Genesis block config in JSON format. A Geth
 // node can be made to output this using the `dumpgenesis` startup command.
 func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
+	dataDir := createDataDir()
+
 	db := createDB(dataDir)
 	cacheConfig := createCacheConfig(dataDir)
 	chainConfig := createChainConfig(db, genesisJSON)
@@ -43,6 +47,19 @@ func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 		panic(fmt.Errorf("l1 blockchain could not be created: %w", err))
 	}
 	return blockchain
+}
+
+func createDataDir() string {
+	err := os.MkdirAll(dataDirRoot, 0o700)
+	if err != nil {
+		panic(fmt.Errorf("l1 blockchain data directory could not be created: %w", err))
+	}
+	dataDir, err := os.MkdirTemp(dataDirRoot, "")
+	if err != nil {
+		panic(fmt.Errorf("l1 blockchain data directory could not be created: %w", err))
+	}
+
+	return dataDir
 }
 
 func createDB(dataDir string) ethdb.Database {
