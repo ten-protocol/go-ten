@@ -76,8 +76,8 @@ type Node struct {
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
 
-	// is the node ready
-	readyForWork bool
+	// A node is marked as ready after it has bootstrapped existing blocks and has the enclave secret
+	readyForWork *int32
 }
 
 func NewObscuroAggregator(
@@ -114,7 +114,8 @@ func NewObscuroAggregator(
 		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
-		nodeDB: NewDB(),
+		nodeDB:       NewDB(),
+		readyForWork: new(int32),
 	}
 }
 
@@ -203,7 +204,7 @@ func (a *Node) startProcessing() {
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
 	i := int32(0)
 	interrupt := &i
-	a.readyForWork = true
+	atomic.StoreInt32(a.readyForWork, 1)
 
 	// Main loop - Listen for notifications From the L1 node and process them
 	// Note that during processing, more recent notifications can be received.
@@ -492,5 +493,5 @@ func (a *Node) monitorBlocks() {
 }
 
 func (a *Node) IsReady() bool {
-	return a.readyForWork
+	return atomic.LoadInt32(a.readyForWork) == 1
 }

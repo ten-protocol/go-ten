@@ -22,9 +22,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-var (
-	nonceLock sync.RWMutex
-)
+var nonceLock sync.RWMutex
 
 type EthNode struct {
 	port      uint
@@ -33,6 +31,7 @@ type EthNode struct {
 	id        common.Address
 }
 
+// TODO remove the id common.Address
 func NewEthNode(id common.Address, ipaddress string, port uint) (obscurocommon.L1Node, error) {
 	apiClient := NewEthAPI(ipaddress, port)
 	err := apiClient.Connect()
@@ -73,7 +72,9 @@ func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 		availBlocks = append(availBlocks, block)
 	}
 
-	// todo double check the list is ordered [genesis, 1, 2, 3, 4, ..., last]
+	// TODO double check the list is ordered [genesis, 1, 2, 3, 4, ..., last]
+	// TODO It's pretty ugly but it avoids creating a new slice
+	// TODO The approach of feeding all the blocks should change from all-blocks-in-memory to a stream
 	for i, j := 0, len(availBlocks)-1; i < j; i, j = i+1, j-1 {
 		availBlocks[i], availBlocks[j] = availBlocks[j], availBlocks[i]
 	}
@@ -116,6 +117,9 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 		panic(err)
 	}
 
+	// TODO each of these cases should be a function:
+	// TODO like: func createRollupTx() or func createDepositTx()
+	// TODO And then eventually, these functions would be called directly, when we get rid of our special format. (we'll have to change the mock thing as well for that)
 	switch l1txData.TxType {
 	case obscurocommon.DepositTx:
 		ethTx.Value = big.NewInt(int64(l1txData.Amount))
@@ -155,8 +159,6 @@ func (e *EthNode) BroadcastTx(t obscurocommon.EncodedL1Tx) {
 			panic(err)
 		}
 		log.Log(fmt.Sprintf("Estimated Cost of: %d\n", estimate))
-		ethTx.Gas = estimate + 10
-
 		log.Log(fmt.Sprintf("BROADCAST TX - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(derolled.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:

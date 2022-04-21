@@ -49,7 +49,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 // 1. Install ganache -> npm install ganache --global
 // 2. Run ganache -> rm -rf ganachedb &&  ganache --database.dbPath="./ganachedb"  -l 1024000000000 --wallet.accounts="0x5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae,0x56BC75E2D63100000" --wallet.accounts="0xb728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7,0x56BC75E2D63100000" --wallet.accounts="0x1e1e76d5c0ea1382b6acf76e873977fd223c7fa2a6dc57db2b94e93eb303ba85,0x56BC75E2D63100000" -p 7545 -g 225
 func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
-	//	t.Skip("test under construction")
+	t.Skip("test under construction")
 	setupTestLog()
 	deployContract(t)
 
@@ -99,14 +99,13 @@ func deployContract(t *testing.T) {
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < 10*time.Second; time.Sleep(time.Second) {
 		receipt, err = tmpClient.ApiClient.TransactionReceipt(context.Background(), signedTx.Hash())
-		if err == ethereum.NotFound {
-			t.Logf("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
-			continue
+		if err == nil {
+			break
 		}
-		if err != nil {
+		if err != ethereum.NotFound {
 			t.Fatal(err)
 		}
-		break
+		t.Logf("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
 	}
 
 	t.Logf("Contract deployed to %s\n", receipt.ContractAddress)

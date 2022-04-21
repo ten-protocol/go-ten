@@ -239,7 +239,7 @@ func findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *Sta
 	}
 	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
-	hasTxs = len(win.Transactions) > 0 || len(depositTxs) > 0
+	hasTxs = len(win.Transactions) > 0 || len(depositTxs) > 0 // don't publish rollups that do not have operations
 	return win, state, hasTxs
 }
 

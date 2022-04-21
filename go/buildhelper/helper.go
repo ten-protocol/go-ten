@@ -25,8 +25,7 @@ func Addr3PK() *ecdsa.PrivateKey {
 
 func Addr1() common.Address {
 	privateKey := Addr1PK()
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
 	if !ok {
 		panic("error casting public key to ECDSA")
 	}
@@ -36,8 +35,7 @@ func Addr1() common.Address {
 
 func Addr2() common.Address {
 	privateKey := Addr2PK()
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
 	if !ok {
 		panic("error casting public key to ECDSA")
 	}
@@ -47,8 +45,7 @@ func Addr2() common.Address {
 
 func Addr3() common.Address {
 	privateKey := Addr3PK()
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
 	if !ok {
 		panic("error casting public key to ECDSA")
 	}

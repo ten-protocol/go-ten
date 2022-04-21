@@ -56,7 +56,6 @@ func testSimulation(t *testing.T, netw network.Network, params params.SimParams)
 
 func waitForNodesReady(obsNodes []*host.Node) {
 	now := time.Now()
-	//n := obsNodes[0]
 	for _, n := range obsNodes {
 		for {
 			if n.IsReady() {
@@ -64,7 +63,7 @@ func waitForNodesReady(obsNodes []*host.Node) {
 				break
 			}
 			fmt.Printf("Waiting on Node %d after %s \n", obscurocommon.ShortAddress(n.ID), time.Since(now))
-			time.Sleep(time.Second)
+			time.Sleep(time.Millisecond)
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 )
 
 func TestSerialization(t *testing.T) {
+	// TODO would be nice to have a rollup with randomized data instead of mostly nil data
 	rol := nodecommon.Rollup{
 		Header: &nodecommon.Header{
 			ParentHash:  obscurocommon.GenesisBlock.Hash(),

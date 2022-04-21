@@ -3,7 +3,6 @@ package helpertypes
 import (
 	"bytes"
 	"compress/gzip"
-	b64 "encoding/base64"
 	"io/ioutil"
 	"strings"
 
@@ -12,9 +11,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/buildhelper/buildconstants"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+
+	b64 "encoding/base64"
 )
 
 var IsRealEth bool
+
+const methodBytesLen = 4
 
 func UnpackL1Tx(tx *types.Transaction) *obscurocommon.L1TxData {
 	if !IsRealEth {
@@ -32,7 +35,7 @@ func UnpackL1Tx(tx *types.Transaction) *obscurocommon.L1TxData {
 	}
 
 	//log.Log(fmt.Sprintf("Unpacking data: %b", tx.Data()))
-	method, err := contractABI.MethodById(tx.Data()[:4])
+	method, err := contractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +56,7 @@ func UnpackL1Tx(tx *types.Transaction) *obscurocommon.L1TxData {
 		}
 		callData, found := contractCallData["dest"]
 		if !found {
-			panic("call data not found for rollup")
+			panic("call data not found for dest")
 		}
 
 		l1txData.TxType = obscurocommon.DepositTx
@@ -67,7 +70,7 @@ func UnpackL1Tx(tx *types.Transaction) *obscurocommon.L1TxData {
 		}
 		callData, found := contractCallData["rollupData"]
 		if !found {
-			panic("call data not found for rollup")
+			panic("call data not found for rollupData")
 		}
 		zipped := DecodeFromString(callData.(string))
 		l1txData.Rollup = Decompress(zipped)
@@ -80,7 +83,7 @@ func UnpackL1Tx(tx *types.Transaction) *obscurocommon.L1TxData {
 		}
 		callData, found := contractCallData["inputSecret"]
 		if !found {
-			panic("call data not found for rollup")
+			panic("call data not found for inputSecret")
 		}
 		l1txData.Secret = DecodeFromString(callData.(string))
 		l1txData.TxType = obscurocommon.StoreSecretTx
@@ -120,6 +123,7 @@ func Decompress(in []byte) []byte {
 	if err != nil {
 		panic(err)
 	}
+	defer gz.Close()
 
 	output, err := ioutil.ReadAll(gz)
 	if err != nil {

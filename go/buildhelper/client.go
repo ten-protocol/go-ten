@@ -9,19 +9,19 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-type BuildHelperClient struct {
+type HelperClient struct {
 	node *EthNode
 }
 
-func (b *BuildHelperClient) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (b *HelperClient) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 	return b.node.FetchBlockByNumber(n)
 }
 
-func (b *BuildHelperClient) FetchBlock(id common.Hash) (*types.Block, error) {
+func (b *HelperClient) FetchBlock(id common.Hash) (*types.Block, error) {
 	return b.node.FetchBlock(id)
 }
 
-func (b *BuildHelperClient) FetchHeadBlock() (*types.Block, uint64) {
+func (b *HelperClient) FetchHeadBlock() (*types.Block, uint64) {
 	blk, err := b.node.FetchBlockByNumber(nil)
 	if err != nil {
 		panic(err)
@@ -29,22 +29,20 @@ func (b *BuildHelperClient) FetchHeadBlock() (*types.Block, uint64) {
 	return blk, blk.Number().Uint64()
 }
 
-func (b *BuildHelperClient) IssueTx(tx obscurocommon.EncodedL1Tx) {
+func (b *HelperClient) IssueTx(tx obscurocommon.EncodedL1Tx) {
 	b.node.BroadcastTx(tx)
 }
 
-func (b *BuildHelperClient) Info() ethclient.Info {
+func (b *HelperClient) Info() ethclient.Info {
 	return ethclient.Info{ID: b.node.id}
 }
 
-func (b *BuildHelperClient) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
+func (b *HelperClient) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
 	//TODO this should be a stream
 	var blocksBetween []*types.Block
 	var err error
-	for currentBlk := lastBlock; currentBlk != nil || currentBlk.Hash() != startingBlock.Hash(); {
-		if currentBlk.ParentHash() == common.HexToHash("") {
-			break
-		}
+
+	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
 		currentBlk, err = b.FetchBlock(currentBlk.ParentHash())
 		if err != nil {
 			panic(err)
@@ -55,12 +53,8 @@ func (b *BuildHelperClient) BlocksBetween(startingBlock *types.Block, lastBlock 
 	return blocksBetween
 }
 
-func (b *BuildHelperClient) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
-	if maybeAncestor == block.Hash() {
-		return true
-	}
-
-	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+func (b *HelperClient) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+	if maybeAncestor == block.Hash() || maybeAncestor == obscurocommon.GenesisBlock.Hash() {
 		return true
 	}
 
@@ -90,7 +84,7 @@ func (b *BuildHelperClient) IsBlockAncestor(block *types.Block, maybeAncestor ob
 }
 
 func NewClient(node obscurocommon.L1Node) ethclient.Client {
-	return &BuildHelperClient{
+	return &HelperClient{
 		node: node.(*EthNode),
 	}
 }

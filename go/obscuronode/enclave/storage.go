@@ -279,6 +279,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscuroc
 
 func (s *storageImpl) assertSecretAvailable() {
 	if s.FetchSecret() == nil {
+		// TODO remove this
 		//panic("Enclave not initialized")
 	}
 }
