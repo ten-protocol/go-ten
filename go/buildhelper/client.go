@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/l1client"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
@@ -33,8 +33,8 @@ func (b *HelperClient) IssueTx(tx obscurocommon.EncodedL1Tx) {
 	b.node.BroadcastTx(tx)
 }
 
-func (b *HelperClient) Info() ethclient.Info {
-	return ethclient.Info{ID: b.node.id}
+func (b *HelperClient) Info() l1client.Info {
+	return l1client.Info{ID: b.node.id}
 }
 
 func (b *HelperClient) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
@@ -83,8 +83,8 @@ func (b *HelperClient) IsBlockAncestor(block *types.Block, maybeAncestor obscuro
 	return b.IsBlockAncestor(p, maybeAncestor)
 }
 
-func NewClient(node obscurocommon.L1Node) ethclient.Client {
+func NewClient(node obscurocommon.L1Node) l1client.Client {
 	return &HelperClient{
-		node: node.(*EthNode),
+		node: node,
 	}
 }

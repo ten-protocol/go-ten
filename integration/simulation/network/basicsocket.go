@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/l1client"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -28,9 +28,9 @@ func NewBasicNetworkOfSocketNodes() Network {
 	return &basicNetworkOfSocketNodes{}
 }
 
-func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
+func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]l1client.Client, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
+	l1Clients := make([]l1client.Client, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 

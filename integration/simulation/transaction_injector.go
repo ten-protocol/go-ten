@@ -9,7 +9,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/l1client"
 
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
@@ -32,7 +32,7 @@ type TransactionInjector struct {
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
-	l1Nodes []ethclient.Client
+	l1Nodes []l1client.Client
 	l2Nodes []*host.Node
 
 	l1TransactionsLock sync.RWMutex
@@ -51,7 +51,7 @@ func NewTransactionInjector(
 	numberWallets int,
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
-	l1Nodes []ethclient.Client,
+	l1Nodes []l1client.Client,
 	l2Nodes []*host.Node,
 ) *TransactionInjector {
 	// create a bunch of wallets
@@ -261,7 +261,7 @@ func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
 	return wallets[rand.Intn(len(wallets))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL1Node() ethclient.Client {
+func (m *TransactionInjector) rndL1Node() l1client.Client {
 	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
 }
 

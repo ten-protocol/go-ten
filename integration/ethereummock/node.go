@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/l1client"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
@@ -104,8 +104,8 @@ func (m *Node) IssueTx(tx obscurocommon.EncodedL1Tx) {
 	m.Network.BroadcastTx(tx)
 }
 
-func (m *Node) Info() ethclient.Info {
-	return ethclient.Info{
+func (m *Node) Info() l1client.Info {
+	return l1client.Info{
 		ID: m.ID,
 	}
 }

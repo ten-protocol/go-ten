@@ -8,7 +8,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/buildhelper"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/l1client"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -25,9 +25,9 @@ func NewNetworkInMemoryGeth() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
+func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) ([]l1client.Client, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
+	l1Clients := make([]l1client.Client, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -69,7 +69,7 @@ func (n *networkInMemGeth) TearDown() {
 }
 
 func createRealEthNode(id int64) obscurocommon.L1Node {
-	ethnode, err := buildhelper.NewEthNode(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545)
+	ethnode, err := l1client.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545)
 	if err != nil {
 		panic(err)
 	}
