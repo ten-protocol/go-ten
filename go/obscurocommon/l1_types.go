@@ -1,7 +1,7 @@
 package obscurocommon
 
 import (
-	"math"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"math/big"
 	"math/rand"
 
@@ -74,39 +74,24 @@ type (
 type EncodedBlock []byte
 
 var (
-	GenesisBlock = core.DefaultGenesisBlock().ToBlock(nil)
+	Genesis      = core.DefaultGenesisBlock()
+	GenesisBlock = Genesis.ToBlock(nil)
 	GenesisHash  = GenesisBlock.Hash()
 )
 
+// todo - joel - move this and other sim stuff to integration folder
 func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Block {
-	blockNum := big.NewInt(0).Add(parent.Number(), big.NewInt(1))
+	time := parent.Time() + 1
 
-	// todo - joel - fold into a function
-	var baseFee *big.Int
-	londonBlock := uint64(1)
-	if blockNum.Uint64() <= londonBlock {
-		baseFee = big.NewInt(1000000000)
-	} else {
-		x := float64(parent.BaseFee().Uint64()) * 0.875
-		baseFee = big.NewInt(int64(math.Ceil(x)))
-	}
-
+	// todo - joel - document any constants used here
 	header := types.Header{
-		ParentHash:  parent.Hash(),
-		Coinbase:    nodeID,
-		Root:        common.HexToHash("d7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"),
-		TxHash:      common.Hash{},
-		ReceiptHash: common.Hash{},
-		Bloom:       types.Bloom{},
-		Difficulty:  big.NewInt(0),
-		Number:      blockNum,
-		GasLimit:    10000,
-		GasUsed:     0,
-		Time:        0,
-		Extra:       nil,
-		MixDigest:   common.Hash{},
-		Nonce:       types.EncodeNonce(0), // 0 is the Beacon nonce.
-		BaseFee:     baseFee,
+		ParentHash: parent.Hash(),
+		Coinbase:   nodeID,
+		Root:       common.HexToHash("34eca9cd7324e3a1df317e439a18119ad9a3c988fbf4d20783bb7bee56bafd64"),
+		Difficulty: ethash.CalcDifficulty(Genesis.Config, time, parent.Header()),
+		Number:     big.NewInt(0).Add(parent.Number(), big.NewInt(1)),
+		GasLimit:   5000,
+		Time:       time,
 	}
 
 	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})

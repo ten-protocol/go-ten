@@ -3,7 +3,6 @@ package enclave
 import (
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"path"
 
@@ -87,17 +86,14 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 	if err != nil {
 		panic(fmt.Errorf("l1 blockchain genesis block could not be created: %w", err))
 	}
-	// TODO - Joel - Revert this hack. If we do not do this, every block before the London block is treated as the
-	//  transition from non-London to London, and thus a doubling of the gas fee is expected. After ~50 blocks, the max
-	//  gas fee is hit.
-	chainConfig.LondonBlock = big.NewInt(1)
 	return chainConfig
 }
 
 // Recreates the golden path through `eth/ethconfig/config.go/CreateConsensusEngine()`.
 func createEngine(dataDir string) consensus.Engine {
 	engine := ethash.New(ethash.Config{
-		PowMode:          ethash.ModeNormal,                          // Default.
+		// todo - joel - document use of modefake
+		PowMode:          ethash.ModeFake,                            // Default.
 		CacheDir:         path.Join(dataDir, "geth/ethash"),          // Defaults to `geth/ethash` in the node's data directory.
 		CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
 		CachesOnDisk:     ethconfig.Defaults.Ethash.CachesOnDisk,     // Default.

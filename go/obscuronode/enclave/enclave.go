@@ -174,7 +174,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	// we check that the block is a valid Ethereum block
 	_, err := e.l1Blockchain.InsertChain(types.Blocks{&block})
 	if err != nil {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block validation failed."}
+		panic(err) // todo - joel - switch to reporting a block ingestion failure
 	}
 
 	blockState := updateState(&block, e.storage, e.blockResolver)
