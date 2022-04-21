@@ -46,7 +46,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params params.SimParams, s
 		}
 
 		// create the in memory l1 and l2 node
-		enclavePort := uint64(EnclaveStartPort + i - 1)
+		enclavePort := uint64(EnclaveStartPort + i)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, enclavePort))
 
