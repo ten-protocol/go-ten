@@ -424,13 +424,12 @@ func NewEnclave(id common.Address, mining bool, genesisJSON []byte, collector St
 	}
 
 	return &enclaveImpl{
-		node:           id,
-		mining:         mining,
-		storage:        storage,
-		blockResolver:  storage,
-		statsCollector: collector,
-		l1Blockchain:   l1Blockchain,
-
+		node:                 id,
+		mining:               mining,
+		storage:              storage,
+		blockResolver:        storage,
+		statsCollector:       collector,
+		l1Blockchain:         l1Blockchain,
 		txCh:                 make(chan nodecommon.L2Tx),
 		roundWinnerCh:        make(chan *Rollup),
 		exitCh:               make(chan bool),
