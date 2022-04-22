@@ -29,13 +29,14 @@ type server struct {
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
-// received from the L1 node. If nil, incoming blocks are not validated.
-func StartServer(address string, nodeID common.Address, genesisJSON []byte, collector StatsCollector) error {
+// received from the L1 node if `validateBlocks` is set to true.
+// TODO - Use a genesis JSON hardcoded in a config file bundled in the signed SGX image instead.
+func StartServer(address string, nodeID common.Address, validateBlocks bool, genesisJSON []byte, collector StatsCollector) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
-	enclaveServer := server{enclave: NewEnclave(nodeID, true, genesisJSON, collector), rpcServer: grpc.NewServer()}
+	enclaveServer := server{enclave: NewEnclave(nodeID, true, validateBlocks, genesisJSON, collector), rpcServer: grpc.NewServer()}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {

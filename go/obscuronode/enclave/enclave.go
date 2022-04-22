@@ -136,7 +136,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); ingestionFailedResponse != nil {
 			result[i] = *ingestionFailedResponse
-			continue
+			return result // We return early, as all descendant blocks will also fail verification.
 		}
 
 		e.storage.StoreBlock(block)
@@ -452,12 +452,15 @@ type processingEnvironment struct {
 
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
-// received from the L1 node. If nil, incoming blocks are not validated.
-func NewEnclave(id common.Address, mining bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
+// received from the L1 node if `validateBlocks` is set to true.
+func NewEnclave(id common.Address, mining bool, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
 	storage := NewStorage()
 
 	var l1Blockchain *core.BlockChain
-	if genesisJSON != nil {
+	if validateBlocks {
+		if genesisJSON == nil {
+			panic("enclave was configured to validate blocks, but genesis JSON was nil")
+		}
 		l1Blockchain = NewL1Blockchain(genesisJSON)
 	}
 
