@@ -16,7 +16,6 @@ import (
 )
 
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
-var genesisParentHash = common.Hash{}
 
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
@@ -368,7 +367,8 @@ func (e *enclaveImpl) IsInitialised() bool {
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
 // BlockSubmissionResponse if the insertion failed.
 func (e *enclaveImpl) insertBlockIntoL1Chain(block *types.Block) *nodecommon.BlockSubmissionResponse {
-	if e.l1Blockchain != nil && block.ParentHash() != genesisParentHash {
+	// todo - joel - do I need to recalc hash to avoid the attack where a block with a wrong hash is submitted?
+	if e.l1Blockchain != nil && block.Hash() != e.l1Blockchain.Genesis().Hash() {
 		_, err := e.l1Blockchain.InsertChain(types.Blocks{block})
 		if err != nil {
 			causeMsg := fmt.Sprintf("Block was invalid: %v", err)

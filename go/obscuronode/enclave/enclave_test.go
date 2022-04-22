@@ -4,6 +4,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -15,7 +19,7 @@ func TestValidSignatureVerifies(t *testing.T) {
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
 	if err := verifySignature(signedTx); err != nil {
-		t.Errorf("validly-signed transaction did not pass verification: %s", err)
+		t.Errorf("validly-signed transaction did not pass verification: %v", err)
 	}
 }
 
@@ -23,7 +27,7 @@ func TestUnsignedTxDoesNotVerify(t *testing.T) {
 	tx := createL2Tx()
 
 	if err := verifySignature(tx); err == nil {
-		t.Errorf("transaction was not signed but verified anyway: %s", err)
+		t.Errorf("transaction was not signed but verified anyway: %v", err)
 	}
 }
 
@@ -38,7 +42,7 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 	modifiedTx := types.NewTx(txData)
 
 	if err := verifySignature(modifiedTx); err == nil {
-		t.Errorf("transaction was modified after signature but verified anyway: %s", err)
+		t.Errorf("transaction was modified after signature but verified anyway: %v", err)
 	}
 }
 
@@ -50,6 +54,43 @@ func TestIncorrectSignerDoesNotVerify(t *testing.T) {
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
 	if err := verifySignature(signedTx); err == nil {
-		t.Errorf("transaction used incorrect signer but verified anyway: %s", err)
+		t.Errorf("transaction used incorrect signer but verified anyway: %v", err)
+	}
+}
+
+func TestInvalidBlocksAreRejected(t *testing.T) {
+	// There are no tests of acceptance of valid chains of blocks. This is because the logic to generate a valid block
+	// is non-trivial.
+	genesisJSON, err := core.DefaultGenesisBlock().MarshalJSON()
+	if err != nil {
+		t.Errorf("could not parse genesis JSON: %v", err)
+	}
+	enclave := enclaveImpl{l1Blockchain: NewL1Blockchain(genesisJSON)}
+
+	invalidHeaders := []types.Header{
+		{ParentHash: common.HexToHash("0x0")},                                                            // Unknown ancestor.
+		{ParentHash: core.DefaultGenesisBlock().ToBlock(nil).Hash(), Number: big.NewInt(999)},            // Wrong block number.
+		{ParentHash: core.DefaultGenesisBlock().ToBlock(nil).Hash(), Number: big.NewInt(1), GasLimit: 1}, // Wrong gas limit.
+	}
+
+	for _, header := range invalidHeaders {
+		loopHeader := header
+		ingestionFailedResponse := enclave.insertBlockIntoL1Chain(types.NewBlock(&loopHeader, nil, nil, nil, &trie.StackTrie{}))
+		if ingestionFailedResponse == nil {
+			t.Errorf("expected block with invalid header to be rejected but was accepted")
+		}
+	}
+}
+
+func TestResubmittedGenesisBlockIsIgnored(t *testing.T) {
+	genesisJSON, err := core.DefaultGenesisBlock().MarshalJSON()
+	if err != nil {
+		t.Errorf("could not parse genesis JSON: %v", err)
+	}
+	enclave := enclaveImpl{l1Blockchain: NewL1Blockchain(genesisJSON)}
+
+	ingestionFailedResponse := enclave.insertBlockIntoL1Chain(core.DefaultGenesisBlock().ToBlock(nil))
+	if ingestionFailedResponse != nil {
+		t.Errorf("expected resubmitted genesis block to be ignored but was rejected")
 	}
 }
