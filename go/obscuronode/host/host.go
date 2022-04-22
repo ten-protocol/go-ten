@@ -93,6 +93,7 @@ func NewObscuroAggregator(
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
 	p2p P2P,
+	txHandler txhandler.TxHandler,
 ) Node {
 	return Node{
 		// config
@@ -122,7 +123,7 @@ func NewObscuroAggregator(
 		nodeDB:       NewDB(),
 		readyForWork: new(int32),
 
-		txHandler: txhandler.NewEthTxHandler(),
+		txHandler: txHandler,
 	}
 }
 

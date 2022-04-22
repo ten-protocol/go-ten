@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
@@ -28,12 +30,12 @@ type server struct {
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-func StartServer(address string, nodeID common.Address, collector StatsCollector) error {
+func StartServer(address string, nodeID common.Address, txHandler txhandler.TxHandler, collector StatsCollector) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
-	enclaveServer := server{enclave: NewEnclave(nodeID, true, collector), rpcServer: grpc.NewServer()}
+	enclaveServer := server{enclave: NewEnclave(nodeID, true, txHandler, collector), rpcServer: grpc.NewServer()}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {

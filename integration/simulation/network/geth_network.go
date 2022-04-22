@@ -36,7 +36,7 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 
 		// create the in memory l1 and l2 node
 		miner := createRealEthNode(int64(i))
-		agg := createInMemObscuroNode(int64(i), genesis, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		agg := createInMemObscuroNode(int64(i), genesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)

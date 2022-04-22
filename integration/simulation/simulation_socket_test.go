@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -23,6 +25,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
+		TxHandler:                 ethereum_mock.NewMockTxHandler(),
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 4

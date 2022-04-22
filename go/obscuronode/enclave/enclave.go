@@ -433,7 +433,7 @@ type speculativeWork struct {
 	txs []nodecommon.L2Tx
 }
 
-func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodecommon.Enclave {
+func NewEnclave(id common.Address, mining bool, txHandler txhandler.TxHandler, collector StatsCollector) nodecommon.Enclave {
 	storage := NewStorage()
 	return &enclaveImpl{
 		node:                 id,
@@ -446,6 +446,6 @@ func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodeco
 		speculativeWorkInCh:  make(chan bool),
 		speculativeWorkOutCh: make(chan speculativeWork),
 		statsCollector:       collector,
-		txHandler:            txhandler.NewEthTxHandler(),
+		txHandler:            txHandler,
 	}
 }

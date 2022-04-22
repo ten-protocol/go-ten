@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"os"
 
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -16,7 +18,7 @@ func main() {
 	setLogs(*config.writeToLogs)
 
 	nodeAddress := common.BigToAddress(big.NewInt(*config.nodeID))
-	if err := enclave.StartServer(*config.address, nodeAddress, nil); err != nil {
+	if err := enclave.StartServer(*config.address, nodeAddress, ethereum_mock.NewMockTxHandler(), nil); err != nil {
 		panic(err)
 	}
 
