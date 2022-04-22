@@ -127,14 +127,9 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 	for i, block := range blocks {
 		e.storage.StoreBlock(block)
 
-		// If configured to do so, we check that the block is a valid Ethereum block.
-		if e.l1Blockchain != nil && block.ParentHash() != genesisParentHash {
-			_, err := e.l1Blockchain.InsertChain(types.Blocks{block})
-			if err != nil {
-				causeMsg := fmt.Sprintf("Block was invalid: %v", err)
-				result[i] = nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
-				continue
-			}
+		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); ingestionFailedResponse != nil {
+			result[i] = *ingestionFailedResponse
+			continue
 		}
 
 		bs := updateState(block, e.storage, e.blockResolver)
@@ -169,13 +164,8 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
-	// If configured to do so, we check that the block is a valid Ethereum block.
-	if e.l1Blockchain != nil && block.ParentHash() != genesisParentHash {
-		_, err := e.l1Blockchain.InsertChain(types.Blocks{&block})
-		if err != nil {
-			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
-			return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
-		}
+	if ingestionFailedResponse := e.insertBlockIntoL1Chain(&block); ingestionFailedResponse != nil {
+		return *ingestionFailedResponse
 	}
 
 	blockState := updateState(&block, e.storage, e.blockResolver)
@@ -373,6 +363,19 @@ func (e *enclaveImpl) FetchSecret(obscurocommon.AttestationReport) obscurocommon
 
 func (e *enclaveImpl) IsInitialised() bool {
 	return e.storage.FetchSecret() != nil
+}
+
+// Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
+// BlockSubmissionResponse if the insertion failed.
+func (e *enclaveImpl) insertBlockIntoL1Chain(block *types.Block) *nodecommon.BlockSubmissionResponse {
+	if e.l1Blockchain != nil && block.ParentHash() != genesisParentHash {
+		_, err := e.l1Blockchain.InsertChain(types.Blocks{block})
+		if err != nil {
+			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
+			return &nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
+		}
+	}
+	return nil
 }
 
 func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) nodecommon.BlockSubmissionResponse {
