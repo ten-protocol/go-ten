@@ -52,16 +52,13 @@ func (e *enclaveImpl) Start(block types.Block) {
 }
 
 func (e *enclaveImpl) start(block types.Block) {
-	var currentHead *Rollup
-	var currentState *State
-	var currentProcessedTxs []nodecommon.L2Tx
-	currentProcessedTxsMap := make(map[common.Hash]nodecommon.L2Tx)
+	env := processingEnvironment{processedTxsMap: make(map[common.Hash]nodecommon.L2Tx)}
 	// determine whether the block where the speculative execution will start already contains Obscuro state
 	blockState, f := e.storage.FetchBlockState(block.Hash())
 	if f {
-		currentHead = blockState.head
-		if currentHead != nil {
-			currentState = copyState(e.storage.FetchRollupState(currentHead.Hash()))
+		env.headRollup = blockState.head
+		if env.headRollup != nil {
+			env.state = copyState(e.storage.FetchRollupState(env.headRollup.Hash()))
 		}
 	}
 
@@ -69,36 +66,42 @@ func (e *enclaveImpl) start(block types.Block) {
 		select {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
 		case winnerRollup := <-e.roundWinnerCh:
-
-			currentHead = winnerRollup
-			currentState = copyState(e.storage.FetchRollupState(winnerRollup.Hash()))
+			env.header = newHeader(winnerRollup, winnerRollup.Header.Height+1, e.node)
+			env.headRollup = winnerRollup
+			env.state = copyState(e.storage.FetchRollupState(winnerRollup.Hash()))
 
 			// determine the transactions that were not yet included
-			currentProcessedTxs = currentTxs(winnerRollup, e.storage.FetchMempoolTxs(), e.storage)
-			currentProcessedTxsMap = makeMap(currentProcessedTxs)
+			env.processedTxs = currentTxs(winnerRollup, e.storage.FetchMempoolTxs(), e.storage)
+			env.processedTxsMap = makeMap(env.processedTxs)
 
 			// calculate the State after executing them
-			currentState = executeTransactions(currentProcessedTxs, currentState)
+			env.state = e.executeTransactions(env.processedTxs, env.state, env.headRollup.Header)
 
 		case tx := <-e.txCh:
 			// only process transactions if there is already a rollup to use as parent
-			if currentHead != nil {
-				_, found := currentProcessedTxsMap[tx.Hash()]
+			if env.headRollup != nil {
+				_, found := env.processedTxsMap[tx.Hash()]
 				if !found {
-					currentProcessedTxsMap[tx.Hash()] = tx
-					currentProcessedTxs = append(currentProcessedTxs, tx)
-					executeTx(currentState, tx)
+					env.processedTxsMap[tx.Hash()] = tx
+					env.processedTxs = append(env.processedTxs, tx)
+					executeTx(env.state, tx)
 				}
 			}
 
 		case <-e.speculativeWorkInCh:
-			b := make([]nodecommon.L2Tx, 0, len(currentProcessedTxs))
-			b = append(b, currentProcessedTxs...)
-			state := copyState(currentState)
-			e.speculativeWorkOutCh <- speculativeWork{
-				r:   currentHead,
-				s:   state,
-				txs: b,
+			if env.header == nil {
+				e.speculativeWorkOutCh <- speculativeWork{found: false}
+			} else {
+				b := make([]nodecommon.L2Tx, 0, len(env.processedTxs))
+				b = append(b, env.processedTxs...)
+				state := copyState(env.state)
+				e.speculativeWorkOutCh <- speculativeWork{
+					found: true,
+					r:     env.headRollup,
+					s:     state,
+					h:     env.header,
+					txs:   b,
+				}
 			}
 
 		case <-e.exitCh:
@@ -121,7 +124,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.storage, e.blockResolver)
+		bs := e.updateState(block, e.blockResolver)
 		if bs == nil {
 			result[i] = nodecommon.BlockSubmissionResponse{
 				L1Hash:            block.Hash(),
@@ -171,7 +174,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
-	blockState := updateState(&block, e.storage, e.blockResolver)
+	blockState := e.updateState(&block, e.blockResolver)
 	if blockState == nil {
 		return nodecommon.BlockSubmissionResponse{
 			L1Hash:            block.Hash(),
@@ -256,7 +259,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 
 	parentState := e.storage.FetchRollupState(head.Hash())
 	// determine the winner of the round
-	winnerRollup, s := findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
+	winnerRollup, s := e.findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
 
 	e.storage.SetRollupState(winnerRollup.Hash(), s)
 	go e.notifySpeculative(winnerRollup)
@@ -294,9 +297,10 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 
 	newRollupTxs := speculativeRollup.txs
 	newRollupState := speculativeRollup.s
+	newRollupHeader := speculativeRollup.h
 
 	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-	if (speculativeRollup.r == nil) || (speculativeRollup.r.Hash() != bs.head.Hash()) {
+	if !speculativeRollup.found || (speculativeRollup.r.Hash() != bs.head.Hash()) {
 		if speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
@@ -310,22 +314,23 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 			}
 		}
 
+		newRollupHeader = newHeader(bs.head, bs.head.Header.Height+1, e.node)
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(bs.head, e.storage.FetchMempoolTxs(), e.storage)
-		newRollupState = executeTransactions(newRollupTxs, bs.state)
+		newRollupState = e.executeTransactions(newRollupTxs, bs.state, newRollupHeader)
 	}
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.head.Proof(e.blockResolver)
 	depositTxs := processDeposits(proof, b, e.blockResolver)
-	newRollupState = executeTransactions(depositTxs, newRollupState)
+	newRollupState = e.executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Postprocessing - withdrawals
 	withdrawals := rollupPostProcessingWithdrawals(bs.head, newRollupState)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := NewRollup(b.Hash(), bs.head, bs.head.Header.Height+1, e.node, newRollupTxs, withdrawals, obscurocommon.GenerateNonce(), serialize(newRollupState))
+	r := NewRollupFromHeader(newRollupHeader, b.Hash(), newRollupTxs, withdrawals, obscurocommon.GenerateNonce(), serialize(newRollupState))
 	return &r
 }
 
@@ -398,9 +403,20 @@ func encryptSecret(secret SharedEnclaveSecret) obscurocommon.EncryptedSharedEncl
 
 // internal structure to pass information.
 type speculativeWork struct {
-	r   *Rollup
-	s   *State
-	txs []nodecommon.L2Tx
+	found bool
+	r     *Rollup
+	s     *State
+	h     *nodecommon.Header
+	txs   []nodecommon.L2Tx
+}
+
+// internal structure used for the speculative execution.
+type processingEnvironment struct {
+	headRollup      *Rollup
+	header          *nodecommon.Header
+	state           *State
+	processedTxs    []nodecommon.L2Tx
+	processedTxsMap map[common.Hash]nodecommon.L2Tx
 }
 
 func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodecommon.Enclave {
