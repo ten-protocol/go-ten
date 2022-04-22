@@ -462,6 +462,8 @@ func NewEnclave(id common.Address, mining bool, validateBlocks bool, genesisJSON
 			panic("enclave was configured to validate blocks, but genesis JSON was nil")
 		}
 		l1Blockchain = NewL1Blockchain(genesisJSON)
+	} else {
+		log.Log("validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
 	return &enclaveImpl{
