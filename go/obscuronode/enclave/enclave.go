@@ -393,6 +393,7 @@ func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *blockState, rollup n
 		L2Hash:            bs.head.Hash(),
 		L2Height:          bs.head.Header.Height,
 		L2Parent:          bs.head.Header.ParentHash,
+		Withdrawals:       bs.head.Header.Withdrawals,
 		ProducedRollup:    rollup,
 		IngestedBlock:     true,
 		IngestedNewRollup: bs.foundNewRollup,
