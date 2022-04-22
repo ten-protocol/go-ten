@@ -48,6 +48,7 @@ type Enclave interface {
 	SubmitTx(tx EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
+	// todo - replace with generic call
 	Balance(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
