@@ -124,12 +124,19 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
-		e.storage.StoreBlock(block)
+		// We skip over the genesis block, to avoid an attack whereby someone submits a block with the same hash as the
+		// genesis block but different contents. Since we cannot insert the genesis block into our blockchain, this
+		// check has to be skipped, thus potentially allowing an invalid block through.
+		if e.isGenesisBlock(block) {
+			continue
+		}
 
 		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); ingestionFailedResponse != nil {
 			result[i] = *ingestionFailedResponse
 			continue
 		}
+
+		e.storage.StoreBlock(block)
 
 		bs := updateState(block, e.storage, e.blockResolver)
 		if bs == nil {
@@ -148,9 +155,18 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
+	// As when ingesting, we skip the genesis block.
+	if e.isGenesisBlock(&block) {
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
+	}
+
 	_, foundBlock := e.storage.FetchBlock(block.Hash())
 	if foundBlock {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
+	}
+
+	if ingestionFailedResponse := e.insertBlockIntoL1Chain(&block); ingestionFailedResponse != nil {
+		return *ingestionFailedResponse
 	}
 
 	stored := e.storage.StoreBlock(&block)
@@ -161,10 +177,6 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
-	}
-
-	if ingestionFailedResponse := e.insertBlockIntoL1Chain(&block); ingestionFailedResponse != nil {
-		return *ingestionFailedResponse
 	}
 
 	blockState := updateState(&block, e.storage, e.blockResolver)
@@ -364,11 +376,14 @@ func (e *enclaveImpl) IsInitialised() bool {
 	return e.storage.FetchSecret() != nil
 }
 
+func (e *enclaveImpl) isGenesisBlock(block *types.Block) bool {
+	return e.l1Blockchain != nil && block.Hash() != e.l1Blockchain.Genesis().Hash()
+}
+
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
 // BlockSubmissionResponse if the insertion failed.
 func (e *enclaveImpl) insertBlockIntoL1Chain(block *types.Block) *nodecommon.BlockSubmissionResponse {
-	// todo - joel - do I need to recalc hash to avoid the attack where a block with a wrong hash is submitted?
-	if e.l1Blockchain != nil && block.Hash() != e.l1Blockchain.Genesis().Hash() {
+	if e.l1Blockchain != nil {
 		_, err := e.l1Blockchain.InsertChain(types.Blocks{block})
 		if err != nil {
 			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
