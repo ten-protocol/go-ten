@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -30,6 +32,7 @@ type enclaveImpl struct {
 	storage        Storage
 	blockResolver  BlockResolver
 	statsCollector StatsCollector
+	l1Blockchain   *core.BlockChain
 
 	txCh                 chan nodecommon.L2Tx
 	roundWinnerCh        chan *Rollup
@@ -120,54 +123,58 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 	}
 }
 
+// IngestBlocks is used to update the enclave with the full history of the L1 chain to date.
 func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
+		// We skip over the genesis block, to avoid an attack whereby someone submits a block with the same hash as the
+		// genesis block but different contents. Since we cannot insert the genesis block into our blockchain, this
+		// checking would have to be skipped, potentially allowing an invalid block through.
+		if e.isGenesisBlock(block) {
+			continue
+		}
+
+		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); ingestionFailedResponse != nil {
+			result[i] = *ingestionFailedResponse
+			return result // We return early, as all descendant blocks will also fail verification.
+		}
+
 		e.storage.StoreBlock(block)
 		bs := e.updateState(block, e.blockResolver)
 		if bs == nil {
-			result[i] = nodecommon.BlockSubmissionResponse{
-				L1Hash:            block.Hash(),
-				L1Height:          e.blockResolver.HeightBlock(block),
-				L1Parent:          block.ParentHash(),
-				IngestedBlock:     true,
-				IngestedNewRollup: false,
-			}
+			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
 			var rollup nodecommon.ExtRollup
 			if bs.foundNewRollup {
 				rollup = bs.head.ToExtRollup()
 			}
-			result[i] = nodecommon.BlockSubmissionResponse{
-				L1Hash:            bs.block.Hash(),
-				L1Height:          e.blockResolver.HeightBlock(bs.block),
-				L1Parent:          bs.block.ParentHash(),
-				L2Hash:            bs.head.Hash(),
-				L2Height:          bs.head.Header.Height,
-				L2Parent:          bs.head.Header.ParentHash,
-				ProducedRollup:    rollup,
-				IngestedBlock:     true,
-				IngestedNewRollup: bs.foundNewRollup,
-			}
+			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
 	}
 
 	return result
 }
 
+// SubmitBlock is used to update the enclave with an additional block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
+	// As when ingesting, we skip the genesis block.
+	if e.isGenesisBlock(&block) {
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
+	}
+
 	_, foundBlock := e.storage.FetchBlock(block.Hash())
 	if foundBlock {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
+	}
+
+	if ingestionFailedResponse := e.insertBlockIntoL1Chain(&block); ingestionFailedResponse != nil {
+		return *ingestionFailedResponse
 	}
 
 	stored := e.storage.StoreBlock(&block)
 	if !stored {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
-	// this is where much more will actually happen.
-	// the "blockchain" logic from geth has to be executed here,
-	// to determine the total proof of work, to verify some key aspects, etc
 
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
 	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
@@ -176,13 +183,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	blockState := e.updateState(&block, e.blockResolver)
 	if blockState == nil {
-		return nodecommon.BlockSubmissionResponse{
-			L1Hash:            block.Hash(),
-			L1Height:          e.blockResolver.HeightBlock(&block),
-			L1Parent:          block.ParentHash(),
-			IngestedBlock:     true,
-			IngestedNewRollup: false,
-		}
+		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
@@ -193,19 +194,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	log.Log(fmt.Sprintf("Agg%d:> Processed block: b_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash())))
 
-	return nodecommon.BlockSubmissionResponse{
-		L1Hash:      block.Hash(),
-		L1Height:    e.blockResolver.HeightBlock(&block),
-		L1Parent:    blockState.block.Header().ParentHash,
-		L2Hash:      blockState.head.Hash(),
-		L2Height:    blockState.head.Header.Height,
-		L2Parent:    blockState.head.Header.ParentHash,
-		Withdrawals: blockState.head.Header.Withdrawals,
-
-		ProducedRollup:    r.ToExtRollup(),
-		IngestedBlock:     true,
-		IngestedNewRollup: blockState.foundNewRollup,
-	}
+	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
@@ -391,6 +380,48 @@ func (e *enclaveImpl) IsInitialised() bool {
 	return e.storage.FetchSecret() != nil
 }
 
+func (e *enclaveImpl) isGenesisBlock(block *types.Block) bool {
+	return e.l1Blockchain != nil && block.Hash() != e.l1Blockchain.Genesis().Hash()
+}
+
+// Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
+// BlockSubmissionResponse if the insertion failed.
+func (e *enclaveImpl) insertBlockIntoL1Chain(block *types.Block) *nodecommon.BlockSubmissionResponse {
+	if e.l1Blockchain != nil {
+		_, err := e.l1Blockchain.InsertChain(types.Blocks{block})
+		if err != nil {
+			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
+			return &nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
+		}
+	}
+	return nil
+}
+
+func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) nodecommon.BlockSubmissionResponse {
+	return nodecommon.BlockSubmissionResponse{
+		L1Hash:            block.Hash(),
+		L1Height:          e.blockResolver.HeightBlock(block),
+		L1Parent:          block.ParentHash(),
+		IngestedBlock:     true,
+		IngestedNewRollup: false,
+	}
+}
+
+func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *blockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
+	return nodecommon.BlockSubmissionResponse{
+		L1Hash:            bs.block.Hash(),
+		L1Height:          e.blockResolver.HeightBlock(bs.block),
+		L1Parent:          bs.block.ParentHash(),
+		L2Hash:            bs.head.Hash(),
+		L2Height:          bs.head.Header.Height,
+		L2Parent:          bs.head.Header.ParentHash,
+		Withdrawals:       bs.head.Header.Withdrawals,
+		ProducedRollup:    rollup,
+		IngestedBlock:     true,
+		IngestedNewRollup: bs.foundNewRollup,
+	}
+}
+
 // Todo - implement with crypto
 func decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) SharedEnclaveSecret {
 	return SharedEnclaveSecret(secret)
@@ -419,18 +450,33 @@ type processingEnvironment struct {
 	processedTxsMap map[common.Hash]nodecommon.L2Tx
 }
 
-func NewEnclave(id common.Address, mining bool, collector StatsCollector) nodecommon.Enclave {
+// NewEnclave creates a new enclave.
+// `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
+// received from the L1 node if `validateBlocks` is set to true.
+func NewEnclave(id common.Address, mining bool, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
 	storage := NewStorage()
+
+	var l1Blockchain *core.BlockChain
+	if validateBlocks {
+		if genesisJSON == nil {
+			panic("enclave was configured to validate blocks, but genesis JSON was nil")
+		}
+		l1Blockchain = NewL1Blockchain(genesisJSON)
+	} else {
+		log.Log("validateBlocks is set to false. L1 blocks will not be validated.")
+	}
+
 	return &enclaveImpl{
 		node:                 id,
+		mining:               mining,
 		storage:              storage,
 		blockResolver:        storage,
-		mining:               mining,
+		statsCollector:       collector,
+		l1Blockchain:         l1Blockchain,
 		txCh:                 make(chan nodecommon.L2Tx),
 		roundWinnerCh:        make(chan *Rollup),
 		exitCh:               make(chan bool),
 		speculativeWorkInCh:  make(chan bool),
 		speculativeWorkOutCh: make(chan speculativeWork),
-		statsCollector:       collector,
 	}
 }
