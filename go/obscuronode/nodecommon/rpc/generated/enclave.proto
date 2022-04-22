@@ -180,7 +180,7 @@ message HeaderMsg {
   bytes agg = 2;
   uint64 nonce = 3;
   bytes l1Proof = 4;
-  string stateRoot = 5;
+  bytes stateRoot = 5;
   uint64 height = 6;
   repeated WithdrawalMsg withdrawals = 7;
 }

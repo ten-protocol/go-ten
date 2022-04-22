@@ -62,9 +62,8 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		wallets: wallets,
-		// the current avgBlockDuration at the Microsecond level which is too fast for Txs to be issued
-		avgBlockDuration: avgBlockDuration * 1000,
+		wallets:          wallets,
+		avgBlockDuration: avgBlockDuration,
 		stats:            stats,
 		l1Nodes:          l1Nodes,
 		l2Nodes:          l2Nodes,
