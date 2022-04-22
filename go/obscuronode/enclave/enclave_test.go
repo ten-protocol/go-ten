@@ -81,16 +81,3 @@ func TestInvalidBlocksAreRejected(t *testing.T) {
 		}
 	}
 }
-
-func TestResubmittedGenesisBlockIsIgnored(t *testing.T) {
-	genesisJSON, err := core.DefaultGenesisBlock().MarshalJSON()
-	if err != nil {
-		t.Errorf("could not parse genesis JSON: %v", err)
-	}
-	enclave := enclaveImpl{l1Blockchain: NewL1Blockchain(genesisJSON)}
-
-	ingestionFailedResponse := enclave.insertBlockIntoL1Chain(core.DefaultGenesisBlock().ToBlock(nil))
-	if ingestionFailedResponse != nil {
-		t.Errorf("expected resubmitted genesis block to be ignored but was rejected")
-	}
-}
