@@ -17,7 +17,6 @@ non-simulation mode instead, run:
 
     docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p XXX:11000/tcp obscuro_enclave --nodeID YYY --address :11000
 
-
-Stop and remove all obscuro docker containers:
+Stop and remove all Obscuro docker containers:
 
     docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}"))
