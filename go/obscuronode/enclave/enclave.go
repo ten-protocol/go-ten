@@ -126,7 +126,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 	for i, block := range blocks {
 		// We skip over the genesis block, to avoid an attack whereby someone submits a block with the same hash as the
 		// genesis block but different contents. Since we cannot insert the genesis block into our blockchain, this
-		// check has to be skipped, thus potentially allowing an invalid block through.
+		// checking would have to be skipped, potentially allowing an invalid block through.
 		if e.isGenesisBlock(block) {
 			continue
 		}
