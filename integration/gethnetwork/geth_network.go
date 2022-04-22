@@ -24,12 +24,14 @@ const (
 	enodeCmd   = "admin.nodeInfo.enode"
 	initCmd    = "init"
 
+	websocketFlag    = "--ws" // Enables websocket connections to the node.
 	dataDirFlag      = "--datadir"
 	execFlag         = "--exec"
 	portFlag         = "--port"
 	mineFlag         = "--mine"
 	minerThreadsFlag = "--miner.threads=1"
 	minerEthbaseFlag = "--miner.etherbase=0x0000000000000000000000000000000000000001"
+	rpcFeeCapFlag    = "--rpc.txfeecap=0" // Disables the 1 ETH cap for RPC transactions.
 
 	// We pre-allocate a single wallet, which is shared by all nodes.
 	genesisConfig = `{
@@ -153,7 +155,7 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 
 // Starts a Geth node.
 func (network *GethNetwork) startMiner(dataDirPath string, port int) {
-	args := []string{dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port), mineFlag, minerThreadsFlag, minerEthbaseFlag}
+	args := []string{websocketFlag, dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port), mineFlag, minerThreadsFlag, minerEthbaseFlag, rpcFeeCapFlag}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 	cmd.Stdout = network.logFile
 	cmd.Stderr = network.logFile
