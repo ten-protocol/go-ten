@@ -16,6 +16,7 @@ import (
 )
 
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
+var genesisParentHash = common.Hash{}
 
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
@@ -120,41 +121,38 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 	}
 }
 
+// IngestBlocks is used to update the enclave with the full history of the L1 chain to date.
 func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
 		e.storage.StoreBlock(block)
+
+		// If configured to do so, we check that the block is a valid Ethereum block.
+		if e.l1Blockchain != nil && block.ParentHash() != genesisParentHash {
+			_, err := e.l1Blockchain.InsertChain(types.Blocks{block})
+			if err != nil {
+				causeMsg := fmt.Sprintf("Block was invalid: %v", err)
+				result[i] = nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
+				continue
+			}
+		}
+
 		bs := updateState(block, e.storage, e.blockResolver)
 		if bs == nil {
-			result[i] = nodecommon.BlockSubmissionResponse{
-				L1Hash:            block.Hash(),
-				L1Height:          e.blockResolver.HeightBlock(block),
-				L1Parent:          block.ParentHash(),
-				IngestedBlock:     true,
-				IngestedNewRollup: false,
-			}
+			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
 			var rollup nodecommon.ExtRollup
 			if bs.foundNewRollup {
 				rollup = bs.head.ToExtRollup()
 			}
-			result[i] = nodecommon.BlockSubmissionResponse{
-				L1Hash:            bs.block.Hash(),
-				L1Height:          e.blockResolver.HeightBlock(bs.block),
-				L1Parent:          bs.block.ParentHash(),
-				L2Hash:            bs.head.Hash(),
-				L2Height:          bs.head.Header.Height,
-				L2Parent:          bs.head.Header.ParentHash,
-				ProducedRollup:    rollup,
-				IngestedBlock:     true,
-				IngestedNewRollup: bs.foundNewRollup,
-			}
+			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
 	}
 
 	return result
 }
 
+// SubmitBlock is used to update the enclave with an additional block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
 	_, foundBlock := e.storage.FetchBlock(block.Hash())
 	if foundBlock {
@@ -172,7 +170,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	// If configured to do so, we check that the block is a valid Ethereum block.
-	if e.l1Blockchain != nil {
+	if e.l1Blockchain != nil && block.ParentHash() != genesisParentHash {
 		_, err := e.l1Blockchain.InsertChain(types.Blocks{&block})
 		if err != nil {
 			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
@@ -182,13 +180,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	blockState := updateState(&block, e.storage, e.blockResolver)
 	if blockState == nil {
-		return nodecommon.BlockSubmissionResponse{
-			L1Hash:            block.Hash(),
-			L1Height:          e.blockResolver.HeightBlock(&block),
-			L1Parent:          block.ParentHash(),
-			IngestedBlock:     true,
-			IngestedNewRollup: false,
-		}
+		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
@@ -199,19 +191,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	log.Log(fmt.Sprintf("Agg%d:> Processed block: b_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash())))
 
-	return nodecommon.BlockSubmissionResponse{
-		L1Hash:      block.Hash(),
-		L1Height:    e.blockResolver.HeightBlock(&block),
-		L1Parent:    blockState.block.Header().ParentHash,
-		L2Hash:      blockState.head.Hash(),
-		L2Height:    blockState.head.Header.Height,
-		L2Parent:    blockState.head.Header.ParentHash,
-		Withdrawals: blockState.head.Header.Withdrawals,
-
-		ProducedRollup:    r.ToExtRollup(),
-		IngestedBlock:     true,
-		IngestedNewRollup: blockState.foundNewRollup,
-	}
+	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
@@ -393,6 +373,30 @@ func (e *enclaveImpl) FetchSecret(obscurocommon.AttestationReport) obscurocommon
 
 func (e *enclaveImpl) IsInitialised() bool {
 	return e.storage.FetchSecret() != nil
+}
+
+func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) nodecommon.BlockSubmissionResponse {
+	return nodecommon.BlockSubmissionResponse{
+		L1Hash:            block.Hash(),
+		L1Height:          e.blockResolver.HeightBlock(block),
+		L1Parent:          block.ParentHash(),
+		IngestedBlock:     true,
+		IngestedNewRollup: false,
+	}
+}
+
+func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *blockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
+	return nodecommon.BlockSubmissionResponse{
+		L1Hash:            bs.block.Hash(),
+		L1Height:          e.blockResolver.HeightBlock(bs.block),
+		L1Parent:          bs.block.ParentHash(),
+		L2Hash:            bs.head.Hash(),
+		L2Height:          bs.head.Header.Height,
+		L2Parent:          bs.head.Header.ParentHash,
+		ProducedRollup:    rollup,
+		IngestedBlock:     true,
+		IngestedNewRollup: bs.foundNewRollup,
+	}
 }
 
 // Todo - implement with crypto
