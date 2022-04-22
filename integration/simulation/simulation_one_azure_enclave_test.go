@@ -1,5 +1,5 @@
-//go:build docker
-// +build docker
+//go:build azure
+// +build azure
 
 package simulation
 
