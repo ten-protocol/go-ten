@@ -16,8 +16,10 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-var connectionTimeout = 15 * time.Second
-var nonceLock sync.RWMutex
+var (
+	connectionTimeout = 15 * time.Second
+	nonceLock         sync.RWMutex
+)
 
 type EthNode struct {
 	client          *ethclient.Client

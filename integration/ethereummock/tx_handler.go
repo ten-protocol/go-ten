@@ -7,8 +7,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-type MockTxHandler struct {
-}
+type MockTxHandler struct{}
 
 func (m MockTxHandler) PackTx(tx *obscurocommon.L1TxData, from common.Address, nonce uint64) (types.TxData, error) {
 	panic("implement me")

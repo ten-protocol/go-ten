@@ -145,12 +145,13 @@ func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1TxData {
 func (m *TransactionInjector) GetL2Transactions() (enclave.L2Txs, enclave.L2Txs) {
 	var deposits, transfers enclave.L2Txs
 	for _, req := range m.l2Transactions {
-		r := &req
-		switch enclave.TxData(r).Type {
+		r := req
+		switch enclave.TxData(&r).Type {
 		case enclave.TransferTx:
 			transfers = append(transfers, req)
 		case enclave.DepositTx:
 			deposits = append(deposits, req)
+		case enclave.WithdrawalTx:
 		}
 	}
 	return deposits, transfers

@@ -44,33 +44,43 @@ func setLogs() {
 // TODO - Replace this dummy once we have implemented communication with L1 nodes.
 type l1NodeDummy struct{}
 
+func (l l1NodeDummy) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (l l1NodeDummy) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (l l1NodeDummy) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (l l1NodeDummy) FetchHeadBlock() (*types.Block, uint64) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (l l1NodeDummy) Info() l1client.Info {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (l l1NodeDummy) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (l l1NodeDummy) IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (l l1NodeDummy) BroadcastTx(t *obscurocommon.L1TxData) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
