@@ -25,6 +25,8 @@ type Client interface {
 	RPCBlockchainFeed() []*types.Block
 	BroadcastTx(t *obscurocommon.L1TxData)
 	BlockListener() chan *types.Header
+	IssueCustomTx(tx types.TxData) (*types.Transaction, error)
+	TransactionReceipt(hash common.Hash) (*types.Receipt, error)
 }
 
 // Info forces the RPC Client returns the data in the same format (independently of it's implementation)

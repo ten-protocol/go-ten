@@ -67,6 +67,14 @@ type Node struct {
 	txHandler txhandler.TxHandler
 }
 
+func (m *Node) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
+	panic("method should never be called in this mock")
+}
+
+func (m *Node) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+	panic("method should never be called in this mock")
+}
+
 // BlockListener is not used in the mock
 func (m *Node) BlockListener() chan *types.Header {
 	return make(chan *types.Header)

@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/buildconstants"
 	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -21,27 +20,29 @@ var connectionTimeout = 15 * time.Second
 var nonceLock sync.RWMutex
 
 type EthNode struct {
-	client    *ethclient.Client
-	id        common.Address // TODO remove the id common.Address
-	wallet    wallet.Wallet
-	chainID   int
-	txHandler txhandler.TxHandler
+	client          *ethclient.Client
+	id              common.Address // TODO remove the id common.Address
+	wallet          wallet.Wallet
+	chainID         int
+	txHandler       txhandler.TxHandler
+	contractAddress common.Address
 }
 
 // NewEthClient instantiates a new l1client.Client that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, port uint) (Client, error) {
+func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (Client, error) {
 	client, err := connect(ipaddress, port)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	log.Log(fmt.Sprintf("Initializing eth node at contract: %s", buildconstants.ContractAddress))
+	log.Log(fmt.Sprintf("Initializing eth node at contract: %s", contractAddress))
 	return &EthNode{
-		client:    client,
-		id:        id,
-		wallet:    wallet.NewInMemoryWallet(),
-		chainID:   1337,
-		txHandler: txhandler.NewEthTxHandler(),
+		client:          client,
+		id:              id,
+		wallet:          wallet, // TODO this does not need to be coupled together
+		chainID:         1337,
+		txHandler:       txhandler.NewEthTxHandler(contractAddress),
+		contractAddress: contractAddress,
 	}, nil
 }
 
@@ -137,6 +138,19 @@ func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
+func (e *EthNode) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
+	signedTx, err := e.wallet.SignTransaction(e.chainID, tx)
+	if err != nil {
+		panic(err)
+	}
+
+	return signedTx, e.client.SendTransaction(context.Background(), signedTx)
+}
+
+func (e *EthNode) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+	return e.client.TransactionReceipt(context.Background(), hash)
+}
+
 func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 	nonceLock.Lock()
 	defer nonceLock.Unlock()
@@ -152,12 +166,7 @@ func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 		panic(err)
 	}
 
-	signedTx, err := e.wallet.SignTransaction(e.chainID, formattedTx)
-	if err != nil {
-		panic(err)
-	}
-
-	err = e.client.SendTransaction(context.Background(), signedTx)
+	_, err = e.IssueCustomTx(formattedTx)
 	if err != nil {
 		panic(err)
 	}

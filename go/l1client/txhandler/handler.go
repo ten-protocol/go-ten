@@ -5,10 +5,11 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/obscuronet/obscuro-playground/contracts"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/buildhelper/buildconstants"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -22,17 +23,19 @@ type TxHandler interface {
 }
 
 type EthTxHandler struct {
-	contractABI abi.ABI
+	contractABI  abi.ABI
+	contractAddr common.Address
 }
 
-func NewEthTxHandler() TxHandler {
-	contractABI, err := abi.JSON(strings.NewReader(buildconstants.ContractAbi))
+func NewEthTxHandler(contractAddress common.Address) TxHandler {
+	contractABI, err := abi.JSON(strings.NewReader(contracts.RollupABI))
 	if err != nil {
 		panic(err)
 	}
 
 	return &EthTxHandler{
-		contractABI: contractABI,
+		contractABI:  contractABI,
+		contractAddr: contractAddress,
 	}
 }
 
@@ -41,7 +44,7 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 		Nonce:    nonce,
 		GasPrice: big.NewInt(20000000000),
 		Gas:      1024_000_000,
-		To:       &buildconstants.ContractAddress,
+		To:       &h.contractAddr,
 	}
 
 	// TODO each of these cases should be a function:
@@ -95,22 +98,12 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 }
 
 func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
-	//if !IsRealEth {
-	//	t := obscurocommon.TxData(tx)
-	//	return &t
-	//}
-
 	// ignore transactions that are not calling the contract
-	if tx.To() == nil || tx.To().Hex() != buildconstants.ContractAddress.Hex() || len(tx.Data()) == 0 {
+	if tx.To() == nil || tx.To().Hex() != h.contractAddr.Hex() || len(tx.Data()) == 0 {
 		return nil
 	}
 
-	contractABI, err := abi.JSON(strings.NewReader(buildconstants.ContractAbi))
-	if err != nil {
-		panic(err)
-	}
-
-	method, err := contractABI.MethodById(tx.Data()[:methodBytesLen])
+	method, err := h.contractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
 	}

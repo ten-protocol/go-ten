@@ -3,6 +3,8 @@ package params
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
 )
 
@@ -27,4 +29,6 @@ type SimParams struct {
 
 	// TxHandler defines how the simulation should unpack transactions
 	TxHandler txhandler.TxHandler
+	// ContractAddr defines the contract address
+	ContractAddr common.Address
 }

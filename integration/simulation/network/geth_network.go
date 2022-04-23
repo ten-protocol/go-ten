@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/l1client"
@@ -28,6 +30,10 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 	l1Clients := make([]l1client.Client, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
+	// all nodes use the same wallet for now
+	// TODO create a wallet loading key mechanism for each node attached to a prefunded network genesis
+	w := wallet.NewInMemoryWallet("5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae")
+
 	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false
 		if i == 0 {
@@ -35,7 +41,7 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 		}
 
 		// create the in memory l1 and l2 node
-		miner := createRealEthNode(int64(i))
+		miner := createRealEthNode(int64(i), w, params.ContractAddr)
 		agg := createInMemObscuroNode(int64(i), genesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
 		// and connect them to each other
@@ -66,8 +72,8 @@ func (n *networkInMemGeth) TearDown() {
 	// Nop
 }
 
-func createRealEthNode(id int64) l1client.Client {
-	ethnode, err := l1client.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545)
+func createRealEthNode(id int64, wallet wallet.Wallet, contractAddr common.Address) l1client.Client {
+	ethnode, err := l1client.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545, wallet, contractAddr)
 	if err != nil {
 		panic(err)
 	}

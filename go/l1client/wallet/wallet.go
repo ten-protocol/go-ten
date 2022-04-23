@@ -19,8 +19,11 @@ type InMemoryWallet struct {
 	pk *ecdsa.PrivateKey
 }
 
-func NewInMemoryWallet() Wallet {
-	privateKey, _ := crypto.HexToECDSA("5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae")
+func NewInMemoryWallet(pk string) Wallet {
+	privateKey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		panic(err)
+	}
 	return &InMemoryWallet{
 		pk: privateKey,
 	}
