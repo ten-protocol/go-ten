@@ -1,4 +1,4 @@
-package txhandler
+package rollupcontractlib
 
 import (
 	"fmt"
@@ -14,6 +14,12 @@ import (
 )
 
 const methodBytesLen = 4
+
+var (
+	// TODO review estimating gas - these should not be static values
+	defaultGasPrice = big.NewInt(20000000000)
+	defaultGas      = uint64(1024_000_000)
+)
 
 type TxHandler interface {
 	// PackTx receives a obscurocommon.L1TxData object and packs it into a types.TxData object
@@ -40,8 +46,8 @@ func NewEthTxHandler(contractAddress common.Address) TxHandler {
 func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Address, nonce uint64) (types.TxData, error) {
 	ethTx := &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: big.NewInt(20000000000),
-		Gas:      1024_000_000,
+		GasPrice: defaultGasPrice,
+		Gas:      defaultGas,
 		To:       &h.contractAddr,
 	}
 

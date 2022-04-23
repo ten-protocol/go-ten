@@ -25,9 +25,9 @@ func NewNetworkInMemoryGeth() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) ([]l1client.Client, []*host.Node, []string) {
+func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) ([]l1client.EthereumClient, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Clients := make([]l1client.Client, params.NumberOfNodes)
+	l1Clients := make([]l1client.EthereumClient, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
 	// all nodes use the same wallet for now
@@ -74,7 +74,7 @@ func (n *networkInMemGeth) TearDown() {
 	// Nop
 }
 
-func createRealEthNode(id int64, wallet wallet.Wallet, contractAddr common.Address) l1client.Client {
+func createRealEthNode(id int64, wallet wallet.Wallet, contractAddr common.Address) l1client.EthereumClient {
 	ethnode, err := l1client.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545, wallet, contractAddr)
 	if err != nil {
 		panic(err)

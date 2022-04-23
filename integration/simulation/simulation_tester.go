@@ -63,7 +63,7 @@ func waitForNodesReady(obsNodes []*host.Node) {
 				break
 			}
 			fmt.Printf("Waiting on Node %d after %s \n", obscurocommon.ShortAddress(n.ID), time.Since(now))
-			time.Sleep(time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -18,35 +18,35 @@ import (
 
 var connectionTimeout = 15 * time.Second
 
-type EthNode struct {
-	client          *ethclient.Client   // the underlying eth rpc client
-	id              common.Address      // TODO remove the id common.Address
-	wallet          wallet.Wallet       // wallet containing thea ccount information // TODO this does not need to be coupled together
-	chainID         int                 // chainID is used to sign transactions
-	txHandler       txhandler.TxHandler // converts L1TxData to ethereum transactions
-	contractAddress common.Address      // rollup contract address
-	lock            sync.RWMutex        // ensures no concurrent tx broadcasts
+type ethNode struct {
+	client          *ethclient.Client           // the underlying eth rpc client
+	id              common.Address              // TODO remove the id common.Address
+	wallet          wallet.Wallet               // wallet containing thea ccount information // TODO this does not need to be coupled together
+	chainID         int                         // chainID is used to sign transactions
+	txHandler       rollupcontractlib.TxHandler // converts L1TxData to ethereum transactions
+	contractAddress common.Address              // rollup contract address
+	lock            sync.RWMutex                // ensures no concurrent tx broadcasts
 }
 
-// NewEthClient instantiates a new l1client.Client that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (Client, error) {
+// NewEthClient instantiates a new l1client.EthereumClient that connects to an ethereum node
+func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (EthereumClient, error) {
 	client, err := connect(ipaddress, port)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
 	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
-	return &EthNode{
+	return &ethNode{
 		client:          client,
 		id:              id,
 		wallet:          wallet, // TODO this does not need to be coupled together
 		chainID:         1337,   // hardcoded for testnets // TODO this should be configured
-		txHandler:       txhandler.NewEthTxHandler(contractAddress),
+		txHandler:       rollupcontractlib.NewEthTxHandler(contractAddress),
 		contractAddress: contractAddress,
 	}, nil
 }
 
-func (e *EthNode) FetchHeadBlock() (*types.Block, uint64) {
+func (e *ethNode) FetchHeadBlock() (*types.Block, uint64) {
 	blk, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		panic(err)
@@ -54,13 +54,13 @@ func (e *EthNode) FetchHeadBlock() (*types.Block, uint64) {
 	return blk, blk.Number().Uint64()
 }
 
-func (e *EthNode) Info() Info {
+func (e *ethNode) Info() Info {
 	return Info{
 		ID: e.id,
 	}
 }
 
-func (e *EthNode) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
+func (e *ethNode) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
 	// TODO this should be a stream
 	var blocksBetween []*types.Block
 	var err error
@@ -76,7 +76,7 @@ func (e *EthNode) BlocksBetween(startingBlock *types.Block, lastBlock *types.Blo
 	return blocksBetween
 }
 
-func (e *EthNode) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+func (e *ethNode) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
 	if maybeAncestor == block.Hash() || maybeAncestor == obscurocommon.GenesisBlock.Hash() {
 		return true
 	}
@@ -106,7 +106,7 @@ func (e *EthNode) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommo
 	return e.IsBlockAncestor(p, maybeAncestor)
 }
 
-func (e *EthNode) RPCBlockchainFeed() []*types.Block {
+func (e *ethNode) RPCBlockchainFeed() []*types.Block {
 	var availBlocks []*types.Block
 
 	block, err := e.client.BlockByNumber(context.Background(), nil)
@@ -138,7 +138,7 @@ func (e *EthNode) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
-func (e *EthNode) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
+func (e *ethNode) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
 	signedTx, err := e.wallet.SignTransaction(e.chainID, tx)
 	if err != nil {
 		panic(err)
@@ -147,11 +147,11 @@ func (e *EthNode) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
 	return signedTx, e.client.SendTransaction(context.Background(), signedTx)
 }
 
-func (e *EthNode) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+func (e *ethNode) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
 	return e.client.TransactionReceipt(context.Background(), hash)
 }
 
-func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
+func (e *ethNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -172,7 +172,7 @@ func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 	}
 }
 
-func (e *EthNode) BlockListener() chan *types.Header {
+func (e *ethNode) BlockListener() chan *types.Header {
 	ch := make(chan *types.Header, 1)
 	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown
 	_, err := e.client.SubscribeNewHead(context.Background(), ch)
@@ -183,12 +183,16 @@ func (e *EthNode) BlockListener() chan *types.Header {
 	return ch
 }
 
-func (e *EthNode) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (e *ethNode) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 	return e.client.BlockByNumber(context.Background(), n)
 }
 
-func (e *EthNode) FetchBlock(hash common.Hash) (*types.Block, error) {
+func (e *ethNode) FetchBlock(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
+}
+
+func (e *ethNode) Stop() error {
+	panic("TODO implement me")
 }
 
 func connect(ipaddress string, port uint) (*ethclient.Client, error) {

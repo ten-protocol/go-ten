@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
 
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
@@ -29,11 +29,11 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
 	miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
-	mockEthNetwork.CurrentNode = &miner
-	return &miner
+	mockEthNetwork.CurrentNode = miner
+	return miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, txHandler txhandler.TxHandler, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
+func createInMemObscuroNode(id int64, genesis bool, txHandler rollupcontractlib.TxHandler, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)

@@ -1,4 +1,4 @@
-package txhandler
+package rollupcontractlib
 
 import (
 	"testing"

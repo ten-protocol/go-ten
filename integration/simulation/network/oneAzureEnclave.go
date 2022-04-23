@@ -29,9 +29,9 @@ func NewNetworkWithOneAzureEnclave(enclaveAddress string) Network {
 	return &networkWithOneAzureEnclave{enclaveAddress: enclaveAddress}
 }
 
-func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stats.Stats) ([]l1client.Client, []*host.Node, []string) {
+func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stats.Stats) ([]l1client.EthereumClient, []*host.Node, []string) {
 	// todo - add observer nodes
-	l1Clients := make([]l1client.Client, params.NumberOfNodes)
+	l1Clients := make([]l1client.EthereumClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
@@ -117,7 +117,9 @@ func (n *networkWithOneAzureEnclave) TearDown() {
 	go func() {
 		for _, m := range n.ethNodes {
 			t := m
-			go t.Stop()
+			go func() {
+				_ = t.Stop()
+			}()
 		}
 	}()
 }

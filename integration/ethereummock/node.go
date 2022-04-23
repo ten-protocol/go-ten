@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/go/l1client"
 
@@ -64,7 +64,7 @@ type Node struct {
 	// internal
 	headInCh  chan bool
 	headOutCh chan *types.Block
-	txHandler txhandler.TxHandler
+	txHandler rollupcontractlib.TxHandler
 }
 
 func (m *Node) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
@@ -313,13 +313,15 @@ func (m *Node) RPCBlockchainFeed() []*types.Block {
 	return m.BlocksBetween(obscurocommon.GenesisBlock, h)
 }
 
-func (m *Node) Stop() {
+func (m *Node) Stop() error {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
 	time.Sleep(time.Millisecond * 100)
 
 	m.exitMiningCh <- true
 	m.exitCh <- true
+
+	return nil
 }
 
 func (m *Node) AddClient(client obscurocommon.NotifyNewBlock) {
@@ -356,8 +358,8 @@ func NewMiner(
 	cfg MiningConfig,
 	network L1Network,
 	statsCollector StatsCollector,
-) Node {
-	return Node{
+) *Node {
+	return &Node{
 		ID:           id,
 		mining:       true,
 		cfg:          cfg,

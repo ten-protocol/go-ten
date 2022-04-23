@@ -27,7 +27,7 @@ type TransactionInjector struct {
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
-	l1Nodes []l1client.Client
+	l1Nodes []l1client.EthereumClient
 	l2Nodes []*host.Node
 
 	l1TransactionsLock sync.RWMutex
@@ -46,7 +46,7 @@ func NewTransactionInjector(
 	numberWallets int,
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
-	l1Nodes []l1client.Client,
+	l1Nodes []l1client.EthereumClient,
 	l2Nodes []*host.Node,
 ) *TransactionInjector {
 	// create a bunch of wallets
@@ -252,7 +252,7 @@ func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
 	return wallets[rand.Intn(len(wallets))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL1Node() l1client.Client {
+func (m *TransactionInjector) rndL1Node() l1client.EthereumClient {
 	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
 }
 

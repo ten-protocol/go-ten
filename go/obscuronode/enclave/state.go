@@ -6,7 +6,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 
@@ -255,7 +255,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup,
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
 // starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver BlockResolver, txHandler txhandler.TxHandler) []nodecommon.L2Tx {
+func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver BlockResolver, txHandler rollupcontractlib.TxHandler) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
@@ -343,7 +343,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *Rollup, newState *State) []n
 	return w
 }
 
-func extractRollups(b *types.Block, blockResolver BlockResolver, handler txhandler.TxHandler) []*Rollup {
+func extractRollups(b *types.Block, blockResolver BlockResolver, handler rollupcontractlib.TxHandler) []*Rollup {
 	rollups := make([]*Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions

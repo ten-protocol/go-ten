@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
 )
 
 // SimParams are the parameters for setting up the simulation.
@@ -28,7 +28,7 @@ type SimParams struct {
 	L2ToL1EfficiencyThreshold float64
 
 	// TxHandler defines how the simulation should unpack transactions
-	TxHandler txhandler.TxHandler
+	TxHandler rollupcontractlib.TxHandler
 	// ContractAddr defines the contract address
 	ContractAddr common.Address
 }

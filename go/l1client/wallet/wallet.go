@@ -14,7 +14,7 @@ type Wallet interface {
 	SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error)
 }
 
-type InMemoryWallet struct {
+type inMemoryWallet struct {
 	prvKey     *ecdsa.PrivateKey
 	pubKey     *ecdsa.PublicKey
 	pubKeyAddr common.Address
@@ -30,7 +30,7 @@ func NewInMemoryWallet(pk string) Wallet {
 		panic("error casting public key to ECDSA")
 	}
 
-	return &InMemoryWallet{
+	return &inMemoryWallet{
 		prvKey:     privateKey,
 		pubKey:     publicKeyECDSA,
 		pubKeyAddr: crypto.PubkeyToAddress(*publicKeyECDSA),
@@ -38,11 +38,11 @@ func NewInMemoryWallet(pk string) Wallet {
 }
 
 // SignTransaction returns a signed transaction
-func (m *InMemoryWallet) SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error) {
+func (m *inMemoryWallet) SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error) {
 	return types.SignNewTx(m.prvKey, types.NewEIP155Signer(big.NewInt(int64(chainID))), tx)
 }
 
 // Address returns the current wallet address
-func (m *InMemoryWallet) Address() common.Address {
+func (m *inMemoryWallet) Address() common.Address {
 	return m.pubKeyAddr
 }

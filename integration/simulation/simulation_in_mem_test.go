@@ -12,7 +12,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
@@ -71,7 +71,7 @@ func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.9, // todo review this
 		L2EfficiencyThreshold:     0.9,
 		L2ToL1EfficiencyThreshold: 0.9,
-		TxHandler:                 txhandler.NewEthTxHandler(contractAddr),
+		TxHandler:                 rollupcontractlib.NewEthTxHandler(contractAddr),
 		ContractAddr:              contractAddr,
 	}
 

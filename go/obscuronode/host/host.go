@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/go/l1client"
 
@@ -55,7 +55,7 @@ type Node struct {
 	ID common.Address
 
 	P2p          P2P
-	ethereumNode l1client.Client
+	ethConnector l1client.EthereumClient
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -82,18 +82,18 @@ type Node struct {
 	readyForWork *int32
 
 	// Handles tx conversion from eth to L1Data
-	txHandler txhandler.TxHandler
+	txHandler rollupcontractlib.TxHandler
 }
 
 func NewObscuroAggregator(
 	id common.Address,
 	cfg AggregatorCfg,
-	l1 l1client.Client,
+	l1 l1client.EthereumClient,
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
 	p2p P2P,
-	txHandler txhandler.TxHandler,
+	txHandler rollupcontractlib.TxHandler,
 ) Node {
 	return Node{
 		// config
@@ -101,7 +101,7 @@ func NewObscuroAggregator(
 		cfg:          cfg,
 		mining:       true,
 		genesis:      genesis,
-		ethereumNode: l1,
+		ethConnector: l1,
 		P2p:          p2p,
 
 		stats: collector,
@@ -169,7 +169,7 @@ func (a *Node) waitForEnclave() {
 func (a *Node) waitForL1Blocks() []*types.Block {
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	// todo - what happens with the blocks received while processing ?
-	allBlocks := a.ethereumNode.RPCBlockchainFeed()
+	allBlocks := a.ethConnector.RPCBlockchainFeed()
 	counter := 0
 
 	for len(allBlocks) == 0 {
@@ -179,7 +179,7 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 		}
 
 		time.Sleep(100 * time.Millisecond)
-		allBlocks = a.ethereumNode.RPCBlockchainFeed()
+		allBlocks = a.ethConnector.RPCBlockchainFeed()
 		counter++
 	}
 
@@ -239,8 +239,10 @@ func (a *Node) startProcessing() {
 
 		case tx := <-a.txP2PCh:
 			// Ignore gossiped transactions while the node is still initialising
-			if err := a.Enclave.SubmitTx(tx); err != nil {
-				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+			if a.Enclave.IsInitialised() {
+				if err := a.Enclave.SubmitTx(tx); err != nil {
+					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+				}
 			}
 
 		case <-a.exitNodeCh:
@@ -318,8 +320,8 @@ func (a *Node) Stop() {
 	a.Enclave.StopClient()
 }
 
-func (a *Node) ConnectToEthNode(node l1client.Client) {
-	a.ethereumNode = node
+func (a *Node) ConnectToEthNode(node l1client.EthereumClient) {
+	a.ethConnector = node
 }
 
 func sendInterrupt(interrupt *int32) *int32 {
@@ -418,7 +420,7 @@ func (a *Node) initialiseProtocol(blockHash common.Hash) obscurocommon.L2RootHas
 
 func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {
 	// TODO add retry and deal with failures
-	a.ethereumNode.BroadcastTx(tx)
+	a.ethConnector.BroadcastTx(tx)
 }
 
 // This method implements the procedure by which a node obtains the secret
@@ -472,15 +474,15 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 }
 
 func (a *Node) monitorBlocks() {
-	listener := a.ethereumNode.BlockListener()
+	listener := a.ethConnector.BlockListener()
 	log.Log("Started the L1 to L2 listener")
 	for {
 		latestBlkHeader := <-listener
-		block, err := a.ethereumNode.FetchBlock(latestBlkHeader.Hash())
+		block, err := a.ethConnector.FetchBlock(latestBlkHeader.Hash())
 		if err != nil {
 			panic(err)
 		}
-		blockParent, err := a.ethereumNode.FetchBlock(block.ParentHash())
+		blockParent, err := a.ethConnector.FetchBlock(block.ParentHash())
 		if err != nil {
 			panic(err)
 		}
