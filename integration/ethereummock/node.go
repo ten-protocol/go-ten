@@ -128,7 +128,6 @@ func (m *Node) IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHas
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
 // it outputs the winning blocks to the roundWinnerCh channel
 func (m *Node) Start() {
-	// common.Log(fmt.Sprintf("Starting miner %d..", m.ID))
 	if m.mining {
 		// This starts the mining
 		go m.startMining()
@@ -250,6 +249,7 @@ func (m *Node) P2PReceiveBlock(b obscurocommon.EncodedBlock, p obscurocommon.Enc
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it
 // on the miningCh channel
 func (m *Node) startMining() {
+	log.Log(fmt.Sprintf("Node-%d: starting miner...", obscurocommon.ShortAddress(m.ID)))
 	// stores all transactions seen from the beginning of time.
 	mempool := make([]*obscurocommon.L1Tx, 0)
 	z := int32(0)

@@ -162,7 +162,12 @@ func (e *enclaveImpl) updateState(b *types.Block, blockResolver BlockResolver) *
 	}
 
 	if parentState == nil {
-		panic("Something went wrong. There should be parent here.")
+		panic(fmt.Sprintf("Enclave-%d: Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
+			obscurocommon.ShortAddress(e.node),
+			obscurocommon.ShortHash(b.Hash()),
+			obscurocommon.ShortHash(b.Header().ParentHash),
+			b.Header(),
+		))
 	}
 
 	bs := e.calculateBlockState(b, parentState, e.storage, blockResolver, rollups)

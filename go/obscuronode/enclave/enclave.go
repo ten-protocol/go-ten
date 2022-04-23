@@ -467,7 +467,7 @@ func NewEnclave(id common.Address, mining bool, txHandler rollupcontractlib.TxHa
 		}
 		l1Blockchain = NewL1Blockchain(genesisJSON)
 	} else {
-		log.Log("validateBlocks is set to false. L1 blocks will not be validated.")
+		log.Log(fmt.Sprintf("Enclave-%d: validateBlocks is set to false. L1 blocks will not be validated.", obscurocommon.ShortAddress(id)))
 	}
 
 	return &enclaveImpl{

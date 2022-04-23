@@ -239,10 +239,11 @@ func (a *Node) startProcessing() {
 
 		case tx := <-a.txP2PCh:
 			// Ignore gossiped transactions while the node is still initialising
-			if a.Enclave.IsInitialised() {
-				if err := a.Enclave.SubmitTx(tx); err != nil {
-					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
-				}
+			// TODO Handle this correctly with the Enclave Initialization process
+			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
+			// if a.Enclave.IsInitialised() {
+			if err := a.Enclave.SubmitTx(tx); err != nil {
+				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
 			}
 
 		case <-a.exitNodeCh:
