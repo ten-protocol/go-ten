@@ -81,7 +81,7 @@ func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
 	testSimulation(t, network.NewNetworkInMemoryGeth(), params)
 }
 
-func deployContract(t *testing.T, w wallet.Wallet) common.Address {
+func deployContract(t *testing.T, w wallet.Wallet) common.Address { //nolint: unused
 	tmpClient, err := l1client.NewEthClient(common.Address{}, "127.0.0.1", 7545, w, common.Address{})
 	if err != nil {
 		t.Fatal(err)
