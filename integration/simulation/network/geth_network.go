@@ -32,8 +32,10 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 
 	// all nodes use the same wallet for now
 	// TODO create a wallet loading key mechanism for each node attached to a prefunded network genesis
-	w := wallet.NewInMemoryWallet("5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae")
-
+	wallets := []wallet.Wallet{
+		wallet.NewInMemoryWallet("5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae"),
+		wallet.NewInMemoryWallet("b728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7"),
+	}
 	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false
 		if i == 0 {
@@ -41,7 +43,7 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 		}
 
 		// create the in memory l1 and l2 node
-		miner := createRealEthNode(int64(i), w, params.ContractAddr)
+		miner := createRealEthNode(int64(i), wallets[i], params.ContractAddr)
 		agg := createInMemObscuroNode(int64(i), genesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
 		// and connect them to each other

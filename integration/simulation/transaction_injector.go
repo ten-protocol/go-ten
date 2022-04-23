@@ -7,21 +7,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/obscuronet/obscuro-playground/go/l1client"
-
-	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
-
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-
+	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"golang.org/x/sync/errgroup"
 
+	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 

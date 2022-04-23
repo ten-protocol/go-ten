@@ -34,7 +34,6 @@ func TestSerialiseRollup(t *testing.T) {
 	height.Store(1)
 	rollup := nodecommon.Rollup{
 		Header:       NewRollup(obscurocommon.GenesisBlock.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0))).Header,
-		Height:       height,
 		Transactions: encryptTransactions(L2Txs{*tx}),
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)

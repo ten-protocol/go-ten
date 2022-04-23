@@ -22,11 +22,11 @@ type Client interface {
 	// IsBlockAncestor checks if the node recognizes a block like the ancestor
 	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool
 
-	RPCBlockchainFeed() []*types.Block
-	BroadcastTx(t *obscurocommon.L1TxData)
-	BlockListener() chan *types.Header
-	IssueCustomTx(tx types.TxData) (*types.Transaction, error)
-	TransactionReceipt(hash common.Hash) (*types.Receipt, error)
+	RPCBlockchainFeed() []*types.Block                           // returns all blocks from genesis to head
+	BroadcastTx(t *obscurocommon.L1TxData)                       // issues an obscurocommon.L1TxData to the L1 network
+	BlockListener() chan *types.Header                           // subscribes to new blocks and returns a listener with the blocks heads
+	IssueCustomTx(tx types.TxData) (*types.Transaction, error)   // issues an ethereum transaction
+	TransactionReceipt(hash common.Hash) (*types.Receipt, error) // fetches the ethereum transaction receipt
 }
 
 // Info forces the RPC Client returns the data in the same format (independently of it's implementation)

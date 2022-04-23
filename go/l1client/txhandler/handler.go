@@ -3,13 +3,11 @@ package txhandler
 import (
 	"fmt"
 	"math/big"
-	"strings"
-
-	"github.com/obscuronet/obscuro-playground/contracts"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -18,7 +16,12 @@ import (
 const methodBytesLen = 4
 
 type TxHandler interface {
+	// PackTx receives a obscurocommon.L1TxData object and packs it into a types.TxData object
+	// Nonce generation, transaction signature and any other operations are responsibility of the caller
 	PackTx(tx *obscurocommon.L1TxData, from common.Address, nonce uint64) (types.TxData, error)
+
+	// UnPackTx receives a *types.Transaction and converts it to an obscurocommon.L1TxData pointer
+	// Any transaction that is not calling the rollup contract is purposefully ignored
 	UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData
 }
 
@@ -28,13 +31,8 @@ type EthTxHandler struct {
 }
 
 func NewEthTxHandler(contractAddress common.Address) TxHandler {
-	contractABI, err := abi.JSON(strings.NewReader(contracts.RollupABI))
-	if err != nil {
-		panic(err)
-	}
-
 	return &EthTxHandler{
-		contractABI:  contractABI,
+		contractABI:  contracts.RollupContractABIJSON,
 		contractAddr: contractAddress,
 	}
 }
@@ -66,7 +64,10 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 		if err != nil {
 			panic(err)
 		}
-		zipped := Compress(tx.Rollup)
+		zipped, err := Compress(tx.Rollup)
+		if err != nil {
+			panic(err)
+		}
 		encRollupData := EncodeToString(zipped)
 		data, err := h.contractABI.Pack("AddRollup", encRollupData)
 		if err != nil {
@@ -141,7 +142,10 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 			panic("call data not found for rollupData")
 		}
 		zipped := DecodeFromString(callData.(string))
-		l1txData.Rollup = Decompress(zipped)
+		l1txData.Rollup, err = Decompress(zipped)
+		if err != nil {
+			panic(err)
+		}
 		l1txData.TxType = obscurocommon.RollupTx
 
 	case "StoreSecret":

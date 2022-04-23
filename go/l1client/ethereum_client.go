@@ -16,18 +16,16 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-var (
-	connectionTimeout = 15 * time.Second
-	nonceLock         sync.RWMutex
-)
+var connectionTimeout = 15 * time.Second
 
 type EthNode struct {
-	client          *ethclient.Client
-	id              common.Address // TODO remove the id common.Address
-	wallet          wallet.Wallet
-	chainID         int
-	txHandler       txhandler.TxHandler
-	contractAddress common.Address
+	client          *ethclient.Client   // the underlying eth rpc client
+	id              common.Address      // TODO remove the id common.Address
+	wallet          wallet.Wallet       // wallet containing thea ccount information // TODO this does not need to be coupled together
+	chainID         int                 // chainID is used to sign transactions
+	txHandler       txhandler.TxHandler // converts L1TxData to ethereum transactions
+	contractAddress common.Address      // rollup contract address
+	lock            sync.RWMutex        // ensures no concurrent tx broadcasts
 }
 
 // NewEthClient instantiates a new l1client.Client that connects to an ethereum node
@@ -37,12 +35,12 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	log.Log(fmt.Sprintf("Initializing eth node at contract: %s", contractAddress))
+	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
 	return &EthNode{
 		client:          client,
 		id:              id,
 		wallet:          wallet, // TODO this does not need to be coupled together
-		chainID:         1337,
+		chainID:         1337,   // hardcoded for testnets // TODO this should be configured
 		txHandler:       txhandler.NewEthTxHandler(contractAddress),
 		contractAddress: contractAddress,
 	}, nil
@@ -154,8 +152,8 @@ func (e *EthNode) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
 }
 
 func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
-	nonceLock.Lock()
-	defer nonceLock.Unlock()
+	e.lock.Lock()
+	defer e.lock.Unlock()
 
 	fromAddr := e.wallet.Address()
 	nonce, err := e.client.PendingNonceAt(context.Background(), fromAddr)
@@ -176,12 +174,11 @@ func (e *EthNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 
 func (e *EthNode) BlockListener() chan *types.Header {
 	ch := make(chan *types.Header, 1)
-	subs, err := e.client.SubscribeNewHead(context.Background(), ch)
+	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown
+	_, err := e.client.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
 		panic(err)
 	}
-	// we should hook the subs to cleanup
-	fmt.Println(subs)
 
 	return ch
 }
