@@ -267,14 +267,13 @@ func (m *Node) startMining() {
 
 			// Generate a random number, and wait for that number of ms. Equivalent to PoW
 			// Include all rollups received during this period.
-			nonce := m.cfg.PowTime()
-			obscurocommon.ScheduleInterrupt(nonce, interrupt, func() {
+			obscurocommon.ScheduleInterrupt(m.cfg.PowTime(), interrupt, func() {
 				toInclude := findNotIncludedTxs(canonicalBlock, mempool, m.Resolver, m.db)
 				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				b := obscurocommon.NewBlock(canonicalBlock, uint64(nonce.Nanoseconds()), m.ID, toInclude)
+				b := obscurocommon.NewBlock(canonicalBlock, m.ID, toInclude)
 				m.miningCh <- b
 			})
 		}

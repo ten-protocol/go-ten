@@ -30,10 +30,12 @@ const (
 	portFlag         = "--port"
 	mineFlag         = "--mine"
 	minerThreadsFlag = "--miner.threads=1"
-	minerEthbaseFlag = "--miner.etherbase=0x0000000000000000000000000000000000000001"
-	rpcFeeCapFlag    = "--rpc.txfeecap=0" // Disables the 1 ETH cap for RPC transactions.
+	// All miners share a single etherbase. The corresponding private key is
+	// 0x5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae
+	minerEtherbaseFlag = "--miner.etherbase=0x323AefbFC16159655514846a9e5433C457de9389"
+	rpcFeeCapFlag      = "--rpc.txfeecap=0" // Disables the 1 ETH cap for RPC transactions.
 
-	// We pre-allocate a single wallet, which is shared by all nodes.
+	// We pre-allocate a single wallet, the miner etherbase account above.
 	genesisConfig = `{
 	  "config": {
 		"chainId": 777,
@@ -49,14 +51,14 @@ const (
 		"londonBlock": 0
 	  },
 	  "alloc": {
-		"0x0000000000000000000000000000000000000001": {
-		  "balance": "111111111"
+		"0x323AefbFC16159655514846a9e5433C457de9389": {
+		  "balance": "10000000000"
 		}
 	  },
 	  "coinbase": "0x0000000000000000000000000000000000000000",
 	  "difficulty": "0x20000",
 	  "extraData": "",
-	  "gasLimit": "0x2fefd8",
+	  "gasLimit": "0x77359400",
 	  "nonce": "0x0000000000000042",
 	  "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -155,7 +157,7 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 
 // Starts a Geth node.
 func (network *GethNetwork) startMiner(dataDirPath string, port int) {
-	args := []string{websocketFlag, dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port), mineFlag, minerThreadsFlag, minerEthbaseFlag, rpcFeeCapFlag}
+	args := []string{websocketFlag, dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port), mineFlag, minerThreadsFlag, minerEtherbaseFlag, rpcFeeCapFlag}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 	cmd.Stdout = network.logFile
 	cmd.Stderr = network.logFile

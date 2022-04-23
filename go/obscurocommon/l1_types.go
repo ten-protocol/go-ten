@@ -71,9 +71,12 @@ type (
 // the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-var GenesisHash = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
+var (
+	GenesisHash  = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
+	GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*L1Tx{})
+)
 
-func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L1Tx) *types.Block {
+func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Block {
 	parentHash := GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -81,6 +84,7 @@ func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L
 
 	header := types.Header{
 		ParentHash:  parentHash,
+		UncleHash:   common.Hash{},
 		Coinbase:    nodeID,
 		Root:        common.Hash{},
 		TxHash:      common.Hash{},
@@ -93,14 +97,12 @@ func NewBlock(parent *types.Block, nonce uint64, nodeID common.Address, txs []*L
 		Time:        0,
 		Extra:       nil,
 		MixDigest:   common.Hash{},
-		Nonce:       types.EncodeNonce(nonce),
+		Nonce:       types.BlockNonce{},
 		BaseFee:     nil,
 	}
 
 	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
 }
-
-var GenesisBlock = NewBlock(nil, 0, common.HexToAddress("0x0"), []*L1Tx{})
 
 type EncryptedSharedEnclaveSecret []byte
 

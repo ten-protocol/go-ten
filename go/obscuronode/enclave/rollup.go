@@ -31,6 +31,35 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	return v
 }
 
+func newHeader(parent *Rollup, height uint64, a common.Address) *nodecommon.Header {
+	parentHash := obscurocommon.GenesisHash
+	if parent != nil {
+		parentHash = parent.Hash()
+	}
+	return &nodecommon.Header{
+		Agg:        a,
+		ParentHash: parentHash,
+		Height:     height,
+	}
+}
+
+func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+	h := nodecommon.Header{
+		Agg:         header.Agg,
+		ParentHash:  header.ParentHash,
+		L1Proof:     blkHash,
+		Nonce:       nonce,
+		State:       state,
+		Height:      header.Height,
+		Withdrawals: withdrawals,
+	}
+	r := Rollup{
+		Header:       &h,
+		Transactions: txs,
+	}
+	return r
+}
+
 func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Address, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
 	parentHash := obscurocommon.GenesisHash
 	if parent != nil {

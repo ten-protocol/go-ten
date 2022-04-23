@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/obscuronet/obscuro-playground/go/l1client"
@@ -64,11 +65,14 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	// Sanity check number for a minimum height
 	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
+	// process the blockchain of each node in parallel to minimize the difference between them since they are still running
 	heights := make([]uint64, len(s.ObscuroNodes))
-	for i, node := range s.ObscuroNodes {
-		heights[i] = checkBlockchainOfObscuroNode(t, node, minHeight, maxL1Height, s)
+	var wg sync.WaitGroup
+	for i := range s.ObscuroNodes {
+		wg.Add(1)
+		go checkBlockchainOfObscuroNode(t, s.ObscuroNodes[i], minHeight, maxL1Height, s, &wg, heights, i)
 	}
-
+	wg.Wait()
 	min, max := minMax(heights)
 	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
 	if max-min > max/10 {
@@ -147,7 +151,7 @@ func extractDataFromEthereumChain(head *types.Block, node l1client.Client, s *Si
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
-func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation) uint64 {
+func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) uint64 {
 	l1Height := node.DB().GetCurrentBlockHead().Height
 
 	// check that the L1 view is consistent with the L1 network.
@@ -228,6 +232,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// (execute deposits and transactions and compare to the state in the rollup)
 
+	heights[i] = l2Height
+	wg.Done()
 	return l2Height
 }
 
