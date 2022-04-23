@@ -22,7 +22,7 @@ jobs:
         uses: docker/setup-buildx-action@v1
 
       - name: Build Docker images
-        run: docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
+        run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
 
       - name: Test
         run: go test -v -tags docker ./...
