@@ -1,10 +1,8 @@
-name: Build after merge
-# Builds and runs tests after a PR is merged to main.
+name: Manual Test
+# Builds and runs docker tests on-demand.
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build:
