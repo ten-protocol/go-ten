@@ -2,9 +2,10 @@ package enclave
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/consensus/clique"
 	"os"
 	"path"
+
+	"github.com/ethereum/go-ethereum/consensus/clique"
 
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"

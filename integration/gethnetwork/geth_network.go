@@ -245,7 +245,8 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	args := []string{
 		websocketFlag, wsPortFlag, strconv.Itoa(wsStartPort + idx), dataDirFlag, dataDirPath, portFlag,
 		strconv.Itoa(startPort + idx), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
-		network.passwordFilePath, mineFlag, rpcFeeCapFlag}
+		network.passwordFilePath, mineFlag, rpcFeeCapFlag,
+	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 	cmd.Stdout = network.logFile
 	cmd.Stderr = network.logFile
