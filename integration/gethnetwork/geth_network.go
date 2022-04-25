@@ -65,9 +65,7 @@ const (
 		}
 	  },
 	  "alloc": {
-		"0x323AefbFC16159655514846a9e5433C457de9389": {
-		  "balance": "10000000000"
-		}
+%s
 	  },
 	  "coinbase": "0x0000000000000000000000000000000000000000",
 	  "difficulty": "0x20000",
@@ -78,6 +76,9 @@ const (
 	  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	  "timestamp": "0x00"
   }`
+	allocBlockTemplate = `		"0x%s": {
+		  "balance": "10000000000"
+		}`
 	genesisJSONAddrKey = "address"
 )
 
@@ -131,13 +132,17 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 		passwordFilePath: passwordFile.Name(),
 	}
 
-	// We create an account for each node.
+	// We create an account for each node and generate the genesis config file accordingly.
 	for _, dataDir := range dataDirs {
 		network.createAccount(dataDir)
 		accountAddress := network.retrieveAccount(dataDir)
 		network.addresses = append(network.addresses, accountAddress)
 	}
-	genesisJSON := fmt.Sprintf(genesisJSONTemplate, strings.Join(network.addresses, ""))
+	allocs := make([]string, len(network.addresses))
+	for idx, addr := range network.addresses {
+		allocs[idx] = fmt.Sprintf(allocBlockTemplate, addr)
+	}
+	genesisJSON := fmt.Sprintf(genesisJSONTemplate, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, ""))
 
 	// We write out the `genesis.json` file to be used by the network.
 	genesisFilePath := path.Join(nodesDir, genesisFileName)
