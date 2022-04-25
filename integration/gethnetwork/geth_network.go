@@ -1,6 +1,7 @@
 package gethnetwork
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,24 +20,22 @@ const (
 	nodeLogs        = "node_logs.txt"
 	startPort       = 30303
 
-	addPeerCmd = "admin.addPeer(%s)"
-	attachCmd  = "attach"
-	enodeCmd   = "admin.nodeInfo.enode"
-	initCmd    = "init"
+	accountCmd    = "account"
+	accountNewCmd = "new"
+	addPeerCmd    = "admin.addPeer(%s)"
+	attachCmd     = "attach"
+	enodeCmd      = "admin.nodeInfo.enode"
+	initCmd       = "init"
 
-	websocketFlag    = "--ws" // Enables websocket connections to the node.
-	dataDirFlag      = "--datadir"
-	execFlag         = "--exec"
-	portFlag         = "--port"
-	mineFlag         = "--mine"
-	minerThreadsFlag = "--miner.threads=1"
-	// All miners share a single etherbase. The corresponding private key is
-	// 0x5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae
-	minerEtherbaseFlag = "--miner.etherbase=0x323AefbFC16159655514846a9e5433C457de9389"
-	rpcFeeCapFlag      = "--rpc.txfeecap=0" // Disables the 1 ETH cap for RPC transactions.
+	websocketFlag = "--ws" // Enables websocket connections to the node.
+	dataDirFlag   = "--datadir"
+	execFlag      = "--exec"
+	portFlag      = "--port"
+	mineFlag      = "--mine"
+	rpcFeeCapFlag = "--rpc.txfeecap=0" // Disables the 1 ETH cap for RPC transactions.
 
 	// We pre-allocate a single wallet, the miner etherbase account above.
-	genesisConfig = `{
+	genesisJSONTemplate = `{
 	  "config": {
 		"chainId": 777,
 		"homesteadBlock": 0,
@@ -48,7 +47,11 @@ const (
 		"petersburgBlock": 0,
 		"istanbulBlock": 0,
 		"berlinBlock": 0,
-		"londonBlock": 0
+		"londonBlock": 0,
+		"clique": {
+		  "period": 5,
+		  "epoch": 30000
+		}
 	  },
 	  "alloc": {
 		"0x323AefbFC16159655514846a9e5433C457de9389": {
@@ -57,7 +60,7 @@ const (
 	  },
 	  "coinbase": "0x0000000000000000000000000000000000000000",
 	  "difficulty": "0x20000",
-	  "extraData": "",
+	  "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000%s0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 	  "gasLimit": "0x77359400",
 	  "nonce": "0x0000000000000042",
 	  "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -71,24 +74,17 @@ type GethNetwork struct {
 	gethBinaryPath  string
 	genesisFilePath string
 	dataDirs        []string
+	addresses       []string // The public keys of the nodes' accounts.
 	logFile         *os.File
 }
 
 // NewGethNetwork using the provided Geth binary to create a private Ethereum network with numNodes Geth nodes.
 func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
+	// We create a data directory for each Geth node.
 	nodesDir, err := ioutil.TempDir("", tempDirPrefix)
 	if err != nil {
 		panic(err)
 	}
-
-	// We write out the `genesis.json` file to be used by the network.
-	genesisFilePath := path.Join(nodesDir, genesisFileName)
-	err = os.WriteFile(genesisFilePath, []byte(genesisConfig), 0o600)
-	if err != nil {
-		panic(err)
-	}
-
-	// Each Geth node needs its own data directory.
 	dataDirs := make([]string, numNodes)
 	for i := 0; i < numNodes; i++ {
 		nodeFolder := fmt.Sprintf(nodeFolderName, i+1)
@@ -103,15 +99,29 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 	logFile, _ := os.Create(path.Join(buildDir, nodeLogs))
 
 	network := GethNetwork{
-		gethBinaryPath:  gethBinaryPath,
-		genesisFilePath: genesisFilePath,
-		dataDirs:        dataDirs,
-		logFile:         logFile,
+		gethBinaryPath: gethBinaryPath,
+		dataDirs:       dataDirs,
+		logFile:        logFile,
 	}
 
-	for i, dataDir := range dataDirs {
+	for _, dataDir := range dataDirs {
+		network.createAccount(dataDir)
+		network.retrieveAccount(dataDir)
+	}
+	genesisJSON := fmt.Sprintf(genesisJSONTemplate, strings.Join(network.addresses, ""))
+
+	// We write out the `genesis.json` file to be used by the network.
+	genesisFilePath := path.Join(nodesDir, genesisFileName)
+	err = os.WriteFile(genesisFilePath, []byte(genesisJSON), 0o600)
+	if err != nil {
+		panic(err)
+	}
+	network.genesisFilePath = genesisFilePath
+
+	// todo - joel - fold loop into method
+	for idx, dataDir := range dataDirs {
 		_ = os.Remove(path.Join(dataDir, ipcFileName)) // We delete leftover IPC files from previous runs.
-		go network.createMiner(dataDir, startPort+i)
+		go network.createMiner(dataDir, idx)
 	}
 
 	// We need to manually tell the nodes about one another.
@@ -137,10 +147,53 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 }
 
 // Initialises and starts a Geth node.
-func (network *GethNetwork) createMiner(dataDir string, port int) {
+func (network *GethNetwork) createMiner(dataDir string, idx int) {
 	// The node must create its initial config based on the network's genesis file before it can be started.
 	network.initNode(dataDir)
-	network.startMiner(dataDir, port)
+	network.startMiner(dataDir, idx)
+}
+
+// Creates an account for a Geth node.
+func (network *GethNetwork) createAccount(dataDirPath string) {
+	args := []string{dataDirFlag, dataDirPath, accountCmd, accountNewCmd}
+	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd.Stdout = network.logFile
+	cmd.Stderr = network.logFile
+
+	// todo - joel - pass password via command line
+	x, _ := cmd.StdinPipe()
+	x.Write([]byte("wefwefwef\r\n"))
+	x.Write([]byte("wefwefwef\r\n"))
+
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
+}
+
+// Adds a Geth node's account public key to the `network` object.
+func (network *GethNetwork) retrieveAccount(dataDirPath string) {
+	dir := path.Join(dataDirPath, "keystore") // todo - joel - use constant
+	files, _ := ioutil.ReadDir(dir)
+	for _, file := range files {
+		// `ReadDir` returns the folder itself, as well as the files within it.
+		if file.IsDir() {
+			continue
+		}
+
+		y, err := os.ReadFile(path.Join(dir, file.Name()))
+		if err != nil {
+			panic(err)
+		}
+		contents := make(map[string]interface{})
+		err = json.Unmarshal(y, &contents)
+		if err != nil {
+			panic(err)
+		}
+		network.addresses = append(network.addresses, contents["address"].(string)) // todo - joel - use constant
+		return                                                                      // We return as we only expect one account per node.
+	}
+
+	panic(fmt.Sprintf("could not find account for node at %s", dataDirPath))
 }
 
 // Initialises a Geth node based on the network genesis file.
@@ -156,11 +209,17 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 }
 
 // Starts a Geth node.
-func (network *GethNetwork) startMiner(dataDirPath string, port int) {
-	args := []string{websocketFlag, dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, port), mineFlag, minerThreadsFlag, minerEtherbaseFlag, rpcFeeCapFlag}
-	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+// todo - joel - rename miner references
+func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
+	args := []string{websocketFlag, dataDirFlag, dataDirPath, fmt.Sprintf("%s=%d", portFlag, startPort+idx), "--allow-insecure-unlock", "--unlock", network.addresses[idx], mineFlag, rpcFeeCapFlag} // todo - joel - use constants
+	cmd := exec.Command(network.gethBinaryPath, args...)                                                                                                                                             // nolint
 	cmd.Stdout = network.logFile
 	cmd.Stderr = network.logFile
+
+	// todo - joel - pass password via command line
+	x, _ := cmd.StdinPipe()
+	x.Write([]byte("wefwefwef\r\n"))
+	x.Write([]byte("wefwefwef\r\n"))
 
 	if err := cmd.Start(); err != nil {
 		panic(err)
