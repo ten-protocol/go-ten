@@ -38,7 +38,7 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 	}
 }
 
-func TestTransactionCanBeIssued(t *testing.T) {
+func TestTransactionCanBeSubmitted(t *testing.T) {
 	network := NewGethNetwork(gethBinaryPath, numNodes)
 
 	account := network.addresses[0]
