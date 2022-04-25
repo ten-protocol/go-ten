@@ -148,7 +148,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 	genesisJSON := fmt.Sprintf(genesisJSONTemplate, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, ""))
 
 	// We write out the `genesis.json` file to be used by the network.
-	genesisFilePath := path.Join(nodesDir, genesisFileName)
+	genesisFilePath := path.Join(buildDir, genesisFileName)
 	err = os.WriteFile(genesisFilePath, []byte(genesisJSON), 0o600)
 	if err != nil {
 		panic(err)
