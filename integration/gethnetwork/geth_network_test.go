@@ -4,6 +4,7 @@
 package gethnetwork
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 )
@@ -34,5 +35,18 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 	chainId := network.IssueCommand(0, chainIdCmd)
 	if chainId != expectedChainId {
 		t.Fatalf("Network not using chain ID specified in the genesis file. Found %s, expected %s.", chainId, expectedChainId)
+	}
+}
+
+func TestTransactionCanBeIssued(t *testing.T) {
+	network := NewGethNetwork(gethBinaryPath, numNodes)
+
+	account := network.addresses[0]
+	tx := fmt.Sprintf("{from: \"%s\", to: \"%s\", value: web3.toWei(0.001, \"ether\")}", account, account)
+	txHash := network.IssueCommand(0, fmt.Sprintf("personal.sendTransaction(%s, \"%s\")", tx, password))
+	status := network.IssueCommand(0, fmt.Sprintf("eth.getTransaction(\"%s\")", txHash))
+
+	if status == "null" {
+		t.Fatal("Could not issue transaction.")
 	}
 }

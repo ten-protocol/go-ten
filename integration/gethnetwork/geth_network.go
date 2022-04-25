@@ -45,7 +45,7 @@ const (
 	websocketFlag      = "--ws" // Enables websocket connections to the node.
 	wsPortFlag         = "--ws.port"
 
-	// We pre-allocate a single wallet, the miner etherbase account above.
+	// We pre-allocate a wallet matching the private key used in the tests, plus an account per clique member.
 	genesisJSONTemplate = `{
 	  "config": {
 		"chainId": 777,
@@ -65,6 +65,9 @@ const (
 		}
 	  },
 	  "alloc": {
+		"0x323AefbFC16159655514846a9e5433C457de9389": {
+		  "balance": "1000000000000000000000"
+		},
 %s
 	  },
 	  "coinbase": "0x0000000000000000000000000000000000000000",
@@ -77,7 +80,7 @@ const (
 	  "timestamp": "0x00"
   }`
 	allocBlockTemplate = `		"0x%s": {
-		  "balance": "10000000000"
+		  "balance": "1000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
 )
