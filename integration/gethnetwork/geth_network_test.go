@@ -20,7 +20,7 @@ const (
 )
 
 func TestAllNodesJoinSameNetwork(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes)
+	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
@@ -30,7 +30,7 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 }
 
 func TestGenesisParamsAreUsed(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes)
+	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
 
 	chainId := network.IssueCommand(0, chainIdCmd)
 	if chainId != expectedChainId {
@@ -39,7 +39,7 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 }
 
 func TestTransactionCanBeSubmitted(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes)
+	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
 
 	account := network.addresses[0]
 	tx := fmt.Sprintf("{from: \"%s\", to: \"%s\", value: web3.toWei(0.001, \"ether\")}", account, account)
