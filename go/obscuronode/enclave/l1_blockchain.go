@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/ethereum/go-ethereum/consensus/clique"
+
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -37,7 +39,7 @@ func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 	db := createDB(dataDir)
 	cacheConfig := createCacheConfig(dataDir)
 	chainConfig := createChainConfig(db, genesisJSON)
-	engine := createEngine(dataDir)
+	engine := createEngine(dataDir, chainConfig, db)
 	vmConfig := createVMConfig()
 	shouldPreserve := createShouldPreserve()
 	txLookupLimit := ethconfig.Defaults.TxLookupLimit // Default.
@@ -110,21 +112,26 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 	return chainConfig
 }
 
-// Recreates the golden path through `eth/ethconfig/config.go/CreateConsensusEngine()`.
-func createEngine(dataDir string) consensus.Engine {
-	engine := ethash.New(ethash.Config{
-		PowMode:          ethash.ModeNormal,                          // Default.
-		CacheDir:         path.Join(dataDir, gethDir, ethashDir),     // Defaults to `geth/ethash` in the node's data directory.
-		CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
-		CachesOnDisk:     ethconfig.Defaults.Ethash.CachesOnDisk,     // Default.
-		CachesLockMmap:   ethconfig.Defaults.Ethash.CachesLockMmap,   // Default.
-		DatasetDir:       "",                                         // Defaults to `~/Library/Ethash` in the node's data directory.
-		DatasetsInMem:    ethconfig.Defaults.Ethash.DatasetsInMem,    // Default.
-		DatasetsOnDisk:   ethconfig.Defaults.Ethash.DatasetsOnDisk,   // Default.
-		DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
-		NotifyFull:       false,                                      // Default.
-	}, nil, false) // Defaults.
-	interface{}(engine).(*ethash.Ethash).SetThreads(-1) // Disables CPU mining.
+// Recreates `eth/ethconfig/config.go/CreateConsensusEngine()`.
+func createEngine(dataDir string, chainConfig *params.ChainConfig, db ethdb.Database) consensus.Engine {
+	var engine consensus.Engine
+	if chainConfig.Clique != nil {
+		engine = clique.New(chainConfig.Clique, db)
+	} else {
+		engine = ethash.New(ethash.Config{
+			PowMode:          ethash.ModeNormal,                          // Default.
+			CacheDir:         path.Join(dataDir, gethDir, ethashDir),     // Defaults to `geth/ethash` in the node's data directory.
+			CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
+			CachesOnDisk:     ethconfig.Defaults.Ethash.CachesOnDisk,     // Default.
+			CachesLockMmap:   ethconfig.Defaults.Ethash.CachesLockMmap,   // Default.
+			DatasetDir:       "",                                         // Defaults to `~/Library/Ethash` in the node's data directory.
+			DatasetsInMem:    ethconfig.Defaults.Ethash.DatasetsInMem,    // Default.
+			DatasetsOnDisk:   ethconfig.Defaults.Ethash.DatasetsOnDisk,   // Default.
+			DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
+			NotifyFull:       false,                                      // Default.
+		}, nil, false) // Defaults.
+		interface{}(engine).(*ethash.Ethash).SetThreads(-1) // Disables CPU mining.
+	}
 	return beacon.New(engine)
 }
 
