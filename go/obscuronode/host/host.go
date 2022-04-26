@@ -142,9 +142,9 @@ func (a *Node) Start() {
 	}
 
 	// TODO review this
-	//if !a.Enclave.IsInitialised() {
-	//	a.requestSecret()
-	//}
+	if !a.Enclave.IsInitialised() {
+		a.requestSecret()
+	}
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing()
@@ -199,12 +199,12 @@ func (a *Node) startProcessing() {
 	log.Log(fmt.Sprintf("Agg%d:> Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
 	a.Enclave.Start(lastBlock)
 
-	// Start monitoring L1 blocks
-	go a.monitorBlocks()
-
 	if a.genesis {
 		a.initialiseProtocol(lastBlock.Hash())
 	}
+
+	// Start monitoring L1 blocks
+	go a.monitorBlocks()
 
 	// Only open the p2p connection when the node is fully initialised
 	a.P2p.StartListening(a)
@@ -241,9 +241,10 @@ func (a *Node) startProcessing() {
 			// Ignore gossiped transactions while the node is still initialising
 			// TODO Handle this correctly with the Enclave Initialization process
 			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
-			// if a.Enclave.IsInitialised() {
-			if err := a.Enclave.SubmitTx(tx); err != nil {
-				log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+			if a.Enclave.IsInitialised() {
+				if err := a.Enclave.SubmitTx(tx); err != nil {
+					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+				}
 			}
 
 		case <-a.exitNodeCh:
@@ -436,12 +437,27 @@ func (a *Node) requestSecret() { //nolint:unused
 	// start listening for l1 blocks that contain the response to the request
 	for {
 		select {
+		case header := <-a.ethConnector.BlockListener():
+			block, err := a.ethConnector.FetchBlock(header.Hash())
+			if err != nil {
+				panic(err)
+			}
+			for _, tx := range block.Transactions() {
+				t := a.txHandler.UnPackTx(tx)
+				if t != nil && t.TxType == obscurocommon.StoreSecretTx { // TODO properly handle t.Attestation.Owner == a.ID
+					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
+					a.Enclave.InitEnclave(t.Secret)
+					return
+				}
+			}
+
 		case b := <-a.blockRPCCh:
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
 				t := a.txHandler.UnPackTx(tx)
 				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
+					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
 					a.Enclave.InitEnclave(t.Secret)
 					return
 				}

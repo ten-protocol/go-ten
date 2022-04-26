@@ -81,7 +81,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.processedTxsMap = makeMap(env.processedTxs)
 
 			// calculate the State after executing them
-			env.state = e.executeTransactions(env.processedTxs, env.state, env.headRollup.Header)
+			env.state = executeTransactions(env.processedTxs, env.state, env.headRollup.Header)
 
 		case tx := <-e.txCh:
 			// only process transactions if there is already a rollup to use as parent
@@ -143,7 +143,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := e.updateState(block, e.blockResolver)
+		bs := updateState(block, e.blockResolver, e.storage, e.txHandler)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -184,7 +184,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
-	blockState := e.updateState(&block, e.blockResolver)
+	blockState := updateState(&block, e.blockResolver, e.storage, e.txHandler)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -236,7 +236,7 @@ func verifySignature(decryptedTx *nodecommon.L2Tx) error {
 func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	head, found := e.storage.FetchRollup(parent)
 	if !found {
-		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
+		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent) //nolint
 	}
 
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)
@@ -251,14 +251,13 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 
 	parentState := e.storage.FetchRollupState(head.Hash())
 	// determine the winner of the round
-	winnerRollup, s, hasTxs := e.findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
+	winnerRollup, s := e.findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
 
 	e.storage.SetRollupState(winnerRollup.Hash(), s)
 	go e.notifySpeculative(winnerRollup)
 
 	// we are the winner
-	// and the rollup has either transfer or deposit transactions to publish
-	if winnerRollup.Header.Agg == e.node && hasTxs {
+	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.blockResolver)
 		w := e.storage.ParentRollup(winnerRollup)
 		log.Log(fmt.Sprintf(">   Agg%d: publish rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %d.  State=%v. ",
@@ -310,14 +309,14 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 		newRollupHeader = newHeader(bs.head, bs.head.Header.Height+1, e.node)
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(bs.head, e.storage.FetchMempoolTxs(), e.storage)
-		newRollupState = e.executeTransactions(newRollupTxs, bs.state, newRollupHeader)
+		newRollupState = executeTransactions(newRollupTxs, bs.state, newRollupHeader)
 	}
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.head.Proof(e.blockResolver)
 	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
-	newRollupState = e.executeTransactions(depositTxs, newRollupState, newRollupHeader)
+	newRollupState = executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Postprocessing - withdrawals
 	withdrawals := rollupPostProcessingWithdrawals(bs.head, newRollupState)

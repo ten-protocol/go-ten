@@ -42,7 +42,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		SimulationTime:            15 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
-		L2ToL1EfficiencyThreshold: 0.5,
+		L2ToL1EfficiencyThreshold: 0.34,
 		TxHandler:                 ethereummock.NewMockTxHandler(),
 	}
 
@@ -54,9 +54,9 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 
 // TestMemObscuroRealEthMonteCarloSimulation runs the simulation against a ganache network
 // 1. Install ganache -> npm install ganache --global
-// 2. Run ganache -> rm -rf ganachedb && ganache --database.dbPath="./ganachedb" -l 1024000000000 --wallet.accounts="0x5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae,0x56BC75E2D63100000" --wallet.accounts="0xb728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7,0x56BC75E2D63100000" -p 7545 -g 225
+// 2. Run ganache -> rm -rf ganachedb &&  ganache --database.dbPath="./ganachedb"  -l 1024000000000 --wallet.accounts="0x5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae,0x56BC75E2D63100000" --wallet.accounts="0xb728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7,0x56BC75E2D63100000" --wallet.accounts="0x1e1e76d5c0ea1382b6acf76e873977fd223c7fa2a6dc57db2b94e93eb303ba85,0x56BC75E2D63100000" -p 7545 -g 225 --miner.callGasLimit 1024000000000
 func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
-	t.Skip("test under construction")
+	//t.Skip("test under construction")
 	setupTestLog()
 
 	// private key is prefunded and used to issue txs - used here to deploy contract ahead of node initialization
@@ -66,7 +66,7 @@ func TestMemObscuroRealEthMonteCarloSimulation(t *testing.T) {
 	params := params.SimParams{
 		NumberOfNodes:             2,
 		NumberOfWallets:           2,
-		AvgBlockDuration:          10 * time.Millisecond,
+		AvgBlockDuration:          time.Second,
 		SimulationTime:            15 * time.Second,
 		L1EfficiencyThreshold:     0.9, // todo review this
 		L2EfficiencyThreshold:     0.9,

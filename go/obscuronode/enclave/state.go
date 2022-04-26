@@ -64,7 +64,7 @@ func serialize(state *State) nodecommon.StateRoot {
 // returns a modified copy of the State
 // header - the header of the rollup where this transaction will be included
 // todo - remove nolint after the header starts being used
-func (e *enclaveImpl) executeTransactions(
+func executeTransactions(
 	txs []nodecommon.L2Tx,
 	state *State,
 	header *nodecommon.Header, //nolint
@@ -123,9 +123,9 @@ func emptyState() *State {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func (e *enclaveImpl) updateState(b *types.Block, blockResolver BlockResolver) *blockState {
+func updateState(b *types.Block, blockResolver BlockResolver, storage Storage, txHandler rollupcontractlib.TxHandler) *blockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
-	val, found := e.storage.FetchBlockState(b.Hash())
+	val, found := storage.FetchBlockState(b.Hash())
 	if found {
 		return val
 	}
@@ -134,8 +134,8 @@ func (e *enclaveImpl) updateState(b *types.Block, blockResolver BlockResolver) *
 		return nil
 	}
 
-	rollups := extractRollups(b, blockResolver, e.txHandler)
-	genesisRollup := e.storage.FetchGenesisRollup()
+	rollups := extractRollups(b, blockResolver, txHandler)
+	genesisRollup := storage.FetchGenesisRollup()
 
 	// processing blocks before genesis, so there is nothing to do
 	if genesisRollup == nil && len(rollups) == 0 {
@@ -144,35 +144,34 @@ func (e *enclaveImpl) updateState(b *types.Block, blockResolver BlockResolver) *
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handle the case of the block containing the genesis being processed multiple times.
-	genesisState, isGenesis := handleGenesisRollup(b, e.storage, rollups, genesisRollup)
+	genesisState, isGenesis := handleGenesisRollup(b, storage, rollups, genesisRollup)
 	if isGenesis {
 		return genesisState
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, parentFound := e.storage.FetchBlockState(b.ParentHash())
+	parentState, parentFound := storage.FetchBlockState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the State of the Parent
-		p, f := e.storage.FetchBlock(b.ParentHash())
+		p, f := storage.FetchBlock(b.ParentHash())
 		if !f {
 			panic("Could not find block parent. This should not happen.")
 		}
-		parentState = e.updateState(p, blockResolver)
+		parentState = updateState(p, blockResolver, storage, txHandler)
 	}
 
 	if parentState == nil {
-		panic(fmt.Sprintf("Enclave-%d: Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
-			obscurocommon.ShortAddress(e.node),
+		panic(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
 			obscurocommon.ShortHash(b.Hash()),
 			obscurocommon.ShortHash(b.Header().ParentHash),
 			b.Header(),
 		))
 	}
 
-	bs := e.calculateBlockState(b, parentState, e.storage, blockResolver, rollups)
+	bs := calculateBlockState(b, parentState, storage, blockResolver, rollups, txHandler)
 
-	e.storage.SetBlockState(b.Hash(), bs)
+	storage.SetBlockState(b.Hash(), bs)
 
 	return bs
 }
@@ -233,7 +232,7 @@ func FindWinner(parent *Rollup, rollups []*Rollup, blockResolver BlockResolver) 
 	return rollups[win], true
 }
 
-func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State, s Storage, blockResolver BlockResolver) (*Rollup, *State, bool) {
+func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State, s Storage, blockResolver BlockResolver) (*Rollup, *State) {
 	headRollup, found := FindWinner(parent, receivedRollups, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
@@ -242,7 +241,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup,
 	p := s.ParentRollup(headRollup).Proof(blockResolver)
 	depositTxs := processDeposits(p, headRollup.Proof(blockResolver), blockResolver, e.txHandler)
 
-	state := e.executeTransactions(append(headRollup.Transactions, depositTxs...), parentState, headRollup.Header)
+	state := executeTransactions(append(headRollup.Transactions, depositTxs...), parentState, headRollup.Header)
 
 	if serialize(state) != headRollup.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
@@ -255,7 +254,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup,
 	}
 	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
-	return headRollup, state, len(headRollup.Transactions) > 0 || len(depositTxs) > 0
+	return headRollup, state
 }
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
@@ -303,7 +302,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (e *enclaveImpl) calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup) *blockState {
+func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup, txHandler rollupcontractlib.TxHandler) *blockState {
 	currentHead := parentState.head
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
 	newState := parentState.state
@@ -313,11 +312,11 @@ func (e *enclaveImpl) calculateBlockState(b *types.Block, parentState *blockStat
 		// todo transform into an eth block structure
 		parentRollup := s.ParentRollup(newHeadRollup)
 		p := parentRollup.Proof(blockResolver)
-		depositTxs := processDeposits(p, newHeadRollup.Proof(blockResolver), blockResolver, e.txHandler)
+		depositTxs := processDeposits(p, newHeadRollup.Proof(blockResolver), blockResolver, txHandler)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		newState = e.executeTransactions(txsToProcess, parentState.state, newHeadRollup.Header)
+		newState = executeTransactions(txsToProcess, parentState.state, newHeadRollup.Header)
 	} else {
 		newHeadRollup = parentState.head
 	}

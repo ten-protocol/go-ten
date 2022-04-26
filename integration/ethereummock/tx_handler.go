@@ -12,7 +12,7 @@ import (
 // it always UnPackTx given the expected direct conversion of types.Transaction.Data -> obscurocommon.L1TxData
 type MockTxHandler struct{}
 
-func (m MockTxHandler) PackTx(tx *obscurocommon.L1TxData, from common.Address, nonce uint64) (types.TxData, error) {
+func (m MockTxHandler) PackTx(*obscurocommon.L1TxData, common.Address, uint64) (types.TxData, error) {
 	panic("implement me")
 }
 

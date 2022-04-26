@@ -22,7 +22,7 @@ var (
 )
 
 type TxHandler interface {
-	// PackTx receives a obscurocommon.L1TxData object and packs it into a types.TxData object
+	// PackTx receives an obscurocommon.L1TxData object and packs it into a types.TxData object
 	// Nonce generation, transaction signature and any other operations are responsibility of the caller
 	PackTx(tx *obscurocommon.L1TxData, from common.Address, nonce uint64) (types.TxData, error)
 
@@ -62,7 +62,7 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("BROADCAST TX: Issuing DepositTx - Addr: %s deposited %d to %s ",
+		log.Log(fmt.Sprintf("Broadcasting - Issuing DepositTx - Addr: %s deposited %d to %s ",
 			fromAddr, tx.Amount, tx.Dest))
 
 	case obscurocommon.RollupTx:
@@ -81,9 +81,7 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 		}
 
 		ethTx.Data = data
-		derolled, _ := nodecommon.DecodeRollup(tx.Rollup)
-
-		log.Log(fmt.Sprintf("BROADCAST TX - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(derolled.Transactions), len(data), ethTx.Gas))
+		log.Log(fmt.Sprintf("Broadcasting - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(r.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:
 		data, err := h.contractABI.Pack("StoreSecret", EncodeToString(tx.Secret))
@@ -91,14 +89,14 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("BROADCAST TX: Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
+		log.Log(fmt.Sprintf("Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
 	case obscurocommon.RequestSecretTx:
 		data, err := h.contractABI.Pack("RequestSecret")
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log("BROADCAST TX: Issuing RequestSecret")
+		log.Log("Broadcasting - Issuing RequestSecret")
 	}
 
 	return ethTx, nil
@@ -117,15 +115,13 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 
 	l1txData := obscurocommon.L1TxData{
 		TxType:      0,
-		Rollup:      nil,
-		Secret:      nil,
 		Attestation: obscurocommon.AttestationReport{},
 		Amount:      0,
 		Dest:        common.Address{},
 	}
+	contractCallData := map[string]interface{}{}
 	switch method.Name {
 	case "Deposit":
-		contractCallData := map[string]interface{}{}
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -139,7 +135,6 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 		l1txData.Dest = callData.(common.Address)
 
 	case "AddRollup":
-		contractCallData := map[string]interface{}{}
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -155,7 +150,6 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 		l1txData.TxType = obscurocommon.RollupTx
 
 	case "StoreSecret":
-		contractCallData := map[string]interface{}{}
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -165,6 +159,9 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 		}
 		l1txData.Secret = DecodeFromString(callData.(string))
 		l1txData.TxType = obscurocommon.StoreSecretTx
+
+	case "RequestSecret":
+		l1txData.TxType = obscurocommon.RequestSecretTx
 	}
 
 	return &l1txData

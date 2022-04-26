@@ -35,6 +35,7 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 	wallets := []wallet.Wallet{
 		wallet.NewInMemoryWallet("5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae"),
 		wallet.NewInMemoryWallet("b728cd9a9f54cede03a82fc189eab4830a612703d48b7ef43ceed2cbad1a06c7"),
+		wallet.NewInMemoryWallet("1e1e76d5c0ea1382b6acf76e873977fd223c7fa2a6dc57db2b94e93eb303ba85"),
 	}
 	for i := 0; i < params.NumberOfNodes; i++ {
 		genesis := false

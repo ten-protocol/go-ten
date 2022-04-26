@@ -80,6 +80,7 @@ func (m *TransactionInjector) Start() {
 		}
 		m.rndL1Node().BroadcastTx(txData)
 		m.stats.Deposit(INITIAL_BALANCE)
+		go m.trackL1Tx(*txData)
 		time.Sleep(m.avgBlockDuration / 3)
 	}
 
@@ -138,18 +139,18 @@ func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1TxData {
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
 func (m *TransactionInjector) GetL2Transactions() (enclave.L2Txs, enclave.L2Txs) {
-	var deposits, transfers enclave.L2Txs
+	var transfers, withdrawals enclave.L2Txs
 	for _, req := range m.l2Transactions {
 		r := req
 		switch enclave.TxData(&r).Type {
 		case enclave.TransferTx:
 			transfers = append(transfers, req)
-		case enclave.DepositTx:
-			deposits = append(deposits, req)
 		case enclave.WithdrawalTx:
+			withdrawals = append(withdrawals, req)
+		case enclave.DepositTx:
 		}
 	}
-	return deposits, transfers
+	return transfers, withdrawals
 }
 
 // GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions
