@@ -1,3 +1,6 @@
+//go:build geth
+// +build geth
+
 package gethnetwork
 
 import (
@@ -8,7 +11,7 @@ import (
 
 const (
 	// The Geth binary can be built using the instructions here: https://github.com/ethereum/go-ethereum#building-the-source.
-	gethBinaryPath  = "./geth-1.10.17"
+	gethBinaryPath  = "path/to/geth/binary"
 	numNodes        = 3
 	expectedChainID = "777"
 
