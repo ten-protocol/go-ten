@@ -1,23 +1,30 @@
-//go:build geth
-// +build geth
-
 package gethnetwork
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"testing"
 )
 
 const (
-	// The Geth binary can be built using the instructions here: https://github.com/ethereum/go-ethereum#building-the-source.
-	gethBinaryPath  = "path/to/geth/binary"
+	shCmd          = "sh"
+	gethBinarySh   = "./build_geth_binary.sh"
+	gethBinaryPath = "./geth-release-1.10.17"
+
 	numNodes        = 3
 	expectedChainID = "777"
 
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 )
+
+func init() { //nolint:gochecknoinits
+	_, err := exec.Command(shCmd, gethBinarySh).Output()
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestAllNodesJoinSameNetwork(t *testing.T) {
 	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
