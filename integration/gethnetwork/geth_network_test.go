@@ -10,10 +10,10 @@ const (
 	// The Geth binary can be built using the instructions here: https://github.com/ethereum/go-ethereum#building-the-source.
 	gethBinaryPath  = "./geth-1.10.17"
 	numNodes        = 3
-	expectedChainId = "777"
+	expectedChainID = "777"
 
 	peerCountCmd = "net.peerCount"
-	chainIdCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
+	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 )
 
 func TestAllNodesJoinSameNetwork(t *testing.T) {
@@ -31,9 +31,9 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
 	defer network.StopNodes()
 
-	chainId := network.IssueCommand(0, chainIdCmd)
-	if chainId != expectedChainId {
-		t.Fatalf("Network not using chain ID specified in the genesis file. Found %s, expected %s.", chainId, expectedChainId)
+	chainID := network.IssueCommand(0, chainIDCmd)
+	if chainID != expectedChainID {
+		t.Fatalf("Network not using chain ID specified in the genesis file. Found %s, expected %s.", chainID, expectedChainID)
 	}
 }
 
