@@ -9,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -90,7 +91,8 @@ type GethNetwork struct {
 	gethBinaryPath   string
 	genesisFilePath  string
 	dataDirs         []string
-	addresses        []string // The public keys of the nodes' accounts.
+	addresses        []string      // The public keys of the nodes' accounts.
+	nodesProcs       []*os.Process // The running Geth node processes.
 	logFile          *os.File
 	passwordFilePath string // The path to the file storing the password to unlock node accounts.
 }
@@ -132,16 +134,25 @@ func NewGethNetwork(gethBinaryPath string, numNodes int, blockTimeSecs int) Geth
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,
 		dataDirs:         dataDirs,
+		addresses:        make([]string, len(dataDirs)),
+		nodesProcs:       make([]*os.Process, len(dataDirs)),
 		logFile:          logFile,
 		passwordFilePath: passwordFile.Name(),
 	}
 
-	// We create an account for each node and generate the genesis config file accordingly.
-	for _, dataDir := range dataDirs {
-		network.createAccount(dataDir)
-		accountAddress := network.retrieveAccount(dataDir)
-		network.addresses = append(network.addresses, accountAddress)
+	// We create an account for each node.
+	var wg sync.WaitGroup
+	for idx, dataDir := range dataDirs {
+		wg.Add(1)
+		go func(idx int, dataDir string) {
+			defer wg.Done()
+			network.createAccount(dataDir)
+			network.addresses[idx] = network.retrieveAccount(dataDir)
+		}(idx, dataDir)
 	}
+	wg.Wait()
+
+	// We generate the genesis config file based on the accounts above.
 	allocs := make([]string, len(network.addresses))
 	for idx, addr := range network.addresses {
 		allocs[idx] = fmt.Sprintf(allocBlockTemplate, addr)
@@ -158,11 +169,38 @@ func NewGethNetwork(gethBinaryPath string, numNodes int, blockTimeSecs int) Geth
 
 	// We start the miners.
 	for idx, dataDir := range dataDirs {
-		go network.createMiner(dataDir, idx)
+		wg.Add(1)
+		go func(idx int, dataDir string) {
+			defer wg.Done()
+			network.createMiner(dataDir, idx)
+		}(idx, dataDir)
 	}
+	wg.Wait()
 
-	// We need to manually tell the nodes about one another.
-	network.joinNodesToNetwork()
+	// We retrieve the enode address for each node.
+	enodeAddrs := make([]string, len(network.dataDirs))
+	for idx, dataDir := range network.dataDirs {
+		wg.Add(1)
+		go func(idx int, dataDir string) {
+			defer wg.Done()
+			waitForIPC(dataDir) // We cannot issue RPC commands until the IPC files are available.
+			enodeAddrs[idx] = network.IssueCommand(idx, enodeCmd)
+		}(idx, dataDir)
+	}
+	wg.Wait()
+
+	// We manually tell the nodes about one another.
+	for _, enodeAddr := range enodeAddrs {
+		for idx := range network.dataDirs {
+			wg.Add(1)
+			go func(idx int, enodeAddr string) {
+				defer wg.Done()
+				// As part of this loop, we also try and peer a node with itself, but Geth ignores this.
+				network.IssueCommand(idx, fmt.Sprintf(addPeerCmd, enodeAddr))
+			}(idx, enodeAddr)
+		}
+	}
+	wg.Wait()
 
 	return network
 }
@@ -181,6 +219,15 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 	}
 
 	return strings.TrimSpace(string(output))
+}
+
+// StopNodes kills the Geth node processes.
+func (network *GethNetwork) StopNodes() {
+	for _, process := range network.nodesProcs {
+		if process != nil {
+			_ = process.Kill()
+		}
+	}
 }
 
 // Initialises and starts a miner.
@@ -255,23 +302,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
-}
-
-// Tells the network's nodes about one another.
-func (network *GethNetwork) joinNodesToNetwork() {
-	enodeAddrs := make([]string, len(network.dataDirs))
-
-	for i, dataDir := range network.dataDirs {
-		waitForIPC(dataDir) // We cannot issue RPC commands until the IPC files are available.
-		enodeAddrs[i] = network.IssueCommand(i, enodeCmd)
-	}
-
-	for _, enodeAddr := range enodeAddrs {
-		for i := range network.dataDirs {
-			// As part of this loop, we also try and peer a node with itself, but Geth ignores this.
-			network.IssueCommand(i, fmt.Sprintf(addPeerCmd, enodeAddr))
-		}
-	}
+	network.nodesProcs[idx] = cmd.Process
 }
 
 // Waits for a node's IPC file to exist.

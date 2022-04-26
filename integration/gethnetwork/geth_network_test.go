@@ -11,7 +11,7 @@ import (
 
 const (
 	// The Geth binary can be built using the instructions here: https://github.com/ethereum/go-ethereum#building-the-source.
-	gethBinaryPath  = "path/to/geth/binary"
+	gethBinaryPath  = "./geth-1.10.17"
 	numNodes        = 3
 	expectedChainId = "777"
 
@@ -21,6 +21,7 @@ const (
 
 func TestAllNodesJoinSameNetwork(t *testing.T) {
 	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
@@ -31,6 +32,7 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 
 func TestGenesisParamsAreUsed(t *testing.T) {
 	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	defer network.StopNodes()
 
 	chainId := network.IssueCommand(0, chainIdCmd)
 	if chainId != expectedChainId {
@@ -40,6 +42,7 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 
 func TestTransactionCanBeSubmitted(t *testing.T) {
 	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	defer network.StopNodes()
 
 	account := network.addresses[0]
 	tx := fmt.Sprintf("{from: \"%s\", to: \"%s\", value: web3.toWei(0.001, \"ether\")}", account, account)
