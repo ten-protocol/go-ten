@@ -1,6 +1,3 @@
-//go:build geth
-// +build geth
-
 package gethnetwork
 
 import (
