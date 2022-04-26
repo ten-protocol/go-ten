@@ -60,7 +60,7 @@ const (
 		"berlinBlock": 0,
 		"londonBlock": 0,
 		"clique": {
-		  "period": 0,
+		  "period": %d,
 		  "epoch": 30000
 		}
 	  },
@@ -96,7 +96,8 @@ type GethNetwork struct {
 }
 
 // NewGethNetwork using the provided Geth binary to create a private Ethereum network with numNodes Geth nodes.
-func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
+// The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
+func NewGethNetwork(gethBinaryPath string, numNodes int, blockTimeSecs int) GethNetwork {
 	// We create a data directory for each node.
 	nodesDir, err := ioutil.TempDir("", tempDirPrefix)
 	if err != nil {
@@ -145,7 +146,7 @@ func NewGethNetwork(gethBinaryPath string, numNodes int) GethNetwork {
 	for idx, addr := range network.addresses {
 		allocs[idx] = fmt.Sprintf(allocBlockTemplate, addr)
 	}
-	genesisJSON := fmt.Sprintf(genesisJSONTemplate, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, ""))
+	genesisJSON := fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, ""))
 
 	// We write out the `genesis.json` file to be used by the network.
 	genesisFilePath := path.Join(buildDir, genesisFileName)
