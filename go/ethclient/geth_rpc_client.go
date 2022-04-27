@@ -19,10 +19,10 @@ import (
 // TODO move this to a config
 var connectionTimeout = 15 * time.Second
 
-// ethClientImpl implements the EthereumClient interface and allows connection to a real ethereum node
+// gethRPCClient implements the EthereumClient interface and allows connection to a real ethereum node
 // Beyond connection, EthereumClient requires transaction transformation to be handled (txhandle),
 // chainID and transaction signage to be done (wallet)
-type ethClientImpl struct {
+type gethRPCClient struct {
 	client    *ethclient.Client         // the underlying eth rpc client
 	id        common.Address            // TODO remove the id common.Address
 	wallet    wallet.Wallet             // wallet containing the account information // TODO this does not need to be coupled together
@@ -39,7 +39,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 	}
 
 	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
-	return &ethClientImpl{
+	return &gethRPCClient{
 		client:    client,
 		id:        id,
 		wallet:    wallet, // TODO this does not need to be coupled together
@@ -48,7 +48,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 	}, nil
 }
 
-func (e *ethClientImpl) FetchHeadBlock() (*types.Block, uint64) {
+func (e *gethRPCClient) FetchHeadBlock() (*types.Block, uint64) {
 	blk, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		panic(err)
@@ -56,13 +56,13 @@ func (e *ethClientImpl) FetchHeadBlock() (*types.Block, uint64) {
 	return blk, blk.Number().Uint64()
 }
 
-func (e *ethClientImpl) Info() Info {
+func (e *gethRPCClient) Info() Info {
 	return Info{
 		ID: e.id,
 	}
 }
 
-func (e *ethClientImpl) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
+func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
 	// TODO this should be a stream
 	var blocksBetween []*types.Block
 	var err error
@@ -78,7 +78,7 @@ func (e *ethClientImpl) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	return blocksBetween
 }
 
-func (e *ethClientImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
 	if maybeAncestor == block.Hash() || maybeAncestor == obscurocommon.GenesisBlock.Hash() {
 		return true
 	}
@@ -108,7 +108,7 @@ func (e *ethClientImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 	return e.IsBlockAncestor(p, maybeAncestor)
 }
 
-func (e *ethClientImpl) RPCBlockchainFeed() []*types.Block {
+func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 	var availBlocks []*types.Block
 
 	block, err := e.client.BlockByNumber(context.Background(), nil)
@@ -140,7 +140,7 @@ func (e *ethClientImpl) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
-func (e *ethClientImpl) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
+func (e *gethRPCClient) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
 	signedTx, err := e.wallet.SignTransaction(e.chainID, tx)
 	if err != nil {
 		panic(err)
@@ -149,11 +149,11 @@ func (e *ethClientImpl) SubmitTransaction(tx types.TxData) (*types.Transaction, 
 	return signedTx, e.client.SendTransaction(context.Background(), signedTx)
 }
 
-func (e *ethClientImpl) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
+func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
 	return e.client.TransactionReceipt(context.Background(), hash)
 }
 
-func (e *ethClientImpl) BroadcastTx(tx *obscurocommon.L1TxData) {
+func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -174,7 +174,7 @@ func (e *ethClientImpl) BroadcastTx(tx *obscurocommon.L1TxData) {
 	}
 }
 
-func (e *ethClientImpl) BlockListener() chan *types.Header {
+func (e *gethRPCClient) BlockListener() chan *types.Header {
 	ch := make(chan *types.Header, 1)
 	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown
 	_, err := e.client.SubscribeNewHead(context.Background(), ch)
@@ -185,15 +185,15 @@ func (e *ethClientImpl) BlockListener() chan *types.Header {
 	return ch
 }
 
-func (e *ethClientImpl) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (e *gethRPCClient) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 	return e.client.BlockByNumber(context.Background(), n)
 }
 
-func (e *ethClientImpl) FetchBlock(hash common.Hash) (*types.Block, error) {
+func (e *gethRPCClient) FetchBlock(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
 }
 
-func (e *ethClientImpl) Stop() error {
+func (e *gethRPCClient) Stop() error {
 	panic("TODO implement me")
 }
 

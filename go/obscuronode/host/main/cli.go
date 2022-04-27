@@ -41,7 +41,7 @@ const (
 
 	contractAddrName    = "contractAddress"
 	contractAddrDefault = "0x63eA4F258791234606F9d11C0C66D83c99bfC7CA" // ganache contract deploy address
-	contractAddrUsage   = "The rollup contract address"
+	contractAddrUsage   = "The management contract address"
 )
 
 type hostConfig struct {

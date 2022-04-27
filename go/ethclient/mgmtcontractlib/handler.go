@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/obscuronet/obscuro-playground/contracts"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -32,13 +32,11 @@ type TxHandler interface {
 }
 
 type EthTxHandler struct {
-	contractABI  abi.ABI
 	contractAddr common.Address
 }
 
 func NewEthTxHandler(contractAddress common.Address) TxHandler {
 	return &EthTxHandler{
-		contractABI:  contracts.MgmtContractABIJSON,
 		contractAddr: contractAddress,
 	}
 }
@@ -57,7 +55,7 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 	switch tx.TxType {
 	case obscurocommon.DepositTx:
 		ethTx.Value = big.NewInt(int64(tx.Amount))
-		data, err := h.contractABI.Pack("Deposit", tx.Dest)
+		data, err := contracts.MgmtContractABIJSON.Pack("Deposit", tx.Dest)
 		if err != nil {
 			panic(err)
 		}
@@ -75,7 +73,7 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 			panic(err)
 		}
 		encRollupData := EncodeToString(zipped)
-		data, err := h.contractABI.Pack("AddRollup", encRollupData)
+		data, err := contracts.MgmtContractABIJSON.Pack("AddRollup", encRollupData)
 		if err != nil {
 			panic(err)
 		}
@@ -84,14 +82,14 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 		log.Log(fmt.Sprintf("Broadcasting - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(r.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:
-		data, err := h.contractABI.Pack("StoreSecret", EncodeToString(tx.Secret))
+		data, err := contracts.MgmtContractABIJSON.Pack("StoreSecret", EncodeToString(tx.Secret))
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
 		log.Log(fmt.Sprintf("Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
 	case obscurocommon.RequestSecretTx:
-		data, err := h.contractABI.Pack("RequestSecret")
+		data, err := contracts.MgmtContractABIJSON.Pack("RequestSecret")
 		if err != nil {
 			panic(err)
 		}
@@ -105,10 +103,11 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 	// ignore transactions that are not calling the contract
 	if tx.To() == nil || tx.To().Hex() != h.contractAddr.Hex() || len(tx.Data()) == 0 {
+		log.Log(fmt.Sprintf("UnpackTx: Ignoring transaction %+v", tx))
 		return nil
 	}
 
-	method, err := h.contractABI.MethodById(tx.Data()[:methodBytesLen])
+	method, err := contracts.MgmtContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
 	}
@@ -121,7 +120,7 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 	}
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
-	case "Deposit":
+	case contracts.DepositMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -134,7 +133,7 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 		l1txData.Amount = tx.Value().Uint64()
 		l1txData.Dest = callData.(common.Address)
 
-	case "AddRollup":
+	case contracts.AddRollupMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -149,7 +148,7 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 		}
 		l1txData.TxType = obscurocommon.RollupTx
 
-	case "StoreSecret":
+	case contracts.StoreSecretMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -160,7 +159,7 @@ func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 		l1txData.Secret = DecodeFromString(callData.(string))
 		l1txData.TxType = obscurocommon.StoreSecretTx
 
-	case "RequestSecret":
+	case contracts.RequestSecretMethod:
 		l1txData.TxType = obscurocommon.RequestSecretTx
 	}
 
