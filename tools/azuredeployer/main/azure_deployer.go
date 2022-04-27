@@ -149,7 +149,7 @@ func runSetupScript(ipAddress string) {
 		Timeout:         sshTimeout,
 	}
 
-	log.Print("SSH'ing into VM to complete set-up.")
+	log.Printf("SSH'ing into VM to complete set-up: %s:%s", ipAddress, sshPort)
 	var client *ssh.Client
 	var err error
 	for {
@@ -173,7 +173,7 @@ func runSetupScript(ipAddress string) {
 		log.Fatalf("failed to run VM setup script: %v", err)
 	}
 
-	log.Print("VM set-up complete.")
+	log.Printf("VM set-up complete. To connect, use configured password and run: ssh obscuro@%s", ipAddress)
 }
 
 // Read a JSON file into a map.
