@@ -3,7 +3,7 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
@@ -26,9 +26,8 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]l1client.EthereumClient, []*host.Node, []string) {
-	// todo - add observer nodes
-	l1Clients := make([]l1client.EthereumClient, params.NumberOfNodes)
+func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthereumClient, []*host.Node, []string) {
+	l1Clients := make([]ethclient.EthereumClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
@@ -90,9 +89,7 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	go func() {
 		for _, m := range n.ethNodes {
 			t := m
-			go func() {
-				_ = t.Stop()
-			}()
+			go t.Stop()
 		}
 	}()
 }

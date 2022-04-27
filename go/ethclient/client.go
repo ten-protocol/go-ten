@@ -1,4 +1,4 @@
-package l1client
+package ethclient
 
 import (
 	"math/big"
@@ -22,16 +22,16 @@ type EthereumClient interface {
 	// IsBlockAncestor checks if the node recognizes a block like the ancestor
 	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool
 
-	RPCBlockchainFeed() []*types.Block                           // returns all blocks from genesis to head
-	BroadcastTx(t *obscurocommon.L1TxData)                       // issues an obscurocommon.L1TxData to the L1 network
-	BlockListener() chan *types.Header                           // subscribes to new blocks and returns a listener with the blocks heads
-	IssueCustomTx(tx types.TxData) (*types.Transaction, error)   // issues an ethereum transaction
-	TransactionReceipt(hash common.Hash) (*types.Receipt, error) // fetches the ethereum transaction receipt
+	RPCBlockchainFeed() []*types.Block                             // returns all blocks from genesis to head
+	BroadcastTx(t *obscurocommon.L1TxData)                         // issues an obscurocommon.L1TxData to the L1 network
+	BlockListener() chan *types.Header                             // subscribes to new blocks and returns a listener with the blocks heads
+	SubmitTransaction(tx types.TxData) (*types.Transaction, error) // submits an ethereum transaction
+	FetchTxReceipt(hash common.Hash) (*types.Receipt, error)       // fetches the ethereum transaction receipt
 
 	Stop() error // tries to cleanly stop the client and release any resources
 }
 
-// Info forces the RPC EthereumClient returns the data in the same format (independently of it's implementation)
+// Info forces the RPC EthereumClient to return the data in the same format (independently of it's implementation)
 type Info struct {
 	ID common.Address
 }

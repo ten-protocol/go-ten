@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -29,9 +29,8 @@ func NewNetworkWithOneAzureEnclave(enclaveAddress string) Network {
 	return &networkWithOneAzureEnclave{enclaveAddress: enclaveAddress}
 }
 
-func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stats.Stats) ([]l1client.EthereumClient, []*host.Node, []string) {
-	// todo - add observer nodes
-	l1Clients := make([]l1client.EthereumClient, params.NumberOfNodes)
+func (n *networkWithOneAzureEnclave) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthereumClient, []*host.Node, []string) {
+	l1Clients := make([]ethclient.EthereumClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
@@ -117,9 +116,7 @@ func (n *networkWithOneAzureEnclave) TearDown() {
 	go func() {
 		for _, m := range n.ethNodes {
 			t := m
-			go func() {
-				_ = t.Stop()
-			}()
+			go t.Stop()
 		}
 	}()
 }

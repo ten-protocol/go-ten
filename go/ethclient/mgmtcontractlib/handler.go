@@ -1,4 +1,4 @@
-package rollupcontractlib
+package mgmtcontractlib
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ type TxHandler interface {
 	PackTx(tx *obscurocommon.L1TxData, from common.Address, nonce uint64) (types.TxData, error)
 
 	// UnPackTx receives a *types.Transaction and converts it to an obscurocommon.L1TxData pointer
-	// Any transaction that is not calling the rollup contract is purposefully ignored
+	// Any transaction that is not calling the management contract is purposefully ignored
 	UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData
 }
 
@@ -38,7 +38,7 @@ type EthTxHandler struct {
 
 func NewEthTxHandler(contractAddress common.Address) TxHandler {
 	return &EthTxHandler{
-		contractABI:  contracts.RollupContractABIJSON,
+		contractABI:  contracts.MgmtContractABIJSON,
 		contractAddr: contractAddress,
 	}
 }

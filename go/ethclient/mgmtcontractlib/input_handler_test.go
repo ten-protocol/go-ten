@@ -1,4 +1,4 @@
-package rollupcontractlib
+package mgmtcontractlib
 
 import (
 	"testing"

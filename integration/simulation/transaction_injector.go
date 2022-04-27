@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -27,7 +27,7 @@ type TransactionInjector struct {
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
-	l1Nodes []l1client.EthereumClient
+	l1Nodes []ethclient.EthereumClient
 	l2Nodes []*host.Node
 
 	l1TransactionsLock sync.RWMutex
@@ -46,7 +46,7 @@ func NewTransactionInjector(
 	numberWallets int,
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
-	l1Nodes []l1client.EthereumClient,
+	l1Nodes []ethclient.EthereumClient,
 	l2Nodes []*host.Node,
 ) *TransactionInjector {
 	// create a bunch of wallets
@@ -253,7 +253,7 @@ func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
 	return wallets[rand.Intn(len(wallets))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL1Node() l1client.EthereumClient {
+func (m *TransactionInjector) rndL1Node() ethclient.EthereumClient {
 	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
 }
 

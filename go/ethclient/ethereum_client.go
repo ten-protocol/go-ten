@@ -1,4 +1,4 @@
-package l1client
+package ethclient
 
 import (
 	"context"
@@ -10,25 +10,28 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
+// TODO move this to a config
 var connectionTimeout = 15 * time.Second
 
-type ethNode struct {
-	client          *ethclient.Client           // the underlying eth rpc client
-	id              common.Address              // TODO remove the id common.Address
-	wallet          wallet.Wallet               // wallet containing thea ccount information // TODO this does not need to be coupled together
-	chainID         int                         // chainID is used to sign transactions
-	txHandler       rollupcontractlib.TxHandler // converts L1TxData to ethereum transactions
-	contractAddress common.Address              // rollup contract address
-	lock            sync.RWMutex                // ensures no concurrent tx broadcasts
+// ethClientImpl implements the EthereumClient interface and allows connection to a real ethereum node
+// Beyond connection, EthereumClient requires transaction transformation to be handled (txhandle),
+// chainID and transaction signage to be done (wallet)
+type ethClientImpl struct {
+	client    *ethclient.Client         // the underlying eth rpc client
+	id        common.Address            // TODO remove the id common.Address
+	wallet    wallet.Wallet             // wallet containing the account information // TODO this does not need to be coupled together
+	chainID   int                       // chainID is used to sign transactions
+	txHandler mgmtcontractlib.TxHandler // converts L1TxData to ethereum transactions
+	lock      sync.RWMutex              // ensures no concurrent tx broadcasts
 }
 
-// NewEthClient instantiates a new l1client.EthereumClient that connects to an ethereum node
+// NewEthClient instantiates a new ethclient.EthereumClient that connects to an ethereum node
 func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (EthereumClient, error) {
 	client, err := connect(ipaddress, port)
 	if err != nil {
@@ -36,17 +39,16 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 	}
 
 	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
-	return &ethNode{
-		client:          client,
-		id:              id,
-		wallet:          wallet, // TODO this does not need to be coupled together
-		chainID:         1337,   // hardcoded for testnets // TODO this should be configured
-		txHandler:       rollupcontractlib.NewEthTxHandler(contractAddress),
-		contractAddress: contractAddress,
+	return &ethClientImpl{
+		client:    client,
+		id:        id,
+		wallet:    wallet, // TODO this does not need to be coupled together
+		chainID:   1337,   // hardcoded for testnets // TODO this should be configured
+		txHandler: mgmtcontractlib.NewEthTxHandler(contractAddress),
 	}, nil
 }
 
-func (e *ethNode) FetchHeadBlock() (*types.Block, uint64) {
+func (e *ethClientImpl) FetchHeadBlock() (*types.Block, uint64) {
 	blk, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		panic(err)
@@ -54,13 +56,13 @@ func (e *ethNode) FetchHeadBlock() (*types.Block, uint64) {
 	return blk, blk.Number().Uint64()
 }
 
-func (e *ethNode) Info() Info {
+func (e *ethClientImpl) Info() Info {
 	return Info{
 		ID: e.id,
 	}
 }
 
-func (e *ethNode) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
+func (e *ethClientImpl) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
 	// TODO this should be a stream
 	var blocksBetween []*types.Block
 	var err error
@@ -76,7 +78,7 @@ func (e *ethNode) BlocksBetween(startingBlock *types.Block, lastBlock *types.Blo
 	return blocksBetween
 }
 
-func (e *ethNode) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+func (e *ethClientImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
 	if maybeAncestor == block.Hash() || maybeAncestor == obscurocommon.GenesisBlock.Hash() {
 		return true
 	}
@@ -106,7 +108,7 @@ func (e *ethNode) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommo
 	return e.IsBlockAncestor(p, maybeAncestor)
 }
 
-func (e *ethNode) RPCBlockchainFeed() []*types.Block {
+func (e *ethClientImpl) RPCBlockchainFeed() []*types.Block {
 	var availBlocks []*types.Block
 
 	block, err := e.client.BlockByNumber(context.Background(), nil)
@@ -138,7 +140,7 @@ func (e *ethNode) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
-func (e *ethNode) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
+func (e *ethClientImpl) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
 	signedTx, err := e.wallet.SignTransaction(e.chainID, tx)
 	if err != nil {
 		panic(err)
@@ -147,11 +149,11 @@ func (e *ethNode) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
 	return signedTx, e.client.SendTransaction(context.Background(), signedTx)
 }
 
-func (e *ethNode) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+func (e *ethClientImpl) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
 	return e.client.TransactionReceipt(context.Background(), hash)
 }
 
-func (e *ethNode) BroadcastTx(tx *obscurocommon.L1TxData) {
+func (e *ethClientImpl) BroadcastTx(tx *obscurocommon.L1TxData) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -166,13 +168,13 @@ func (e *ethNode) BroadcastTx(tx *obscurocommon.L1TxData) {
 		panic(err)
 	}
 
-	_, err = e.IssueCustomTx(formattedTx)
+	_, err = e.SubmitTransaction(formattedTx)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (e *ethNode) BlockListener() chan *types.Header {
+func (e *ethClientImpl) BlockListener() chan *types.Header {
 	ch := make(chan *types.Header, 1)
 	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown
 	_, err := e.client.SubscribeNewHead(context.Background(), ch)
@@ -183,15 +185,15 @@ func (e *ethNode) BlockListener() chan *types.Header {
 	return ch
 }
 
-func (e *ethNode) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (e *ethClientImpl) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 	return e.client.BlockByNumber(context.Background(), n)
 }
 
-func (e *ethNode) FetchBlock(hash common.Hash) (*types.Block, error) {
+func (e *ethClientImpl) FetchBlock(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
 }
 
-func (e *ethNode) Stop() error {
+func (e *ethClientImpl) Stop() error {
 	panic("TODO implement me")
 }
 

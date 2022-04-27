@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
@@ -33,7 +33,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	return miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, txHandler rollupcontractlib.TxHandler, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
+func createInMemObscuroNode(id int64, genesis bool, txHandler mgmtcontractlib.TxHandler, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)

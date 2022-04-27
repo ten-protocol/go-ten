@@ -6,9 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/rollupcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
@@ -64,14 +64,14 @@ type Node struct {
 	// internal
 	headInCh  chan bool
 	headOutCh chan *types.Block
-	txHandler rollupcontractlib.TxHandler
+	txHandler mgmtcontractlib.TxHandler
 }
 
-func (m *Node) IssueCustomTx(tx types.TxData) (*types.Transaction, error) {
+func (m *Node) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
 	panic("method should never be called in this mock")
 }
 
-func (m *Node) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+func (m *Node) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
 	panic("method should never be called in this mock")
 }
 
@@ -115,8 +115,8 @@ func (m *Node) IssueTx(tx obscurocommon.EncodedL1Tx) {
 	m.Network.BroadcastTx(tx)
 }
 
-func (m *Node) Info() l1client.Info {
-	return l1client.Info{
+func (m *Node) Info() ethclient.Info {
+	return ethclient.Info{
 		ID: m.ID,
 	}
 }

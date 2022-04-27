@@ -4,11 +4,11 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client/wallet"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -25,9 +25,8 @@ func NewNetworkInMemoryGeth() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) ([]l1client.EthereumClient, []*host.Node, []string) {
-	// todo - add observer nodes
-	l1Clients := make([]l1client.EthereumClient, params.NumberOfNodes)
+func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthereumClient, []*host.Node, []string) {
+	l1Clients := make([]ethclient.EthereumClient, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
 	// all nodes use the same wallet for now
@@ -44,7 +43,7 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 		}
 
 		// create the in memory l1 and l2 node
-		miner := createRealEthNode(int64(i), wallets[i], params.ContractAddr)
+		miner := createRealEthNode(int64(i), wallets[i], params.MgmtContractAddr)
 		agg := createInMemObscuroNode(int64(i), genesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
 		// and connect them to each other
@@ -75,8 +74,8 @@ func (n *networkInMemGeth) TearDown() {
 	// Nop
 }
 
-func createRealEthNode(id int64, wallet wallet.Wallet, contractAddr common.Address) l1client.EthereumClient {
-	ethnode, err := l1client.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545, wallet, contractAddr)
+func createRealEthNode(id int64, wallet wallet.Wallet, contractAddr common.Address) ethclient.EthereumClient {
+	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", 7545, wallet, contractAddr)
 	if err != nil {
 		panic(err)
 	}

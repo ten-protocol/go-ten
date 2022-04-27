@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/l1client"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -77,7 +77,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node l1client.EthereumClient, minHeight uint64, s *Simulation) uint64 {
+func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthereumClient, minHeight uint64, s *Simulation) uint64 {
 	head, height := node.FetchHeadBlock()
 
 	if height < minHeight {
@@ -113,7 +113,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node l1client.EthereumClient, m
 	return height
 }
 
-func extractDataFromEthereumChain(head *types.Block, node l1client.EthereumClient, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64, int) {
+func extractDataFromEthereumChain(head *types.Block, node ethclient.EthereumClient, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64, int) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
