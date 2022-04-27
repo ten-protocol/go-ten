@@ -426,7 +426,7 @@ func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {
 }
 
 // This method implements the procedure by which a node obtains the secret
-func (a *Node) requestSecret() { //nolint:unused
+func (a *Node) requestSecret() {
 	attestation := a.Enclave.Attestation()
 	tx := &obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,

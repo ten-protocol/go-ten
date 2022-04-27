@@ -44,7 +44,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 		id:        id,
 		wallet:    wallet, // TODO this does not need to be coupled together
 		chainID:   1337,   // hardcoded for testnets // TODO this should be configured
-		txHandler: mgmtcontractlib.NewEthTxHandler(contractAddress),
+		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddress),
 	}, nil
 }
 

@@ -31,17 +31,17 @@ type TxHandler interface {
 	UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData
 }
 
-type EthTxHandler struct {
+type mgmtContractTxHandler struct {
 	contractAddr common.Address
 }
 
-func NewEthTxHandler(contractAddress common.Address) TxHandler {
-	return &EthTxHandler{
+func NewEthMgmtContractTxHandler(contractAddress common.Address) TxHandler {
+	return &mgmtContractTxHandler{
 		contractAddr: contractAddress,
 	}
 }
 
-func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Address, nonce uint64) (types.TxData, error) {
+func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Address, nonce uint64) (types.TxData, error) {
 	ethTx := &types.LegacyTx{
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
@@ -49,13 +49,10 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 		To:       &h.contractAddr,
 	}
 
-	// TODO each of these cases should be a function:
-	// TODO like: func createRollupTx() or func createDepositTx()
-	// TODO And then eventually, these functions would be called directly, when we get rid of our special format. (we'll have to change the mock thing as well for that)
 	switch tx.TxType {
 	case obscurocommon.DepositTx:
 		ethTx.Value = big.NewInt(int64(tx.Amount))
-		data, err := contracts.MgmtContractABIJSON.Pack("Deposit", tx.Dest)
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.DepositMethod, tx.Dest)
 		if err != nil {
 			panic(err)
 		}
@@ -73,7 +70,7 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 			panic(err)
 		}
 		encRollupData := EncodeToString(zipped)
-		data, err := contracts.MgmtContractABIJSON.Pack("AddRollup", encRollupData)
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.AddRollupMethod, encRollupData)
 		if err != nil {
 			panic(err)
 		}
@@ -82,14 +79,14 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 		log.Log(fmt.Sprintf("Broadcasting - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(r.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:
-		data, err := contracts.MgmtContractABIJSON.Pack("StoreSecret", EncodeToString(tx.Secret))
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, EncodeToString(tx.Secret))
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
 		log.Log(fmt.Sprintf("Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
 	case obscurocommon.RequestSecretTx:
-		data, err := contracts.MgmtContractABIJSON.Pack("RequestSecret")
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
 		if err != nil {
 			panic(err)
 		}
@@ -100,7 +97,7 @@ func (h *EthTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Addres
 	return ethTx, nil
 }
 
-func (h *EthTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
+func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
 	// ignore transactions that are not calling the contract
 	if tx.To() == nil || tx.To().Hex() != h.contractAddr.Hex() || len(tx.Data()) == 0 {
 		log.Log(fmt.Sprintf("UnpackTx: Ignoring transaction %+v", tx))

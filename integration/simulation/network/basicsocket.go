@@ -104,7 +104,7 @@ func (n *basicNetworkOfSocketNodes) TearDown() {
 	go func() {
 		for _, m := range n.ethNodes {
 			t := m
-			go t.Stop() // nolint:errcheck
+			go t.Stop() //nolint:errcheck
 		}
 	}()
 }

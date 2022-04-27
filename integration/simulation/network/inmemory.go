@@ -89,7 +89,7 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	go func() {
 		for _, m := range n.ethNodes {
 			t := m
-			go t.Stop()
+			go t.Stop() // nolint:errcheck
 		}
 	}()
 }

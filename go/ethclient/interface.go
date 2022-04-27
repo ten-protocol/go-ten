@@ -9,7 +9,7 @@ import (
 )
 
 // EthereumClient defines the interface for RPC communications with the ethereum nodes
-// Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
+// TODO Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
 type EthereumClient interface {
 	FetchBlock(id common.Hash) (*types.Block, error)     // retrieves a block
 	FetchBlockByNumber(n *big.Int) (*types.Block, error) // retrieves a block given a number - returns head block if n is nil
