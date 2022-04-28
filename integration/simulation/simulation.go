@@ -22,9 +22,9 @@ const (
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethclient.EthereumClient // the list of mock ethereum clients
-	ObscuroNodes     []*host.Node               // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
-	ObscuroP2PAddrs  []string                   // the P2P addresses of the Obscuro nodes
+	EthClients       []ethclient.EthClient // the list of mock ethereum clients
+	ObscuroNodes     []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
+	ObscuroP2PAddrs  []string              // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration

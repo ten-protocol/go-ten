@@ -19,8 +19,8 @@ import (
 // TODO move this to a config
 var connectionTimeout = 15 * time.Second
 
-// gethRPCClient implements the EthereumClient interface and allows connection to a real ethereum node
-// Beyond connection, EthereumClient requires transaction transformation to be handled (txhandle),
+// gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
+// Beyond connection, EthClient requires transaction transformation to be handled (txhandle),
 // chainID and transaction signage to be done (wallet)
 type gethRPCClient struct {
 	client    *ethclient.Client         // the underlying eth rpc client
@@ -31,8 +31,8 @@ type gethRPCClient struct {
 	lock      sync.RWMutex              // ensures no concurrent tx broadcasts
 }
 
-// NewEthClient instantiates a new ethclient.EthereumClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (EthereumClient, error) {
+// NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
+func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (EthClient, error) {
 	client, err := connect(ipaddress, port)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
@@ -193,7 +193,7 @@ func (e *gethRPCClient) FetchBlock(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
 }
 
-func (e *gethRPCClient) Stop() error {
+func (e *gethRPCClient) Stop() {
 	panic("TODO implement me")
 }
 

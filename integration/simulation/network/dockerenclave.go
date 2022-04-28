@@ -27,8 +27,8 @@ func NewBasicNetworkOfNodesWithDockerEnclave() Network {
 
 // Create initializes Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthereumClient, []*host.Node, []string) {
-	l1Clients := make([]ethclient.EthereumClient, params.NumberOfNodes)
+func (n *basicNetworkOfNodesWithDockerEnclave) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string) {
+	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
@@ -96,7 +96,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
 	go func() {
 		for _, m := range n.ethNodes {
 			t := m
-			go t.Stop() // nolint:errcheck
+			go t.Stop()
 		}
 	}()
 }

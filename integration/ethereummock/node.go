@@ -313,15 +313,13 @@ func (m *Node) RPCBlockchainFeed() []*types.Block {
 	return m.BlocksBetween(obscurocommon.GenesisBlock, h)
 }
 
-func (m *Node) Stop() error {
+func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
 	time.Sleep(time.Millisecond * 100)
 
 	m.exitMiningCh <- true
 	m.exitCh <- true
-
-	return nil
 }
 
 func (m *Node) AddClient(client obscurocommon.NotifyNewBlock) {

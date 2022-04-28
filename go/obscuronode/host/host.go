@@ -55,7 +55,7 @@ type Node struct {
 	ID common.Address
 
 	P2p       P2P
-	ethClient ethclient.EthereumClient
+	ethClient ethclient.EthClient
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -88,7 +88,7 @@ type Node struct {
 func NewObscuroAggregator(
 	id common.Address,
 	cfg AggregatorCfg,
-	ethConnector ethclient.EthereumClient,
+	ethConnector ethclient.EthClient,
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
@@ -322,7 +322,7 @@ func (a *Node) Stop() {
 	a.Enclave.StopClient()
 }
 
-func (a *Node) ConnectToEthNode(node ethclient.EthereumClient) {
+func (a *Node) ConnectToEthNode(node ethclient.EthClient) {
 	a.ethClient = node
 }
 
