@@ -7,21 +7,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-
-	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
-
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"golang.org/x/sync/errgroup"
 
+	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
@@ -32,7 +27,7 @@ type TransactionInjector struct {
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
-	l1Nodes []ethclient.Client
+	l1Nodes []ethclient.EthClient
 	l2Nodes []*host.Node
 
 	l1TransactionsLock sync.RWMutex
@@ -51,7 +46,7 @@ func NewTransactionInjector(
 	numberWallets int,
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
-	l1Nodes []ethclient.Client,
+	l1Nodes []ethclient.EthClient,
 	l2Nodes []*host.Node,
 ) *TransactionInjector {
 	// create a bunch of wallets
@@ -78,15 +73,14 @@ func NewTransactionInjector(
 func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every user
 	for _, u := range m.wallets {
-		txData := obscurocommon.L1TxData{
+		txData := &obscurocommon.L1TxData{
 			TxType: obscurocommon.DepositTx,
 			Amount: INITIAL_BALANCE,
 			Dest:   u.Address,
 		}
-		tx := obscurocommon.NewL1Tx(txData)
-		t, _ := obscurocommon.EncodeTx(tx)
-		m.rndL1Node().IssueTx(t)
+		m.rndL1Node().BroadcastTx(txData)
 		m.stats.Deposit(INITIAL_BALANCE)
+		go m.trackL1Tx(*txData)
 		time.Sleep(m.avgBlockDuration / 3)
 	}
 
@@ -144,14 +138,19 @@ func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1TxData {
 }
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
-func (m *TransactionInjector) GetL2Transactions() enclave.L2Txs {
-	var transactions enclave.L2Txs
+func (m *TransactionInjector) GetL2Transactions() (enclave.L2Txs, enclave.L2Txs) {
+	var transfers, withdrawals enclave.L2Txs
 	for _, req := range m.l2Transactions {
-		if enclave.TxData(&req).Type != enclave.WithdrawalTx { //nolint:gosec
-			transactions = append(transactions, req)
+		r := req
+		switch enclave.TxData(&r).Type {
+		case enclave.TransferTx:
+			transfers = append(transfers, req)
+		case enclave.WithdrawalTx:
+			withdrawals = append(withdrawals, req)
+		case enclave.DepositTx:
 		}
 	}
-	return transactions
+	return transfers, withdrawals
 }
 
 // GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions
@@ -193,9 +192,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 			Amount: v,
 			Dest:   rndWallet(m.wallets).Address,
 		}
-		tx := obscurocommon.NewL1Tx(txData)
-		t, _ := obscurocommon.EncodeTx(tx)
-		m.rndL1Node().IssueTx(t)
+		m.rndL1Node().BroadcastTx(&txData)
 		m.stats.Deposit(v)
 		go m.trackL1Tx(txData)
 	}
@@ -256,7 +253,7 @@ func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
 	return wallets[rand.Intn(len(wallets))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL1Node() ethclient.Client {
+func (m *TransactionInjector) rndL1Node() ethclient.EthClient {
 	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
 }
 

@@ -5,6 +5,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -50,8 +54,8 @@ type StatsCollector interface {
 type Node struct {
 	ID common.Address
 
-	P2p          P2P
-	ethereumNode obscurocommon.L1Node
+	P2p       P2P
+	ethClient ethclient.EthClient
 
 	mining  bool // true -if this is an aggregator, false if it is a validator
 	genesis bool // true - if this is the first Obscuro node which has to initialize the network
@@ -73,25 +77,32 @@ type Node struct {
 
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
+
+	// A node is marked as ready after it has bootstrapped existing blocks and has the enclave secret
+	readyForWork *int32
+
+	// Handles tx conversion from eth to L1Data
+	txHandler mgmtcontractlib.TxHandler
 }
 
 func NewObscuroAggregator(
 	id common.Address,
 	cfg AggregatorCfg,
-	l1 obscurocommon.L1Node,
+	ethConnector ethclient.EthClient,
 	collector StatsCollector,
 	genesis bool,
 	enclaveClient nodecommon.Enclave,
 	p2p P2P,
+	txHandler mgmtcontractlib.TxHandler,
 ) Node {
 	return Node{
 		// config
-		ID:           id,
-		cfg:          cfg,
-		mining:       true,
-		genesis:      genesis,
-		ethereumNode: l1,
-		P2p:          p2p,
+		ID:        id,
+		cfg:       cfg,
+		mining:    true,
+		genesis:   genesis,
+		ethClient: ethConnector,
+		P2p:       p2p,
 
 		stats: collector,
 
@@ -109,7 +120,10 @@ func NewObscuroAggregator(
 		Enclave: enclaveClient,
 
 		// Initialized the node nodeDB
-		nodeDB: NewDB(),
+		nodeDB:       NewDB(),
+		readyForWork: new(int32),
+
+		txHandler: txHandler,
 	}
 }
 
@@ -119,22 +133,21 @@ func (a *Node) Start() {
 
 	if a.genesis {
 		// Create the shared secret and submit it to the management contract for storage
-		txData := obscurocommon.L1TxData{
+		tx := &obscurocommon.L1TxData{
 			TxType:      obscurocommon.StoreSecretTx,
 			Secret:      a.Enclave.GenerateSecret(),
 			Attestation: a.Enclave.Attestation(),
 		}
-		a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+		a.broadcastTx(tx)
 	}
 
+	// TODO review this
 	if !a.Enclave.IsInitialised() {
 		a.requestSecret()
 	}
 
-	allBlocks := a.waitForL1Blocks()
-
 	// todo create a channel between request secret and start processing
-	a.startProcessing(allBlocks)
+	a.startProcessing()
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
@@ -156,7 +169,7 @@ func (a *Node) waitForEnclave() {
 func (a *Node) waitForL1Blocks() []*types.Block {
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	// todo - what happens with the blocks received while processing ?
-	allBlocks := a.ethereumNode.RPCBlockchainFeed()
+	allBlocks := a.ethClient.RPCBlockchainFeed()
 	counter := 0
 
 	for len(allBlocks) == 0 {
@@ -166,21 +179,23 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 		}
 
 		time.Sleep(100 * time.Millisecond)
-		allBlocks = a.ethereumNode.RPCBlockchainFeed()
+		allBlocks = a.ethClient.RPCBlockchainFeed()
 		counter++
 	}
 
 	return allBlocks
 }
 
-func (a *Node) startProcessing(allblocks []*types.Block) {
+func (a *Node) startProcessing() {
+	allBlocks := a.waitForL1Blocks()
+
 	// Todo: This is a naive implementation.
-	results := a.Enclave.IngestBlocks(allblocks)
+	results := a.Enclave.IngestBlocks(allBlocks)
 	for _, result := range results {
 		a.storeBlockProcessingResult(result)
 	}
 
-	lastBlock := *allblocks[len(allblocks)-1]
+	lastBlock := *allBlocks[len(allBlocks)-1]
 	log.Log(fmt.Sprintf("Agg%d:> Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
 	a.Enclave.Start(lastBlock)
 
@@ -188,12 +203,16 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 		a.initialiseProtocol(lastBlock.Hash())
 	}
 
+	// Start monitoring L1 blocks
+	go a.monitorBlocks()
+
 	// Only open the p2p connection when the node is fully initialised
 	a.P2p.StartListening(a)
 
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
 	i := int32(0)
 	interrupt := &i
+	atomic.StoreInt32(a.readyForWork, 1)
 
 	// Main loop - Listen for notifications From the L1 node and process them
 	// Note that during processing, more recent notifications can be received.
@@ -220,6 +239,8 @@ func (a *Node) startProcessing(allblocks []*types.Block) {
 
 		case tx := <-a.txP2PCh:
 			// Ignore gossiped transactions while the node is still initialising
+			// TODO Handle this correctly with the Enclave Initialization process
+			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
 			if a.Enclave.IsInitialised() {
 				if err := a.Enclave.SubmitTx(tx); err != nil {
 					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
@@ -301,8 +322,8 @@ func (a *Node) Stop() {
 	a.Enclave.StopClient()
 }
 
-func (a *Node) ConnectToEthNode(node obscurocommon.L1Node) {
-	a.ethereumNode = node
+func (a *Node) ConnectToEthNode(node ethclient.EthClient) {
+	a.ethClient = node
 }
 
 func sendInterrupt(interrupt *int32) *int32 {
@@ -355,13 +376,8 @@ func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
 			panic(err)
 		}
 		if isWinner {
-			txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
-			tx := obscurocommon.NewL1Tx(txData)
-			t, err := obscurocommon.EncodeTx(tx)
-			if err != nil {
-				panic(err)
-			}
-			a.ethereumNode.BroadcastTx(t)
+			tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+			a.broadcastTx(tx)
 			// collect Stats
 		}
 	}
@@ -398,38 +414,50 @@ func (a *Node) initialiseProtocol(blockHash common.Hash) obscurocommon.L2RootHas
 	// Create the genesis rollup and submit it to the MC
 	genesis := a.Enclave.ProduceGenesis(blockHash)
 	log.Log(fmt.Sprintf("Agg%d:> Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesis.ProducedRollup.Header.Hash())))
-	txData := obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
-	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
+	a.broadcastTx(tx)
 
 	return genesis.L2Hash
 }
 
-func (a *Node) broadcastTx(tx obscurocommon.L1Tx) {
-	t, err := obscurocommon.EncodeTx(&tx)
-	if err != nil {
-		panic(err)
-	}
-	a.ethereumNode.BroadcastTx(t)
+func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {
+	// TODO add retry and deal with failures
+	a.ethClient.BroadcastTx(tx)
 }
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
 	attestation := a.Enclave.Attestation()
-	txData := obscurocommon.L1TxData{
+	tx := &obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,
 		Attestation: attestation,
 	}
-	a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+	a.broadcastTx(tx)
 
 	// start listening for l1 blocks that contain the response to the request
 	for {
 		select {
+		case header := <-a.ethClient.BlockListener():
+			block, err := a.ethClient.FetchBlock(header.Hash())
+			if err != nil {
+				panic(err)
+			}
+			for _, tx := range block.Transactions() {
+				t := a.txHandler.UnPackTx(tx)
+				if t != nil && t.TxType == obscurocommon.StoreSecretTx { // TODO properly handle t.Attestation.Owner == a.ID
+					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
+					a.Enclave.InitEnclave(t.Secret)
+					return
+				}
+			}
+
 		case b := <-a.blockRPCCh:
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
-				t := obscurocommon.TxData(tx)
-				if t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
+				t := a.txHandler.UnPackTx(tx)
+				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
+					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
 					a.Enclave.InitEnclave(t.Secret)
 					return
 				}
@@ -450,14 +478,37 @@ func (a *Node) requestSecret() {
 func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	b := block.DecodeBlock()
 	for _, tx := range b.Transactions() {
-		t := obscurocommon.TxData(tx)
-		if t.TxType == obscurocommon.RequestSecretTx {
-			txData := obscurocommon.L1TxData{
+		t := a.txHandler.UnPackTx(tx)
+		if t != nil && t.TxType == obscurocommon.RequestSecretTx {
+			txData := &obscurocommon.L1TxData{
 				TxType:      obscurocommon.StoreSecretTx,
 				Secret:      a.Enclave.FetchSecret(t.Attestation),
 				Attestation: t.Attestation,
 			}
-			a.broadcastTx(*obscurocommon.NewL1Tx(txData))
+			a.broadcastTx(txData)
 		}
 	}
+}
+
+func (a *Node) monitorBlocks() {
+	listener := a.ethClient.BlockListener()
+	log.Log("Started the L1 to L2 listener")
+	for {
+		latestBlkHeader := <-listener
+		block, err := a.ethClient.FetchBlock(latestBlkHeader.Hash())
+		if err != nil {
+			panic(err)
+		}
+		blockParent, err := a.ethClient.FetchBlock(block.ParentHash())
+		if err != nil {
+			panic(err)
+		}
+
+		log.Log(fmt.Sprintf("Agg0:> %d - Received a new block %s", obscurocommon.ShortAddress(a.ID), latestBlkHeader.Hash()))
+		a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
+	}
+}
+
+func (a *Node) IsReady() bool {
+	return atomic.LoadInt32(a.readyForWork) == 1
 }

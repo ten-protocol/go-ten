@@ -47,9 +47,8 @@ type ExtRollup struct {
 type Rollup struct {
 	Header *Header
 
-	hash   atomic.Value
-	Height atomic.Value
-	size   atomic.Value //nolint
+	hash atomic.Value
+	size atomic.Value //nolint
 
 	Transactions EncryptedTransactions
 }

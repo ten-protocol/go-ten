@@ -2,8 +2,11 @@ package ethereummock
 
 import (
 	"fmt"
+	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -61,10 +64,47 @@ type Node struct {
 	// internal
 	headInCh  chan bool
 	headOutCh chan *types.Block
+	txHandler mgmtcontractlib.TxHandler
 }
 
-func (m *Node) FetchBlock(id common.Hash) (*types.Block, bool) {
-	return m.Resolver.FetchBlock(id)
+func (m *Node) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
+	panic("method should never be called in this mock")
+}
+
+func (m *Node) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
+	panic("method should never be called in this mock")
+}
+
+// BlockListener is not used in the mock
+func (m *Node) BlockListener() chan *types.Header {
+	return make(chan *types.Header)
+}
+
+func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+	if n.Int64() == 0 {
+		return obscurocommon.GenesisBlock, nil
+	}
+	// TODO this should be a method in the resolver
+	var f bool
+	for blk, _ := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash; {
+		if blk.Number() == n {
+			return blk, nil
+		}
+
+		blk, f = m.Resolver.FetchBlock(blk.ParentHash())
+		if !f {
+			return nil, fmt.Errorf("block in the chain without a parent")
+		}
+	}
+	return nil, nil // nolint:nilnil
+}
+
+func (m *Node) FetchBlock(id common.Hash) (*types.Block, error) {
+	blk, f := m.Resolver.FetchBlock(id)
+	if !f {
+		return nil, fmt.Errorf("blk not found")
+	}
+	return blk, nil
 }
 
 func (m *Node) FetchHeadBlock() (*types.Block, uint64) {
@@ -88,7 +128,6 @@ func (m *Node) IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHas
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
 // it outputs the winning blocks to the roundWinnerCh channel
 func (m *Node) Start() {
-	// common.Log(fmt.Sprintf("Starting miner %d..", m.ID))
 	if m.mining {
 		// This starts the mining
 		go m.startMining()
@@ -210,6 +249,7 @@ func (m *Node) P2PReceiveBlock(b obscurocommon.EncodedBlock, p obscurocommon.Enc
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it
 // on the miningCh channel
 func (m *Node) startMining() {
+	log.Log(fmt.Sprintf("Node-%d: starting miner...", obscurocommon.ShortAddress(m.ID)))
 	// stores all transactions seen from the beginning of time.
 	mempool := make([]*obscurocommon.L1Tx, 0)
 	z := int32(0)
@@ -261,8 +301,10 @@ func (m *Node) P2PGossipTx(tx obscurocommon.EncodedL1Tx) {
 	m.mempoolCh <- t
 }
 
-func (m *Node) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
-	m.Network.BroadcastTx(tx)
+func (m *Node) BroadcastTx(txData *obscurocommon.L1TxData) {
+	tx := obscurocommon.NewL1Tx(*txData)
+	t, _ := obscurocommon.EncodeTx(tx)
+	m.Network.BroadcastTx(t)
 }
 
 func (m *Node) RPCBlockchainFeed() []*types.Block {
@@ -314,8 +356,8 @@ func NewMiner(
 	cfg MiningConfig,
 	network L1Network,
 	statsCollector StatsCollector,
-) Node {
-	return Node{
+) *Node {
+	return &Node{
 		ID:           id,
 		mining:       true,
 		cfg:          cfg,
@@ -332,5 +374,6 @@ func NewMiner(
 		mempoolCh:    make(chan obscurocommon.L1Tx),
 		headInCh:     make(chan bool),
 		headOutCh:    make(chan *types.Block),
+		txHandler:    NewMockTxHandler(),
 	}
 }

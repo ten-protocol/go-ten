@@ -1,9 +1,13 @@
 package simulation
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -35,6 +39,8 @@ func testSimulation(t *testing.T, netw network.Network, params params.SimParams)
 		Params:           &params,
 	}
 
+	waitForNodesReady(obscuroNodes)
+
 	// execute the simulation
 	simulation.Start()
 
@@ -46,4 +52,18 @@ func testSimulation(t *testing.T, netw network.Network, params params.SimParams)
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
 	netw.TearDown()
+}
+
+func waitForNodesReady(obsNodes []*host.Node) {
+	now := time.Now()
+	for _, n := range obsNodes {
+		for {
+			if n.IsReady() {
+				fmt.Printf("Node %d is Ready after %s\n", obscurocommon.ShortAddress(n.ID), time.Since(now))
+				break
+			}
+			fmt.Printf("Waiting on Node %d after %s \n", obscurocommon.ShortAddress(n.ID), time.Since(now))
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }

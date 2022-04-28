@@ -28,9 +28,8 @@ func NewBasicNetworkOfSocketNodes() Network {
 	return &basicNetworkOfSocketNodes{}
 }
 
-func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.Client, []*host.Node, []string) {
-	// todo - add observer nodes
-	l1Clients := make([]ethclient.Client, params.NumberOfNodes)
+func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string) {
+	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
@@ -50,7 +49,7 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		enclavePort := uint64(EnclaveStartPort + i)
 		enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
-		err := enclave.StartServer(enclaveAddress, nodeID, false, nil, stats)
+		err := enclave.StartServer(enclaveAddress, nodeID, params.TxHandler, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}

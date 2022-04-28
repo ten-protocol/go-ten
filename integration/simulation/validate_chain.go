@@ -44,6 +44,7 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 
 	min, max := minMax(heights)
 	if max-min > max/10 {
+		t.Logf("Node Heights: %v", heights)
 		t.Errorf("There is a problem with the Mock ethereum chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
 	}
 
@@ -76,14 +77,15 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.Client, minHeight uint64, s *Simulation) uint64 {
+func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHeight uint64, s *Simulation) uint64 {
 	head, height := node.FetchHeadBlock()
 
 	if height < minHeight {
 		t.Errorf("Node %d. There were only %d blocks mined. Expected at least: %d.", obscurocommon.ShortAddress(node.Info().ID), height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited := extractDataFromEthereumChain(head, node, s)
+	deposits, rollups, totalDeposited, blockCount := extractDataFromEthereumChain(head, node, s)
+	s.Stats.TotalL1Blocks = uint64(blockCount)
 
 	if len(obscurocommon.FindHashDups(deposits)) > 0 {
 		dups := obscurocommon.FindHashDups(deposits)
@@ -111,21 +113,24 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.Client, minHeigh
 	return height
 }
 
-func extractDataFromEthereumChain(head *types.Block, node ethclient.Client, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64) {
+func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64, int) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
 	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
 	for _, block := range blockchain {
-		for _, tr := range block.Transactions() {
-			tx := obscurocommon.TxData(tr)
-			switch tx.TxType {
+		for _, tx := range block.Transactions() {
+			t := s.Params.TxHandler.UnPackTx(tx)
+			if t == nil {
+				continue
+			}
+			switch t.TxType {
 			case obscurocommon.DepositTx:
-				deposits = append(deposits, tr.Hash())
-				totalDeposited += tx.Amount
+				deposits = append(deposits, tx.Hash())
+				totalDeposited += t.Amount
 			case obscurocommon.RollupTx:
-				r := nodecommon.DecodeRollupOrPanic(tx.Rollup)
+				r := nodecommon.DecodeRollupOrPanic(t.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
@@ -137,7 +142,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.Client, s *S
 			}
 		}
 	}
-	return deposits, rollups, totalDeposited
+	return deposits, rollups, totalDeposited, len(blockchain)
 }
 
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
@@ -157,7 +162,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// check that the height of the Rollup chain is higher than a minimum expected value.
 	l2Height := node.DB().GetCurrentRollupHead().Height
 	if l2Height < minObscuroHeight {
-		t.Errorf("There were only %d blocks mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
+		t.Errorf("There were only %d rollups mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[node.ID]
@@ -177,11 +182,25 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	}
 
 	// check that all expected transactions were included.
-	for _, transaction := range s.TxInjector.GetL2Transactions() {
-		l2tx := node.Enclave.GetTransaction(transaction.Hash())
-		if l2tx == nil {
-			t.Errorf("node %d, unable to find transaction: %+v", obscurocommon.ShortAddress(node.ID), transaction)
+	transfers, withdrawals := s.TxInjector.GetL2Transactions()
+	notFoundTransfers := 0
+	for _, tx := range transfers {
+		if l2tx := node.Enclave.GetTransaction(tx.Hash()); l2tx == nil {
+			notFoundTransfers++
 		}
+	}
+	if notFoundTransfers > 0 {
+		t.Errorf("Node %d - %d out of %d Transfer Txs not found in the enclave", obscurocommon.ShortAddress(node.ID), notFoundTransfers, len(transfers))
+	}
+
+	notFoundWithdrawals := 0
+	for _, tx := range withdrawals {
+		if l2tx := node.Enclave.GetTransaction(tx.Hash()); l2tx == nil {
+			notFoundWithdrawals++
+		}
+	}
+	if notFoundWithdrawals > 0 {
+		t.Errorf("Node %d - %d out of %d Withdrawal Txs not found in the enclave", obscurocommon.ShortAddress(node.ID), notFoundWithdrawals, len(withdrawals))
 	}
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(node)
@@ -189,6 +208,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.GetL2WithdrawalRequests()) {
 		t.Errorf("found more transactions in the blockchain than the generated by the tx manager")
+	}
+
+	injectorDepositedAmt := uint64(0)
+	for _, tx := range s.TxInjector.GetL1Transactions() {
+		injectorDepositedAmt += tx.Amount
 	}
 
 	// expected condition : some Txs (stats) did not make it to the blockchain

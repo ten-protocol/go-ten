@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
 	"github.com/ethereum/go-ethereum/core"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -39,6 +41,7 @@ type enclaveImpl struct {
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
+	txHandler            mgmtcontractlib.TxHandler
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -140,7 +143,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.storage)
+		bs := updateState(block, e.blockResolver, e.storage, e.txHandler)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -181,7 +184,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.storage)
+	blockState := updateState(&block, e.blockResolver, e.storage, e.txHandler)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -233,7 +236,7 @@ func verifySignature(decryptedTx *nodecommon.L2Tx) error {
 func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	head, found := e.storage.FetchRollup(parent)
 	if !found {
-		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent) //nolint
+		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)
@@ -257,14 +260,15 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	if winnerRollup.Header.Agg == e.node {
 		v := winnerRollup.Proof(e.blockResolver)
 		w := e.storage.ParentRollup(winnerRollup)
-		log.Log(fmt.Sprintf(">   Agg%d: create rollup=r_%d(%d)[r_%d]{proof=b_%d}. Txs: %v. State=%v.",
+		log.Log(fmt.Sprintf(">   Agg%d: publish rollup=r_%d(%d)[r_%d]{proof=b_%d}. Num Txs: %d. Txs: %v.  State=%v. ",
 			obscurocommon.ShortAddress(e.node),
 			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Height,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
+			len(winnerRollup.Transactions),
 			printTxs(winnerRollup.Transactions),
-			winnerRollup.Header.State),
-		)
+			winnerRollup.Header.State,
+		))
 		return winnerRollup.ToExtRollup(), true, nil
 	}
 	return nodecommon.ExtRollup{}, false, nil
@@ -312,7 +316,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *blockState) *Rollup {
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := bs.head.Proof(e.blockResolver)
-	depositTxs := processDeposits(proof, b, e.blockResolver)
+	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
 	newRollupState = executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Postprocessing - withdrawals
@@ -453,7 +457,7 @@ type processingEnvironment struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(id common.Address, mining bool, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
+func NewEnclave(id common.Address, mining bool, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
 	storage := NewStorage()
 
 	var l1Blockchain *core.BlockChain
@@ -463,7 +467,7 @@ func NewEnclave(id common.Address, mining bool, validateBlocks bool, genesisJSON
 		}
 		l1Blockchain = NewL1Blockchain(genesisJSON)
 	} else {
-		log.Log("validateBlocks is set to false. L1 blocks will not be validated.")
+		log.Log(fmt.Sprintf("Enclave-%d: validateBlocks is set to false. L1 blocks will not be validated.", obscurocommon.ShortAddress(id)))
 	}
 
 	return &enclaveImpl{
@@ -478,5 +482,6 @@ func NewEnclave(id common.Address, mining bool, validateBlocks bool, genesisJSON
 		exitCh:               make(chan bool),
 		speculativeWorkInCh:  make(chan bool),
 		speculativeWorkOutCh: make(chan speculativeWork),
+		txHandler:            txHandler,
 	}
 }

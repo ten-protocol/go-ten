@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
@@ -27,20 +29,20 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
 	miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
-	mockEthNetwork.CurrentNode = &miner
-	return &miner
+	mockEthNetwork.CurrentNode = miner
+	return miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
+func createInMemObscuroNode(id int64, genesis bool, txHandler mgmtcontractlib.TxHandler, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 
 	nodeID := common.BigToAddress(big.NewInt(id))
-	enclaveClient := enclave.NewEnclave(nodeID, true, false, nil, stats)
+	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, false, nil, stats)
 
 	// create an in memory obscuro node
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork, txHandler)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
@@ -54,7 +56,7 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p, ethereum_mock.NewMockTxHandler())
 
 	return &node
 }
