@@ -5,6 +5,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+// todo - this should become an elaborate data structure
+type SharedEnclaveSecret []byte
+
 func DecryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
 	t := make([]nodecommon.L2Tx, 0)
 	for _, tx := range txs {
@@ -29,13 +32,3 @@ func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
 	}
 	return bytes
 }
-
-//func DecryptRollup(rollup *nodecommon.Rollup) *Rollup {
-//	return &Rollup{
-//		Header:       rollup.Header,
-//		Transactions: DecryptTransactions(rollup.Transactions),
-//	}
-//}
-
-// todo - this should become an elaborate data structure
-type SharedEnclaveSecret []byte

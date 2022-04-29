@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	core2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestValidSignatureVerifies(t *testing.T) {
-	tx := core2.CreateL2Tx()
+	tx := obscurocore.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
 	signer := types.NewLondonSigner(big.NewInt(ChainID))
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
@@ -26,7 +26,7 @@ func TestValidSignatureVerifies(t *testing.T) {
 }
 
 func TestUnsignedTxDoesNotVerify(t *testing.T) {
-	tx := core2.CreateL2Tx()
+	tx := obscurocore.CreateL2Tx()
 
 	if err := verifySignature(tx); err == nil {
 		t.Errorf("transaction was not signed but verified anyway: %v", err)
@@ -34,7 +34,7 @@ func TestUnsignedTxDoesNotVerify(t *testing.T) {
 }
 
 func TestModifiedTxDoesNotVerify(t *testing.T) {
-	txData := core2.CreateL2TxData()
+	txData := obscurocore.CreateL2TxData()
 	tx := types.NewTx(txData)
 	privateKey, _ := crypto.GenerateKey()
 	signer := types.NewLondonSigner(big.NewInt(ChainID))
@@ -49,7 +49,7 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 }
 
 func TestIncorrectSignerDoesNotVerify(t *testing.T) {
-	tx := core2.CreateL2Tx()
+	tx := obscurocore.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
 	incorrectChainID := int64(ChainID + 1)
 	signer := types.NewLondonSigner(big.NewInt(incorrectChainID))

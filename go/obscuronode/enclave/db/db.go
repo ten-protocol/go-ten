@@ -14,17 +14,13 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// TODO - Further generify this interface's methods
-// TODO - Put this in a separate package to enclave
-
-// DB lives purely in the encrypted memory space of an enclave.
-// Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
-
 type blockAndHeight struct {
 	b      *types.Block
 	height uint64
 }
 
+// DB lives purely in the encrypted memory space of an enclave.
+// Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
 type inMemoryDB struct {
 	rollupGenesisHash common.Hash // TODO add lock protection, not needed atm
 
