@@ -42,10 +42,10 @@ func TestGanacheMemObscuroEthMonteCarloSimulation(t *testing.T) {
 		NumberOfNodes:             2,
 		NumberOfWallets:           2,
 		AvgBlockDuration:          time.Second,
-		SimulationTime:            15 * time.Second,
+		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
-		L2ToL1EfficiencyThreshold: 0.4,
+		L2ToL1EfficiencyThreshold: 0.9,
 		TxHandler:                 mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr),
 		MgmtContractAddr:          contractAddr,
 	}

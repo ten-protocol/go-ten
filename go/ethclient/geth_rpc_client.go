@@ -28,8 +28,7 @@ type gethRPCClient struct {
 	wallet    wallet.Wallet             // wallet containing the account information // TODO this does not need to be coupled together
 	chainID   int                       // chainID is used to sign transactions
 	txHandler mgmtcontractlib.TxHandler // converts L1TxData to ethereum transactions
-	lock      sync.RWMutex              // ensures no concurrent tx broadcasts
-	nonce     uint64                    // current nonce tracker
+	txLock    sync.RWMutex              // ensures no concurrent tx broadcasts
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
@@ -44,6 +43,8 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 		panic(err)
 	}
 
+	wallet.SetNonce(nonce)
+
 	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
 	return &gethRPCClient{
 		client:    client,
@@ -51,7 +52,6 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 		wallet:    wallet, // TODO this does not need to be coupled together
 		chainID:   1337,   // hardcoded for testnets // TODO this should be configured
 		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddress),
-		nonce:     nonce,
 	}, nil
 }
 
@@ -161,10 +161,10 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 }
 
 func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
-	e.lock.Lock()
-	defer e.lock.Unlock()
+	e.txLock.Lock()
+	defer e.txLock.Unlock()
 
-	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.nonce)
+	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.Nonce())
 	if err != nil {
 		panic(err)
 	}
@@ -174,7 +174,7 @@ func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
 		panic(err)
 	}
 
-	e.nonce++
+	e.wallet.IncrementNonce()
 }
 
 func (e *gethRPCClient) BlockListener() chan *types.Header {
