@@ -1,4 +1,4 @@
-package enclave
+package core
 
 import (
 	"math/big"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := createL2Tx()
+	tx := CreateL2Tx()
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic(err)
@@ -29,12 +29,12 @@ func TestSerialiseL2Tx(t *testing.T) {
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := createL2Tx()
+	tx := CreateL2Tx()
 	height := atomic.Value{}
 	height.Store(1)
 	rollup := nodecommon.Rollup{
 		Header:       NewRollup(obscurocommon.GenesisBlock.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0))).Header,
-		Transactions: encryptTransactions(L2Txs{*tx}),
+		Transactions: EncryptTransactions(L2Txs{*tx}),
 	}
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {

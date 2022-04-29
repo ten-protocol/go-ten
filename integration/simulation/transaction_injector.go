@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -34,7 +36,7 @@ type TransactionInjector struct {
 	l1Transactions     []obscurocommon.L1TxData
 
 	l2TransactionsLock sync.RWMutex
-	l2Transactions     enclave.L2Txs
+	l2Transactions     core.L2Txs
 
 	interruptRun     *int32
 	fullyStoppedChan chan bool
@@ -138,16 +140,16 @@ func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1TxData {
 }
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
-func (m *TransactionInjector) GetL2Transactions() (enclave.L2Txs, enclave.L2Txs) {
-	var transfers, withdrawals enclave.L2Txs
+func (m *TransactionInjector) GetL2Transactions() (core.L2Txs, core.L2Txs) {
+	var transfers, withdrawals core.L2Txs
 	for _, req := range m.l2Transactions {
 		r := req
-		switch enclave.TxData(&r).Type {
-		case enclave.TransferTx:
+		switch core.TxData(&r).Type {
+		case core.TransferTx:
 			transfers = append(transfers, req)
-		case enclave.WithdrawalTx:
+		case core.WithdrawalTx:
 			withdrawals = append(withdrawals, req)
-		case enclave.DepositTx:
+		case core.DepositTx:
 		}
 	}
 	return transfers, withdrawals
@@ -157,8 +159,8 @@ func (m *TransactionInjector) GetL2Transactions() (enclave.L2Txs, enclave.L2Txs)
 func (m *TransactionInjector) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
 	var withdrawals []nodecommon.Withdrawal
 	for _, req := range m.l2Transactions {
-		tx := enclave.TxData(&req) //nolint:gosec
-		if tx.Type == enclave.WithdrawalTx {
+		tx := core.TxData(&req) //nolint:gosec
+		if tx.Type == core.WithdrawalTx {
 			withdrawals = append(withdrawals, nodecommon.Withdrawal{Amount: tx.Amount, Address: tx.To})
 		}
 	}
@@ -175,7 +177,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		}
 		tx := wallet_mock.NewL2Transfer(fromWallet.Address, to, obscurocommon.RndBtw(1, 500))
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
-		encryptedTx := enclave.EncryptTx(signedTx)
+		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
 		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
 		go m.trackL2Tx(*signedTx)
@@ -206,7 +208,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		wallet := rndWallet(m.wallets)
 		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
-		encryptedTx := enclave.EncryptTx(signedTx)
+		encryptedTx := core.EncryptTx(signedTx)
 		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
 		m.stats.Withdrawal(v)
 		go m.trackL2Tx(*signedTx)
@@ -220,7 +222,7 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 		fromWallet := rndWallet(m.wallets)
 		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
 		signedTx := createInvalidSignature(tx, &fromWallet)
-		encryptedTx := enclave.EncryptTx(signedTx)
+		encryptedTx := core.EncryptTx(signedTx)
 		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
 	}
 }
@@ -240,7 +242,7 @@ func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet)
 
 	case 2: // We modify the transaction after signing.
 		// We create a new transaction, as we need access to the transaction's encapsulated transaction data.
-		txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: fromWallet.Address, Amount: obscurocommon.RndBtw(1, 100)}
+		txData := core.L2TxData{Type: core.WithdrawalTx, From: fromWallet.Address, Amount: obscurocommon.RndBtw(1, 100)}
 		newTx := wallet_mock.NewL2Tx(txData)
 		wallet_mock.SignTx(newTx, fromWallet.Key.PrivateKey)
 		// After signing the transaction, we create a new transaction based on the transaction data, breaking the signature.
