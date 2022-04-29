@@ -3,78 +3,62 @@ package walletextension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"io/ioutil"
 	"net/http"
 )
 
-const gethWebsocketAddr = "ws://localhost:8546"
-
+// WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct{}
 
 func NewWalletExtension() *WalletExtension {
 	return &WalletExtension{}
 }
 
-func (cp WalletExtension) Serve() {
-	// RPC request handler.
-	// This is a helpful resource: https://docs.alchemy.com/alchemy/apis/ethereum/eth_chainid.
-	http.HandleFunc("/", handleEthJsonReq)
+func (we WalletExtension) Serve(hostAndPort string) {
+	serveMux := http.NewServeMux()
 
-	// Web app handler.
-	http.Handle("/register/", http.StripPrefix("/register/", http.FileServer(http.Dir("./tools/walletextension/static"))))
-	http.HandleFunc("/manageViewingKeys", handleManageViewingKeys)
+	// Handles Ethereum JSON-RPC requests received over HTTP.
+	serveMux.HandleFunc("/", handleHttpEthJson)
 
-	err := http.ListenAndServe(":3000", nil)
+	// Handles the management of viewing keys.
+	serveMux.Handle("/viewingkeys/", http.StripPrefix("/viewingkeys/", http.FileServer(http.Dir("./tools/walletextension/static"))))
+	serveMux.HandleFunc("/getViewingKey", handleGetViewingKey)
+
+	err := http.ListenAndServe(hostAndPort, serveMux)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func handleEthJsonReq(resp http.ResponseWriter, req *http.Request) {
-	var jsonMap map[string]interface{}
+// Reads the Ethereum JSON-RPC request, and forwards it to the Geth node over a websocket.
+func handleHttpEthJson(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	// We unmarshall the JSON to inspect it.
+	var jsonMap map[string]interface{}
 	err = json.Unmarshal(body, &jsonMap)
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println(fmt.Sprintf("Received request: %s", body))
 
-	fmt.Println(fmt.Sprintf("Received %s request.", jsonMap["method"]))
-
-	// We forward requests on to the Geth node.
-	gethResp := forwardMsgOverWebsocket(gethWebsocketAddr, body)
+	// We forward the requests on to the Geth node.
+	gethResp := forwardMsgOverWebsocket(obxFacadeWebsocketAddr, body)
 	_, err = resp.Write(gethResp)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func handleManageViewingKeys(resp http.ResponseWriter, _ *http.Request) {
+// Returns a new viewing key.
+func handleGetViewingKey(resp http.ResponseWriter, _ *http.Request) {
 	// todo - generate viewing key properly
 	// todo - store private key
 	_, err := resp.Write([]byte("dummyViewingKey"))
 	if err != nil {
 		fmt.Println(err)
 	}
-}
-
-func forwardMsgOverWebsocket(url string, req []byte) []byte {
-	connection, _, err := websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	err = connection.WriteMessage(websocket.TextMessage, req)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	_, message, err := connection.ReadMessage()
-	if err != nil {
-		fmt.Println(err)
-	}
-	return message
 }

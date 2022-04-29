@@ -5,6 +5,9 @@ import (
 )
 
 func main() {
-	cp := walletextension.NewWalletExtension()
-	cp.Serve()
+	we := walletextension.NewWalletExtension()
+	of := walletextension.NewObxFacade()
+
+	go of.Serve("localhost:3001")
+	we.Serve("localhost:3000")
 }
