@@ -50,7 +50,7 @@ func handleEthJsonReq(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func handleManageViewingKeys(resp http.ResponseWriter, req *http.Request) {
+func handleManageViewingKeys(resp http.ResponseWriter, _ *http.Request) {
 	// todo - generate viewing key properly
 	// todo - store private key
 	_, err := resp.Write([]byte("dummyViewingKey"))
