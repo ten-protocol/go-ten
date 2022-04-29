@@ -25,7 +25,6 @@ type inMemoryDB struct {
 	rollupGenesisHash common.Hash // TODO add lock protection, not needed atm
 
 	stateMutex sync.RWMutex // Controls access to `statePerBlock`, `statePerRollup`, `headBlock`, `rollupsByHeight` and `rollups`
-	mpMutex    sync.RWMutex // Controls access to `mempool`
 	blockMutex sync.RWMutex // Controls access to `blockCache`
 	txMutex    sync.RWMutex // Controls access to `txsPerRollupCache`
 
@@ -34,7 +33,6 @@ type inMemoryDB struct {
 	headBlock         obscurocommon.L1RootHash
 	rollupsByHeight   map[uint64][]*core.Rollup
 	rollups           map[obscurocommon.L2RootHash]*core.Rollup
-	mempool           map[common.Hash]nodecommon.L2Tx
 	blockCache        map[obscurocommon.L1RootHash]*blockAndHeight
 	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx
 
@@ -47,8 +45,6 @@ func newInMemoryDB() *inMemoryDB {
 		stateMutex:        sync.RWMutex{},
 		rollupsByHeight:   make(map[uint64][]*core.Rollup),
 		rollups:           make(map[obscurocommon.L2RootHash]*core.Rollup),
-		mempool:           make(map[common.Hash]nodecommon.L2Tx),
-		mpMutex:           sync.RWMutex{},
 		statePerRollup:    make(map[obscurocommon.L2RootHash]*State),
 		blockCache:        map[obscurocommon.L1RootHash]*blockAndHeight{},
 		blockMutex:        sync.RWMutex{},
@@ -140,38 +136,6 @@ func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {
 	defer db.stateMutex.RUnlock()
 
 	return db.statePerRollup[hash]
-}
-
-func (db *inMemoryDB) AddMempoolTx(tx nodecommon.L2Tx) {
-	db.mpMutex.Lock()
-	defer db.mpMutex.Unlock()
-
-	db.mempool[tx.Hash()] = tx
-}
-
-func (db *inMemoryDB) FetchMempoolTxs() []nodecommon.L2Tx {
-	db.mpMutex.RLock()
-	defer db.mpMutex.RUnlock()
-
-	mpCopy := make([]nodecommon.L2Tx, 0)
-	for _, tx := range db.mempool {
-		mpCopy = append(mpCopy, tx)
-	}
-	return mpCopy
-}
-
-func (db *inMemoryDB) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash) {
-	db.mpMutex.Lock()
-	defer db.mpMutex.Unlock()
-
-	r := make(map[common.Hash]nodecommon.L2Tx)
-	for id, t := range db.mempool {
-		_, f := toRemove[id]
-		if !f {
-			r[id] = t
-		}
-	}
-	db.mempool = r
 }
 
 func (db *inMemoryDB) StoreBlock(b *types.Block, height uint64) {

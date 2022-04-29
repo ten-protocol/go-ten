@@ -45,6 +45,10 @@ type RollupResolver interface {
 	StoreRollup(rollup *core.Rollup)
 	// ParentRollup returns the rollup's parent rollup
 	ParentRollup(rollup *core.Rollup) *core.Rollup
+	// FetchRollupTxs returns all transactions in a given rollup keyed by hash and true, or (nil, false) if the rollup is unknown
+	FetchRollupTxs(rollup *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
+	// StoreRollupTxs overwrites the transactions associated with a given rollup
+	StoreRollupTxs(rollup *core.Rollup, newTxs map[common.Hash]nodecommon.L2Tx)
 }
 
 type StateStorage interface {
@@ -58,19 +62,6 @@ type StateStorage interface {
 	FetchRollupState(hash obscurocommon.L2RootHash) *State
 	// SetRollupState persists the state after adding the rollup with the given hash
 	SetRollupState(hash obscurocommon.L2RootHash, state *State)
-}
-
-type MempoolManager interface {
-	// FetchMempoolTxs returns all L2 transactions in the mempool
-	FetchMempoolTxs() []nodecommon.L2Tx
-	// AddMempoolTx adds an L2 transaction to the mempool
-	AddMempoolTx(tx nodecommon.L2Tx)
-	// RemoveMempoolTxs removes any L2 transactions whose hash is keyed in the map from the mempool
-	RemoveMempoolTxs(toRemove map[common.Hash]common.Hash)
-	// FetchRollupTxs returns all transactions in a given rollup keyed by hash and true, or (nil, false) if the rollup is unknown
-	FetchRollupTxs(rollup *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
-	// StoreRollupTxs overwrites the transactions associated with a given rollup
-	StoreRollupTxs(rollup *core.Rollup, newTxs map[common.Hash]nodecommon.L2Tx)
 }
 
 type SharedSecretStorage interface {
@@ -89,7 +80,6 @@ type SharedSecretStorage interface {
 type Storage interface {
 	BlockResolver
 	RollupResolver
-	MempoolManager
 	SharedSecretStorage
 	StateStorage
 }
@@ -154,21 +144,6 @@ func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 func (s *storageImpl) FetchRollupState(hash obscurocommon.L2RootHash) *State {
 	s.assertSecretAvailable()
 	return s.db.FetchRollupState(hash)
-}
-
-func (s *storageImpl) AddMempoolTx(tx nodecommon.L2Tx) {
-	s.assertSecretAvailable()
-	s.db.AddMempoolTx(tx)
-}
-
-func (s *storageImpl) FetchMempoolTxs() []nodecommon.L2Tx {
-	s.assertSecretAvailable()
-	return s.db.FetchMempoolTxs()
-}
-
-func (s *storageImpl) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash) {
-	s.assertSecretAvailable()
-	s.db.RemoveMempoolTxs(toRemove)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) bool {

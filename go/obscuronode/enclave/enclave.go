@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/mempool"
+
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
@@ -33,6 +35,7 @@ type enclaveImpl struct {
 	mining         bool
 	storage        db.Storage
 	blockResolver  db.BlockResolver
+	mempool        mempool.Manager
 	statsCollector StatsCollector
 	l1Blockchain   *core.BlockChain
 
@@ -77,7 +80,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.state = db.CopyState(e.storage.FetchRollupState(winnerRollup.Hash()))
 
 			// determine the transactions that were not yet included
-			env.processedTxs = currentTxs(winnerRollup, e.storage.FetchMempoolTxs(), e.storage)
+			env.processedTxs = currentTxs(winnerRollup, e.mempool.FetchMempoolTxs(), e.storage)
 			env.processedTxsMap = makeMap(env.processedTxs)
 
 			// calculate the State after executing them
@@ -190,7 +193,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
-	e.storage.RemoveMempoolTxs(historicTxs(blockState.Head, e.storage))
+	e.mempool.RemoveMempoolTxs(historicTxs(blockState.Head, e.storage))
 	r := e.produceRollup(&block, blockState)
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
@@ -221,7 +224,7 @@ func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	if err != nil {
 		return err
 	}
-	e.storage.AddMempoolTx(decryptedTx)
+	e.mempool.AddMempoolTx(decryptedTx)
 	e.txCh <- decryptedTx
 	return nil
 }
@@ -309,7 +312,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscuroc
 
 		newRollupHeader = obscurocore.NewHeader(bs.Head, bs.Head.Header.Height+1, e.node)
 		// determine transactions to include in new rollup and process them
-		newRollupTxs = currentTxs(bs.Head, e.storage.FetchMempoolTxs(), e.storage)
+		newRollupTxs = currentTxs(bs.Head, e.mempool.FetchMempoolTxs(), e.storage)
 		newRollupState = executeTransactions(newRollupTxs, bs.State, newRollupHeader)
 	}
 
@@ -475,6 +478,7 @@ func NewEnclave(id common.Address, mining bool, txHandler mgmtcontractlib.TxHand
 		mining:               mining,
 		storage:              storage,
 		blockResolver:        storage,
+		mempool:              mempool.New(),
 		statsCollector:       collector,
 		l1Blockchain:         l1Blockchain,
 		txCh:                 make(chan nodecommon.L2Tx),
