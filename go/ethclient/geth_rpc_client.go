@@ -36,6 +36,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
+	// gets the next nonce to use on the account
 	nonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
 	if err != nil {
 		panic(err)

@@ -17,6 +17,7 @@ type Wallet interface {
 	SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error)
 
 	// SetNonce overrides the current nonce
+	// The Nonce is expected to be the next nonce to use in a transaction, not the current account Nonce
 	SetNonce(nonce uint64)
 	// GetNonceAndIncrement atomically increments the nonce by one and returns the previous value
 	GetNonceAndIncrement() uint64
