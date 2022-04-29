@@ -107,7 +107,7 @@ func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
 }
 
 func NewStorage() Storage {
-	db := NewInMemoryDB()
+	db := newInMemoryDB()
 	return &storageImpl{db: db}
 }
 

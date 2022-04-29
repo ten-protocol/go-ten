@@ -41,7 +41,7 @@ type inMemoryDB struct {
 	sharedEnclaveSecret core.SharedEnclaveSecret
 }
 
-func NewInMemoryDB() *inMemoryDB {
+func newInMemoryDB() *inMemoryDB {
 	return &inMemoryDB{
 		statePerBlock:     make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:        sync.RWMutex{},
