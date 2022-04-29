@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -28,7 +27,6 @@ type gethRPCClient struct {
 	wallet    wallet.Wallet             // wallet containing the account information // TODO this does not need to be coupled together
 	chainID   int                       // chainID is used to sign transactions
 	txHandler mgmtcontractlib.TxHandler // converts L1TxData to ethereum transactions
-	txLock    sync.RWMutex              // ensures no concurrent tx broadcasts
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
@@ -161,10 +159,7 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 }
 
 func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
-	e.txLock.Lock()
-	defer e.txLock.Unlock()
-
-	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.IncrementNonce())
+	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.GetNonceAndIncrement())
 	if err != nil {
 		panic(err)
 	}

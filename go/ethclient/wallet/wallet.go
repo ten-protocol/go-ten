@@ -18,8 +18,8 @@ type Wallet interface {
 
 	// SetNonce overrides the current nonce
 	SetNonce(nonce uint64)
-	// IncrementNonce increments the nonce by one
-	IncrementNonce() uint64
+	// GetNonceAndIncrement atomically increments the nonce by one and returns the previous value
+	GetNonceAndIncrement() uint64
 }
 
 type inMemoryWallet struct {
@@ -56,9 +56,8 @@ func (m *inMemoryWallet) Address() common.Address {
 	return m.pubKeyAddr
 }
 
-func (m *inMemoryWallet) IncrementNonce() uint64 {
-	atomic.AddUint64(&m.nonce, 1)
-	return m.nonce - 1
+func (m *inMemoryWallet) GetNonceAndIncrement() uint64 {
+	return atomic.AddUint64(&m.nonce, 1) - 1
 }
 
 func (m *inMemoryWallet) SetNonce(nonce uint64) {
