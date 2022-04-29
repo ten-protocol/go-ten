@@ -1,4 +1,4 @@
-package main
+package walletextension
 
 import (
 	"encoding/json"
@@ -10,17 +10,19 @@ import (
 
 const gethWebsocketAddr = "ws://localhost:8546"
 
-func main() {
-	serve()
+type WalletExtension struct{}
+
+func NewWalletExtension() *WalletExtension {
+	return &WalletExtension{}
 }
 
-func serve() {
+func (cp WalletExtension) Serve() {
 	// RPC request handler.
 	// This is a helpful resource: https://docs.alchemy.com/alchemy/apis/ethereum/eth_chainid.
 	http.HandleFunc("/", handleEthJsonReq)
 
 	// Web app handler.
-	http.Handle("/register/", http.StripPrefix("/register/", http.FileServer(http.Dir("./tools/clientproxy/main/static"))))
+	http.Handle("/register/", http.StripPrefix("/register/", http.FileServer(http.Dir("./tools/walletextension/static"))))
 	http.HandleFunc("/manageViewingKeys", handleManageViewingKeys)
 
 	err := http.ListenAndServe(":3000", nil)
