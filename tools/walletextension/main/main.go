@@ -1,12 +1,18 @@
 package main
 
 import (
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/tools/walletextension"
 )
 
 func main() {
-	we := walletextension.NewWalletExtension()
-	of := walletextension.NewObxFacade()
+	enclavePrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+
+	we := walletextension.NewWalletExtension(&enclavePrivateKey.PublicKey)
+	of := walletextension.NewObxFacade(enclavePrivateKey)
 
 	go of.Serve("localhost:3001")
 	we.Serve("localhost:3000")
