@@ -22,22 +22,30 @@ wallets (e.g. MetaMask, hardware wallets) and webapps to the Obscuro host.
 
 The node gateway is a local server application that serves two endpoints:
 
-* An endpoint for registering new *viewing keys*
+* An endpoint for managing *viewing keys*
 * An endpoint that meets the Ethereum JSON-RPC specification
 
-The node gateway also maintains an RPC connection to the Obscuro host.
+The node gateway also maintains an RPC connection to one or more Obscuro hosts.
 
 ### Viewing-keys endpoint
 
-This endpoint serves a webpage where the end user can generate new viewing keys for their account. A fresh keypair is 
-generated, the private key is stored locally by the node gateway, and the public key is sent to the enclave via the 
-host over RPC.
+This endpoint serves a webpage where the end user can generate new viewing keys for their account. For each generation, 
+the following steps are taken:
+
+* The node gateway generates a new keypair
+* The node gateway stores the private key locally
+* The end user signs a payload containing the public key and some metadata using their wallet
+* The node gateway sends the public key to the Obscuro enclave via the Obscuro host over RPC
 
 Whenever an enclave needs to send sensitive information to the end user (e.g. a transaction result or account balance), 
 it encrypts the sensitive information with the viewing key of the account.
 
 This ensures that the sensitive information can only be decrypted by the node gateway. By generating new viewing keys 
 through a webpage, we maintain compatibility with MetaMask.
+
+If multiple viewing keys are registered for a single account, a separate encrypted payload is sent for each viewing key.
+
+This endpoint will also have to handle the expiry of viewing keys.
 
 ### Ethereum JSON-RPC endpoint
 
@@ -51,6 +59,13 @@ respects:
 
 This ensures that the encryption and decryption involved in the Obscuro protocol is transparent to the end user, and 
 that we are not relying on decryption capabilities being available in the wallet.
+
+## Known limitations
+
+* An additional set of keys, the viewing keys, must be managed outside of the user's wallet
+  * Note, however, that these keys are far less sensitive than the signing keys; they only allow an attacker to view, 
+    but not modify, the user's ledger
+* The end user must run an additional component; this precludes mobile-only wallets
 
 ## Alternatives considered
 
