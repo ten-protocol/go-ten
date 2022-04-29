@@ -1,11 +1,14 @@
-package enclave
+package core
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-func decryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
+// todo - this should become an elaborate data structure
+type SharedEnclaveSecret []byte
+
+func DecryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
 	t := make([]nodecommon.L2Tx, 0)
 	for _, tx := range txs {
 		t = append(t, DecryptTx(tx))
@@ -28,19 +31,4 @@ func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
 		panic("no!")
 	}
 	return bytes
-}
-
-func encryptTransactions(transactions L2Txs) nodecommon.EncryptedTransactions {
-	result := make([]nodecommon.EncryptedTx, 0)
-	for i := range transactions {
-		result = append(result, EncryptTx(&transactions[i]))
-	}
-	return result
-}
-
-func DecryptRollup(rollup *nodecommon.Rollup) *Rollup {
-	return &Rollup{
-		Header:       rollup.Header,
-		Transactions: decryptTransactions(rollup.Transactions),
-	}
 }
