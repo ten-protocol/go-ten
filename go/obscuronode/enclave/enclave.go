@@ -35,7 +35,7 @@ type enclaveImpl struct {
 	mining         bool
 	storage        db.Storage
 	blockResolver  db.BlockResolver
-	mempool        mempool.MempoolManager
+	mempool        mempool.Manager
 	statsCollector StatsCollector
 	l1Blockchain   *core.BlockChain
 

@@ -12,7 +12,7 @@ type mempoolManager struct {
 	mempool map[common.Hash]nodecommon.L2Tx
 }
 
-func New() MempoolManager {
+func New() Manager {
 	return &mempoolManager{
 		mempool: make(map[common.Hash]nodecommon.L2Tx),
 		mpMutex: sync.RWMutex{},

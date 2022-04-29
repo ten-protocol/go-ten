@@ -5,7 +5,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-type MempoolManager interface {
+type Manager interface {
 	// FetchMempoolTxs returns all L2 transactions in the mempool
 	FetchMempoolTxs() []nodecommon.L2Tx
 	// AddMempoolTx adds an L2 transaction to the mempool
