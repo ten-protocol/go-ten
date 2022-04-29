@@ -3,9 +3,10 @@ package ethereummock
 import (
 	"sync"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -23,7 +24,15 @@ type blockResolverInMem struct {
 	m          sync.RWMutex
 }
 
-func NewResolver() enclave.BlockResolver {
+func (n *blockResolverInMem) ProofHeight(_ *core.Rollup) int64 {
+	panic("implement me")
+}
+
+func (n *blockResolverInMem) Proof(_ *core.Rollup) *types.Block {
+	panic("implement me")
+}
+
+func NewResolver() db.BlockResolver {
 	return &blockResolverInMem{
 		blockCache: map[obscurocommon.L1RootHash]blockAndHeight{},
 		m:          sync.RWMutex{},
@@ -159,7 +168,7 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[obscurocommon.TxHash]*obsc
 func removeCommittedTransactions(
 	cb *types.Block,
 	mempool []*obscurocommon.L1Tx,
-	resolver enclave.BlockResolver,
+	resolver db.BlockResolver,
 	db TxDB,
 ) []*obscurocommon.L1Tx {
 	if resolver.HeightBlock(cb) <= obscurocommon.HeightCommittedBlocks {

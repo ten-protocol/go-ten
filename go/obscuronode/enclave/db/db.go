@@ -1,7 +1,9 @@
-package enclave
+package db
 
 import (
 	"sync"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
@@ -17,53 +19,6 @@ import (
 
 // DB lives purely in the encrypted memory space of an enclave.
 // Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
-type DB interface {
-	// FetchBlockAndHeight returns the L1 block with the given hash, its height and true, or (nil, false) if no such block is stored
-	FetchBlockAndHeight(hash obscurocommon.L1RootHash) (*blockAndHeight, bool)
-	// StoreBlock persists the L1 block and its height in the chain
-	StoreBlock(b *types.Block, height uint64)
-	// FetchHeadBlock returns the L1 block at the head of the chain
-	FetchHeadBlock() obscurocommon.L1RootHash
-
-	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored
-	FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
-	// FetchRollups returns all the proposed rollups with the given height
-	FetchRollups(height uint64) []*Rollup
-	// StoreRollup persists the rollup
-	StoreRollup(rollup *Rollup)
-
-	// FetchBlockState returns the state after ingesting the L1 block with the given hash
-	FetchBlockState(hash obscurocommon.L1RootHash) (*blockState, bool)
-	// SetBlockState persists the state after ingesting the L1 block with the given hash
-	SetBlockState(hash obscurocommon.L1RootHash, state *blockState)
-	// SetBlockStateNewRollup persists the state after ingesting the L1 block with the given hash that contains a new rollup
-	SetBlockStateNewRollup(hash obscurocommon.L1RootHash, state *blockState)
-	// FetchRollupState returns the state after adding the rollup with the given hash
-	FetchRollupState(hash obscurocommon.L2RootHash) *State
-	// SetRollupState persists the state after adding the rollup with the given hash
-	SetRollupState(hash obscurocommon.L2RootHash, state *State)
-
-	// FetchMempoolTxs returns all L2 transactions in the mempool
-	FetchMempoolTxs() []nodecommon.L2Tx
-	// AddMempoolTx adds an L2 transaction to the mempool
-	AddMempoolTx(tx nodecommon.L2Tx)
-	// RemoveMempoolTxs removes any L2 transactions whose hash is keyed in the map from the mempool
-	RemoveMempoolTxs(remove map[common.Hash]common.Hash)
-	// FetchRollupTxs returns all transactions in a given rollup keyed by hash and true, or (nil, false) if the rollup is unknown
-	FetchRollupTxs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
-	// StoreRollupTxs overwrites the transactions associated with a given rollup
-	StoreRollupTxs(*Rollup, map[common.Hash]nodecommon.L2Tx)
-
-	// FetchSecret returns the enclave's secret
-	FetchSecret() SharedEnclaveSecret
-	// StoreSecret stores a secret in the enclave
-	StoreSecret(secret SharedEnclaveSecret)
-
-	// StoreGenesisRollup stores the rollup genesis
-	StoreGenesisRollup(rol *Rollup)
-	// FetchGenesisRollup returns the rollup genesis
-	FetchGenesisRollup() *Rollup
-}
 
 type blockAndHeight struct {
 	b      *types.Block
@@ -78,24 +33,24 @@ type inMemoryDB struct {
 	blockMutex sync.RWMutex // Controls access to `blockCache`
 	txMutex    sync.RWMutex // Controls access to `txsPerRollupCache`
 
-	statePerBlock     map[obscurocommon.L1RootHash]*blockState
+	statePerBlock     map[obscurocommon.L1RootHash]*BlockState
 	statePerRollup    map[obscurocommon.L2RootHash]*State
 	headBlock         obscurocommon.L1RootHash
-	rollupsByHeight   map[uint64][]*Rollup
-	rollups           map[obscurocommon.L2RootHash]*Rollup
+	rollupsByHeight   map[uint64][]*core.Rollup
+	rollups           map[obscurocommon.L2RootHash]*core.Rollup
 	mempool           map[common.Hash]nodecommon.L2Tx
 	blockCache        map[obscurocommon.L1RootHash]*blockAndHeight
 	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx
 
-	sharedEnclaveSecret SharedEnclaveSecret
+	sharedEnclaveSecret core.SharedEnclaveSecret
 }
 
-func NewInMemoryDB() DB {
+func NewInMemoryDB() *inMemoryDB {
 	return &inMemoryDB{
-		statePerBlock:     make(map[obscurocommon.L1RootHash]*blockState),
+		statePerBlock:     make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:        sync.RWMutex{},
-		rollupsByHeight:   make(map[uint64][]*Rollup),
-		rollups:           make(map[obscurocommon.L2RootHash]*Rollup),
+		rollupsByHeight:   make(map[uint64][]*core.Rollup),
+		rollups:           make(map[obscurocommon.L2RootHash]*core.Rollup),
 		mempool:           make(map[common.Hash]nodecommon.L2Tx),
 		mpMutex:           sync.RWMutex{},
 		statePerRollup:    make(map[obscurocommon.L2RootHash]*State),
@@ -106,17 +61,17 @@ func NewInMemoryDB() DB {
 	}
 }
 
-func (db *inMemoryDB) StoreGenesisRollup(rol *Rollup) {
+func (db *inMemoryDB) StoreGenesisRollup(rol *core.Rollup) {
 	db.rollupGenesisHash = rol.Hash()
 	db.StoreRollup(rol)
 }
 
-func (db *inMemoryDB) FetchGenesisRollup() *Rollup {
+func (db *inMemoryDB) FetchGenesisRollup() *core.Rollup {
 	r, _ := db.FetchRollup(db.rollupGenesisHash)
 	return r
 }
 
-func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (*blockState, bool) {
+func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
@@ -124,7 +79,7 @@ func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (*blockStat
 	return val, found
 }
 
-func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state *blockState) {
+func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
@@ -133,13 +88,13 @@ func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state *blockS
 	db.headBlock = hash
 }
 
-func (db *inMemoryDB) SetBlockStateNewRollup(hash obscurocommon.L1RootHash, state *blockState) {
+func (db *inMemoryDB) SetBlockStateNewRollup(hash obscurocommon.L1RootHash, state *BlockState) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
 	db.statePerBlock[hash] = state
-	db.rollups[state.head.Hash()] = state.head
-	db.statePerRollup[state.head.Hash()] = state.state
+	db.rollups[state.Head.Hash()] = state.Head
+	db.statePerRollup[state.Head.Hash()] = state.State
 	// todo - is there any other logic here?
 	db.headBlock = hash
 }
@@ -156,7 +111,7 @@ func (db *inMemoryDB) FetchHeadBlock() obscurocommon.L1RootHash {
 }
 
 // TODO - Pull this logic into the storage layer.
-func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
+func (db *inMemoryDB) StoreRollup(rollup *core.Rollup) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
@@ -165,11 +120,11 @@ func (db *inMemoryDB) StoreRollup(rollup *Rollup) {
 	if found {
 		db.rollupsByHeight[rollup.Header.Height] = append(val, rollup)
 	} else {
-		db.rollupsByHeight[rollup.Header.Height] = []*Rollup{rollup}
+		db.rollupsByHeight[rollup.Header.Height] = []*core.Rollup{rollup}
 	}
 }
 
-func (db *inMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool) {
+func (db *inMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, bool) {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
@@ -177,7 +132,7 @@ func (db *inMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*Rollup, bool)
 	return r, f
 }
 
-func (db *inMemoryDB) FetchRollups(height uint64) []*Rollup {
+func (db *inMemoryDB) FetchRollups(height uint64) []*core.Rollup {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
@@ -238,7 +193,7 @@ func (db *inMemoryDB) FetchBlockAndHeight(hash obscurocommon.L1RootHash) (*block
 	return val, f
 }
 
-func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
+func (db *inMemoryDB) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
 	db.txMutex.RLock()
 	defer db.txMutex.RUnlock()
 
@@ -246,17 +201,17 @@ func (db *inMemoryDB) FetchRollupTxs(r *Rollup) (map[common.Hash]nodecommon.L2Tx
 	return val, found
 }
 
-func (db *inMemoryDB) StoreRollupTxs(r *Rollup, newMap map[common.Hash]nodecommon.L2Tx) {
+func (db *inMemoryDB) StoreRollupTxs(r *core.Rollup, newMap map[common.Hash]nodecommon.L2Tx) {
 	db.txMutex.Lock()
 	defer db.txMutex.Unlock()
 
 	db.txsPerRollupCache[r.Hash()] = newMap
 }
 
-func (db *inMemoryDB) StoreSecret(secret SharedEnclaveSecret) {
+func (db *inMemoryDB) StoreSecret(secret core.SharedEnclaveSecret) {
 	db.sharedEnclaveSecret = secret
 }
 
-func (db *inMemoryDB) FetchSecret() SharedEnclaveSecret {
+func (db *inMemoryDB) FetchSecret() core.SharedEnclaveSecret {
 	return db.sharedEnclaveSecret
 }

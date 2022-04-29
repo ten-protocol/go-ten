@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
@@ -48,7 +48,7 @@ type Node struct {
 	Network  L1Network
 	mining   bool
 	stats    StatsCollector
-	Resolver enclave.BlockResolver
+	Resolver db.BlockResolver
 	db       TxDB
 
 	// Channels
@@ -67,11 +67,11 @@ type Node struct {
 	txHandler mgmtcontractlib.TxHandler
 }
 
-func (m *Node) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
+func (m *Node) SubmitTransaction(_ types.TxData) (*types.Transaction, error) {
 	panic("method should never be called in this mock")
 }
 
-func (m *Node) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
+func (m *Node) FetchTxReceipt(_ common.Hash) (*types.Receipt, error) {
 	panic("method should never be called in this mock")
 }
 
