@@ -3,67 +3,76 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"io/ioutil"
 	"net/http"
 )
 
+const gethWebsocketAddr = "ws://localhost:8546"
+
 func main() {
+	serve()
+}
+
+func serve() {
 	// RPC request handler.
 	// This is a helpful resource: https://docs.alchemy.com/alchemy/apis/ethereum/eth_chainid.
-	http.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
-		var jsonMap map[string]interface{}
-		body, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			fmt.Println(err)
-		}
-		err = json.Unmarshal(body, &jsonMap)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		switch jsonMap["method"] {
-		case "eth_blockNumber":
-			fmt.Println("Received eth_blockNumber request.")
-			_, err = resp.Write([]byte("{\"result\": \"999\"}"))
-			if err != nil {
-				fmt.Println(err)
-			}
-		case "eth_chainId":
-			fmt.Println("Received eth_chainId request.")
-			_, err = resp.Write([]byte("{\"result\": \"0x309\"}"))
-			if err != nil {
-				fmt.Println(err)
-			}
-		case "eth_gasPrice":
-			fmt.Println("Received eth_gasPrice request.")
-			_, err = resp.Write([]byte("{\"result\": \"0\"}"))
-			if err != nil {
-				fmt.Println(err)
-			}
-		case "eth_estimateGas":
-			fmt.Println("Received eth_estimateGas request.")
-			_, err = resp.Write([]byte("{\"result\": \"0\"}"))
-			if err != nil {
-				fmt.Println(err)
-			}
-		default:
-			fmt.Print("Received unhandled request:")
-			fmt.Println(jsonMap["method"])
-		}
-	})
+	http.HandleFunc("/", handleEthJsonReq)
 
 	// Web app handler.
 	http.Handle("/register/", http.StripPrefix("/register/", http.FileServer(http.Dir("./tools/clientproxy/main/static"))))
-	http.HandleFunc("/generateViewingKeyPair", func(resp http.ResponseWriter, req *http.Request) {
-		// todo - generate viewing key properly
-		// todo - store private key
-		_, err := resp.Write([]byte("dummyViewingKey"))
-		if err != nil {
-			fmt.Println(err)
-		}
-	})
+	http.HandleFunc("/manageViewingKeys", handleManageViewingKeys)
+
 	err := http.ListenAndServe(":3000", nil)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func handleEthJsonReq(resp http.ResponseWriter, req *http.Request) {
+	var jsonMap map[string]interface{}
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = json.Unmarshal(body, &jsonMap)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(fmt.Sprintf("Received %s request.", jsonMap["method"]))
+
+	// We forward requests on to the Geth node.
+	gethResp := forwardMsgOverWebsocket(gethWebsocketAddr, body)
+	_, err = resp.Write(gethResp)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func handleManageViewingKeys(resp http.ResponseWriter, req *http.Request) {
+	// todo - generate viewing key properly
+	// todo - store private key
+	_, err := resp.Write([]byte("dummyViewingKey"))
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func forwardMsgOverWebsocket(url string, req []byte) []byte {
+	connection, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = connection.WriteMessage(websocket.TextMessage, req)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	_, message, err := connection.ReadMessage()
+	if err != nil {
+		fmt.Println(err)
+	}
+	return message
 }

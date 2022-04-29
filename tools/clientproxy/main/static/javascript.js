@@ -6,7 +6,7 @@ const initialize = () => {
 
     // todo - disable button after click
     generateViewingKeyButton.addEventListener('click', async () => {
-        const viewingPublicKeyResp = await fetch('/generateViewingKeyPair');
+        const viewingPublicKeyResp = await fetch('/manageViewingKeys');
         const viewingPublicKey = await viewingPublicKeyResp.text()
         viewingKey.innerText = viewingPublicKey
     })
