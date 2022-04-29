@@ -69,20 +69,25 @@ that we are not relying on decryption capabilities being available in the wallet
 
 ## Alternatives considered
 
-### Chrome and Firefox extension
+### Alternatives to a local server application
 
-Chrome extensions can only make outbound network requests, and cannot serve an endpoint. Chrome has a [`chrome.socket` 
-API](https://developer.chrome.com/docs/extensions/reference/socket/), but it is only available to Chrome apps, and not 
-extensions.
+#### Chrome and Firefox extension
+
+This is appealing because the user experience of installing and running a browser extension is better than the user 
+experience of installing and running a local application.
+
+However, this approach is unworkable because Chrome extensions can only make outbound network requests, and cannot 
+serve an endpoint. Chrome has a [`chrome.socket` API](https://developer.chrome.com/docs/extensions/reference/socket/), 
+but it is only available to Chrome apps, and not extensions.
 
 The penetration of Firefox was considered to be too low for a Firefox-extension-only approach to be considered viable.
 
-### Chrome app
+#### Chrome app
 
 Chrome apps are deprecated, and their support status is uncertain (see 
 [here](https://blog.chromium.org/2021/10/extending-chrome-app-support-on-chrome.html)).
 
-### MetaMask snap
+#### MetaMask snap
 
 Snaps are an experimental MetaMask capability.
 
@@ -92,3 +97,18 @@ Snaps have several downsides:
   snap
 * Snaps are only compatible with MetaMask
 * Snaps are marked as experimental and require users to switch from MetaMask to the experimental MetaMask Flask
+
+### Alternatives to using viewing keys
+
+Instead of viewing keys, we could encrypt and decrypt using the end user's existing account key.
+
+This would obviate the need for us to implement a key management solution.
+
+However, it has several downsides:
+
+* It does not support hardware wallets, since hardware wallets do not provide an API to decrypt using their account 
+  private key
+* It may not be possible with MetaMask - the local server application would somehow have to speak to the browser to 
+  access the MetaMask API; this may be possible through a combination of a Chrome extension and websockets, but is 
+  unproven
+* It would lead to a high number of MetaMask prompts
