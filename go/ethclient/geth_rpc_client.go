@@ -164,7 +164,7 @@ func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
 	e.txLock.Lock()
 	defer e.txLock.Unlock()
 
-	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.Nonce())
+	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.IncrementNonce())
 	if err != nil {
 		panic(err)
 	}
@@ -173,8 +173,6 @@ func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
 	if err != nil {
 		panic(err)
 	}
-
-	e.wallet.IncrementNonce()
 }
 
 func (e *gethRPCClient) BlockListener() chan *types.Header {

@@ -3,7 +3,7 @@ package wallet
 import (
 	"crypto/ecdsa"
 	"math/big"
-	"sync"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -18,10 +18,8 @@ type Wallet interface {
 
 	// SetNonce overrides the current nonce
 	SetNonce(nonce uint64)
-	// Nonce returns the current nonce
-	Nonce() uint64
 	// IncrementNonce increments the nonce by one
-	IncrementNonce()
+	IncrementNonce() uint64
 }
 
 type inMemoryWallet struct {
@@ -29,7 +27,6 @@ type inMemoryWallet struct {
 	pubKey     *ecdsa.PublicKey
 	pubKeyAddr common.Address
 	nonce      uint64
-	nlock      sync.RWMutex
 }
 
 func NewInMemoryWallet(pk string) Wallet {
@@ -59,20 +56,11 @@ func (m *inMemoryWallet) Address() common.Address {
 	return m.pubKeyAddr
 }
 
-func (m *inMemoryWallet) Nonce() uint64 {
-	m.nlock.RLock()
-	defer m.nlock.RUnlock()
-	return m.nonce
-}
-
-func (m *inMemoryWallet) IncrementNonce() {
-	m.nlock.Lock()
-	defer m.nlock.Unlock()
-	m.nonce++
+func (m *inMemoryWallet) IncrementNonce() uint64 {
+	atomic.AddUint64(&m.nonce, 1)
+	return m.nonce - 1
 }
 
 func (m *inMemoryWallet) SetNonce(nonce uint64) {
-	m.nlock.Lock()
-	defer m.nlock.Unlock()
 	m.nonce = nonce
 }
