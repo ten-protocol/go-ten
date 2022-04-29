@@ -1,47 +1,47 @@
-# Node gateway design
+# Wallet extension design
 
 ## Scope
 
-The design for the node gateway, a component that is responsible for handling RPC requests from traditional Ethereum 
+The design for the wallet extension, a component that is responsible for handling RPC requests from traditional Ethereum 
 wallets (e.g. MetaMask, hardware wallets) and webapps to the Obscuro host.
 
 ## Requirements
 
-* The node gateway serves an endpoint that meets the [Ethereum JSON-RPC specification
+* The wallet extension serves an endpoint that meets the [Ethereum JSON-RPC specification
   ](https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/ethereum/eth1.0-apis/assembled-spec/openrpc.json)
-* The node gateway is run locally by the end user
-* The node gateway does not broadcast any sensitive information (e.g. transactions, balances) in plaintext
+* The wallet extension is run locally by the end user
+* The wallet extension does not broadcast any sensitive information (e.g. transactions, balances) in plaintext
 * The encryption keys are only known to the client (e.g. wallet, webapp), and not to any third-parties
 * The encryption is transparent to the client; from the client's perspective, they are interacting with a "standard" 
   non-encrypting implementation of the Ethereum JSON-RPC specification
-* The node gateway is usable by any webapp or wallet type, and in particular:
+* The wallet extension is usable by any webapp or wallet type, and in particular:
   * Hardware wallets that do not offer a decryption capability
   * MetaMask, for which the keys are only available when running in the browser
 
 ## Design
 
-The node gateway is a local server application that serves two endpoints:
+The wallet extension is a local server application that serves two endpoints:
 
 * An endpoint for managing *viewing keys*
 * An endpoint that meets the Ethereum JSON-RPC specification
 
-The node gateway also maintains an RPC connection to one or more Obscuro hosts.
+The wallet extension also maintains an RPC connection to one or more Obscuro hosts.
 
 ### Viewing-keys endpoint
 
 This endpoint serves a webpage where the end user can generate new viewing keys for their account. For each generation, 
 the following steps are taken:
 
-* The node gateway generates a new keypair
-* The node gateway stores the private key locally
+* The wallet extension generates a new keypair
+* The wallet extension stores the private key locally
 * The end user signs a payload containing the public key and some metadata using their wallet
-* The node gateway sends the public key to the Obscuro enclave via the Obscuro host over RPC
+* The wallet extension sends the public key to the Obscuro enclave via the Obscuro host over RPC
 
 Whenever an enclave needs to send sensitive information to the end user (e.g. a transaction result or account balance), 
 it encrypts the sensitive information with the viewing key of the account.
 
-This ensures that the sensitive information can only be decrypted by the node gateway. By generating new viewing keys 
-through a webpage, we maintain compatibility with MetaMask.
+This ensures that the sensitive information can only be decrypted by the wallet extension. By generating new viewing 
+keys through a webpage, we maintain compatibility with MetaMask.
 
 If multiple viewing keys are registered for a single account, a separate encrypted payload is sent for each viewing key.
 
@@ -49,7 +49,7 @@ This endpoint will also have to handle the expiry of viewing keys.
 
 ### Ethereum JSON-RPC endpoint
 
-The node gateway serves a standard implementation of the Ethereum JSON-RPC specification, except in the following 
+The wallet extension serves a standard implementation of the Ethereum JSON-RPC specification, except in the following 
 respects:
 
 * Any request containing sensitive information is encrypted with the Obscuro enclave public key before being forwarded 
