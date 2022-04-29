@@ -67,9 +67,13 @@ The penetration of Firefox was considered to be too low for a Firefox-extension-
 Chrome apps are deprecated, and their support status is uncertain (see 
 [here](https://blog.chromium.org/2021/10/extending-chrome-app-support-on-chrome.html)).
 
-### MetaMask Snaps
+### MetaMask snap
 
 Snaps are an experimental MetaMask capability.
 
-Snaps need to be installed per-page, requiring a code change in every webapp to prompt the user to install the Obscuro 
-snap. Snaps are also only compatible with MetaMask.
+Snaps have several downsides:
+
+* Snaps need to be installed per-page, requiring a code change in every webapp to prompt the user to install the Obscuro 
+  snap
+* Snaps are only compatible with MetaMask
+* Snaps are marked as experimental and require users to switch from MetaMask to the experimental MetaMask Flask
