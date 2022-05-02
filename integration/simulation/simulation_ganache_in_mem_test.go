@@ -35,17 +35,17 @@ func TestGanacheMemObscuroEthMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
 	// private key is prefunded and used to issue txs - used here to deploy contract ahead of node initialization
-	tmpWallet := wallet.NewInMemoryWallet("5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae")
+	tmpWallet := wallet.NewInMemoryWallet("1e1e76d5c0ea1382b6acf76e873977fd223c7fa2a6dc57db2b94e93eb303ba85")
 	contractAddr := deployContract(t, tmpWallet)
 
 	params := params.SimParams{
 		NumberOfNodes:             2,
 		NumberOfWallets:           2,
 		AvgBlockDuration:          time.Second,
-		SimulationTime:            15 * time.Second,
+		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
-		L2ToL1EfficiencyThreshold: 0.4,
+		L2ToL1EfficiencyThreshold: 0.9,
 		TxHandler:                 mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr),
 		MgmtContractAddr:          contractAddr,
 	}
