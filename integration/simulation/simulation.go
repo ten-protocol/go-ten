@@ -22,9 +22,9 @@ const (
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethclient.EthereumClient // the list of mock ethereum clients
-	ObscuroNodes     []*host.Node               // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
-	ObscuroP2PAddrs  []string                   // the P2P addresses of the Obscuro nodes
+	EthClients       []ethclient.EthClient // the list of mock ethereum clients
+	ObscuroNodes     []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
+	ObscuroP2PAddrs  []string              // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -42,7 +42,7 @@ func (s *Simulation) Start() {
 	timer := time.Now()
 	go s.TxInjector.Start()
 
-	stoppingDelay := 2 * time.Second
+	stoppingDelay := 7 * time.Second
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - stoppingDelay)
@@ -53,7 +53,6 @@ func (s *Simulation) Start() {
 	time.Sleep(stoppingDelay)
 
 	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
-	time.Sleep(time.Second)
 }
 
 func (s *Simulation) Stop() {

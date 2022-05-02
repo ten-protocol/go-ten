@@ -1,25 +1,34 @@
-//go:build geth
-// +build geth
-
 package gethnetwork
 
 import (
+	"fmt"
+	"os/exec"
 	"strconv"
 	"testing"
 )
 
 const (
-	// The Geth binary can be built using the instructions here: https://github.com/ethereum/go-ethereum#building-the-source.
-	gethBinaryPath  = "path/to/geth/binary"
+	shCmd          = "sh"
+	gethBinarySh   = "./build_geth_binary.sh"
+	gethBinaryPath = "./geth-release-1.10.17"
+
 	numNodes        = 3
-	expectedChainId = "777"
+	expectedChainID = "777"
 
 	peerCountCmd = "net.peerCount"
-	chainIdCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
+	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 )
 
+func init() { //nolint:gochecknoinits
+	_, err := exec.Command(shCmd, gethBinarySh).Output()
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestAllNodesJoinSameNetwork(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes)
+	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
@@ -29,10 +38,25 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 }
 
 func TestGenesisParamsAreUsed(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes)
+	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	defer network.StopNodes()
 
-	chainId := network.IssueCommand(0, chainIdCmd)
-	if chainId != expectedChainId {
-		t.Fatalf("Network not using chain ID specified in the genesis file. Found %s, expected %s.", chainId, expectedChainId)
+	chainID := network.IssueCommand(0, chainIDCmd)
+	if chainID != expectedChainID {
+		t.Fatalf("Network not using chain ID specified in the genesis file. Found %s, expected %s.", chainID, expectedChainID)
+	}
+}
+
+func TestTransactionCanBeSubmitted(t *testing.T) {
+	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	defer network.StopNodes()
+
+	account := network.addresses[0]
+	tx := fmt.Sprintf("{from: \"%s\", to: \"%s\", value: web3.toWei(0.001, \"ether\")}", account, account)
+	txHash := network.IssueCommand(0, fmt.Sprintf("personal.sendTransaction(%s, \"%s\")", tx, password))
+	status := network.IssueCommand(0, fmt.Sprintf("eth.getTransaction(\"%s\")", txHash))
+
+	if status == "null" {
+		t.Fatal("Could not issue transaction.")
 	}
 }

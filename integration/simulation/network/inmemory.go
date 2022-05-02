@@ -26,8 +26,8 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthereumClient, []*host.Node, []string) {
-	l1Clients := make([]ethclient.EthereumClient, params.NumberOfNodes)
+func (n *basicNetworkOfInMemoryNodes) Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string) {
+	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
@@ -89,7 +89,7 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	go func() {
 		for _, m := range n.ethNodes {
 			t := m
-			go t.Stop() // nolint:errcheck
+			go t.Stop()
 		}
 	}()
 }
