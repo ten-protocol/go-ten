@@ -59,4 +59,3 @@ make geth
 # Copy binary to the correct path
 mkdir -p "${geth_path}"
 cp "${geth_repo_path}/build/bin/geth" "${geth_path}/geth"
-
