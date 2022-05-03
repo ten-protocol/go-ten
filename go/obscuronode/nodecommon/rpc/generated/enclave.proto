@@ -201,6 +201,6 @@ message BlockHeaderMsg {
   uint64 Time = 12;
   bytes Extra = 13;
   bytes MixDigest = 14;
-  bytes Nonce = 15;
+  uint64 Nonce = 15;
   uint64  BaseFee = 16;
 }

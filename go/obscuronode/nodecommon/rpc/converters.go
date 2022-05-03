@@ -141,15 +141,18 @@ func FromBlockHeaderMsg(msg *generated.BlockHeaderMsg) *types.Header {
 		Time:        msg.Time,
 		Extra:       msg.Extra,
 		MixDigest:   common.BytesToHash(msg.MixDigest),
-		// todo
-		// Nonce:       msg.Nonce.(byte[8]),
-		// BaseFee: big.NewInt(int64(msg.BaseFee)),
+		Nonce:       types.EncodeNonce(msg.Nonce),
+		BaseFee:     big.NewInt(int64(msg.BaseFee)),
 	}
 }
 
 func ToBlockHeaderMsg(header *types.Header) *generated.BlockHeaderMsg {
 	if header == nil {
 		return nil
+	}
+	baseFee := uint64(0)
+	if header.BaseFee != nil {
+		baseFee = header.BaseFee.Uint64()
 	}
 	return &generated.BlockHeaderMsg{
 		ParentHash:  header.ParentHash.Bytes(),
@@ -166,7 +169,7 @@ func ToBlockHeaderMsg(header *types.Header) *generated.BlockHeaderMsg {
 		Time:        header.Time,
 		Extra:       header.Extra,
 		MixDigest:   header.MixDigest.Bytes(),
-		// Nonce:       header.Nonce.(byte[8]),
-		// BaseFee: header.BaseFee.Uint64(),
+		Nonce:       header.Nonce.Uint64(),
+		BaseFee:     baseFee,
 	}
 }

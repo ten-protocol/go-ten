@@ -140,7 +140,7 @@ func (db *inMemoryDB) StoreBlock(b *types.Block) {
 	db.blockCache[b.Hash()] = b
 }
 
-func (db *inMemoryDB) FetchBlockAndHeight(hash obscurocommon.L1RootHash) (*types.Block, bool) {
+func (db *inMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	db.blockMutex.RLock()
 	defer db.blockMutex.RUnlock()
 

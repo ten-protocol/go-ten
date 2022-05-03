@@ -46,19 +46,12 @@ func (o *OutputStats) countRollups() {
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetBlockHeader(header.ParentHash) {
-		block, err := l1Node.FetchBlock(header.Hash())
-		if err != nil {
-			panic(err)
-		}
-		if block == nil {
-			panic("expected l1 block not found")
-		}
-		for _, tx := range block.Transactions() {
+	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && headBlock.Hash() != obscurocommon.GenesisHash; headBlock, _ = l1Node.FetchBlock(headBlock.ParentHash()) {
+		for _, tx := range headBlock.Transactions() {
 			txData := o.simulation.Params.TxHandler.UnPackTx(tx)
 			if txData != nil && txData.TxType == obscurocommon.RollupTx {
 				r := nodecommon.DecodeRollupOrPanic(txData.Rollup)
-				if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
+				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}

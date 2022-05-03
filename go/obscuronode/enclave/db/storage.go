@@ -82,13 +82,13 @@ func (s *storageImpl) StoreBlock(b *types.Block) bool {
 
 func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	s.assertSecretAvailable()
-	b, f := s.db.FetchBlockAndHeight(hash)
+	b, f := s.db.FetchBlock(hash)
 	return b, f
 }
 
 func (s *storageImpl) FetchHeadBlock() *types.Block {
 	s.assertSecretAvailable()
-	b, _ := s.db.FetchBlockAndHeight(s.db.FetchHeadBlock())
+	b, _ := s.db.FetchBlock(s.db.FetchHeadBlock())
 	return b
 }
 
