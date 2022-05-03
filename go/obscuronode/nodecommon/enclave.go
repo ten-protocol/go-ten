@@ -27,7 +27,7 @@ type Enclave interface {
 	IsInitialised() bool
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash common.Hash) BlockSubmissionResponse
+	ProduceGenesis(block types.Block) BlockSubmissionResponse
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
 	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
@@ -66,16 +66,11 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	L1Hash      obscurocommon.L1RootHash // The Header Hash of the ingested Block
-	L1Height    uint64                   // The L1 Height of the ingested Block
-	L1Parent    obscurocommon.L2RootHash // The L1 Parent of the ingested Block
-	L2Hash      obscurocommon.L2RootHash // The Rollup Hash in the ingested Block
-	L2Height    uint64                   // The Rollup Height in the ingested Block
-	L2Parent    obscurocommon.L2RootHash // The Rollup Hash Parent inside the ingested Block
-	Withdrawals []Withdrawal             // The Withdrawals available in Rollup of the ingested Block
+	BlockHeader           *types.Header // the header of the consumed block. Todo - only the hash required
+	IngestedBlock         bool          // Whether the Block was ingested or discarded
+	BlockNotIngestedCause string        // The reason the block was not ingested. This message has to not disclose anything useful from the enclave.
 
-	ProducedRollup        ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	IngestedBlock         bool      // Whether the Block was ingested or discarded
-	BlockNotIngestedCause string    // The reason the block was not ingested
-	IngestedNewRollup     bool      // Whether the Block had a new Rollup and the enclave has ingested it
+	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
+	FoundNewHead   bool      // Whether the Block had a new Rollup and the enclave has ingested it
+	RollupHead     *Header   // If new header was found, this is the return
 }

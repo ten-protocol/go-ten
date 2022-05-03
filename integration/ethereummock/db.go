@@ -65,7 +65,7 @@ func (n *blockResolverInMem) FetchBlock(hash obscurocommon.L1RootHash) (*types.B
 	return block.b, f
 }
 
-func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, uint64) {
+func (n *blockResolverInMem) FetchHeadBlock() *types.Block {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	var max blockAndHeight
@@ -74,7 +74,7 @@ func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, uint64) {
 			max = bh
 		}
 	}
-	return max.b, max.height
+	return max.b
 }
 
 func (n *blockResolverInMem) HeightBlock(block *types.Block) uint64 {
@@ -171,7 +171,7 @@ func removeCommittedTransactions(
 	resolver db.BlockResolver,
 	db TxDB,
 ) []*obscurocommon.L1Tx {
-	if resolver.HeightBlock(cb) <= obscurocommon.HeightCommittedBlocks {
+	if cb.NumberU64() <= obscurocommon.HeightCommittedBlocks {
 		return mempool
 	}
 

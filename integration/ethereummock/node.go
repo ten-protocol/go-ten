@@ -86,7 +86,7 @@ func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	for blk, _ := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash; {
+	for blk := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash; {
 		if blk.Number() == n {
 			return blk, nil
 		}
@@ -107,7 +107,7 @@ func (m *Node) FetchBlock(id common.Hash) (*types.Block, error) {
 	return blk, nil
 }
 
-func (m *Node) FetchHeadBlock() (*types.Block, uint64) {
+func (m *Node) FetchHeadBlock() *types.Block {
 	return m.Resolver.FetchHeadBlock()
 }
 
@@ -173,7 +173,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	}
 
 	// Ignore superseded blocks
-	if m.Resolver.HeightBlock(b) <= m.Resolver.HeightBlock(head) {
+	if b.NumberU64() <= head.NumberU64() {
 		return head
 	}
 
@@ -181,11 +181,11 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
-		log.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), obscurocommon.ShortHash(head.Hash()), m.Resolver.HeightBlock(head), obscurocommon.ShortHash(fork.Hash()), m.Resolver.HeightBlock(fork)))
+		log.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), b.NumberU64(), obscurocommon.ShortHash(head.Hash()), head.NumberU64(), obscurocommon.ShortHash(fork.Hash()), fork.NumberU64()))
 		return m.setFork(m.BlocksBetween(fork, b))
 	}
 
-	if m.Resolver.HeightBlock(b) > (m.Resolver.HeightBlock(head) + 1) {
+	if b.NumberU64() > (head.NumberU64() + 1) {
 		panic(fmt.Sprintf("> M%d: Should not happen", obscurocommon.ShortAddress(m.ID)))
 	}
 
@@ -201,7 +201,7 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		if m.Resolver.HeightBlock(b) == obscurocommon.L1GenesisHeight {
+		if b.NumberU64() == obscurocommon.L1GenesisHeight {
 			go t.RPCNewHead(obscurocommon.EncodeBlock(b), nil)
 		} else {
 			p, f := m.Resolver.ParentBlock(b)

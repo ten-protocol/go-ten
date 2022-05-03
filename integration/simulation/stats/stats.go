@@ -56,7 +56,7 @@ func (s *Stats) L2Recalc(id common.Address) {
 
 func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Lock()
-	// s.l1Height = nodecommon.MaxInt(s.l1Height, b.Height)
+	// s.l1Height = nodecommon.MaxInt(s.l1Height, b.Number)
 	s.TotalL1Blocks++
 	s.MaxRollupsPerBlock = obscurocommon.MaxInt(s.MaxRollupsPerBlock, uint32(len(b.Transactions())))
 	if len(b.Transactions()) == 0 {

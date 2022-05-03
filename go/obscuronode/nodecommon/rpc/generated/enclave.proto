@@ -88,7 +88,7 @@ message IsInitialisedResponse {
 }
 
 message ProduceGenesisRequest {
-  bytes blockHash = 1;
+  bytes encodedBlock = 1;
 }
 
 message ProduceGenesisResponse {
@@ -157,17 +157,13 @@ message AttestationReportMsg {
 }
 
 message BlockSubmissionResponseMsg {
-  bytes l1Hash = 1;
-  uint64 l1Height = 2;
-  bytes l1Parent = 3;
-  bytes l2Hash = 4;
-  uint64 l2Height = 5;
-  bytes l2Parent = 6;
-  repeated WithdrawalMsg withdrawals = 7;
-  ExtRollupMsg producedRollup = 8;
-  bool ingestedBlock = 9;
-  string blockNotIngestedCause = 10;
-  bool ingestedNewRollup = 11;
+  BlockHeaderMsg blockHeader = 1;
+  bool ingestedBlock = 2;
+  string blockNotIngestedCause = 3;
+
+  ExtRollupMsg producedRollup = 4;
+  bool ingestedNewRollup = 5;
+  HeaderMsg rollupHead = 6;
 }
 
 message ExtRollupMsg {
@@ -188,4 +184,23 @@ message HeaderMsg {
 message WithdrawalMsg {
   uint64 amount = 1;
   bytes address = 2;
+}
+
+message BlockHeaderMsg {
+  bytes ParentHash = 1;
+  bytes UncleHash = 2;
+  bytes Coinbase = 3;
+  bytes Root = 4;
+  bytes TxHash = 5;
+  bytes ReceiptHash = 6;
+  bytes Bloom = 7;
+  uint64  Difficulty = 8;
+  uint64  Number = 9;
+  uint64 GasLimit = 10;
+  uint64 GasUsed = 11;
+  uint64 Time = 12;
+  bytes Extra = 13;
+  bytes MixDigest = 14;
+  bytes Nonce = 15;
+  uint64  BaseFee = 16;
 }

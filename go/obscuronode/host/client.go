@@ -106,11 +106,15 @@ func (c *EnclaveRPCClient) IsInitialised() bool {
 	return response.IsInitialised
 }
 
-func (c *EnclaveRPCClient) ProduceGenesis(h common.Hash) nodecommon.BlockSubmissionResponse {
+func (c *EnclaveRPCClient) ProduceGenesis(block types.Block) nodecommon.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
+	var buffer bytes.Buffer
+	if err := block.EncodeRLP(&buffer); err != nil {
+		panic(fmt.Errorf(">   Agg%d: Failed to encode block: %w", obscurocommon.ShortAddress(c.nodeID), err))
+	}
 
-	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: h.Bytes()})
+	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
 		panic(fmt.Errorf(">   Agg%d: Failed to produce genesis: %w", obscurocommon.ShortAddress(c.nodeID), err))
 	}

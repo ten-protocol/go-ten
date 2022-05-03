@@ -199,7 +199,7 @@ func (a *Node) startProcessing() {
 	a.Enclave.Start(lastBlock)
 
 	if a.genesis {
-		a.initialiseProtocol(lastBlock.Hash())
+		a.initialiseProtocol(&lastBlock)
 	}
 
 	// Start monitoring L1 blocks
@@ -291,12 +291,12 @@ func (a *Node) RPCBalance(address common.Address) uint64 {
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
-func (a *Node) RPCCurrentBlockHead() *BlockHeader {
+func (a *Node) RPCCurrentBlockHead() *types.Header {
 	return a.nodeDB.GetCurrentBlockHead()
 }
 
 // RPCCurrentRollupHead returns the current head of the rollups (l2)
-func (a *Node) RPCCurrentRollupHead() *RollupHeader {
+func (a *Node) RPCCurrentRollupHead() *nodecommon.Header {
 	return a.nodeDB.GetCurrentRollupHead()
 }
 
@@ -370,7 +370,7 @@ func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
 			return
 		}
 		// Request the round winner for the current head
-		winnerRollup, isWinner, err := a.Enclave.RoundWinner(result.L2Hash)
+		winnerRollup, isWinner, err := a.Enclave.RoundWinner(result.ProducedRollup.Header.ParentHash)
 		if err != nil {
 			panic(err)
 		}
@@ -384,39 +384,26 @@ func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
 
 func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionResponse) {
 	// only update the node rollup headers if the enclave has ingested it
-	if result.IngestedNewRollup {
+	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
-		a.DB().AddRollupHeader(
-			&RollupHeader{
-				ID:          result.L2Hash,
-				Parent:      result.L2Parent,
-				Withdrawals: result.Withdrawals,
-				Height:      result.L2Height,
-			},
-		)
+		a.DB().AddRollupHeader(result.RollupHead)
 	}
 
 	// adding a header will update the head if it has a higher height
 	if result.IngestedBlock {
-		a.DB().AddBlockHeader(
-			&BlockHeader{
-				ID:     result.L1Hash,
-				Parent: result.L1Parent,
-				Height: result.L1Height,
-			},
-		)
+		a.DB().AddBlockHeader(result.BlockHeader)
 	}
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol(blockHash common.Hash) obscurocommon.L2RootHash {
+func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
-	genesis := a.Enclave.ProduceGenesis(blockHash)
-	log.Log(fmt.Sprintf("Agg%d:> Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesis.ProducedRollup.Header.Hash())))
-	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesis.ProducedRollup.ToRollup())}
+	genesisResponse := a.Enclave.ProduceGenesis(*block)
+	log.Log(fmt.Sprintf("Agg%d:> Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash())))
+	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())}
 	a.broadcastTx(tx)
 
-	return genesis.L2Hash
+	return genesisResponse.ProducedRollup.Header.ParentHash
 }
 
 func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {

@@ -75,7 +75,7 @@ func (e *enclaveImpl) start(block types.Block) {
 		select {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
 		case winnerRollup := <-e.roundWinnerCh:
-			env.header = obscurocore.NewHeader(winnerRollup, winnerRollup.Header.Height+1, e.node)
+			env.header = obscurocore.NewHeader(winnerRollup, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
 			env.state = db.CopyState(e.storage.FetchRollupState(winnerRollup.Hash()))
 
@@ -119,12 +119,11 @@ func (e *enclaveImpl) start(block types.Block) {
 	}
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
-	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
+func (e *enclaveImpl) ProduceGenesis(block types.Block) nodecommon.BlockSubmissionResponse {
+	rolGenesis := obscurocore.NewRollup(block.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
 	return nodecommon.BlockSubmissionResponse{
-		L2Hash:         rolGenesis.Header.Hash(),
-		L1Hash:         blkHash,
 		ProducedRollup: rolGenesis.ToExtRollup(),
+		BlockHeader:    block.Header(),
 		IngestedBlock:  true,
 	}
 }
@@ -183,7 +182,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
-	if !f && e.storage.HeightBlock(&block) > obscurocommon.L1GenesisHeight {
+	if !f && block.NumberU64() > obscurocommon.L1GenesisHeight {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
 	}
 
@@ -242,7 +241,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
-	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Height + 1)
+	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
 	for _, rol := range rollupsReceivedFromPeers {
@@ -265,7 +264,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		w := e.storage.ParentRollup(winnerRollup)
 		log.Log(fmt.Sprintf(">   Agg%d: publish rollup=r_%d(%d)[r_%d]{proof=b_%d}. Num Txs: %d. Txs: %v.  State=%v. ",
 			obscurocommon.ShortAddress(e.node),
-			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Height,
+			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
 			len(winnerRollup.Transactions),
@@ -301,16 +300,16 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscuroc
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-				speculativeRollup.r.Header.Height,
+				speculativeRollup.r.Header.Number,
 				obscurocommon.ShortHash(bs.Head.Hash()),
-				bs.Head.Header.Height),
+				bs.Head.Header.Number),
 			)
 			if e.statsCollector != nil {
 				e.statsCollector.L2Recalc(e.node)
 			}
 		}
 
-		newRollupHeader = obscurocore.NewHeader(bs.Head, bs.Head.Header.Height+1, e.node)
+		newRollupHeader = obscurocore.NewHeader(bs.Head, bs.Head.Header.Number+1, e.node)
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(bs.Head, e.mempool.FetchMempoolTxs(), e.storage)
 		newRollupState = executeTransactions(newRollupTxs, bs.State, newRollupHeader)
@@ -347,7 +346,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 		if !found {
 			panic(fmt.Sprintf("Could not find rollup: r_%s", rollup.Hash()))
 		}
-		if rollup.Header.Height == obscurocommon.L2GenesisHeight {
+		if rollup.Header.Number == obscurocommon.L2GenesisHeight {
 			return nil
 		}
 	}
@@ -406,26 +405,23 @@ func (e *enclaveImpl) insertBlockIntoL1Chain(block *types.Block) *nodecommon.Blo
 
 func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) nodecommon.BlockSubmissionResponse {
 	return nodecommon.BlockSubmissionResponse{
-		L1Hash:            block.Hash(),
-		L1Height:          e.blockResolver.HeightBlock(block),
-		L1Parent:          block.ParentHash(),
-		IngestedBlock:     true,
-		IngestedNewRollup: false,
+		BlockHeader:   block.Header(),
+		IngestedBlock: true,
+		FoundNewHead:  false,
 	}
 }
 
 func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *db.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
+	var head *nodecommon.Header
+	if bs.FoundNewRollup {
+		head = bs.Head.Header
+	}
 	return nodecommon.BlockSubmissionResponse{
-		L1Hash:            bs.Block.Hash(),
-		L1Height:          e.blockResolver.HeightBlock(bs.Block),
-		L1Parent:          bs.Block.ParentHash(),
-		L2Hash:            bs.Head.Hash(),
-		L2Height:          bs.Head.Header.Height,
-		L2Parent:          bs.Head.Header.ParentHash,
-		Withdrawals:       bs.Head.Header.Withdrawals,
-		ProducedRollup:    rollup,
-		IngestedBlock:     true,
-		IngestedNewRollup: bs.FoundNewRollup,
+		BlockHeader:    bs.Block.Header(),
+		ProducedRollup: rollup,
+		IngestedBlock:  true,
+		FoundNewHead:   bs.FoundNewRollup,
+		RollupHead:     head,
 	}
 }
 

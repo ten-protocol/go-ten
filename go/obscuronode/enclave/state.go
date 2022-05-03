@@ -84,7 +84,7 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, storage db.Stor
 		return val
 	}
 
-	if blockResolver.HeightBlock(b) == 0 {
+	if b.NumberU64() == obscurocommon.L2GenesisHeight {
 		return nil
 	}
 
@@ -170,7 +170,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case r.Header.Height <= parent.Header.Height: // ignore rollups that are older than the parent
+		case r.Header.Number <= parent.Header.Number: // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
 		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
@@ -218,7 +218,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
-		height = blockResolver.HeightBlock(fromBlock)
+		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
 			panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
@@ -242,7 +242,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
 			}
 		}
-		if blockResolver.HeightBlock(b) < height {
+		if b.NumberU64() < height {
 			panic("something went wrong")
 		}
 		p, f := blockResolver.ParentBlock(b)

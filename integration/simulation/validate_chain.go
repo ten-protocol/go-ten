@@ -78,7 +78,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHeight uint64, s *Simulation) uint64 {
-	head, height := node.FetchHeadBlock()
+	head := node.FetchHeadBlock()
+	height := head.NumberU64()
 
 	if height < minHeight {
 		t.Errorf("Node %d. There were only %d blocks mined. Expected at least: %d.", obscurocommon.ShortAddress(node.Info().ID), height, minHeight)
@@ -101,7 +102,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 
 	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
 	if efficiency > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.Info().ID), efficiency, s.Params.L1EfficiencyThreshold, height)
+		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Number: %d.", obscurocommon.ShortAddress(node.Info().ID), efficiency, s.Params.L1EfficiencyThreshold, height)
 	}
 
 	// compare the number of reorgs for this node against the height
@@ -149,7 +150,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) uint64 {
-	l1Height := node.DB().GetCurrentBlockHead().Height
+	l1Height := uint64(node.DB().GetCurrentBlockHead().Number.Int64())
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
@@ -160,7 +161,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	l2Height := node.DB().GetCurrentRollupHead().Height
+	l2Height := node.DB().GetCurrentRollupHead().Number
 	if l2Height < minObscuroHeight {
 		t.Errorf("There were only %d rollups mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
 	}
@@ -241,7 +242,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 
 func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for r := node.DB().GetCurrentRollupHead(); r != nil; r = node.DB().GetRollupHeader(r.Parent) {
+	for r := node.DB().GetCurrentRollupHead(); r != nil; r = node.DB().GetRollupHeader(r.ParentHash) {
 		for _, w := range r.Withdrawals {
 			totalSuccessfullyWithdrawn += w.Amount
 			numberOfWithdrawalRequests++

@@ -27,7 +27,7 @@ type Header struct {
 	Nonce       obscurocommon.Nonce
 	L1Proof     obscurocommon.L1RootHash // the L1 block where the Parent was published
 	State       StateRoot
-	Height      uint64 // the rollup height
+	Number      uint64 // the rollup height
 	Withdrawals []Withdrawal
 }
 

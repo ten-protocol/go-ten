@@ -32,8 +32,8 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	o.l1Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentBlockHead().Height)
-	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Height)
+	o.l1Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentBlockHead().Number.Int64())
+	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Number)
 }
 
 func (o *OutputStats) countRollups() {
@@ -41,13 +41,13 @@ func (o *OutputStats) countRollups() {
 	l2Node := o.simulation.ObscuroNodes[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.Parent) {
+	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetBlockHeader(header.Parent) {
-		block, err := l1Node.FetchBlock(header.ID)
+	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetBlockHeader(header.ParentHash) {
+		block, err := l1Node.FetchBlock(header.Hash())
 		if err != nil {
 			panic(err)
 		}

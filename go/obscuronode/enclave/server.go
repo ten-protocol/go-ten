@@ -85,7 +85,7 @@ func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest)
 }
 
 func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
-	genesisRollup := s.enclave.ProduceGenesis(common.BytesToHash(request.BlockHash))
+	genesisRollup := s.enclave.ProduceGenesis(decodeBlock(request.EncodedBlock))
 	blockSubmissionResponse := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
