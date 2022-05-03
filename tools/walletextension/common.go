@@ -8,6 +8,10 @@ import (
 const obxFacadeWebsocketAddr = "ws://localhost:3001"
 const gethWebsocketAddr = "ws://localhost:8546"
 
+const reqJsonKeyMethod = "method"
+const reqJsonMethodGetBalance = "eth_getBalance"
+const reqJsonMethodGetStorageAt = "eth_getStorageAt"
+
 func forwardMsgOverWebsocket(url string, msg []byte) []byte {
 	connection, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {

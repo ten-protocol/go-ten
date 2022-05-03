@@ -2,18 +2,33 @@
 <html lang="en">
 
 <head>
-    <title>Test title.</title>
+    <title>Obscuro - Generate viewing key</title>
+    <link rel="stylesheet" href="style.css">
     <script type="text/javascript" src="javascript.js"></script>
 </head>
 
 <body>
 
-<button class="btn btn-primary btn-lg btn-block mb-3" id="generateViewingKey">generate viewing key</button>
-<p>Generated viewing key: </p>
-<p id="viewingKey">N/A</p>
+<p></p>
+<div class='parent'>
+    <div class='child inline-block-child'>Viewing key (compressed): </div>
+    <div class='child inline-block-child' id="viewingKey">N/A</div>
+</div>
+<p></p>
 
-<button class="btn btn-primary btn-lg btn-block mb-3" id="signViewingKey">sign viewing key</button>
-<p id="signedViewingKey"></p>
+<button class="btn btn-primary btn-lg btn-block mb-3" id="generateViewingKey">Generate viewing key</button>
+
+<p></p>
+<div class='parent'>
+    <div class='child inline-block-child'>Signed viewing key: </div>
+    <div class='child inline-block-child' id="signedViewingKey">N/A</div>
+</div>
+<p></p>
+
+<button class="btn btn-primary btn-lg btn-block mb-3" id="signViewingKey">Sign viewing key</button>
+
+<p></p>
+<button class="btn btn-primary btn-lg btn-block mb-3" id="storeViewingKey">Store viewing key</button>
 
 </body>
 </html>

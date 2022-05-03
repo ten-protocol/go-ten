@@ -39,12 +39,14 @@ func (of ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request)
 	connection, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	// We read the message from the wallet extension.
 	_, encryptedMessage, err := connection.ReadMessage()
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	// We decrypt the JSON with the enclave's private key.
@@ -52,6 +54,7 @@ func (of ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request)
 	message, err := eciesPrivateKey.Decrypt(encryptedMessage, nil, nil)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	// We forward the message to the Geth node.
@@ -62,15 +65,18 @@ func (of ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request)
 	err = json.Unmarshal(message, &reqJsonMap)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	// We encrypt the response if needed.
-	method := reqJsonMap["method"]
-	if method == "eth_getBalance" || method == "eth_getStorageAt" {
+	method := reqJsonMap[reqJsonKeyMethod]
+	if method == reqJsonMethodGetBalance || method == reqJsonMethodGetStorageAt {
+		// todo - encrypt with viewing key
 		eciesPublicKey := ecies.ImportECDSAPublic(&of.enclavePrivateKey.PublicKey)
 		gethResp, err = ecies.Encrypt(rand.Reader, eciesPublicKey, gethResp, nil, nil)
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 	}
 
@@ -78,5 +84,6 @@ func (of ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request)
 	err = connection.WriteMessage(websocket.TextMessage, gethResp)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 }

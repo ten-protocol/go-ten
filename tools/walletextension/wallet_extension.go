@@ -5,33 +5,46 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"io/ioutil"
 	"net/http"
 	"strings"
 )
 
-// todo - joel - encrypt with the address key on the return in the facade, and decrypt in the wallet extension
-//  use a standard account key for now, since we don't have viewing keys
+const pathRoot = "/"
+const pathViewingKeys = "/viewingkeys/"
+const pathGetViewingKey = "/getviewingkey/"
+const pathStoreViewingKey = "/storeviewingkey/"
+const staticDir = "./tools/walletextension/static"
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	enclavePrivateKey *ecdsa.PrivateKey
+	signedViewingKeys []SignedViewingKey
+}
+
+type SignedViewingKey struct {
+	viewingKey *ecdsa.PublicKey
+	signature  []byte
 }
 
 func NewWalletExtension(enclavePrivateKey *ecdsa.PrivateKey) *WalletExtension {
 	return &WalletExtension{enclavePrivateKey: enclavePrivateKey}
 }
 
+// todo - joel - consolidate the three buttons
+
 func (we WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
-	serveMux.HandleFunc("/", we.handleHttpEthJson)
+	serveMux.HandleFunc(pathRoot, we.handleHttpEthJson)
 
 	// Handles the management of viewing keys.
-	serveMux.Handle("/viewingkeys/", http.StripPrefix("/viewingkeys/", http.FileServer(http.Dir("./tools/walletextension/static"))))
-	serveMux.HandleFunc("/getViewingKey", we.handleGetViewingKey)
+	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(staticDir))))
+	serveMux.HandleFunc(pathGetViewingKey, we.handleGetViewingKey)
+	serveMux.HandleFunc(pathStoreViewingKey, we.handleStoreViewingKey)
 
 	err := http.ListenAndServe(hostAndPort, serveMux)
 	if err != nil {
@@ -44,6 +57,7 @@ func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	// We unmarshall the JSON request to inspect it.
@@ -51,6 +65,7 @@ func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.
 	err = json.Unmarshal(body, &reqJsonMap)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	fmt.Println(fmt.Sprintf("Received request from wallet: %s", body))
 
@@ -60,19 +75,22 @@ func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.
 	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	// We forward the request on to the Geth node.
 	gethResp := forwardMsgOverWebsocket(obxFacadeWebsocketAddr, encryptedBody)
 
 	// We decrypt the response if it's encrypted.
-	method := reqJsonMap["method"]
-	if method == "eth_getBalance" || method == "eth_getStorageAt" {
+	method := reqJsonMap[reqJsonKeyMethod]
+	if method == reqJsonMethodGetBalance || method == reqJsonMethodGetStorageAt {
 		fmt.Println(fmt.Sprintf("🔐 Decrypting %s response from Geth node with viewing key.", method))
+		// todo - decrypt with viewing key
 		eciesPrivateKey := ecies.ImportECDSA(we.enclavePrivateKey)
 		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 	}
 
@@ -81,6 +99,7 @@ func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.
 	err = json.Unmarshal(gethResp, &respJsonMap)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	fmt.Println(fmt.Sprintf("Received response from Geth node: %s", strings.TrimSpace(string(gethResp))))
 
@@ -88,15 +107,48 @@ func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.
 	_, err = resp.Write(gethResp)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 }
 
 // Returns a new viewing key.
 func (we WalletExtension) handleGetViewingKey(resp http.ResponseWriter, _ *http.Request) {
-	// todo - generate viewing key properly
-	// todo - store private key
-	_, err := resp.Write([]byte("dummyViewingKey"))
+	viewingPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	_, err = resp.Write(crypto.CompressPubkey(&viewingPrivateKey.PublicKey))
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+// Stores the signed viewing key.
+func (we WalletExtension) handleStoreViewingKey(_ http.ResponseWriter, req *http.Request) {
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var reqJsonMap map[string]interface{}
+	err = json.Unmarshal(body, &reqJsonMap)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	viewingKeyString := reqJsonMap["viewingKey"].(string)
+	signature := reqJsonMap["signature"].(string)
+	viewingKey, err := crypto.DecompressPubkey([]byte(viewingKeyString))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	signedViewingKey := SignedViewingKey{viewingKey: viewingKey, signature: []byte(signature)}
+	we.signedViewingKeys = append(we.signedViewingKeys, signedViewingKey)
+
+	// todo - send a success response
 }
