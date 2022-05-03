@@ -2,6 +2,8 @@ package walletextension
 
 import (
 	"crypto/ecdsa"
+	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/gorilla/websocket"
@@ -46,14 +48,31 @@ func (of ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request)
 	}
 
 	// We decrypt the JSON with the enclave's private key.
-	eciesKey := ecies.ImportECDSA(of.enclavePrivateKey)
-	message, err := eciesKey.Decrypt(encryptedMessage, nil, nil)
+	eciesPrivateKey := ecies.ImportECDSA(of.enclavePrivateKey)
+	message, err := eciesPrivateKey.Decrypt(encryptedMessage, nil, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	// We forward the message to the Geth node.
 	gethResp := forwardMsgOverWebsocket(gethWebsocketAddr, message)
+
+	// We unmarshall the JSON request to inspect it.
+	var reqJsonMap map[string]interface{}
+	err = json.Unmarshal(message, &reqJsonMap)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// We encrypt the response if needed.
+	method := reqJsonMap["method"]
+	if method == "eth_getBalance" || method == "eth_getStorageAt" {
+		eciesPublicKey := ecies.ImportECDSAPublic(&of.enclavePrivateKey.PublicKey)
+		gethResp, err = ecies.Encrypt(rand.Reader, eciesPublicKey, gethResp, nil, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 
 	// We write the message back to the wallet extension.
 	err = connection.WriteMessage(websocket.TextMessage, gethResp)

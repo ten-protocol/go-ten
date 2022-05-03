@@ -11,7 +11,7 @@ func main() {
 		panic(err)
 	}
 
-	we := walletextension.NewWalletExtension(&enclavePrivateKey.PublicKey)
+	we := walletextension.NewWalletExtension(enclavePrivateKey)
 	of := walletextension.NewObxFacade(enclavePrivateKey)
 
 	go of.Serve("localhost:3001")
