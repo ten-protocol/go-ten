@@ -1,33 +1,26 @@
 const initialize = () => {
-    const viewingKey = document.getElementById('viewingKey');
     const generateViewingKeyButton = document.getElementById('generateViewingKey');
-    const signedViewingKey = document.getElementById('signedViewingKey');
-    const signViewingKeyButton = document.getElementById('signViewingKey');
-    const storeViewingKeyButton = document.getElementById('storeViewingKey');
 
-    // todo - disable button after click
     generateViewingKeyButton.addEventListener('click', async () => {
         const viewingPublicKeyResp = await fetch('/getviewingkey');
-        viewingKey.innerText = await viewingPublicKeyResp.text();
-    })
+        const viewingKey = await viewingPublicKeyResp.text();
+        console.log(viewingKey)
 
-    // todo - disable button after click
-    signViewingKeyButton.addEventListener('click', async () => {
         const accounts = await ethereum.request({method: 'eth_requestAccounts'});
-        const account = accounts[0];
-        signedViewingKey.innerText = await ethereum.request({
+        const account = accounts[0]; // todo - allow use of other accounts?
+        const signedViewingKey = await ethereum.request({
             method: 'personal_sign',
-            params: [viewingKey.innerText, account]
+            // Without a prefix such as 'vk', personal_sign transforms the data for security reasons.
+            params: ['vk' + viewingKey, account]
         });
-    });
+        console.log(signedViewingKey)
 
-    // todo - disable button after click
-    storeViewingKeyButton.addEventListener('click', async () => {
         const signedViewingKeyJson = {
-            "viewingKey": viewingKey.innerText,
-            "signature": signedViewingKey.innerText
+            "viewingKey": viewingKey,
+            "signature": signedViewingKey
         }
-        console.log(JSON.stringify(signedViewingKeyJson))
+        console.log(signedViewingKeyJson)
+
         await fetch(
             '/storeviewingkey/', {
                 method: 'post',
@@ -36,6 +29,8 @@ const initialize = () => {
                 body: JSON.stringify(signedViewingKeyJson)
             }
         );
+
+        console.log("success!")
     })
 }
 

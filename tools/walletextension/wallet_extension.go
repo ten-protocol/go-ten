@@ -3,6 +3,7 @@ package walletextension
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -25,15 +26,13 @@ type WalletExtension struct {
 }
 
 type SignedViewingKey struct {
-	viewingKey *ecdsa.PublicKey
-	signature  []byte
+	viewingKey  *ecdsa.PublicKey
+	signedBytes []byte
 }
 
 func NewWalletExtension(enclavePrivateKey *ecdsa.PrivateKey) *WalletExtension {
 	return &WalletExtension{enclavePrivateKey: enclavePrivateKey}
 }
-
-// todo - joel - consolidate the three buttons
 
 func (we WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
@@ -118,7 +117,9 @@ func (we WalletExtension) handleGetViewingKey(resp http.ResponseWriter, _ *http.
 		fmt.Println(err)
 	}
 
-	_, err = resp.Write(crypto.CompressPubkey(&viewingPrivateKey.PublicKey))
+	viewingKeyBytes := crypto.CompressPubkey(&viewingPrivateKey.PublicKey)
+	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
+	_, err = resp.Write([]byte(viewingKeyHex))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -139,16 +140,21 @@ func (we WalletExtension) handleStoreViewingKey(_ http.ResponseWriter, req *http
 		return
 	}
 
-	viewingKeyString := reqJsonMap["viewingKey"].(string)
-	signature := reqJsonMap["signature"].(string)
-	viewingKey, err := crypto.DecompressPubkey([]byte(viewingKeyString))
+	viewingKeyHex := reqJsonMap["viewingKey"].(string)
+	viewingKeyBytes, err := hex.DecodeString(viewingKeyHex)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	signature := reqJsonMap["signedBytes"].(string)
+	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	signedViewingKey := SignedViewingKey{viewingKey: viewingKey, signature: []byte(signature)}
+	signedViewingKey := SignedViewingKey{viewingKey: viewingKey, signedBytes: []byte(signature)}
 	we.signedViewingKeys = append(we.signedViewingKeys, signedViewingKey)
 
-	// todo - send a success response
+	// todo - send a success response. display it on the page
 }
