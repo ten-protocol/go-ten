@@ -3,6 +3,7 @@ package host
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -52,7 +53,7 @@ func (c *EnclaveRPCClient) IsReady() error {
 	return err
 }
 
-func (c *EnclaveRPCClient) Attestation() obscurocommon.AttestationReport {
+func (c *EnclaveRPCClient) Attestation() *obscurocommon.AttestationReport {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
@@ -74,17 +75,20 @@ func (c *EnclaveRPCClient) GenerateSecret() obscurocommon.EncryptedSharedEnclave
 	return response.EncryptedSharedEnclaveSecret
 }
 
-func (c *EnclaveRPCClient) FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
+func (c *EnclaveRPCClient) ShareSecret(report *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
 	attestationReportMsg := rpc.ToAttestationReportMsg(report)
 	request := generated.FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
-	response, err := c.protoClient.FetchSecret(timeoutCtx, &request)
+	response, err := c.protoClient.ShareSecret(timeoutCtx, &request)
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to fetch secret. Cause: %s", obscurocommon.ShortAddress(c.nodeID), err)
+		return nil, err
 	}
-	return response.EncryptedSharedEnclaveSecret
+	if response.GetError() != "" {
+		return nil, errors.New(response.GetError())
+	}
+	return response.EncryptedSharedEnclaveSecret, nil
 }
 
 func (c *EnclaveRPCClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) {

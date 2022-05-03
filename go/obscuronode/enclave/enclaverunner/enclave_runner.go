@@ -29,7 +29,7 @@ func RunEnclave(config EnclaveConfig) {
 	} else {
 		genesisJSON = nil
 	}
-	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, genesisJSON, nil)
+	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, !config.DisableAttestation, genesisJSON, nil)
 	if err != nil {
 		log.Panic("could not start Obscuro enclave service. Cause: %s", err)
 	}

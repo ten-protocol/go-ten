@@ -3,6 +3,7 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -60,6 +61,16 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
 
+	// we wait to ensure the RPC endpoint is up
+	wait := 5 // max wait in seconds
+	for !tcpConnectionAvailable(clientServerAddr) {
+		if wait == 0 {
+			t.Fatal("RPC client server never became available")
+		}
+		time.Sleep(time.Second)
+		wait--
+	}
+
 	obscuroClient := obscuroclient.NewClient(clientServerAddr)
 	var result types.Header
 	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
@@ -70,6 +81,16 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if result.Number.Uint64() == 0 {
 		t.Fatal("Zero blocks have been produced. Something is wrong.")
 	}
+}
+
+func tcpConnectionAvailable(addr string) bool {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	// we don't worry about failure while closing, it connected successfully so let test proceed
+	return true
 }
 
 func setupTestLog() *os.File {

@@ -34,14 +34,14 @@ type server struct {
 // and uses it to respond to incoming RPC messages from the host.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func StartServer(address string, nodeID common.Address, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) (func(), error) {
+func StartServer(address string, nodeID common.Address, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, attestation bool, genesisJSON []byte, collector StatsCollector) (func(), error) {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(nodeID, true, attestation, txHandler, validateBlocks, genesisJSON, collector),
 		rpcServer:   grpc.NewServer(),
 		nodeShortID: obscurocommon.ShortAddress(nodeID),
 	}
@@ -63,12 +63,16 @@ func StartServer(address string, nodeID common.Address, txHandler mgmtcontractli
 
 // IsReady returns a nil error to indicate that the server is ready.
 func (s *server) IsReady(context.Context, *generated.IsReadyRequest) (*generated.IsReadyResponse, error) {
-	return &generated.IsReadyResponse{}, nil
+	errStr := ""
+	if err := s.enclave.IsReady(); err != nil {
+		errStr = err.Error()
+	}
+	return &generated.IsReadyResponse{Error: errStr}, nil
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
 	attestation := s.enclave.Attestation()
-	msg := generated.AttestationReportMsg{Owner: attestation.Owner.Bytes()}
+	msg := generated.AttestationReportMsg{Report: attestation.Report, PubKey: attestation.PubKey, Owner: attestation.Owner.Bytes()}
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
@@ -77,10 +81,11 @@ func (s *server) GenerateSecret(context.Context, *generated.GenerateSecretReques
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
-func (s *server) FetchSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.FetchSecretResponse, error) {
+func (s *server) ShareSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.ShareSecretResponse, error) {
 	attestationReport := rpc.FromAttestationReportMsg(request.AttestationReportMsg)
-	secret := s.enclave.FetchSecret(attestationReport)
-	return &generated.FetchSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
+	nodecommon.LogWithID(s.nodeShortID, "Received ShareSecret RPC call for %s", attestationReport.Owner)
+	secret, err := s.enclave.ShareSecret(attestationReport)
+	return &generated.ShareSecretResponse{EncryptedSharedEnclaveSecret: secret}, err
 }
 
 func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {

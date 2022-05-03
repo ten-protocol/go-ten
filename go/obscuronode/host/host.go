@@ -152,10 +152,12 @@ func (a *Node) Start() {
 
 	if a.isGenesis {
 		// Create the shared secret and submit it to the management contract for storage
+		attestation := a.EnclaveClient.Attestation()
+		encodedAttestation := nodecommon.EncodeAttestation(attestation)
 		tx := &obscurocommon.L1TxData{
 			TxType:      obscurocommon.StoreSecretTx,
 			Secret:      a.EnclaveClient.GenerateSecret(),
-			Attestation: a.EnclaveClient.Attestation(),
+			Attestation: encodedAttestation,
 		}
 		a.broadcastTx(tx)
 	}
@@ -187,7 +189,7 @@ func (a *Node) waitForEnclave() {
 	nodecommon.LogWithID(a.shortID, "Connected to enclave service...")
 }
 
-// Waits for blocks from the L1 node, printing a wait message every two seconds.
+// Waits for initial blocks from the L1 node, printing a wait message every two seconds.
 func (a *Node) waitForL1Blocks() []*types.Block {
 	// It feeds the entire L1 blockchain into the enclave when it starts
 	// todo - what happens with the blocks received while processing ?
@@ -204,11 +206,13 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 		allBlocks = a.ethClient.RPCBlockchainFeed()
 		counter++
 	}
+	nodecommon.LogWithID(a.shortID, "Received %d initial blocks from L1 node.", len(allBlocks))
 
 	return allBlocks
 }
 
 func (a *Node) startProcessing() {
+	nodecommon.LogWithID(a.shortID, "Starting processing.")
 	allBlocks := a.waitForL1Blocks()
 
 	// Todo: This is a naive implementation.
@@ -224,6 +228,15 @@ func (a *Node) startProcessing() {
 	}
 
 	lastBlock := *allBlocks[len(allBlocks)-1]
+
+	// do some asserting to check our sanity before we start the enclave
+	if !blockNumberStrictlyIncreasing(allBlocks) {
+		panic("We expect this list of blocks to be correctly ordered but block numbers were not strictly increasing.")
+	}
+	if _, err := a.ethClient.FetchBlock(lastBlock.ParentHash()); err != nil {
+		panic("Parent not found for enclave start block - this should not happen.")
+	}
+
 	nodecommon.LogWithID(a.shortID, "Start enclave on block b_%d.", obscurocommon.ShortHash(lastBlock.Header().Hash()))
 	a.EnclaveClient.Start(lastBlock)
 
@@ -284,6 +297,16 @@ func (a *Node) startProcessing() {
 			return
 		}
 	}
+}
+
+func blockNumberStrictlyIncreasing(blocks []*types.Block) bool {
+	var latest int64 = -1
+	for _, b := range blocks {
+		if b.Number().Int64() <= latest {
+			return false
+		}
+	}
+	return true
 }
 
 // RPCNewHead receives the notification of new blocks from the ethereumNode Node
@@ -378,6 +401,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
+			// todo: implement protocol so only one host responds to this secret requests initially
 			a.checkForSharedSecretRequests(block)
 
 			// submit each block to the enclave for ingestion plus validation
@@ -454,52 +478,33 @@ func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
-	attestation := a.EnclaveClient.Attestation()
+	nodecommon.LogWithID(a.shortID, "Requesting secret.")
+	att := a.EnclaveClient.Attestation()
+	nodecommon.LogWithID(a.shortID, "Attestation contains: owner=%s, pubkey=%s", att.Owner, att.PubKey)
+	encodedAttestation := nodecommon.EncodeAttestation(att)
+
 	tx := &obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,
-		Attestation: attestation,
+		Attestation: encodedAttestation,
 	}
 	a.broadcastTx(tx)
 
-	// start listening for l1 blocks that contain the response to the request
-	for {
-		select {
-		case header := <-a.ethClient.BlockListener():
-			block, err := a.ethClient.FetchBlock(header.Hash())
-			if err != nil {
-				log.Panic("could not fetch block for hash %s. Cause: %s", header.Hash().String(), err)
-			}
-			for _, tx := range block.Transactions() {
-				t := a.txHandler.UnPackTx(tx)
-				if t != nil && t.TxType == obscurocommon.StoreSecretTx { // TODO properly handle t.Attestation.Owner == a.ID
-					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
-					a.EnclaveClient.InitEnclave(t.Secret)
-					return
-				}
-			}
+	a.awaitSecret()
+}
 
-		case b := <-a.blockRPCCh:
-			txs := b.b.DecodeBlock().Transactions()
-			for _, tx := range txs {
-				t := a.txHandler.UnPackTx(tx)
-				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
-					// someone has replied
-					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
-					a.EnclaveClient.InitEnclave(t.Secret)
-					return
-				}
-			}
-
-		case <-a.forkRPCCh:
-			// todo
-
-		case <-a.rollupsP2PCh:
-			// ignore rolllups from peers as we're not part of the network just yet
-
-		case <-a.exitNodeCh:
-			return
-		}
+func (a *Node) handleStoreSecretTx(t *obscurocommon.L1TxData) bool {
+	att, err := nodecommon.DecodeAttestation(t.Attestation)
+	if err != nil {
+		nodecommon.LogWithID(a.shortID, "Failed to decode attestation report %s", err)
+		return false
 	}
+	if att.Owner != a.ID {
+		return false
+	}
+	// someone has replied
+	nodecommon.LogWithID(a.shortID, "Secret was received successfully.")
+	a.EnclaveClient.InitEnclave(t.Secret)
+	return true
 }
 
 func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
@@ -507,9 +512,19 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	for _, tx := range b.Transactions() {
 		t := a.txHandler.UnPackTx(tx)
 		if t != nil && t.TxType == obscurocommon.RequestSecretTx {
+			att, err := nodecommon.DecodeAttestation(t.Attestation)
+			if err != nil {
+				nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
+				continue
+			}
+			secret, err := a.EnclaveClient.ShareSecret(att)
+			if err != nil {
+				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
+				continue
+			}
 			txData := &obscurocommon.L1TxData{
 				TxType:      obscurocommon.StoreSecretTx,
-				Secret:      a.EnclaveClient.FetchSecret(t.Attestation),
+				Secret:      secret,
 				Attestation: t.Attestation,
 			}
 			a.broadcastTx(txData)
@@ -547,4 +562,53 @@ func (a *Node) monitorBlocks() {
 
 func (a *Node) IsReady() bool {
 	return atomic.LoadInt32(a.readyForWork) == 1
+}
+
+func (a *Node) awaitSecret() {
+	// start listening for l1 blocks that contain the response to the request
+	for {
+		select {
+		// todo: find a way to get rid of this case and only listen for blocks on the expected channels
+		case header := <-a.ethClient.BlockListener():
+			block, err := a.ethClient.FetchBlock(header.Hash())
+			if err != nil {
+				log.Panic("failed to retrieve block. Cause: %s:", err)
+			}
+			if a.checkBlockForSecretResponse(block) {
+				return
+			}
+
+		case b := <-a.blockRPCCh:
+			if a.checkBlockForSecretResponse(b.b.DecodeBlock()) {
+				return
+			}
+
+		case <-a.forkRPCCh:
+			// todo
+
+		case <-a.rollupsP2PCh:
+			// ignore rolllups from peers as we're not part of the network just yet
+
+		case <-time.After(time.Minute):
+			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
+			nodecommon.LogWithID(a.shortID, "Still waiting for secret from the L1...")
+
+		case <-a.exitNodeCh:
+			return
+		}
+	}
+}
+
+func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
+	for _, tx := range block.Transactions() {
+		t := a.txHandler.UnPackTx(tx)
+		if t != nil && t.TxType == obscurocommon.StoreSecretTx {
+			ok := a.handleStoreSecretTx(t)
+			if ok {
+				return true
+			}
+		}
+	}
+	// response not found
+	return false
 }

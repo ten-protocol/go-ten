@@ -31,7 +31,7 @@ type L1TxData struct {
 	Rollup EncodedRollup
 
 	Secret      EncryptedSharedEnclaveSecret
-	Attestation AttestationReport
+	Attestation EncodedAttestationReport
 
 	// if the type is deposit
 	Amount uint64
@@ -108,9 +108,15 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Bl
 
 type EncryptedSharedEnclaveSecret []byte
 
+type EncodedAttestationReport []byte
+
+// AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {
-	Owner common.Address
-	// todo public key
-	// hash of code
-	// other stuff
+	Report []byte         // the signed bytes of the report which includes some encrypted identifying data
+	PubKey []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
+	Owner  common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
+}
+
+type AttestationVerification struct {
+	ReportData []byte // the data embedded in the report at the time it was produced (up to 64bytes)
 }

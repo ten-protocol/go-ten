@@ -12,13 +12,13 @@ type Enclave interface {
 	IsReady() error
 
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
-	Attestation() obscurocommon.AttestationReport
+	Attestation() *obscurocommon.AttestationReport
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 	GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret
 
-	// FetchSecret - return the shared secret encrypted with the key from the attestation
-	FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret
+	// ShareSecret - verify the attestation and return the shared secret (encrypted with the key from the attestation)
+	ShareSecret(report *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error)
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret)

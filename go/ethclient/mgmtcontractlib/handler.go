@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+
 	"github.com/obscuronet/obscuro-playground/contracts"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -80,14 +82,14 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 			obscurocommon.ShortHash(r.Hash()), len(r.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:
-		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, EncodeToString(tx.Secret))
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, EncodeToString(tx.Secret), EncodeToString(tx.Attestation))
 		if err != nil {
 			log.Panic("could not pack transaction. Cause: %s", err)
 		}
 		ethTx.Data = data
 		log.Info(fmt.Sprintf("- Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
 	case obscurocommon.RequestSecretTx:
-		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod, EncodeToString(tx.Attestation))
 		if err != nil {
 			log.Panic("could not pack transaction. Cause: %s", err)
 		}
@@ -112,61 +114,101 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 
 	l1txData := obscurocommon.L1TxData{
 		TxType:      0,
-		Attestation: obscurocommon.AttestationReport{},
+		Attestation: obscurocommon.EncodedAttestationReport{},
 		Amount:      0,
 		Dest:        common.Address{},
 	}
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
 	case contracts.DepositMethod:
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
-			log.Panic("could not unpack transaction. Cause: %s", err)
-		}
-		callData, found := contractCallData["dest"]
-		if !found {
-			log.Panic("call data not found for dest")
-		}
-
-		l1txData.TxType = obscurocommon.DepositTx
-		l1txData.Amount = tx.Value().Uint64()
-		l1txData.Dest = callData.(common.Address)
+		unpackDepositTx(tx, method, contractCallData, &l1txData)
 
 	case contracts.AddRollupMethod:
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
-			log.Panic("could not unpack transaction. Cause: %s", err)
-		}
-		callData, found := contractCallData["rollupData"]
-		if !found {
-			log.Panic("call data not found for rollupData")
-		}
-		zipped, err := DecodeFromString(callData.(string))
-		if err != nil {
-			log.Panic("could not decode call data. Cause: %s", err)
-		}
-
-		l1txData.Rollup, err = Decompress(zipped)
-		if err != nil {
-			log.Panic("could not decompress rollup. Cause: %s", err)
-		}
-		l1txData.TxType = obscurocommon.RollupTx
+		unpackRollupTx(tx, method, contractCallData, &l1txData)
 
 	case contracts.StoreSecretMethod:
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
-			log.Panic("could not unpack transaction. Cause: %s", err)
-		}
-		callData, found := contractCallData["inputSecret"]
-		if !found {
-			log.Panic("call data not found for inputSecret")
-		}
-		l1txData.Secret, err = DecodeFromString(callData.(string))
-		if err != nil {
-			log.Panic("could not decode call data. Cause: %s", err)
-		}
-		l1txData.TxType = obscurocommon.StoreSecretTx
+		unpackStoreSecreTx(tx, method, contractCallData, &l1txData)
 
 	case contracts.RequestSecretMethod:
-		l1txData.TxType = obscurocommon.RequestSecretTx
+		unpackRequestSecretTx(tx, method, contractCallData, &l1txData)
 	}
 
 	return &l1txData
+}
+
+func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}, l1txData *obscurocommon.L1TxData) {
+	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
+	if err != nil {
+		panic(err)
+	}
+	callData, found := contractCallData["requestReport"]
+	if !found {
+		panic("call data not found for requestReport")
+	}
+
+	l1txData.Attestation, err = DecodeFromString(callData.(string))
+	if err != nil {
+		log.Panic("could not decode attestation request. Cause: %s", err)
+	}
+	l1txData.TxType = obscurocommon.RequestSecretTx
+}
+
+func unpackStoreSecreTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}, l1txData *obscurocommon.L1TxData) {
+	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
+	if err != nil {
+		log.Panic("could not unpack transaction. Cause: %s", err)
+	}
+	secretData, found := contractCallData["inputSecret"]
+	if !found {
+		log.Panic("call data not found for inputSecret")
+	}
+	l1txData.Secret, err = DecodeFromString(secretData.(string))
+	if err != nil {
+		log.Panic("could not decode secret data. Cause: %s", err)
+	}
+
+	reportData, found := contractCallData["requestReport"]
+	if !found {
+		panic("call data not found for requestReport")
+	}
+	l1txData.Attestation, err = DecodeFromString(reportData.(string))
+	if err != nil {
+		log.Panic("could not decode report data. Cause: %s", err)
+	}
+
+	l1txData.TxType = obscurocommon.StoreSecretTx
+}
+
+func unpackRollupTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}, l1txData *obscurocommon.L1TxData) {
+	if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:]); err != nil {
+		log.Panic("could not unpack transaction. Cause: %s", err)
+	}
+	callData, found := contractCallData["rollupData"]
+	if !found {
+		log.Panic("call data not found for rollupData")
+	}
+	zipped, err := DecodeFromString(callData.(string))
+	if err != nil {
+		log.Panic("could not decode call data. Cause: %s", err)
+	}
+
+	l1txData.Rollup, err = Decompress(zipped)
+	if err != nil {
+		log.Panic("could not decompress rollup. Cause: %s", err)
+	}
+	l1txData.TxType = obscurocommon.RollupTx
+}
+
+func unpackDepositTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}, l1txData *obscurocommon.L1TxData) {
+	if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:]); err != nil {
+		log.Panic("could not unpack transaction. Cause: %s", err)
+	}
+	callData, found := contractCallData["dest"]
+	if !found {
+		log.Panic("call data not found for dest")
+	}
+
+	l1txData.TxType = obscurocommon.DepositTx
+	l1txData.Amount = tx.Value().Uint64()
+	l1txData.Dest = callData.(common.Address)
 }

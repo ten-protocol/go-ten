@@ -30,3 +30,19 @@ func DecodeRollupOrPanic(rollup obscurocommon.EncodedRollup) *Rollup {
 
 	return r
 }
+
+func EncodeAttestation(att *obscurocommon.AttestationReport) obscurocommon.EncodedAttestationReport {
+	encoded, err := rlp.EncodeToBytes(att)
+	if err != nil {
+		panic(err)
+	}
+
+	return encoded
+}
+
+func DecodeAttestation(encoded obscurocommon.EncodedAttestationReport) (*obscurocommon.AttestationReport, error) {
+	att := new(obscurocommon.AttestationReport)
+	err := rlp.DecodeBytes(encoded, att)
+
+	return att, err
+}

@@ -48,7 +48,8 @@ func createInMemObscuroNode(
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, false, nil)
 
 	nodeID := common.BigToAddress(big.NewInt(id))
-	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
+
+	enclaveClient := enclave.NewEnclave(nodeID, true, false, txHandler, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
 	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, txHandler)

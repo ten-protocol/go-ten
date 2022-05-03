@@ -6,6 +6,7 @@ contract RollupStorage {
 
     mapping(uint256 => string[]) public rollups;
     mapping(address => uint256) public deposits;
+    mapping(address => string) public attestationRequests;
     string secret;
 
     function AddRollup(string calldata rollupData) public {
@@ -21,12 +22,13 @@ contract RollupStorage {
         deposits[dest] = msg.value;
     }
 
-    function StoreSecret(string memory inputSecret) public {
+    function StoreSecret(string memory inputSecret, string calldata requestReport) public {
         secret = inputSecret;
     }
 
-    function RequestSecret() public view  returns (string memory) {
-        return secret;
+    function RequestSecret(string calldata requestReport) public {
+        // we probably don't need to persist this in state (at least not in its entirety)
+        attestationRequests[msg.sender] = requestReport;
     }
 
     function Withdraw(uint256 withdrawAmount, address payable destination) public {
