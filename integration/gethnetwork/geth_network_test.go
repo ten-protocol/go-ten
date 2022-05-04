@@ -35,10 +35,11 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 	network := NewGethNetwork(30000, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
-	expectedPeers := numNodes - 1 // nodes don't consider themselves a peer
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
-	if peerCount != expectedPeers {
+
+	// nodes don't consider themselves a peer
+	if expectedPeers := numNodes - 1; peerCount != expectedPeers {
 		t.Fatalf("Wrong number of peers on the network. Found %d, expected %d.", peerCount, expectedPeers)
 	}
 }

@@ -2,6 +2,7 @@ package gethnetwork
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -10,7 +11,7 @@ import (
 )
 
 const (
-	shCmd             = "sh"
+	shCmd             = "bash"
 	gethScriptPathRel = "./build_geth_binary.sh"
 	gethBinaryPathRel = "../.build/geth_bin/geth"
 	versionFlag       = "--version"
@@ -33,8 +34,10 @@ func EnsureBinariesExist(version string) (string, error) {
 	defer creationLock.Unlock()
 
 	gethScript := path.Join(basepath, gethScriptPathRel)
-	_, err := exec.Command(shCmd, gethScript, fmt.Sprintf("%s=%s", versionFlag, version)).Output()
-	if err != nil {
+	cmd := exec.Command(shCmd, gethScript, fmt.Sprintf("%s=%s", versionFlag, version))
+	cmd.Stderr = os.Stderr
+
+	if _, err := cmd.Output(); err != nil {
 		return "", err
 	}
 	return path.Join(basepath, fmt.Sprintf("%s-%s", gethBinaryPathRel, version)), nil
