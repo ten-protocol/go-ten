@@ -268,5 +268,4 @@ func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, num
 			numberOfWithdrawalRequests++
 		}
 	}
-	return
 }
