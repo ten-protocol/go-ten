@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -148,7 +149,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
-// todo - sanity check that the injected withdrawals were mostly executed
+
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) uint64 {
 	l1Height := uint64(node.DB().GetCurrentBlockHead().Number.Int64())
 
@@ -224,7 +225,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// best condition : all Txs (stats) were issue and consumed in the blockchain
 	// can't happen : sum of headers withdraws greater than issued Txs (stats)
 	if totalSuccessfullyWithdrawn > s.Stats.TotalWithdrawalRequestedAmount {
-		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
+		t.Errorf("The amount withdrawn %d is exceeds the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
+	}
+
+	// sanity check that the injected withdrawals were mostly executed
+	if totalSuccessfullyWithdrawn < s.Stats.TotalWithdrawalRequestedAmount/2 {
+		t.Errorf("The amount withdrawn %d is far smaller than the amount requested %d. Something is probably wrong.", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
 	// check that the sum of all balances matches the total amount of money that must be in the system
@@ -245,8 +251,18 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 }
 
 func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+	head := node.DB().GetCurrentRollupHead()
+	if head == nil {
+		panic("the current head should not be nil")
+	}
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for r := node.DB().GetCurrentRollupHead(); r != nil; r = node.DB().GetRollupHeader(r.ParentHash) {
+	for r := head; ; r = node.DB().GetRollupHeader(r.ParentHash) {
+		if r != nil && r.Number == obscurocommon.L1GenesisHeight {
+			return
+		}
+		if r == nil {
+			panic(fmt.Sprintf("Reached a missing rollup on node %d", obscurocommon.ShortAddress(node.ID)))
+		}
 		for _, w := range r.Withdrawals {
 			totalSuccessfullyWithdrawn += w.Amount
 			numberOfWithdrawalRequests++

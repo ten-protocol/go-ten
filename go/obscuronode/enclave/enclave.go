@@ -180,14 +180,15 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return *ingestionFailedResponse
 	}
 
-	stored := e.storage.StoreBlock(&block)
-	if !stored {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
-	}
-
 	_, f := e.storage.FetchBlock(block.Header().ParentHash)
 	if !f && block.NumberU64() > obscurocommon.L1GenesisHeight {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
+	}
+
+	// Only store the block if the parent is available.
+	stored := e.storage.StoreBlock(&block)
+	if !stored {
+		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
 	blockState := updateState(&block, e.blockResolver, e.storage, e.txHandler)
