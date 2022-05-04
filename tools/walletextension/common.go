@@ -7,8 +7,6 @@ import (
 )
 
 const (
-	obxFacadeWebsocketAddr    = "ws://localhost:3001"
-	gethWebsocketAddr         = "ws://localhost:8546"
 	reqJsonKeyMethod          = "method"
 	reqJsonMethodGetBalance   = "eth_getBalance"
 	reqJsonMethodGetStorageAt = "eth_getStorageAt"

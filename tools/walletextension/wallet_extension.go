@@ -23,17 +23,26 @@ const (
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	enclavePrivateKey *ecdsa.PrivateKey
-	// todo - support multiple viewing keys. this will require the enclave to attach metadata on encrypted results
-	//  to indicate which key they were encrypted with
+	obscuroFacadeAddr string
+	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
+	//  to indicate which viewing key they were encrypted with.
 	viewingKeyPrivate *ecdsa.PrivateKey
-	// todo - replace this channel with port-based communication with the enclave
+	// TODO - Replace this channel with port-based communication with the enclave.
 	viewingKeyChannel chan<- ViewingKey
 }
 
-func NewWalletExtension(enclavePrivateKey *ecdsa.PrivateKey, viewingKeyChannel chan<- ViewingKey) *WalletExtension {
-	return &WalletExtension{enclavePrivateKey: enclavePrivateKey, viewingKeyChannel: viewingKeyChannel}
+func NewWalletExtension(
+	enclavePrivateKey *ecdsa.PrivateKey,
+	obscuroFacadeAddr string,
+	viewingKeyChannel chan<- ViewingKey,
+) *WalletExtension {
+	return &WalletExtension{
+		enclavePrivateKey: enclavePrivateKey,
+		obscuroFacadeAddr: obscuroFacadeAddr,
+		viewingKeyChannel: viewingKeyChannel}
 }
 
+// Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
 func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
@@ -66,6 +75,7 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 		http.Error(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %v\n", err), httpCodeErr)
 		return
 	}
+	method := reqJsonMap[reqJsonKeyMethod]
 	fmt.Println(fmt.Sprintf("Received request from wallet: %s", body))
 
 	// We encrypt the JSON with the enclave's public key.
@@ -78,10 +88,15 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 	}
 
 	// We forward the request on to the Geth node.
-	gethResp := forwardMsgOverWebsocket(obxFacadeWebsocketAddr, encryptedBody)
+	gethResp := forwardMsgOverWebsocket("ws://"+we.obscuroFacadeAddr, encryptedBody)
+	// TODO - Improve error detection. We are just matching on the error message here.
+	if strings.HasPrefix(string(gethResp), "enclave could not respond securely") {
+		fmt.Println(string(gethResp))
+		http.Error(resp, string(gethResp), httpCodeErr)
+		return
+	}
 
 	// We decrypt the response if it's encrypted.
-	method := reqJsonMap[reqJsonKeyMethod]
 	if method == reqJsonMethodGetBalance || method == reqJsonMethodGetStorageAt {
 		fmt.Println(fmt.Sprintf("🔐 Decrypting %s response from Geth node with viewing key.", method))
 		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate)

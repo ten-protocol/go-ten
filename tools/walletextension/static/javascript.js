@@ -31,7 +31,7 @@ const initialize = () => {
             statusArea.innerText = "No MetaMask accounts found."
             return
         }
-        const account = accounts[0]; // todo - allow use of accounts other than the first
+        const account = accounts[0]; // TODO - Allow use of accounts other than the first.
 
         const signedBytes = await ethereum.request({
             method: metamaskPersonalSign,

@@ -5,6 +5,12 @@ import (
 	"github.com/obscuronet/obscuro-playground/tools/walletextension"
 )
 
+const (
+	walletExtensionAddr = "localhost:3000"
+	obscuroFacadeAddr   = "localhost:3001"
+	gethWebsocketAddr   = "ws://localhost:8546"
+)
+
 func main() {
 	enclavePrivateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -12,9 +18,9 @@ func main() {
 	}
 	viewingKeyChannel := make(chan walletextension.ViewingKey)
 
-	we := walletextension.NewWalletExtension(enclavePrivateKey, viewingKeyChannel)
-	of := walletextension.NewObxFacade(enclavePrivateKey, viewingKeyChannel)
+	walletExtension := walletextension.NewWalletExtension(enclavePrivateKey, obscuroFacadeAddr, viewingKeyChannel)
+	obscuroFacade := walletextension.NewObscuroFacade(enclavePrivateKey, gethWebsocketAddr, viewingKeyChannel)
 
-	go of.Serve("localhost:3001")
-	we.Serve("localhost:3000")
+	go obscuroFacade.Serve(obscuroFacadeAddr)
+	walletExtension.Serve(walletExtensionAddr)
 }
