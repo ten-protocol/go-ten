@@ -1,17 +1,32 @@
-const initialize = () => {
-    const generateViewingKeyButton = document.getElementById('generateViewingKey');
-    const statusArea = document.getElementById('status');
+const eventClick = "click";
+const eventDomLoaded = "DOMContentLoaded";
+const idGenerateViewingKey = "generateViewingKey";
+const idStatus = "status";
+const pathGetViewingKey = "/getviewingkey/";
+const pathStoreViewingKey = "/storeviewingkey/";
+const methodPost = "post";
+const jsonHeaders = {
+    "Accept": "application/json",
+    "Content-Type": "application/json"
+};
+const metamaskRequestAccounts = "eth_requestAccounts";
+const metamaskPersonalSign = "personal_sign";
+const personalSignPrefix = "vk";
 
-    generateViewingKeyButton.addEventListener('click', async () => {
-        const viewingPublicKeyResp = await fetch('/getviewingkey'); // todo - handle failure of request
+const initialize = () => {
+    const generateViewingKeyButton = document.getElementById(idGenerateViewingKey);
+    const statusArea = document.getElementById(idStatus);
+
+    generateViewingKeyButton.addEventListener(eventClick, async () => {
+        const viewingPublicKeyResp = await fetch(pathGetViewingKey); // todo - handle failure of request
         const viewingKey = await viewingPublicKeyResp.text();
 
-        const accounts = await ethereum.request({method: 'eth_requestAccounts'}); // todo - handle failure of request
+        const accounts = await ethereum.request({method: metamaskRequestAccounts}); // todo - handle failure of request
         const account = accounts[0]; // todo - allow use of other accounts?
         const signedBytes = await ethereum.request({
-            method: 'personal_sign',
+            method: metamaskPersonalSign,
             // Without a prefix such as 'vk', personal_sign transforms the data for security reasons.
-            params: ['vk' + viewingKey, account]
+            params: [personalSignPrefix + viewingKey, account]
         }); // todo - handle failure of request
 
         const signedViewingKeyJson = {
@@ -20,10 +35,9 @@ const initialize = () => {
         }
 
         const resp = await fetch(
-            '/storeviewingkey/', {
-                method: 'post',
-                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-                mode: 'cors',
+            pathStoreViewingKey, {
+                method: methodPost,
+                headers: jsonHeaders,
                 body: JSON.stringify(signedViewingKeyJson)
             }
         ); // todo - handle failure of request
@@ -34,4 +48,4 @@ const initialize = () => {
     })
 }
 
-window.addEventListener('DOMContentLoaded', initialize);
+window.addEventListener(eventDomLoaded, initialize);
