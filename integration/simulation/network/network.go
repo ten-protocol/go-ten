@@ -11,7 +11,7 @@ import (
 // These networks can be composed of in-memory go-routines or of fully fledged existing nodes like Ropsten.
 // Implementation notes:
 // - This is a work in progress, so there is a lot of code duplication in the implementations
-// - Once we implement a few more versions: for example using Ganache, or using enclaves running in azure, etc, we'll revisit and create better abstractions.
+// - Once we implement a few more versions: for example using Geth, or using enclaves running in azure, etc, we'll revisit and create better abstractions.
 // TODO Decompose the network so we can pick and choose different types of l1 and obscuro nodes
 type Network interface {
 	// Create - returns a group of started Ethereum nodes, a group of started Obscuro nodes, and the Obscuro nodes' P2P addresses.

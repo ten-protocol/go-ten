@@ -31,6 +31,3 @@ go/obscuronode/enclave/main/main
 
 # Logs files
 enclave_logs.txt
-
-# ganache files
-ganachedb/
