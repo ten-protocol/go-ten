@@ -3,6 +3,9 @@ package enclave
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,12 +15,12 @@ import (
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findTxsNotIncluded(head *Rollup, txs []nodecommon.L2Tx, s Storage) []nodecommon.L2Tx {
+func findTxsNotIncluded(head *core.Rollup, txs []nodecommon.L2Tx, s db.Storage) []nodecommon.L2Tx {
 	included := allIncludedTransactions(head, s)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *Rollup, s Storage) map[common.Hash]nodecommon.L2Tx {
+func allIncludedTransactions(b *core.Rollup, s db.Storage) map[common.Hash]nodecommon.L2Tx {
 	val, found := s.FetchRollupTxs(b)
 	if found {
 		return val
@@ -47,7 +50,7 @@ func removeExisting(base []nodecommon.L2Tx, toRemove map[common.Hash]nodecommon.
 }
 
 // Returns all transactions found 20 levels below
-func historicTxs(r *Rollup, s Storage) map[common.Hash]common.Hash {
+func historicTxs(r *core.Rollup, s db.Storage) map[common.Hash]common.Hash {
 	i := obscurocommon.HeightCommittedBlocks
 	c := r
 	for {
@@ -83,13 +86,13 @@ func printTxs(txs []nodecommon.L2Tx) (txsString []string) {
 }
 
 func printTx(t nodecommon.L2Tx, txsString []string) []string {
-	txData := TxData(&t)
+	txData := core.TxData(&t)
 	switch txData.Type {
-	case TransferTx:
+	case core.TransferTx:
 		txsString = append(txsString, fmt.Sprintf("%d->%d(%d){%d}", obscurocommon.ShortAddress(txData.From), obscurocommon.ShortAddress(txData.To), txData.Amount, obscurocommon.ShortHash(t.Hash())))
-	case WithdrawalTx:
+	case core.WithdrawalTx:
 		txsString = append(txsString, fmt.Sprintf("%d->*(%d){%d}", obscurocommon.ShortAddress(txData.From), txData.Amount, obscurocommon.ShortHash(t.Hash())))
-	case DepositTx:
+	case core.DepositTx:
 		txsString = append(txsString, fmt.Sprintf("*->%d(%d){%d}", obscurocommon.ShortAddress(txData.To), txData.Amount, obscurocommon.ShortHash(t.Hash())))
 	}
 	return txsString

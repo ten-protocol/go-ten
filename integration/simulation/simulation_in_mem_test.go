@@ -23,7 +23,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		NumberOfNodes:             10,
 		NumberOfWallets:           5,
 		AvgBlockDuration:          50 * time.Millisecond,
-		SimulationTime:            15 * time.Second,
+		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
 		L2ToL1EfficiencyThreshold: 0.34,

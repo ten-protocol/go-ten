@@ -60,7 +60,6 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 
 	n.obscuroAddresses = nil
 
-	time.Sleep(params.AvgBlockDuration * 20)
 	for _, m := range n.obscuroNodes {
 		t := m
 		go t.Start()

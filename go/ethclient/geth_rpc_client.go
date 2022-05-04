@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -28,7 +27,6 @@ type gethRPCClient struct {
 	wallet    wallet.Wallet             // wallet containing the account information // TODO this does not need to be coupled together
 	chainID   int                       // chainID is used to sign transactions
 	txHandler mgmtcontractlib.TxHandler // converts L1TxData to ethereum transactions
-	lock      sync.RWMutex              // ensures no concurrent tx broadcasts
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
@@ -37,6 +35,14 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
+
+	// gets the next nonce to use on the account
+	nonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
+	if err != nil {
+		panic(err)
+	}
+
+	wallet.SetNonce(nonce)
 
 	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
 	return &gethRPCClient{
@@ -154,16 +160,7 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 }
 
 func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	fromAddr := e.wallet.Address()
-	nonce, err := e.client.PendingNonceAt(context.Background(), fromAddr)
-	if err != nil {
-		panic(err)
-	}
-
-	formattedTx, err := e.txHandler.PackTx(tx, fromAddr, nonce)
+	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.GetNonceAndIncrement())
 	if err != nil {
 		panic(err)
 	}

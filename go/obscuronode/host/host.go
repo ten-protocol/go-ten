@@ -141,7 +141,6 @@ func (a *Node) Start() {
 		a.broadcastTx(tx)
 	}
 
-	// TODO review this
 	if !a.Enclave.IsInitialised() {
 		a.requestSecret()
 	}
