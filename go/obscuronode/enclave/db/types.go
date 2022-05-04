@@ -31,6 +31,17 @@ type BlockState struct {
 	FoundNewRollup bool
 }
 
+func CopyStateNoWithdrawals(state *State) *State {
+	s := EmptyState()
+	if state == nil {
+		return s
+	}
+	for address, balance := range state.Balances {
+		s.Balances[address] = balance
+	}
+	return s
+}
+
 func CopyState(state *State) *State {
 	s := EmptyState()
 	if state == nil {
@@ -53,6 +64,7 @@ func Serialize(state *State) nodecommon.StateRoot {
 
 func EmptyState() *State {
 	return &State{
-		Balances: map[common.Address]uint64{},
+		Balances:    map[common.Address]uint64{},
+		Withdrawals: make([]obscurocommon.TxHash, 0),
 	}
 }

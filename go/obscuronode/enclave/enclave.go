@@ -67,7 +67,7 @@ func (e *enclaveImpl) start(block types.Block) {
 	if f {
 		env.headRollup = blockState.Head
 		if env.headRollup != nil {
-			env.state = db.CopyState(e.storage.FetchRollupState(env.headRollup.Hash()))
+			env.state = db.CopyStateNoWithdrawals(e.storage.FetchRollupState(env.headRollup.Hash()))
 		}
 	}
 
@@ -77,14 +77,14 @@ func (e *enclaveImpl) start(block types.Block) {
 		case winnerRollup := <-e.roundWinnerCh:
 			env.header = obscurocore.NewHeader(winnerRollup, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
-			env.state = db.CopyState(e.storage.FetchRollupState(winnerRollup.Hash()))
+			env.state = db.CopyStateNoWithdrawals(e.storage.FetchRollupState(winnerRollup.Hash()))
 
 			// determine the transactions that were not yet included
 			env.processedTxs = currentTxs(winnerRollup, e.mempool.FetchMempoolTxs(), e.storage)
 			env.processedTxsMap = makeMap(env.processedTxs)
 
 			// calculate the State after executing them
-			env.state = executeTransactions(env.processedTxs, env.state, env.headRollup.Header)
+			executeTransactions(env.processedTxs, env.state, env.headRollup.Header)
 
 		case tx := <-e.txCh:
 			// only process transactions if there is already a rollup to use as parent
@@ -316,20 +316,23 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscuroc
 		newRollupHeader = obscurocore.NewHeader(bs.Head, bs.Head.Header.Number+1, e.node)
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(bs.Head, e.mempool.FetchMempoolTxs(), e.storage)
-		newRollupState = executeTransactions(newRollupTxs, bs.State, newRollupHeader)
+
+		newRollupState = db.CopyStateNoWithdrawals(bs.State)
+		executeTransactions(newRollupTxs, newRollupState, newRollupHeader)
 	}
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(bs.Head)
 	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
-	newRollupState = executeTransactions(depositTxs, newRollupState, newRollupHeader)
-
-	// Postprocessing - withdrawals
-	withdrawals := rollupPostProcessingWithdrawals(bs.Head, newRollupState)
+	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), newRollupTxs, withdrawals, obscurocommon.GenerateNonce(), db.Serialize(newRollupState))
+	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), newRollupTxs, obscurocommon.GenerateNonce(), db.Serialize(newRollupState))
+
+	// Postprocessing - withdrawals
+	r.Header.Withdrawals = rollupPostProcessingWithdrawals(&r, newRollupState)
+
 	return &r
 }
 
@@ -450,11 +453,11 @@ type speculativeWork struct {
 
 // internal structure used for the speculative execution.
 type processingEnvironment struct {
-	headRollup      *obscurocore.Rollup
-	header          *nodecommon.Header
-	state           *db.State
-	processedTxs    []nodecommon.L2Tx
-	processedTxsMap map[common.Hash]nodecommon.L2Tx
+	headRollup      *obscurocore.Rollup             // the current head rollup, which will be the parent of the new rollup
+	header          *nodecommon.Header              // the header of the new rollup
+	processedTxs    []nodecommon.L2Tx               // txs that were already processed
+	processedTxsMap map[common.Hash]nodecommon.L2Tx // structure used to prevent duplicates
+	state           *db.State                       // the state as calculated from the previous rollup and the processed transactions
 }
 
 // NewEnclave creates a new enclave.

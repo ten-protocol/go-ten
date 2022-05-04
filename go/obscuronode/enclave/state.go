@@ -21,20 +21,18 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-// returns a modified copy of the State
+// mutates the State
 // header - the header of the rollup where this transaction will be included
 // todo - remove nolint after the header starts being used
 func executeTransactions(
 	txs []nodecommon.L2Tx,
-	state *db.State,
+	s *db.State,
 	header *nodecommon.Header, //nolint
-) *db.State {
-	s := db.CopyState(state)
+) {
 	for _, tx := range txs {
 		executeTx(s, tx)
 	}
 	// fmt.Printf("w1: %v\n", is.w)
-	return s
 }
 
 // mutates the state
@@ -197,7 +195,8 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	p := blockResolver.Proof(s.ParentRollup(headRollup))
 	depositTxs := processDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.txHandler)
 
-	state := executeTransactions(append(headRollup.Transactions, depositTxs...), parentState, headRollup.Header)
+	state := db.CopyStateNoWithdrawals(parentState)
+	executeTransactions(append(headRollup.Transactions, depositTxs...), state, headRollup.Header)
 
 	if db.Serialize(state) != headRollup.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
@@ -272,7 +271,8 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, s db.Storag
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		newState = executeTransactions(txsToProcess, parentState.State, newHeadRollup.Header)
+		newState = db.CopyStateNoWithdrawals(parentState.State)
+		executeTransactions(txsToProcess, newState, newHeadRollup.Header)
 	} else {
 		newHeadRollup = parentState.Head
 	}
@@ -289,7 +289,6 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, s db.Storag
 // Todo - this has to be implemented differently based on how we define the ObsERC20
 func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, newState *db.State) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
-
 	// go through each transaction and check if the withdrawal was processed correctly
 	for i, t := range newHeadRollup.Transactions {
 		txData := core.TxData(&newHeadRollup.Transactions[i])
@@ -300,6 +299,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, newState *db.St
 			})
 		}
 	}
+
 	return w
 }
 

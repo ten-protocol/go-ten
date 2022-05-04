@@ -148,7 +148,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
-
+// todo - sanity check that the injected withdrawals were mostly executed
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) uint64 {
 	l1Height := uint64(node.DB().GetCurrentBlockHead().Number.Int64())
 
@@ -161,7 +161,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	l2Height := node.DB().GetCurrentRollupHead().Number
+	h := node.DB().GetCurrentRollupHead()
+	if h == nil {
+		panic("no way")
+	}
+	l2Height := h.Number
 	if l2Height < minObscuroHeight {
 		t.Errorf("There were only %d rollups mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
 	}

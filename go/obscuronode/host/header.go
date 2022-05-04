@@ -32,10 +32,9 @@ func NewDB() *DB {
 // GetCurrentBlockHead returns the current block header (head) of the Node
 func (n *DB) GetCurrentBlockHead() *types.Header {
 	n.blockLock.RLock()
-	current := n.currentBlockHead
-	n.blockLock.RUnlock()
+	defer n.blockLock.RUnlock()
 
-	return n.GetBlockHeader(current)
+	return n.GetBlockHeader(n.currentBlockHead)
 }
 
 // GetBlockHeader returns the block header given the Hash
@@ -62,10 +61,9 @@ func (n *DB) AddBlockHeader(header *types.Header) {
 // GetCurrentRollupHead returns the current rollup header (head) of the Node
 func (n *DB) GetCurrentRollupHead() *nodecommon.Header {
 	n.rollupLock.RLock()
-	current := n.currentRollupHead
-	n.rollupLock.RUnlock()
+	defer n.rollupLock.RUnlock()
 
-	return n.GetRollupHeader(current)
+	return n.GetRollupHeader(n.currentRollupHead)
 }
 
 // GetRollupHeader returns the rollup header given the Hash
