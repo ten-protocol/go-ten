@@ -88,7 +88,7 @@ message IsInitialisedResponse {
 }
 
 message ProduceGenesisRequest {
-  bytes encodedBlock = 1;
+  bytes blockHash = 1;
 }
 
 message ProduceGenesisResponse {
