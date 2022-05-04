@@ -110,17 +110,19 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, storage db.Stor
 		// go back and calculate the State of the Parent
 		p, f := storage.FetchBlock(b.ParentHash())
 		if !f {
-			panic("Could not find block parent. This should not happen.")
+			log.Log("Could not find block parent. This should not happen.")
+			return nil
 		}
 		parentState = updateState(p, blockResolver, storage, txHandler)
 	}
 
 	if parentState == nil {
-		panic(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
+		log.Log(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
 			obscurocommon.ShortHash(b.Hash()),
 			obscurocommon.ShortHash(b.Header().ParentHash),
 			b.Header(),
 		))
+		return nil
 	}
 
 	bs := calculateBlockState(b, parentState, storage, blockResolver, rollups, txHandler)

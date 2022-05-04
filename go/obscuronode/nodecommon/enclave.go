@@ -71,6 +71,6 @@ type BlockSubmissionResponse struct {
 	BlockNotIngestedCause string        // The reason the block was not ingested. This message has to not disclose anything useful from the enclave.
 
 	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	FoundNewHead   bool      // Whether the Block had a new Rollup and the enclave has ingested it
-	RollupHead     *Header   // If new header was found, this is the return
+	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
+	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 }
