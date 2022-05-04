@@ -383,7 +383,7 @@ func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
 }
 
 func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionResponse) {
-	// only update the node rollup headers if the enclave has ingested it
+	// only update the node rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
 		a.DB().AddRollupHeader(result.RollupHead)
