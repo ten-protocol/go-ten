@@ -10,9 +10,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	viewingKeyChannel := make(chan walletextension.ViewingKey)
 
-	we := walletextension.NewWalletExtension(enclavePrivateKey)
-	of := walletextension.NewObxFacade(enclavePrivateKey)
+	we := walletextension.NewWalletExtension(enclavePrivateKey, viewingKeyChannel)
+	of := walletextension.NewObxFacade(enclavePrivateKey, viewingKeyChannel)
 
 	go of.Serve("localhost:3001")
 	we.Serve("localhost:3000")

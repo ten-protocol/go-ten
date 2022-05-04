@@ -25,13 +25,15 @@ type WalletExtension struct {
 	// todo - support multiple viewing keys. this will require the enclave to attach metadata on encrypted results
 	//  to indicate which key they were encrypted with
 	viewingKeyPrivate *ecdsa.PrivateKey
+	// todo - replace this channel with port-based communication with the enclave
+	viewingKeyChannel chan<- ViewingKey
 }
 
-func NewWalletExtension(enclavePrivateKey *ecdsa.PrivateKey) *WalletExtension {
-	return &WalletExtension{enclavePrivateKey: enclavePrivateKey}
+func NewWalletExtension(enclavePrivateKey *ecdsa.PrivateKey, viewingKeyChannel chan<- ViewingKey) *WalletExtension {
+	return &WalletExtension{enclavePrivateKey: enclavePrivateKey, viewingKeyChannel: viewingKeyChannel}
 }
 
-func (we WalletExtension) Serve(hostAndPort string) {
+func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
@@ -49,7 +51,7 @@ func (we WalletExtension) Serve(hostAndPort string) {
 }
 
 // Reads the Ethereum JSON-RPC request, and forwards it to the Geth node over a websocket.
-func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.Request) {
+func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -108,7 +110,7 @@ func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.
 }
 
 // Returns a new viewing key.
-func (we WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *http.Request) {
+func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *http.Request) {
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
 		fmt.Println(err)
@@ -125,7 +127,7 @@ func (we WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *
 }
 
 // Stores the signed viewing key.
-func (we WalletExtension) handleSubmitViewingKey(_ http.ResponseWriter, req *http.Request) {
+func (we *WalletExtension) handleSubmitViewingKey(_ http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -138,5 +140,8 @@ func (we WalletExtension) handleSubmitViewingKey(_ http.ResponseWriter, req *htt
 		fmt.Println(err)
 		return
 	}
-	_ = []byte(reqJsonMap["signedBytes"].(string)) // todo - send public key and signed bytes to enclave
+	signedBytes := []byte(reqJsonMap["signedBytes"].(string))
+
+	viewingKey := ViewingKey{viewingKeyPublic: &we.viewingKeyPrivate.PublicKey, signedBytes: signedBytes}
+	we.viewingKeyChannel <- viewingKey
 }

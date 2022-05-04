@@ -14,13 +14,22 @@ import (
 // Ethereum JSON-RPC requests can be understood by a regular Geth node.
 type ObxFacade struct {
 	enclavePrivateKey *ecdsa.PrivateKey
+	viewingKeyChannel <-chan ViewingKey
+	viewingKey        *ecdsa.PublicKey
 }
 
-func NewObxFacade(enclavePrivateKey *ecdsa.PrivateKey) *ObxFacade {
-	return &ObxFacade{enclavePrivateKey: enclavePrivateKey}
+func NewObxFacade(enclavePrivateKey *ecdsa.PrivateKey, viewingKeyChannel <-chan ViewingKey) *ObxFacade {
+	return &ObxFacade{enclavePrivateKey: enclavePrivateKey, viewingKeyChannel: viewingKeyChannel}
 }
 
-func (of ObxFacade) Serve(hostAndPort string) {
+func (of *ObxFacade) Serve(hostAndPort string) {
+	// We listen for the account viewing key.
+	go func() {
+		viewingKey := <-of.viewingKeyChannel
+		// todo - verify signed bytes
+		of.viewingKey = viewingKey.viewingKeyPublic
+	}()
+
 	serveMux := http.NewServeMux()
 
 	serveMux.HandleFunc("/", of.handleWSEthJson)
@@ -31,7 +40,7 @@ func (of ObxFacade) Serve(hostAndPort string) {
 	}
 }
 
-func (of ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request) {
+func (of *ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -71,6 +80,11 @@ func (of ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request)
 	// We encrypt the response if needed.
 	method := reqJsonMap[reqJsonKeyMethod]
 	if method == reqJsonMethodGetBalance || method == reqJsonMethodGetStorageAt {
+		if of.viewingKey == nil {
+			fmt.Printf("Could not respond securely to %s request because there is no viewing key for the account.\n", method)
+			return
+		}
+
 		// todo - encrypt with viewing key
 		eciesPublicKey := ecies.ImportECDSAPublic(&of.enclavePrivateKey.PublicKey)
 		gethResp, err = ecies.Encrypt(rand.Reader, eciesPublicKey, gethResp, nil, nil)

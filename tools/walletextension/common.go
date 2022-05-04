@@ -1,6 +1,7 @@
 package walletextension
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"github.com/gorilla/websocket"
 )
@@ -11,6 +12,12 @@ const gethWebsocketAddr = "ws://localhost:8546"
 const reqJsonKeyMethod = "method"
 const reqJsonMethodGetBalance = "eth_getBalance"
 const reqJsonMethodGetStorageAt = "eth_getStorageAt"
+
+// ViewingKey is the packet of data sent to the enclave when storing a new viewing key.
+type ViewingKey struct {
+	viewingKeyPublic *ecdsa.PublicKey
+	signedBytes      []byte
+}
 
 func forwardMsgOverWebsocket(url string, msg []byte) []byte {
 	connection, _, err := websocket.DefaultDialer.Dial(url, nil)
