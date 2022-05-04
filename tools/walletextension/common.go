@@ -6,12 +6,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const obxFacadeWebsocketAddr = "ws://localhost:3001"
-const gethWebsocketAddr = "ws://localhost:8546"
-
-const reqJsonKeyMethod = "method"
-const reqJsonMethodGetBalance = "eth_getBalance"
-const reqJsonMethodGetStorageAt = "eth_getStorageAt"
+const (
+	obxFacadeWebsocketAddr    = "ws://localhost:3001"
+	gethWebsocketAddr         = "ws://localhost:8546"
+	reqJsonKeyMethod          = "method"
+	reqJsonMethodGetBalance   = "eth_getBalance"
+	reqJsonMethodGetStorageAt = "eth_getStorageAt"
+	pathRoot                  = "/"
+)
 
 // ViewingKey is the packet of data sent to the enclave when storing a new viewing key.
 type ViewingKey struct {

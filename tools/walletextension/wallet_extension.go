@@ -13,11 +13,12 @@ import (
 	"strings"
 )
 
-const pathRoot = "/"
-const pathViewingKeys = "/viewingkeys/"
-const pathGenerateViewingKey = "/generateviewingkey/"
-const pathSubmitViewingKey = "/submitviewingkey/"
-const staticDir = "./tools/walletextension/static"
+const (
+	pathViewingKeys        = "/viewingkeys/"
+	pathGenerateViewingKey = "/generateviewingkey/"
+	pathSubmitViewingKey   = "/submitviewingkey/"
+	staticDir              = "./tools/walletextension/static"
+)
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
@@ -50,20 +51,20 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 	}
 }
 
-// Reads the Ethereum JSON-RPC request, and forwards it to the Geth node over a websocket.
+// Encrypts Ethereum JSON-RPC request, forwards it to the Geth node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("could not read JSON-RPC request body: %v\n", err)
+		return // todo - return error response
 	}
 
-	// We unmarshall the JSON request to inspect it.
+	// We unmarshall the JSON request.
 	var reqJsonMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJsonMap)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("could not unmarshall JSON-RPC request body to JSON: %v\n", err)
+		return // todo - return error response
 	}
 	fmt.Println(fmt.Sprintf("Received request from wallet: %s", body))
 
@@ -72,8 +73,8 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 	eciesPublicKey := ecies.ImportECDSAPublic(&we.enclavePrivateKey.PublicKey)
 	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("could not encrypt request with enclave public key: %v\n", err)
+		return // todo - return error response
 	}
 
 	// We forward the request on to the Geth node.
@@ -86,58 +87,60 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate)
 		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
 		if err != nil {
-			fmt.Println(err)
-			return
+			fmt.Printf("could not decrypt enclave response with viewing key: %v\n", err)
+			return // todo - return error response
 		}
 	}
 
-	// We unmarshall the JSON response to inspect it.
+	// We unmarshall the JSON response.
 	var respJsonMap map[string]interface{}
 	err = json.Unmarshal(gethResp, &respJsonMap)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("could not unmarshall enclave response to JSON: %v\n", err)
+		return // todo - return error response
 	}
 	fmt.Println(fmt.Sprintf("Received response from Geth node: %s", strings.TrimSpace(string(gethResp))))
 
 	// We write the response to the client.
 	_, err = resp.Write(gethResp)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("could not write JSON-RPC response: %v\n", err)
+		return // todo - return error response
 	}
 }
 
-// Returns a new viewing key.
+// Generates a new viewing key.
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *http.Request) {
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("could not generate new keypair: %v\n", err)
+		return // todo - return error response
 	}
 	we.viewingKeyPrivate = viewingKeyPrivate
 
-	// MetaMask will sign over the concatenation of a prefix and the hex of the viewing key's public key.
+	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
 	_, err = resp.Write([]byte(viewingKeyHex))
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("could not return viewing key public key hex to client: %v\n", err)
+		// todo - return error response
 	}
 }
 
-// Stores the signed viewing key.
+// Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(_ http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("could not read viewing key and signed bytes from client: %v\n", err)
+		return // todo - return error response
 	}
 
 	var reqJsonMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJsonMap)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("could not unmarshall viewing key and signed bytes from client to JSON: %v\n", err)
+		return // todo - return error response
 	}
 	signedBytes := []byte(reqJsonMap["signedBytes"].(string))
 
