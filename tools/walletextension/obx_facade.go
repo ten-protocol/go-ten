@@ -85,8 +85,7 @@ func (of *ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request
 			return
 		}
 
-		// todo - encrypt with viewing key
-		eciesPublicKey := ecies.ImportECDSAPublic(&of.enclavePrivateKey.PublicKey)
+		eciesPublicKey := ecies.ImportECDSAPublic(of.viewingKey)
 		gethResp, err = ecies.Encrypt(rand.Reader, eciesPublicKey, gethResp, nil, nil)
 		if err != nil {
 			fmt.Println(err)

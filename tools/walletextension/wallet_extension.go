@@ -83,8 +83,7 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 	method := reqJsonMap[reqJsonKeyMethod]
 	if method == reqJsonMethodGetBalance || method == reqJsonMethodGetStorageAt {
 		fmt.Println(fmt.Sprintf("🔐 Decrypting %s response from Geth node with viewing key.", method))
-		// todo - decrypt with viewing key
-		eciesPrivateKey := ecies.ImportECDSA(we.enclavePrivateKey)
+		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate)
 		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
 		if err != nil {
 			fmt.Println(err)
