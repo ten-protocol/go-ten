@@ -155,6 +155,4 @@ func (we WalletExtension) handleStoreViewingKey(_ http.ResponseWriter, req *http
 
 	signedViewingKey := SignedViewingKey{viewingKey: viewingKey, signedBytes: []byte(signature)}
 	we.signedViewingKeys = append(we.signedViewingKeys, signedViewingKey)
-
-	// todo - send a success response. display it on the page
 }

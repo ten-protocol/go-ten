@@ -1,36 +1,36 @@
 const initialize = () => {
     const generateViewingKeyButton = document.getElementById('generateViewingKey');
+    const statusArea = document.getElementById('status');
 
     generateViewingKeyButton.addEventListener('click', async () => {
-        const viewingPublicKeyResp = await fetch('/getviewingkey');
+        const viewingPublicKeyResp = await fetch('/getviewingkey'); // todo - handle failure of request
         const viewingKey = await viewingPublicKeyResp.text();
-        console.log(viewingKey)
 
-        const accounts = await ethereum.request({method: 'eth_requestAccounts'});
+        const accounts = await ethereum.request({method: 'eth_requestAccounts'}); // todo - handle failure of request
         const account = accounts[0]; // todo - allow use of other accounts?
-        const signedViewingKey = await ethereum.request({
+        const signedBytes = await ethereum.request({
             method: 'personal_sign',
             // Without a prefix such as 'vk', personal_sign transforms the data for security reasons.
             params: ['vk' + viewingKey, account]
-        });
-        console.log(signedViewingKey)
+        }); // todo - handle failure of request
 
         const signedViewingKeyJson = {
             "viewingKey": viewingKey,
-            "signature": signedViewingKey
+            "signedBytes": signedBytes
         }
-        console.log(signedViewingKeyJson)
 
-        await fetch(
+        const resp = await fetch(
             '/storeviewingkey/', {
                 method: 'post',
                 headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
                 mode: 'cors',
                 body: JSON.stringify(signedViewingKeyJson)
             }
-        );
+        ); // todo - handle failure of request
 
-        console.log("success!")
+        if (resp.status >= 200 && resp.status < 300) {
+            statusArea.innerText = `Account: ${account}\nViewing key: ${viewingKey}\nSigned bytes: ${signedBytes}`
+        }
     })
 }
 
