@@ -1,44 +1,55 @@
 package gethnetwork
 
 import (
+	"errors"
 	"fmt"
-	"os/exec"
+	"math/big"
 	"strconv"
 	"testing"
+	"time"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"gopkg.in/yaml.v3"
 )
 
 const (
-	shCmd          = "sh"
-	gethBinarySh   = "./build_geth_binary.sh"
-	gethBinaryPath = "./geth-release-1.10.17"
-
 	numNodes        = 3
-	expectedChainID = "777"
+	expectedChainID = "1337"
 
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 )
 
-func init() { //nolint:gochecknoinits
-	_, err := exec.Command(shCmd, gethBinarySh).Output()
-	if err != nil {
-		panic(err)
-	}
-}
+var timeout = 15 * time.Second
 
 func TestAllNodesJoinSameNetwork(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	network := NewGethNetwork(30000, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
+	expectedPeers := numNodes - 1 // nodes don't consider themselves a peer
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
-	if peerCount != numNodes-1 {
-		t.Fatalf("Wrong number of peers on the network. Found %d, expected %d.", peerCount, numNodes-1)
+	if peerCount != expectedPeers {
+		t.Fatalf("Wrong number of peers on the network. Found %d, expected %d.", peerCount, expectedPeers)
 	}
 }
 
 func TestGenesisParamsAreUsed(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	network := NewGethNetwork(31000, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	chainID := network.IssueCommand(0, chainIDCmd)
@@ -48,15 +59,81 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 }
 
 func TestTransactionCanBeSubmitted(t *testing.T) {
-	network := NewGethNetwork(gethBinaryPath, numNodes, 1)
+	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	network := NewGethNetwork(32000, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	account := network.addresses[0]
 	tx := fmt.Sprintf("{from: \"%s\", to: \"%s\", value: web3.toWei(0.001, \"ether\")}", account, account)
 	txHash := network.IssueCommand(0, fmt.Sprintf("personal.sendTransaction(%s, \"%s\")", tx, password))
-	status := network.IssueCommand(0, fmt.Sprintf("eth.getTransaction(\"%s\")", txHash))
+	issuedTxStr := network.IssueCommand(0, fmt.Sprintf("eth.getTransaction(%s)", txHash))
 
-	if status == "null" {
-		t.Fatal("Could not issue transaction.")
+	// check the transaction has expected values
+	issuedTx := map[string]interface{}{}
+	if err := yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
+		t.Fatal(err)
+	}
+
+	if issuedTx["value"].(int) != 1000000000000000 ||
+		issuedTx["to"].(string) != fmt.Sprintf("0x%s", account) {
+		t.Errorf("unable to confirm values")
+	}
+}
+
+func TestTransactionIsMintedOverRPC(t *testing.T) {
+	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// wallet should be prefunded
+	w := datagenerator.RandomWallet()
+	network := NewGethNetwork(33000, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
+	defer network.StopNodes()
+
+	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})
+	if err != nil {
+		panic(err)
+	}
+
+	// pick the first address in the network and send some funds to it
+	toAddr := common.HexToAddress(fmt.Sprintf("0x%s", network.addresses[0]))
+	tx, err := ethClient.SubmitTransaction(&types.LegacyTx{
+		Nonce:    0,
+		GasPrice: big.NewInt(20000000000),
+		Gas:      uint64(1024_000_000),
+		To:       &toAddr,
+		Value:    big.NewInt(100),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make sure it's mined into a block within an acceptable time
+	var receipt *types.Receipt
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
+		receipt, err = ethClient.FetchTxReceipt(tx.Hash())
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, ethereum.NotFound) {
+			t.Fatal(err)
+		}
+	}
+
+	if receipt == nil {
+		t.Fatalf("Did not mine the transaction after %s seconds - receipt: %+v", timeout, receipt)
+	}
+
+	if receipt.BlockNumber == big.NewInt(0) || receipt.BlockHash == common.HexToHash("") {
+		t.Fatalf("Did not minted/mined the block - receipt: %+v", receipt)
+	}
+
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		t.Fatalf("Did not minted/mined the tx correctly - receipt: %+v", receipt)
 	}
 }
