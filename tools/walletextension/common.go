@@ -13,6 +13,7 @@ const (
 	reqJsonMethodGetBalance   = "eth_getBalance"
 	reqJsonMethodGetStorageAt = "eth_getStorageAt"
 	pathRoot                  = "/"
+	httpCodeErr               = 500
 )
 
 // ViewingKey is the packet of data sent to the enclave when storing a new viewing key.

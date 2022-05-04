@@ -47,23 +47,23 @@ func (of *ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request
 	}
 	connection, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
-		fmt.Printf("could not upgrade connection to a websocket connection: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not upgrade connection to a websocket connection: %v\n", err), httpCodeErr)
+		return
 	}
 
 	// We read the message from the wallet extension.
 	_, encryptedMessage, err := connection.ReadMessage()
 	if err != nil {
-		fmt.Printf("could not read Ethereum JSON-RPC request: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not read Ethereum JSON-RPC request: %v\n", err), httpCodeErr)
+		return
 	}
 
 	// We decrypt the JSON with the enclave's private key.
 	eciesPrivateKey := ecies.ImportECDSA(of.enclavePrivateKey)
 	message, err := eciesPrivateKey.Decrypt(encryptedMessage, nil, nil)
 	if err != nil {
-		fmt.Printf("could not decrypt Ethereum JSON-RPC request with enclave public key: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not decrypt Ethereum JSON-RPC request with enclave public key: %v\n", err), httpCodeErr)
+		return
 	}
 
 	// We forward the message to the Geth node.
@@ -73,30 +73,30 @@ func (of *ObxFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request
 	var reqJsonMap map[string]interface{}
 	err = json.Unmarshal(message, &reqJsonMap)
 	if err != nil {
-		fmt.Printf("could not unmarshall Ethereum JSON-RPC request to JSON: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not unmarshall Ethereum JSON-RPC request to JSON: %v\n", err), httpCodeErr)
+		return
 	}
 
 	// We encrypt the response if needed.
 	method := reqJsonMap[reqJsonKeyMethod]
 	if method == reqJsonMethodGetBalance || method == reqJsonMethodGetStorageAt {
 		if of.viewingKey == nil {
-			fmt.Printf("could not respond securely to %s request because there is no viewing key for the account.\n", method)
-			return // todo - return error response
+			http.Error(resp, fmt.Sprintf("could not respond securely to %s request because there is no viewing key for the account.\n", method), httpCodeErr)
+			return
 		}
 
 		eciesPublicKey := ecies.ImportECDSAPublic(of.viewingKey)
 		gethResp, err = ecies.Encrypt(rand.Reader, eciesPublicKey, gethResp, nil, nil)
 		if err != nil {
-			fmt.Printf("could not encrypt Ethereum JSON-RPC response with viewing key: %v\n", err)
-			return // todo - return error response
+			http.Error(resp, fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %v\n", err), httpCodeErr)
+			return
 		}
 	}
 
 	// We write the message back to the wallet extension.
 	err = connection.WriteMessage(websocket.TextMessage, gethResp)
 	if err != nil {
-		fmt.Printf("could not write JSON-RPC response: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not write JSON-RPC response: %v\n", err), httpCodeErr)
+		return
 	}
 }

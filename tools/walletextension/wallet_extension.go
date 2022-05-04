@@ -55,16 +55,16 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		fmt.Printf("could not read JSON-RPC request body: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not read JSON-RPC request body: %v\n", err), httpCodeErr)
+		return
 	}
 
 	// We unmarshall the JSON request.
 	var reqJsonMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJsonMap)
 	if err != nil {
-		fmt.Printf("could not unmarshall JSON-RPC request body to JSON: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %v\n", err), httpCodeErr)
+		return
 	}
 	fmt.Println(fmt.Sprintf("Received request from wallet: %s", body))
 
@@ -73,8 +73,8 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 	eciesPublicKey := ecies.ImportECDSAPublic(&we.enclavePrivateKey.PublicKey)
 	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
 	if err != nil {
-		fmt.Printf("could not encrypt request with enclave public key: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not encrypt request with enclave public key: %v\n", err), httpCodeErr)
+		return
 	}
 
 	// We forward the request on to the Geth node.
@@ -87,8 +87,8 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate)
 		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
 		if err != nil {
-			fmt.Printf("could not decrypt enclave response with viewing key: %v\n", err)
-			return // todo - return error response
+			http.Error(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %v\n", err), httpCodeErr)
+			return
 		}
 	}
 
@@ -96,16 +96,16 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 	var respJsonMap map[string]interface{}
 	err = json.Unmarshal(gethResp, &respJsonMap)
 	if err != nil {
-		fmt.Printf("could not unmarshall enclave response to JSON: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not unmarshall enclave response to JSON: %v\n", err), httpCodeErr)
+		return
 	}
 	fmt.Println(fmt.Sprintf("Received response from Geth node: %s", strings.TrimSpace(string(gethResp))))
 
 	// We write the response to the client.
 	_, err = resp.Write(gethResp)
 	if err != nil {
-		fmt.Printf("could not write JSON-RPC response: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not write JSON-RPC response: %v\n", err), httpCodeErr)
+		return
 	}
 }
 
@@ -113,8 +113,8 @@ func (we *WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *http.Request) {
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
-		fmt.Printf("could not generate new keypair: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not generate new keypair: %v\n", err), httpCodeErr)
+		return
 	}
 	we.viewingKeyPrivate = viewingKeyPrivate
 
@@ -123,24 +123,23 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
 	_, err = resp.Write([]byte(viewingKeyHex))
 	if err != nil {
-		fmt.Printf("could not return viewing key public key hex to client: %v\n", err)
-		// todo - return error response
+		http.Error(resp, fmt.Sprintf("could not return viewing key public key hex to client: %v\n", err), httpCodeErr)
 	}
 }
 
 // Submits the viewing key and signed bytes to the enclave.
-func (we *WalletExtension) handleSubmitViewingKey(_ http.ResponseWriter, req *http.Request) {
+func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		fmt.Printf("could not read viewing key and signed bytes from client: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not read viewing key and signed bytes from client: %v\n", err), httpCodeErr)
+		return
 	}
 
 	var reqJsonMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJsonMap)
 	if err != nil {
-		fmt.Printf("could not unmarshall viewing key and signed bytes from client to JSON: %v\n", err)
-		return // todo - return error response
+		http.Error(resp, fmt.Sprintf("could not unmarshall viewing key and signed bytes from client to JSON: %v\n", err), httpCodeErr)
+		return
 	}
 	signedBytes := []byte(reqJsonMap["signedBytes"].(string))
 
