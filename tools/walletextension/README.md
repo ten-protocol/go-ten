@@ -17,7 +17,7 @@ The wallet extension should be run locally, such that no sensitive data leaves t
 ## Obscuro facade
 
 The Obscuro facade is an additional tool that sits between the wallet extension and a regular Ethereum node. It 
-encrypts requests using the enclave public key, and decrypts sensitive responses using the viewing key. In this way, it 
+decrypts requests using the enclave public key, and encrypts sensitive responses using the viewing key. In this way, it 
 allows the regular Ethereum node to behave like an Obscuro node, in terms of secure messaging.
 
 ## Usage
