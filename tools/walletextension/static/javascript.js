@@ -2,8 +2,8 @@ const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idGenerateViewingKey = "generateViewingKey";
 const idStatus = "status";
-const pathGetViewingKey = "/getviewingkey/";
-const pathStoreViewingKey = "/storeviewingkey/";
+const pathGenerateViewingKey = "/generateviewingkey/";
+const pathSubmitViewingKey = "/submitviewingkey/";
 const methodPost = "post";
 const jsonHeaders = {
     "Accept": "application/json",
@@ -18,34 +18,49 @@ const initialize = () => {
     const statusArea = document.getElementById(idStatus);
 
     generateViewingKeyButton.addEventListener(eventClick, async () => {
-        const viewingPublicKeyResp = await fetch(pathGetViewingKey); // todo - handle failure of request
-        const viewingKey = await viewingPublicKeyResp.text();
+        const viewingKeyResp = await fetch(pathGenerateViewingKey);
+        if (!isOk(viewingKeyResp)) {
+            statusArea.innerText = "Failed to generate viewing key."
+            return
+        }
 
-        const accounts = await ethereum.request({method: metamaskRequestAccounts}); // todo - handle failure of request
+        const viewingKey = await viewingKeyResp.text();
+
+        const accounts = await ethereum.request({method: metamaskRequestAccounts});
+        if (accounts.length === 0) {
+            statusArea.innerText = "No MetaMask accounts found."
+            return
+        }
         const account = accounts[0]; // todo - allow use of other accounts?
+
         const signedBytes = await ethereum.request({
             method: metamaskPersonalSign,
             // Without a prefix such as 'vk', personal_sign transforms the data for security reasons.
             params: [personalSignPrefix + viewingKey, account]
-        }); // todo - handle failure of request
-
-        const signedViewingKeyJson = {
-            "viewingKey": viewingKey,
-            "signedBytes": signedBytes
+        }).catch(_ => { return -1 })
+        if (signedBytes === -1) {
+            statusArea.innerText = "Failed to sign viewing key."
+            return
         }
 
-        const resp = await fetch(
-            pathStoreViewingKey, {
+        const signedViewingKeyJson = {"signedBytes": signedBytes}
+        const submitViewingKeyResp = await fetch(
+            pathSubmitViewingKey, {
                 method: methodPost,
                 headers: jsonHeaders,
                 body: JSON.stringify(signedViewingKeyJson)
             }
-        ); // todo - handle failure of request
-
-        if (resp.status >= 200 && resp.status < 300) {
+        );
+        if (isOk(submitViewingKeyResp)) {
             statusArea.innerText = `Account: ${account}\nViewing key: ${viewingKey}\nSigned bytes: ${signedBytes}`
+        } else {
+            statusArea.innerText = "Failed to submit viewing key to enclave."
         }
     })
 }
 
 window.addEventListener(eventDomLoaded, initialize);
+
+function isOk(response) {
+    return response.status >= 200 && response.status < 300
+}

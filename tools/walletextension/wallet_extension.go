@@ -15,19 +15,16 @@ import (
 
 const pathRoot = "/"
 const pathViewingKeys = "/viewingkeys/"
-const pathGetViewingKey = "/getviewingkey/"
-const pathStoreViewingKey = "/storeviewingkey/"
+const pathGenerateViewingKey = "/generateviewingkey/"
+const pathSubmitViewingKey = "/submitviewingkey/"
 const staticDir = "./tools/walletextension/static"
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	enclavePrivateKey *ecdsa.PrivateKey
-	signedViewingKeys []SignedViewingKey
-}
-
-type SignedViewingKey struct {
-	viewingKey  *ecdsa.PublicKey
-	signedBytes []byte
+	// todo - support multiple viewing keys. this will require the enclave to attach metadata on encrypted results
+	//  to indicate which key they were encrypted with
+	viewingKeyPrivate *ecdsa.PrivateKey
 }
 
 func NewWalletExtension(enclavePrivateKey *ecdsa.PrivateKey) *WalletExtension {
@@ -42,8 +39,8 @@ func (we WalletExtension) Serve(hostAndPort string) {
 
 	// Handles the management of viewing keys.
 	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(staticDir))))
-	serveMux.HandleFunc(pathGetViewingKey, we.handleGetViewingKey)
-	serveMux.HandleFunc(pathStoreViewingKey, we.handleStoreViewingKey)
+	serveMux.HandleFunc(pathGenerateViewingKey, we.handleGenerateViewingKey)
+	serveMux.HandleFunc(pathSubmitViewingKey, we.handleSubmitViewingKey)
 
 	err := http.ListenAndServe(hostAndPort, serveMux)
 	if err != nil {
@@ -111,13 +108,15 @@ func (we WalletExtension) handleHttpEthJson(resp http.ResponseWriter, req *http.
 }
 
 // Returns a new viewing key.
-func (we WalletExtension) handleGetViewingKey(resp http.ResponseWriter, _ *http.Request) {
-	viewingPrivateKey, err := crypto.GenerateKey()
+func (we WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *http.Request) {
+	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
 		fmt.Println(err)
 	}
+	we.viewingKeyPrivate = viewingKeyPrivate
 
-	viewingKeyBytes := crypto.CompressPubkey(&viewingPrivateKey.PublicKey)
+	// MetaMask will sign over the concatenation of a prefix and the hex of the viewing key's public key.
+	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
 	_, err = resp.Write([]byte(viewingKeyHex))
 	if err != nil {
@@ -126,7 +125,7 @@ func (we WalletExtension) handleGetViewingKey(resp http.ResponseWriter, _ *http.
 }
 
 // Stores the signed viewing key.
-func (we WalletExtension) handleStoreViewingKey(_ http.ResponseWriter, req *http.Request) {
+func (we WalletExtension) handleSubmitViewingKey(_ http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -139,20 +138,5 @@ func (we WalletExtension) handleStoreViewingKey(_ http.ResponseWriter, req *http
 		fmt.Println(err)
 		return
 	}
-
-	viewingKeyHex := reqJsonMap["viewingKey"].(string)
-	viewingKeyBytes, err := hex.DecodeString(viewingKeyHex)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	signature := reqJsonMap["signedBytes"].(string)
-	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	signedViewingKey := SignedViewingKey{viewingKey: viewingKey, signedBytes: []byte(signature)}
-	we.signedViewingKeys = append(we.signedViewingKeys, signedViewingKey)
+	_ = []byte(reqJsonMap["signedBytes"].(string)) // todo - send public key and signed bytes to enclave
 }
