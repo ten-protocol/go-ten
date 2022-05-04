@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	reqJsonKeyMethod          = "method"
-	reqJsonMethodGetBalance   = "eth_getBalance"
-	reqJsonMethodGetStorageAt = "eth_getStorageAt"
+	reqJSONKeyMethod          = "method"
+	reqJSONMethodGetBalance   = "eth_getBalance"
+	reqJSONMethodGetStorageAt = "eth_getStorageAt"
 	pathRoot                  = "/"
 	httpCodeErr               = 500
 )
@@ -22,10 +22,12 @@ type ViewingKey struct {
 }
 
 func forwardMsgOverWebsocket(url string, msg []byte) []byte {
-	connection, _, err := websocket.DefaultDialer.Dial(url, nil)
+	connection, resp, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
+	defer connection.Close()
+	defer resp.Body.Close()
 
 	err = connection.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {

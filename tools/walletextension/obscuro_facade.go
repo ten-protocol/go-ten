@@ -43,7 +43,7 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 
 	serveMux := http.NewServeMux()
 
-	serveMux.HandleFunc(pathRoot, of.handleWSEthJson)
+	serveMux.HandleFunc(pathRoot, of.handleWSEthJSON)
 
 	err := http.ListenAndServe(hostAndPort, serveMux)
 	if err != nil {
@@ -51,7 +51,7 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 	}
 }
 
-func (of *ObscuroFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Request) {
+func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -83,8 +83,8 @@ func (of *ObscuroFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Req
 	gethResp := forwardMsgOverWebsocket(of.gethWebsocketAddr, message)
 
 	// We unmarshall the JSON request to inspect it.
-	var reqJsonMap map[string]interface{}
-	err = json.Unmarshal(message, &reqJsonMap)
+	var reqJSONMap map[string]interface{}
+	err = json.Unmarshal(message, &reqJSONMap)
 	if err != nil {
 		msg := fmt.Sprintf("could not unmarshall Ethereum JSON-RPC request to JSON: %v", err)
 		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
@@ -92,8 +92,8 @@ func (of *ObscuroFacade) handleWSEthJson(resp http.ResponseWriter, req *http.Req
 	}
 
 	// We encrypt the response if needed.
-	method := reqJsonMap[reqJsonKeyMethod]
-	if method == reqJsonMethodGetBalance || method == reqJsonMethodGetStorageAt {
+	method := reqJSONMap[reqJSONKeyMethod]
+	if method == reqJSONMethodGetBalance || method == reqJSONMethodGetStorageAt {
 		if of.viewingKey == nil {
 			msg := fmt.Sprintf("enclave could not respond securely to %s request because there is no viewing key for the account", method)
 			_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
