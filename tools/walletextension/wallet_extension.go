@@ -6,11 +6,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
 const (
@@ -39,7 +40,8 @@ func NewWalletExtension(
 	return &WalletExtension{
 		enclavePrivateKey: enclavePrivateKey,
 		obscuroFacadeAddr: obscuroFacadeAddr,
-		viewingKeyChannel: viewingKeyChannel}
+		viewingKeyChannel: viewingKeyChannel,
+	}
 }
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.

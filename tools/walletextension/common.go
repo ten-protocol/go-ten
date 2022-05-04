@@ -3,6 +3,7 @@ package walletextension
 import (
 	"crypto/ecdsa"
 	"fmt"
+
 	"github.com/gorilla/websocket"
 )
 

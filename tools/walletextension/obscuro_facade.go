@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/gorilla/websocket"
-	"net/http"
 )
 
 // ObscuroFacade is a server that inverts the encryption and decryption performed by WalletExtension, so that the forwarded
@@ -27,7 +28,8 @@ func NewObscuroFacade(
 	return &ObscuroFacade{
 		enclavePrivateKey: enclavePrivateKey,
 		gethWebsocketAddr: gethWebsocketAddr,
-		viewingKeyChannel: viewingKeyChannel}
+		viewingKeyChannel: viewingKeyChannel,
+	}
 }
 
 // Serve listens for and serves Ethereum JSON-RPC requests from the wallet extension.
