@@ -21,20 +21,18 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-// returns a modified copy of the State
+// mutates the State
 // header - the header of the rollup where this transaction will be included
 // todo - remove nolint after the header starts being used
 func executeTransactions(
 	txs []nodecommon.L2Tx,
-	state *db.State,
+	s *db.State,
 	header *nodecommon.Header, //nolint
-) *db.State {
-	s := db.CopyState(state)
+) {
 	for _, tx := range txs {
 		executeTx(s, tx)
 	}
 	// fmt.Printf("w1: %v\n", is.w)
-	return s
 }
 
 // mutates the state
@@ -84,10 +82,6 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, storage db.Stor
 		return val
 	}
 
-	if blockResolver.HeightBlock(b) == 0 {
-		return nil
-	}
-
 	rollups := extractRollups(b, blockResolver, txHandler)
 	genesisRollup := storage.FetchGenesisRollup()
 
@@ -110,17 +104,19 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, storage db.Stor
 		// go back and calculate the State of the Parent
 		p, f := storage.FetchBlock(b.ParentHash())
 		if !f {
-			panic("Could not find block parent. This should not happen.")
+			log.Log("Could not find block parent. This should not happen.")
+			return nil
 		}
 		parentState = updateState(p, blockResolver, storage, txHandler)
 	}
 
 	if parentState == nil {
-		panic(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
+		log.Log(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
 			obscurocommon.ShortHash(b.Hash()),
 			obscurocommon.ShortHash(b.Header().ParentHash),
 			b.Header(),
 		))
+		return nil
 	}
 
 	bs := calculateBlockState(b, parentState, storage, blockResolver, rollups, txHandler)
@@ -170,7 +166,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case r.Header.Height <= parent.Header.Height: // ignore rollups that are older than the parent
+		case r.Header.Number <= parent.Header.Number: // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
 		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
@@ -195,7 +191,8 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	p := blockResolver.Proof(s.ParentRollup(headRollup))
 	depositTxs := processDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.txHandler)
 
-	state := executeTransactions(append(headRollup.Transactions, depositTxs...), parentState, headRollup.Header)
+	state := db.CopyStateNoWithdrawals(parentState)
+	executeTransactions(append(headRollup.Transactions, depositTxs...), state, headRollup.Header)
 
 	if db.Serialize(state) != headRollup.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
@@ -218,7 +215,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
-		height = blockResolver.HeightBlock(fromBlock)
+		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
 			panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
@@ -242,7 +239,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
 			}
 		}
-		if blockResolver.HeightBlock(b) < height {
+		if b.NumberU64() < height {
 			panic("something went wrong")
 		}
 		p, f := blockResolver.ParentBlock(b)
@@ -270,7 +267,8 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, s db.Storag
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		newState = executeTransactions(txsToProcess, parentState.State, newHeadRollup.Header)
+		newState = db.CopyStateNoWithdrawals(parentState.State)
+		executeTransactions(txsToProcess, newState, newHeadRollup.Header)
 	} else {
 		newHeadRollup = parentState.Head
 	}
@@ -287,7 +285,6 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, s db.Storag
 // Todo - this has to be implemented differently based on how we define the ObsERC20
 func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, newState *db.State) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
-
 	// go through each transaction and check if the withdrawal was processed correctly
 	for i, t := range newHeadRollup.Transactions {
 		txData := core.TxData(&newHeadRollup.Transactions[i])
@@ -298,6 +295,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, newState *db.St
 			})
 		}
 	}
+
 	return w
 }
 

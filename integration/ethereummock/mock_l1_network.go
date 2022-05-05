@@ -86,5 +86,5 @@ func printBlock(b *types.Block, m Node) string {
 	}
 
 	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[parent=b_%d]. Txs: %v",
-		obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), m.Resolver.HeightBlock(b), obscurocommon.ShortNonce(b.Header().Nonce), obscurocommon.ShortHash(p.Hash()), txs)
+		obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), b.NumberU64(), obscurocommon.ShortNonce(b.Header().Nonce), obscurocommon.ShortHash(p.Hash()), txs)
 }

@@ -12,7 +12,7 @@ func RandomRollup() nodecommon.Rollup {
 			Nonce:       randomUInt64(),
 			L1Proof:     randomHash(),
 			State:       randomHash(),
-			Height:      randomUInt64(),
+			Number:      randomUInt64(),
 			Withdrawals: randomWithdrawals(10),
 		},
 		Transactions: randomEncryptedTransactions(10),

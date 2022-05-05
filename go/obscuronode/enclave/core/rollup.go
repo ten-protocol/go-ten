@@ -38,19 +38,18 @@ func NewHeader(parent *Rollup, height uint64, a common.Address) *nodecommon.Head
 	return &nodecommon.Header{
 		Agg:        a,
 		ParentHash: parentHash,
-		Height:     height,
+		Number:     height,
 	}
 }
 
-func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []nodecommon.L2Tx, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
 	h := nodecommon.Header{
-		Agg:         header.Agg,
-		ParentHash:  header.ParentHash,
-		L1Proof:     blkHash,
-		Nonce:       nonce,
-		State:       state,
-		Height:      header.Height,
-		Withdrawals: withdrawals,
+		Agg:        header.Agg,
+		ParentHash: header.ParentHash,
+		L1Proof:    blkHash,
+		Nonce:      nonce,
+		State:      state,
+		Number:     header.Number,
 	}
 	r := Rollup{
 		Header:       &h,
@@ -70,7 +69,7 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 		L1Proof:     blkHash,
 		Nonce:       nonce,
 		State:       state,
-		Height:      height,
+		Number:      height,
 		Withdrawals: withdrawals,
 	}
 	r := Rollup{

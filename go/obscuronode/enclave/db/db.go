@@ -14,11 +14,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-type blockAndHeight struct {
-	b      *types.Block
-	height uint64
-}
-
 // DB lives purely in the encrypted memory space of an enclave.
 // Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
 type inMemoryDB struct {
@@ -33,7 +28,7 @@ type inMemoryDB struct {
 	headBlock         obscurocommon.L1RootHash
 	rollupsByHeight   map[uint64][]*core.Rollup
 	rollups           map[obscurocommon.L2RootHash]*core.Rollup
-	blockCache        map[obscurocommon.L1RootHash]*blockAndHeight
+	blockCache        map[obscurocommon.L1RootHash]*types.Block
 	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx
 
 	sharedEnclaveSecret core.SharedEnclaveSecret
@@ -46,7 +41,7 @@ func newInMemoryDB() *inMemoryDB {
 		rollupsByHeight:   make(map[uint64][]*core.Rollup),
 		rollups:           make(map[obscurocommon.L2RootHash]*core.Rollup),
 		statePerRollup:    make(map[obscurocommon.L2RootHash]*State),
-		blockCache:        map[obscurocommon.L1RootHash]*blockAndHeight{},
+		blockCache:        make(map[obscurocommon.L1RootHash]*types.Block),
 		blockMutex:        sync.RWMutex{},
 		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
 		txMutex:           sync.RWMutex{},
@@ -108,11 +103,11 @@ func (db *inMemoryDB) StoreRollup(rollup *core.Rollup) {
 	defer db.stateMutex.Unlock()
 
 	db.rollups[rollup.Hash()] = rollup
-	val, found := db.rollupsByHeight[rollup.Header.Height]
+	val, found := db.rollupsByHeight[rollup.Header.Number]
 	if found {
-		db.rollupsByHeight[rollup.Header.Height] = append(val, rollup)
+		db.rollupsByHeight[rollup.Header.Number] = append(val, rollup)
 	} else {
-		db.rollupsByHeight[rollup.Header.Height] = []*core.Rollup{rollup}
+		db.rollupsByHeight[rollup.Header.Number] = []*core.Rollup{rollup}
 	}
 }
 
@@ -138,14 +133,14 @@ func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {
 	return db.statePerRollup[hash]
 }
 
-func (db *inMemoryDB) StoreBlock(b *types.Block, height uint64) {
+func (db *inMemoryDB) StoreBlock(b *types.Block) {
 	db.blockMutex.Lock()
 	defer db.blockMutex.Unlock()
 
-	db.blockCache[b.Hash()] = &blockAndHeight{b: b, height: height}
+	db.blockCache[b.Hash()] = b
 }
 
-func (db *inMemoryDB) FetchBlockAndHeight(hash obscurocommon.L1RootHash) (*blockAndHeight, bool) {
+func (db *inMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	db.blockMutex.RLock()
 	defer db.blockMutex.RUnlock()
 

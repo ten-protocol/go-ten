@@ -65,8 +65,8 @@ func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
 		EthWallets:                wallets,
 	}
 
-	params.AvgNetworkLatency = params.AvgBlockDuration / 15
-	params.AvgGossipPeriod = params.AvgBlockDuration / 2
+	params.AvgNetworkLatency = params.AvgBlockDuration / 50
+	params.AvgGossipPeriod = params.AvgBlockDuration / 3
 
 	testSimulation(t, network.NewNetworkInMemoryGeth(&gethNetwork), params)
 }

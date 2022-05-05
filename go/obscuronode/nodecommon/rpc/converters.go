@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
@@ -19,80 +22,64 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) obscurocommon
 }
 
 func ToBlockSubmissionResponseMsg(response nodecommon.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {
-	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
-	for _, withdrawal := range response.Withdrawals {
-		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
-		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
-	}
-
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
-
 	return generated.BlockSubmissionResponseMsg{
-		L1Hash:                response.L1Hash.Bytes(),
-		L1Height:              response.L1Height,
-		L1Parent:              response.L1Parent.Bytes(),
-		L2Hash:                response.L2Hash.Bytes(),
-		L2Height:              response.L2Height,
-		L2Parent:              response.L2Parent.Bytes(),
-		Withdrawals:           withdrawalMsgs,
-		ProducedRollup:        &producedRollupMsg,
+		BlockHeader:           ToBlockHeaderMsg(response.BlockHeader),
 		IngestedBlock:         response.IngestedBlock,
 		BlockNotIngestedCause: response.BlockNotIngestedCause,
-		IngestedNewRollup:     response.IngestedNewRollup,
+		ProducedRollup:        &producedRollupMsg,
+		IngestedNewRollup:     response.FoundNewHead,
+		RollupHead:            ToRollupHeaderMsg(response.RollupHead),
 	}
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) nodecommon.BlockSubmissionResponse {
-	withdrawals := make([]nodecommon.Withdrawal, 0)
-	for _, withdrawalMsg := range msg.Withdrawals {
-		address := common.BytesToAddress(withdrawalMsg.Address)
-		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Address: address}
-		withdrawals = append(withdrawals, withdrawal)
-	}
-
 	return nodecommon.BlockSubmissionResponse{
-		L1Hash:                common.BytesToHash(msg.L1Hash),
-		L1Height:              msg.L1Height,
-		L1Parent:              common.BytesToHash(msg.L1Parent),
-		L2Hash:                common.BytesToHash(msg.L2Hash),
-		L2Height:              msg.L2Height,
-		L2Parent:              common.BytesToHash(msg.L2Parent),
-		Withdrawals:           withdrawals,
-		ProducedRollup:        FromExtRollupMsg(msg.ProducedRollup),
+		BlockHeader:           FromBlockHeaderMsg(msg.GetBlockHeader()),
 		IngestedBlock:         msg.IngestedBlock,
 		BlockNotIngestedCause: msg.BlockNotIngestedCause,
-		IngestedNewRollup:     msg.IngestedNewRollup,
+
+		ProducedRollup: FromExtRollupMsg(msg.ProducedRollup),
+		FoundNewHead:   msg.IngestedNewRollup,
+		RollupHead:     FromRollupHeaderMsg(msg.RollupHead),
 	}
 }
 
 func ToExtRollupMsg(rollup *nodecommon.ExtRollup) generated.ExtRollupMsg {
-	var headerMsg generated.HeaderMsg
 	if rollup.Header != nil {
-		withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
-		for _, withdrawal := range rollup.Header.Withdrawals {
-			withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
-			withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
-		}
-
-		headerMsg = generated.HeaderMsg{
-			ParentHash:  rollup.Header.ParentHash.Bytes(),
-			Agg:         rollup.Header.Agg.Bytes(),
-			Nonce:       rollup.Header.Nonce,
-			L1Proof:     rollup.Header.L1Proof.Bytes(),
-			StateRoot:   rollup.Header.State.Bytes(),
-			Height:      rollup.Header.Height,
-			Withdrawals: withdrawalMsgs,
-		}
-
 		txs := make([][]byte, 0)
 		for _, tx := range rollup.Txs {
 			txs = append(txs, tx)
 		}
 
-		return generated.ExtRollupMsg{Header: &headerMsg, Txs: txs}
+		return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Txs: txs}
 	}
 
 	return generated.ExtRollupMsg{Header: nil}
+}
+
+func ToRollupHeaderMsg(header *nodecommon.Header) *generated.HeaderMsg {
+	if header == nil {
+		return nil
+	}
+	var headerMsg generated.HeaderMsg
+	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
+	for _, withdrawal := range header.Withdrawals {
+		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
+		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
+	}
+
+	headerMsg = generated.HeaderMsg{
+		ParentHash:  header.ParentHash.Bytes(),
+		Agg:         header.Agg.Bytes(),
+		Nonce:       header.Nonce,
+		L1Proof:     header.L1Proof.Bytes(),
+		StateRoot:   header.State.Bytes(),
+		Height:      header.Number,
+		Withdrawals: withdrawalMsgs,
+	}
+
+	return &headerMsg
 }
 
 func FromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
@@ -101,22 +88,6 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
 			Header: nil,
 		}
 	}
-	withdrawals := make([]nodecommon.Withdrawal, 0)
-	for _, withdrawalMsg := range msg.Header.Withdrawals {
-		address := common.BytesToAddress(withdrawalMsg.Address)
-		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Address: address}
-		withdrawals = append(withdrawals, withdrawal)
-	}
-
-	header := nodecommon.Header{
-		ParentHash:  common.BytesToHash(msg.Header.ParentHash),
-		Agg:         common.BytesToAddress(msg.Header.Agg),
-		Nonce:       msg.Header.Nonce,
-		L1Proof:     common.BytesToHash(msg.Header.L1Proof),
-		State:       common.BytesToHash(msg.Header.StateRoot),
-		Height:      msg.Header.Height,
-		Withdrawals: withdrawals,
-	}
 
 	txs := make([]nodecommon.EncryptedTx, 0)
 	for _, tx := range msg.Txs {
@@ -124,7 +95,81 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
 	}
 
 	return nodecommon.ExtRollup{
-		Header: &header,
+		Header: FromRollupHeaderMsg(msg.Header),
 		Txs:    txs,
+	}
+}
+
+func FromRollupHeaderMsg(header *generated.HeaderMsg) *nodecommon.Header {
+	if header == nil {
+		return nil
+	}
+	withdrawals := make([]nodecommon.Withdrawal, 0)
+	for _, withdrawalMsg := range header.Withdrawals {
+		address := common.BytesToAddress(withdrawalMsg.Address)
+		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Address: address}
+		withdrawals = append(withdrawals, withdrawal)
+	}
+
+	return &nodecommon.Header{
+		ParentHash:  common.BytesToHash(header.ParentHash),
+		Agg:         common.BytesToAddress(header.Agg),
+		Nonce:       header.Nonce,
+		L1Proof:     common.BytesToHash(header.L1Proof),
+		State:       common.BytesToHash(header.StateRoot),
+		Number:      header.Height,
+		Withdrawals: withdrawals,
+	}
+}
+
+func FromBlockHeaderMsg(msg *generated.BlockHeaderMsg) *types.Header {
+	if msg == nil {
+		return nil
+	}
+	return &types.Header{
+		ParentHash:  common.BytesToHash(msg.ParentHash),
+		UncleHash:   common.BytesToHash(msg.UncleHash),
+		Coinbase:    common.BytesToAddress(msg.Coinbase),
+		Root:        common.BytesToHash(msg.Root),
+		TxHash:      common.BytesToHash(msg.TxHash),
+		ReceiptHash: common.BytesToHash(msg.ReceiptHash),
+		Bloom:       types.BytesToBloom(msg.Bloom),
+		Difficulty:  big.NewInt(int64(msg.Difficulty)),
+		Number:      big.NewInt(int64(msg.Number)),
+		GasLimit:    msg.GasLimit,
+		GasUsed:     msg.GasUsed,
+		Time:        msg.Time,
+		Extra:       msg.Extra,
+		MixDigest:   common.BytesToHash(msg.MixDigest),
+		Nonce:       types.EncodeNonce(msg.Nonce),
+		BaseFee:     big.NewInt(int64(msg.BaseFee)),
+	}
+}
+
+func ToBlockHeaderMsg(header *types.Header) *generated.BlockHeaderMsg {
+	if header == nil {
+		return nil
+	}
+	baseFee := uint64(0)
+	if header.BaseFee != nil {
+		baseFee = header.BaseFee.Uint64()
+	}
+	return &generated.BlockHeaderMsg{
+		ParentHash:  header.ParentHash.Bytes(),
+		UncleHash:   header.UncleHash.Bytes(),
+		Coinbase:    header.Coinbase.Bytes(),
+		Root:        header.Root.Bytes(),
+		TxHash:      header.TxHash.Bytes(),
+		ReceiptHash: header.ReceiptHash.Bytes(),
+		Bloom:       header.Bloom.Bytes(),
+		Difficulty:  header.Difficulty.Uint64(),
+		Number:      header.Number.Uint64(),
+		GasLimit:    header.GasLimit,
+		GasUsed:     header.GasUsed,
+		Time:        header.Time,
+		Extra:       header.Extra,
+		MixDigest:   header.MixDigest.Bytes(),
+		Nonce:       header.Nonce.Uint64(),
+		BaseFee:     baseFee,
 	}
 }

@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -78,7 +79,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHeight uint64, s *Simulation) uint64 {
-	head, height := node.FetchHeadBlock()
+	head := node.FetchHeadBlock()
+	height := head.NumberU64()
 
 	if height < minHeight {
 		t.Errorf("Node %d. There were only %d blocks mined. Expected at least: %d.", obscurocommon.ShortAddress(node.Info().ID), height, minHeight)
@@ -101,7 +103,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 
 	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
 	if efficiency > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Height: %d.", obscurocommon.ShortAddress(node.Info().ID), efficiency, s.Params.L1EfficiencyThreshold, height)
+		t.Errorf("Node %d. Efficiency in L1 is %f. Expected:%f. Number: %d.", obscurocommon.ShortAddress(node.Info().ID), efficiency, s.Params.L1EfficiencyThreshold, height)
 	}
 
 	// compare the number of reorgs for this node against the height
@@ -149,7 +151,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) uint64 {
-	l1Height := node.DB().GetCurrentBlockHead().Height
+	l1Height := uint64(node.DB().GetCurrentBlockHead().Number.Int64())
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
@@ -160,7 +162,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	l2Height := node.DB().GetCurrentRollupHead().Height
+	h := node.DB().GetCurrentRollupHead()
+	if h == nil {
+		panic(fmt.Sprintf("Node %d has no head rollup recorded.\n", obscurocommon.ShortAddress(node.ID)))
+	}
+	l2Height := h.Number
 	if l2Height < minObscuroHeight {
 		t.Errorf("There were only %d rollups mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
 	}
@@ -219,7 +225,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// best condition : all Txs (stats) were issue and consumed in the blockchain
 	// can't happen : sum of headers withdraws greater than issued Txs (stats)
 	if totalSuccessfullyWithdrawn > s.Stats.TotalWithdrawalRequestedAmount {
-		t.Errorf("The amount withdrawn %d is not the same as the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
+		t.Errorf("The amount withdrawn %d exceeds the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
+	}
+
+	// sanity check that the injected withdrawals were mostly executed
+	if totalSuccessfullyWithdrawn < s.Stats.TotalWithdrawalRequestedAmount/2 {
+		t.Errorf("The amount withdrawn %d is far smaller than the amount requested %d. Something is probably wrong.", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
 	// check that the sum of all balances matches the total amount of money that must be in the system
@@ -240,12 +251,21 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 }
 
 func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+	head := node.DB().GetCurrentRollupHead()
+	if head == nil {
+		panic("the current head should not be nil")
+	}
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for r := node.DB().GetCurrentRollupHead(); r != nil; r = node.DB().GetRollupHeader(r.Parent) {
+	for r := head; ; r = node.DB().GetRollupHeader(r.ParentHash) {
+		if r != nil && r.Number == obscurocommon.L1GenesisHeight {
+			return
+		}
+		if r == nil {
+			panic(fmt.Sprintf("Reached a missing rollup on node %d", obscurocommon.ShortAddress(node.ID)))
+		}
 		for _, w := range r.Withdrawals {
 			totalSuccessfullyWithdrawn += w.Amount
 			numberOfWithdrawalRequests++
 		}
 	}
-	return
 }
