@@ -24,10 +24,15 @@ allows the regular Ethereum node to behave like an Obscuro node, in terms of sec
 
 * Install MetaMask in your browser
 
-* Start a Geth node that's listening on `ws://localhost:8546`
+* Run `walletextension/main/main()` with the following flags to start the wallet extension and Obscuro facade:
 
-* Run `walletextension/main/main()` to start the wallet extension and Obscuro facade. The wallet extension will start 
-  serving on `http://localhost:3000/`, while the Obscuro facade will be serving on `http://localhost:3001/`
+  ```--localNetwork --prefundedAccounts=<account_1_address>,<account_2_address>,<...>```
+
+  This will create a new local network and connect the wallet extension and Obscuro facade to it. The wallet extension 
+  is listening on `http://localhost:3000/`
+
+  * If you want to use an existing network instead of a new local network, remove the `--localNetwork` and 
+    `--prefundedAccounts` flags, and ensure that a node on your existing network can be reached on `ws://localhost:8546`
 
 * In MetaMask, configure a new custom network, using `http://localhost:3000/` as the "New RPC URL". Requests and 
   responses for the network will now pass through the wallet extension, with requests encrypted with the enclave 
