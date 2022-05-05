@@ -164,7 +164,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// check that the height of the Rollup chain is higher than a minimum expected value.
 	h := node.DB().GetCurrentRollupHead()
 	if h == nil {
-		panic("no way")
+		panic(fmt.Sprintf("Node %d has no head rollup recorded.\n", obscurocommon.ShortAddress(node.ID)))
 	}
 	l2Height := h.Number
 	if l2Height < minObscuroHeight {

@@ -82,10 +82,6 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, storage db.Stor
 		return val
 	}
 
-	if b.NumberU64() == obscurocommon.L2GenesisHeight {
-		return nil
-	}
-
 	rollups := extractRollups(b, blockResolver, txHandler)
 	genesisRollup := storage.FetchGenesisRollup()
 
