@@ -341,7 +341,6 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	// todo add some sort of cache
 	rollup := e.storage.FetchHeadState().Head
 
-	var found bool
 	for {
 		txs := rollup.Transactions
 		for _, tx := range txs {
@@ -350,11 +349,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 			}
 		}
 		rollup = e.storage.ParentRollup(rollup)
-		rollup, found = e.storage.FetchRollup(rollup.Hash())
-		if !found {
-			panic(fmt.Sprintf("Could not find rollup: r_%s", rollup.Hash()))
-		}
-		if rollup.Header.Number == obscurocommon.L2GenesisHeight {
+		if rollup == nil || rollup.Header.Number == obscurocommon.L2GenesisHeight {
 			return nil
 		}
 	}

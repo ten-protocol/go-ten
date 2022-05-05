@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -41,14 +43,15 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	simParams := params.SimParams{
 		NumberOfNodes:             10,
 		NumberOfObscuroWallets:    5,
-		AvgBlockDuration:          300 * time.Millisecond,
+		AvgBlockDuration:          400 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
+		TxHandler:                 ethereum_mock.NewMockTxHandler(),
 	}
-	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
-	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
+	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
 
 	// We create a Docker client.
 	ctx := context.Background()
@@ -121,9 +124,25 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 // Stops and removes the test Docker containers.
 func terminateDockerContainers(ctx context.Context, cli *client.Client, containerIDs []string) {
 	for _, id := range containerIDs {
-		timeout := -time.Nanosecond // A negative timeout means forceful termination.
-		_ = cli.ContainerStop(ctx, id, &timeout)
-		_ = cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{})
+		// timeout := -time.Nanosecond // A negative timeout means forceful termination.
+		err1 := cli.ContainerStop(ctx, id, nil)
+		if err1 != nil {
+			fmt.Printf("Could not stop the container %v : %s\n", id, err1)
+			continue
+		}
+
+		err2 := cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+			RemoveLinks:   false,
+			Force:         true,
+		})
+		if err2 != nil {
+			fmt.Printf("Could not remove the container %v : %s\n", id, err2)
+			continue
+		}
+
+		fmt.Printf("Stopped and removed containee %v\n", id)
+
 	}
 
 	if err := cli.Close(); err != nil {
