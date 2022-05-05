@@ -96,9 +96,12 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	// TODO - Improve error detection. We are just matching on the error message here.
-	if strings.HasPrefix(string(gethResp), "enclave could not respond securely") {
-		logAndSendErr(resp, string(gethResp))
+	// This is just a temporary unmarshalling. We need to unmarshall once to check if we got an error response, then
+	// unmarshall again once we've decrypted the response if needed, below.
+	var respJSONMapTemp map[string]interface{}
+	err = json.Unmarshal(gethResp, &respJSONMapTemp)
+	if err == nil && respJSONMapTemp[respJSONKeyErr] != nil {
+		logAndSendErr(resp, respJSONMapTemp[respJSONKeyErr].(string))
 		return
 	}
 

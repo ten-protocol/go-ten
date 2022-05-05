@@ -71,24 +71,21 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	// We read the message from the wallet extension.
 	_, encryptedMessage, err := connection.ReadMessage()
 	if err != nil {
-		msg := fmt.Sprintf("could not read Ethereum JSON-RPC request: %s", err)
-		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
+		sendErr(connection, fmt.Sprintf("could not read Ethereum JSON-RPC request: %s", err))
 		return
 	}
 
 	// We decrypt the JSON with the enclave's private key.
 	message, err := of.enclaveEciesPrivateKey.Decrypt(encryptedMessage, nil, nil)
 	if err != nil {
-		msg := fmt.Sprintf("could not decrypt Ethereum JSON-RPC request with enclave public key: %s", err)
-		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
+		sendErr(connection, fmt.Sprintf("could not decrypt Ethereum JSON-RPC request with enclave public key: %s", err))
 		return
 	}
 
 	// We forward the message to the Geth node.
 	gethResp, err := forwardMsgOverWebsocket(of.gethWebsocketAddr, message)
 	if err != nil {
-		msg := fmt.Sprintf("could not forward request to Geth node: %s", err)
-		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
+		sendErr(connection, fmt.Sprintf("could not forward request to Geth node: %s", err))
 		return
 	}
 
@@ -96,8 +93,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	var reqJSONMap map[string]interface{}
 	err = json.Unmarshal(message, &reqJSONMap)
 	if err != nil {
-		msg := fmt.Sprintf("could not unmarshall Ethereum JSON-RPC request to JSON: %s", err)
-		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
+		sendErr(connection, fmt.Sprintf("could not unmarshall Ethereum JSON-RPC request to JSON: %s", err))
 		return
 	}
 
@@ -105,15 +101,13 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	method := reqJSONMap[reqJSONKeyMethod]
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodGetStorageAt {
 		if of.viewingKeyEcies == nil {
-			msg := fmt.Sprintf("enclave could not respond securely to %s request because there is no viewing key for the account", method)
-			_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
+			sendErr(connection, fmt.Sprintf("enclave could not respond securely to %s request because there is no viewing key for the account", method))
 			return
 		}
 
 		gethResp, err = ecies.Encrypt(rand.Reader, of.viewingKeyEcies, gethResp, nil, nil)
 		if err != nil {
-			msg := fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %s", err)
-			_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
+			sendErr(connection, fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %s", err))
 			return
 		}
 	}
@@ -124,4 +118,16 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 		msg := fmt.Sprintf("could not write JSON-RPC response: %s", err)
 		fmt.Println(msg)
 	}
+}
+
+// Sends the error message as a websocket error.
+func sendErr(connection *websocket.Conn, msg string) {
+	resp, err := json.Marshal(map[string]string{
+		respJSONKeyErr: msg,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	_ = connection.WriteMessage(websocket.TextMessage, resp)
 }

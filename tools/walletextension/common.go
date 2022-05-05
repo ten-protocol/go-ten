@@ -14,6 +14,7 @@ const (
 	reqJSONKeyMethod          = "method"
 	reqJSONMethodGetBalance   = "eth_getBalance"
 	reqJSONMethodGetStorageAt = "eth_getStorageAt"
+	respJSONKeyErr            = "error"
 	pathRoot                  = "/"
 	httpCodeErr               = 500
 
