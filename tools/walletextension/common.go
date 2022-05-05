@@ -3,9 +3,10 @@ package walletextension
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"strconv"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
-	"strconv"
 
 	"github.com/gorilla/websocket"
 )
@@ -15,6 +16,7 @@ const (
 	reqJSONMethodGetBalance   = "eth_getBalance"
 	reqJSONMethodGetStorageAt = "eth_getStorageAt"
 	respJSONKeyErr            = "error"
+	respJSONKeyMsg            = "message"
 	pathRoot                  = "/"
 	httpCodeErr               = 500
 

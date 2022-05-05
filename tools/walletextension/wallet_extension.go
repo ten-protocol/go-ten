@@ -100,8 +100,9 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// unmarshall again once we've decrypted the response if needed, below.
 	var respJSONMapTemp map[string]interface{}
 	err = json.Unmarshal(gethResp, &respJSONMapTemp)
+	// A nil error indicates that this was valid JSON, and not an encrypted payload.
 	if err == nil && respJSONMapTemp[respJSONKeyErr] != nil {
-		logAndSendErr(resp, respJSONMapTemp[respJSONKeyErr].(string))
+		logAndSendErr(resp, respJSONMapTemp[respJSONKeyErr].(map[string]interface{})[respJSONKeyMsg].(string))
 		return
 	}
 

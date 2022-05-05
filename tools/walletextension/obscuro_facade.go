@@ -123,8 +123,10 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 
 // Sends the error message as a websocket error.
 func sendErr(connection *websocket.Conn, msg string) {
-	resp, err := json.Marshal(map[string]string{
-		respJSONKeyErr: msg,
+	resp, err := json.Marshal(map[string]interface{}{
+		respJSONKeyErr: map[string]string{
+			respJSONKeyMsg: msg,
+		},
 	})
 	if err != nil {
 		panic(err)

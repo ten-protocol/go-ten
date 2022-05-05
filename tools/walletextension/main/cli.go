@@ -2,8 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/obscuronet/obscuro-playground/tools/walletextension"
 	"strings"
+
+	"github.com/obscuronet/obscuro-playground/tools/walletextension"
 )
 
 const (
