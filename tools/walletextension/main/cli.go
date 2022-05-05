@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/obscuronet/obscuro-playground/tools/walletextension"
 	"strings"
 )
 
@@ -16,18 +17,13 @@ const (
 	prefundedAccountsUsage   = "The account addresses to prefund if using a local network, as a comma-separated list"
 )
 
-type walletExtensionConfig struct {
-	localNetwork      *bool
-	prefundedAccounts []string
-}
-
-func parseCLIArgs() walletExtensionConfig {
+func parseCLIArgs() walletextension.RunConfig {
 	localNetwork := flag.Bool(localNetworkName, localNetworkDefault, localNetworkUsage)
 	prefundedAccounts := flag.String(prefundedAccountsName, prefundedAccountsDefault, prefundedAccountsUsage)
 	flag.Parse()
 
-	return walletExtensionConfig{
-		localNetwork:      localNetwork,
-		prefundedAccounts: strings.Split(*prefundedAccounts, ","),
+	return walletextension.RunConfig{
+		LocalNetwork:      *localNetwork,
+		PrefundedAccounts: strings.Split(*prefundedAccounts, ","),
 	}
 }
