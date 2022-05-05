@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"github.com/obscuronet/obscuro-playground/tools/walletextension"
-	"strconv"
 )
 
 const (
