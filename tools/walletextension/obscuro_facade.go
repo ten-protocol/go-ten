@@ -64,14 +64,14 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	// TODO - Maintain a single connection over time, rather than recreating one for each request.
 	connection, err := of.upgrader.Upgrade(resp, req, nil)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not upgrade connection to a websocket connection: %v", err), httpCodeErr)
+		http.Error(resp, fmt.Sprintf("could not upgrade connection to a websocket connection: %s", err), httpCodeErr)
 		return
 	}
 
 	// We read the message from the wallet extension.
 	_, encryptedMessage, err := connection.ReadMessage()
 	if err != nil {
-		msg := fmt.Sprintf("could not read Ethereum JSON-RPC request: %v", err)
+		msg := fmt.Sprintf("could not read Ethereum JSON-RPC request: %s", err)
 		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
 		return
 	}
@@ -79,7 +79,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	// We decrypt the JSON with the enclave's private key.
 	message, err := of.enclaveEciesPrivateKey.Decrypt(encryptedMessage, nil, nil)
 	if err != nil {
-		msg := fmt.Sprintf("could not decrypt Ethereum JSON-RPC request with enclave public key: %v", err)
+		msg := fmt.Sprintf("could not decrypt Ethereum JSON-RPC request with enclave public key: %s", err)
 		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
 		return
 	}
@@ -87,7 +87,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	// We forward the message to the Geth node.
 	gethResp, err := forwardMsgOverWebsocket(of.gethWebsocketAddr, message)
 	if err != nil {
-		msg := fmt.Sprintf("could not forward request to Geth node: %v", err)
+		msg := fmt.Sprintf("could not forward request to Geth node: %s", err)
 		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
 		return
 	}
@@ -96,7 +96,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	var reqJSONMap map[string]interface{}
 	err = json.Unmarshal(message, &reqJSONMap)
 	if err != nil {
-		msg := fmt.Sprintf("could not unmarshall Ethereum JSON-RPC request to JSON: %v", err)
+		msg := fmt.Sprintf("could not unmarshall Ethereum JSON-RPC request to JSON: %s", err)
 		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
 		return
 	}
@@ -112,7 +112,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 
 		gethResp, err = ecies.Encrypt(rand.Reader, of.viewingKeyEcies, gethResp, nil, nil)
 		if err != nil {
-			msg := fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %v", err)
+			msg := fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %s", err)
 			_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
 			return
 		}
@@ -121,8 +121,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	// We write the message back to the wallet extension.
 	err = connection.WriteMessage(websocket.TextMessage, gethResp)
 	if err != nil {
-		msg := fmt.Sprintf("could not write JSON-RPC response: %v", err)
-		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
-		return
+		msg := fmt.Sprintf("could not write JSON-RPC response: %s", err)
+		fmt.Println(msg)
 	}
 }

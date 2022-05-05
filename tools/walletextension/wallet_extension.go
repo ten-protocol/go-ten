@@ -66,7 +66,7 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not read JSON-RPC request body: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
 		return
 	}
 
@@ -74,7 +74,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	var reqJSONMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %s", err))
 		return
 	}
 	method := reqJSONMap[reqJSONKeyMethod]
@@ -85,21 +85,20 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	eciesPublicKey := ecies.ImportECDSAPublic(&we.enclavePrivateKey.PublicKey)
 	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not encrypt request with enclave public key: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
 		return
 	}
 
 	// We forward the request on to the Geth node.
 	gethResp, err := forwardMsgOverWebsocket("ws://"+we.obscuroFacadeAddr, encryptedBody)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not encrypt request with enclave public key: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
 		return
 	}
 
 	// TODO - Improve error detection. We are just matching on the error message here.
 	if strings.HasPrefix(string(gethResp), "enclave could not respond securely") {
-		fmt.Println(string(gethResp))
-		http.Error(resp, string(gethResp), httpCodeErr)
+		logAndSendErr(resp, string(gethResp))
 		return
 	}
 
@@ -109,7 +108,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate)
 		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
 		if err != nil {
-			http.Error(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %v\n", err), httpCodeErr)
+			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
 			return
 		}
 	}
@@ -118,7 +117,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	var respJSONMap map[string]interface{}
 	err = json.Unmarshal(gethResp, &respJSONMap)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not unmarshall enclave response to JSON: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not unmarshall enclave response to JSON: %s", err))
 		return
 	}
 	fmt.Printf("Received response from Geth node: %s\n", strings.TrimSpace(string(gethResp)))
@@ -126,7 +125,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// We write the response to the client.
 	_, err = resp.Write(gethResp)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not write JSON-RPC response: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
 		return
 	}
 }
@@ -135,7 +134,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *http.Request) {
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not generate new keypair: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
 	we.viewingKeyPrivate = viewingKeyPrivate
@@ -145,7 +144,8 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
 	_, err = resp.Write([]byte(viewingKeyHex))
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not return viewing key public key hex to client: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
+		return
 	}
 }
 
@@ -153,18 +153,24 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not read viewing key and signed bytes from client: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signed bytes from client: %s", err))
 		return
 	}
 
 	var reqJSONMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		http.Error(resp, fmt.Sprintf("could not unmarshall viewing key and signed bytes from client to JSON: %v\n", err), httpCodeErr)
+		logAndSendErr(resp, fmt.Sprintf("could not unmarshall viewing key and signed bytes from client to JSON: %s", err))
 		return
 	}
 	signedBytes := []byte(reqJSONMap["signedBytes"].(string))
 
 	viewingKey := ViewingKey{viewingKeyPublic: &we.viewingKeyPrivate.PublicKey, signedBytes: signedBytes}
 	we.viewingKeyChannel <- viewingKey
+}
+
+// Logs the error message and sends it as an HTTP error.
+func logAndSendErr(resp http.ResponseWriter, msg string) {
+	fmt.Println(msg)
+	http.Error(resp, msg, httpCodeErr)
 }
