@@ -3,6 +3,8 @@ package db
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -114,7 +116,8 @@ func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
 	s.assertSecretAvailable()
 	parent, found := s.db.FetchRollup(r.Header.ParentHash)
 	if !found {
-		panic(fmt.Sprintf("Could not find rollup: r_%s", r.Hash()))
+		log.Log(fmt.Sprintf("Could not find rollup: r_%d", obscurocommon.ShortHash(r.Hash())))
+		return nil
 	}
 	return parent
 }
