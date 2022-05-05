@@ -101,7 +101,8 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	method := reqJSONMap[reqJSONKeyMethod]
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodGetStorageAt {
 		if of.viewingKeyEcies == nil {
-			sendErr(connection, fmt.Sprintf("enclave could not respond securely to %s request because there is no viewing key for the account", method))
+			msg := fmt.Sprintf("enclave could not respond securely to %s request because there is no viewing key for the account", method)
+			sendErr(connection, msg)
 			return
 		}
 
