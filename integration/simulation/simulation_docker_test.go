@@ -40,7 +40,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 
 	simParams := params.SimParams{
 		NumberOfNodes:             10,
-		NumberOfWallets:           5,
+		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          300 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,

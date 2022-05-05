@@ -4,14 +4,14 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 )
 
 // SimParams are the parameters for setting up the simulation.
 type SimParams struct {
-	NumberOfNodes   int
-	NumberOfWallets int
+	NumberOfNodes          int
+	NumberOfObscuroWallets int
 
 	// A critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
 	AvgBlockDuration  time.Duration
@@ -31,4 +31,6 @@ type SimParams struct {
 	TxHandler mgmtcontractlib.TxHandler
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddr common.Address
+	// EthWallets contains the wallets to use for the l1 nodes
+	EthWallets []wallet.Wallet
 }
