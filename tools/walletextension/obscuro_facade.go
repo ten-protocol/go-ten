@@ -18,6 +18,7 @@ type ObscuroFacade struct {
 	gethWebsocketAddr string
 	viewingKeyChannel <-chan ViewingKey
 	viewingKey        *ecdsa.PublicKey
+	upgrader          websocket.Upgrader
 }
 
 func NewObscuroFacade(
@@ -25,10 +26,16 @@ func NewObscuroFacade(
 	gethWebsocketAddr string,
 	viewingKeyChannel <-chan ViewingKey,
 ) *ObscuroFacade {
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
 	return &ObscuroFacade{
 		enclavePrivateKey: enclavePrivateKey,
 		gethWebsocketAddr: gethWebsocketAddr,
 		viewingKeyChannel: viewingKeyChannel,
+		upgrader:          upgrader,
 	}
 }
 
@@ -52,11 +59,8 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 }
 
 func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Request) {
-	upgrader := websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-	connection, err := upgrader.Upgrade(resp, req, nil)
+	// TODO - Maintain a single connection over time, rather than recreating one for each request.
+	connection, err := of.upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		http.Error(resp, fmt.Sprintf("could not upgrade connection to a websocket connection: %v", err), httpCodeErr)
 		return
@@ -80,7 +84,12 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	}
 
 	// We forward the message to the Geth node.
-	gethResp := forwardMsgOverWebsocket(of.gethWebsocketAddr, message)
+	gethResp, err := forwardMsgOverWebsocket(of.gethWebsocketAddr, message)
+	if err != nil {
+		msg := fmt.Sprintf("could not forward request to Geth node: %v", err)
+		_ = connection.WriteMessage(websocket.TextMessage, []byte(msg))
+		return
+	}
 
 	// We unmarshall the JSON request to inspect it.
 	var reqJSONMap map[string]interface{}

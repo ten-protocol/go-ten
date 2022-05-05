@@ -90,7 +90,12 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 
 	// We forward the request on to the Geth node.
-	gethResp := forwardMsgOverWebsocket("ws://"+we.obscuroFacadeAddr, encryptedBody)
+	gethResp, err := forwardMsgOverWebsocket("ws://"+we.obscuroFacadeAddr, encryptedBody)
+	if err != nil {
+		http.Error(resp, fmt.Sprintf("could not encrypt request with enclave public key: %v\n", err), httpCodeErr)
+		return
+	}
+
 	// TODO - Improve error detection. We are just matching on the error message here.
 	if strings.HasPrefix(string(gethResp), "enclave could not respond securely") {
 		fmt.Println(string(gethResp))

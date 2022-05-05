@@ -21,22 +21,23 @@ type ViewingKey struct {
 	signedBytes      []byte
 }
 
-func forwardMsgOverWebsocket(url string, msg []byte) []byte {
+func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 	connection, resp, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 	defer connection.Close()
 	defer resp.Body.Close()
 
 	err = connection.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 
 	_, message, err := connection.ReadMessage()
 	if err != nil {
 		fmt.Println(err)
+		return nil, err
 	}
-	return message
+	return message, nil
 }
