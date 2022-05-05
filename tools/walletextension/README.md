@@ -45,4 +45,4 @@ allows the regular Ethereum node to behave like an Obscuro node, in terms of sec
   MetaMask. Responses to `eth_getBalance` and `eth_getStorageAt` requests will be now be sent encrypted with the 
   viewing key and decrypted automatically by the wallet extension
 
-  * A new viewing key will have to be created each time the wallet extension is started
+  * Viewing keys are ephemeral. A new viewing key must be created each time the wallet extension is started
