@@ -6,9 +6,10 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
-	"github.com/obscuronet/obscuro-playground/go/hashing"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -16,122 +17,69 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-// State - this is a placeholder for the real Trie based state
-//- people send transactions to an ObsERC20 that was a withdraw(amount, from, destination) method
-//In the EVM, there will be a smart contract that does the following:
-//- the tokens are deducted from the "from" address , and burned
-//- add to the "withdrawals" transactions - this info will be taken from the state
-//Post processing, outside the evm:
-//- generate withdrawal instructions (amount, destination), based on which withdrawal transaction were executed successfully
-type State struct {
-	balances    map[common.Address]uint64
-	withdrawals []obscurocommon.TxHash
-}
-
-// blockState - Represents the state after an L1 block was processed.
-type blockState struct {
-	block          *types.Block
-	head           *Rollup
-	state          *State
-	foundNewRollup bool
-}
-
-func copyState(state *State) *State {
-	s := emptyState()
-	if state == nil {
-		return s
-	}
-	for address, balance := range state.balances {
-		s.balances[address] = balance
-	}
-	s.withdrawals = append(s.withdrawals, state.withdrawals...)
-	return s
-}
-
-func serialize(state *State) nodecommon.StateRoot {
-	hash, err := hashing.RLPHash(fmt.Sprintf("%v", state))
-	if err != nil {
-		panic(err)
-	}
-	return hash
-}
-
-// returns a modified copy of the State
+// mutates the State
 // header - the header of the rollup where this transaction will be included
 // todo - remove nolint after the header starts being used
 func executeTransactions(
 	txs []nodecommon.L2Tx,
-	state *State,
+	s *db.State,
 	header *nodecommon.Header, //nolint
-) *State {
-	s := copyState(state)
+) {
 	for _, tx := range txs {
 		executeTx(s, tx)
 	}
 	// fmt.Printf("w1: %v\n", is.w)
-	return s
 }
 
 // mutates the state
-func executeTx(s *State, tx nodecommon.L2Tx) {
-	switch TxData(&tx).Type {
-	case TransferTx:
+func executeTx(s *db.State, tx nodecommon.L2Tx) {
+	switch core.TxData(&tx).Type {
+	case core.TransferTx:
 		executeTransfer(s, tx)
-	case WithdrawalTx:
+	case core.WithdrawalTx:
 		executeWithdrawal(s, tx)
-	case DepositTx:
+	case core.DepositTx:
 		executeDeposit(s, tx)
 	default:
 		panic("Invalid transaction type")
 	}
 }
 
-func executeWithdrawal(s *State, tx nodecommon.L2Tx) {
-	if txData := TxData(&tx); s.balances[txData.From] >= txData.Amount {
-		s.balances[txData.From] -= txData.Amount
-		s.withdrawals = append(s.withdrawals, tx.Hash())
+func executeWithdrawal(s *db.State, tx nodecommon.L2Tx) {
+	if txData := core.TxData(&tx); s.Balances[txData.From] >= txData.Amount {
+		s.Balances[txData.From] -= txData.Amount
+		s.Withdrawals = append(s.Withdrawals, tx.Hash())
 	}
 }
 
-func executeTransfer(s *State, tx nodecommon.L2Tx) {
-	if txData := TxData(&tx); s.balances[txData.From] >= txData.Amount {
-		s.balances[txData.From] -= txData.Amount
-		s.balances[txData.To] += txData.Amount
+func executeTransfer(s *db.State, tx nodecommon.L2Tx) {
+	if txData := core.TxData(&tx); s.Balances[txData.From] >= txData.Amount {
+		s.Balances[txData.From] -= txData.Amount
+		s.Balances[txData.To] += txData.Amount
 	}
 }
 
-func executeDeposit(s *State, tx nodecommon.L2Tx) {
-	t := TxData(&tx)
-	v, f := s.balances[t.To]
+func executeDeposit(s *db.State, tx nodecommon.L2Tx) {
+	t := core.TxData(&tx)
+	v, f := s.Balances[t.To]
 	if f {
-		s.balances[t.To] = v + t.Amount
+		s.Balances[t.To] = v + t.Amount
 	} else {
-		s.balances[t.To] = t.Amount
-	}
-}
-
-func emptyState() *State {
-	return &State{
-		balances: map[common.Address]uint64{},
+		s.Balances[t.To] = t.Amount
 	}
 }
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, blockResolver BlockResolver, storage Storage, txHandler mgmtcontractlib.TxHandler) *blockState {
+func updateState(b *types.Block, blockResolver db.BlockResolver, storage db.Storage, txHandler mgmtcontractlib.TxHandler) *db.BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := storage.FetchBlockState(b.Hash())
 	if found {
 		return val
-	}
-
-	if blockResolver.HeightBlock(b) == 0 {
-		return nil
 	}
 
 	rollups := extractRollups(b, blockResolver, txHandler)
@@ -156,17 +104,19 @@ func updateState(b *types.Block, blockResolver BlockResolver, storage Storage, t
 		// go back and calculate the State of the Parent
 		p, f := storage.FetchBlock(b.ParentHash())
 		if !f {
-			panic("Could not find block parent. This should not happen.")
+			log.Log("Could not find block parent. This should not happen.")
+			return nil
 		}
 		parentState = updateState(p, blockResolver, storage, txHandler)
 	}
 
 	if parentState == nil {
-		panic(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
+		log.Log(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
 			obscurocommon.ShortHash(b.Hash()),
 			obscurocommon.ShortHash(b.Header().ParentHash),
 			b.Header(),
 		))
+		return nil
 	}
 
 	bs := calculateBlockState(b, parentState, storage, blockResolver, rollups, txHandler)
@@ -176,7 +126,7 @@ func updateState(b *types.Block, blockResolver BlockResolver, storage Storage, t
 	return bs
 }
 
-func handleGenesisRollup(b *types.Block, s Storage, rollups []*Rollup, genesisRollup *Rollup) (genesisState *blockState, isGenesis bool) {
+func handleGenesisRollup(b *types.Block, s db.Storage, rollups []*core.Rollup, genesisRollup *core.Rollup) (genesisState *db.BlockState, isGenesis bool) {
 	// the incoming block holds the genesis rollup
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
@@ -187,11 +137,11 @@ func handleGenesisRollup(b *types.Block, s Storage, rollups []*Rollup, genesisRo
 		s.StoreGenesisRollup(genesis)
 
 		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-		bs := blockState{
-			block:          b,
-			head:           genesis,
-			state:          emptyState(),
-			foundNewRollup: true,
+		bs := db.BlockState{
+			Block:          b,
+			Head:           genesis,
+			State:          db.EmptyState(),
+			FoundNewRollup: true,
 		}
 		s.SetBlockState(b.Hash(), &bs)
 		return &bs, true
@@ -206,21 +156,21 @@ func handleGenesisRollup(b *types.Block, s Storage, rollups []*Rollup, genesisRo
 }
 
 // Calculate transactions to be included in the current rollup
-func currentTxs(head *Rollup, mempool []nodecommon.L2Tx, s Storage) []nodecommon.L2Tx {
+func currentTxs(head *core.Rollup, mempool []nodecommon.L2Tx, s db.Storage) []nodecommon.L2Tx {
 	return findTxsNotIncluded(head, mempool, s)
 }
 
-func FindWinner(parent *Rollup, rollups []*Rollup, blockResolver BlockResolver) (*Rollup, bool) {
+func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) {
 	win := -1
 	// todo - add statistics to determine why there are conflicts.
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case r.Header.Height <= parent.Header.Height: // ignore rollups that are older than the parent
+		case r.Header.Number <= parent.Header.Number: // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
-		case r.ProofHeight(blockResolver) < rollups[win].ProofHeight(blockResolver): // ignore rollups generated with an older proof
-		case r.ProofHeight(blockResolver) > rollups[win].ProofHeight(blockResolver): // newer rollups win
+		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
+		case blockResolver.ProofHeight(r) > blockResolver.ProofHeight(rollups[win]): // newer rollups win
 			win = i
 		case r.Header.Nonce < rollups[win].Header.Nonce: // for rollups with the same proof, base on the nonce
 			win = i
@@ -232,20 +182,21 @@ func FindWinner(parent *Rollup, rollups []*Rollup, blockResolver BlockResolver) 
 	return rollups[win], true
 }
 
-func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup, parentState *State, s Storage, blockResolver BlockResolver) (*Rollup, *State) {
+func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup, parentState *db.State, s db.Storage, blockResolver db.BlockResolver) (*core.Rollup, *db.State) {
 	headRollup, found := FindWinner(parent, receivedRollups, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
 	}
 	// calculate the state to compare with what is in the Rollup
-	p := s.ParentRollup(headRollup).Proof(blockResolver)
-	depositTxs := processDeposits(p, headRollup.Proof(blockResolver), blockResolver, e.txHandler)
+	p := blockResolver.Proof(s.ParentRollup(headRollup))
+	depositTxs := processDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.txHandler)
 
-	state := executeTransactions(append(headRollup.Transactions, depositTxs...), parentState, headRollup.Header)
+	state := db.CopyStateNoWithdrawals(parentState)
+	executeTransactions(append(headRollup.Transactions, depositTxs...), state, headRollup.Header)
 
-	if serialize(state) != headRollup.Header.State {
+	if db.Serialize(state) != headRollup.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
-			serialize(state),
+			db.Serialize(state),
 			headRollup.Header.State,
 			parentState,
 			parent.Header.State,
@@ -259,12 +210,12 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*Rollup, parent *Rollup,
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
 // starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver BlockResolver, txHandler mgmtcontractlib.TxHandler) []nodecommon.L2Tx {
+func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
-		height = blockResolver.HeightBlock(fromBlock)
+		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
 			panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
@@ -280,15 +231,15 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 			t := txHandler.UnPackTx(tx)
 			// transactions to a hardcoded bridge address
 			if t != nil && t.TxType == obscurocommon.DepositTx {
-				depL2TxData := L2TxData{
-					Type:   DepositTx,
+				depL2TxData := core.L2TxData{
+					Type:   core.DepositTx,
 					To:     t.Dest,
 					Amount: t.Amount,
 				}
 				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
 			}
 		}
-		if blockResolver.HeightBlock(b) < height {
+		if b.NumberU64() < height {
 			panic("something went wrong")
 		}
 		p, f := blockResolver.ParentBlock(b)
@@ -302,53 +253,54 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState *blockState, s Storage, blockResolver BlockResolver, rollups []*Rollup, txHandler mgmtcontractlib.TxHandler) *blockState {
-	currentHead := parentState.head
+func calculateBlockState(b *types.Block, parentState *db.BlockState, s db.Storage, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler) *db.BlockState {
+	currentHead := parentState.Head
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
-	newState := parentState.state
+	newState := parentState.State
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		// Preprocessing before passing to the vm
 		// todo transform into an eth block structure
 		parentRollup := s.ParentRollup(newHeadRollup)
-		p := parentRollup.Proof(blockResolver)
-		depositTxs := processDeposits(p, newHeadRollup.Proof(blockResolver), blockResolver, txHandler)
+		p := blockResolver.Proof(parentRollup)
+		depositTxs := processDeposits(p, blockResolver.Proof(newHeadRollup), blockResolver, txHandler)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		newState = executeTransactions(txsToProcess, parentState.state, newHeadRollup.Header)
+		newState = db.CopyStateNoWithdrawals(parentState.State)
+		executeTransactions(txsToProcess, newState, newHeadRollup.Header)
 	} else {
-		newHeadRollup = parentState.head
+		newHeadRollup = parentState.Head
 	}
 
-	bs := blockState{
-		block:          b,
-		head:           newHeadRollup,
-		state:          newState,
-		foundNewRollup: found,
+	bs := db.BlockState{
+		Block:          b,
+		Head:           newHeadRollup,
+		State:          newState,
+		FoundNewRollup: found,
 	}
 	return &bs
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func rollupPostProcessingWithdrawals(newHeadRollup *Rollup, newState *State) []nodecommon.Withdrawal {
+func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, newState *db.State) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
-
 	// go through each transaction and check if the withdrawal was processed correctly
 	for i, t := range newHeadRollup.Transactions {
-		txData := TxData(&newHeadRollup.Transactions[i])
-		if txData.Type == WithdrawalTx && contains(newState.withdrawals, t.Hash()) {
+		txData := core.TxData(&newHeadRollup.Transactions[i])
+		if txData.Type == core.WithdrawalTx && contains(newState.Withdrawals, t.Hash()) {
 			w = append(w, nodecommon.Withdrawal{
 				Amount:  txData.Amount,
 				Address: txData.From,
 			})
 		}
 	}
+
 	return w
 }
 
-func extractRollups(b *types.Block, blockResolver BlockResolver, handler mgmtcontractlib.TxHandler) []*Rollup {
-	rollups := make([]*Rollup, 0)
+func extractRollups(b *types.Block, blockResolver db.BlockResolver, handler mgmtcontractlib.TxHandler) []*core.Rollup {
+	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
 		t := handler.UnPackTx(tx)
@@ -365,14 +317,14 @@ func extractRollups(b *types.Block, blockResolver BlockResolver, handler mgmtcon
 	return rollups
 }
 
-func toEnclaveRollup(r *nodecommon.Rollup) *Rollup {
-	return &Rollup{
+func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
+	return &core.Rollup{
 		Header:       r.Header,
-		Transactions: decryptTransactions(r.Transactions),
+		Transactions: core.DecryptTransactions(r.Transactions),
 	}
 }
 
-func newL2Tx(data L2TxData) *nodecommon.L2Tx {
+func newL2Tx(data core.L2TxData) *nodecommon.L2Tx {
 	// We should probably use a deterministic nonce instead, as in the L1.
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 

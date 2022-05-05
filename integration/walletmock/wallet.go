@@ -7,6 +7,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -47,13 +49,13 @@ func New() Wallet {
 
 // NewL2Transfer creates an enclave.L2Tx of type enclave.TransferTx
 func NewL2Transfer(from common.Address, dest common.Address, amount uint64) *nodecommon.L2Tx {
-	txData := enclave.L2TxData{Type: enclave.TransferTx, From: from, To: dest, Amount: amount}
+	txData := core.L2TxData{Type: core.TransferTx, From: from, To: dest, Amount: amount}
 	return NewL2Tx(txData)
 }
 
 // NewL2Withdrawal creates an enclave.L2Tx of type enclave.WithdrawalTx
 func NewL2Withdrawal(from common.Address, amount uint64) *nodecommon.L2Tx {
-	txData := enclave.L2TxData{Type: enclave.WithdrawalTx, From: from, Amount: amount}
+	txData := core.L2TxData{Type: core.WithdrawalTx, From: from, Amount: amount}
 	return NewL2Tx(txData)
 }
 
@@ -61,7 +63,7 @@ func NewL2Withdrawal(from common.Address, amount uint64) *nodecommon.L2Tx {
 //
 // A random nonce is used to avoid hash collisions. The enclave.L2TxData is encoded and stored in the transaction's
 // data field.
-func NewL2Tx(data enclave.L2TxData) *nodecommon.L2Tx {
+func NewL2Tx(data core.L2TxData) *nodecommon.L2Tx {
 	// We should probably use a deterministic nonce instead, as in the L1.
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 

@@ -1,10 +1,9 @@
-package enclave
+package core
 
 import (
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -31,7 +30,7 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	return v
 }
 
-func newHeader(parent *Rollup, height uint64, a common.Address) *nodecommon.Header {
+func NewHeader(parent *Rollup, height uint64, a common.Address) *nodecommon.Header {
 	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -39,19 +38,18 @@ func newHeader(parent *Rollup, height uint64, a common.Address) *nodecommon.Head
 	return &nodecommon.Header{
 		Agg:        a,
 		ParentHash: parentHash,
-		Height:     height,
+		Number:     height,
 	}
 }
 
-func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []nodecommon.L2Tx, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
 	h := nodecommon.Header{
-		Agg:         header.Agg,
-		ParentHash:  header.ParentHash,
-		L1Proof:     blkHash,
-		Nonce:       nonce,
-		State:       state,
-		Height:      header.Height,
-		Withdrawals: withdrawals,
+		Agg:        header.Agg,
+		ParentHash: header.ParentHash,
+		L1Proof:    blkHash,
+		Nonce:      nonce,
+		State:      state,
+		Number:     header.Number,
 	}
 	r := Rollup{
 		Header:       &h,
@@ -71,7 +69,7 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 		L1Proof:     blkHash,
 		Nonce:       nonce,
 		State:       state,
-		Height:      height,
+		Number:      height,
 		Withdrawals: withdrawals,
 	}
 	r := Rollup{
@@ -81,27 +79,17 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 	return r
 }
 
-// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
-// todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (r *Rollup) ProofHeight(l1BlockResolver BlockResolver) int64 {
-	v, f := l1BlockResolver.FetchBlock(r.Header.L1Proof)
-	if !f {
-		return -1
-	}
-	return int64(l1BlockResolver.HeightBlock(v))
-}
-
 func (r *Rollup) ToExtRollup() nodecommon.ExtRollup {
 	return nodecommon.ExtRollup{
 		Header: r.Header,
-		Txs:    encryptTransactions(r.Transactions),
+		Txs:    EncryptTransactions(r.Transactions),
 	}
 }
 
-func (r *Rollup) Proof(l1BlockResolver BlockResolver) *types.Block {
-	v, f := l1BlockResolver.FetchBlock(r.Header.L1Proof)
-	if !f {
-		panic("Could not find proof for this rollup")
+func EncryptTransactions(transactions L2Txs) nodecommon.EncryptedTransactions {
+	result := make([]nodecommon.EncryptedTx, 0)
+	for i := range transactions {
+		result = append(result, EncryptTx(&transactions[i]))
 	}
-	return v
+	return result
 }

@@ -1,4 +1,4 @@
-package enclave
+package core
 
 import (
 	"crypto/rand"
@@ -13,12 +13,12 @@ import (
 )
 
 // Creates a dummy L2Tx for testing
-func createL2Tx() *nodecommon.L2Tx {
-	return types.NewTx(createL2TxData())
+func CreateL2Tx() *nodecommon.L2Tx {
+	return types.NewTx(CreateL2TxData())
 }
 
 // Creates a dummy types.LegacyTx for testing
-func createL2TxData() *types.LegacyTx {
+func CreateL2TxData() *types.LegacyTx {
 	txData := L2TxData{TransferTx, common.Address{}, common.Address{}, 100}
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	encodedTxData, _ := rlp.EncodeToBytes(txData)

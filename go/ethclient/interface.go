@@ -13,7 +13,7 @@ import (
 type EthClient interface {
 	FetchBlock(id common.Hash) (*types.Block, error)     // retrieves a block
 	FetchBlockByNumber(n *big.Int) (*types.Block, error) // retrieves a block given a number - returns head block if n is nil
-	FetchHeadBlock() (*types.Block, uint64)              // retrieves the block at head height
+	FetchHeadBlock() *types.Block                        // retrieves the block at head height
 
 	Info() Info // retrieves the node Info
 

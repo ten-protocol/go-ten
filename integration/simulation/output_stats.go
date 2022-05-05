@@ -32,8 +32,8 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	o.l1Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentBlockHead().Height)
-	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Height)
+	o.l1Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentBlockHead().Number.Int64())
+	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Number)
 }
 
 func (o *OutputStats) countRollups() {
@@ -41,24 +41,17 @@ func (o *OutputStats) countRollups() {
 	l2Node := o.simulation.ObscuroNodes[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.Parent) {
+	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for header := l2Node.DB().GetCurrentBlockHead(); header != nil && header.ID != obscurocommon.GenesisHash; header = l2Node.DB().GetBlockHeader(header.Parent) {
-		block, err := l1Node.FetchBlock(header.ID)
-		if err != nil {
-			panic(err)
-		}
-		if block == nil {
-			panic("expected l1 block not found")
-		}
-		for _, tx := range block.Transactions() {
+	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && headBlock.Hash() != obscurocommon.GenesisHash; headBlock, _ = l1Node.FetchBlock(headBlock.ParentHash()) {
+		for _, tx := range headBlock.Transactions() {
 			txData := o.simulation.Params.TxHandler.UnPackTx(tx)
 			if txData != nil && txData.TxType == obscurocommon.RollupTx {
 				r := nodecommon.DecodeRollupOrPanic(txData.Rollup)
-				if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
+				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}
