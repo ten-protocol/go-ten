@@ -24,7 +24,7 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 
 	params := params.SimParams{
 		NumberOfNodes:             10,
-		NumberOfWallets:           5,
+		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          time.Second,
 		SimulationTime:            30 * time.Second,
 		L1EfficiencyThreshold:     0.2,

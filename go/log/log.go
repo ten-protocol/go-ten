@@ -13,11 +13,15 @@ func SetLog(f *os.File) {
 }
 
 func Log(msg string) {
+	if logFile == nil {
+		// defaults to outputting logs to stdout
+		// things like unit tests don't require a logfile
+		fmt.Println(msg)
+		return
+	}
+
 	_, err := logFile.WriteString(fmt.Sprintf("%d %s\n", makeTimestamp(), msg))
 	if err != nil {
-		if logFile == nil {
-			panic("logger could not write as log file not set")
-		}
 		panic(fmt.Errorf("logger could not write to log file: %w", err))
 	}
 }

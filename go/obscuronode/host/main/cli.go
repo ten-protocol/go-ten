@@ -36,11 +36,11 @@ const (
 	peerP2PAddrsUsage   = "The P2P addresses of our peer nodes as a comma-separated list (default \"\")"
 
 	privateKeyName    = "privateKey"
-	privateKeyDefault = "5dbbff1b5ff19f1ad6ea656433be35f6846e890b3f3ec6ef2b2e2137a8cab4ae" // ganache default key
+	privateKeyDefault = ""
 	privateKeyUsage   = "The private key for the L1 node account"
 
 	contractAddrName    = "contractAddress"
-	contractAddrDefault = "0x63eA4F258791234606F9d11C0C66D83c99bfC7CA" // ganache contract deploy address
+	contractAddrDefault = ""
 	contractAddrUsage   = "The management contract address"
 )
 
