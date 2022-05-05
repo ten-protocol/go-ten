@@ -54,12 +54,12 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 	}, nil
 }
 
-func (e *gethRPCClient) FetchHeadBlock() (*types.Block, uint64) {
+func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 	blk, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		panic(err)
 	}
-	return blk, blk.Number().Uint64()
+	return blk
 }
 
 func (e *gethRPCClient) Info() Info {

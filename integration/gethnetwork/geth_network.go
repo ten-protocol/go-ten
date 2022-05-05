@@ -11,22 +11,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
 const (
 	nodeFolderName = "node_datadir_"
-	tempDirPrefix  = "geth_nodes"
-	buildDir       = "../.build/geth"
+	buildDirBase   = "../.build/geth"
 	keystoreDir    = "keystore"
 
 	genesisFileName = "genesis.json"
 	ipcFileName     = "geth.ipc"
 	logFile         = "node_logs.txt"
 	passwordFile    = "password.txt"
-
-	startPort   = 30303
-	wsStartPort = 8546
-	password    = "password"
+	password        = "password"
 
 	accountCmd    = "account"
 	accountNewCmd = "new"
@@ -46,10 +44,14 @@ const (
 	websocketFlag      = "--ws" // Enables websocket connections to the node.
 	wsPortFlag         = "--ws.port"
 
+	// syncModeFlag defines the node block sync approach
+	// snap (the default) mode does not work well for small, rapidly deployed private networks
+	syncModeFlag = "--syncmode=full"
+
 	// We pre-allocate a wallet matching the private key used in the tests, plus an account per clique member.
 	genesisJSONTemplate = `{
 	  "config": {
-		"chainId": 777,
+		"chainId": 1337,
 		"homesteadBlock": 0,
 		"eip150Block": 0,
 		"eip155Block": 0,
@@ -83,6 +85,9 @@ const (
 	allocBlockTemplate = `		"0x%s": {
 		  "balance": "1000000000000000000000"
 		}`
+	addrBlockTemplate = `		"%s": {
+		  "balance": "1000000000000000000000"
+		}`
 	genesisJSONAddrKey = "address"
 )
 
@@ -95,13 +100,20 @@ type GethNetwork struct {
 	nodesProcs       []*os.Process // The running Geth node processes.
 	logFile          *os.File
 	passwordFilePath string // The path to the file storing the password to unlock node accounts.
+	WebSocketPorts   []uint // Ports exposed by the geth nodes for
+	commStartPort    int
+	wsStartPort      int
 }
 
-// NewGethNetwork using the provided Geth binary to create a private Ethereum network with numNodes Geth nodes.
+// NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
-func NewGethNetwork(gethBinaryPath string, numNodes int, blockTimeSecs int) GethNetwork {
+// A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
+func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) GethNetwork {
+	// Build dirs are suffixed with a timestamp so multiple executions don't collide
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	buildDir := path.Join(buildDirBase, timestamp)
 	// We create a data directory for each node.
-	nodesDir, err := ioutil.TempDir("", tempDirPrefix)
+	nodesDir, err := ioutil.TempDir("", timestamp)
 	if err != nil {
 		panic(err)
 	}
@@ -134,10 +146,13 @@ func NewGethNetwork(gethBinaryPath string, numNodes int, blockTimeSecs int) Geth
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,
 		dataDirs:         dataDirs,
-		addresses:        make([]string, len(dataDirs)),
-		nodesProcs:       make([]*os.Process, len(dataDirs)),
+		addresses:        make([]string, numNodes),
+		nodesProcs:       make([]*os.Process, numNodes),
 		logFile:          logFile,
 		passwordFilePath: passwordFile.Name(),
+		WebSocketPorts:   make([]uint, numNodes),
+		commStartPort:    portStart,
+		wsStartPort:      portStart + 100,
 	}
 
 	// We create an account for each node.
@@ -153,9 +168,13 @@ func NewGethNetwork(gethBinaryPath string, numNodes int, blockTimeSecs int) Geth
 	wg.Wait()
 
 	// We generate the genesis config file based on the accounts above.
-	allocs := make([]string, len(network.addresses))
-	for idx, addr := range network.addresses {
-		allocs[idx] = fmt.Sprintf(allocBlockTemplate, addr)
+	allocs := make([]string, numNodes+len(preFundedAddrs))
+	for i, addr := range network.addresses {
+		allocs[i] = fmt.Sprintf(allocBlockTemplate, addr)
+	}
+	// add prefunded addresses to the genesis
+	for i, addr := range preFundedAddrs {
+		allocs[numNodes+i] = fmt.Sprintf(addrBlockTemplate, addr)
 	}
 	genesisJSON := fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, ""))
 
@@ -290,10 +309,13 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 
 // Starts a Geth miner.
 func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
+	webSocketPort := network.wsStartPort + idx
+	port := network.commStartPort + idx
+
 	args := []string{
-		websocketFlag, wsPortFlag, strconv.Itoa(wsStartPort + idx), dataDirFlag, dataDirPath, portFlag,
-		strconv.Itoa(startPort + idx), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
-		network.passwordFilePath, mineFlag, rpcFeeCapFlag,
+		websocketFlag, wsPortFlag, strconv.Itoa(webSocketPort), dataDirFlag, dataDirPath, portFlag,
+		strconv.Itoa(port), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
+		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 	cmd.Stdout = network.logFile
@@ -303,6 +325,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 		panic(err)
 	}
 	network.nodesProcs[idx] = cmd.Process
+	network.WebSocketPorts[idx] = uint(webSocketPort)
 }
 
 // Waits for a node's IPC file to exist.
@@ -317,7 +340,7 @@ func waitForIPC(dataDir string) {
 		time.Sleep(100 * time.Millisecond)
 
 		if counter > 20 {
-			fmt.Printf("Waiting for .ipc file of node at %s", dataDir)
+			log.Log(fmt.Sprintf("Waiting for .ipc file of node at %s", dataDir))
 			counter = 0
 		}
 		counter++

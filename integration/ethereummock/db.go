@@ -6,21 +6,14 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-type blockAndHeight struct {
-	b      *types.Block
-	height uint64
-}
-
 // Received blocks ar stored here
 type blockResolverInMem struct {
-	blockCache map[obscurocommon.L1RootHash]blockAndHeight
+	blockCache map[obscurocommon.L1RootHash]*types.Block
 	m          sync.RWMutex
 }
 
@@ -34,7 +27,7 @@ func (n *blockResolverInMem) Proof(_ *core.Rollup) *types.Block {
 
 func NewResolver() db.BlockResolver {
 	return &blockResolverInMem{
-		blockCache: map[obscurocommon.L1RootHash]blockAndHeight{},
+		blockCache: map[obscurocommon.L1RootHash]*types.Block{},
 		m:          sync.RWMutex{},
 	}
 }
@@ -42,18 +35,7 @@ func NewResolver() db.BlockResolver {
 func (n *blockResolverInMem) StoreBlock(block *types.Block) bool {
 	n.m.Lock()
 	defer n.m.Unlock()
-	if block.ParentHash() == obscurocommon.GenesisHash {
-		n.blockCache[block.Hash()] = blockAndHeight{block, obscurocommon.L1GenesisHeight}
-		return true
-	}
-
-	p, f := n.blockCache[block.ParentHash()]
-	if !f {
-		log.Log("Trying to store block but haven't yet stored its parent. Trying increasing the simulation's block " +
-			"time or reducing the number of nodes")
-		return false
-	}
-	n.blockCache[block.Hash()] = blockAndHeight{block, p.height + 1}
+	n.blockCache[block.Hash()] = block
 	return true
 }
 
@@ -62,29 +44,20 @@ func (n *blockResolverInMem) FetchBlock(hash obscurocommon.L1RootHash) (*types.B
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
 
-	return block.b, f
+	return block, f
 }
 
-func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, uint64) {
+func (n *blockResolverInMem) FetchHeadBlock() *types.Block {
 	n.m.RLock()
 	defer n.m.RUnlock()
-	var max blockAndHeight
-	for _, bh := range n.blockCache {
-		if max.height < bh.height {
+	var max *types.Block
+	for k := range n.blockCache {
+		bh := n.blockCache[k]
+		if max == nil || max.NumberU64() < bh.NumberU64() {
 			max = bh
 		}
 	}
-	return max.b, max.height
-}
-
-func (n *blockResolverInMem) HeightBlock(block *types.Block) uint64 {
-	n.m.RLock()
-	defer n.m.RUnlock()
-	b, f := n.blockCache[block.Hash()]
-	if f {
-		return b.height
-	}
-	panic("block not stored")
+	return max
 }
 
 func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {
@@ -96,7 +69,7 @@ func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types
 		return true
 	}
 
-	if n.HeightBlock(maybeAncestor) >= n.HeightBlock(block) {
+	if maybeAncestor.NumberU64() >= block.NumberU64() {
 		return false
 	}
 
@@ -117,13 +90,13 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor o
 		return true
 	}
 
-	if n.HeightBlock(block) == obscurocommon.L1GenesisHeight {
+	if block.NumberU64() == obscurocommon.L1GenesisHeight {
 		return false
 	}
 
 	resolvedBlock, found := n.FetchBlock(maybeAncestor)
 	if found {
-		if n.HeightBlock(resolvedBlock) >= n.HeightBlock(block) {
+		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
 	}
@@ -171,7 +144,7 @@ func removeCommittedTransactions(
 	resolver db.BlockResolver,
 	db TxDB,
 ) []*obscurocommon.L1Tx {
-	if resolver.HeightBlock(cb) <= obscurocommon.HeightCommittedBlocks {
+	if cb.NumberU64() <= obscurocommon.HeightCommittedBlocks {
 		return mempool
 	}
 

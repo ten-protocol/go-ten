@@ -78,8 +78,10 @@ var (
 
 func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Block {
 	parentHash := GenesisHash
+	height := L1GenesisHeight
 	if parent != nil {
 		parentHash = parent.Hash()
+		height = parent.NumberU64() + 1
 	}
 
 	header := types.Header{
@@ -91,7 +93,7 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Bl
 		ReceiptHash: common.Hash{},
 		Bloom:       types.Bloom{},
 		Difficulty:  big.NewInt(0),
-		Number:      big.NewInt(0),
+		Number:      big.NewInt(int64(height)),
 		GasLimit:    0,
 		GasUsed:     0,
 		Time:        0,

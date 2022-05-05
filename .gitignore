@@ -25,13 +25,9 @@ simulation_result.txt
 **/.DS_Store
 
 # generated binaries
-integration/gethnetwork/geth-release-1.10.17
 integration/simulation/cmd/cmd
 go/obscuronode/host/main/main
 go/obscuronode/enclave/main/main
 
 # Logs files
 enclave_logs.txt
-
-# ganache files
-ganachedb/

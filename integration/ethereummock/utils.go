@@ -8,20 +8,20 @@ import (
 
 // LCA - returns the least common ancestor of the 2 blocks
 func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) *types.Block {
-	if resolver.HeightBlock(blockA) == obscurocommon.L1GenesisHeight || resolver.HeightBlock(blockB) == obscurocommon.L1GenesisHeight {
+	if blockA.NumberU64() == obscurocommon.L1GenesisHeight || blockB.NumberU64() == obscurocommon.L1GenesisHeight {
 		return blockA
 	}
 	if blockA.Hash() == blockB.Hash() {
 		return blockA
 	}
-	if resolver.HeightBlock(blockA) > resolver.HeightBlock(blockB) {
+	if blockA.NumberU64() > blockB.NumberU64() {
 		p, f := resolver.ParentBlock(blockA)
 		if !f {
 			panic("wtf")
 		}
 		return LCA(p, blockB, resolver)
 	}
-	if resolver.HeightBlock(blockB) > resolver.HeightBlock(blockA) {
+	if blockB.NumberU64() > blockA.NumberU64() {
 		p, f := resolver.ParentBlock(blockB)
 		if !f {
 			panic("wtf")
@@ -53,7 +53,7 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[ob
 	if found {
 		return val
 	}
-	if r.HeightBlock(b) == obscurocommon.L1GenesisHeight {
+	if b.NumberU64() == obscurocommon.L1GenesisHeight {
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[obscurocommon.TxHash]*obscurocommon.L1Tx)
