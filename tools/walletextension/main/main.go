@@ -27,8 +27,7 @@ func main() {
 			panic(err)
 		}
 
-		// TODO - Allow the preallocation of balances.
-		network := gethnetwork.NewGethNetwork(gethHTTPPort, gethBinaryPath, 1, 1, nil)
+		network := gethnetwork.NewGethNetwork(gethHTTPPort, gethBinaryPath, 1, 1, config.prefundedAccounts)
 		defer network.StopNodes()
 		fmt.Println("Local Geth network started.")
 
@@ -49,6 +48,8 @@ func main() {
 	go obscuroFacade.Serve(obscuroFacadeAddr)
 	fmt.Println("Obscuro facade started.")
 	go walletExtension.Serve(walletExtensionAddr)
-	fmt.Println("Wallet extension started.")
+	fmt.Printf("Wallet extension started.\n💡 Visit %s/viewingkeys/ to generate an ephemeral viewing key. "+
+		"Without a viewing key, you will not be able to decrypt the enclave's secure responses to your "+
+		"eth_getBalance and eth_getStorageAt requests.\n", walletExtensionAddr)
 	select {}
 }
