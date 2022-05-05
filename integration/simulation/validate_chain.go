@@ -225,7 +225,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// best condition : all Txs (stats) were issue and consumed in the blockchain
 	// can't happen : sum of headers withdraws greater than issued Txs (stats)
 	if totalSuccessfullyWithdrawn > s.Stats.TotalWithdrawalRequestedAmount {
-		t.Errorf("The amount withdrawn %d is exceeds the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
+		t.Errorf("The amount withdrawn %d exceeds the actual amount requested %d", totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
 	// sanity check that the injected withdrawals were mostly executed
