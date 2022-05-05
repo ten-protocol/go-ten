@@ -53,26 +53,27 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 
 	_, message, err := connection.ReadMessage()
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	return message, nil
 }
 
-// StartWalletExtension starts the wallet extension and Obscuro facade, and optionally a local Ethereum network.
-func StartWalletExtension(config RunConfig) {
+// StartWalletExtension starts the wallet extension and Obscuro facade, and optionally a local Ethereum network. It
+// returns a handle to stop the local network nodes, if any were created.
+func StartWalletExtension(config RunConfig) func() {
 	gethWebsocketAddr := "ws://localhost:" + strconv.Itoa(gethWebsocketPort)
+
+	var localNetwork gethnetwork.GethNetwork
 	if config.LocalNetwork {
 		gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 		if err != nil {
 			panic(err)
 		}
 
-		network := gethnetwork.NewGethNetwork(gethHTTPPort, gethBinaryPath, 1, 1, config.PrefundedAccounts)
-		defer network.StopNodes()
+		localNetwork = gethnetwork.NewGethNetwork(gethHTTPPort, gethBinaryPath, 1, 1, config.PrefundedAccounts)
 		fmt.Println("Local Geth network started.")
 
-		gethWebsocketAddr = "ws://localhost:" + strconv.Itoa(int(network.WebSocketPorts[0]))
+		gethWebsocketAddr = "ws://localhost:" + strconv.Itoa(int(localNetwork.WebSocketPorts[0]))
 	}
 
 	enclavePrivateKey, err := crypto.GenerateKey()
@@ -92,4 +93,10 @@ func StartWalletExtension(config RunConfig) {
 	fmt.Printf("Wallet extension started.\n💡 Visit %s/viewingkeys/ to generate an ephemeral viewing key. "+
 		"Without a viewing key, you will not be able to decrypt the enclave's secure responses to your "+
 		"eth_getBalance and eth_getStorageAt requests.\n", walletExtensionAddr)
+
+	// We return a handle to stop the local network nodes, if any were created.
+	if config.LocalNetwork {
+		return localNetwork.StopNodes
+	}
+	return func() {}
 }

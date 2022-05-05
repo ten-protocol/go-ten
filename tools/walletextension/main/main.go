@@ -4,6 +4,7 @@ import "github.com/obscuronet/obscuro-playground/tools/walletextension"
 
 func main() {
 	config := parseCLIArgs()
-	walletextension.StartWalletExtension(config)
+	stopNodesFunc := walletextension.StartWalletExtension(config)
+	defer stopNodesFunc()
 	select {}
 }
