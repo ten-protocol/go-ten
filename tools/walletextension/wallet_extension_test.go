@@ -84,9 +84,8 @@ func TestCannotGetStorageWithoutSubmittingViewingKey(t *testing.T) {
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	contractAddr := deployERC20Contract(t, privKey)
-	// todo - joel - pass required third param
-	respBody := makeEthJSONReq(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0"})
+	contractAddr, blockNumber := deployERC20Contract(t, privKey)
+	respBody := makeEthJSONReq(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
 
 	trimmedRespBody := strings.TrimSpace(string(respBody))
 	expectedErr := fmt.Sprintf(errInsecure, reqJSONMethodGetStorageAt)
@@ -108,8 +107,8 @@ func TestCanGetStorageAfterSubmittingViewingKey(t *testing.T) {
 
 	submitViewingKey(t)
 
-	contractAddr := deployERC20Contract(t, privKey)
-	getStorageJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", "0x2"})
+	contractAddr, blockNumber := deployERC20Contract(t, privKey)
+	getStorageJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
 
 	if getStorageJSON[respJSONKeyResult] != emptyStorageHex {
 		t.Fatalf("Expected balance of %s, got %s", emptyStorageHex, getStorageJSON[respJSONKeyResult])
@@ -171,8 +170,8 @@ func submitViewingKey(t *testing.T) {
 	resp.Body.Close()
 }
 
-// Deploys an ERC20 contract and returns its address.
-func deployERC20Contract(t *testing.T, signingKey *ecdsa.PrivateKey) string {
+// Deploys an ERC20 contract and returns the contract's address and the block number it was deployed in.
+func deployERC20Contract(t *testing.T, signingKey *ecdsa.PrivateKey) (string, string) {
 	tx := types.LegacyTx{
 		Nonce:    0, // relies on a clean env
 		GasPrice: big.NewInt(2000000000),
@@ -202,5 +201,5 @@ func deployERC20Contract(t *testing.T, signingKey *ecdsa.PrivateKey) string {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	return txInfo["contractAddress"].(string)
+	return txInfo["contractAddress"].(string), txInfo["blockNumber"].(string)
 }
