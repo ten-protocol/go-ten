@@ -27,6 +27,8 @@ const (
 	obscuroFacadePort   = 3001
 	gethHTTPPort        = 3002
 	gethWebsocketPort   = 8546
+
+	signedMsgPrefix = "vk"
 )
 
 // ViewingKey is the packet of data sent to the enclave when storing a new viewing key.

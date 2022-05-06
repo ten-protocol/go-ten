@@ -55,7 +55,7 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 
 		// We recalculate the message signed by MetaMask.
 		viewingKeyBytes := crypto.CompressPubkey(viewingKey.publicKey)
-		msgToSign := "vk" + hex.EncodeToString(viewingKeyBytes)
+		msgToSign := signedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
 
 		// We recover the key based on the signed message and the signature.
 		recoveredKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), viewingKey.signature)

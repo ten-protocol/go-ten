@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -59,11 +60,16 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
+	privKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{dummyAccountAddr}}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	generateViewingKey(t)
+	generateViewingKey(t, privKey)
 
 	getBalanceJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
 
@@ -108,7 +114,7 @@ func TestCanGetStorageAfterSubmittingViewingKey(t *testing.T) {
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	generateViewingKey(t)
+	generateViewingKey(t, privKey)
 
 	contractAddr, blockNumber := deployERC20Contract(t, privKey)
 	getStorageJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
@@ -161,17 +167,29 @@ func makeEthJSONReqAsJSON(t *testing.T, method string, params []string) map[stri
 }
 
 // Generates a signed viewing key for the wallet extension.
-func generateViewingKey(t *testing.T) {
+func generateViewingKey(t *testing.T, accountPrivateKey *ecdsa.PrivateKey) {
 	resp, err := http.Get(walletExtensionAddr + pathGenerateViewingKey) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	viewingKey, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// TODO - Submit a non-dummy signature to pass validation.
+	msgToSign := signedMsgPrefix + string(viewingKey)
+	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), accountPrivateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// We have to transform the V from 0/1 to 27/28, and add the leading "0".
+	signature[64] += 27
+	signatureWithLeadBytes := append([]byte("0"), signature...)
+
 	submitViewingKeyBodyBytes, _ := json.Marshal(map[string]interface{}{
-		"signature": hex.EncodeToString([]byte("dummySignature")),
+		"signature": hex.EncodeToString(signatureWithLeadBytes),
 	})
+
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
 	resp, err = http.Post(walletExtensionAddr+pathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
 	if err != nil {
