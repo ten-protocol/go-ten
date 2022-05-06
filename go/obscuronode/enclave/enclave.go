@@ -67,7 +67,7 @@ func (e *enclaveImpl) start(block types.Block) {
 	if f {
 		env.headRollup = blockState.Head
 		if env.headRollup != nil {
-			env.state = e.storage.CreateStateDb(env.headRollup.Hash())
+			env.state = e.storage.CreateStateDB(env.headRollup.Hash())
 		}
 	}
 
@@ -77,7 +77,7 @@ func (e *enclaveImpl) start(block types.Block) {
 		case winnerRollup := <-e.roundWinnerCh:
 			env.header = obscurocore.NewHeader(winnerRollup, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
-			env.state = e.storage.CreateStateDb(winnerRollup.Hash())
+			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
 
 			// determine the transactions that were not yet included
 			env.processedTxs = currentTxs(winnerRollup, e.mempool.FetchMempoolTxs(), e.storage)
@@ -255,7 +255,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		}
 	}
 
-	parentState := e.storage.CreateStateDb(head.Hash())
+	parentState := e.storage.CreateStateDB(head.Hash())
 	// determine the winner of the round
 	winnerRollup, s := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
 	s.Commit(winnerRollup.Hash())
@@ -286,7 +286,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
-	return e.storage.CreateStateDb(e.storage.FetchHeadState().Head.Hash()).GetBalance(address)
+	return e.storage.CreateStateDB(e.storage.FetchHeadState().Head.Hash()).GetBalance(address)
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscurocore.Rollup {
@@ -317,7 +317,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscuroc
 		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(bs.Head, e.mempool.FetchMempoolTxs(), e.storage)
 
-		newRollupState = e.storage.CreateStateDb(bs.Head.Hash())
+		newRollupState = e.storage.CreateStateDB(bs.Head.Hash())
 		executeTransactions(newRollupTxs, newRollupState, newRollupHeader)
 	}
 
@@ -446,7 +446,7 @@ func encryptSecret(secret obscurocore.SharedEnclaveSecret) obscurocommon.Encrypt
 type speculativeWork struct {
 	found bool
 	r     *obscurocore.Rollup
-	s     db.StateDb
+	s     db.StateDB
 	h     *nodecommon.Header
 	txs   []nodecommon.L2Tx
 }
@@ -457,7 +457,7 @@ type processingEnvironment struct {
 	header          *nodecommon.Header              // the header of the new rollup
 	processedTxs    []nodecommon.L2Tx               // txs that were already processed
 	processedTxsMap map[common.Hash]nodecommon.L2Tx // structure used to prevent duplicates
-	state           db.StateDb                      // the state as calculated from the previous rollup and the processed transactions
+	state           db.StateDB                      // the state as calculated from the previous rollup and the processed transactions
 }
 
 // NewEnclave creates a new enclave.

@@ -55,18 +55,18 @@ type BlockStateStorage interface {
 	FetchHeadState() *BlockState
 	// SetBlockState save the rollup-block mapping
 	SetBlockState(blockHash obscurocommon.L1RootHash, state *BlockState)
-	// CreateStateDb create a database that can be used to execute transactions
-	CreateStateDb(hash obscurocommon.L2RootHash) StateDb
-	// GenesisStateDb create the original empty StateDb
-	GenesisStateDb() StateDb
+	// CreateStateDB create a database that can be used to execute transactions
+	CreateStateDB(hash obscurocommon.L2RootHash) StateDB
+	// GenesisStateDB create the original empty StateDB
+	GenesisStateDB() StateDB
 }
 
-// StateDb - is the conceptual equivalent of the geth vm.StateDb
-type StateDb interface {
+// StateDB - is the conceptual equivalent of the geth vm.StateDB
+type StateDB interface {
 	GetBalance(address common.Address) uint64
 	SetBalance(address common.Address, balance uint64)
 	AddWithdrawal(txHash obscurocommon.TxHash)
-	Copy() StateDb
+	Copy() StateDB
 	StateRoot() common.Hash
 	Withdrawals() []obscurocommon.TxHash
 

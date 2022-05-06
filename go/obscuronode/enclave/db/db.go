@@ -16,7 +16,7 @@ import (
 
 // DB lives purely in the encrypted memory space of an enclave.
 // Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
-type inMemoryDB struct {
+type InMemoryDB struct {
 	rollupGenesisHash common.Hash // TODO add lock protection, not needed atm
 
 	stateMutex sync.RWMutex // Controls access to `statePerBlock`, `statePerRollup`, `headBlock`, `rollupsByHeight` and `rollups`
@@ -34,8 +34,8 @@ type inMemoryDB struct {
 	sharedEnclaveSecret core.SharedEnclaveSecret
 }
 
-func NewInMemoryDB() *inMemoryDB {
-	return &inMemoryDB{
+func NewInMemoryDB() *InMemoryDB {
+	return &InMemoryDB{
 		statePerBlock:     make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:        sync.RWMutex{},
 		rollupsByHeight:   make(map[uint64][]*core.Rollup),
@@ -48,17 +48,17 @@ func NewInMemoryDB() *inMemoryDB {
 	}
 }
 
-func (db *inMemoryDB) StoreGenesisRollup(rol *core.Rollup) {
+func (db *InMemoryDB) StoreGenesisRollup(rol *core.Rollup) {
 	db.rollupGenesisHash = rol.Hash()
 	db.StoreRollup(rol)
 }
 
-func (db *inMemoryDB) FetchGenesisRollup() *core.Rollup {
+func (db *InMemoryDB) FetchGenesisRollup() *core.Rollup {
 	r, _ := db.FetchRollup(db.rollupGenesisHash)
 	return r
 }
 
-func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
+func (db *InMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
@@ -66,7 +66,7 @@ func (db *inMemoryDB) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockStat
 	return val, found
 }
 
-func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
+func (db *InMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
@@ -75,7 +75,7 @@ func (db *inMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state *BlockS
 	db.headBlock = hash
 }
 
-func (db *inMemoryDB) SetBlockStateNewRollup(hash obscurocommon.L1RootHash, state *BlockState) {
+func (db *InMemoryDB) SetBlockStateNewRollup(hash obscurocommon.L1RootHash, state *BlockState) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
@@ -85,19 +85,19 @@ func (db *inMemoryDB) SetBlockStateNewRollup(hash obscurocommon.L1RootHash, stat
 	db.headBlock = hash
 }
 
-func (db *inMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
+func (db *InMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
 	db.statePerRollup[hash] = state
 }
 
-func (db *inMemoryDB) FetchHeadBlock() obscurocommon.L1RootHash {
+func (db *InMemoryDB) FetchHeadBlock() obscurocommon.L1RootHash {
 	return db.headBlock
 }
 
 // TODO - Pull this logic into the storage layer.
-func (db *inMemoryDB) StoreRollup(rollup *core.Rollup) {
+func (db *InMemoryDB) StoreRollup(rollup *core.Rollup) {
 	db.stateMutex.Lock()
 	defer db.stateMutex.Unlock()
 
@@ -110,7 +110,7 @@ func (db *inMemoryDB) StoreRollup(rollup *core.Rollup) {
 	}
 }
 
-func (db *inMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, bool) {
+func (db *InMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, bool) {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
@@ -118,28 +118,28 @@ func (db *inMemoryDB) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, 
 	return r, f
 }
 
-func (db *inMemoryDB) FetchRollups(height uint64) []*core.Rollup {
+func (db *InMemoryDB) FetchRollups(height uint64) []*core.Rollup {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
 	return db.rollupsByHeight[height]
 }
 
-func (db *inMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {
+func (db *InMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {
 	db.stateMutex.RLock()
 	defer db.stateMutex.RUnlock()
 
 	return db.statePerRollup[hash]
 }
 
-func (db *inMemoryDB) StoreBlock(b *types.Block) {
+func (db *InMemoryDB) StoreBlock(b *types.Block) {
 	db.blockMutex.Lock()
 	defer db.blockMutex.Unlock()
 
 	db.blockCache[b.Hash()] = b
 }
 
-func (db *inMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
+func (db *InMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	db.blockMutex.RLock()
 	defer db.blockMutex.RUnlock()
 
@@ -147,7 +147,7 @@ func (db *inMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, b
 	return val, f
 }
 
-func (db *inMemoryDB) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
+func (db *InMemoryDB) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
 	db.txMutex.RLock()
 	defer db.txMutex.RUnlock()
 
@@ -155,17 +155,17 @@ func (db *inMemoryDB) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon
 	return val, found
 }
 
-func (db *inMemoryDB) StoreRollupTxs(r *core.Rollup, newMap map[common.Hash]nodecommon.L2Tx) {
+func (db *InMemoryDB) StoreRollupTxs(r *core.Rollup, newMap map[common.Hash]nodecommon.L2Tx) {
 	db.txMutex.Lock()
 	defer db.txMutex.Unlock()
 
 	db.txsPerRollupCache[r.Hash()] = newMap
 }
 
-func (db *inMemoryDB) StoreSecret(secret core.SharedEnclaveSecret) {
+func (db *InMemoryDB) StoreSecret(secret core.SharedEnclaveSecret) {
 	db.sharedEnclaveSecret = secret
 }
 
-func (db *inMemoryDB) FetchSecret() core.SharedEnclaveSecret {
+func (db *InMemoryDB) FetchSecret() core.SharedEnclaveSecret {
 	return db.sharedEnclaveSecret
 }

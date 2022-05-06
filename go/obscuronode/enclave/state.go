@@ -26,7 +26,7 @@ import (
 // todo - remove nolint after the header starts being used
 func executeTransactions(
 	txs []nodecommon.L2Tx,
-	s db.StateDb,
+	s db.StateDB,
 	header *nodecommon.Header, //nolint
 ) {
 	for _, tx := range txs {
@@ -36,7 +36,7 @@ func executeTransactions(
 }
 
 // mutates the state
-func executeTx(s db.StateDb, tx nodecommon.L2Tx) {
+func executeTx(s db.StateDB, tx nodecommon.L2Tx) {
 	switch core.TxData(&tx).Type {
 	case core.TransferTx:
 		executeTransfer(s, tx)
@@ -49,7 +49,7 @@ func executeTx(s db.StateDb, tx nodecommon.L2Tx) {
 	}
 }
 
-func executeWithdrawal(s db.StateDb, tx nodecommon.L2Tx) {
+func executeWithdrawal(s db.StateDB, tx nodecommon.L2Tx) {
 	txData := core.TxData(&tx)
 	from := s.GetBalance(txData.From)
 	if from >= txData.Amount {
@@ -58,7 +58,7 @@ func executeWithdrawal(s db.StateDb, tx nodecommon.L2Tx) {
 	}
 }
 
-func executeTransfer(s db.StateDb, tx nodecommon.L2Tx) {
+func executeTransfer(s db.StateDB, tx nodecommon.L2Tx) {
 	txData := core.TxData(&tx)
 	from := s.GetBalance(txData.From)
 	to := s.GetBalance(txData.To)
@@ -69,7 +69,7 @@ func executeTransfer(s db.StateDb, tx nodecommon.L2Tx) {
 	}
 }
 
-func executeDeposit(s db.StateDb, tx nodecommon.L2Tx) {
+func executeDeposit(s db.StateDB, tx nodecommon.L2Tx) {
 	txData := core.TxData(&tx)
 	to := s.GetBalance(txData.To)
 	s.SetBalance(txData.To, to+txData.Amount)
@@ -149,7 +149,7 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 			FoundNewRollup: true,
 		}
 		bss.SetBlockState(b.Hash(), &bs)
-		state := bss.GenesisStateDb()
+		state := bss.GenesisStateDB()
 		state.Commit(genesis.Hash())
 		return &bs, true
 	}
@@ -189,7 +189,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 	return rollups[win], true
 }
 
-func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup, stateDb db.StateDb, blockResolver db.BlockResolver, rollupResolver db.RollupResolver) (*core.Rollup, db.StateDb) {
+func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup, stateDb db.StateDB, blockResolver db.BlockResolver, rollupResolver db.RollupResolver) (*core.Rollup, db.StateDB) {
 	headRollup, found := FindWinner(parent, receivedRollups, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
@@ -259,10 +259,10 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*db.BlockState, db.StateDb) {
+func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*db.BlockState, db.StateDB) {
 	currentHead := parentState.Head
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
-	stateDb := bss.CreateStateDb(parentState.Head.Hash())
+	stateDb := bss.CreateStateDB(parentState.Head.Hash())
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		// Preprocessing before passing to the vm
@@ -288,7 +288,7 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolv
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state db.StateDb) []nodecommon.Withdrawal {
+func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state db.StateDB) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for i, t := range newHeadRollup.Transactions {

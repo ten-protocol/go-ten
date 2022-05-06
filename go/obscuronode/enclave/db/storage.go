@@ -13,7 +13,7 @@ import (
 )
 
 type storageImpl struct {
-	db *inMemoryDB
+	db *InMemoryDB
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
@@ -24,7 +24,7 @@ func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
 	return s.db.FetchGenesisRollup()
 }
 
-func NewStorage(db *inMemoryDB) Storage {
+func NewStorage(db *InMemoryDB) Storage {
 	return &storageImpl{db: db}
 }
 
@@ -177,14 +177,14 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockS
 	}
 }
 
-func (s *storageImpl) CreateStateDb(hash obscurocommon.L2RootHash) StateDb {
+func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) StateDB {
 	parent := s.db.FetchRollupState(hash)
 	newState := CopyStateNoWithdrawals(parent)
-	return NewStateDb(s.db, hash, newState)
+	return NewStateDB(s.db, hash, newState)
 }
 
-func (s *storageImpl) GenesisStateDb() StateDb {
-	return NewStateDb(s.db, obscurocommon.GenesisHash, EmptyState())
+func (s *storageImpl) GenesisStateDB() StateDB {
+	return NewStateDB(s.db, obscurocommon.GenesisHash, EmptyState())
 }
 
 func (s *storageImpl) FetchHeadState() *BlockState {
