@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/crypto"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -19,6 +22,7 @@ type ObscuroFacade struct {
 	gethWebsocketAddr      string
 	viewingKeyChannel      <-chan ViewingKey
 	viewingKeyEcies        *ecies.PublicKey
+	viewingKeySigner       *ecdsa.PublicKey // The public key that signed the viewing key.
 	upgrader               websocket.Upgrader
 	server                 *http.Server
 }
@@ -48,8 +52,19 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 	// We listen for the account viewing key.
 	go func() {
 		viewingKey := <-of.viewingKeyChannel
-		// TODO - Verify signed bytes.
-		of.viewingKeyEcies = ecies.ImportECDSAPublic(viewingKey.viewingKeyPublic)
+
+		// We recalculate the message signed by MetaMask.
+		viewingKeyBytes := crypto.CompressPubkey(viewingKey.publicKey)
+		msgToSign := "vk" + hex.EncodeToString(viewingKeyBytes)
+
+		// We recover the key based on the signed message and the signature.
+		recoveredKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), viewingKey.signature)
+		if err != nil {
+			panic(fmt.Sprintf("was sent viewing key but could not validate its signature: %s", err))
+		}
+
+		of.viewingKeySigner = recoveredKey
+		of.viewingKeyEcies = ecies.ImportECDSAPublic(viewingKey.publicKey)
 	}()
 
 	serveMux := http.NewServeMux()
@@ -118,7 +133,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 			return
 		}
 
-		// TODO - This is wrong. We should only be encrypting if we have a viewing key for the requestor.
+		// TODO - Throw error if viewing key signer doesn't match.
 		gethResp, err = ecies.Encrypt(rand.Reader, of.viewingKeyEcies, gethResp, nil, nil)
 		if err != nil {
 			sendErr(connection, fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %s", err))

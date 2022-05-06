@@ -119,7 +119,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// We decrypt the response if it's encrypted.
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodGetStorageAt {
 		fmt.Printf("🔐 Decrypting %s response from Geth node with viewing key.\n", method)
-		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate)
+		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate) // todo - joel - import this a single time
 		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
 		if err != nil {
 			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
@@ -167,19 +167,26 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signed bytes from client: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signature from client: %s", err))
 		return
 	}
 
-	var reqJSONMap map[string]interface{}
+	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not unmarshall viewing key and signed bytes from client to JSON: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not unmarshall viewing key and signature from client to JSON: %s", err))
 		return
 	}
-	signedBytes := []byte(reqJSONMap["signedBytes"].(string))
 
-	viewingKey := ViewingKey{viewingKeyPublic: &we.viewingKeyPrivate.PublicKey, signedBytes: signedBytes}
+	// We have to drop the leading "0x", and transform the V from 27/28 to 0/1.
+	signature, err := hex.DecodeString(reqJSONMap["signature"][2:])
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not decode signature from client to hex: %s", err))
+		return
+	}
+	signature[64] -= 27
+
+	viewingKey := ViewingKey{publicKey: &we.viewingKeyPrivate.PublicKey, signature: signature}
 	we.viewingKeyChannel <- viewingKey
 }
 

@@ -31,8 +31,8 @@ const (
 
 // ViewingKey is the packet of data sent to the enclave when storing a new viewing key.
 type ViewingKey struct {
-	viewingKeyPublic *ecdsa.PublicKey
-	signedBytes      []byte
+	publicKey *ecdsa.PublicKey
+	signature []byte
 }
 
 // RunConfig contains the configuration required by StartWalletExtension.

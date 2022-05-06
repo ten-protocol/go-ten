@@ -33,17 +33,17 @@ const initialize = () => {
         }
         const account = accounts[0]; // TODO - Allow use of accounts other than the first.
 
-        const signedBytes = await ethereum.request({
+        const signature = await ethereum.request({
             method: metamaskPersonalSign,
             // Without a prefix such as 'vk', personal_sign transforms the data for security reasons.
             params: [personalSignPrefix + viewingKey, account]
         }).catch(_ => { return -1 })
-        if (signedBytes === -1) {
+        if (signature === -1) {
             statusArea.innerText = "Failed to sign viewing key."
             return
         }
 
-        const signedViewingKeyJson = {"signedBytes": signedBytes}
+        const signedViewingKeyJson = {"signature": signature}
         const submitViewingKeyResp = await fetch(
             pathSubmitViewingKey, {
                 method: methodPost,
@@ -52,7 +52,7 @@ const initialize = () => {
             }
         );
         if (isOk(submitViewingKeyResp)) {
-            statusArea.innerText = `Account: ${account}\nViewing key: ${viewingKey}\nSigned bytes: ${signedBytes}`
+            statusArea.innerText = `Account: ${account}\nViewing key: ${viewingKey}\nSigned bytes: ${signature}`
         } else {
             statusArea.innerText = "Failed to submit viewing key to enclave."
         }
