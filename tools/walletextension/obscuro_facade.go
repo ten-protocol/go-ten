@@ -1,6 +1,7 @@
 package walletextension
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
@@ -19,6 +20,7 @@ type ObscuroFacade struct {
 	viewingKeyChannel      <-chan ViewingKey
 	viewingKeyEcies        *ecies.PublicKey
 	upgrader               websocket.Upgrader
+	server                 *http.Server
 }
 
 func NewObscuroFacade(
@@ -51,12 +53,18 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 	}()
 
 	serveMux := http.NewServeMux()
-
 	serveMux.HandleFunc(pathRoot, of.handleWSEthJSON)
+	of.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
-	err := http.ListenAndServe(hostAndPort, serveMux)
-	if err != nil {
+	err := of.server.ListenAndServe()
+	if err != http.ErrServerClosed {
 		panic(err)
+	}
+}
+
+func (of *ObscuroFacade) Shutdown() {
+	if of.server != nil {
+		of.server.Shutdown(context.Background())
 	}
 }
 
@@ -67,6 +75,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 		http.Error(resp, fmt.Sprintf("could not upgrade connection to a websocket connection: %s", err), httpCodeErr)
 		return
 	}
+	defer connection.Close()
 
 	// We read the message from the wallet extension.
 	_, encryptedMessage, err := connection.ReadMessage()

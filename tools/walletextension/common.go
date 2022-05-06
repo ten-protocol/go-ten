@@ -61,7 +61,7 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 }
 
 // StartWalletExtension starts the wallet extension and Obscuro facade, and optionally a local Ethereum network. It
-// returns a handle to stop the local network nodes, if any were created.
+// returns a handle to stop the wallet extension, Obscuro facade and local network nodes, if any were created.
 func StartWalletExtension(config RunConfig) func() {
 	gethWebsocketAddr := "ws://localhost:" + strconv.Itoa(gethWebsocketPort)
 
@@ -98,7 +98,11 @@ func StartWalletExtension(config RunConfig) func() {
 
 	// We return a handle to stop the local network nodes, if any were created.
 	if config.LocalNetwork {
-		return localNetwork.StopNodes
+		return func() {
+			localNetwork.StopNodes()
+			obscuroFacade.Shutdown()
+			walletExtension.Shutdown()
+		}
 	}
 	return func() {}
 }

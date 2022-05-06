@@ -1,6 +1,7 @@
 package walletextension
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
@@ -30,6 +31,7 @@ type WalletExtension struct {
 	viewingKeyPrivate *ecdsa.PrivateKey
 	// TODO - Replace this channel with port-based communication with the enclave.
 	viewingKeyChannel chan<- ViewingKey
+	server            *http.Server
 }
 
 func NewWalletExtension(
@@ -47,18 +49,23 @@ func NewWalletExtension(
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
 func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
-
 	// Handles Ethereum JSON-RPC requests received over HTTP.
 	serveMux.HandleFunc(pathRoot, we.handleHTTPEthJSON)
-
 	// Handles the management of viewing keys.
 	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(staticDir))))
 	serveMux.HandleFunc(pathGenerateViewingKey, we.handleGenerateViewingKey)
 	serveMux.HandleFunc(pathSubmitViewingKey, we.handleSubmitViewingKey)
+	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
-	err := http.ListenAndServe(hostAndPort, serveMux)
-	if err != nil {
+	err := we.server.ListenAndServe()
+	if err != http.ErrServerClosed {
 		panic(err)
+	}
+}
+
+func (we *WalletExtension) Shutdown() {
+	if we.server != nil {
+		we.server.Shutdown(context.Background())
 	}
 }
 
