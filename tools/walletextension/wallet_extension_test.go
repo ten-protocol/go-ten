@@ -6,13 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts"
 	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -176,6 +177,7 @@ func generateViewingKey(t *testing.T, accountPrivateKey *ecdsa.PrivateKey) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	resp.Body.Close()
 
 	msgToSign := signedMsgPrefix + string(viewingKey)
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), accountPrivateKey)

@@ -7,9 +7,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
-	"net/http"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/gorilla/websocket"
