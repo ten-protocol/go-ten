@@ -121,11 +121,11 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 		return nil
 	}
 
-	bs, stateDb := calculateBlockState(b, parentState, blockResolver, rollups, txHandler, rollupResolver, bss)
+	bs, stateDB := calculateBlockState(b, parentState, blockResolver, rollups, txHandler, rollupResolver, bss)
 
 	bss.SetBlockState(b.Hash(), bs)
 	if bs.FoundNewRollup {
-		stateDb.Commit(bs.Head.Hash())
+		stateDB.Commit(bs.Head.Hash())
 	}
 
 	return bs
@@ -189,7 +189,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 	return rollups[win], true
 }
 
-func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup, stateDb db.StateDB, blockResolver db.BlockResolver, rollupResolver db.RollupResolver) (*core.Rollup, db.StateDB) {
+func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup, stateDB db.StateDB, blockResolver db.BlockResolver, rollupResolver db.RollupResolver) (*core.Rollup, db.StateDB) {
 	headRollup, found := FindWinner(parent, receivedRollups, blockResolver)
 	if !found {
 		panic("This should not happen for gossip rounds.")
@@ -198,20 +198,20 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
 	depositTxs := processDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.txHandler)
 
-	executeTransactions(append(headRollup.Transactions, depositTxs...), stateDb, headRollup.Header)
+	executeTransactions(append(headRollup.Transactions, depositTxs...), stateDB, headRollup.Header)
 
-	if stateDb.StateRoot() != headRollup.Header.State {
+	if stateDB.StateRoot() != headRollup.Header.State {
 		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nParent state:%v\nParent state:%s\nTxs:%v",
-			stateDb.StateRoot(),
+			stateDB.StateRoot(),
 			headRollup.Header.State,
-			stateDb,
+			stateDB,
 			parent.Header.State,
 			printTxs(headRollup.Transactions)),
 		)
 	}
 	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
-	return headRollup, stateDb
+	return headRollup, stateDB
 }
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
@@ -262,7 +262,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*db.BlockState, db.StateDB) {
 	currentHead := parentState.Head
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
-	stateDb := bss.CreateStateDB(parentState.Head.Hash())
+	stateDB := bss.CreateStateDB(parentState.Head.Hash())
 	// only change the state if there is a new l2 Head in the current block
 	if found {
 		// Preprocessing before passing to the vm
@@ -273,7 +273,7 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolv
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		executeTransactions(txsToProcess, stateDb, newHeadRollup.Header)
+		executeTransactions(txsToProcess, stateDB, newHeadRollup.Header)
 		// todo - handle failure , which means a new winner must be selected
 	} else {
 		newHeadRollup = parentState.Head
@@ -284,7 +284,7 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolv
 		Head:           newHeadRollup,
 		FoundNewRollup: found,
 	}
-	return &bs, stateDb
+	return &bs, stateDB
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20

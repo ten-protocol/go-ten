@@ -464,8 +464,8 @@ type processingEnvironment struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(id common.Address, mining bool, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
-	backingDb := db.NewInMemoryDB()
-	storage := db.NewStorage(backingDb)
+	backingDB := db.NewInMemoryDB()
+	storage := db.NewStorage(backingDB)
 
 	var l1Blockchain *core.BlockChain
 	if validateBlocks {
