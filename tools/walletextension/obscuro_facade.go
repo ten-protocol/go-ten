@@ -118,6 +118,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 			return
 		}
 
+		// TODO - This is wrong. We should only be encrypting if we have a viewing key for the requestor.
 		gethResp, err = ecies.Encrypt(rand.Reader, of.viewingKeyEcies, gethResp, nil, nil)
 		if err != nil {
 			sendErr(connection, fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %s", err))
