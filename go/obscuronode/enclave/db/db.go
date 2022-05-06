@@ -34,7 +34,7 @@ type inMemoryDB struct {
 	sharedEnclaveSecret core.SharedEnclaveSecret
 }
 
-func newInMemoryDB() *inMemoryDB {
+func NewInMemoryDB() *inMemoryDB {
 	return &inMemoryDB{
 		statePerBlock:     make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:        sync.RWMutex{},
@@ -81,7 +81,6 @@ func (db *inMemoryDB) SetBlockStateNewRollup(hash obscurocommon.L1RootHash, stat
 
 	db.statePerBlock[hash] = state
 	db.rollups[state.Head.Hash()] = state.Head
-	db.statePerRollup[state.Head.Hash()] = state.State
 	// todo - is there any other logic here?
 	db.headBlock = hash
 }

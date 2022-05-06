@@ -27,7 +27,6 @@ type State struct {
 type BlockState struct {
 	Block          *types.Block
 	Head           *core.Rollup
-	State          *State
 	FoundNewRollup bool
 }
 

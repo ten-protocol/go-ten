@@ -15,12 +15,12 @@ import (
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findTxsNotIncluded(head *core.Rollup, txs []nodecommon.L2Tx, s db.Storage) []nodecommon.L2Tx {
+func findTxsNotIncluded(head *core.Rollup, txs []nodecommon.L2Tx, s db.RollupResolver) []nodecommon.L2Tx {
 	included := allIncludedTransactions(head, s)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *core.Rollup, s db.Storage) map[common.Hash]nodecommon.L2Tx {
+func allIncludedTransactions(b *core.Rollup, s db.RollupResolver) map[common.Hash]nodecommon.L2Tx {
 	val, found := s.FetchRollupTxs(b)
 	if found {
 		return val
