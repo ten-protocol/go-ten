@@ -64,7 +64,10 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 
 func (of *ObscuroFacade) Shutdown() {
 	if of.server != nil {
-		of.server.Shutdown(context.Background())
+		err := of.server.Shutdown(context.Background())
+		if err != nil {
+			fmt.Printf("could not shut down Obscuro facade: %s", err)
+		}
 	}
 }
 
@@ -125,8 +128,7 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	// We write the message back to the wallet extension.
 	err = connection.WriteMessage(websocket.TextMessage, gethResp)
 	if err != nil {
-		msg := fmt.Sprintf("could not write JSON-RPC response: %s", err)
-		fmt.Println(msg)
+		fmt.Printf("could not write JSON-RPC response: %s\n", err)
 	}
 }
 

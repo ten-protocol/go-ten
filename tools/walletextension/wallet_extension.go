@@ -65,7 +65,10 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 
 func (we *WalletExtension) Shutdown() {
 	if we.server != nil {
-		we.server.Shutdown(context.Background())
+		err := we.server.Shutdown(context.Background())
+		if err != nil {
+			fmt.Printf("could not shut down wallet extension: %s", err)
+		}
 	}
 }
 

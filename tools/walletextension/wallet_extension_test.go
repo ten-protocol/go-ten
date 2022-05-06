@@ -11,7 +11,7 @@ import (
 
 const (
 	walletExtensionAddr = "http://localhost:3000"
-	chainId             = "0x539"                // Chain ID in hex.
+	chainID             = "0x539"                // Chain ID in hex.
 	alloc               = "0x3635c9adc5dea00000" // Default account allocation in hex.
 )
 
@@ -28,7 +28,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if respJSON["result"] != chainId {
+	if respJSON["result"] != chainID {
 		t.Fatalf("Expected chainId of %s, got %s", "1337", respJSON["result"])
 	}
 }
@@ -56,17 +56,19 @@ func TestCanRetrieveBalanceAfterSubmittingViewingKey(t *testing.T) {
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	_, err := http.Get(walletExtensionAddr + pathGenerateViewingKey)
+	resp, err := http.Get(walletExtensionAddr + pathGenerateViewingKey) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
+	resp.Body.Close()
 
 	submitViewingKeyBodyBytes, _ := json.Marshal(map[string]string{"signedBytes": "dummySignedBytes"})
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
-	_, err = http.Post(walletExtensionAddr+pathSubmitViewingKey, "application/json", submitViewingKeyBody)
+	resp, err = http.Post(walletExtensionAddr+pathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
+	resp.Body.Close()
 
 	getBalanceRespBody := makeEthJSONReq(t, "eth_getBalance", []string{account, "latest"})
 
@@ -90,10 +92,11 @@ func makeEthJSONReq(t *testing.T, method string, params []string) []byte {
 		"id":      "1",
 	})
 	reqBody := bytes.NewBuffer(reqBodyBytes)
-	resp, err := http.Post(walletExtensionAddr, "text/html", reqBody)
+	resp, err := http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
