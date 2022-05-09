@@ -48,10 +48,6 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-func TestInvalidlySignedViewingKeyIsRejected(t *testing.T) {
-	// TODO - Write this test. Think about other failure scenarios too (e.g. viewing key malformed).
-}
-
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
@@ -77,7 +73,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	generateViewingKey(t, privateKey)
+	generateAndSubmitViewingKey(t, privateKey)
 
 	getBalanceJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetBalance, []string{accountAddr, "latest"})
 
@@ -96,7 +92,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	generateViewingKey(t, privateKey)
+	generateAndSubmitViewingKey(t, privateKey)
 
 	respBody := makeEthJSONReq(t, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
 
@@ -140,7 +136,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 //	stopNodesFunc := StartWalletExtension(runConfig)
 //	defer stopNodesFunc()
 //
-//	generateViewingKey(t, privateKey)
+//	generateAndSubmitViewingKey(t, privateKey)
 //
 //	contractAddr, blockNumber := deployERC20Contract(t, privateKey)
 //	getStorageJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
@@ -188,8 +184,24 @@ func makeEthJSONReqAsJSON(t *testing.T, method string, params []string) map[stri
 	return respBodyJSON
 }
 
-// Generates a signed viewing key for the wallet extension.
-func generateViewingKey(t *testing.T, accountPrivateKey *ecdsa.PrivateKey) {
+// Generates a signed viewing key and submits it to the wallet extension.
+func generateAndSubmitViewingKey(t *testing.T, accountPrivateKey *ecdsa.PrivateKey) {
+	viewingKey := generateViewingKey(t)
+	signature := signViewingKey(t, accountPrivateKey, viewingKey)
+
+	submitViewingKeyBodyBytes, _ := json.Marshal(map[string]interface{}{
+		"signature": hex.EncodeToString(signature),
+	})
+	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
+	resp, err := http.Post(walletExtensionAddr+pathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+}
+
+// Generates a viewing key.
+func generateViewingKey(t *testing.T) []byte {
 	resp, err := http.Get(walletExtensionAddr + pathGenerateViewingKey) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
@@ -199,26 +211,22 @@ func generateViewingKey(t *testing.T, accountPrivateKey *ecdsa.PrivateKey) {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
+	return viewingKey
+}
 
+// Signs a viewing key.
+func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 	msgToSign := signedMsgPrefix + string(viewingKey)
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), accountPrivateKey)
+	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), privateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// We have to transform the V from 0/1 to 27/28, and add the leading "0".
 	signature[64] += 27
 	signatureWithLeadBytes := append([]byte("0"), signature...)
 
-	submitViewingKeyBodyBytes, _ := json.Marshal(map[string]interface{}{
-		"signature": hex.EncodeToString(signatureWithLeadBytes),
-	})
-
-	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
-	resp, err = http.Post(walletExtensionAddr+pathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
+	return signatureWithLeadBytes
 }
 
 // Deploys an ERC20 contract and returns the contract's address and the block number it was deployed in.
