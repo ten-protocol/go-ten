@@ -28,7 +28,8 @@ type WalletExtension struct {
 	obscuroFacadeAddr string
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
-	viewingKeyPrivate *ecdsa.PrivateKey
+	viewingKeyPrivate      *ecdsa.PrivateKey
+	viewingKeyPrivateEcies *ecies.PrivateKey
 	// TODO - Replace this channel with port-based communication with the enclave.
 	viewingKeyChannel chan<- ViewingKey
 	server            *http.Server
@@ -119,8 +120,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// We decrypt the response if it's encrypted.
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
 		fmt.Printf("🔐 Decrypting %s response from Geth node with viewing key.\n", method)
-		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate) // TODO - Import this a single time for efficiency.
-		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
+		gethResp, err = we.viewingKeyPrivateEcies.Decrypt(gethResp, nil, nil)
 		if err != nil {
 			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
 			return
@@ -152,6 +152,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 		return
 	}
 	we.viewingKeyPrivate = viewingKeyPrivate
+	we.viewingKeyPrivateEcies = ecies.ImportECDSA(viewingKeyPrivate)
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
