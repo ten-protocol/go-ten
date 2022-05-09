@@ -231,7 +231,7 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 	}
 	reqBody := bytes.NewBuffer(reqBodyBytes)
 
-	resp, err := http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:noctx
+	resp, err := http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:gosec,noctx
 	if err != nil {
 		t.Fatal(err)
 	}
