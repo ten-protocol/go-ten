@@ -48,7 +48,7 @@ func WriteHeader(db ethdb.KeyValueWriter, header *nodecommon.Header) {
 	}
 }
 
-// ReadHeader retrieves the block header corresponding to the hash.
+// ReadHeader retrieves the rollup header corresponding to the hash.
 func ReadHeader(db ethdb.KeyValueReader, hash common.Hash, number uint64) *nodecommon.Header {
 	data := ReadHeaderRLP(db, hash, number)
 	if len(data) == 0 {
@@ -57,7 +57,6 @@ func ReadHeader(db ethdb.KeyValueReader, hash common.Hash, number uint64) *nodec
 	header := new(nodecommon.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		panic(err)
-		return nil
 	}
 	return header
 }
@@ -79,7 +78,7 @@ func WriteBody(db ethdb.KeyValueWriter, hash common.Hash, number uint64, body co
 	WriteBodyRLP(db, hash, number, data)
 }
 
-// ReadBody retrieves the block body corresponding to the hash.
+// ReadBody retrieves the rollup body corresponding to the hash.
 func ReadBody(db ethdb.KeyValueReader, hash common.Hash, number uint64) core.L2Txs {
 	data := ReadBodyRLP(db, hash, number)
 	if len(data) == 0 {
@@ -88,7 +87,6 @@ func ReadBody(db ethdb.KeyValueReader, hash common.Hash, number uint64) core.L2T
 	body := new(core.L2Txs)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
 		panic(err)
-		return nil
 	}
 	return *body
 }
