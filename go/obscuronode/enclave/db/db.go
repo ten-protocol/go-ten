@@ -15,9 +15,7 @@ import (
 // InMemoryDB lives purely in the encrypted memory space of an enclave.
 // Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
 type InMemoryDB struct {
-	headBlock     obscurocommon.L1RootHash
 	statePerBlock map[obscurocommon.L1RootHash]*BlockState
-	blockMutex    sync.RWMutex // Controls access to `blockCache`
 
 	statePerRollup map[obscurocommon.L2RootHash]*State
 	stateMutex     sync.RWMutex // Controls access to `statePerBlock`, `statePerRollup`, `headBlock`, `rollupsByHeight` and `rollups`
@@ -31,7 +29,6 @@ func NewInMemoryDB() *InMemoryDB {
 		statePerBlock:     make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:        sync.RWMutex{},
 		statePerRollup:    make(map[obscurocommon.L2RootHash]*State),
-		blockMutex:        sync.RWMutex{},
 		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
 		txMutex:           sync.RWMutex{},
 	}
@@ -50,8 +47,6 @@ func (db *InMemoryDB) SetBlockState(hash obscurocommon.L1RootHash, state *BlockS
 	defer db.stateMutex.Unlock()
 
 	db.statePerBlock[hash] = state
-	// todo - is there any other logic here?
-	db.headBlock = hash
 }
 
 func (db *InMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
@@ -59,10 +54,6 @@ func (db *InMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state *State
 	defer db.stateMutex.Unlock()
 
 	db.statePerRollup[hash] = state
-}
-
-func (db *InMemoryDB) FetchHeadBlock() obscurocommon.L1RootHash {
-	return db.headBlock
 }
 
 func (db *InMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {

@@ -81,7 +81,7 @@ func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, b
 
 func (s *storageImpl) FetchHeadBlock() *types.Block {
 	s.assertSecretAvailable()
-	b, _ := s.FetchBlock(s.tempDB.FetchHeadBlock())
+	b, _ := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
 	return b
 }
 
@@ -204,6 +204,7 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockS
 		s.StoreRollup(rollup)
 	}
 	s.tempDB.SetBlockState(hash, state)
+	rawdb.WriteHeadHeaderHash(s.db, state.Block)
 }
 
 func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) StateDB {
@@ -217,6 +218,6 @@ func (s *storageImpl) GenesisStateDB() StateDB {
 }
 
 func (s *storageImpl) FetchHeadState() *BlockState {
-	val, _ := s.tempDB.FetchBlockState(s.tempDB.FetchHeadBlock())
+	val, _ := s.tempDB.FetchBlockState(rawdb.ReadHeadHeaderHash(s.db))
 	return val
 }
