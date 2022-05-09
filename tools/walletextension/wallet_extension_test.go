@@ -34,6 +34,8 @@ const (
 	errInsecure      = "enclave could not respond securely to %s request because there is no viewing key for the account"
 )
 
+// TODO - Enable tests to run in parallel.
+
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
@@ -44,6 +46,10 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	if respJSON[respJSONKeyResult] != chainIDHex {
 		t.Fatalf("Expected chainId of %s, got %s", "1337", respJSON[respJSONKeyResult])
 	}
+}
+
+func TestInvalidlySignedViewingKeyIsRejected(t *testing.T) {
+	// TODO - Write this test. Think about other failure scenarios too (e.g. viewing key malformed).
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
@@ -61,7 +67,27 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	privKey, err := crypto.GenerateKey()
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
+
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}}
+	stopNodesFunc := StartWalletExtension(runConfig)
+	defer stopNodesFunc()
+
+	generateViewingKey(t, privateKey)
+
+	getBalanceJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetBalance, []string{accountAddr, "latest"})
+
+	if getBalanceJSON[respJSONKeyResult] != allocHex {
+		t.Fatalf("Expected balance of %s, got %s", allocHex, getBalanceJSON[respJSONKeyResult])
+	}
+}
+
+func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
+	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,68 +96,63 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	generateViewingKey(t, privKey)
+	generateViewingKey(t, privateKey)
 
-	getBalanceJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
-
-	if getBalanceJSON[respJSONKeyResult] != allocHex {
-		t.Fatalf("Expected balance of %s, got %s", allocHex, getBalanceJSON[respJSONKeyResult])
-	}
-}
-
-func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	// TODO - Write this test.
-}
-
-func TestCannotGetStorageWithoutSubmittingViewingKey(t *testing.T) {
-	privKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	account := crypto.PubkeyToAddress(privKey.PublicKey)
-
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{account.String()}}
-	stopNodesFunc := StartWalletExtension(runConfig)
-	defer stopNodesFunc()
-
-	contractAddr, blockNumber := deployERC20Contract(t, privKey)
-	respBody := makeEthJSONReq(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
+	respBody := makeEthJSONReq(t, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
 
 	trimmedRespBody := strings.TrimSpace(string(respBody))
-	expectedErr := fmt.Sprintf(errInsecure, reqJSONMethodGetStorageAt)
+	expectedErr := fmt.Sprintf(errInsecure, reqJSONMethodGetBalance)
 	if trimmedRespBody != expectedErr {
 		t.Fatalf("Expected error message with prefix \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
 }
 
-func TestCanGetStorageAfterSubmittingViewingKey(t *testing.T) {
-	privKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	account := crypto.PubkeyToAddress(privKey.PublicKey)
-
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{account.String()}}
-	stopNodesFunc := StartWalletExtension(runConfig)
-	defer stopNodesFunc()
-
-	generateViewingKey(t, privKey)
-
-	contractAddr, blockNumber := deployERC20Contract(t, privKey)
-	getStorageJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
-
-	if getStorageJSON[respJSONKeyResult] != emptyStorageHex {
-		t.Fatalf("Expected balance of %s, got %s", emptyStorageHex, getStorageJSON[respJSONKeyResult])
-	}
-}
-
-func TestCannotGetAnothersStorageAfterSubmittingViewingKey(t *testing.T) {
-	// TODO - Write this test.
-}
-
-func TestInvalidlySignedViewingKeyIsRejected(t *testing.T) {
-	// TODO - Write this test.
-}
+// TODO - Tests below are disabled since we want to have special handling for `eth_call`, and not `eth_getStorageAt`.
+//func TestCannotGetStorageWithoutSubmittingViewingKey(t *testing.T) {
+//	privateKey, err := crypto.GenerateKey()
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
+//
+//	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}}
+//	stopNodesFunc := StartWalletExtension(runConfig)
+//	defer stopNodesFunc()
+//
+//	contractAddr, blockNumber := deployERC20Contract(t, privateKey)
+//	respBody := makeEthJSONReq(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
+//
+//	trimmedRespBody := strings.TrimSpace(string(respBody))
+//	expectedErr := fmt.Sprintf(errInsecure, reqJSONMethodGetStorageAt)
+//	if trimmedRespBody != expectedErr {
+//		t.Fatalf("Expected error message with prefix \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
+//	}
+//}
+//
+//func TestCanGetStorageAfterSubmittingViewingKey(t *testing.T) {
+//	privateKey, err := crypto.GenerateKey()
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
+//
+//	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}}
+//	stopNodesFunc := StartWalletExtension(runConfig)
+//	defer stopNodesFunc()
+//
+//	generateViewingKey(t, privateKey)
+//
+//	contractAddr, blockNumber := deployERC20Contract(t, privateKey)
+//	getStorageJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetStorageAt, []string{contractAddr, "0", blockNumber})
+//
+//	if getStorageJSON[respJSONKeyResult] != emptyStorageHex {
+//		t.Fatalf("Expected balance of %s, got %s", emptyStorageHex, getStorageJSON[respJSONKeyResult])
+//	}
+//}
+//
+//func TestCannotGetAnothersStorageAfterSubmittingViewingKey(t *testing.T) {
+//	// TODO - Write this test.
+//}
 
 // Makes an Ethereum JSON RPC request and returns the response body.
 func makeEthJSONReq(t *testing.T, method string, params []string) []byte {

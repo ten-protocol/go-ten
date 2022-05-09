@@ -23,7 +23,7 @@ type ObscuroFacade struct {
 	gethWebsocketAddr      string
 	viewingKeyChannel      <-chan ViewingKey
 	viewingKeyEcies        *ecies.PublicKey
-	viewingKeySigner       *ecdsa.PublicKey // The public key that signed the viewing key.
+	viewingKeyAddr         string // The address the public key that signed the viewing key corresponds to.
 	upgrader               websocket.Upgrader
 	server                 *http.Server
 }
@@ -64,7 +64,7 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 			panic(fmt.Sprintf("was sent viewing key but could not validate its signature: %s", err))
 		}
 
-		of.viewingKeySigner = recoveredKey
+		of.viewingKeyAddr = crypto.PubkeyToAddress(*recoveredKey).String()
 		of.viewingKeyEcies = ecies.ImportECDSAPublic(viewingKey.publicKey)
 	}()
 
@@ -128,13 +128,14 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	// We encrypt the response if needed.
 	method := reqJSONMap[reqJSONKeyMethod]
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodGetStorageAt {
-		if of.viewingKeyEcies == nil {
+		requestedAddr := reqJSONMap[reqJSONKeyParams].([]interface{})[reqJSONParamsIdxAddr] // TODO - Handle extraction of address for `eth_call` requests.
+
+		if of.viewingKeyEcies == nil || requestedAddr != of.viewingKeyAddr {
 			msg := fmt.Sprintf("enclave could not respond securely to %s request because there is no viewing key for the account", method)
 			sendErr(connection, msg)
 			return
 		}
 
-		// TODO - Throw error if viewing key signer doesn't match.
 		gethResp, err = ecies.Encrypt(rand.Reader, of.viewingKeyEcies, gethResp, nil, nil)
 		if err != nil {
 			sendErr(connection, fmt.Sprintf("could not encrypt Ethereum JSON-RPC response with viewing key: %s", err))

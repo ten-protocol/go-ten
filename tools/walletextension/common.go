@@ -16,6 +16,8 @@ const (
 	reqJSONMethodChainID      = "eth_chainId"
 	reqJSONMethodGetBalance   = "eth_getBalance"
 	reqJSONMethodGetStorageAt = "eth_getStorageAt"
+	reqJSONKeyParams          = "params"
+	reqJSONParamsIdxAddr      = 0
 	respJSONKeyErr            = "error"
 	respJSONKeyMsg            = "message"
 	pathRoot                  = "/"
