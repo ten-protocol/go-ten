@@ -117,9 +117,9 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 
 	// We decrypt the response if it's encrypted.
-	if method == reqJSONMethodGetBalance || method == reqJSONMethodGetStorageAt {
+	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
 		fmt.Printf("🔐 Decrypting %s response from Geth node with viewing key.\n", method)
-		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate) // todo - joel - import this a single time
+		eciesPrivateKey := ecies.ImportECDSA(we.viewingKeyPrivate) // TODO - Import this a single time for efficiency.
 		gethResp, err = eciesPrivateKey.Decrypt(gethResp, nil, nil)
 		if err != nil {
 			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))

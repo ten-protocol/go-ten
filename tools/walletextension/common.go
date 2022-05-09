@@ -12,16 +12,17 @@ import (
 )
 
 const (
-	reqJSONKeyMethod          = "method"
-	reqJSONMethodChainID      = "eth_chainId"
-	reqJSONMethodGetBalance   = "eth_getBalance"
-	reqJSONMethodGetStorageAt = "eth_getStorageAt"
-	reqJSONKeyParams          = "params"
-	reqJSONParamsIdxAddr      = 0
-	respJSONKeyErr            = "error"
-	respJSONKeyMsg            = "message"
-	pathRoot                  = "/"
-	httpCodeErr               = 500
+	reqJSONKeyMethod        = "method"
+	reqJSONMethodChainID    = "eth_chainId"
+	reqJSONMethodGetBalance = "eth_getBalance"
+	reqJSONMethodCall       = "eth_call"
+	reqJSONKeyParams        = "params"
+	reqJSONKeyTo            = "to"
+	reqJSONKeyFrom          = "from"
+	respJSONKeyErr          = "error"
+	respJSONKeyMsg          = "message"
+	pathRoot                = "/"
+	httpCodeErr             = 500
 
 	localhost = "localhost:"
 
@@ -95,7 +96,7 @@ func StartWalletExtension(config RunConfig) func() {
 	go walletExtension.Serve(walletExtensionAddr)
 	fmt.Printf("Wallet extension started.\n💡 Visit %s/viewingkeys/ to generate an ephemeral viewing key. "+
 		"Without a viewing key, you will not be able to decrypt the enclave's secure responses to your "+
-		"eth_getBalance and eth_getStorageAt requests.\n", walletExtensionAddr)
+		"eth_getBalance and eth_call requests.\n", walletExtensionAddr)
 
 	// We return a handle to stop the local network nodes, if any were created.
 	if config.LocalNetwork {

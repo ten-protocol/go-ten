@@ -127,10 +127,17 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 
 	// We encrypt the response if needed.
 	method := reqJSONMap[reqJSONKeyMethod]
-	if method == reqJSONMethodGetBalance || method == reqJSONMethodGetStorageAt {
-		requestedAddr := reqJSONMap[reqJSONKeyParams].([]interface{})[reqJSONParamsIdxAddr] // TODO - Handle extraction of address for `eth_call` requests.
+	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
+		// TODO - Handle panics if keys are not found.
+		firstParam := reqJSONMap[reqJSONKeyParams].([]interface{})[0]
+		var requesterAddr string
+		if method == reqJSONMethodGetBalance {
+			requesterAddr = firstParam.(string)
+		} else {
+			requesterAddr = firstParam.(map[string]interface{})["from"].(string)
+		}
 
-		if of.viewingKeyEcies == nil || requestedAddr != of.viewingKeyAddr {
+		if of.viewingKeyEcies == nil || requesterAddr != of.viewingKeyAddr {
 			msg := fmt.Sprintf("enclave could not respond securely to %s request because there is no viewing key for the account", method)
 			sendErr(connection, msg)
 			return
