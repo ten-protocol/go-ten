@@ -65,7 +65,7 @@ func (e *enclaveImpl) start(block types.Block) {
 	// determine whether the block where the speculative execution will start already contains Obscuro state
 	blockState, f := e.storage.FetchBlockState(block.Hash())
 	if f {
-		env.headRollup = blockState.Head
+		env.headRollup, _ = e.storage.FetchRollup(blockState.HeadRollup)
 		if env.headRollup != nil {
 			env.state = e.storage.CreateStateDB(env.headRollup.Hash())
 		}
@@ -75,7 +75,8 @@ func (e *enclaveImpl) start(block types.Block) {
 		select {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
 		case winnerRollup := <-e.roundWinnerCh:
-			env.header = obscurocore.NewHeader(winnerRollup, winnerRollup.Header.Number+1, e.node)
+			hash := winnerRollup.Hash()
+			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
 
@@ -154,7 +155,12 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		} else {
 			var rollup nodecommon.ExtRollup
 			if bs.FoundNewRollup {
-				rollup = bs.Head.ToExtRollup()
+				hr, f := e.storage.FetchRollup(bs.HeadRollup)
+				if !f {
+					panic("Should not happen")
+				}
+
+				rollup = hr.ToExtRollup()
 			}
 			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
@@ -196,7 +202,11 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
-	e.mempool.RemoveMempoolTxs(historicTxs(blockState.Head, e.storage))
+	hr, f := e.storage.FetchRollup(blockState.HeadRollup)
+	if !f {
+		panic("Should not happen")
+	}
+	e.mempool.RemoveMempoolTxs(historicTxs(hr, e.storage))
 	r := e.produceRollup(&block, blockState)
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
@@ -286,7 +296,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
-	return e.storage.CreateStateDB(e.storage.FetchHeadState().Head.Hash()).GetBalance(address)
+	return e.storage.CreateStateDB(e.storage.FetchHeadState().HeadRollup).GetBalance(address)
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscurocore.Rollup {
@@ -298,32 +308,37 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscuroc
 	newRollupState := speculativeRollup.s
 	newRollupHeader := speculativeRollup.h
 
+	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
+	if !f {
+		panic("Should not happen")
+	}
+
 	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-	if !speculativeRollup.found || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
+	if !speculativeRollup.found || (speculativeRollup.r.Hash() != bs.HeadRollup) {
 		if speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
 				speculativeRollup.r.Header.Number,
-				obscurocommon.ShortHash(bs.Head.Hash()),
-				bs.Head.Header.Number),
+				obscurocommon.ShortHash(bs.HeadRollup),
+				headRollup.Header.Number),
 			)
 			if e.statsCollector != nil {
 				e.statsCollector.L2Recalc(e.node)
 			}
 		}
 
-		newRollupHeader = obscurocore.NewHeader(bs.Head, bs.Head.Header.Number+1, e.node)
+		newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.node)
 		// determine transactions to include in new rollup and process them
-		newRollupTxs = currentTxs(bs.Head, e.mempool.FetchMempoolTxs(), e.storage)
+		newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 
-		newRollupState = e.storage.CreateStateDB(bs.Head.Hash())
+		newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
 		executeTransactions(newRollupTxs, newRollupState, newRollupHeader)
 	}
 
 	// always process deposits last
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
-	proof := e.blockResolver.Proof(bs.Head)
+	proof := e.blockResolver.Proof(headRollup)
 	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
 	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
@@ -338,7 +353,10 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscuroc
 
 func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	// todo add some sort of cache
-	rollup := e.storage.FetchHeadState().Head
+	rollup, found := e.storage.FetchRollup(e.storage.FetchHeadState().HeadRollup)
+	if !found {
+		panic("should not happen")
+	}
 
 	for {
 		txs := rollup.Transactions
@@ -414,12 +432,22 @@ func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) no
 }
 
 func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *db.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
+	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
+	if !f {
+		panic("Should not happen")
+	}
+
+	headBlock, f := e.storage.FetchBlock(bs.Block)
+	if !f {
+		panic("Should not happen")
+	}
+
 	var head *nodecommon.Header
 	if bs.FoundNewRollup {
-		head = bs.Head.Header
+		head = headRollup.Header
 	}
 	return nodecommon.BlockSubmissionResponse{
-		BlockHeader:    bs.Block.Header(),
+		BlockHeader:    headBlock.Header(),
 		ProducedRollup: rollup,
 		IngestedBlock:  true,
 		FoundNewHead:   bs.FoundNewRollup,

@@ -3,7 +3,6 @@ package rawdb
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
@@ -25,10 +24,10 @@ func ReadSharedSecret(db ethdb.KeyValueReader) *core.SharedEnclaveSecret {
 func WriteSharedSecret(db ethdb.KeyValueWriter, ss core.SharedEnclaveSecret) {
 	enc, err := rlp.EncodeToBytes(ss)
 	if err != nil {
-		log.Crit("Failed to encode shared secret", "err", err)
+		panic(err)
 	}
 	if err = db.Put(sharedSecret, enc); err != nil {
-		log.Crit("Failed to store the shared secret", "err", err)
+		panic(err)
 	}
 }
 
@@ -49,9 +48,9 @@ func ReadGenesisHash(db ethdb.KeyValueReader) *common.Hash {
 func WriteGenesisHash(db ethdb.KeyValueWriter, hash common.Hash) {
 	enc, err := rlp.EncodeToBytes(hash)
 	if err != nil {
-		log.Crit("Failed to encode genesis hash", "err", err)
+		panic(err)
 	}
 	if err = db.Put(genesisRollupHash, enc); err != nil {
-		log.Crit("Failed to store the  genesis hash", "err", err)
+		panic(err)
 	}
 }

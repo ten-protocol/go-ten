@@ -4,10 +4,8 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -25,8 +23,8 @@ type State struct {
 
 // BlockState - Represents the state after an L1 Block was processed.
 type BlockState struct {
-	Block          *types.Block
-	Head           *core.Rollup
+	Block          common.Hash
+	HeadRollup     common.Hash
 	FoundNewRollup bool
 }
 

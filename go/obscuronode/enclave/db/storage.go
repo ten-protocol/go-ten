@@ -196,9 +196,9 @@ func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockStat
 	return s.tempDB.FetchBlockState(hash)
 }
 
-func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
+func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState, rollup *core.Rollup) {
 	if state.FoundNewRollup {
-		s.StoreRollup(state.Head)
+		s.StoreRollup(rollup)
 	}
 	s.tempDB.SetBlockState(hash, state)
 }

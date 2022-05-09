@@ -121,11 +121,11 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 		return nil
 	}
 
-	bs, stateDB := calculateBlockState(b, parentState, blockResolver, rollups, txHandler, rollupResolver, bss)
+	bs, stateDB, head := calculateBlockState(b, parentState, blockResolver, rollups, txHandler, rollupResolver, bss)
 
-	bss.SetBlockState(b.Hash(), bs)
+	bss.SetBlockState(b.Hash(), bs, head)
 	if bs.FoundNewRollup {
-		stateDB.Commit(bs.Head.Hash())
+		stateDB.Commit(bs.HeadRollup)
 	}
 
 	return bs
@@ -143,12 +143,11 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 
 		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
 		bs := db.BlockState{
-			Block: b,
-			Head:  genesis,
-			// State:          db.EmptyState(),
+			Block:          b.Hash(),
+			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		bss.SetBlockState(b.Hash(), &bs)
+		bss.SetBlockState(b.Hash(), &bs, genesis)
 		state := bss.GenesisStateDB()
 		state.Commit(genesis.Hash())
 		return &bs, true
@@ -259,11 +258,14 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*db.BlockState, db.StateDB) {
-	currentHead := parentState.Head
+func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*db.BlockState, db.StateDB, *core.Rollup) {
+	currentHead, found := rollupResolver.FetchRollup(parentState.HeadRollup)
+	if !found {
+		panic("should not happen")
+	}
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
-	stateDB := bss.CreateStateDB(parentState.Head.Hash())
-	// only change the state if there is a new l2 Head in the current block
+	stateDB := bss.CreateStateDB(parentState.HeadRollup)
+	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
 		// Preprocessing before passing to the vm
 		// todo transform into an eth block structure
@@ -276,15 +278,15 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolv
 		executeTransactions(txsToProcess, stateDB, newHeadRollup.Header)
 		// todo - handle failure , which means a new winner must be selected
 	} else {
-		newHeadRollup = parentState.Head
+		newHeadRollup = currentHead
 	}
 
 	bs := db.BlockState{
-		Block:          b,
-		Head:           newHeadRollup,
+		Block:          b.Hash(),
+		HeadRollup:     newHeadRollup.Hash(),
 		FoundNewRollup: found,
 	}
-	return &bs, stateDB
+	return &bs, stateDB, newHeadRollup
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
