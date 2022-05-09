@@ -126,15 +126,15 @@ func (of *ObscuroFacade) handleWSEthJSON(resp http.ResponseWriter, req *http.Req
 	}
 
 	// We encrypt the response if needed.
+	// TODO - Return error gracefully instead of panicking if JSON keys are missing.
 	method := reqJSONMap[reqJSONKeyMethod]
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
-		// TODO - Handle panics if keys are not found.
 		firstParam := reqJSONMap[reqJSONKeyParams].([]interface{})[0]
 		var requesterAddr string
 		if method == reqJSONMethodGetBalance {
 			requesterAddr = firstParam.(string)
 		} else {
-			requesterAddr = firstParam.(map[string]interface{})["from"].(string)
+			requesterAddr = firstParam.(map[string]interface{})[reqJSONKeyFrom].(string)
 		}
 
 		if of.viewingKeyEcies == nil || requesterAddr != of.viewingKeyAddr {
