@@ -38,15 +38,15 @@ request. In this way, it allows a regular Ethereum node to behave like an Obscur
   * If you want to use an existing network instead of a new local network, remove the `--localNetwork` and 
     `--prefundedAccounts` flags, and ensure that a node on your existing network can be reached on `ws://localhost:8546`
 
-  * In MetaMask, configure a new custom network, using `http://localhost:3000/` as the "New RPC URL". Requests and 
-    responses for the network will now pass through the wallet extension, with requests encrypted with the enclave 
-    public key
+* In MetaMask, configure a new custom network, using `http://localhost:3000/` as the "New RPC URL". Requests and 
+  responses for the network will now pass through the wallet extension, with requests encrypted with the enclave 
+  public key
 
     * A viewing key has not yet been set up. The enclave will refuse to respond to `eth_getBalance` and 
         `eth_getStorageAt` requests
 
-  * Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Sign the viewing key when prompted by 
-    MetaMask. Responses to `eth_getBalance` and `eth_getStorageAt` requests will be now be sent encrypted with the 
-    viewing key and decrypted automatically by the wallet extension
+* Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Sign the viewing key when prompted by 
+  MetaMask. Responses to `eth_getBalance` and `eth_getStorageAt` requests will be now be sent encrypted with the 
+  viewing key and decrypted automatically by the wallet extension
 
     * Viewing keys are ephemeral. A new viewing key must be created each time the wallet extension is started
