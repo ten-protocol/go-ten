@@ -15,7 +15,7 @@ import (
 )
 
 type storageImpl struct {
-	db *inMemoryDB
+	db *InMemoryDB
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
@@ -26,34 +26,8 @@ func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
 	return s.db.FetchGenesisRollup()
 }
 
-func NewStorage() Storage {
-	db := newInMemoryDB()
+func NewStorage(db *InMemoryDB) Storage {
 	return &storageImpl{db: db}
-}
-
-func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
-	s.assertSecretAvailable()
-	return s.db.FetchBlockState(hash)
-}
-
-func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
-	s.assertSecretAvailable()
-	if state.FoundNewRollup {
-		s.db.SetBlockStateNewRollup(hash, state)
-	} else {
-		s.db.SetBlockState(hash, state)
-	}
-}
-
-func (s *storageImpl) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
-	s.assertSecretAvailable()
-	s.db.SetRollupState(hash, state)
-}
-
-func (s *storageImpl) FetchHeadState() *BlockState {
-	s.assertSecretAvailable()
-	val, _ := s.db.FetchBlockState(s.db.FetchHeadBlock())
-	return val
 }
 
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
@@ -69,11 +43,6 @@ func (s *storageImpl) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, 
 func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 	s.assertSecretAvailable()
 	return s.db.FetchRollups(height)
-}
-
-func (s *storageImpl) FetchRollupState(hash obscurocommon.L2RootHash) *State {
-	s.assertSecretAvailable()
-	return s.db.FetchRollupState(hash)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) bool {
@@ -197,4 +166,31 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 		panic("Could not find proof for this rollup")
 	}
 	return v
+}
+
+func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
+	return s.db.FetchBlockState(hash)
+}
+
+func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
+	if state.FoundNewRollup {
+		s.db.SetBlockStateNewRollup(hash, state)
+	} else {
+		s.db.SetBlockState(hash, state)
+	}
+}
+
+func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) StateDB {
+	parent := s.db.FetchRollupState(hash)
+	newState := CopyStateNoWithdrawals(parent)
+	return NewStateDB(s.db, hash, newState)
+}
+
+func (s *storageImpl) GenesisStateDB() StateDB {
+	return NewStateDB(s.db, obscurocommon.GenesisHash, EmptyState())
+}
+
+func (s *storageImpl) FetchHeadState() *BlockState {
+	val, _ := s.db.FetchBlockState(s.db.FetchHeadBlock())
+	return val
 }

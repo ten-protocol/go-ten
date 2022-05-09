@@ -42,19 +42,36 @@ type RollupResolver interface {
 	FetchRollupTxs(rollup *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
 	// StoreRollupTxs overwrites the transactions associated with a given rollup
 	StoreRollupTxs(rollup *core.Rollup, newTxs map[common.Hash]nodecommon.L2Tx)
+	// StoreGenesisRollup stores the rollup genesis
+	StoreGenesisRollup(rol *core.Rollup)
+	// FetchGenesisRollup returns the rollup genesis
+	FetchGenesisRollup() *core.Rollup
 }
 
-type StateStorage interface {
-	// FetchBlockState returns the state after ingesting the L1 Block with the given hash
-	FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool)
-	// FetchHeadState returns the state after ingesting the L1 Block at the head of the chain
+type BlockStateStorage interface {
+	// FetchBlockState returns the head rollup found in the block
+	FetchBlockState(blockHash obscurocommon.L1RootHash) (*BlockState, bool)
+	// FetchHeadState returns the head roolup
 	FetchHeadState() *BlockState
-	// SetBlockState persists the state after ingesting the L1 Block with the given hash
-	SetBlockState(hash obscurocommon.L1RootHash, state *BlockState)
-	// FetchRollupState returns the state after adding the rollup with the given hash
-	FetchRollupState(hash obscurocommon.L2RootHash) *State
-	// SetRollupState persists the state after adding the rollup with the given hash
-	SetRollupState(hash obscurocommon.L2RootHash, state *State)
+	// SetBlockState save the rollup-block mapping
+	SetBlockState(blockHash obscurocommon.L1RootHash, state *BlockState)
+	// CreateStateDB create a database that can be used to execute transactions
+	CreateStateDB(hash obscurocommon.L2RootHash) StateDB
+	// GenesisStateDB create the original empty StateDB
+	GenesisStateDB() StateDB
+}
+
+// StateDB - is the conceptual equivalent of the geth vm.StateDB
+type StateDB interface {
+	GetBalance(address common.Address) uint64
+	SetBalance(address common.Address, balance uint64)
+	AddWithdrawal(txHash obscurocommon.TxHash)
+	Copy() StateDB
+	StateRoot() common.Hash
+	Withdrawals() []obscurocommon.TxHash
+
+	// Commit saves the changes made during transaction execution to a persistent db
+	Commit(currentRoot obscurocommon.L2RootHash)
 }
 
 type SharedSecretStorage interface {
@@ -62,11 +79,6 @@ type SharedSecretStorage interface {
 	FetchSecret() core.SharedEnclaveSecret
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret core.SharedEnclaveSecret)
-
-	// StoreGenesisRollup stores the rollup genesis
-	StoreGenesisRollup(rol *core.Rollup)
-	// FetchGenesisRollup returns the rollup genesis
-	FetchGenesisRollup() *core.Rollup
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore
@@ -74,5 +86,5 @@ type Storage interface {
 	BlockResolver
 	RollupResolver
 	SharedSecretStorage
-	StateStorage
+	BlockStateStorage
 }
