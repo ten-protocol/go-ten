@@ -66,19 +66,22 @@ func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 
 func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	s.assertSecretAvailable()
-	s.tempDB.StoreBlock(b)
+	rawdb.WriteBlock(s.db, b)
 	return true
 }
 
 func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	s.assertSecretAvailable()
-	b, f := s.tempDB.FetchBlock(hash)
-	return b, f
+	height := rawdb.ReadHeaderNumber(s.db, hash)
+	if height == nil {
+		return nil, false
+	}
+	return rawdb.ReadBlock(s.db, hash, *height), true
 }
 
 func (s *storageImpl) FetchHeadBlock() *types.Block {
 	s.assertSecretAvailable()
-	b, _ := s.tempDB.FetchBlock(s.tempDB.FetchHeadBlock())
+	b, _ := s.FetchBlock(s.tempDB.FetchHeadBlock())
 	return b
 }
 

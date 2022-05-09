@@ -20,7 +20,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
 	simParams := params.SimParams{
-		NumberOfNodes:             10,
+		NumberOfNodes:             7,
 		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          50 * time.Millisecond,
 		SimulationTime:            25 * time.Second,

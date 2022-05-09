@@ -7,10 +7,11 @@ import (
 )
 
 var (
-	sharedSecret      = []byte("SharedSecret")
-	genesisRollupHash = []byte("GenesisRollupHash")
-	headerPrefix      = []byte("h") // headerPrefix + num (uint64 big endian) + hash -> header
-	rollupBodyPrefix  = []byte("b") // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
+	sharedSecret             = []byte("SharedSecret")
+	genesisRollupHash        = []byte("GenesisRollupHash")
+	rollupHeaderPrefix       = []byte("oh") // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
+	rollupBodyPrefix         = []byte("or") // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
+	rollupHeaderNumberPrefix = []byte("oH") // headerNumberPrefix + hash -> num (uint64 big endian)
 
 )
 
@@ -21,9 +22,19 @@ func encodeRollupNumber(number uint64) []byte {
 	return enc
 }
 
-// headerKey = headerPrefix + num (uint64 big endian) + hash
+// headerKey = rollupHeaderPrefix + num (uint64 big endian) + hash
 func headerKey(number uint64, hash common.Hash) []byte {
-	return append(append(headerPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+	return append(append(rollupHeaderPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+}
+
+// headerKeyPrefix = headerPrefix + num (uint64 big endian)
+func headerKeyPrefix(number uint64) []byte {
+	return append(rollupHeaderPrefix, encodeRollupNumber(number)...)
+}
+
+// headerNumberKey = headerNumberPrefix + hash
+func headerNumberKey(hash common.Hash) []byte {
+	return append(rollupHeaderNumberPrefix, hash.Bytes()...)
 }
 
 // rollupBodyKey = rollupBodyPrefix + num (uint64 big endian) + hash

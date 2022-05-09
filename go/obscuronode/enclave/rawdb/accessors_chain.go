@@ -2,9 +2,9 @@ package rawdb
 
 import (
 	"bytes"
+	"encoding/binary"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
@@ -12,7 +12,7 @@ import (
 )
 
 func ReadRollup(db ethdb.KeyValueReader, hash common.Hash) *core.Rollup {
-	height := rawdb.ReadHeaderNumber(db, hash)
+	height := ReadHeaderNumber(db, hash)
 	if height == nil {
 		return nil
 	}
@@ -20,6 +20,16 @@ func ReadRollup(db ethdb.KeyValueReader, hash common.Hash) *core.Rollup {
 		Header:       ReadHeader(db, hash, *height),
 		Transactions: ReadBody(db, hash, *height),
 	}
+}
+
+// ReadHeaderNumber returns the header number assigned to a hash.
+func ReadHeaderNumber(db ethdb.KeyValueReader, hash common.Hash) *uint64 {
+	data, _ := db.Get(headerNumberKey(hash))
+	if len(data) != 8 {
+		return nil
+	}
+	number := binary.BigEndian.Uint64(data)
+	return &number
 }
 
 func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) {
@@ -35,7 +45,7 @@ func WriteHeader(db ethdb.KeyValueWriter, header *nodecommon.Header) {
 		number = header.Number
 	)
 	// Write the hash -> number mapping
-	rawdb.WriteHeaderNumber(db, hash, number)
+	WriteHeaderNumber(db, hash, number)
 
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
@@ -44,6 +54,15 @@ func WriteHeader(db ethdb.KeyValueWriter, header *nodecommon.Header) {
 	}
 	key := headerKey(number, hash)
 	if err := db.Put(key, data); err != nil {
+		panic(err)
+	}
+}
+
+// WriteHeaderNumber stores the hash->number mapping.
+func WriteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash, number uint64) {
+	key := headerNumberKey(hash)
+	enc := encodeRollupNumber(number)
+	if err := db.Put(key, enc); err != nil {
 		panic(err)
 	}
 }
@@ -108,10 +127,27 @@ func ReadBodyRLP(db ethdb.KeyValueReader, hash common.Hash, number uint64) rlp.R
 }
 
 func ReadRollupsForHeight(db ethdb.Database, number uint64) []*core.Rollup {
-	hashes := rawdb.ReadAllHashes(db, number)
+	hashes := ReadAllHashes(db, number)
 	rollups := make([]*core.Rollup, len(hashes))
 	for i, hash := range hashes {
 		rollups[i] = ReadRollup(db, hash)
 	}
 	return rollups
+}
+
+// ReadAllHashes retrieves all the hashes assigned to blocks at a certain heights,
+// both canonical and reorged forks included.
+func ReadAllHashes(db ethdb.Iteratee, number uint64) []common.Hash {
+	prefix := headerKeyPrefix(number)
+
+	hashes := make([]common.Hash, 0, 1)
+	it := db.NewIterator(prefix, nil)
+	defer it.Release()
+
+	for it.Next() {
+		if key := it.Key(); len(key) == len(prefix)+32 {
+			hashes = append(hashes, common.BytesToHash(key[len(key)-32:]))
+		}
+	}
+	return hashes
 }

@@ -7,25 +7,23 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// DB lives purely in the encrypted memory space of an enclave.
+// InMemoryDB lives purely in the encrypted memory space of an enclave.
 // Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
 type InMemoryDB struct {
-	stateMutex sync.RWMutex // Controls access to `statePerBlock`, `statePerRollup`, `headBlock`, `rollupsByHeight` and `rollups`
-	blockMutex sync.RWMutex // Controls access to `blockCache`
-	txMutex    sync.RWMutex // Controls access to `txsPerRollupCache`
+	headBlock     obscurocommon.L1RootHash
+	statePerBlock map[obscurocommon.L1RootHash]*BlockState
+	blockMutex    sync.RWMutex // Controls access to `blockCache`
 
-	statePerBlock     map[obscurocommon.L1RootHash]*BlockState
-	statePerRollup    map[obscurocommon.L2RootHash]*State
-	headBlock         obscurocommon.L1RootHash
-	blockCache        map[obscurocommon.L1RootHash]*types.Block
+	statePerRollup map[obscurocommon.L2RootHash]*State
+	stateMutex     sync.RWMutex // Controls access to `statePerBlock`, `statePerRollup`, `headBlock`, `rollupsByHeight` and `rollups`
+
 	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx
+	txMutex           sync.RWMutex // Controls access to `txsPerRollupCache`
 }
 
 func NewInMemoryDB() *InMemoryDB {
@@ -33,7 +31,6 @@ func NewInMemoryDB() *InMemoryDB {
 		statePerBlock:     make(map[obscurocommon.L1RootHash]*BlockState),
 		stateMutex:        sync.RWMutex{},
 		statePerRollup:    make(map[obscurocommon.L2RootHash]*State),
-		blockCache:        make(map[obscurocommon.L1RootHash]*types.Block),
 		blockMutex:        sync.RWMutex{},
 		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
 		txMutex:           sync.RWMutex{},
@@ -73,21 +70,6 @@ func (db *InMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {
 	defer db.stateMutex.RUnlock()
 
 	return db.statePerRollup[hash]
-}
-
-func (db *InMemoryDB) StoreBlock(b *types.Block) {
-	db.blockMutex.Lock()
-	defer db.blockMutex.Unlock()
-
-	db.blockCache[b.Hash()] = b
-}
-
-func (db *InMemoryDB) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
-	db.blockMutex.RLock()
-	defer db.blockMutex.RUnlock()
-
-	val, f := db.blockCache[hash]
-	return val, f
 }
 
 func (db *InMemoryDB) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
