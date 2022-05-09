@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	walletExtensionAddr = "http://localhost:3000"
+	walletExtensionHost = "http://localhost:"
 	chainID             = 1337
 	chainIDHex          = "0x539"                // Chain ID in hex.
 	allocHex            = "0x3635c9adc5dea00000" // Default account allocation in hex.
@@ -34,14 +35,17 @@ const (
 	errInsecure      = "enclave could not respond securely to %s request because there is no viewing key for the account"
 )
 
-// TODO - Enable tests to run in parallel.
-
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	runConfig := RunConfig{LocalNetwork: true}
+	t.Parallel()
+
+	startPort := 3000
+	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
+
+	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	respJSON := makeEthJSONReqAsJSON(t, reqJSONMethodChainID, []string{})
+	respJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, reqJSONMethodChainID, []string{})
 
 	if respJSON[respJSONKeyResult] != chainIDHex {
 		t.Fatalf("Expected chainId of %s, got %s", "1337", respJSON[respJSONKeyResult])
@@ -49,11 +53,16 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	runConfig := RunConfig{LocalNetwork: true}
+	t.Parallel()
+
+	startPort := 3004
+	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
+
+	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	respBody := makeEthJSONReq(t, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
+	respBody := makeEthJSONReq(t, walletExtensionAddr, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
 
 	trimmedRespBody := strings.TrimSpace(string(respBody))
 	expectedErr := fmt.Sprintf(errInsecure, reqJSONMethodGetBalance)
@@ -63,19 +72,24 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
+	t.Parallel()
+
+	startPort := 3008
+	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
+
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
 
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}}
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	generateAndSubmitViewingKey(t, privateKey)
+	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
-	getBalanceJSON := makeEthJSONReqAsJSON(t, reqJSONMethodGetBalance, []string{accountAddr, "latest"})
+	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, reqJSONMethodGetBalance, []string{accountAddr, "latest"})
 
 	if getBalanceJSON[respJSONKeyResult] != allocHex {
 		t.Fatalf("Expected balance of %s, got %s", allocHex, getBalanceJSON[respJSONKeyResult])
@@ -83,18 +97,23 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
+	t.Parallel()
+
+	startPort := 3012
+	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
+
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{dummyAccountAddr}}
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{dummyAccountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 
-	generateAndSubmitViewingKey(t, privateKey)
+	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
-	respBody := makeEthJSONReq(t, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
+	respBody := makeEthJSONReq(t, walletExtensionAddr, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
 
 	trimmedRespBody := strings.TrimSpace(string(respBody))
 	expectedErr := fmt.Sprintf(errInsecure, reqJSONMethodGetBalance)
@@ -151,7 +170,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 //}
 
 // Makes an Ethereum JSON RPC request and returns the response body.
-func makeEthJSONReq(t *testing.T, method string, params []string) []byte {
+func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, params []string) []byte {
 	reqBodyBytes, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  method,
@@ -159,21 +178,24 @@ func makeEthJSONReq(t *testing.T, method string, params []string) []byte {
 		"id":      "1",
 	})
 	reqBody := bytes.NewBuffer(reqBodyBytes)
+
 	resp, err := http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
+
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return respBody
 }
 
 // Makes an Ethereum JSON RPC request and returns the response body as JSON.
-func makeEthJSONReqAsJSON(t *testing.T, method string, params []string) map[string]interface{} {
-	respBody := makeEthJSONReq(t, method, params)
+func makeEthJSONReqAsJSON(t *testing.T, walletExtensionAddr string, method string, params []string) map[string]interface{} {
+	respBody := makeEthJSONReq(t, walletExtensionAddr, method, params)
 
 	var respBodyJSON map[string]interface{}
 	err := json.Unmarshal(respBody, &respBodyJSON)
@@ -185,8 +207,8 @@ func makeEthJSONReqAsJSON(t *testing.T, method string, params []string) map[stri
 }
 
 // Generates a signed viewing key and submits it to the wallet extension.
-func generateAndSubmitViewingKey(t *testing.T, accountPrivateKey *ecdsa.PrivateKey) {
-	viewingKey := generateViewingKey(t)
+func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accountPrivateKey *ecdsa.PrivateKey) {
+	viewingKey := generateViewingKey(t, walletExtensionAddr)
 	signature := signViewingKey(t, accountPrivateKey, viewingKey)
 
 	submitViewingKeyBodyBytes, _ := json.Marshal(map[string]interface{}{
@@ -201,7 +223,7 @@ func generateAndSubmitViewingKey(t *testing.T, accountPrivateKey *ecdsa.PrivateK
 }
 
 // Generates a viewing key.
-func generateViewingKey(t *testing.T) []byte {
+func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
 	resp, err := http.Get(walletExtensionAddr + pathGenerateViewingKey) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +252,7 @@ func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byt
 }
 
 // Deploys an ERC20 contract and returns the contract's address and the block number it was deployed in.
-func deployERC20Contract(t *testing.T, signingKey *ecdsa.PrivateKey) (string, string) {
+func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *ecdsa.PrivateKey) (string, string) {
 	tx := types.LegacyTx{
 		Nonce:    0, // relies on a clean env
 		GasPrice: big.NewInt(2000000000),
@@ -248,12 +270,12 @@ func deployERC20Contract(t *testing.T, signingKey *ecdsa.PrivateKey) (string, st
 	}
 	encodedData := hexutil.Encode(data)
 
-	respJSON := makeEthJSONReqAsJSON(t, "eth_sendRawTransaction", []string{encodedData})
+	respJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, "eth_sendRawTransaction", []string{encodedData})
 	txHash := respJSON[respJSONKeyResult].(string)
 
 	var txInfo map[string]interface{}
 	for txInfo == nil {
-		txReceipt := makeEthJSONReqAsJSON(t, "eth_getTransactionReceipt", []string{txHash})
+		txReceipt := makeEthJSONReqAsJSON(t, walletExtensionAddr, "eth_getTransactionReceipt", []string{txHash})
 		if txReceipt[respJSONKeyResult] != nil {
 			txInfo = txReceipt[respJSONKeyResult].(map[string]interface{})
 		}

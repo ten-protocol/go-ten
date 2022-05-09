@@ -24,11 +24,6 @@ const (
 	httpCodeErr               = 500
 
 	localhost = "localhost:"
-	// TODO - Parameterise these ports.
-	walletExtensionPort = 3000
-	obscuroFacadePort   = 3001
-	gethHTTPPort        = 3002
-	gethWebsocketPort   = 8546
 
 	signedMsgPrefix = "vk"
 )
@@ -43,6 +38,7 @@ type ViewingKey struct {
 type RunConfig struct {
 	LocalNetwork      bool
 	PrefundedAccounts []string
+	StartPort         int
 }
 
 func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
@@ -68,7 +64,7 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 // StartWalletExtension starts the wallet extension and Obscuro facade, and optionally a local Ethereum network. It
 // returns a handle to stop the wallet extension, Obscuro facade and local network nodes, if any were created.
 func StartWalletExtension(config RunConfig) func() {
-	gethWebsocketAddr := "ws://localhost:" + strconv.Itoa(gethWebsocketPort)
+	gethWebsocketAddr := "ws://localhost:" + strconv.Itoa(config.StartPort+100+2)
 
 	var localNetwork gethnetwork.GethNetwork
 	if config.LocalNetwork {
@@ -77,7 +73,7 @@ func StartWalletExtension(config RunConfig) func() {
 			panic(err)
 		}
 
-		localNetwork = gethnetwork.NewGethNetwork(gethHTTPPort, gethBinaryPath, 1, 1, config.PrefundedAccounts)
+		localNetwork = gethnetwork.NewGethNetwork(config.StartPort+2, gethBinaryPath, 1, 1, config.PrefundedAccounts)
 		fmt.Println("Local Geth network started.")
 
 		gethWebsocketAddr = "ws://localhost:" + strconv.Itoa(int(localNetwork.WebSocketPorts[0]))
@@ -89,8 +85,8 @@ func StartWalletExtension(config RunConfig) func() {
 	}
 	viewingKeyChannel := make(chan ViewingKey)
 
-	obscuroFacadeAddr := localhost + strconv.Itoa(obscuroFacadePort)
-	walletExtensionAddr := localhost + strconv.Itoa(walletExtensionPort)
+	obscuroFacadeAddr := localhost + strconv.Itoa(config.StartPort+1)
+	walletExtensionAddr := localhost + strconv.Itoa(config.StartPort)
 	walletExtension := NewWalletExtension(enclavePrivateKey, obscuroFacadeAddr, viewingKeyChannel)
 	obscuroFacade := NewObscuroFacade(enclavePrivateKey, gethWebsocketAddr, viewingKeyChannel)
 
