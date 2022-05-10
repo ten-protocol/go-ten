@@ -135,14 +135,9 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
-		// We skip over the genesis block, to avoid an attack whereby someone submits a block with the same hash as the
-		// genesis block but different contents. Since we cannot insert the genesis block into our blockchain, this
-		// checking would have to be skipped, potentially allowing an invalid block through.
-		if e.isGenesisBlock(block) {
-			continue
-		}
-
-		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); ingestionFailedResponse != nil {
+		// We ignore a failure on the genesis block, since insertion of the genesis also produces a failure in Geth
+		// (at least with Clique, where it fails with a `vote nonce not 0x00..0 or 0xff..f`).
+		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); !e.isGenesisBlock(block) && ingestionFailedResponse != nil {
 			result[i] = *ingestionFailedResponse
 			return result // We return early, as all descendant blocks will also fail verification.
 		}
@@ -165,7 +160,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
-	// As when ingesting, we skip the genesis block.
+	// The genesis block will always be ingested, not submitted.
 	if e.isGenesisBlock(&block) {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
 	}
@@ -389,7 +384,7 @@ func (e *enclaveImpl) IsInitialised() bool {
 }
 
 func (e *enclaveImpl) isGenesisBlock(block *types.Block) bool {
-	return e.l1Blockchain != nil && block.Hash() != e.l1Blockchain.Genesis().Hash()
+	return e.l1Blockchain != nil && block.Hash() == e.l1Blockchain.Genesis().Hash()
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil

@@ -93,6 +93,8 @@ const (
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
 type GethNetwork struct {
+	GenesisJSON []byte // The genesis JSON config used by the network.
+
 	gethBinaryPath   string
 	genesisFilePath  string
 	dataDirs         []string
@@ -176,11 +178,13 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	for i, addr := range preFundedAddrs {
 		allocs[numNodes+i] = fmt.Sprintf(addrBlockTemplate, addr)
 	}
-	genesisJSON := fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, ""))
+	network.GenesisJSON = []byte(
+		fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, "")),
+	)
 
 	// We write out the `genesis.json` file to be used by the network.
 	genesisFilePath := path.Join(buildDir, genesisFileName)
-	err = os.WriteFile(genesisFilePath, []byte(genesisJSON), 0o600)
+	err = os.WriteFile(genesisFilePath, network.GenesisJSON, 0o600)
 	if err != nil {
 		panic(err)
 	}

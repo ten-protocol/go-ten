@@ -191,6 +191,14 @@ func (a *Node) startProcessing() {
 	// Todo: This is a naive implementation.
 	results := a.Enclave.IngestBlocks(allBlocks)
 	for _, result := range results {
+		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
+			log.Log(fmt.Sprintf(
+				"Agg%d:> Failed to ingest block b_%d. Cause: %s",
+				obscurocommon.ShortAddress(a.ID),
+				obscurocommon.ShortHash(result.BlockHeader.Hash()),
+				result.BlockNotIngestedCause,
+			))
+		}
 		a.storeBlockProcessingResult(result)
 	}
 
