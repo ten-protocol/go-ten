@@ -160,7 +160,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
-	// The genesis block will always be ingested, not submitted.
+	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
 	if e.isGenesisBlock(&block) {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
 	}
