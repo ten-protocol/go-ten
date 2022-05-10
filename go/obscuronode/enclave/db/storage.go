@@ -195,15 +195,19 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	return v
 }
 
-func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
-	return s.tempDB.FetchBlockState(hash)
+func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.BlockState, bool) {
+	bs := obscurorawdb.ReadBlockState(s.db, hash)
+	if bs != nil {
+		return bs, true
+	}
+	return nil, false
 }
 
-func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState, rollup *core.Rollup) {
+func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup) {
 	if state.FoundNewRollup {
 		s.StoreRollup(rollup)
 	}
-	s.tempDB.SetBlockState(hash, state)
+	obscurorawdb.WriteBlockState(s.db, state)
 	rawdb.WriteHeadHeaderHash(s.db, state.Block)
 }
 
@@ -217,7 +221,11 @@ func (s *storageImpl) GenesisStateDB() StateDB {
 	return NewStateDB(s.tempDB, obscurocommon.GenesisHash, EmptyState())
 }
 
-func (s *storageImpl) FetchHeadState() *BlockState {
-	val, _ := s.tempDB.FetchBlockState(rawdb.ReadHeadHeaderHash(s.db))
+func (s *storageImpl) FetchHeadState() *core.BlockState {
+	h := rawdb.ReadHeadHeaderHash(s.db)
+	if (h == common.Hash{}) {
+		panic("Should not happen")
+	}
+	val := obscurorawdb.ReadBlockState(s.db, h)
 	return val
 }

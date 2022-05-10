@@ -151,3 +151,25 @@ func ReadAllHashes(db ethdb.Iteratee, number uint64) []common.Hash {
 	}
 	return hashes
 }
+
+func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState) {
+	bytes, err := rlp.EncodeToBytes(bs)
+	if err != nil {
+		panic(err)
+	}
+	if err := db.Put(blockStateKey(bs.Block), bytes); err != nil {
+		panic(err)
+	}
+}
+
+func ReadBlockState(kv ethdb.KeyValueReader, hash common.Hash) *core.BlockState {
+	data, _ := kv.Get(blockStateKey(hash))
+	if data == nil {
+		return nil
+	}
+	bs := new(core.BlockState)
+	if err := rlp.Decode(bytes.NewReader(data), bs); err != nil {
+		panic(err)
+	}
+	return bs
+}

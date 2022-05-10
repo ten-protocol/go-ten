@@ -21,13 +21,6 @@ type State struct {
 	Withdrawals []obscurocommon.TxHash
 }
 
-// BlockState - Represents the state after an L1 Block was processed.
-type BlockState struct {
-	Block          common.Hash
-	HeadRollup     common.Hash
-	FoundNewRollup bool
-}
-
 func CopyStateNoWithdrawals(state *State) *State {
 	s := EmptyState()
 	if state == nil {

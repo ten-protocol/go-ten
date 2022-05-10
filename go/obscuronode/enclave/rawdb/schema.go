@@ -9,10 +9,10 @@ import (
 var (
 	sharedSecret             = []byte("SharedSecret")
 	genesisRollupHash        = []byte("GenesisRollupHash")
-	rollupHeaderPrefix       = []byte("oh") // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	rollupBodyPrefix         = []byte("or") // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
-	rollupHeaderNumberPrefix = []byte("oH") // headerNumberPrefix + hash -> num (uint64 big endian)
-
+	rollupHeaderPrefix       = []byte("oh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
+	rollupBodyPrefix         = []byte("or")  // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
+	rollupHeaderNumberPrefix = []byte("oH")  // headerNumberPrefix + hash -> num (uint64 big endian)
+	blockStatePrefix         = []byte("obs") // headerNumberPrefix + hash -> num (uint64 big endian)
 )
 
 // encodeRollupNumber encodes a rollup number as big endian uint64
@@ -40,4 +40,8 @@ func headerNumberKey(hash common.Hash) []byte {
 // rollupBodyKey = rollupBodyPrefix + num (uint64 big endian) + hash
 func rollupBodyKey(number uint64, hash common.Hash) []byte {
 	return append(append(rollupBodyPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+}
+
+func blockStateKey(hash common.Hash) []byte {
+	return append(blockStatePrefix, hash.Bytes()...)
 }

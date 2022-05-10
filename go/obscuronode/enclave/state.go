@@ -77,7 +77,7 @@ func executeDeposit(s db.StateDB, tx nodecommon.L2Tx) {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) *db.BlockState {
+func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) *core.BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := bss.FetchBlockState(b.Hash())
 	if found {
@@ -131,7 +131,7 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 	return bs
 }
 
-func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *core.Rollup, resolver db.RollupResolver, bss db.BlockStateStorage) (genesisState *db.BlockState, isGenesis bool) {
+func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *core.Rollup, resolver db.RollupResolver, bss db.BlockStateStorage) (genesisState *core.BlockState, isGenesis bool) {
 	// the incoming block holds the genesis rollup
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
@@ -142,7 +142,7 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 		resolver.StoreGenesisRollup(genesis)
 
 		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-		bs := db.BlockState{
+		bs := core.BlockState{
 			Block:          b.Hash(),
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
@@ -258,7 +258,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*db.BlockState, db.StateDB, *core.Rollup) {
+func calculateBlockState(b *types.Block, parentState *core.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*core.BlockState, db.StateDB, *core.Rollup) {
 	currentHead, found := rollupResolver.FetchRollup(parentState.HeadRollup)
 	if !found {
 		panic("should not happen")
@@ -281,7 +281,7 @@ func calculateBlockState(b *types.Block, parentState *db.BlockState, blockResolv
 		newHeadRollup = currentHead
 	}
 
-	bs := db.BlockState{
+	bs := core.BlockState{
 		Block:          b.Hash(),
 		HeadRollup:     newHeadRollup.Hash(),
 		FoundNewRollup: found,

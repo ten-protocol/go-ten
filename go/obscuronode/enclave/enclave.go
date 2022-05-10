@@ -299,7 +299,7 @@ func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	return e.storage.CreateStateDB(e.storage.FetchHeadState().HeadRollup).GetBalance(address)
 }
 
-func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscurocore.Rollup {
+func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
 	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
 	e.speculativeWorkInCh <- true
 	speculativeRollup := <-e.speculativeWorkOutCh
@@ -431,7 +431,7 @@ func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) no
 	}
 }
 
-func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *db.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
+func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
 	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		panic("Should not happen")
