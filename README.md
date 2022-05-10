@@ -2,9 +2,7 @@
 This project is a breadth-first pass through the functionality of a full obscuro system.
 
 ## Usage
-1. Run main.go, and configure parameters inside.
-
-2. Run simulation_test.go 
+The various simulations can be found under `integration/simulation/`. Each simulation has a name in the format `simulation_xxx_test.go`, and can be run as a Go test.
 
 ## High level overview
 
