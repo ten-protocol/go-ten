@@ -16,6 +16,6 @@ import (
 type Network interface {
 	// Create - returns a group of started Ethereum nodes, a group of started Obscuro nodes, and the Obscuro nodes' P2P addresses.
 	// todo - return interfaces to RPC handles to the nodes
-	Create(params params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string)
+	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string)
 	TearDown()
 }

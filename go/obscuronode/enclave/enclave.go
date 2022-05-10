@@ -78,6 +78,11 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.header = obscurocore.NewHeader(winnerRollup, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
+			log.Log(fmt.Sprintf(">   Agg%d: Create new speculatve env  r_%d(%d).",
+				obscurocommon.ShortAddress(e.node),
+				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
+				winnerRollup.Header.Number,
+			))
 
 			// determine the transactions that were not yet included
 			env.processedTxs = currentTxs(winnerRollup, e.mempool.FetchMempoolTxs(), e.storage)
@@ -196,7 +201,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
 
-	log.Log(fmt.Sprintf("Agg%d:> Processed block: b_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash())))
+	log.Log(fmt.Sprintf(">   Agg%d: Processed block: b_%d(%d)", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash()), block.NumberU64()))
 
 	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
 }
@@ -212,7 +217,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	if found {
 		e.storage.StoreRollup(&r)
 	} else {
-		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
+		log.Log(fmt.Sprintf(">   Agg%d: Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
 	}
 }
 
@@ -240,6 +245,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
+	log.Log(fmt.Sprintf(">   Agg%d: Round winner height: %d", obscurocommon.ShortAddress(e.node), head.Header.Number))
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
@@ -261,11 +267,12 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	if winnerRollup.Header.Agg == e.node {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
-		log.Log(fmt.Sprintf(">   Agg%d: publish rollup=r_%d(%d)[r_%d]{proof=b_%d}. Num Txs: %d. Txs: %v.  State=%v. ",
+		log.Log(fmt.Sprintf(">   Agg%d: Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
 			obscurocommon.ShortAddress(e.node),
 			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
+			v.NumberU64(),
 			len(winnerRollup.Transactions),
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State,

@@ -203,7 +203,7 @@ func (a *Node) startProcessing() {
 	}
 
 	lastBlock := *allBlocks[len(allBlocks)-1]
-	log.Log(fmt.Sprintf("Agg%d:> Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
+	log.Log(fmt.Sprintf(">   Agg%d: Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
 	a.Enclave.Start(lastBlock)
 
 	if a.genesis {
@@ -235,6 +235,11 @@ func (a *Node) startProcessing() {
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := nodecommon.DecodeRollup(r)
+			log.Log(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
+				obscurocommon.ShortAddress(a.ID),
+				obscurocommon.ShortHash(rol.Hash()),
+				obscurocommon.ShortAddress(rol.Header.Agg),
+			))
 			if err != nil {
 				log.Log(fmt.Sprintf(">   Agg%d: Could not check enclave initialisation: %v", obscurocommon.ShortAddress(a.ID), err))
 			}
@@ -250,7 +255,7 @@ func (a *Node) startProcessing() {
 			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
 			if a.Enclave.IsInitialised() {
 				if err := a.Enclave.SubmitTx(tx); err != nil {
-					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+					// log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
 				}
 			}
 
@@ -368,21 +373,28 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, a.handleHeader(result))
+		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
 	}
 }
 
-func (a *Node) handleHeader(result nodecommon.BlockSubmissionResponse) func() {
+func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func() {
+	resultCopy := result
 	return func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
 			return
 		}
 		// Request the round winner for the current head
-		winnerRollup, isWinner, err := a.Enclave.RoundWinner(result.ProducedRollup.Header.ParentHash)
+		winnerRollup, isWinner, err := a.Enclave.RoundWinner(resultCopy.ProducedRollup.Header.ParentHash)
 		if err != nil {
 			panic(err)
 		}
 		if isWinner {
+			log.Log(fmt.Sprintf(">   Agg%d: Winner (b_%d) r_%d(%d).",
+				obscurocommon.ShortAddress(a.ID),
+				obscurocommon.ShortHash(resultCopy.BlockHeader.Hash()),
+				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
+				winnerRollup.Header.Number,
+			))
 			tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
 			a.broadcastTx(tx)
 			// collect Stats
@@ -407,7 +419,7 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesisResponse := a.Enclave.ProduceGenesis(block.Hash())
-	log.Log(fmt.Sprintf("Agg%d:> Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash())))
+	log.Log(fmt.Sprintf(">   Agg%d: Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash())))
 	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())}
 	a.broadcastTx(tx)
 
@@ -486,7 +498,7 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 
 func (a *Node) monitorBlocks() {
 	listener := a.ethClient.BlockListener()
-	log.Log("Started the L1 to L2 listener")
+	log.Log(fmt.Sprintf(">   Agg%d: Start monitoring Ethereum blocks..", obscurocommon.ShortAddress(a.ID)))
 	for {
 		latestBlkHeader := <-listener
 		block, err := a.ethClient.FetchBlock(latestBlkHeader.Hash())
@@ -498,7 +510,10 @@ func (a *Node) monitorBlocks() {
 			panic(err)
 		}
 
-		log.Log(fmt.Sprintf("Agg0:> %d - Received a new block %s", obscurocommon.ShortAddress(a.ID), latestBlkHeader.Hash()))
+		log.Log(fmt.Sprintf(">   Agg%d: Received a new block b_%d(%d)",
+			obscurocommon.ShortAddress(a.ID),
+			obscurocommon.ShortHash(latestBlkHeader.Hash()),
+			latestBlkHeader.Number.Uint64()))
 		a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
 	}
 }
