@@ -31,14 +31,29 @@ func (n *networkInMemGeth) Create(params params.SimParams, stats *stats.Stats) (
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
-		genesis := false
+		isGenesis := false
 		if i == 0 {
-			genesis = true
+			isGenesis = true
 		}
 
 		// create the in memory l1 and l2 node
-		miner := createEthClientConnection(int64(i), n.gethNetwork.WebSocketPorts[i], params.EthWallets[i], params.MgmtContractAddr)
-		agg := createInMemObscuroNode(int64(i), genesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats, false, nil)
+		miner := createEthClientConnection(
+			int64(i),
+			n.gethNetwork.WebSocketPorts[i],
+			params.EthWallets[i],
+			params.MgmtContractAddr,
+		)
+		agg := createInMemObscuroNode(
+			int64(i),
+			isGenesis,
+			params.TxHandler,
+			params.AvgGossipPeriod,
+			params.AvgBlockDuration,
+			params.AvgNetworkLatency,
+			stats,
+			true,
+			n.gethNetwork.GenesisJSON,
+		)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
