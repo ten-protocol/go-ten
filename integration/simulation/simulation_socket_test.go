@@ -30,5 +30,5 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 4
 
-	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), simParams)
+	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), &simParams)
 }

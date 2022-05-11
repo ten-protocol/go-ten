@@ -204,6 +204,10 @@ func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.Bloc
 }
 
 func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup) {
+	if state.Block != hash {
+		panic("Failed on a sanity check: `state.Block.Hash() != hash`")
+	}
+
 	if state.FoundNewRollup {
 		s.StoreRollup(rollup)
 	}

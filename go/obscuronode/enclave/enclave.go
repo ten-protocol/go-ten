@@ -79,6 +79,11 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
+			log.Log(fmt.Sprintf(">   Agg%d: Create new speculatve env  r_%d(%d).",
+				obscurocommon.ShortAddress(e.node),
+				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
+				winnerRollup.Header.Number,
+			))
 
 			// determine the transactions that were not yet included
 			env.processedTxs = currentTxs(winnerRollup, e.mempool.FetchMempoolTxs(), e.storage)
@@ -136,14 +141,9 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
-		// We skip over the genesis block, to avoid an attack whereby someone submits a block with the same hash as the
-		// genesis block but different contents. Since we cannot insert the genesis block into our blockchain, this
-		// checking would have to be skipped, potentially allowing an invalid block through.
-		if e.isGenesisBlock(block) {
-			continue
-		}
-
-		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); ingestionFailedResponse != nil {
+		// We ignore a failure on the genesis block, since insertion of the genesis also produces a failure in Geth
+		// (at least with Clique, where it fails with a `vote nonce not 0x00..0 or 0xff..f`).
+		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); !e.isGenesisBlock(block) && ingestionFailedResponse != nil {
 			result[i] = *ingestionFailedResponse
 			return result // We return early, as all descendant blocks will also fail verification.
 		}
@@ -171,7 +171,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
-	// As when ingesting, we skip the genesis block.
+	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
 	if e.isGenesisBlock(&block) {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
 	}
@@ -211,7 +211,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
 
-	log.Log(fmt.Sprintf("Agg%d:> Processed block: b_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash())))
+	log.Log(fmt.Sprintf(">   Agg%d: Processed block: b_%d(%d)", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash()), block.NumberU64()))
 
 	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
 }
@@ -227,7 +227,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	if found {
 		e.storage.StoreRollup(&r)
 	} else {
-		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
+		log.Log(fmt.Sprintf(">   Agg%d: Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
 	}
 }
 
@@ -255,6 +255,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
+	log.Log(fmt.Sprintf(">   Agg%d: Round winner height: %d", obscurocommon.ShortAddress(e.node), head.Header.Number))
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
@@ -276,11 +277,12 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	if winnerRollup.Header.Agg == e.node {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
-		log.Log(fmt.Sprintf(">   Agg%d: publish rollup=r_%d(%d)[r_%d]{proof=b_%d}. Num Txs: %d. Txs: %v.  State=%v. ",
+		log.Log(fmt.Sprintf(">   Agg%d: Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
 			obscurocommon.ShortAddress(e.node),
 			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
+			v.NumberU64(),
 			len(winnerRollup.Transactions),
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State,
@@ -407,7 +409,7 @@ func (e *enclaveImpl) IsInitialised() bool {
 }
 
 func (e *enclaveImpl) isGenesisBlock(block *types.Block) bool {
-	return e.l1Blockchain != nil && block.Hash() != e.l1Blockchain.Genesis().Hash()
+	return e.l1Blockchain != nil && block.Hash() == e.l1Blockchain.Genesis().Hash()
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil

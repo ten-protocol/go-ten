@@ -57,7 +57,7 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("Broadcasting - Issuing DepositTx - Addr: %s deposited %d to %s ",
+		log.Log(fmt.Sprintf("- Broadcasting - Issuing DepositTx - Addr: %s deposited %d to %s ",
 			fromAddr, tx.Amount, tx.Dest))
 
 	case obscurocommon.RollupTx:
@@ -76,7 +76,8 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 		}
 
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("Broadcasting - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(r.Transactions), len(data), ethTx.Gas))
+		log.Log(fmt.Sprintf("- Broadcasting - Issuing Rollup: r_%d - %d txs - datasize: %d - gas: %d",
+			obscurocommon.ShortHash(r.Hash()), len(r.Transactions), len(data), ethTx.Gas))
 
 	case obscurocommon.StoreSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, EncodeToString(tx.Secret))
@@ -84,14 +85,14 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
+		log.Log(fmt.Sprintf("- Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
 	case obscurocommon.RequestSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log("Broadcasting - Issuing RequestSecret")
+		log.Log("- Broadcasting - Issuing RequestSecret")
 	}
 
 	return ethTx, nil

@@ -110,7 +110,7 @@ func FindRollupDups(list []L2RootHash) map[L2RootHash]int {
 	for u, i := range elementCount {
 		if i > 1 {
 			dups[u] = i
-			fmt.Printf("Dup: %d\n", u)
+			fmt.Printf("Dup: r_%d\n", ShortHash(u))
 		}
 	}
 	return dups

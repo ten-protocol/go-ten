@@ -33,13 +33,23 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	return miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, txHandler mgmtcontractlib.TxHandler, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
+func createInMemObscuroNode(
+	id int64,
+	genesis bool,
+	txHandler mgmtcontractlib.TxHandler,
+	avgGossipPeriod time.Duration,
+	avgBlockDuration time.Duration,
+	avgNetworkLatency time.Duration,
+	stats *stats.Stats,
+	validateBlocks bool,
+	genesisJSON []byte,
+) *host.Node {
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
 
 	nodeID := common.BigToAddress(big.NewInt(id))
-	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, false, nil, stats)
+	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
 	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork, txHandler)

@@ -79,7 +79,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		}
 	}
 
-	testSimulation(t, network.NewBasicNetworkOfNodesWithDockerEnclave(), simParams)
+	testSimulation(t, network.NewBasicNetworkOfNodesWithDockerEnclave(), &simParams)
 }
 
 // Checks the required Docker images exist.
