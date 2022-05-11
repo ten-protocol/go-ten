@@ -26,7 +26,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
-		L2ToL1EfficiencyThreshold: 0.34,
+		L2ToL1EfficiencyThreshold: 0.36,
 		TxHandler:                 ethereummock.NewMockTxHandler(),
 	}
 

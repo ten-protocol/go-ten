@@ -76,7 +76,11 @@ func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, b
 	if height == nil {
 		return nil, false
 	}
-	return rawdb.ReadBlock(s.db, hash, *height), true
+	b := rawdb.ReadBlock(s.db, hash, *height)
+	if b != nil {
+		return b, true
+	}
+	return nil, false
 }
 
 func (s *storageImpl) FetchHeadBlock() *types.Block {

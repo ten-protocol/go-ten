@@ -79,7 +79,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
-			log.Log(fmt.Sprintf(">   Agg%d: Create new speculatve env  r_%d(%d).",
+			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculatve env  r_%d(%d).",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,

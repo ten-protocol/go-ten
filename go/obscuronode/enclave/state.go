@@ -122,7 +122,7 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 	}
 
 	bs, stateDB, head := calculateBlockState(b, parentState, blockResolver, rollups, txHandler, rollupResolver, bss)
-	log.Log(fmt.Sprintf("- Calc block state b_%d: Found: %t - r_%d, ",
+	log.Trace(fmt.Sprintf("- Calc block state b_%d: Found: %t - r_%d, ",
 		obscurocommon.ShortHash(b.Hash()),
 		bs.FoundNewRollup,
 		obscurocommon.ShortHash(bs.HeadRollup),
