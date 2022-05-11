@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/clientserver"
 	"os"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/clientserver"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 

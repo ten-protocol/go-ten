@@ -20,18 +20,18 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
 	simParams := params.SimParams{
-		NumberOfNodes:             10,
+		NumberOfNodes:             7,
 		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          50 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.32,
-		L2ToL1EfficiencyThreshold: 0.34,
+		L2ToL1EfficiencyThreshold: 0.36,
 		TxHandler:                 ethereummock.NewMockTxHandler(),
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration * 2 / 7
 
-	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), simParams)
+	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), &simParams)
 }

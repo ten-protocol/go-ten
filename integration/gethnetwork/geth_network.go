@@ -116,6 +116,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	buildDir := path.Join(buildDirBase, timestamp)
 	// We create a data directory for each node.
 	nodesDir, err := ioutil.TempDir("", timestamp)
+	fmt.Printf("Geth nodes created in: %s\n", nodesDir)
 	if err != nil {
 		panic(err)
 	}

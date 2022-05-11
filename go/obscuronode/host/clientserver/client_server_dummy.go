@@ -5,8 +5,7 @@ import (
 )
 
 // A no-op implementation of `host.ClientServer`.
-type clientServerDummyImpl struct {
-}
+type clientServerDummyImpl struct{}
 
 // NewClientServerDummy returns a no-op `host.ClientServer`.
 func NewClientServerDummy() host.ClientServer {

@@ -30,10 +30,10 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	return v
 }
 
-func NewHeader(parent *Rollup, height uint64, a common.Address) *nodecommon.Header {
+func NewHeader(parent *common.Hash, height uint64, a common.Address) *nodecommon.Header {
 	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
-		parentHash = parent.Hash()
+		parentHash = *parent
 	}
 	return &nodecommon.Header{
 		Agg:        a,

@@ -18,7 +18,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
 	simParams := params.SimParams{
-		NumberOfNodes:             10,
+		NumberOfNodes:             7,
 		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          250 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
@@ -30,5 +30,5 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 4
 
-	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), simParams)
+	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), &simParams)
 }
