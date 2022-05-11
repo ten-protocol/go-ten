@@ -9,7 +9,7 @@ const (
 	L1GenesisHeight = uint64(0)
 )
 
-// Number of blocks deep a transaction must be before being considered safe from reorganisations.
+// HeightCommittedBlocks is the number of blocks deep a transaction must be to be considered safe from reorganisations.
 const HeightCommittedBlocks = 20
 
 type (

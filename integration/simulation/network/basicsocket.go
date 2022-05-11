@@ -34,9 +34,13 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
 	var nodeP2pAddrs []string
+	var nodeEnclaveAddrs []string
+	var nodeClientServerAddrs []string
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
 		nodeP2pAddrs = append(nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i))
+		nodeEnclaveAddrs = append(nodeEnclaveAddrs, fmt.Sprintf("%s:%d", Localhost, EnclaveStartPort+i))
+		nodeClientServerAddrs = append(nodeClientServerAddrs, fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i))
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -47,16 +51,14 @@ func (n *basicNetworkOfSocketNodes) Create(params params.SimParams, stats *stats
 
 		// create a remote enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		enclavePort := uint64(EnclaveStartPort + i)
-		enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
-		err := enclave.StartServer(enclaveAddress, nodeID, params.TxHandler, false, nil, stats)
+		err := enclave.StartServer(nodeEnclaveAddrs[i], nodeID, params.TxHandler, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress)
+		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, nodeEnclaveAddrs[i], nodeClientServerAddrs[i])
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)

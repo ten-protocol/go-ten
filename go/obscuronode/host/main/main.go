@@ -29,7 +29,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, l1Client, nil, *config.isGenesis, enclaveClient, aggP2P, ethereum_mock.NewMockTxHandler())
+	// todo - joel - change clientServer param to non-nil
+	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, *config.isGenesis, aggP2P, l1Client, enclaveClient, nil, ethereum_mock.NewMockTxHandler())
 
 	agg.Start()
 }

@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/clientserver"
 	"math/big"
 	"time"
 
@@ -19,9 +20,10 @@ import (
 )
 
 const (
-	Localhost        = "localhost"
-	p2pStartPort     = 10000
-	EnclaveStartPort = 11000
+	Localhost             = "localhost"
+	p2pStartPort          = 10000
+	EnclaveStartPort      = 11000
+	clientServerStartPort = 12000
 )
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
@@ -52,12 +54,13 @@ func createInMemObscuroNode(
 	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork, txHandler)
+	// todo - joel - change clientServer param to non-nil
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, nil, txHandler)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string) *host.Node {
+func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
@@ -66,7 +69,9 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p, ethereum_mock.NewMockTxHandler())
+	clientServer := clientserver.NewClientServer(clientServerAddr)
+	txHandler := ethereum_mock.NewMockTxHandler()
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, nodeP2p, nil, enclaveClient, clientServer, txHandler)
 
 	return &node
 }
