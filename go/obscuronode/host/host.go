@@ -378,20 +378,19 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 }
 
 func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func() {
-	resultCopy := result
 	return func() {
 		if atomic.LoadInt32(a.interrupt) == 1 {
 			return
 		}
 		// Request the round winner for the current head
-		winnerRollup, isWinner, err := a.Enclave.RoundWinner(resultCopy.ProducedRollup.Header.ParentHash)
+		winnerRollup, isWinner, err := a.Enclave.RoundWinner(result.ProducedRollup.Header.ParentHash)
 		if err != nil {
 			panic(err)
 		}
 		if isWinner {
 			log.Log(fmt.Sprintf(">   Agg%d: Winner (b_%d) r_%d(%d).",
 				obscurocommon.ShortAddress(a.ID),
-				obscurocommon.ShortHash(resultCopy.BlockHeader.Hash()),
+				obscurocommon.ShortHash(result.BlockHeader.Hash()),
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,
 			))

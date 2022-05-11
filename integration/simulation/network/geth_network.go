@@ -154,6 +154,10 @@ func deployContract(w wallet.Wallet, port uint) common.Address {
 		if !errors.Is(err, ethereum.NotFound) {
 			panic(err)
 		}
+		if receipt == nil {
+			fmt.Printf("Contract deploy failed. The receipt is null\n")
+			panic(err)
+		}
 		fmt.Printf("Contract deploy tx has not been mined into a block after %s...\n", time.Since(start))
 	}
 

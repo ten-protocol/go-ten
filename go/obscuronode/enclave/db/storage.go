@@ -174,7 +174,7 @@ func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockStat
 
 func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
 	if state.Block.Hash() != hash {
-		panic("oops")
+		panic("Failed on a sanity check: `state.Block.Hash() != hash`")
 	}
 	if state.FoundNewRollup {
 		s.db.SetBlockStateNewRollup(hash, state)
