@@ -4,10 +4,8 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -21,13 +19,6 @@ import (
 type State struct {
 	Balances    map[common.Address]uint64
 	Withdrawals []obscurocommon.TxHash
-}
-
-// BlockState - Represents the state after an L1 Block was processed.
-type BlockState struct {
-	Block          *types.Block
-	Head           *core.Rollup
-	FoundNewRollup bool
 }
 
 func CopyStateNoWithdrawals(state *State) *State {

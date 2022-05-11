@@ -50,11 +50,11 @@ type RollupResolver interface {
 
 type BlockStateStorage interface {
 	// FetchBlockState returns the head rollup found in the block
-	FetchBlockState(blockHash obscurocommon.L1RootHash) (*BlockState, bool)
-	// FetchHeadState returns the head roolup
-	FetchHeadState() *BlockState
+	FetchBlockState(blockHash obscurocommon.L1RootHash) (*core.BlockState, bool)
+	// FetchHeadState returns the head rollup
+	FetchHeadState() *core.BlockState
 	// SetBlockState save the rollup-block mapping
-	SetBlockState(blockHash obscurocommon.L1RootHash, state *BlockState)
+	SetBlockState(blockHash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup)
 	// CreateStateDB create a database that can be used to execute transactions
 	CreateStateDB(hash obscurocommon.L2RootHash) StateDB
 	// GenesisStateDB create the original empty StateDB

@@ -32,7 +32,7 @@ func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
 		SimulationTime:            60 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.5,
-		L2ToL1EfficiencyThreshold: 0.4,
+		L2ToL1EfficiencyThreshold: 0.5, // one rollup every 2 blocks
 		EthWallets:                wallets,
 	}
 

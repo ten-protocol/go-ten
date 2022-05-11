@@ -12,6 +12,10 @@ func SetLog(f *os.File) {
 	logFile = f
 }
 
+func Trace(msg string) {
+	// todo - implement this
+}
+
 func Log(msg string) {
 	if logFile == nil {
 		// defaults to outputting logs to stdout

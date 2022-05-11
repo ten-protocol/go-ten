@@ -18,7 +18,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
 	simParams := params.SimParams{
-		NumberOfNodes:             10,
+		NumberOfNodes:             7,
 		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          250 * time.Millisecond,
 		SimulationTime:            25 * time.Second,

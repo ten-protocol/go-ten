@@ -235,7 +235,7 @@ func (a *Node) startProcessing() {
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := nodecommon.DecodeRollup(r)
-			log.Log(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
+			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
 				obscurocommon.ShortAddress(a.ID),
 				obscurocommon.ShortHash(rol.Hash()),
 				obscurocommon.ShortAddress(rol.Header.Agg),
@@ -255,7 +255,7 @@ func (a *Node) startProcessing() {
 			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
 			if a.Enclave.IsInitialised() {
 				if err := a.Enclave.SubmitTx(tx); err != nil {
-					log.Log(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+					log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
 				}
 			}
 
