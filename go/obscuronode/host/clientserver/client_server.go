@@ -39,7 +39,7 @@ func NewClientServer(address string) host.ClientServer {
 	}
 	clientServerNode, err := node.New(&nodeConfig)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Could not create new client server. Cause: %s", err))
 	}
 
 	rpcAPIs := []rpc.API{

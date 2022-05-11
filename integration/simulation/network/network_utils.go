@@ -55,8 +55,7 @@ func createInMemObscuroNode(
 	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
-	// todo - joel - change clientServer param to non-nil
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, nil, txHandler)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, clientserver.NewClientServerDummy(), txHandler)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
