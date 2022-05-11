@@ -20,3 +20,16 @@ func NewEthAPI() *EthAPI {
 func (api *EthAPI) ChainId() (*hexutil.Big, error) { //nolint
 	return bigChainID, nil
 }
+
+// ObscuroAPI implements Obscuro-specific JSON RPC operations.
+type ObscuroAPI struct{}
+
+func NewObscuroAPI() *ObscuroAPI {
+	return &ObscuroAPI{}
+}
+
+// todo - joel - want to receive a string here instead - how?
+func (api *ObscuroAPI) SendTransactionEncrypted([]interface{}) string { //nolint
+	println("received encrypted tx")
+	return "hello joel"
+}

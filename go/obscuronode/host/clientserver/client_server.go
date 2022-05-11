@@ -49,6 +49,12 @@ func NewClientServer(address string) host.ClientServer {
 			Service:   NewEthAPI(),
 			Public:    true,
 		},
+		{
+			Namespace: "obscuro",
+			Version:   apiVersion1,
+			Service:   NewObscuroAPI(),
+			Public:    true,
+		},
 	}
 	clientServerNode.RegisterAPIs(rpcAPIs)
 

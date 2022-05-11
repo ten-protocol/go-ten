@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/obscuroclient"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -14,7 +15,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"golang.org/x/sync/errgroup"
 
@@ -29,8 +29,8 @@ type TransactionInjector struct {
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
-	l1Nodes []ethclient.EthClient
-	l2Nodes []*host.Node
+	l1Nodes       []ethclient.EthClient
+	l2NodeClients []*obscuroclient.Client
 
 	l1TransactionsLock sync.RWMutex
 	l1Transactions     []obscurocommon.L1TxData
@@ -49,7 +49,7 @@ func NewTransactionInjector(
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
 	l1Nodes []ethclient.EthClient,
-	l2Nodes []*host.Node,
+	l2NodeClients []*obscuroclient.Client,
 ) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
@@ -63,7 +63,7 @@ func NewTransactionInjector(
 		avgBlockDuration: avgBlockDuration,
 		stats:            stats,
 		l1Nodes:          l1Nodes,
-		l2Nodes:          l2Nodes,
+		l2NodeClients:    l2NodeClients,
 		interruptRun:     &interrupt,
 		fullyStoppedChan: make(chan bool),
 	}
@@ -179,7 +179,14 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
-		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
+
+		var result string
+		// todo - joel - use constant
+		err := (*m.rndL2NodeClient()).Call(&result, "obscuro_sendTransactionEncrypted", encryptedTx)
+		if err != nil {
+			panic(err) // todo - joel - don't panic here.
+		}
+
 		go m.trackL2Tx(*signedTx)
 	}
 }
@@ -209,7 +216,16 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
-		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
+
+		var result string
+		// todo - joel - use constant
+		// todo - joel - pass encrypted tx instead
+		println(encryptedTx)
+		err := (*m.rndL2NodeClient()).Call(&result, "obscuro_sendTransactionEncrypted", "test")
+		if err != nil {
+			panic(err) // todo - joel - don't panic here.
+		}
+
 		m.stats.Withdrawal(v)
 		go m.trackL2Tx(*signedTx)
 	}
@@ -223,7 +239,13 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
 		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
-		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
+
+		var result string
+		// todo - joel - use constant
+		err := (*m.rndL2NodeClient()).Call(&result, "obscuro_sendTransactionEncrypted", encryptedTx)
+		if err != nil {
+			panic(err) // todo - joel - don't panic here.
+		}
 	}
 }
 
@@ -259,6 +281,6 @@ func (m *TransactionInjector) rndL1Node() ethclient.EthClient {
 	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL2Node() *host.Node {
-	return m.l2Nodes[rand.Intn(len(m.l2Nodes))] //nolint:gosec
+func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
+	return m.l2NodeClients[rand.Intn(len(m.l2NodeClients))] //nolint:gosec
 }

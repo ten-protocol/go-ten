@@ -98,6 +98,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 }
 
 func (n *basicNetworkOfSocketNodes) TearDown() {
+	// todo - joel - stop the Obscuro clients.
 	go func() {
 		for _, n := range n.obscuroNodes {
 			n.Stop()

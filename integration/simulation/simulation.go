@@ -2,6 +2,8 @@ package simulation
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/obscuroclient"
 	"net"
 	"time"
 
@@ -13,7 +15,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 )
 
 const (
@@ -22,9 +23,10 @@ const (
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethclient.EthClient // the list of mock ethereum clients
-	ObscuroNodes     []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
-	ObscuroP2PAddrs  []string              // the P2P addresses of the Obscuro nodes
+	EthClients       []ethclient.EthClient   // the list of mock ethereum clients
+	ObscuroNodes     []*host.Node            // the list of Obscuro hosts
+	HostClients      []*obscuroclient.Client // the list of Obscuro host clients
+	ObscuroP2PAddrs  []string                // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -35,9 +37,6 @@ type Simulation struct {
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
-
-	// TODO - Remove this waiting period. The ability for nodes to catch up should be part of the tests.
-	waitForP2p(s.ObscuroP2PAddrs)
 
 	timer := time.Now()
 	go s.TxInjector.Start()
