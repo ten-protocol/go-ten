@@ -1,9 +1,10 @@
 package network
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/clientserver"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/clientserver"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 

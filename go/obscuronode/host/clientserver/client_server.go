@@ -2,15 +2,18 @@ package clientserver
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"strconv"
-	"strings"
 )
 
-const apiNamespaceEth = "eth"
-const apiVersion1 = "1.0"
+const (
+	apiNamespaceEth = "eth"
+	apiVersion1     = "1.0"
+)
 
 // An implementation of `host.ClientServer` that reuses the Geth `node` package for client communication.
 type clientServerImpl struct {
@@ -55,15 +58,13 @@ func NewClientServer(address string) host.ClientServer {
 }
 
 func (server clientServerImpl) Start() {
-	err := server.node.Start()
-	if err != nil {
-		panic(err)
+	if err := server.node.Start(); err != nil {
+		panic(fmt.Sprintf("Could not start node client server. Cause: %s", err))
 	}
 }
 
 func (server clientServerImpl) Stop() {
-	err := server.node.Close()
-	if err != nil {
-		return // todo - joel - more graceful approach?
+	if err := server.node.Close(); err != nil {
+		return
 	}
 }
