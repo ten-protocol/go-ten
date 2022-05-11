@@ -146,7 +146,7 @@ func deployContract(w wallet.Wallet, port uint) common.Address {
 	}
 
 	var receipt *types.Receipt
-	for start := time.Now(); time.Since(start) < 30*time.Second; time.Sleep(2 * time.Second) {
+	for start := time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
 		receipt, err = tmpClient.FetchTxReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			break
