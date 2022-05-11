@@ -11,6 +11,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/websocket v1.4.2
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.45.0
@@ -33,12 +34,14 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
+	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
@@ -47,7 +50,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
@@ -69,9 +71,11 @@ require (
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
+	github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef // indirect
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect

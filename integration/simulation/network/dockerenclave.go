@@ -33,9 +33,11 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 
 	var nodeP2pAddrs []string
+	var nodeClientServerAddrs []string
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
 		nodeP2pAddrs = append(nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i))
+		nodeClientServerAddrs = append(nodeClientServerAddrs, fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i))
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -47,7 +49,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		// create the in memory l1 and l2 node
 		enclavePort := uint64(EnclaveStartPort + i)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, enclavePort))
+		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, enclavePort), nodeClientServerAddrs[i])
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)

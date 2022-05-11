@@ -191,7 +191,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	transfers, withdrawals := s.TxInjector.GetL2Transactions()
 	notFoundTransfers := 0
 	for _, tx := range transfers {
-		if l2tx := node.Enclave.GetTransaction(tx.Hash()); l2tx == nil {
+		if l2tx := node.EnclaveClient.GetTransaction(tx.Hash()); l2tx == nil {
 			notFoundTransfers++
 		}
 	}
@@ -201,7 +201,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 
 	notFoundWithdrawals := 0
 	for _, tx := range withdrawals {
-		if l2tx := node.Enclave.GetTransaction(tx.Hash()); l2tx == nil {
+		if l2tx := node.EnclaveClient.GetTransaction(tx.Hash()); l2tx == nil {
 			notFoundWithdrawals++
 		}
 	}
@@ -237,7 +237,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.TxInjector.wallets {
-		total += node.Enclave.Balance(wallet.Address)
+		total += node.EnclaveClient.Balance(wallet.Address)
 	}
 	if total != totalAmountInSystem {
 		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), total, totalAmountInSystem)

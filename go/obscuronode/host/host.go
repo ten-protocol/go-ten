@@ -34,12 +34,18 @@ type P2PCallback interface {
 	ReceiveTx(tx nodecommon.EncryptedTx)
 }
 
-// P2P - represents the P2P layer. Responsible for sending and receiving messages to the other Obscuro Network Peers
+// P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
 type P2P interface {
 	StartListening(callback P2PCallback)
 	StopListening()
 	BroadcastRollup(r obscurocommon.EncodedRollup)
 	BroadcastTx(tx nodecommon.EncryptedTx)
+}
+
+// ClientServer is the layer responsible for handling requests from Obscuro client applications.
+type ClientServer interface {
+	Start()
+	Stop()
 }
 
 type StatsCollector interface {
@@ -54,12 +60,14 @@ type StatsCollector interface {
 type Node struct {
 	ID common.Address
 
-	P2p       P2P
-	ethClient ethclient.EthClient
+	P2p           P2P                 // For communication with other Obscuro nodes
+	ethClient     ethclient.EthClient // For communication with the L1 node
+	EnclaveClient nodecommon.Enclave  // For communication with the enclave
+	clientServer  ClientServer        // For communication with Obscuro client applications
 
-	mining  bool // true -if this is an aggregator, false if it is a validator
-	genesis bool // true - if this is the first Obscuro node which has to initialize the network
-	cfg     AggregatorCfg
+	isMiner   bool // True if this node is an aggregator, false if it's a validator
+	isGenesis bool // True if this is the first Obscuro node which has to initialize the network
+	cfg       AggregatorCfg
 
 	stats StatsCollector
 
@@ -72,13 +80,10 @@ type Node struct {
 	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
 
-	// Interface to the logic running inside the TEE
-	Enclave nodecommon.Enclave
-
 	// Node nodeDB - stores the node public available data
 	nodeDB *DB
 
-	// A node is marked as ready after it has bootstrapped existing blocks and has the enclave secret
+	// A node is ready once it has bootstrapped the existing blocks and has the enclave secret
 	readyForWork *int32
 
 	// Handles tx conversion from eth to L1Data
@@ -88,21 +93,26 @@ type Node struct {
 func NewObscuroAggregator(
 	id common.Address,
 	cfg AggregatorCfg,
-	ethConnector ethclient.EthClient,
 	collector StatsCollector,
-	genesis bool,
-	enclaveClient nodecommon.Enclave,
+	isGenesis bool,
 	p2p P2P,
+	ethClient ethclient.EthClient,
+	enclaveClient nodecommon.Enclave,
+	clientServer ClientServer,
 	txHandler mgmtcontractlib.TxHandler,
 ) Node {
 	return Node{
 		// config
 		ID:        id,
 		cfg:       cfg,
-		mining:    true,
-		genesis:   genesis,
-		ethClient: ethConnector,
-		P2p:       p2p,
+		isMiner:   true,
+		isGenesis: isGenesis,
+
+		// Communication layers.
+		P2p:           p2p,
+		ethClient:     ethClient,
+		EnclaveClient: enclaveClient,
+		clientServer:  clientServer,
 
 		stats: collector,
 
@@ -116,10 +126,7 @@ func NewObscuroAggregator(
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
-		// State processing
-		Enclave: enclaveClient,
-
-		// Initialized the node nodeDB
+		// Initialize the node DB
 		nodeDB:       NewDB(),
 		readyForWork: new(int32),
 
@@ -131,19 +138,21 @@ func NewObscuroAggregator(
 func (a *Node) Start() {
 	a.waitForEnclave()
 
-	if a.genesis {
+	if a.isGenesis {
 		// Create the shared secret and submit it to the management contract for storage
 		tx := &obscurocommon.L1TxData{
 			TxType:      obscurocommon.StoreSecretTx,
-			Secret:      a.Enclave.GenerateSecret(),
-			Attestation: a.Enclave.Attestation(),
+			Secret:      a.EnclaveClient.GenerateSecret(),
+			Attestation: a.EnclaveClient.Attestation(),
 		}
 		a.broadcastTx(tx)
 	}
 
-	if !a.Enclave.IsInitialised() {
+	if !a.EnclaveClient.IsInitialised() {
 		a.requestSecret()
 	}
+
+	a.clientServer.Start()
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing()
@@ -152,9 +161,9 @@ func (a *Node) Start() {
 // Waits for enclave to be available, printing a wait message every two seconds.
 func (a *Node) waitForEnclave() {
 	counter := 0
-	for a.Enclave.IsReady() != nil {
+	for a.EnclaveClient.IsReady() != nil {
 		if counter >= 20 {
-			log.Log(fmt.Sprintf(">   Agg%d: Waiting for enclave. Error: %v", obscurocommon.ShortAddress(a.ID), a.Enclave.IsReady()))
+			log.Log(fmt.Sprintf(">   Agg%d: Waiting for enclave. Error: %v", obscurocommon.ShortAddress(a.ID), a.EnclaveClient.IsReady()))
 			counter = 0
 		}
 
@@ -189,7 +198,7 @@ func (a *Node) startProcessing() {
 	allBlocks := a.waitForL1Blocks()
 
 	// Todo: This is a naive implementation.
-	results := a.Enclave.IngestBlocks(allBlocks)
+	results := a.EnclaveClient.IngestBlocks(allBlocks)
 	for _, result := range results {
 		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
 			log.Log(fmt.Sprintf(
@@ -204,9 +213,9 @@ func (a *Node) startProcessing() {
 
 	lastBlock := *allBlocks[len(allBlocks)-1]
 	log.Log(fmt.Sprintf(">   Agg%d: Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
-	a.Enclave.Start(lastBlock)
+	a.EnclaveClient.Start(lastBlock)
 
-	if a.genesis {
+	if a.isGenesis {
 		a.initialiseProtocol(&lastBlock)
 	}
 
@@ -244,7 +253,7 @@ func (a *Node) startProcessing() {
 				log.Log(fmt.Sprintf(">   Agg%d: Could not check enclave initialisation: %v", obscurocommon.ShortAddress(a.ID), err))
 			}
 
-			go a.Enclave.SubmitRollup(nodecommon.ExtRollup{
+			go a.EnclaveClient.SubmitRollup(nodecommon.ExtRollup{
 				Header: rol.Header,
 				Txs:    rol.Transactions,
 			})
@@ -253,8 +262,8 @@ func (a *Node) startProcessing() {
 			// Ignore gossiped transactions while the node is still initialising
 			// TODO Handle this correctly with the Enclave Initialization process
 			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
-			if a.Enclave.IsInitialised() {
-				if err := a.Enclave.SubmitTx(tx); err != nil {
+			if a.EnclaveClient.IsInitialised() {
+				if err := a.EnclaveClient.SubmitTx(tx); err != nil {
 					log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
 				}
 			}
@@ -300,7 +309,7 @@ func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
 
 // RPCBalance allows to fetch the balance of one address
 func (a *Node) RPCBalance(address common.Address) uint64 {
-	return a.Enclave.Balance(address)
+	return a.EnclaveClient.Balance(address)
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
@@ -322,16 +331,16 @@ func (a *Node) DB() *DB {
 func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.interrupt, 1)
-	a.P2p.StopListening()
 
-	if err := a.Enclave.Stop(); err != nil {
+	a.P2p.StopListening()
+	a.clientServer.Stop()
+
+	if err := a.EnclaveClient.Stop(); err != nil {
 		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
 	}
-
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
-
-	a.Enclave.StopClient()
+	a.EnclaveClient.StopClient()
 }
 
 func (a *Node) ConnectToEthNode(node ethclient.EthClient) {
@@ -358,7 +367,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 			a.checkForSharedSecretRequests(block)
 
 			// submit each block to the enclave for ingestion plus validation
-			result = a.Enclave.SubmitBlock(*block.DecodeBlock())
+			result = a.EnclaveClient.SubmitBlock(*block.DecodeBlock())
 			a.storeBlockProcessingResult(result)
 		}
 	}
@@ -383,7 +392,7 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 			return
 		}
 		// Request the round winner for the current head
-		winnerRollup, isWinner, err := a.Enclave.RoundWinner(result.ProducedRollup.Header.ParentHash)
+		winnerRollup, isWinner, err := a.EnclaveClient.RoundWinner(result.ProducedRollup.Header.ParentHash)
 		if err != nil {
 			panic(err)
 		}
@@ -417,7 +426,7 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
-	genesisResponse := a.Enclave.ProduceGenesis(block.Hash())
+	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
 	log.Log(fmt.Sprintf(">   Agg%d: Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash())))
 	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())}
 	a.broadcastTx(tx)
@@ -432,7 +441,7 @@ func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
-	attestation := a.Enclave.Attestation()
+	attestation := a.EnclaveClient.Attestation()
 	tx := &obscurocommon.L1TxData{
 		TxType:      obscurocommon.RequestSecretTx,
 		Attestation: attestation,
@@ -451,7 +460,7 @@ func (a *Node) requestSecret() {
 				t := a.txHandler.UnPackTx(tx)
 				if t != nil && t.TxType == obscurocommon.StoreSecretTx { // TODO properly handle t.Attestation.Owner == a.ID
 					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
-					a.Enclave.InitEnclave(t.Secret)
+					a.EnclaveClient.InitEnclave(t.Secret)
 					return
 				}
 			}
@@ -463,7 +472,7 @@ func (a *Node) requestSecret() {
 				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
 					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
-					a.Enclave.InitEnclave(t.Secret)
+					a.EnclaveClient.InitEnclave(t.Secret)
 					return
 				}
 			}
@@ -487,7 +496,7 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 		if t != nil && t.TxType == obscurocommon.RequestSecretTx {
 			txData := &obscurocommon.L1TxData{
 				TxType:      obscurocommon.StoreSecretTx,
-				Secret:      a.Enclave.FetchSecret(t.Attestation),
+				Secret:      a.EnclaveClient.FetchSecret(t.Attestation),
 				Attestation: t.Attestation,
 			}
 			a.broadcastTx(txData)
