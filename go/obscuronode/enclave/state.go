@@ -122,7 +122,11 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 	}
 
 	bs, stateDB := calculateBlockState(b, parentState, blockResolver, rollups, txHandler, rollupResolver, bss)
-
+	log.Log(fmt.Sprintf("- Calc block state b_%d: Found: %t - r_%d, ",
+		obscurocommon.ShortHash(b.Hash()),
+		bs.FoundNewRollup,
+		obscurocommon.ShortHash(bs.Head.Hash()),
+	))
 	bss.SetBlockState(b.Hash(), bs)
 	if bs.FoundNewRollup {
 		stateDB.Commit(bs.Head.Hash())
@@ -316,6 +320,10 @@ func extractRollups(b *types.Block, blockResolver db.BlockResolver, handler mgmt
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 				rollups = append(rollups, toEnclaveRollup(r))
+				log.Log(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
+					obscurocommon.ShortHash(r.Hash()),
+					obscurocommon.ShortHash(b.Hash()),
+				))
 			}
 		}
 	}

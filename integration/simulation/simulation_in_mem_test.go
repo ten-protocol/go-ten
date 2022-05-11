@@ -33,5 +33,5 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration * 2 / 7
 
-	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), simParams)
+	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), &simParams)
 }
