@@ -25,11 +25,11 @@ type storageImpl struct {
 }
 
 func NewStorage(db *InMemoryDB) Storage {
-	backingDb := rawdb.NewMemoryDatabase()
+	backingDB := rawdb.NewMemoryDatabase()
 	return &storageImpl{
 		tempDB:  db,
-		db:      backingDb,
-		stateDB: state.NewDatabase(backingDb),
+		db:      backingDB,
+		stateDB: state.NewDatabase(backingDB),
 	}
 }
 
@@ -229,7 +229,7 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.B
 func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB {
 	rollup, f := s.FetchRollup(hash)
 	if !f {
-		panic("should not hapen")
+		panic("should not happen")
 	}
 	// todo - snapshots?
 	statedb, err := state.New(rollup.Header.State, s.stateDB, nil)
