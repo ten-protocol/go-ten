@@ -36,7 +36,7 @@ const (
 	peerP2PAddrsUsage   = "The P2P addresses of our peer nodes as a comma-separated list (default \"\")"
 
 	clientServerAddrName    = "clientServerAddress"
-	clientServerAddrDefault = "localhost:12000"
+	clientServerAddrDefault = "http://localhost:12000"
 	clientServerAddrUsage   = "The address on which to listen for client application RPC requests"
 
 	privateKeyName    = "privateKey"

@@ -4,8 +4,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/clientserver"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -22,7 +20,12 @@ func main() {
 	config := parseCLIArgs()
 
 	nodeID := common.BytesToAddress([]byte(*config.nodeID))
-	hostCfg := host.AggregatorCfg{GossipRoundDuration: time.Duration(*config.gossipRoundNanos), ClientRPCTimeoutSecs: *config.rpcTimeoutSecs}
+	hostCfg := host.AggregatorCfg{
+		GossipRoundDuration:  time.Duration(*config.gossipRoundNanos),
+		ClientRPCTimeoutSecs: *config.rpcTimeoutSecs,
+		HasRPC:               true,
+		RPCAddress:           config.clientServerAddr,
+	}
 
 	nodeWallet := wallet.NewInMemoryWallet(*config.privateKeyString)
 	contractAddr := common.HexToAddress(*config.contractAddress)
@@ -32,9 +35,8 @@ func main() {
 	}
 	enclaveClient := host.NewEnclaveRPCClient(*config.enclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 	aggP2P := p2p.NewSocketP2PLayer(*config.ourP2PAddr, config.peerP2PAddrs)
-	clientServerClient := clientserver.NewClientServer(*config.clientServerAddr)
 
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, *config.isGenesis, aggP2P, l1Client, enclaveClient, clientServerClient, ethereum_mock.NewMockTxHandler())
+	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, *config.isGenesis, aggP2P, l1Client, enclaveClient, ethereum_mock.NewMockTxHandler())
 
 	agg.Start()
 }

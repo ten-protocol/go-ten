@@ -26,6 +26,10 @@ type AggregatorCfg struct {
 	GossipRoundDuration time.Duration
 	// timeout duration in seconds for RPC requests to the enclave service
 	ClientRPCTimeoutSecs uint64
+	// Whether to serve client RPC requests
+	HasRPC bool
+	// address on which to serve client RPC requests
+	RPCAddress *string
 }
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
@@ -98,9 +102,13 @@ func NewObscuroAggregator(
 	p2p P2P,
 	ethClient ethclient.EthClient,
 	enclaveClient nodecommon.Enclave,
-	clientServer ClientServer,
 	txHandler mgmtcontractlib.TxHandler,
 ) Node {
+	var clientServer ClientServer
+	if cfg.HasRPC {
+		clientServer = NewClientServer(*cfg.RPCAddress, p2p)
+	}
+
 	return Node{
 		// config
 		ID:        id,
@@ -152,7 +160,9 @@ func (a *Node) Start() {
 		a.requestSecret()
 	}
 
-	a.clientServer.Start()
+	if a.clientServer != nil {
+		a.clientServer.Start()
+	}
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing()
@@ -333,7 +343,9 @@ func (a *Node) Stop() {
 	atomic.StoreInt32(a.interrupt, 1)
 
 	a.P2p.StopListening()
-	a.clientServer.Stop()
+	if a.clientServer != nil {
+		a.clientServer.Stop()
+	}
 
 	if err := a.EnclaveClient.Stop(); err != nil {
 		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))

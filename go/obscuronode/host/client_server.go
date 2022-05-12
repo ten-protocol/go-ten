@@ -1,4 +1,4 @@
-package clientserver
+package host
 
 import (
 	"fmt"
@@ -7,12 +7,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 )
 
 const (
-	apiNamespaceEth = "eth"
-	apiVersion1     = "1.0"
+	apiNamespaceObscuro = "obscuro"
+	apiVersion1         = "1.0"
 )
 
 // An implementation of `host.ClientServer` that reuses the Geth `node` package for client communication.
@@ -22,7 +21,7 @@ type clientServerImpl struct {
 
 // NewClientServer returns a `host.ClientServer` that wraps the Geth `node` package for client communication, and
 // offers `NewEthAPI` under the "eth" namespace.
-func NewClientServer(address string) host.ClientServer {
+func NewClientServer(address string, p2p P2P) ClientServer {
 	hostAndPort := strings.Split(address, ":")
 	if len(hostAndPort) != 2 {
 		panic(fmt.Sprintf("Client server expected address in the form <host>:<port>, but received %s", address))
@@ -44,27 +43,25 @@ func NewClientServer(address string) host.ClientServer {
 
 	rpcAPIs := []rpc.API{
 		{
-			Namespace: apiNamespaceEth,
+			Namespace: apiNamespaceObscuro,
 			Version:   apiVersion1,
-			Service:   NewEthAPI(),
+			Service:   NewObscuroAPI(p2p),
 			Public:    true,
 		},
 	}
 	clientServerNode.RegisterAPIs(rpcAPIs)
 
-	return clientServerImpl{
-		node: clientServerNode,
-	}
+	return clientServerImpl{node: clientServerNode}
 }
 
-func (server clientServerImpl) Start() {
-	if err := server.node.Start(); err != nil {
+func (s clientServerImpl) Start() {
+	if err := s.node.Start(); err != nil {
 		panic(fmt.Sprintf("Could not start node client server. Cause: %s", err))
 	}
 }
 
-func (server clientServerImpl) Stop() {
-	if err := server.node.Close(); err != nil {
+func (s clientServerImpl) Stop() {
+	if err := s.node.Close(); err != nil {
 		return
 	}
 }
