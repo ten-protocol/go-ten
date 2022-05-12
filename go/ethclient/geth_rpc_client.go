@@ -159,7 +159,7 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 	return e.client.TransactionReceipt(context.Background(), hash)
 }
 
-func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
+func (e *gethRPCClient) BroadcastTx(tx obscurocommon.L1Transaction) {
 	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.GetNonceAndIncrement())
 	if err != nil {
 		panic(err)

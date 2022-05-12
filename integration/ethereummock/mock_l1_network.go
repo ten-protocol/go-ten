@@ -51,7 +51,7 @@ func (n *MockEthNetwork) BroadcastBlock(b obscurocommon.EncodedBlock, p obscuroc
 }
 
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
-func (n *MockEthNetwork) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
+func (n *MockEthNetwork) BroadcastTx(tx *types.Transaction) {
 	for _, m := range n.AllNodes {
 		if m.ID != n.CurrentNode.ID {
 			t := m
@@ -73,11 +73,15 @@ func printBlock(b *types.Block, m Node) string {
 	var txs []string
 	for _, tx := range b.Transactions() {
 		t := m.txHandler.UnPackTx(tx)
-		if t != nil && t.TxType == obscurocommon.RollupTx {
-			r := nodecommon.DecodeRollupOrPanic(t.Rollup)
+		if t == nil {
+			continue
+		}
+		switch l1Tx := t.(type) {
+		case *obscurocommon.L1RollupTx:
+			r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
 			txs = append(txs, fmt.Sprintf("r_%d", obscurocommon.ShortHash(r.Hash())))
-		} else if t.TxType == obscurocommon.DepositTx {
-			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", obscurocommon.ShortAddress(t.Dest), t.Amount))
+		case *obscurocommon.L1DepositTx:
+			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", obscurocommon.ShortAddress(l1Tx.To), l1Tx.Amount))
 		}
 	}
 	p, f := m.Resolver.ParentBlock(b)
@@ -85,6 +89,6 @@ func printBlock(b *types.Block, m Node) string {
 		panic("wtf")
 	}
 
-	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[parent=b_%d]. Txs: %v",
+	return fmt.Sprintf("> M%d: create b_%d(Height=%d, L1Nonce=%d)[parent=b_%d]. Txs: %v",
 		obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), b.NumberU64(), obscurocommon.ShortNonce(b.Header().Nonce), obscurocommon.ShortHash(p.Hash()), txs)
 }

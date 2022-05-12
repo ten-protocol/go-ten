@@ -33,14 +33,3 @@ func (eb EncodedBlock) DecodeBlock() *types.Block {
 
 	return b
 }
-
-func EncodeTx(tx *L1Tx) (EncodedL1Tx, error) {
-	return rlp.EncodeToBytes(tx)
-}
-
-func (tx EncodedL1Tx) Decode() (L1Tx, error) {
-	tx1 := L1Tx{}
-	err := rlp.DecodeBytes(tx, &tx1)
-
-	return tx1, err
-}

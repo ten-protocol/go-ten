@@ -43,12 +43,12 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) *t
 
 // findNotIncludedTxs - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findNotIncludedTxs(head *types.Block, txs []*obscurocommon.L1Tx, r db.BlockResolver, db TxDB) []*obscurocommon.L1Tx {
+func findNotIncludedTxs(head *types.Block, txs []*types.Transaction, r db.BlockResolver, db TxDB) []*types.Transaction {
 	included := allIncludedTransactions(head, r, db)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[obscurocommon.TxHash]*obscurocommon.L1Tx {
+func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[obscurocommon.TxHash]*types.Transaction {
 	val, found := db.Txs(b)
 	if found {
 		return val
@@ -56,7 +56,7 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[ob
 	if b.NumberU64() == obscurocommon.L1GenesisHeight {
 		return makeMap(b.Transactions())
 	}
-	newMap := make(map[obscurocommon.TxHash]*obscurocommon.L1Tx)
+	newMap := make(map[obscurocommon.TxHash]*types.Transaction)
 	p, f := r.ParentBlock(b)
 	if !f {
 		panic("wtf")
@@ -71,7 +71,7 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[ob
 	return newMap
 }
 
-func removeExisting(base []*obscurocommon.L1Tx, toRemove map[obscurocommon.TxHash]*obscurocommon.L1Tx) (r []*obscurocommon.L1Tx) {
+func removeExisting(base []*types.Transaction, toRemove map[obscurocommon.TxHash]*types.Transaction) (r []*types.Transaction) {
 	for _, t := range base {
 		_, f := toRemove[t.Hash()]
 		if !f {
@@ -81,8 +81,8 @@ func removeExisting(base []*obscurocommon.L1Tx, toRemove map[obscurocommon.TxHas
 	return
 }
 
-func makeMap(txs types.Transactions) map[obscurocommon.TxHash]*obscurocommon.L1Tx {
-	m := make(map[obscurocommon.TxHash]*obscurocommon.L1Tx)
+func makeMap(txs types.Transactions) map[obscurocommon.TxHash]*types.Transaction {
+	m := make(map[obscurocommon.TxHash]*types.Transaction)
 	for _, tx := range txs {
 		m[tx.Hash()] = tx
 	}

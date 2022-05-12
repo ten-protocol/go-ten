@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/contracts"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -22,17 +21,18 @@ var (
 )
 
 type TxHandler interface {
-	// PackTx receives an obscurocommon.L1TxData object and packs it into a types.TxData object
+	// PackTx receives an obscurocommon.L1Transaction object and packs it into a types.TxData object
 	// Nonce generation, transaction signature and any other operations are responsibility of the caller
-	PackTx(tx *obscurocommon.L1TxData, from common.Address, nonce uint64) (types.TxData, error)
+	PackTx(tx obscurocommon.L1Transaction, from common.Address, nonce uint64) (types.TxData, error)
 
-	// UnPackTx receives a *types.Transaction and converts it to an obscurocommon.L1TxData pointer
+	// UnPackTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	// Any transaction that is not calling the management contract is purposefully ignored
-	UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData
+	UnPackTx(tx *types.Transaction) obscurocommon.L1Transaction
 }
 
 type mgmtContractTxHandler struct {
-	contractAddr common.Address
+	contractAddr         common.Address
+	erc20ContractAddress common.Address
 }
 
 func NewEthMgmtContractTxHandler(contractAddress common.Address) TxHandler {
@@ -41,7 +41,14 @@ func NewEthMgmtContractTxHandler(contractAddress common.Address) TxHandler {
 	}
 }
 
-func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr common.Address, nonce uint64) (types.TxData, error) {
+func NewEthMgmtContractTxHandlerWithERC20(contractAddress common.Address, erc20ContractAddress common.Address) TxHandler {
+	return &mgmtContractTxHandler{
+		contractAddr:         contractAddress,
+		erc20ContractAddress: erc20ContractAddress,
+	}
+}
+
+func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr common.Address, nonce uint64) (types.TxData, error) {
 	ethTx := &types.LegacyTx{
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
@@ -49,18 +56,19 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 		To:       &h.contractAddr,
 	}
 
-	switch tx.TxType {
-	case obscurocommon.DepositTx:
+	// using (obj) type instead of t.Type() to immediatly fetch the casted object
+	switch tx := t.(type) {
+	case *obscurocommon.L1DepositTx:
 		ethTx.Value = big.NewInt(int64(tx.Amount))
-		data, err := contracts.MgmtContractABIJSON.Pack(contracts.DepositMethod, tx.Dest)
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.DepositMethod, tx.To)
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("Broadcasting - Issuing DepositTx - Addr: %s deposited %d to %s ",
-			fromAddr, tx.Amount, tx.Dest))
+		log.Log(fmt.Sprintf("- Broadcasting - Issuing DepositTx - Addr: %s deposited %d to %s ",
+			fromAddr, tx.Amount, tx.To))
 
-	case obscurocommon.RollupTx:
+	case *obscurocommon.L1RollupTx:
 		r, err := nodecommon.DecodeRollup(tx.Rollup)
 		if err != nil {
 			panic(err)
@@ -76,32 +84,38 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 		}
 
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("Broadcasting - Issuing Rollup: %s - %d txs - datasize: %d - gas: %d \n", r.Hash(), len(r.Transactions), len(data), ethTx.Gas))
+		log.Log(fmt.Sprintf("- Broadcasting - Issuing Rollup: r_%d - %d txs - datasize: %d - gas: %d",
+			obscurocommon.ShortHash(r.Hash()), len(r.Transactions), len(data), ethTx.Gas))
 
-	case obscurocommon.StoreSecretTx:
+	case *obscurocommon.L1StoreSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, EncodeToString(tx.Secret))
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
-	case obscurocommon.RequestSecretTx:
+		log.Log(fmt.Sprintf("- Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
+	case *obscurocommon.L1RequestSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log("Broadcasting - Issuing RequestSecret")
+		log.Log("- Broadcasting - Issuing RequestSecret")
 	}
 
 	return ethTx, nil
 }
 
-func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
+func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	// ignore transactions that are not calling the contract
-	if tx.To() == nil || tx.To().Hex() != h.contractAddr.Hex() || len(tx.Data()) == 0 {
+	if tx.To() == nil || (tx.To().Hex() != h.contractAddr.Hex() && tx.To().Hex() != h.erc20ContractAddress.Hex()) || len(tx.Data()) == 0 {
 		log.Log(fmt.Sprintf("UnpackTx: Ignoring transaction %+v", tx))
 		return nil
+	}
+
+	// TODO review this
+	if tx.To().Hex() == h.erc20ContractAddress.Hex() {
+		return h.unpackPedroERC20(tx)
 	}
 
 	method, err := contracts.MgmtContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
@@ -109,12 +123,6 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 		panic(err)
 	}
 
-	l1txData := obscurocommon.L1TxData{
-		TxType:      0,
-		Attestation: obscurocommon.AttestationReport{},
-		Amount:      0,
-		Dest:        common.Address{},
-	}
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
 	case contracts.DepositMethod:
@@ -126,9 +134,11 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 			panic("call data not found for dest")
 		}
 
-		l1txData.TxType = obscurocommon.DepositTx
-		l1txData.Amount = tx.Value().Uint64()
-		l1txData.Dest = callData.(common.Address)
+		return &obscurocommon.L1DepositTx{
+			Amount:        tx.Value().Uint64(),
+			To:            callData.(common.Address),
+			TokenContract: common.HexToAddress(""), // TODO have fixed Token contract for Eth deposits ?
+		}
 
 	case contracts.AddRollupMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
@@ -139,11 +149,13 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 			panic("call data not found for rollupData")
 		}
 		zipped := DecodeFromString(callData.(string))
-		l1txData.Rollup, err = Decompress(zipped)
+		rollup, err := Decompress(zipped)
 		if err != nil {
 			panic(err)
 		}
-		l1txData.TxType = obscurocommon.RollupTx
+
+		return &obscurocommon.L1RollupTx{
+			Rollup: rollup}
 
 	case contracts.StoreSecretMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
@@ -153,12 +165,42 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 		if !found {
 			panic("call data not found for inputSecret")
 		}
-		l1txData.Secret = DecodeFromString(callData.(string))
-		l1txData.TxType = obscurocommon.StoreSecretTx
+
+		return &obscurocommon.L1StoreSecretTx{
+			Secret: DecodeFromString(callData.(string))}
 
 	case contracts.RequestSecretMethod:
-		l1txData.TxType = obscurocommon.RequestSecretTx
+		return &obscurocommon.L1RequestSecretTx{}
 	}
 
-	return &l1txData
+	return nil
+}
+
+func (h *mgmtContractTxHandler) unpackPedroERC20(tx *types.Transaction) obscurocommon.L1Transaction {
+
+	method, err := contracts.PedroERC20ContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
+	if err != nil {
+		panic(err)
+	}
+
+	contractCallData := map[string]interface{}{}
+	if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
+		panic(err)
+	}
+	amount, found := contractCallData["amount"]
+	if !found {
+		panic("amount not found for transfer")
+	}
+
+	signer := types.NewEIP155Signer(tx.ChainId())
+	sender, err := signer.Sender(tx)
+	if err != nil {
+		panic(err)
+	}
+
+	return &obscurocommon.L1DepositTx{
+		Amount:        amount.(*big.Int).Uint64(),
+		To:            sender,
+		TokenContract: h.erc20ContractAddress,
+	}
 }

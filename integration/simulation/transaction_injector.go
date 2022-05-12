@@ -1,11 +1,23 @@
 package simulation
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/contracts"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
@@ -14,7 +26,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"golang.org/x/sync/errgroup"
 
@@ -29,17 +40,19 @@ type TransactionInjector struct {
 	stats            *stats2.Stats
 	wallets          []wallet_mock.Wallet
 
-	l1Nodes []ethclient.EthClient
-	l2Nodes []*host.Node
+	l1Nodes       []ethclient.EthClient
+	l2NodeClients []*obscuroclient.Client
 
 	l1TransactionsLock sync.RWMutex
-	l1Transactions     []obscurocommon.L1TxData
+	l1Transactions     []obscurocommon.L1Transaction
 
 	l2TransactionsLock sync.RWMutex
 	l2Transactions     core.L2Txs
 
-	interruptRun     *int32
-	fullyStoppedChan chan bool
+	interruptRun      *int32
+	fullyStoppedChan  chan bool
+	ethWallets        []wallet.Wallet
+	erc20ContractAddr common.Address
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
@@ -50,6 +63,9 @@ func NewTransactionInjector(
 	stats *stats2.Stats,
 	l1Nodes []ethclient.EthClient,
 	l2Nodes []*host.Node,
+	ethWallets []wallet.Wallet,
+	addr common.Address,
+	l2NodeClients []*obscuroclient.Client,
 ) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
@@ -59,13 +75,15 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		wallets:          wallets,
-		avgBlockDuration: avgBlockDuration,
-		stats:            stats,
-		l1Nodes:          l1Nodes,
-		l2Nodes:          l2Nodes,
-		interruptRun:     &interrupt,
-		fullyStoppedChan: make(chan bool),
+		wallets:           wallets,
+		avgBlockDuration:  avgBlockDuration,
+		stats:             stats,
+		l1Nodes:           l1Nodes,
+		l2NodeClients:     l2NodeClients,
+		interruptRun:      &interrupt,
+		fullyStoppedChan:  make(chan bool),
+		ethWallets:        ethWallets,
+		erc20ContractAddr: addr,
 	}
 }
 
@@ -75,14 +93,13 @@ func NewTransactionInjector(
 func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every user
 	for _, u := range m.wallets {
-		txData := &obscurocommon.L1TxData{
-			TxType: obscurocommon.DepositTx,
-			Amount: INITIAL_BALANCE,
-			Dest:   u.Address,
+		txData := &obscurocommon.L1DepositTx{
+			Amount: initialBalance,
+			To:     u.Address,
 		}
 		m.rndL1Node().BroadcastTx(txData)
-		m.stats.Deposit(INITIAL_BALANCE)
-		go m.trackL1Tx(*txData)
+		m.stats.Deposit(initialBalance)
+		go m.trackL1Tx(txData)
 		time.Sleep(m.avgBlockDuration / 3)
 	}
 
@@ -108,6 +125,11 @@ func (m *TransactionInjector) Start() {
 		return nil
 	})
 
+	//wg.Go(func() error {
+	//	m.issueRandomERC20Deposits()
+	//	return nil
+	//})
+
 	_ = wg.Wait() // future proofing to return errors
 	m.fullyStoppedChan <- true
 }
@@ -121,7 +143,7 @@ func (m *TransactionInjector) Stop() {
 }
 
 // trackL1Tx adds an L1Tx to the internal list
-func (m *TransactionInjector) trackL1Tx(tx obscurocommon.L1TxData) {
+func (m *TransactionInjector) trackL1Tx(tx obscurocommon.L1Transaction) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
 	m.l1Transactions = append(m.l1Transactions, tx)
@@ -135,7 +157,7 @@ func (m *TransactionInjector) trackL2Tx(tx nodecommon.L2Tx) {
 }
 
 // GetL1Transactions returns all generated L1 L2Txs
-func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1TxData {
+func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1Transaction {
 	return m.l1Transactions
 }
 
@@ -179,24 +201,81 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
-		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
+
+		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		if err != nil {
+			log.Log("Failed to issue transfer via RPC.")
+			continue
+		}
+
 		go m.trackL2Tx(*signedTx)
 	}
 }
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
-// Generates L1 common.DepositTx transactions
+// Generates L1 common.L1DepositTx transactions
 func (m *TransactionInjector) issueRandomDeposits() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
-		txData := obscurocommon.L1TxData{
-			TxType: obscurocommon.DepositTx,
+		txData := &obscurocommon.L1DepositTx{
 			Amount: v,
-			Dest:   rndWallet(m.wallets).Address,
+			To:     rndWallet(m.wallets).Address,
 		}
-		m.rndL1Node().BroadcastTx(&txData)
+		m.rndL1Node().BroadcastTx(txData)
 		m.stats.Deposit(v)
 		go m.trackL1Tx(txData)
+	}
+}
+
+// issueRandomERC20Deposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
+// Generates L1 common.L1DepositTx transactions
+func (m *TransactionInjector) issueRandomERC20Deposits() {
+	defaultGasPrice := big.NewInt(20000000000)
+	defaultGas := uint64(1024_000_000)
+	timeout := 30 * time.Second
+	w := m.ethWallets[0]
+	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
+		tx := &types.LegacyTx{
+			Nonce:    w.GetNonceAndIncrement(),
+			GasPrice: defaultGasPrice,
+			Gas:      defaultGas,
+			To:       &m.erc20ContractAddr,
+		}
+
+		v := obscurocommon.RndBtw(1, 100)
+		data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", w.Address(), big.NewInt(int64(v)))
+		if err != nil {
+			panic(err)
+		}
+		tx.Data = data
+
+		node := m.rndL1Node()
+		issuedTx, err := node.SubmitTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+
+		var receipt *types.Receipt
+		for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
+			receipt, err = node.FetchTxReceipt(issuedTx.Hash())
+			if err == nil && receipt != nil {
+				break
+			}
+			if !errors.Is(err, ethereum.NotFound) {
+				panic(err)
+			}
+			log.Log(fmt.Sprintf("Tx has not been mined into a block after %s...", time.Since(start)))
+		}
+
+		if receipt == nil || receipt.Status != types.ReceiptStatusSuccessful {
+			panic(fmt.Errorf("transaction not minted into a block after %s", timeout))
+		}
+		m.stats.Deposit(v)
+		go m.trackL1Tx(&obscurocommon.L1DepositTx{
+			Amount:        v,
+			To:            w.Address(),
+			TokenContract: m.erc20ContractAddr,
+		})
 	}
 }
 
@@ -209,7 +288,13 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
-		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
+
+		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		if err != nil {
+			log.Log("Failed to issue withdrawal via RPC.")
+			continue
+		}
+
 		m.stats.Withdrawal(v)
 		go m.trackL2Tx(*signedTx)
 	}
@@ -223,7 +308,12 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
 		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
-		m.rndL2Node().P2p.BroadcastTx(encryptedTx)
+
+		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		if err != nil {
+			log.Log("Failed to issue withdrawal via RPC.")
+			continue
+		}
 	}
 }
 
@@ -259,6 +349,6 @@ func (m *TransactionInjector) rndL1Node() ethclient.EthClient {
 	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL2Node() *host.Node {
-	return m.l2Nodes[rand.Intn(len(m.l2Nodes))] //nolint:gosec
+func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
+	return m.l2NodeClients[rand.Intn(len(m.l2NodeClients))] //nolint:gosec
 }

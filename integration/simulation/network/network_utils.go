@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	Localhost        = "localhost"
-	p2pStartPort     = 10000
-	EnclaveStartPort = 11000
+	Localhost             = "127.0.0.1"
+	p2pStartPort          = 10000
+	EnclaveStartPort      = 11000
+	clientServerStartPort = 12000
 )
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
@@ -33,21 +34,31 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	return miner
 }
 
-func createInMemObscuroNode(id int64, genesis bool, txHandler mgmtcontractlib.TxHandler, avgGossipPeriod time.Duration, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *host.Node {
+func createInMemObscuroNode(
+	id int64,
+	genesis bool,
+	txHandler mgmtcontractlib.TxHandler,
+	avgGossipPeriod time.Duration,
+	avgBlockDuration time.Duration,
+	avgNetworkLatency time.Duration,
+	stats *stats.Stats,
+	validateBlocks bool,
+	genesisJSON []byte,
+) *host.Node {
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
-	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
+	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, false, nil)
 
 	nodeID := common.BigToAddress(big.NewInt(id))
-	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, false, nil, stats)
+	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, obscuroInMemNetwork, txHandler)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, txHandler)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string) *host.Node {
+func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
@@ -55,14 +66,20 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs)
-	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, nil, stats, genesis, enclaveClient, nodeP2p, ethereum_mock.NewMockTxHandler())
+	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
+	txHandler := ethereum_mock.NewMockTxHandler()
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, nodeP2p, nil, enclaveClient, txHandler)
 
 	return &node
 }
 
-func defaultObscuroNodeCfg(gossipPeriod time.Duration) host.AggregatorCfg {
-	return host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
+func defaultObscuroNodeCfg(gossipPeriod time.Duration, hasRPC bool, rpcAddress *string) host.AggregatorCfg {
+	return host.AggregatorCfg{
+		ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs,
+		GossipRoundDuration:  gossipPeriod,
+		HasRPC:               hasRPC,
+		RPCAddress:           rpcAddress,
+	}
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {

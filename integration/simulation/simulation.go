@@ -5,6 +5,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -13,18 +16,17 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 )
 
-const (
-	INITIAL_BALANCE = 5000 // nolint:revive,stylecheck
-)
+const initialBalance = 5000
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethclient.EthClient // the list of mock ethereum clients
-	ObscuroNodes     []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
-	ObscuroP2PAddrs  []string              // the P2P addresses of the Obscuro nodes
+	EthClients []ethclient.EthClient // the list of mock ethereum clients
+	// TODO - Remove this field. All communication should go via the Obscuro clients.
+	ObscuroNodes     []*host.Node            // the list of Obscuro hosts
+	ObscuroClients   []*obscuroclient.Client // the list of Obscuro host clients
+	ObscuroP2PAddrs  []string                // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -42,7 +44,7 @@ func (s *Simulation) Start() {
 	timer := time.Now()
 	go s.TxInjector.Start()
 
-	stoppingDelay := 7 * time.Second
+	stoppingDelay := s.Params.AvgBlockDuration * 4
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - stoppingDelay)
@@ -50,7 +52,7 @@ func (s *Simulation) Start() {
 	s.TxInjector.Stop()
 
 	// allow for some time after tx injection was stopped so that the network can process all transactions
-	time.Sleep(stoppingDelay)
+	time.Sleep(stoppingDelay + 12*time.Second)
 
 	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
 }

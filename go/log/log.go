@@ -12,6 +12,10 @@ func SetLog(f *os.File) {
 	logFile = f
 }
 
+func Trace(msg string) {
+	// todo - implement this
+}
+
 func Log(msg string) {
 	if logFile == nil {
 		// defaults to outputting logs to stdout
@@ -19,6 +23,7 @@ func Log(msg string) {
 		fmt.Println(msg)
 		return
 	}
+	//fmt.Println(msg)
 
 	_, err := logFile.WriteString(fmt.Sprintf("%d %s\n", makeTimestamp(), msg))
 	if err != nil {

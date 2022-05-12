@@ -15,10 +15,10 @@ func EncodeRollup(r *Rollup) obscurocommon.EncodedRollup {
 }
 
 func DecodeRollup(encoded obscurocommon.EncodedRollup) (*Rollup, error) {
-	r := Rollup{}
-	err := rlp.DecodeBytes(encoded, &r)
+	r := new(Rollup)
+	err := rlp.DecodeBytes(encoded, r)
 
-	return &r, err
+	return r, err
 }
 
 func DecodeRollupOrPanic(rollup obscurocommon.EncodedRollup) *Rollup {

@@ -24,13 +24,14 @@ type SimParams struct {
 	// dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
 	// We test the results against this threshold to catch eventual protocol errors.
 	L1EfficiencyThreshold     float64
-	L2EfficiencyThreshold     float64
-	L2ToL1EfficiencyThreshold float64
+	L2EfficiencyThreshold     float64 // number of dead obscuro blocks
+	L2ToL1EfficiencyThreshold float64 // number of ethereum blocks that don't include an obscuro node
 
 	// TxHandler defines how the simulation should unpack transactions
 	TxHandler mgmtcontractlib.TxHandler
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddr common.Address
 	// EthWallets contains the wallets to use for the l1 nodes
-	EthWallets []wallet.Wallet
+	EthWallets        []wallet.Wallet
+	ERC20ContractAddr common.Address
 }

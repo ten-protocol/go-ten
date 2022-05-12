@@ -1,8 +1,10 @@
 package gethnetwork
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -93,6 +95,8 @@ const (
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
 type GethNetwork struct {
+	GenesisJSON []byte // The genesis JSON config used by the network.
+
 	gethBinaryPath   string
 	genesisFilePath  string
 	dataDirs         []string
@@ -114,6 +118,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	buildDir := path.Join(buildDirBase, timestamp)
 	// We create a data directory for each node.
 	nodesDir, err := ioutil.TempDir("", timestamp)
+	fmt.Printf("Geth nodes created in: %s\n", nodesDir)
 	if err != nil {
 		panic(err)
 	}
@@ -176,11 +181,13 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	for i, addr := range preFundedAddrs {
 		allocs[numNodes+i] = fmt.Sprintf(addrBlockTemplate, addr)
 	}
-	genesisJSON := fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, ""))
+	network.GenesisJSON = []byte(
+		fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, "")),
+	)
 
 	// We write out the `genesis.json` file to be used by the network.
 	genesisFilePath := path.Join(buildDir, genesisFileName)
-	err = os.WriteFile(genesisFilePath, []byte(genesisJSON), 0o600)
+	err = os.WriteFile(genesisFilePath, network.GenesisJSON, 0o600)
 	if err != nil {
 		panic(err)
 	}
@@ -230,7 +237,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 	args := []string{dataDirFlag, dataDir, attachCmd, path.Join(dataDir, ipcFileName), execFlag, command}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
-	cmd.Stderr = network.logFile
+	cmd.Stderr = network.logNodeId(nodeIdx)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -315,17 +322,30 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	args := []string{
 		websocketFlag, wsPortFlag, strconv.Itoa(webSocketPort), dataDirFlag, dataDirPath, portFlag,
 		strconv.Itoa(port), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
-		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
+		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag, "--verbosity", "5",
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
-	cmd.Stdout = network.logFile
-	cmd.Stderr = network.logFile
+
+	cmd.Stdout = network.logNodeId(idx)
+	cmd.Stderr = network.logNodeId(idx)
 
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
+}
+
+// logNodeId prepends the nodeID to the log entries
+func (network *GethNetwork) logNodeId(idx int) io.Writer {
+	r, w, _ := os.Pipe()
+	go func() {
+		sc := bufio.NewScanner(r)
+		for sc.Scan() {
+			_, _ = network.logFile.WriteString(fmt.Sprintf("EthNode-%d: %s\n", idx, sc.Text()))
+		}
+	}()
+	return w
 }
 
 // Waits for a node's IPC file to exist.

@@ -97,8 +97,20 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 		dups := obscurocommon.FindRollupDups(rollups)
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
+
+	regularDepositTxs, erc20Deposits := 0, 0
+	for _, tx := range s.TxInjector.GetL1Transactions() {
+		if l1tx, ok := tx.(*obscurocommon.L1DepositTx); ok {
+			if l1tx.TokenContract != common.HexToAddress("") {
+				erc20Deposits++
+			}
+			regularDepositTxs++
+		}
+	}
+	fmt.Printf("Regular DEPOSITS:%d\n", regularDepositTxs)
+	fmt.Printf("erc20Deposits DEPOSITS:%d\n", erc20Deposits)
 	if totalDeposited != s.Stats.TotalDepositedAmount {
-		t.Errorf("Node %d. Deposit amounts don't match. Found %d , expected %d", obscurocommon.ShortAddress(node.Info().ID), totalDeposited, s.Stats.TotalDepositedAmount)
+		t.Errorf("Node %d. Deposit amounts don't match. Found %d, expected %d", obscurocommon.ShortAddress(node.Info().ID), totalDeposited, s.Stats.TotalDepositedAmount)
 	}
 
 	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
@@ -120,6 +132,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
+	regularDepositTxs, erc20Deposits := 0, 0
 	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
@@ -127,23 +140,30 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 			if t == nil {
 				continue
 			}
-			switch t.TxType {
-			case obscurocommon.DepositTx:
+			switch obsTx := t.(type) {
+			case *obscurocommon.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
-				totalDeposited += t.Amount
-			case obscurocommon.RollupTx:
-				r := nodecommon.DecodeRollupOrPanic(t.Rollup)
+				totalDeposited += obsTx.Amount
+				if obsTx.TokenContract != common.HexToAddress("") {
+					erc20Deposits++
+				}
+				regularDepositTxs++
+			case *obscurocommon.L1RollupTx:
+				r := nodecommon.DecodeRollupOrPanic(obsTx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
 					s.Stats.NewRollup(node.Info().ID, r)
 				}
-			case obscurocommon.RequestSecretTx:
-			case obscurocommon.StoreSecretTx:
+			case *obscurocommon.L1RequestSecretTx:
+			case *obscurocommon.L1StoreSecretTx:
 			}
 		}
 	}
+
+	fmt.Printf("Blockchain: Regular DEPOSITS:%d\n", regularDepositTxs)
+	fmt.Printf("Blockchain: erc20Deposits DEPOSITS:%d\n", erc20Deposits)
 	return deposits, rollups, totalDeposited, len(blockchain)
 }
 
@@ -191,7 +211,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	transfers, withdrawals := s.TxInjector.GetL2Transactions()
 	notFoundTransfers := 0
 	for _, tx := range transfers {
-		if l2tx := node.Enclave.GetTransaction(tx.Hash()); l2tx == nil {
+		if l2tx := node.EnclaveClient.GetTransaction(tx.Hash()); l2tx == nil {
 			notFoundTransfers++
 		}
 	}
@@ -201,7 +221,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 
 	notFoundWithdrawals := 0
 	for _, tx := range withdrawals {
-		if l2tx := node.Enclave.GetTransaction(tx.Hash()); l2tx == nil {
+		if l2tx := node.EnclaveClient.GetTransaction(tx.Hash()); l2tx == nil {
 			notFoundWithdrawals++
 		}
 	}
@@ -218,7 +238,9 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 
 	injectorDepositedAmt := uint64(0)
 	for _, tx := range s.TxInjector.GetL1Transactions() {
-		injectorDepositedAmt += tx.Amount
+		if depTx, ok := tx.(*obscurocommon.L1DepositTx); ok {
+			injectorDepositedAmt += depTx.Amount
+		}
 	}
 
 	// expected condition : some Txs (stats) did not make it to the blockchain
@@ -237,7 +259,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.TxInjector.wallets {
-		total += node.Enclave.Balance(wallet.Address)
+		total += node.EnclaveClient.Balance(wallet.Address)
 	}
 	if total != totalAmountInSystem {
 		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), total, totalAmountInSystem)

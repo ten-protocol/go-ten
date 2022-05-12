@@ -7,10 +7,11 @@
 package generated
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -1799,7 +1800,7 @@ type BlockHeaderMsg struct {
 	Time        uint64 `protobuf:"varint,12,opt,name=Time,proto3" json:"Time,omitempty"`
 	Extra       []byte `protobuf:"bytes,13,opt,name=Extra,proto3" json:"Extra,omitempty"`
 	MixDigest   []byte `protobuf:"bytes,14,opt,name=MixDigest,proto3" json:"MixDigest,omitempty"`
-	Nonce       uint64 `protobuf:"varint,15,opt,name=Nonce,proto3" json:"Nonce,omitempty"`
+	Nonce       uint64 `protobuf:"varint,15,opt,name=L1Nonce,proto3" json:"L1Nonce,omitempty"`
 	BaseFee     uint64 `protobuf:"varint,16,opt,name=BaseFee,proto3" json:"BaseFee,omitempty"`
 }
 

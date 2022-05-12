@@ -44,7 +44,11 @@ type enclaveImpl struct {
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
-	txHandler            mgmtcontractlib.TxHandler
+
+	txHandler mgmtcontractlib.TxHandler
+
+	// Toggles the speculative execution background process
+	speculativeExecutionEnabled bool
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -56,8 +60,10 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
-	// start the speculative rollup execution loop on its own go routine
-	go e.start(block)
+	if e.speculativeExecutionEnabled {
+		// start the speculative rollup execution loop on its own go routine
+		go e.start(block)
+	}
 }
 
 func (e *enclaveImpl) start(block types.Block) {
@@ -65,9 +71,9 @@ func (e *enclaveImpl) start(block types.Block) {
 	// determine whether the block where the speculative execution will start already contains Obscuro state
 	blockState, f := e.storage.FetchBlockState(block.Hash())
 	if f {
-		env.headRollup = blockState.Head
+		env.headRollup, _ = e.storage.FetchRollup(blockState.HeadRollup)
 		if env.headRollup != nil {
-			env.state = db.CopyStateNoWithdrawals(e.storage.FetchRollupState(env.headRollup.Hash()))
+			env.state = e.storage.CreateStateDB(env.headRollup.Hash())
 		}
 	}
 
@@ -75,9 +81,15 @@ func (e *enclaveImpl) start(block types.Block) {
 		select {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
 		case winnerRollup := <-e.roundWinnerCh:
-			env.header = obscurocore.NewHeader(winnerRollup, winnerRollup.Header.Number+1, e.node)
+			hash := winnerRollup.Hash()
+			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
-			env.state = db.CopyStateNoWithdrawals(e.storage.FetchRollupState(winnerRollup.Hash()))
+			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
+			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculatve env  r_%d(%d).",
+				obscurocommon.ShortAddress(e.node),
+				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
+				winnerRollup.Header.Number,
+			))
 
 			// determine the transactions that were not yet included
 			env.processedTxs = currentTxs(winnerRollup, e.mempool.FetchMempoolTxs(), e.storage)
@@ -103,11 +115,10 @@ func (e *enclaveImpl) start(block types.Block) {
 			} else {
 				b := make([]nodecommon.L2Tx, 0, len(env.processedTxs))
 				b = append(b, env.processedTxs...)
-				state := db.CopyState(env.state)
 				e.speculativeWorkOutCh <- speculativeWork{
 					found: true,
 					r:     env.headRollup,
-					s:     state,
+					s:     env.state.Copy(),
 					h:     env.header,
 					txs:   b,
 				}
@@ -136,26 +147,26 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
 	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
-		// We skip over the genesis block, to avoid an attack whereby someone submits a block with the same hash as the
-		// genesis block but different contents. Since we cannot insert the genesis block into our blockchain, this
-		// checking would have to be skipped, potentially allowing an invalid block through.
-		if e.isGenesisBlock(block) {
-			continue
-		}
-
-		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); ingestionFailedResponse != nil {
+		// We ignore a failure on the genesis block, since insertion of the genesis also produces a failure in Geth
+		// (at least with Clique, where it fails with a `vote nonce not 0x00..0 or 0xff..f`).
+		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); !e.isGenesisBlock(block) && ingestionFailedResponse != nil {
 			result[i] = *ingestionFailedResponse
 			return result // We return early, as all descendant blocks will also fail verification.
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.storage, e.txHandler)
+		bs := updateState(block, e.blockResolver, e.txHandler, e.storage, e.storage)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
 			var rollup nodecommon.ExtRollup
 			if bs.FoundNewRollup {
-				rollup = bs.Head.ToExtRollup()
+				hr, f := e.storage.FetchRollup(bs.HeadRollup)
+				if !f {
+					panic("Should not happen")
+				}
+
+				rollup = hr.ToExtRollup()
 			}
 			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
@@ -166,7 +177,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
-	// As when ingesting, we skip the genesis block.
+	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
 	if e.isGenesisBlock(&block) {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
 	}
@@ -191,18 +202,22 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.storage, e.txHandler)
+	blockState := updateState(&block, e.blockResolver, e.txHandler, e.storage, e.storage)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
-	e.mempool.RemoveMempoolTxs(historicTxs(blockState.Head, e.storage))
+	hr, f := e.storage.FetchRollup(blockState.HeadRollup)
+	if !f {
+		panic("Should not happen")
+	}
+	e.mempool.RemoveMempoolTxs(historicTxs(hr, e.storage))
 	r := e.produceRollup(&block, blockState)
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
 
-	log.Log(fmt.Sprintf("Agg%d:> Processed block: b_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash())))
+	log.Log(fmt.Sprintf(">   Agg%d: Processed block: b_%d(%d)", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(block.Hash()), block.NumberU64()))
 
 	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
 }
@@ -218,7 +233,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	if found {
 		e.storage.StoreRollup(&r)
 	} else {
-		log.Log(fmt.Sprintf("Agg%d:> Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
+		log.Log(fmt.Sprintf(">   Agg%d: Received rollup with no parent: r_%d", obscurocommon.ShortAddress(e.node), obscurocommon.ShortHash(r.Hash())))
 	}
 }
 
@@ -229,7 +244,9 @@ func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 		return err
 	}
 	e.mempool.AddMempoolTx(decryptedTx)
-	e.txCh <- decryptedTx
+	if e.speculativeExecutionEnabled {
+		e.txCh <- decryptedTx
+	}
 	return nil
 }
 
@@ -246,6 +263,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
+	log.Log(fmt.Sprintf(">   Agg%d: Round winner height: %d", obscurocommon.ShortAddress(e.node), head.Header.Number))
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
@@ -256,22 +274,25 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		}
 	}
 
-	parentState := e.storage.FetchRollupState(head.Hash())
+	parentState := e.storage.CreateStateDB(head.Hash())
 	// determine the winner of the round
-	winnerRollup, s := e.findRoundWinner(usefulRollups, head, parentState, e.storage, e.blockResolver)
-
-	e.storage.SetRollupState(winnerRollup.Hash(), s)
-	go e.notifySpeculative(winnerRollup)
+	winnerRollup, s := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
+	s.Commit(winnerRollup.Hash())
+	// e.storage.SetRollupState(winnerRollup.Hash(), s)
+	if e.speculativeExecutionEnabled {
+		go e.notifySpeculative(winnerRollup)
+	}
 
 	// we are the winner
 	if winnerRollup.Header.Agg == e.node {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
-		log.Log(fmt.Sprintf(">   Agg%d: publish rollup=r_%d(%d)[r_%d]{proof=b_%d}. Num Txs: %d. Txs: %v.  State=%v. ",
+		log.Log(fmt.Sprintf(">   Agg%d: Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
 			obscurocommon.ShortAddress(e.node),
 			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
+			v.NumberU64(),
 			len(winnerRollup.Transactions),
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State,
@@ -287,49 +308,66 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
-	return e.storage.FetchHeadState().State.Balances[address]
+	return e.storage.CreateStateDB(e.storage.FetchHeadState().HeadRollup).GetBalance(address)
 }
 
-func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscurocore.Rollup {
-	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
-	e.speculativeWorkInCh <- true
-	speculativeRollup := <-e.speculativeWorkOutCh
+func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
+	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
+	if !f {
+		panic("Should not happen")
+	}
 
-	newRollupTxs := speculativeRollup.txs
-	newRollupState := speculativeRollup.s
-	newRollupHeader := speculativeRollup.h
+	// These variables will be used to create the new rollup
+	var newRollupTxs []nodecommon.L2Tx
+	var newRollupState db.StateDB
+	var newRollupHeader *nodecommon.Header
 
-	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-	if !speculativeRollup.found || (speculativeRollup.r.Hash() != bs.Head.Hash()) {
-		if speculativeRollup.r != nil {
+	speculativeExecutionSucceeded := false
+
+	if e.speculativeExecutionEnabled {
+		// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
+		e.speculativeWorkInCh <- true
+		speculativeRollup := <-e.speculativeWorkOutCh
+
+		newRollupTxs = speculativeRollup.txs
+		newRollupState = speculativeRollup.s
+		newRollupHeader = speculativeRollup.h
+
+		// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
+		// or speculative execution is disabled
+		speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
+
+		if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
 				speculativeRollup.r.Header.Number,
-				obscurocommon.ShortHash(bs.Head.Hash()),
-				bs.Head.Header.Number),
-			)
+				obscurocommon.ShortHash(bs.HeadRollup),
+				headRollup.Header.Number))
 			if e.statsCollector != nil {
 				e.statsCollector.L2Recalc(e.node)
 			}
 		}
+	}
 
-		newRollupHeader = obscurocore.NewHeader(bs.Head, bs.Head.Header.Number+1, e.node)
-		// determine transactions to include in new rollup and process them
-		newRollupTxs = currentTxs(bs.Head, e.mempool.FetchMempoolTxs(), e.storage)
+	if !speculativeExecutionSucceeded {
+		// In case the speculative execution thread has not succeeded in producing a valid rollup
+		// we have to create a new one from the mempool transactions
+		newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.node)
+		newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 
-		newRollupState = db.CopyStateNoWithdrawals(bs.State)
+		newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
 		executeTransactions(newRollupTxs, newRollupState, newRollupHeader)
 	}
 
-	// always process deposits last
+	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
-	proof := e.blockResolver.Proof(bs.Head)
+	proof := e.blockResolver.Proof(headRollup)
 	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
 	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), newRollupTxs, obscurocommon.GenerateNonce(), db.Serialize(newRollupState))
+	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), newRollupTxs, obscurocommon.GenerateNonce(), newRollupState.StateRoot())
 
 	// Postprocessing - withdrawals
 	r.Header.Withdrawals = rollupPostProcessingWithdrawals(&r, newRollupState)
@@ -339,7 +377,10 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *db.BlockState) *obscuroc
 
 func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	// todo add some sort of cache
-	rollup := e.storage.FetchHeadState().Head
+	rollup, found := e.storage.FetchRollup(e.storage.FetchHeadState().HeadRollup)
+	if !found {
+		panic("should not happen")
+	}
 
 	for {
 		txs := rollup.Transactions
@@ -356,7 +397,9 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 }
 
 func (e *enclaveImpl) Stop() error {
-	e.exitCh <- true
+	if e.speculativeExecutionEnabled {
+		e.exitCh <- true
+	}
 	return nil
 }
 
@@ -390,7 +433,7 @@ func (e *enclaveImpl) IsInitialised() bool {
 }
 
 func (e *enclaveImpl) isGenesisBlock(block *types.Block) bool {
-	return e.l1Blockchain != nil && block.Hash() != e.l1Blockchain.Genesis().Hash()
+	return e.l1Blockchain != nil && block.Hash() == e.l1Blockchain.Genesis().Hash()
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
@@ -414,13 +457,23 @@ func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) no
 	}
 }
 
-func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *db.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
+func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
+	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
+	if !f {
+		panic("Should not happen")
+	}
+
+	headBlock, f := e.storage.FetchBlock(bs.Block)
+	if !f {
+		panic("Should not happen")
+	}
+
 	var head *nodecommon.Header
 	if bs.FoundNewRollup {
-		head = bs.Head.Header
+		head = headRollup.Header
 	}
 	return nodecommon.BlockSubmissionResponse{
-		BlockHeader:    bs.Block.Header(),
+		BlockHeader:    headBlock.Header(),
 		ProducedRollup: rollup,
 		IngestedBlock:  true,
 		FoundNewHead:   bs.FoundNewRollup,
@@ -442,7 +495,7 @@ func encryptSecret(secret obscurocore.SharedEnclaveSecret) obscurocommon.Encrypt
 type speculativeWork struct {
 	found bool
 	r     *obscurocore.Rollup
-	s     *db.State
+	s     db.StateDB
 	h     *nodecommon.Header
 	txs   []nodecommon.L2Tx
 }
@@ -453,14 +506,15 @@ type processingEnvironment struct {
 	header          *nodecommon.Header              // the header of the new rollup
 	processedTxs    []nodecommon.L2Tx               // txs that were already processed
 	processedTxsMap map[common.Hash]nodecommon.L2Tx // structure used to prevent duplicates
-	state           *db.State                       // the state as calculated from the previous rollup and the processed transactions
+	state           db.StateDB                      // the state as calculated from the previous rollup and the processed transactions
 }
 
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(id common.Address, mining bool, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
-	storage := db.NewStorage()
+	backingDB := db.NewInMemoryDB()
+	storage := db.NewStorage(backingDB)
 
 	var l1Blockchain *core.BlockChain
 	if validateBlocks {
@@ -473,18 +527,19 @@ func NewEnclave(id common.Address, mining bool, txHandler mgmtcontractlib.TxHand
 	}
 
 	return &enclaveImpl{
-		node:                 id,
-		mining:               mining,
-		storage:              storage,
-		blockResolver:        storage,
-		mempool:              mempool.New(),
-		statsCollector:       collector,
-		l1Blockchain:         l1Blockchain,
-		txCh:                 make(chan nodecommon.L2Tx),
-		roundWinnerCh:        make(chan *obscurocore.Rollup),
-		exitCh:               make(chan bool),
-		speculativeWorkInCh:  make(chan bool),
-		speculativeWorkOutCh: make(chan speculativeWork),
-		txHandler:            txHandler,
+		node:                        id,
+		mining:                      mining,
+		storage:                     storage,
+		blockResolver:               storage,
+		mempool:                     mempool.New(),
+		statsCollector:              collector,
+		l1Blockchain:                l1Blockchain,
+		txCh:                        make(chan nodecommon.L2Tx),
+		roundWinnerCh:               make(chan *obscurocore.Rollup),
+		exitCh:                      make(chan bool),
+		speculativeWorkInCh:         make(chan bool),
+		speculativeWorkOutCh:        make(chan speculativeWork),
+		txHandler:                   txHandler,
+		speculativeExecutionEnabled: true,
 	}
 }

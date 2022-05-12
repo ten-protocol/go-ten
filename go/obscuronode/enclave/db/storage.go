@@ -3,9 +3,12 @@ package db
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	obscurorawdb "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rawdb"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
@@ -15,106 +18,103 @@ import (
 )
 
 type storageImpl struct {
-	db *inMemoryDB
+	tempDB *InMemoryDB // todo - has to be replaced completely by the ethdb.Database
+	db     ethdb.Database
+}
+
+func NewStorage(db *InMemoryDB) Storage {
+	return &storageImpl{tempDB: db, db: rawdb.NewMemoryDatabase()}
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
-	s.db.StoreGenesisRollup(rol)
+	obscurorawdb.WriteGenesisHash(s.db, rol.Hash())
+	s.StoreRollup(rol)
 }
 
 func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
-	return s.db.FetchGenesisRollup()
-}
-
-func NewStorage() Storage {
-	db := newInMemoryDB()
-	return &storageImpl{db: db}
-}
-
-func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*BlockState, bool) {
-	s.assertSecretAvailable()
-	return s.db.FetchBlockState(hash)
-}
-
-func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *BlockState) {
-	s.assertSecretAvailable()
-	if state.FoundNewRollup {
-		s.db.SetBlockStateNewRollup(hash, state)
-	} else {
-		s.db.SetBlockState(hash, state)
+	hash := obscurorawdb.ReadGenesisHash(s.db)
+	if hash == nil {
+		return nil
 	}
-}
-
-func (s *storageImpl) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
-	s.assertSecretAvailable()
-	s.db.SetRollupState(hash, state)
-}
-
-func (s *storageImpl) FetchHeadState() *BlockState {
-	s.assertSecretAvailable()
-	val, _ := s.db.FetchBlockState(s.db.FetchHeadBlock())
-	return val
+	r, _ := s.FetchRollup(*hash)
+	return r
 }
 
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	s.assertSecretAvailable()
-	s.db.StoreRollup(rollup)
+
+	batch := s.db.NewBatch()
+	obscurorawdb.WriteRollup(batch, rollup)
+	if err := batch.Write(); err != nil {
+		panic(err)
+	}
 }
 
 func (s *storageImpl) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, bool) {
 	s.assertSecretAvailable()
-	return s.db.FetchRollup(hash)
+	r := obscurorawdb.ReadRollup(s.db, hash)
+	if r != nil {
+		return r, true
+	}
+	return nil, false
 }
 
 func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 	s.assertSecretAvailable()
-	return s.db.FetchRollups(height)
-}
-
-func (s *storageImpl) FetchRollupState(hash obscurocommon.L2RootHash) *State {
-	s.assertSecretAvailable()
-	return s.db.FetchRollupState(hash)
+	return obscurorawdb.ReadRollupsForHeight(s.db, height)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	s.assertSecretAvailable()
-	s.db.StoreBlock(b)
+	rawdb.WriteBlock(s.db, b)
 	return true
 }
 
 func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
 	s.assertSecretAvailable()
-	b, f := s.db.FetchBlock(hash)
-	return b, f
+	height := rawdb.ReadHeaderNumber(s.db, hash)
+	if height == nil {
+		return nil, false
+	}
+	b := rawdb.ReadBlock(s.db, hash, *height)
+	if b != nil {
+		return b, true
+	}
+	return nil, false
 }
 
 func (s *storageImpl) FetchHeadBlock() *types.Block {
 	s.assertSecretAvailable()
-	b, _ := s.db.FetchBlock(s.db.FetchHeadBlock())
+	b, _ := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
 	return b
 }
 
 func (s *storageImpl) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
 	s.assertSecretAvailable()
-	return s.db.FetchRollupTxs(r)
+	return s.tempDB.FetchRollupTxs(r)
 }
 
 func (s *storageImpl) StoreRollupTxs(r *core.Rollup, newTxs map[common.Hash]nodecommon.L2Tx) {
 	s.assertSecretAvailable()
-	s.db.StoreRollupTxs(r, newTxs)
+	s.tempDB.StoreRollupTxs(r, newTxs)
 }
 
 func (s *storageImpl) StoreSecret(secret core.SharedEnclaveSecret) {
-	s.db.StoreSecret(secret)
+	obscurorawdb.WriteSharedSecret(s.db, secret)
 }
 
 func (s *storageImpl) FetchSecret() core.SharedEnclaveSecret {
-	return s.db.FetchSecret()
+	ss := obscurorawdb.ReadSharedSecret(s.db)
+	if ss != nil {
+		return *ss
+	}
+	// todo - I guess this is fixed by Matt
+	return core.SharedEnclaveSecret{}
 }
 
 func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
 	s.assertSecretAvailable()
-	parent, found := s.db.FetchRollup(r.Header.ParentHash)
+	parent, found := s.FetchRollup(r.Header.ParentHash)
 	if !found {
 		log.Log(fmt.Sprintf("Could not find rollup: r_%d", obscurocommon.ShortHash(r.Hash())))
 		return nil
@@ -197,4 +197,43 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 		panic("Could not find proof for this rollup")
 	}
 	return v
+}
+
+func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.BlockState, bool) {
+	bs := obscurorawdb.ReadBlockState(s.db, hash)
+	if bs != nil {
+		return bs, true
+	}
+	return nil, false
+}
+
+func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup) {
+	if state.Block != hash {
+		panic("Failed on a sanity check: `state.Block.Hash() != hash`")
+	}
+
+	if state.FoundNewRollup {
+		s.StoreRollup(rollup)
+	}
+	obscurorawdb.WriteBlockState(s.db, state)
+	rawdb.WriteHeadHeaderHash(s.db, state.Block)
+}
+
+func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) StateDB {
+	parent := s.tempDB.FetchRollupState(hash)
+	newState := CopyStateNoWithdrawals(parent)
+	return NewStateDB(s.tempDB, hash, newState)
+}
+
+func (s *storageImpl) GenesisStateDB() StateDB {
+	return NewStateDB(s.tempDB, obscurocommon.GenesisHash, EmptyState())
+}
+
+func (s *storageImpl) FetchHeadState() *core.BlockState {
+	h := rawdb.ReadHeadHeaderHash(s.db)
+	if (h == common.Hash{}) {
+		panic("Should not happen")
+	}
+	val := obscurorawdb.ReadBlockState(s.db, h)
+	return val
 }
