@@ -46,10 +46,6 @@ func addrToHash(a common.Address) common.Hash {
 	return common.BytesToHash(a.Bytes())
 }
 
-func hashToAddr(a common.Hash) common.Address {
-	return common.BytesToAddress(a.Bytes())
-}
-
 func getBalance(s vm.StateDB, address common.Address) uint64 {
 	// This is necessary so that the account actually gets stored
 	s.SetNonce(singleCoinERC20ContractAddress, 1)
@@ -65,15 +61,14 @@ func setBalance(s vm.StateDB, address common.Address, balance uint64) {
 	s.SetState(singleCoinERC20ContractAddress, addrToHash(address), h)
 }
 
-func addWithdrawal(s vm.StateDB, address common.Hash, hash obscurocommon.TxHash) {
-	// a := hashToAddr(address)
+func addWithdrawal(s vm.StateDB, _ common.Hash, hash obscurocommon.TxHash) {
 	// This is necessary so that the account actually gets stored
 	s.SetNonce(withdrawalAddress, 1)
 
 	s.SetState(withdrawalAddress, hash, hash)
 }
 
-func withdrawals(s vm.StateDB, address common.Hash) []obscurocommon.TxHash {
+func withdrawals(s vm.StateDB, _ common.Hash) []obscurocommon.TxHash {
 	var withdrawalTxs []obscurocommon.TxHash
 	err := s.ForEachStorage(withdrawalAddress, func(k common.Hash, v common.Hash) bool {
 		if (v != common.Hash{}) {
