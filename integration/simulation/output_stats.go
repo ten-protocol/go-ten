@@ -2,8 +2,6 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -34,23 +32,17 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 
 func (o *OutputStats) populateHeights() {
 	obscuroClient := o.simulation.ObscuroClients[0]
-
-	var l1Height int64
-	err := (*obscuroClient).Call(&l1Height, obscuroclient.RPCGetCurrentBlockHead)
-	if err != nil {
-		panic("Could not retrieve current block head.")
-	}
-	o.l1Height = int(l1Height)
-
+	o.l1Height = int(getCurrentBlockHeadHeight(obscuroClient))
 	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Number)
 }
 
 func (o *OutputStats) countRollups() {
 	l1Node := o.simulation.EthClients[0]
 	l2Node := o.simulation.ObscuroNodes[0]
+	l2Client := o.simulation.ObscuroClients[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.ParentHash) {
+	for header := getCurrentRollupHead(l2Client); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 

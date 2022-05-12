@@ -2,6 +2,8 @@ package simulation
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"os"
 	"time"
 
@@ -35,4 +37,24 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 		}
 	}
 	return
+}
+
+// Uses the client to retrieve the height of the current block head.
+func getCurrentBlockHeadHeight(client *obscuroclient.Client) int64 {
+	var l1Height int64
+	err := (*client).Call(&l1Height, obscuroclient.RPCGetCurrentBlockHeadHeight)
+	if err != nil {
+		panic("Could not retrieve current block head.")
+	}
+	return l1Height
+}
+
+// Uses the client to retrieve the current rollup head.
+func getCurrentRollupHead(client *obscuroclient.Client) *nodecommon.Header {
+	var result *nodecommon.Header
+	err := (*client).Call(&result, obscuroclient.RPCGetCurrentRollupHead)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
+	}
+	return result
 }

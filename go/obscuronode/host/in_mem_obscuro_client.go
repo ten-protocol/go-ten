@@ -42,10 +42,14 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		c.obscuroAPI.SendTransactionEncrypted(tx)
 
-	case obscuroclient.RPCGetCurrentBlockHead:
-		*result.(*int64) = c.obscuroAPI.GetCurrentBlockHead()
+	case obscuroclient.RPCGetCurrentBlockHeadHeight:
+		*result.(*int64) = c.obscuroAPI.GetCurrentBlockHeadHeight()
+
+	case obscuroclient.RPCGetCurrentRollupHead:
+		*result.(**nodecommon.Header) = c.obscuroAPI.GetCurrentRollupHead()
 	}
 
+	// todo - joel - return error if no match
 	return nil
 }
 

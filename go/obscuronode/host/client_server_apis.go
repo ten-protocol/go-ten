@@ -22,7 +22,12 @@ func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.Encrypted
 	(*api.p2p).BroadcastTx(encryptedTx)
 }
 
-// GetCurrentBlockHead returns the current block head from the node database.
-func (api *ObscuroAPI) GetCurrentBlockHead() int64 {
+// GetCurrentBlockHeadHeight returns the current block head from the node database.
+func (api *ObscuroAPI) GetCurrentBlockHeadHeight() int64 {
 	return api.db.GetCurrentBlockHead().Number.Int64()
+}
+
+// GetCurrentRollupHead returns the current head rollup's header.
+func (api *ObscuroAPI) GetCurrentRollupHead() *nodecommon.Header {
+	return api.db.GetCurrentRollupHead()
 }

@@ -10,8 +10,9 @@ import (
 const (
 	http = "http://"
 
-	RPCSendTransactionEncrypted = "obscuro_sendTransactionEncrypted"
-	RPCGetCurrentBlockHead      = "obscuro_getCurrentBlockHead"
+	RPCSendTransactionEncrypted  = "obscuro_sendTransactionEncrypted"
+	RPCGetCurrentBlockHeadHeight = "obscuro_getCurrentBlockHeadHeight"
+	RPCGetCurrentRollupHead      = "obscuro_getCurrentRollupHead"
 )
 
 // Client is used by client applications to interact with the Obscuro node.

@@ -155,11 +155,7 @@ const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obscuroclient.Client, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) uint64 {
 	nodeID := (*nodeClient).ID()
-	var l1Height int64
-	err := (*nodeClient).Call(&l1Height, obscuroclient.RPCGetCurrentBlockHead)
-	if err != nil {
-		panic("Could not retrieve current block head.")
-	}
+	l1Height := getCurrentBlockHeadHeight(nodeClient)
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
@@ -170,7 +166,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	h := node.DB().GetCurrentRollupHead()
+	h := getCurrentRollupHead(nodeClient)
+
 	if h == nil {
 		panic(fmt.Sprintf("Node %d has no head rollup recorded.\n", obscurocommon.ShortAddress(nodeID)))
 	}
@@ -259,10 +256,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 }
 
 func extractWithdrawals(node *host.Node, nodeClient *obscuroclient.Client) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
-	head := node.DB().GetCurrentRollupHead()
+	head := getCurrentRollupHead(nodeClient)
+
 	if head == nil {
 		panic("the current head should not be nil")
 	}
+
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	for r := head; ; r = node.DB().GetRollupHeader(r.ParentHash) {
 		if r != nil && r.Number == obscurocommon.L1GenesisHeight {
