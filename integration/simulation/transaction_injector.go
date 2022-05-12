@@ -183,7 +183,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			return // Most likely, the simulation has ended.
+			continue
 		}
 
 		go m.trackL2Tx(*signedTx)
@@ -218,7 +218,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			return // Most likely, the simulation has ended.
+			continue
 		}
 
 		m.stats.Withdrawal(v)
@@ -237,7 +237,7 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			return // Most likely, the simulation has ended.
+			continue
 		}
 	}
 }
