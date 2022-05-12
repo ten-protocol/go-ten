@@ -2,10 +2,12 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"os"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 )
@@ -53,6 +55,16 @@ func getCurrentBlockHeadHeight(client *obscuroclient.Client) int64 {
 func getCurrentRollupHead(client *obscuroclient.Client) *nodecommon.Header {
 	var result *nodecommon.Header
 	err := (*client).Call(&result, obscuroclient.RPCGetCurrentRollupHead)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
+	}
+	return result
+}
+
+// Uses the client to retrieve the rollup header with the matching hash.
+func getRollupHeader(client *obscuroclient.Client, hash common.Hash) *nodecommon.Header {
+	var result *nodecommon.Header
+	err := (*client).Call(&result, obscuroclient.RPCGetRollupHeader, hash)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
 	}

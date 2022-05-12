@@ -31,13 +31,13 @@ func (c *inMemObscuroClient) ID() common.Address {
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case obscuroclient.RPCSendTransactionEncrypted:
-		// TODO - Extract this checking logic as the set of RPC operations grows.
+		// TODO - joel - Extract this checking logic as the set of RPC operations grows.
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
 		}
 		tx, ok := args[0].(nodecommon.EncryptedTx)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type EncryptedTx", obscuroclient.RPCSendTransactionEncrypted)
+			return fmt.Errorf("arg to %s was not of expected type nodecommon.EncryptedTx", obscuroclient.RPCSendTransactionEncrypted)
 		}
 
 		c.obscuroAPI.SendTransactionEncrypted(tx)
@@ -47,6 +47,17 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 	case obscuroclient.RPCGetCurrentRollupHead:
 		*result.(**nodecommon.Header) = c.obscuroAPI.GetCurrentRollupHead()
+
+	case obscuroclient.RPCGetRollupHeader:
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
+		}
+		hash, ok := args[0].(common.Hash)
+		if !ok {
+			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCSendTransactionEncrypted)
+		}
+
+		*result.(**nodecommon.Header) = c.obscuroAPI.GetRollupHeader(hash)
 	}
 
 	// todo - joel - return error if no match

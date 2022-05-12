@@ -13,6 +13,7 @@ const (
 	RPCSendTransactionEncrypted  = "obscuro_sendTransactionEncrypted"
 	RPCGetCurrentBlockHeadHeight = "obscuro_getCurrentBlockHeadHeight"
 	RPCGetCurrentRollupHead      = "obscuro_getCurrentRollupHead"
+	RPCGetRollupHeader           = "obscuro_getRollupHeader"
 )
 
 // Client is used by client applications to interact with the Obscuro node.

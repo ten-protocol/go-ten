@@ -1,6 +1,7 @@
 package host
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -22,7 +23,7 @@ func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.Encrypted
 	(*api.p2p).BroadcastTx(encryptedTx)
 }
 
-// GetCurrentBlockHeadHeight returns the current block head from the node database.
+// GetCurrentBlockHeadHeight returns the height of the current head block.
 func (api *ObscuroAPI) GetCurrentBlockHeadHeight() int64 {
 	return api.db.GetCurrentBlockHead().Number.Int64()
 }
@@ -30,4 +31,9 @@ func (api *ObscuroAPI) GetCurrentBlockHeadHeight() int64 {
 // GetCurrentRollupHead returns the current head rollup's header.
 func (api *ObscuroAPI) GetCurrentRollupHead() *nodecommon.Header {
 	return api.db.GetCurrentRollupHead()
+}
+
+// GetRollupHeader returns the header of the rollup with the given hash.
+func (api *ObscuroAPI) GetRollupHeader(hash common.Hash) *nodecommon.Header {
+	return api.db.GetRollupHeader(hash)
 }

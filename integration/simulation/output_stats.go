@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -38,11 +39,10 @@ func (o *OutputStats) populateHeights() {
 
 func (o *OutputStats) countRollups() {
 	l1Node := o.simulation.EthClients[0]
-	l2Node := o.simulation.ObscuroNodes[0]
 	l2Client := o.simulation.ObscuroClients[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := getCurrentRollupHead(l2Client); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.ParentHash) {
+	for header := getCurrentRollupHead(l2Client); header != nil && header.Hash() != obscurocommon.GenesisHash; header = getRollupHeader(l2Client, header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 

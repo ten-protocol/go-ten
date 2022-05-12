@@ -214,7 +214,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 		t.Errorf("Node %d - %d out of %d Withdrawal Txs not found in the enclave", obscurocommon.ShortAddress(nodeID), notFoundWithdrawals, len(withdrawals))
 	}
 
-	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(node, nodeClient)
+	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(nodeClient)
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.GetL2WithdrawalRequests()) {
@@ -255,7 +255,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 	return l2Height
 }
 
-func extractWithdrawals(node *host.Node, nodeClient *obscuroclient.Client) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(nodeClient *obscuroclient.Client) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {
@@ -263,7 +263,7 @@ func extractWithdrawals(node *host.Node, nodeClient *obscuroclient.Client) (tota
 	}
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for r := head; ; r = node.DB().GetRollupHeader(r.ParentHash) {
+	for r := head; ; r = getRollupHeader(nodeClient, r.ParentHash) {
 		if r != nil && r.Number == obscurocommon.L1GenesisHeight {
 			return
 		}
