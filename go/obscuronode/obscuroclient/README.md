@@ -1,0 +1,1 @@
+This package contains library code to allow applications to connect to an Obscuro node via RPC.
