@@ -1,7 +1,7 @@
 package simulation
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"math/big"
 	"math/rand"
 	"sync"

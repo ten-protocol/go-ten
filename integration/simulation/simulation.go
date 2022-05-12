@@ -3,7 +3,7 @@ package simulation
 import (
 	"fmt"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"net"
 	"time"
 
