@@ -23,10 +23,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	ethClients, obscuroNodes, p2pAddrs := netw.Create(params, stats)
 
-	// TODO - Remove this waiting period. The ability for nodes to catch up should be part of the tests.
-	waitForP2p(p2pAddrs)
-
-	// todo - joel - unfortunately, I need to wait for the nodes to be ready to start the clients. or do I? investigate
+	// todo - joel - move this up into netw.Create
 	hostClients := make([]*obscuroclient.Client, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// todo - joel - configure address. currently all pointing at same address

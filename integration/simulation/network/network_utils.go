@@ -4,8 +4,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/clientserver"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
@@ -49,13 +47,13 @@ func createInMemObscuroNode(
 ) *host.Node {
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
-	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
+	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, false, nil)
 
 	nodeID := common.BigToAddress(big.NewInt(id))
 	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, clientserver.NewClientServerDummy(), txHandler)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, txHandler)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
@@ -68,17 +66,20 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs)
-	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-	// todo - joel - this server should auto-create, with the possibility of disabling. it's the obscuro client that should be mockable
-	clientServer := clientserver.NewClientServer(clientServerAddr, nodeP2p)
+	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
 	txHandler := ethereum_mock.NewMockTxHandler()
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, nodeP2p, nil, enclaveClient, clientServer, txHandler)
+	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, nodeP2p, nil, enclaveClient, txHandler)
 
 	return &node
 }
 
-func defaultObscuroNodeCfg(gossipPeriod time.Duration) host.AggregatorCfg {
-	return host.AggregatorCfg{ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs, GossipRoundDuration: gossipPeriod}
+func defaultObscuroNodeCfg(gossipPeriod time.Duration, hasRPC bool, rpcAddress *string) host.AggregatorCfg {
+	return host.AggregatorCfg{
+		ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs,
+		GossipRoundDuration:  gossipPeriod,
+		HasRPC:               hasRPC,
+		RpcAddress:           rpcAddress,
+	}
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {

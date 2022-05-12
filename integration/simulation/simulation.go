@@ -38,6 +38,9 @@ type Simulation struct {
 func (s *Simulation) Start() {
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
+	// TODO - Remove this waiting period. The ability for nodes to catch up should be part of the tests.
+	waitForP2p(s.ObscuroP2PAddrs)
+
 	timer := time.Now()
 	go s.TxInjector.Start()
 
