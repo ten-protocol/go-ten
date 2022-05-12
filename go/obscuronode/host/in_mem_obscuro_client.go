@@ -22,8 +22,8 @@ func NewInMemObscuroClient(p2p P2P) obscuroclient.Client {
 func (c inMemObscuroClient) Call(_ interface{}, method string, args ...interface{}) error {
 	if method == obscuroclient.RPCSendTransactionEncrypted {
 		// TODO - Extract this checking logic as the set of RPC operations grows.
-		if len(args) != 0 {
-			return fmt.Errorf("expected 0 args to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
 		}
 		tx, ok := args[0].(nodecommon.EncryptedTx)
 		if !ok {
