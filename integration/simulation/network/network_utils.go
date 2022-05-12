@@ -78,7 +78,7 @@ func defaultObscuroNodeCfg(gossipPeriod time.Duration, hasRPC bool, rpcAddress *
 		ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs,
 		GossipRoundDuration:  gossipPeriod,
 		HasRPC:               hasRPC,
-		RpcAddress:           rpcAddress,
+		RPCAddress:           rpcAddress,
 	}
 }
 

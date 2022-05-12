@@ -14,6 +14,6 @@ func NewObscuroAPI(p2p P2P) *ObscuroAPI {
 }
 
 // SendTransactionEncrypted sends the encrypted Obscuro transaction to all peer Obscuro nodes.
-func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.EncryptedTx) { //nolint
+func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.EncryptedTx) {
 	api.p2p.BroadcastTx(encryptedTx)
 }

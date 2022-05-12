@@ -29,7 +29,7 @@ type AggregatorCfg struct {
 	// Whether to serve client RPC requests
 	HasRPC bool
 	// address on which to serve client RPC requests
-	RpcAddress *string
+	RPCAddress *string
 }
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
@@ -106,7 +106,7 @@ func NewObscuroAggregator(
 ) Node {
 	var clientServer ClientServer
 	if cfg.HasRPC {
-		clientServer = NewClientServer(*cfg.RpcAddress, p2p)
+		clientServer = NewClientServer(*cfg.RPCAddress, p2p)
 	}
 
 	return Node{
