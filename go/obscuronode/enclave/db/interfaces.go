@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
@@ -56,22 +57,9 @@ type BlockStateStorage interface {
 	// SetBlockState save the rollup-block mapping
 	SetBlockState(blockHash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup)
 	// CreateStateDB create a database that can be used to execute transactions
-	CreateStateDB(hash obscurocommon.L2RootHash) StateDB
+	CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB
 	// GenesisStateDB create the original empty StateDB
-	GenesisStateDB() StateDB
-}
-
-// StateDB - is the conceptual equivalent of the geth vm.StateDB
-type StateDB interface {
-	GetBalance(address common.Address) uint64
-	SetBalance(address common.Address, balance uint64)
-	AddWithdrawal(txHash obscurocommon.TxHash)
-	Copy() StateDB
-	StateRoot() common.Hash
-	Withdrawals() []obscurocommon.TxHash
-
-	// Commit saves the changes made during transaction execution to a persistent db
-	Commit(currentRoot obscurocommon.L2RootHash)
+	GenesisStateDB() *state.StateDB
 }
 
 type SharedSecretStorage interface {

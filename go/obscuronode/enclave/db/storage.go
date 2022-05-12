@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -18,12 +19,18 @@ import (
 )
 
 type storageImpl struct {
-	tempDB *InMemoryDB // todo - has to be replaced completely by the ethdb.Database
-	db     ethdb.Database
+	tempDB  *InMemoryDB // todo - has to be replaced completely by the ethdb.Database
+	db      ethdb.Database
+	stateDB state.Database
 }
 
 func NewStorage(db *InMemoryDB) Storage {
-	return &storageImpl{tempDB: db, db: rawdb.NewMemoryDatabase()}
+	backingDb := rawdb.NewMemoryDatabase()
+	return &storageImpl{
+		tempDB:  db,
+		db:      backingDb,
+		stateDB: state.NewDatabase(backingDb),
+	}
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
@@ -219,14 +226,21 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.B
 	rawdb.WriteHeadHeaderHash(s.db, state.Block)
 }
 
-func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) StateDB {
-	parent := s.tempDB.FetchRollupState(hash)
-	newState := CopyStateNoWithdrawals(parent)
-	return NewStateDB(s.tempDB, hash, newState)
+func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB {
+	rollup, f := s.FetchRollup(hash)
+	if !f {
+		panic("should not hapen")
+	}
+	// todo - snapshots?
+	statedb, err := state.New(rollup.Header.State, s.stateDB, nil)
+	if err != nil {
+		panic(err)
+	}
+	return statedb
 }
 
-func (s *storageImpl) GenesisStateDB() StateDB {
-	return NewStateDB(s.tempDB, obscurocommon.GenesisHash, EmptyState())
+func (s *storageImpl) GenesisStateDB() *state.StateDB {
+	return s.CreateStateDB(s.FetchGenesisRollup().Hash())
 }
 
 func (s *storageImpl) FetchHeadState() *core.BlockState {

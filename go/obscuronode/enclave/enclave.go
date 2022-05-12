@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/state"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/mempool"
 
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
@@ -74,6 +76,8 @@ func (e *enclaveImpl) start(block types.Block) {
 		env.headRollup, _ = e.storage.FetchRollup(blockState.HeadRollup)
 		if env.headRollup != nil {
 			env.state = e.storage.CreateStateDB(env.headRollup.Hash())
+			s := env.state.Snapshot()
+			fmt.Printf("%d", s)
 		}
 	}
 
@@ -85,6 +89,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.node)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
+			env.state.Snapshot()
 			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculatve env  r_%d(%d).",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
@@ -105,7 +110,7 @@ func (e *enclaveImpl) start(block types.Block) {
 				if !found {
 					env.processedTxsMap[tx.Hash()] = tx
 					env.processedTxs = append(env.processedTxs, tx)
-					executeTx(env.state, tx)
+					executeTx(env.state, tx, env.header)
 				}
 			}
 
@@ -118,7 +123,7 @@ func (e *enclaveImpl) start(block types.Block) {
 				e.speculativeWorkOutCh <- speculativeWork{
 					found: true,
 					r:     env.headRollup,
-					s:     env.state.Copy(),
+					s:     env.state,
 					h:     env.header,
 					txs:   b,
 				}
@@ -276,9 +281,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 
 	parentState := e.storage.CreateStateDB(head.Hash())
 	// determine the winner of the round
-	winnerRollup, s := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
-	s.Commit(winnerRollup.Hash())
-	// e.storage.SetRollupState(winnerRollup.Hash(), s)
+	winnerRollup, _ := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
 	if e.speculativeExecutionEnabled {
 		go e.notifySpeculative(winnerRollup)
 	}
@@ -308,7 +311,8 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
-	return e.storage.CreateStateDB(e.storage.FetchHeadState().HeadRollup).GetBalance(address)
+	s := e.storage.CreateStateDB(e.storage.FetchHeadState().HeadRollup)
+	return getBalance(s, address)
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
@@ -319,7 +323,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 
 	// These variables will be used to create the new rollup
 	var newRollupTxs []nodecommon.L2Tx
-	var newRollupState db.StateDB
+	var newRollupState *state.StateDB
 	var newRollupHeader *nodecommon.Header
 
 	speculativeExecutionSucceeded := false
@@ -363,14 +367,20 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
+	depositTxs := extractDeposits(proof, b, e.blockResolver, e.txHandler)
 	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
-	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), newRollupTxs, obscurocommon.GenerateNonce(), newRollupState.StateRoot())
+	rootHash, err := newRollupState.Commit(true)
+	if err != nil {
+		return nil
+	}
+	// dump := newRollupState.Dump(&state.DumpConfig{})
+	// log.Log(fmt.Sprintf(">   Agg%d: State:%s", obscurocommon.ShortAddress(e.node), dump))
+	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), newRollupTxs, obscurocommon.GenerateNonce(), rootHash)
 
 	// Postprocessing - withdrawals
-	r.Header.Withdrawals = rollupPostProcessingWithdrawals(&r, newRollupState)
+	r.Header.Withdrawals = rollupPostProcessingWithdrawals(&r, newRollupState, newRollupHeader)
 
 	return &r
 }
@@ -495,7 +505,7 @@ func encryptSecret(secret obscurocore.SharedEnclaveSecret) obscurocommon.Encrypt
 type speculativeWork struct {
 	found bool
 	r     *obscurocore.Rollup
-	s     db.StateDB
+	s     *state.StateDB
 	h     *nodecommon.Header
 	txs   []nodecommon.L2Tx
 }
@@ -506,7 +516,7 @@ type processingEnvironment struct {
 	header          *nodecommon.Header              // the header of the new rollup
 	processedTxs    []nodecommon.L2Tx               // txs that were already processed
 	processedTxsMap map[common.Hash]nodecommon.L2Tx // structure used to prevent duplicates
-	state           db.StateDB                      // the state as calculated from the previous rollup and the processed transactions
+	state           *state.StateDB                  // the state as calculated from the previous rollup and the processed transactions
 }
 
 // NewEnclave creates a new enclave.
@@ -540,6 +550,6 @@ func NewEnclave(id common.Address, mining bool, txHandler mgmtcontractlib.TxHand
 		speculativeWorkInCh:         make(chan bool),
 		speculativeWorkOutCh:        make(chan speculativeWork),
 		txHandler:                   txHandler,
-		speculativeExecutionEnabled: true,
+		speculativeExecutionEnabled: false, // TODO - reenable
 	}
 }
