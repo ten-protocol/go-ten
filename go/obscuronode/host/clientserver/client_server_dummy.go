@@ -4,6 +4,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 )
 
+// todo - joel - rename to in-mem (change file name too)
 // A no-op implementation of `host.ClientServer`.
 type clientServerDummyImpl struct{}
 
@@ -12,8 +13,8 @@ func NewClientServerDummy() host.ClientServer {
 	return clientServerDummyImpl{}
 }
 
-func (server clientServerDummyImpl) Start() {
+func (s clientServerDummyImpl) Start() {
 }
 
-func (server clientServerDummyImpl) Stop() {
+func (s clientServerDummyImpl) Stop() {
 }

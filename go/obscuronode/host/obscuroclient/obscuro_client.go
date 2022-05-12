@@ -11,7 +11,7 @@ type Client interface {
 }
 
 // todo - joel - describe
-type ClientImpl struct {
+type clientImpl struct {
 	rpcClient *rpc.Client
 }
 
@@ -22,12 +22,12 @@ func NewClient() Client {
 		panic(err)
 	}
 
-	return ClientImpl{rpcClient: rpcClient}
+	return clientImpl{rpcClient: rpcClient}
 }
 
 // todo - joel - describe
-func (c ClientImpl) Call(result interface{}, method string, args ...interface{}) error {
-	return c.rpcClient.Call(result, method, args)
+func (c clientImpl) Call(result interface{}, method string, args ...interface{}) error {
+	return c.rpcClient.Call(result, method, args...)
 }
 
 // todo - joel - describe

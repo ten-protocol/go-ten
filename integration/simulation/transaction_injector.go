@@ -180,9 +180,8 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
 
-		var result string
-		// todo - joel - use constant
-		err := (*m.rndL2NodeClient()).Call(&result, "obscuro_sendTransactionEncrypted", encryptedTx)
+		// todo - joel - use constant for method name
+		err := (*m.rndL2NodeClient()).Call(nil, "obscuro_sendTransactionEncrypted", encryptedTx)
 		if err != nil {
 			panic(err) // todo - joel - don't panic here.
 		}
@@ -217,11 +216,8 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 
-		var result string
-		// todo - joel - use constant
-		// todo - joel - pass encrypted tx instead
-		println(encryptedTx)
-		err := (*m.rndL2NodeClient()).Call(&result, "obscuro_sendTransactionEncrypted", "test")
+		// todo - joel - use constant for method name
+		err := (*m.rndL2NodeClient()).Call(nil, "obscuro_sendTransactionEncrypted", encryptedTx)
 		if err != nil {
 			panic(err) // todo - joel - don't panic here.
 		}
@@ -240,9 +236,8 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
 
-		var result string
-		// todo - joel - use constant
-		err := (*m.rndL2NodeClient()).Call(&result, "obscuro_sendTransactionEncrypted", encryptedTx)
+		// todo - joel - use constant for method name
+		err := (*m.rndL2NodeClient()).Call(nil, "obscuro_sendTransactionEncrypted", encryptedTx)
 		if err != nil {
 			panic(err) // todo - joel - don't panic here.
 		}

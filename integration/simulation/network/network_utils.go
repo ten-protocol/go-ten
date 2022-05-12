@@ -69,7 +69,8 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod)
-	clientServer := clientserver.NewClientServer(clientServerAddr)
+	// todo - joel - this server should auto-create, with the possibility of disabling. it's the obscuro client that should be mockable
+	clientServer := clientserver.NewClientServer(clientServerAddr, nodeP2p)
 	txHandler := ethereum_mock.NewMockTxHandler()
 	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, nodeP2p, nil, enclaveClient, clientServer, txHandler)
 

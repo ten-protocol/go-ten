@@ -1,35 +1,20 @@
 package clientserver
 
 import (
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-const chainID = 1337 // TODO - Retrieve this value from the config service.
-
-var bigChainID = (*hexutil.Big)(big.NewInt(chainID))
-
-// EthAPI implements specific Ethereum JSON RPC operations in the "eth" namespace.
-type EthAPI struct{}
-
-func NewEthAPI() *EthAPI {
-	return &EthAPI{}
-}
-
-func (api *EthAPI) ChainId() (*hexutil.Big, error) { //nolint
-	return bigChainID, nil
-}
-
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.
-type ObscuroAPI struct{}
-
-func NewObscuroAPI() *ObscuroAPI {
-	return &ObscuroAPI{}
+type ObscuroAPI struct {
+	p2p host.P2P
 }
 
-// todo - joel - want to receive a string here instead - how?
-func (api *ObscuroAPI) SendTransactionEncrypted([]interface{}) string { //nolint
-	println("received encrypted tx")
-	return "hello joel"
+func NewObscuroAPI(p2p host.P2P) *ObscuroAPI {
+	return &ObscuroAPI{p2p: p2p}
+}
+
+// SendTransactionEncrypted sends the encrypted Obscuro transaction to all peer Obscuro nodes.
+func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.EncryptedTx) { //nolint
+	api.p2p.BroadcastTx(encryptedTx)
 }
