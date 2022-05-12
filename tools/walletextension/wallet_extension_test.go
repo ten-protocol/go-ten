@@ -185,7 +185,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-func TestCannotGetAnothersStorageAfterSubmittingViewingKey(t *testing.T) {
+func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
 	startPort := 3018
