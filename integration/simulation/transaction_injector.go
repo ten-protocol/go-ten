@@ -183,6 +183,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
+			log.Log("Failed to issue transfer via RPC.")
 			continue
 		}
 
@@ -218,6 +219,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
+			log.Log("Failed to issue withdrawal via RPC.")
 			continue
 		}
 
@@ -237,6 +239,7 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
+			log.Log("Failed to issue withdrawal via RPC.")
 			continue
 		}
 	}
