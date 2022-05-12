@@ -1,7 +1,6 @@
 package simulation
 
 import (
-	"fmt"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -184,7 +183,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			panic(fmt.Errorf("failed to issue transfer; ending simulation. Cause: %w", err))
+			return // Most likely, the simulation has ended.
 		}
 
 		go m.trackL2Tx(*signedTx)
@@ -219,7 +218,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			panic(fmt.Errorf("failed to issue withdrawal; ending simulation. Cause: %w", err))
+			return // Most likely, the simulation has ended.
 		}
 
 		m.stats.Withdrawal(v)
@@ -238,7 +237,7 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			panic(fmt.Errorf("failed to issue withdrawal; ending simulation. Cause: %w", err))
+			return // Most likely, the simulation has ended.
 		}
 	}
 }
