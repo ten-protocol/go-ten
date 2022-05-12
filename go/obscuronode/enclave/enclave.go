@@ -322,7 +322,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	var newRollupState db.StateDB
 	var newRollupHeader *nodecommon.Header
 
-	speculativeExecutionSucceeded := e.speculativeExecutionEnabled
+	speculativeExecutionSucceeded := false
 
 	if e.speculativeExecutionEnabled {
 		// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
@@ -333,7 +333,10 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 		newRollupState = speculativeRollup.s
 		newRollupHeader = speculativeRollup.h
 
+		// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
+		// or speculative execution is disabled
 		speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
+
 		if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
@@ -347,18 +350,17 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 		}
 	}
 
-	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-	// or speculative execution is disabled
 	if !speculativeExecutionSucceeded {
+		// In case the speculative execution thread has not succeeded in producing a valid rollup
+		// we have to create a new one from the mempool transactions
 		newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.node)
-		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 
 		newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
 		executeTransactions(newRollupTxs, newRollupState, newRollupHeader)
 	}
 
-	// always process deposits last
+	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
 	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
