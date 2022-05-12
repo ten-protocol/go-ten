@@ -33,14 +33,11 @@ package network
 //	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 //
 //	for i := 0; i < params.NumberOfNodes; i++ {
-//		genesis := false
-//		if i == 0 {
-//			genesis = true
-//		}
+//		isGenesis := i == 0
 //
 //		// create the in memory l1 and l2 node
 //		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-//		agg := createInMemObscuroNode(int64(i), genesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats, false, nil)
+//		agg := createInMemObscuroNode(int64(i), isGenesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats, false, nil)
 //
 //		// and connect them to each other
 //		agg.ConnectToEthNode(miner)

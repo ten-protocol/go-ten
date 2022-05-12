@@ -20,9 +20,9 @@ import (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfSocketNodes struct {
-	ethNodes         []*ethereum_mock.Node
-	obscuroNodes     []*host.Node
-	obscuroAddresses []string
+	ethNodes       []*ethereum_mock.Node
+	obscuroNodes   []*host.Node
+	obscuroClients []*obscuroclient.Client
 }
 
 func NewBasicNetworkOfSocketNodes() Network {
@@ -33,48 +33,45 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
+	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
+	nodeP2pAddrs := make([]string, params.NumberOfNodes)
 
-	var nodeP2pAddrs []string
-	var nodeEnclaveAddrs []string
-	var nodeClientServerAddrs []string
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
-		nodeP2pAddrs = append(nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i))
-		nodeEnclaveAddrs = append(nodeEnclaveAddrs, fmt.Sprintf("%s:%d", Localhost, EnclaveStartPort+i))
-		nodeClientServerAddrs = append(nodeClientServerAddrs, fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i))
+		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i)
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
-		genesis := false
-		if i == 0 {
-			genesis = true
-		}
+		isGenesis := i == 0
 
 		// create a remote enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		err := enclave.StartServer(nodeEnclaveAddrs[i], nodeID, params.TxHandler, false, nil, stats)
+		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, EnclaveStartPort+i)
+		err := enclave.StartServer(enclaveAddr, nodeID, params.TxHandler, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}
 
-		// create the in memory l1 and l2 node
+		// create the in memory l1 and l2 node and the l2 client
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, nodeEnclaveAddrs[i], nodeClientServerAddrs[i])
+		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
+		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
+		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
+		l1Clients[i] = miner
 		n.ethNodes[i] = miner
 		n.obscuroNodes[i] = agg
-		l1Clients[i] = miner
+		n.obscuroClients[i] = &obscuroClient
 	}
 
 	// populate the nodes field of the L1 network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
 	}
-	n.obscuroAddresses = nodeP2pAddrs
 
 	// The sequence of starting the nodes is important to catch various edge cases.
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
@@ -95,18 +92,10 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	// todo - joel - see if I can pull this into a cleaner place
-	hostClients := make([]*obscuroclient.Client, params.NumberOfNodes)
-	for i := 0; i < params.NumberOfNodes; i++ {
-		client := obscuroclient.NewClient(nodeClientServerAddrs[i])
-		hostClients[i] = &client
-	}
-
-	return l1Clients, n.obscuroNodes, hostClients, nodeP2pAddrs
+	return l1Clients, n.obscuroNodes, n.obscuroClients, nodeP2pAddrs
 }
 
 func (n *basicNetworkOfSocketNodes) TearDown() {
-	// todo - joel - stop the Obscuro clients and l1 clients
 	go func() {
 		for _, n := range n.obscuroNodes {
 			n.Stop()
@@ -118,4 +107,11 @@ func (n *basicNetworkOfSocketNodes) TearDown() {
 			go t.Stop()
 		}
 	}()
+	go func() {
+		for _, m := range n.obscuroClients {
+			t := m
+			(*t).Stop()
+		}
+	}()
+
 }

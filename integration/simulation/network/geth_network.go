@@ -65,10 +65,7 @@ package network
 //	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
 //
 //	for i := 0; i < params.NumberOfNodes; i++ {
-//		isGenesis := false
-//		if i == 0 {
-//			isGenesis = true
-//		}
+//		isGenesis := i == 0
 //
 //		// create the in memory l1 and l2 node
 //		miner := createEthClientConnection(

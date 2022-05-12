@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+const apiNamespaceObscuro = "obscuro"
 const apiVersion1 = "1.0"
 
 // An implementation of `host.ClientServer` that reuses the Geth `node` package for client communication.
@@ -40,7 +41,7 @@ func NewClientServer(address string, p2p P2P) ClientServer {
 
 	rpcAPIs := []rpc.API{
 		{
-			Namespace: "obscuro",
+			Namespace: apiNamespaceObscuro,
 			Version:   apiVersion1,
 			Service:   NewObscuroAPI(p2p),
 			Public:    true,

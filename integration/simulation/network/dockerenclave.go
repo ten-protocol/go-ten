@@ -42,15 +42,12 @@ package network
 //	}
 //
 //	for i := 0; i < params.NumberOfNodes; i++ {
-//		genesis := false
-//		if i == 0 {
-//			genesis = true
-//		}
+//		isGenesis := i == 0
 //
 //		// create the in memory l1 and l2 node
 //		enclavePort := uint64(EnclaveStartPort + i)
 //		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-//		agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, enclavePort), nodeClientServerAddrs[i])
+//		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, enclavePort), nodeClientServerAddrs[i])
 //
 //		// and connect them to each other
 //		agg.ConnectToEthNode(miner)
