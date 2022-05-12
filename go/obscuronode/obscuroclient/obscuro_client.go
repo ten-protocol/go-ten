@@ -10,10 +10,13 @@ import (
 const (
 	http = "http://"
 
+	// todo - joel - consider using an enum here
 	RPCSendTransactionEncrypted  = "obscuro_sendTransactionEncrypted"
 	RPCGetCurrentBlockHeadHeight = "obscuro_getCurrentBlockHeadHeight"
 	RPCGetCurrentRollupHead      = "obscuro_getCurrentRollupHead"
 	RPCGetRollupHeader           = "obscuro_getRollupHeader"
+	RPCGetTransaction            = "obscuro_getTransaction"
+	RPCBalance                   = "obscuro_balance"
 )
 
 // Client is used by client applications to interact with the Obscuro node.

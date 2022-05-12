@@ -108,7 +108,7 @@ func NewObscuroAggregator(
 
 	var clientServer ClientServer
 	if cfg.HasRPC {
-		clientServer = NewClientServer(*cfg.RPCAddress, &p2p, db)
+		clientServer = NewClientServer(*cfg.RPCAddress, &p2p, db, &enclaveClient)
 	}
 
 	return Node{

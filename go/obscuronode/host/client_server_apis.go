@@ -7,14 +7,16 @@ import (
 
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.
 type ObscuroAPI struct {
-	p2p *P2P
-	db  *DB
+	p2p     *P2P
+	db      *DB
+	enclave *nodecommon.Enclave
 }
 
-func NewObscuroAPI(p2p *P2P, db *DB) *ObscuroAPI {
+func NewObscuroAPI(p2p *P2P, db *DB, enclave *nodecommon.Enclave) *ObscuroAPI {
 	return &ObscuroAPI{
-		p2p: p2p,
-		db:  db,
+		p2p:     p2p,
+		db:      db,
+		enclave: enclave,
 	}
 }
 
@@ -36,4 +38,14 @@ func (api *ObscuroAPI) GetCurrentRollupHead() *nodecommon.Header {
 // GetRollupHeader returns the header of the rollup with the given hash.
 func (api *ObscuroAPI) GetRollupHeader(hash common.Hash) *nodecommon.Header {
 	return api.db.GetRollupHeader(hash)
+}
+
+// GetTransaction returns the transaction with the given hash.
+func (api *ObscuroAPI) GetTransaction(hash common.Hash) *nodecommon.L2Tx {
+	return (*api.enclave).GetTransaction(hash)
+}
+
+// Balance returns the balance of the wallet with the given address.
+func (api *ObscuroAPI) Balance(address common.Address) uint64 {
+	return (*api.enclave).Balance(address)
 }

@@ -13,7 +13,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -68,10 +67,9 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	// process the blockchain of each node in parallel to minimize the difference between them since they are still running
 	heights := make([]uint64, len(s.ObscuroClients))
 	var wg sync.WaitGroup
-	// todo - joel - once I'm only using obscuro client, I can just range over those
-	for i, node := range s.ObscuroNodes {
+	for i, obscuroClient := range s.ObscuroClients {
 		wg.Add(1)
-		go checkBlockchainOfObscuroNode(t, node, s.ObscuroClients[i], minHeight, maxL1Height, s, &wg, heights, i)
+		go checkBlockchainOfObscuroNode(t, obscuroClient, minHeight, maxL1Height, s, &wg, heights, i)
 	}
 	wg.Wait()
 	min, max := minMax(heights)
@@ -153,7 +151,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
-func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obscuroclient.Client, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) uint64 {
+func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) uint64 {
 	nodeID := (*nodeClient).ID()
 	l1Height := getCurrentBlockHeadHeight(nodeClient)
 
@@ -196,7 +194,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 	transfers, withdrawals := s.TxInjector.GetL2Transactions()
 	notFoundTransfers := 0
 	for _, tx := range transfers {
-		if l2tx := node.EnclaveClient.GetTransaction(tx.Hash()); l2tx == nil {
+		if l2tx := getTransaction(nodeClient, tx.Hash()); l2tx == nil {
 			notFoundTransfers++
 		}
 	}
@@ -206,7 +204,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 
 	notFoundWithdrawals := 0
 	for _, tx := range withdrawals {
-		if l2tx := node.EnclaveClient.GetTransaction(tx.Hash()); l2tx == nil {
+		if l2tx := getTransaction(nodeClient, tx.Hash()); l2tx == nil {
 			notFoundWithdrawals++
 		}
 	}
@@ -242,7 +240,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.TxInjector.wallets {
-		total += node.EnclaveClient.Balance(wallet.Address)
+		total += balance(nodeClient, wallet.Address)
 	}
 	if total != totalAmountInSystem {
 		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", obscurocommon.ShortAddress(nodeID), total, totalAmountInSystem)

@@ -34,7 +34,7 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 func (o *OutputStats) populateHeights() {
 	obscuroClient := o.simulation.ObscuroClients[0]
 	o.l1Height = int(getCurrentBlockHeadHeight(obscuroClient))
-	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Number)
+	o.l2Height = int(getCurrentRollupHead(obscuroClient).Number)
 }
 
 func (o *OutputStats) countRollups() {

@@ -70,3 +70,23 @@ func getRollupHeader(client *obscuroclient.Client, hash common.Hash) *nodecommon
 	}
 	return result
 }
+
+// Uses the client to retrieve the transaction with the matching hash.
+func getTransaction(client *obscuroclient.Client, hash common.Hash) *nodecommon.L2Tx {
+	var result *nodecommon.L2Tx
+	err := (*client).Call(&result, obscuroclient.RPCGetTransaction, hash)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
+	}
+	return result
+}
+
+// Uses the client to retrieve the balance of the wallet with the given address.
+func balance(client *obscuroclient.Client, address common.Address) uint64 {
+	var result uint64
+	err := (*client).Call(&result, obscuroclient.RPCBalance, address)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
+	}
+	return result
+}

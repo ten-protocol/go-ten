@@ -16,9 +16,9 @@ type inMemObscuroClient struct {
 	obscuroAPI ObscuroAPI
 }
 
-func NewInMemObscuroClient(nodeID int64, p2p *P2P, db *DB) obscuroclient.Client {
+func NewInMemObscuroClient(nodeID int64, p2p *P2P, db *DB, enclave *nodecommon.Enclave) obscuroclient.Client {
 	return &inMemObscuroClient{
-		obscuroAPI: *NewObscuroAPI(p2p, db),
+		obscuroAPI: *NewObscuroAPI(p2p, db, enclave),
 		nodeID:     common.BigToAddress(big.NewInt(nodeID)),
 	}
 }
@@ -50,14 +50,36 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 	case obscuroclient.RPCGetRollupHeader:
 		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCGetRollupHeader, len(args))
 		}
 		hash, ok := args[0].(common.Hash)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCSendTransactionEncrypted)
+			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCGetRollupHeader)
 		}
 
 		*result.(**nodecommon.Header) = c.obscuroAPI.GetRollupHeader(hash)
+
+	case obscuroclient.RPCGetTransaction:
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCGetTransaction, len(args))
+		}
+		hash, ok := args[0].(common.Hash)
+		if !ok {
+			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCGetTransaction)
+		}
+
+		*result.(**nodecommon.L2Tx) = c.obscuroAPI.GetTransaction(hash)
+
+	case obscuroclient.RPCBalance:
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCBalance, len(args))
+		}
+		address, ok := args[0].(common.Address)
+		if !ok {
+			return fmt.Errorf("arg to %s was not of expected type common.Address", obscuroclient.RPCBalance)
+		}
+
+		*result.(*uint64) = c.obscuroAPI.Balance(address)
 	}
 
 	// todo - joel - return error if no match
