@@ -2,12 +2,13 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"math/big"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 

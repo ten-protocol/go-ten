@@ -9,8 +9,10 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-const apiNamespaceObscuro = "obscuro"
-const apiVersion1 = "1.0"
+const (
+	apiNamespaceObscuro = "obscuro"
+	apiVersion1         = "1.0"
+)
 
 // An implementation of `host.ClientServer` that reuses the Geth `node` package for client communication.
 type clientServerImpl struct {

@@ -2,9 +2,10 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -62,10 +63,10 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
-		l1Clients[i] = miner
 		n.ethNodes[i] = miner
 		n.obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
+		l1Clients[i] = miner
 	}
 
 	// populate the nodes field of the L1 network
@@ -97,6 +98,12 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 
 func (n *basicNetworkOfSocketNodes) TearDown() {
 	go func() {
+		for _, m := range n.obscuroClients {
+			t := m
+			(*t).Stop()
+		}
+	}()
+	go func() {
 		for _, n := range n.obscuroNodes {
 			n.Stop()
 		}
@@ -107,11 +114,4 @@ func (n *basicNetworkOfSocketNodes) TearDown() {
 			go t.Stop()
 		}
 	}()
-	go func() {
-		for _, m := range n.obscuroClients {
-			t := m
-			(*t).Stop()
-		}
-	}()
-
 }
