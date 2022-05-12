@@ -88,7 +88,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 			true,
 			n.gethNetwork.GenesisJSON,
 		)
-		obscuroClient := host.NewInMemObscuroClient(agg.P2p)
+		obscuroClient := host.NewInMemObscuroClient(int64(i), agg.P2p)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)

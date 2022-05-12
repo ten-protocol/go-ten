@@ -56,7 +56,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		// create the in memory l1 and l2 node and the l2 client
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
-		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
+		obscuroClient := obscuroclient.NewClient(int64(i), obscuroClientAddr)
 		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr)
 
 		// and connect them to each other

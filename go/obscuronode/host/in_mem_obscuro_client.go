@@ -2,6 +2,9 @@ package host
 
 import (
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -9,17 +12,23 @@ import (
 
 // An in-memory implementation of `clientserver.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
+	nodeID     common.Address
 	obscuroAPI ObscuroAPI
 }
 
-func NewInMemObscuroClient(p2p P2P) obscuroclient.Client {
-	NewObscuroAPI(p2p)
+func NewInMemObscuroClient(nodeID int64, p2p P2P) obscuroclient.Client {
+	return &inMemObscuroClient{
+		obscuroAPI: *NewObscuroAPI(p2p),
+		nodeID:     common.BigToAddress(big.NewInt(nodeID)),
+	}
+}
 
-	return inMemObscuroClient{obscuroAPI: *NewObscuroAPI(p2p)}
+func (c *inMemObscuroClient) ID() common.Address {
+	return c.nodeID
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c inMemObscuroClient) Call(_ interface{}, method string, args ...interface{}) error {
+func (c *inMemObscuroClient) Call(_ interface{}, method string, args ...interface{}) error {
 	if method == obscuroclient.RPCSendTransactionEncrypted {
 		// TODO - Extract this checking logic as the set of RPC operations grows.
 		if len(args) != 1 {
@@ -35,6 +44,6 @@ func (c inMemObscuroClient) Call(_ interface{}, method string, args ...interface
 	return nil
 }
 
-func (c inMemObscuroClient) Stop() {
+func (c *inMemObscuroClient) Stop() {
 	// There is no RPC connection to close.
 }

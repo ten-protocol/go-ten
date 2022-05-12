@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -64,11 +66,12 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
 	// process the blockchain of each node in parallel to minimize the difference between them since they are still running
-	heights := make([]uint64, len(s.ObscuroNodes))
+	heights := make([]uint64, len(s.ObscuroClients))
 	var wg sync.WaitGroup
-	for i := range s.ObscuroNodes {
+	// todo - joel - once I'm only using obscuro client, I can just range over those
+	for i, node := range s.ObscuroNodes {
 		wg.Add(1)
-		go checkBlockchainOfObscuroNode(t, s.ObscuroNodes[i], minHeight, maxL1Height, s, &wg, heights, i)
+		go checkBlockchainOfObscuroNode(t, node, s.ObscuroClients[i], minHeight, maxL1Height, s, &wg, heights, i)
 	}
 	wg.Wait()
 	min, max := minMax(heights)
@@ -150,7 +153,8 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
-func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) uint64 {
+func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obscuroclient.Client, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) uint64 {
+	nodeID := (*nodeClient).ID()
 	l1Height := uint64(node.DB().GetCurrentBlockHead().Number.Int64())
 
 	// check that the L1 view is consistent with the L1 network.
@@ -158,25 +162,25 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
 	if int64(maxEthereumHeight)-int64(l1Height) > MAX_BLOCK_DELAY {
-		t.Errorf("Obscuro node %d fell behind %d blocks.", obscurocommon.ShortAddress(node.ID), maxEthereumHeight-l1Height)
+		t.Errorf("Obscuro node %d fell behind %d blocks.", obscurocommon.ShortAddress(nodeID), maxEthereumHeight-l1Height)
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
 	h := node.DB().GetCurrentRollupHead()
 	if h == nil {
-		panic(fmt.Sprintf("Node %d has no head rollup recorded.\n", obscurocommon.ShortAddress(node.ID)))
+		panic(fmt.Sprintf("Node %d has no head rollup recorded.\n", obscurocommon.ShortAddress(nodeID)))
 	}
 	l2Height := h.Number
 	if l2Height < minObscuroHeight {
-		t.Errorf("There were only %d rollups mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(node.ID), minObscuroHeight)
+		t.Errorf("There were only %d rollups mined on node %d. Expected at least: %d.", l2Height, obscurocommon.ShortAddress(nodeID), minObscuroHeight)
 	}
 
-	totalL2Blocks := s.Stats.NoL2Blocks[node.ID]
+	totalL2Blocks := s.Stats.NoL2Blocks[nodeID]
 	// in case the blockchain has advanced above what was collected, there is no longer a point to this check
 	if l2Height <= totalL2Blocks {
 		efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
 		if efficiencyL2 > s.Params.L2EfficiencyThreshold {
-			t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(node.ID), efficiencyL2, s.Params.L2EfficiencyThreshold)
+			t.Errorf("Node %d. Efficiency in L2 is %f. Expected:%f", obscurocommon.ShortAddress(nodeID), efficiencyL2, s.Params.L2EfficiencyThreshold)
 		}
 	}
 
@@ -196,7 +200,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		}
 	}
 	if notFoundTransfers > 0 {
-		t.Errorf("Node %d - %d out of %d Transfer Txs not found in the enclave", obscurocommon.ShortAddress(node.ID), notFoundTransfers, len(transfers))
+		t.Errorf("Node %d - %d out of %d Transfer Txs not found in the enclave", obscurocommon.ShortAddress(nodeID), notFoundTransfers, len(transfers))
 	}
 
 	notFoundWithdrawals := 0
@@ -206,10 +210,10 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		}
 	}
 	if notFoundWithdrawals > 0 {
-		t.Errorf("Node %d - %d out of %d Withdrawal Txs not found in the enclave", obscurocommon.ShortAddress(node.ID), notFoundWithdrawals, len(withdrawals))
+		t.Errorf("Node %d - %d out of %d Withdrawal Txs not found in the enclave", obscurocommon.ShortAddress(nodeID), notFoundWithdrawals, len(withdrawals))
 	}
 
-	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(node)
+	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(node, nodeClient)
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.GetL2WithdrawalRequests()) {
@@ -240,17 +244,17 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 		total += node.EnclaveClient.Balance(wallet.Address)
 	}
 	if total != totalAmountInSystem {
-		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), total, totalAmountInSystem)
+		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", obscurocommon.ShortAddress(nodeID), total, totalAmountInSystem)
 	}
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// (execute deposits and transactions and compare to the state in the rollup)
 
-	heights[i] = l2Height
+	heights[nodeIdx] = l2Height
 	wg.Done()
 	return l2Height
 }
 
-func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(node *host.Node, nodeClient *obscuroclient.Client) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := node.DB().GetCurrentRollupHead()
 	if head == nil {
 		panic("the current head should not be nil")
@@ -261,7 +265,7 @@ func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, num
 			return
 		}
 		if r == nil {
-			panic(fmt.Sprintf("Reached a missing rollup on node %d", obscurocommon.ShortAddress(node.ID)))
+			panic(fmt.Sprintf("Reached a missing rollup on node %d", obscurocommon.ShortAddress((*nodeClient).ID())))
 		}
 		for _, w := range r.Withdrawals {
 			totalSuccessfullyWithdrawn += w.Amount
