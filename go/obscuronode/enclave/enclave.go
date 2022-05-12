@@ -44,7 +44,11 @@ type enclaveImpl struct {
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
-	txHandler            mgmtcontractlib.TxHandler
+
+	txHandler mgmtcontractlib.TxHandler
+
+	// Toggles the speculative execution background process
+	speculativeExecutionEnabled bool
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -56,8 +60,10 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
-	// start the speculative rollup execution loop on its own go routine
-	go e.start(block)
+	if e.speculativeExecutionEnabled {
+		// start the speculative rollup execution loop on its own go routine
+		go e.start(block)
+	}
 }
 
 func (e *enclaveImpl) start(block types.Block) {
@@ -238,7 +244,9 @@ func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 		return err
 	}
 	e.mempool.AddMempoolTx(decryptedTx)
-	e.txCh <- decryptedTx
+	if e.speculativeExecutionEnabled {
+		e.txCh <- decryptedTx
+	}
 	return nil
 }
 
@@ -271,7 +279,9 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	winnerRollup, s := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
 	s.Commit(winnerRollup.Hash())
 	// e.storage.SetRollupState(winnerRollup.Hash(), s)
-	go e.notifySpeculative(winnerRollup)
+	if e.speculativeExecutionEnabled {
+		go e.notifySpeculative(winnerRollup)
+	}
 
 	// we are the winner
 	if winnerRollup.Header.Agg == e.node {
@@ -302,43 +312,55 @@ func (e *enclaveImpl) Balance(address common.Address) uint64 {
 }
 
 func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
-	// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
-	e.speculativeWorkInCh <- true
-	speculativeRollup := <-e.speculativeWorkOutCh
-
-	newRollupTxs := speculativeRollup.txs
-	newRollupState := speculativeRollup.s
-	newRollupHeader := speculativeRollup.h
-
 	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		panic("Should not happen")
 	}
 
-	// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-	if !speculativeRollup.found || (speculativeRollup.r.Hash() != bs.HeadRollup) {
-		if speculativeRollup.r != nil {
+	// These variables will be used to create the new rollup
+	var newRollupTxs []nodecommon.L2Tx
+	var newRollupState db.StateDB
+	var newRollupHeader *nodecommon.Header
+
+	speculativeExecutionSucceeded := false
+
+	if e.speculativeExecutionEnabled {
+		// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
+		e.speculativeWorkInCh <- true
+		speculativeRollup := <-e.speculativeWorkOutCh
+
+		newRollupTxs = speculativeRollup.txs
+		newRollupState = speculativeRollup.s
+		newRollupHeader = speculativeRollup.h
+
+		// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
+		// or speculative execution is disabled
+		speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
+
+		if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
 			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortAddress(e.node),
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
 				speculativeRollup.r.Header.Number,
 				obscurocommon.ShortHash(bs.HeadRollup),
-				headRollup.Header.Number),
-			)
+				headRollup.Header.Number))
 			if e.statsCollector != nil {
 				e.statsCollector.L2Recalc(e.node)
 			}
 		}
+	}
 
+	if !speculativeExecutionSucceeded {
+		// In case the speculative execution thread has not succeeded in producing a valid rollup
+		// we have to create a new one from the mempool transactions
 		newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.node)
-		// determine transactions to include in new rollup and process them
 		newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 
 		newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
 		executeTransactions(newRollupTxs, newRollupState, newRollupHeader)
 	}
 
-	// always process deposits last
+	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
 	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
@@ -375,7 +397,9 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 }
 
 func (e *enclaveImpl) Stop() error {
-	e.exitCh <- true
+	if e.speculativeExecutionEnabled {
+		e.exitCh <- true
+	}
 	return nil
 }
 
@@ -503,18 +527,19 @@ func NewEnclave(id common.Address, mining bool, txHandler mgmtcontractlib.TxHand
 	}
 
 	return &enclaveImpl{
-		node:                 id,
-		mining:               mining,
-		storage:              storage,
-		blockResolver:        storage,
-		mempool:              mempool.New(),
-		statsCollector:       collector,
-		l1Blockchain:         l1Blockchain,
-		txCh:                 make(chan nodecommon.L2Tx),
-		roundWinnerCh:        make(chan *obscurocore.Rollup),
-		exitCh:               make(chan bool),
-		speculativeWorkInCh:  make(chan bool),
-		speculativeWorkOutCh: make(chan speculativeWork),
-		txHandler:            txHandler,
+		node:                        id,
+		mining:                      mining,
+		storage:                     storage,
+		blockResolver:               storage,
+		mempool:                     mempool.New(),
+		statsCollector:              collector,
+		l1Blockchain:                l1Blockchain,
+		txCh:                        make(chan nodecommon.L2Tx),
+		roundWinnerCh:               make(chan *obscurocore.Rollup),
+		exitCh:                      make(chan bool),
+		speculativeWorkInCh:         make(chan bool),
+		speculativeWorkOutCh:        make(chan speculativeWork),
+		txHandler:                   txHandler,
+		speculativeExecutionEnabled: true,
 	}
 }
