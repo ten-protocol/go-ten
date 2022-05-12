@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"math/big"
 	"time"
 
@@ -28,7 +29,7 @@ func NewBasicNetworkOfSocketNodes() Network {
 	return &basicNetworkOfSocketNodes{}
 }
 
-func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string) {
+func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []*obscuroclient.Client, []string) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
@@ -94,7 +95,14 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroNodes, nodeP2pAddrs
+	// todo - joel - see if I can pull this into a cleaner place
+	hostClients := make([]*obscuroclient.Client, params.NumberOfNodes)
+	for i := 0; i < params.NumberOfNodes; i++ {
+		client := obscuroclient.NewClient(nodeClientServerAddrs[i])
+		hostClients[i] = &client
+	}
+
+	return l1Clients, n.obscuroNodes, hostClients, nodeP2pAddrs
 }
 
 func (n *basicNetworkOfSocketNodes) TearDown() {

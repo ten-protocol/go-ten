@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"math/big"
 	"math/rand"
@@ -77,11 +78,11 @@ func (m *TransactionInjector) Start() {
 	for _, u := range m.wallets {
 		txData := &obscurocommon.L1TxData{
 			TxType: obscurocommon.DepositTx,
-			Amount: INITIAL_BALANCE,
+			Amount: initialBalance,
 			Dest:   u.Address,
 		}
 		m.rndL1Node().BroadcastTx(txData)
-		m.stats.Deposit(INITIAL_BALANCE)
+		m.stats.Deposit(initialBalance)
 		go m.trackL1Tx(*txData)
 		time.Sleep(m.avgBlockDuration / 3)
 	}
@@ -180,10 +181,9 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
 
-		// todo - joel - use constant for method name
-		err := (*m.rndL2NodeClient()).Call(nil, "obscuro_sendTransactionEncrypted", encryptedTx)
+		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			panic(err) // todo - joel - don't panic here.
+			panic(fmt.Errorf("failed to issue transfer; ending simulation. Cause: %s", err))
 		}
 
 		go m.trackL2Tx(*signedTx)
@@ -216,10 +216,9 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 
-		// todo - joel - use constant for method name
-		err := (*m.rndL2NodeClient()).Call(nil, "obscuro_sendTransactionEncrypted", encryptedTx)
+		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			panic(err) // todo - joel - don't panic here.
+			panic(fmt.Errorf("failed to issue withdrawal; ending simulation. Cause: %s", err))
 		}
 
 		m.stats.Withdrawal(v)
@@ -236,10 +235,9 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
 
-		// todo - joel - use constant for method name
-		err := (*m.rndL2NodeClient()).Call(nil, "obscuro_sendTransactionEncrypted", encryptedTx)
+		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			panic(err) // todo - joel - don't panic here.
+			panic(fmt.Errorf("failed to issue withdrawal; ending simulation. Cause: %s", err))
 		}
 	}
 }

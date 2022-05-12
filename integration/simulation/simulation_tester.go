@@ -1,7 +1,6 @@
 package simulation
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"math/rand"
 	"testing"
 	"time"
@@ -21,22 +20,14 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	stats := stats2.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
-	ethClients, obscuroNodes, p2pAddrs := netw.Create(params, stats)
+	ethClients, obscuroNodes, obscuroClients, p2pAddrs := netw.Create(params, stats)
 
-	// todo - joel - move this up into netw.Create
-	hostClients := make([]*obscuroclient.Client, params.NumberOfNodes)
-	for i := 0; i < params.NumberOfNodes; i++ {
-		// todo - joel - configure address. currently all pointing at same address
-		client := obscuroclient.NewClient()
-		hostClients[i] = &client
-	}
-
-	txInjector := NewTransactionInjector(params.NumberOfObscuroWallets, params.AvgBlockDuration, stats, ethClients, hostClients)
+	txInjector := NewTransactionInjector(params.NumberOfObscuroWallets, params.AvgBlockDuration, stats, ethClients, obscuroClients)
 
 	simulation := Simulation{
 		EthClients:       ethClients,
 		ObscuroNodes:     obscuroNodes,
-		HostClients:      hostClients,
+		ObscuroClients:   obscuroClients,
 		ObscuroP2PAddrs:  p2pAddrs,
 		AvgBlockDuration: uint64(params.AvgBlockDuration),
 		TxInjector:       txInjector,
