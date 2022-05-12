@@ -155,14 +155,18 @@ const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obscuroclient.Client, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) uint64 {
 	nodeID := (*nodeClient).ID()
-	l1Height := uint64(node.DB().GetCurrentBlockHead().Number.Int64())
+	var l1Height int64
+	err := (*nodeClient).Call(&l1Height, obscuroclient.RPCGetCurrentBlockHead)
+	if err != nil {
+		panic("Could not retrieve current block head.")
+	}
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	if int64(maxEthereumHeight)-int64(l1Height) > MAX_BLOCK_DELAY {
-		t.Errorf("Obscuro node %d fell behind %d blocks.", obscurocommon.ShortAddress(nodeID), maxEthereumHeight-l1Height)
+	if int64(maxEthereumHeight)-l1Height > MAX_BLOCK_DELAY {
+		t.Errorf("Obscuro node %d fell behind %d blocks.", obscurocommon.ShortAddress(nodeID), maxEthereumHeight-uint64(l1Height))
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
@@ -186,7 +190,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, nodeClient *obs
 
 	// check that the pobi protocol doesn't waste too many blocks.
 	// todo- find the block where the genesis was published)
-	efficiency := float64(l1Height-l2Height) / float64(l1Height)
+	efficiency := float64(uint64(l1Height)-l2Height) / float64(l1Height)
 	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
 		t.Errorf("L2 to L1 Efficiency is %f. Expected:%f", efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}

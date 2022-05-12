@@ -21,7 +21,7 @@ type clientServerImpl struct {
 
 // NewClientServer returns a `host.ClientServer` that wraps the Geth `node` package for client communication, and
 // offers `NewEthAPI` under the "eth" namespace.
-func NewClientServer(address string, p2p P2P) ClientServer {
+func NewClientServer(address string, p2p *P2P, db *DB) ClientServer {
 	hostAndPort := strings.Split(address, ":")
 	if len(hostAndPort) != 2 {
 		panic(fmt.Sprintf("Client server expected address in the form <host>:<port>, but received %s", address))
@@ -45,7 +45,7 @@ func NewClientServer(address string, p2p P2P) ClientServer {
 		{
 			Namespace: apiNamespaceObscuro,
 			Version:   apiVersion1,
-			Service:   NewObscuroAPI(p2p),
+			Service:   NewObscuroAPI(p2p, db),
 			Public:    true,
 		},
 	}

@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -32,7 +33,15 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	o.l1Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentBlockHead().Number.Int64())
+	obscuroClient := o.simulation.ObscuroClients[0]
+
+	var l1Height int64
+	err := (*obscuroClient).Call(&l1Height, obscuroclient.RPCGetCurrentBlockHead)
+	if err != nil {
+		panic("Could not retrieve current block head.")
+	}
+	o.l1Height = int(l1Height)
+
 	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Number)
 }
 

@@ -104,9 +104,11 @@ func NewObscuroAggregator(
 	enclaveClient nodecommon.Enclave,
 	txHandler mgmtcontractlib.TxHandler,
 ) Node {
+	db := NewDB()
+
 	var clientServer ClientServer
 	if cfg.HasRPC {
-		clientServer = NewClientServer(*cfg.RPCAddress, p2p)
+		clientServer = NewClientServer(*cfg.RPCAddress, &p2p, db)
 	}
 
 	return Node{
@@ -135,7 +137,7 @@ func NewObscuroAggregator(
 		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
 		// Initialize the node DB
-		nodeDB:       NewDB(),
+		nodeDB:       db,
 		readyForWork: new(int32),
 
 		txHandler: txHandler,

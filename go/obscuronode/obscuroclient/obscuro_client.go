@@ -11,6 +11,7 @@ const (
 	http = "http://"
 
 	RPCSendTransactionEncrypted = "obscuro_sendTransactionEncrypted"
+	RPCGetCurrentBlockHead      = "obscuro_getCurrentBlockHead"
 )
 
 // Client is used by client applications to interact with the Obscuro node.
@@ -46,7 +47,7 @@ func (c *clientImpl) ID() common.Address {
 }
 
 func (c *clientImpl) Call(result interface{}, method string, args ...interface{}) error {
-	return c.rpcClient.Call(result, method, args...)
+	return c.rpcClient.Call(&result, method, args...)
 }
 
 func (c *clientImpl) Stop() {
