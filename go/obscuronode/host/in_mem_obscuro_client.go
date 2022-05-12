@@ -31,7 +31,6 @@ func (c *inMemObscuroClient) ID() common.Address {
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case obscuroclient.RPCSendTransactionEncrypted:
-		// TODO - joel - Extract this checking logic as the set of RPC operations grows.
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
 		}
@@ -80,9 +79,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		}
 
 		*result.(*uint64) = c.obscuroAPI.Balance(address)
+
+	default:
+		return fmt.Errorf("RPC method %s is unknown", method)
 	}
 
-	// todo - joel - return error if no match
 	return nil
 }
 

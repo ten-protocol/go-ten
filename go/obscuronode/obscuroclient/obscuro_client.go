@@ -7,10 +7,11 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+type RPCMethod uint8
+
 const (
 	http = "http://"
 
-	// todo - joel - consider using an enum here
 	RPCSendTransactionEncrypted  = "obscuro_sendTransactionEncrypted"
 	RPCGetCurrentBlockHeadHeight = "obscuro_getCurrentBlockHeadHeight"
 	RPCGetCurrentRollupHead      = "obscuro_getCurrentRollupHead"
