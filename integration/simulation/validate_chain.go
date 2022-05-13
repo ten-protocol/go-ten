@@ -172,7 +172,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client
 	h := getCurrentRollupHead(nodeClient)
 
 	if h == nil {
-		panic(fmt.Sprintf("Node %d: Node has no head rollup recorded.\n", nodeAddr))
+		panic(fmt.Sprintf("Node %d: No head rollup recorded.\n", nodeAddr))
 	}
 	l2Height := h.Number
 	if l2Height < minObscuroHeight {
@@ -259,10 +259,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client
 }
 
 func extractWithdrawals(nodeClient *obscuroclient.Client) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+	nodeAddr := obscurocommon.ShortAddress((*nodeClient).ID())
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {
-		panic("the current head should not be nil")
+		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeAddr))
 	}
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
@@ -271,7 +272,7 @@ func extractWithdrawals(nodeClient *obscuroclient.Client) (totalSuccessfullyWith
 			return
 		}
 		if r == nil {
-			panic(fmt.Sprintf("Node %d: Reached a missing rollup", obscurocommon.ShortAddress((*nodeClient).ID())))
+			panic(fmt.Sprintf("Node %d: Reached a missing rollup", nodeAddr))
 		}
 		for _, w := range r.Withdrawals {
 			totalSuccessfullyWithdrawn += w.Amount

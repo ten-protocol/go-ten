@@ -114,17 +114,16 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 }
 
 func (n *networkInMemGeth) TearDown() {
-	go func() {
-		for _, m := range n.obscuroClients {
-			t := m
-			(*t).Stop()
-		}
-	}()
-	go func() {
-		for _, n := range n.obscuroNodes {
-			n.Stop()
-		}
-	}()
+	for _, client := range n.obscuroClients {
+		temp := client
+		go (*temp).Stop()
+	}
+
+	for _, node := range n.obscuroNodes {
+		temp := node
+		go temp.Stop()
+	}
+
 	n.gethNetwork.StopNodes()
 }
 
