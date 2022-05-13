@@ -5,7 +5,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -22,9 +21,7 @@ const initialBalance = 5000
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients []ethclient.EthClient // the list of mock ethereum clients
-	// TODO - Remove this field. All communication should go via the Obscuro clients.
-	ObscuroNodes     []*host.Node            // the list of Obscuro hosts
+	EthClients       []ethclient.EthClient   // the list of mock ethereum clients
 	ObscuroClients   []*obscuroclient.Client // the list of Obscuro host clients
 	ObscuroP2PAddrs  []string                // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64

@@ -29,7 +29,7 @@ func NewBasicNetworkOfNodesWithDockerEnclave() Network {
 
 // Create initializes Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []*obscuroclient.Client, []string) {
+func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
@@ -48,7 +48,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		enclavePort := uint64(EnclaveStartPort + i)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
-		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
+		obscuroClient := obscuroclient.NewClient(int64(i), obscuroClientAddr)
 		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, enclavePort), obscuroClientAddr)
 
 		// and connect them to each other
@@ -85,25 +85,22 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroNodes, n.obscuroClients, nodeP2pAddrs
+	return l1Clients, n.obscuroClients, nodeP2pAddrs
 }
 
 func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
-	go func() {
-		for _, m := range n.obscuroClients {
-			t := m
-			(*t).Stop()
-		}
-	}()
-	go func() {
-		for _, n := range n.obscuroNodes {
-			n.Stop()
-		}
-	}()
-	go func() {
-		for _, m := range n.ethNodes {
-			t := m
-			go t.Stop()
-		}
-	}()
+	for _, client := range n.obscuroClients {
+		temp := client
+		go (*temp).Stop()
+	}
+
+	for _, node := range n.obscuroNodes {
+		temp := node
+		go temp.Stop()
+	}
+
+	for _, node := range n.ethNodes {
+		temp := node
+		go temp.Stop()
+	}
 }

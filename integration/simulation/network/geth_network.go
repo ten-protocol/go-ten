@@ -34,7 +34,7 @@ func NewNetworkInMemoryGeth() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []*obscuroclient.Client, []string) {
+func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -88,7 +88,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 			true,
 			n.gethNetwork.GenesisJSON,
 		)
-		obscuroClient := host.NewInMemObscuroClient(agg.P2p)
+		obscuroClient := host.NewInMemObscuroClient(int64(i), &agg.P2p, agg.DB(), &agg.EnclaveClient)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
@@ -110,21 +110,20 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		time.Sleep(params.AvgBlockDuration / 10)
 	}
 
-	return l1Clients, n.obscuroNodes, n.obscuroClients, nil
+	return l1Clients, n.obscuroClients, nil
 }
 
 func (n *networkInMemGeth) TearDown() {
-	go func() {
-		for _, m := range n.obscuroClients {
-			t := m
-			(*t).Stop()
-		}
-	}()
-	go func() {
-		for _, n := range n.obscuroNodes {
-			n.Stop()
-		}
-	}()
+	for _, client := range n.obscuroClients {
+		temp := client
+		go (*temp).Stop()
+	}
+
+	for _, node := range n.obscuroNodes {
+		temp := node
+		go temp.Stop()
+	}
+
 	n.gethNetwork.StopNodes()
 }
 

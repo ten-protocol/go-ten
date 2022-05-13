@@ -30,7 +30,7 @@ func NewBasicNetworkOfSocketNodes() Network {
 	return &basicNetworkOfSocketNodes{}
 }
 
-func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []*obscuroclient.Client, []string) {
+func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
@@ -56,7 +56,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		// create the in memory l1 and l2 node and the l2 client
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
-		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
+		obscuroClient := obscuroclient.NewClient(int64(i), obscuroClientAddr)
 		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr)
 
 		// and connect them to each other
@@ -93,25 +93,22 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroNodes, n.obscuroClients, nodeP2pAddrs
+	return l1Clients, n.obscuroClients, nodeP2pAddrs
 }
 
 func (n *basicNetworkOfSocketNodes) TearDown() {
-	go func() {
-		for _, m := range n.obscuroClients {
-			t := m
-			(*t).Stop()
-		}
-	}()
-	go func() {
-		for _, n := range n.obscuroNodes {
-			n.Stop()
-		}
-	}()
-	go func() {
-		for _, m := range n.ethNodes {
-			t := m
-			go t.Stop()
-		}
-	}()
+	for _, client := range n.obscuroClients {
+		temp := client
+		go (*temp).Stop()
+	}
+
+	for _, node := range n.obscuroNodes {
+		temp := node
+		go temp.Stop()
+	}
+
+	for _, node := range n.ethNodes {
+		temp := node
+		go temp.Stop()
+	}
 }
