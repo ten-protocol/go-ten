@@ -212,7 +212,7 @@ func (e *gethRPCClient) FetchBlock(hash common.Hash) (*types.Block, error) {
 }
 
 func (e *gethRPCClient) Stop() {
-	panic("TODO implement me")
+	e.client.Close()
 }
 
 func connect(ipaddress string, port uint) (*ethclient.Client, error) {

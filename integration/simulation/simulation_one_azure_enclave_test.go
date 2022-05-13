@@ -34,5 +34,5 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	params.AvgNetworkLatency = params.AvgBlockDuration / 15
 	params.AvgGossipPeriod = params.AvgBlockDuration / 3
 
-	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIP+":11000"), params)
+	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIP+":11000"), &params)
 }

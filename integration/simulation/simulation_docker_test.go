@@ -141,7 +141,7 @@ func terminateDockerContainers(ctx context.Context, cli *client.Client, containe
 			continue
 		}
 
-		fmt.Printf("Stopped and removed containee %v\n", id)
+		fmt.Printf("Stopped and removed container %v\n", id)
 
 	}
 

@@ -32,16 +32,17 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	o.l1Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentBlockHead().Number.Int64())
-	o.l2Height = int(o.simulation.ObscuroNodes[0].DB().GetCurrentRollupHead().Number)
+	obscuroClient := o.simulation.ObscuroClients[0]
+	o.l1Height = int(getCurrentBlockHeadHeight(obscuroClient))
+	o.l2Height = int(getCurrentRollupHead(obscuroClient).Number)
 }
 
 func (o *OutputStats) countRollups() {
 	l1Node := o.simulation.EthClients[0]
-	l2Node := o.simulation.ObscuroNodes[0]
+	l2Client := o.simulation.ObscuroClients[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := l2Node.DB().GetCurrentRollupHead(); header != nil && header.Hash() != obscurocommon.GenesisHash; header = l2Node.DB().GetRollupHeader(header.ParentHash) {
+	for header := getCurrentRollupHead(l2Client); header != nil && header.Hash() != obscurocommon.GenesisHash; header = getRollupHeader(l2Client, header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 
