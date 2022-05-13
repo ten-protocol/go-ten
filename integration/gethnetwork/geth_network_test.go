@@ -104,7 +104,7 @@ func TestTransactionIsMintedOverRPC(t *testing.T) {
 	// pick the first address in the network and send some funds to it
 	toAddr := common.HexToAddress(fmt.Sprintf("0x%s", network.addresses[0]))
 	tx, err := ethClient.SubmitTransaction(&types.LegacyTx{
-		Nonce:    0,
+		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(20000000000),
 		Gas:      uint64(1024_000_000),
 		To:       &toAddr,

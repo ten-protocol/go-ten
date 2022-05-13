@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/contracts"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -25,13 +27,26 @@ func TestGethMemObscuroEthERC20MonteCarloSimulation(t *testing.T) {
 		wallets[i] = datagenerator.RandomWallet()
 	}
 
-	simParams := params.SimParams{
+	// add one worker wallet ( to deposit and inject transactions )
+	workerWallet := datagenerator.RandomWallet()
+	wallets = append(wallets, workerWallet)
+
+	// define contracts to be deployed
+	contractsBytes := []string{
+		contracts.MgmtContractByteCode,
+		contracts.PedroERC20ContractByteCode,
+	}
+
+	// define the network to use
+	netw := network.NewNetworkInMemoryGeth(wallets, workerWallet, contractsBytes)
+
+	simParams := &params.SimParams{
 		NumberOfNodes:             numberOfNodes,
 		NumberOfObscuroWallets:    numberOfWallets,
-		AvgBlockDuration:          2 * time.Second,
+		AvgBlockDuration:          1 * time.Second,
 		SimulationTime:            60 * time.Second,
 		L1EfficiencyThreshold:     0.2,
-		L2EfficiencyThreshold:     0.5,
+		L2EfficiencyThreshold:     0.9,
 		L2ToL1EfficiencyThreshold: 0.9, // one rollup every 2 blocks
 		EthWallets:                wallets,
 	}
@@ -39,5 +54,5 @@ func TestGethMemObscuroEthERC20MonteCarloSimulation(t *testing.T) {
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
 
-	testSimulation(t, network.NewNetworkInMemoryGeth(), &simParams)
+	testSimulation(t, netw, simParams)
 }

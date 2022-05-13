@@ -13,6 +13,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -23,10 +24,19 @@ type networkInMemGeth struct {
 	obscuroNodes   []*host.Node
 	obscuroClients []*obscuroclient.Client
 	gethNetwork    *gethnetwork.GethNetwork
+	wallets        []wallet.Wallet
+	contracts      []string
+	workerWallet   wallet.Wallet
 }
 
-func NewNetworkInMemoryGeth() Network {
-	return &networkInMemGeth{}
+func NewNetworkInMemoryGeth(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
+	// create one extra wallet to prefund and deploy contracts
+	wallets = append(wallets, datagenerator.RandomWallet())
+	return &networkInMemGeth{
+		wallets:      wallets,
+		workerWallet: workerWallet,
+		contracts:    contracts,
+	}
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
@@ -37,31 +47,28 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		panic(err)
 	}
 
-	// convert the wallets to strings
-	walletAddresses := make([]string, params.NumberOfObscuroWallets)
-	for i := 0; i < params.NumberOfObscuroWallets; i++ {
-		walletAddresses[i] = params.EthWallets[i].Address().String()
+	// get wallet addresses to prefund them
+	walletAddresses := make([]string, len(n.wallets))
+	for i, w := range n.wallets {
+		walletAddresses[i] = w.Address().String()
 	}
 
 	// kickoff the network with the prefunded wallet addresses
-	gn := gethnetwork.NewGethNetwork(
+	n.gethNetwork = gethnetwork.NewGethNetwork(
 		40000,
 		path,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
 		walletAddresses,
 	)
-	n.gethNetwork = &gn
 
-	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", gn.WebSocketPorts[4], params.EthWallets[4], common.Address{})
+	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0], n.workerWallet, common.Address{})
 	if err != nil {
 		panic(err)
 	}
 
-	// take the first random wallet and deploy the contract in the network
-	contractAddr := deployContract(tmpEthClient, params.EthWallets[0], common.Hex2Bytes(contracts.MgmtContractByteCode))
-
-	erc20ContractAddr := deployContract(tmpEthClient, params.EthWallets[0], common.Hex2Bytes(contracts.PedroERC20ContractByteCode))
+	contractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.MgmtContractByteCode))
+	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.PedroERC20ContractByteCode))
 
 	params.MgmtContractAddr = contractAddr
 	params.ERC20ContractAddr = erc20ContractAddr
@@ -154,20 +161,19 @@ func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractByte
 		panic(err)
 	}
 
+	fmt.Printf("waiting for tx: %s\n", signedTx.Hash())
 	var receipt *types.Receipt
-	for start := time.Now(); time.Since(start) < 80*time.Second; time.Sleep(time.Second) {
+	for start := time.Now(); time.Since(start) < 600*time.Second; time.Sleep(time.Second) {
 		receipt, err = tmpClient.FetchTxReceipt(signedTx.Hash())
-		if err == nil && receipt != nil && receipt.ContractAddress != common.HexToAddress("") {
+		if err == nil && receipt != nil {
+			if receipt.Status != types.ReceiptStatusSuccessful {
+				panic("unable to deploy contract")
+			}
 			break
 		}
-		fmt.Printf("Contract deploy tx has not been mined into a block after %s...\n", time.Since(start))
-		fmt.Println(signedTx.Hash())
-		fmt.Printf("%+v\n", receipt)
-	}
 
-	//if receipt.Status != types.ReceiptStatusSuccessful {
-	//	panic("unable to deploy contract")
-	//}
+		fmt.Printf("Contract deploy tx has not been mined into a block after %s...\n", time.Since(start))
+	}
 
 	fmt.Printf("Contract sucessfully deployed to %s \n", receipt.ContractAddress)
 	return receipt.ContractAddress

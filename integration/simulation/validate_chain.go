@@ -98,17 +98,22 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 		t.Errorf("Found Rollup duplicates: %v", dups)
 	}
 
+	regularDepositTotal, erc20Total := uint64(0), uint64(0)
 	regularDepositTxs, erc20Deposits := 0, 0
 	for _, tx := range s.TxInjector.GetL1Transactions() {
 		if l1tx, ok := tx.(*obscurocommon.L1DepositTx); ok {
 			if l1tx.TokenContract != common.HexToAddress("") {
 				erc20Deposits++
+				erc20Total += l1tx.Amount
 			}
 			regularDepositTxs++
+			regularDepositTotal += l1tx.Amount
 		}
 	}
-	fmt.Printf("Regular DEPOSITS:%d\n", regularDepositTxs)
+	fmt.Printf("Regular regularDepositTxs:%d\n", regularDepositTxs)
+	fmt.Printf("Regular regularDepositTotal:%d\n", regularDepositTotal)
 	fmt.Printf("erc20Deposits DEPOSITS:%d\n", erc20Deposits)
+	fmt.Printf("erc20Total Total:%d\n", erc20Total)
 	if totalDeposited != s.Stats.TotalDepositedAmount {
 		t.Errorf("Node %d. Deposit amounts don't match. Found %d, expected %d", obscurocommon.ShortAddress(node.Info().ID), totalDeposited, s.Stats.TotalDepositedAmount)
 	}
@@ -132,6 +137,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
+	regularDepositTotal, erc20Total := uint64(0), uint64(0)
 	regularDepositTxs, erc20Deposits := 0, 0
 	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
 	for _, block := range blockchain {
@@ -140,16 +146,18 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 			if t == nil {
 				continue
 			}
-			switch obsTx := t.(type) {
+			switch l1tx := t.(type) {
 			case *obscurocommon.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
-				totalDeposited += obsTx.Amount
-				if obsTx.TokenContract != common.HexToAddress("") {
+				totalDeposited += l1tx.Amount
+				if l1tx.TokenContract != common.HexToAddress("") {
 					erc20Deposits++
+					erc20Total += l1tx.Amount
 				}
 				regularDepositTxs++
+				regularDepositTotal += l1tx.Amount
 			case *obscurocommon.L1RollupTx:
-				r := nodecommon.DecodeRollupOrPanic(obsTx.Rollup)
+				r := nodecommon.DecodeRollupOrPanic(l1tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
@@ -162,15 +170,17 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 		}
 	}
 
-	fmt.Printf("Blockchain: Regular DEPOSITS:%d\n", regularDepositTxs)
-	fmt.Printf("Blockchain: erc20Deposits DEPOSITS:%d\n", erc20Deposits)
+	fmt.Printf("Regular regularDepositTxs:%d\n", regularDepositTxs)
+	fmt.Printf("Regular regularDepositTotal:%d\n", regularDepositTotal)
+	fmt.Printf("erc20Deposits DEPOSITS:%d\n", erc20Deposits)
+	fmt.Printf("erc20Total Total:%d\n", erc20Total)
 	return deposits, rollups, totalDeposited, len(blockchain)
 }
 
 // MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
-func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) uint64 {
+func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, i int) {
 	l1Height := uint64(node.DB().GetCurrentBlockHead().Number.Int64())
 
 	// check that the L1 view is consistent with the L1 network.
@@ -261,6 +271,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 	for _, wallet := range s.TxInjector.wallets {
 		total += node.EnclaveClient.Balance(wallet.Address)
 	}
+	// also check for the worker wallet address
+	total += node.EnclaveClient.Balance(s.TxInjector.ethWallet.Address())
 	if total != totalAmountInSystem {
 		t.Errorf("the amount of money in accounts on node %d does not match the amount deposited. Found %d , expected %d", obscurocommon.ShortAddress(node.ID), total, totalAmountInSystem)
 	}
@@ -269,7 +281,6 @@ func checkBlockchainOfObscuroNode(t *testing.T, node *host.Node, minObscuroHeigh
 
 	heights[i] = l2Height
 	wg.Done()
-	return l2Height
 }
 
 func extractWithdrawals(node *host.Node) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {

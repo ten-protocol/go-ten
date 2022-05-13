@@ -72,6 +72,10 @@ func (m *Node) SubmitTransaction(_ types.TxData) (*types.Transaction, error) {
 	panic("method should never be called in this mock")
 }
 
+func (m *Node) IssueTransaction(_ *types.Transaction) error {
+	panic("method should never be called in this mock")
+}
+
 func (m *Node) FetchTxReceipt(_ common.Hash) (*types.Receipt, error) {
 	panic("method should never be called in this mock")
 }

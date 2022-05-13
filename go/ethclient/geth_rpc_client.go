@@ -44,7 +44,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 
 	wallet.SetNonce(nonce)
 
-	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
+	log.Trace("Initialized eth node connection - rollup contract address: %s - port: %d - wallet: %s - id: %s", contractAddress, port, wallet.Address(), id.String())
 	return &gethRPCClient{
 		client:    client,
 		id:        id,
@@ -152,7 +152,11 @@ func (e *gethRPCClient) SubmitTransaction(tx types.TxData) (*types.Transaction, 
 		panic(err)
 	}
 
-	return signedTx, e.client.SendTransaction(context.Background(), signedTx)
+	return signedTx, e.IssueTransaction(signedTx)
+}
+
+func (e *gethRPCClient) IssueTransaction(signedTx *types.Transaction) error {
+	return e.client.SendTransaction(context.Background(), signedTx)
 }
 
 func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
@@ -169,6 +173,23 @@ func (e *gethRPCClient) BroadcastTx(tx obscurocommon.L1Transaction) {
 	if err != nil {
 		panic(err)
 	}
+	//
+	//timeout := 30 * time.Second
+	//var receipt *types.Receipt
+	//for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
+	//	receipt, err = e.FetchTxReceipt(issuedTx.Hash())
+	//	if err == nil && receipt != nil {
+	//		break
+	//	}
+	//	if !errors.Is(err, ethereum.NotFound) {
+	//		panic(err)
+	//	}
+	//	log.Log(fmt.Sprintf("Tx has not been mined into a block after %s...", time.Since(start)))
+	//}
+	//
+	//if receipt == nil || receipt.Status != types.ReceiptStatusSuccessful {
+	//	panic(fmt.Errorf("transaction not minted into a block after %s", timeout))
+	//}
 }
 
 func (e *gethRPCClient) BlockListener() chan *types.Header {

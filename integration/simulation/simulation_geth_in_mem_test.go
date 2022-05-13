@@ -39,5 +39,5 @@ func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
 
-	testSimulation(t, network.NewNetworkInMemoryGeth(), &simParams)
+	testSimulation(t, network.NewNetworkInMemoryGeth(nil, nil, nil), &simParams)
 }

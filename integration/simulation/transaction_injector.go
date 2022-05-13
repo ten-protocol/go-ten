@@ -10,23 +10,17 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
-
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/contracts"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"golang.org/x/sync/errgroup"
 
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
@@ -49,9 +43,10 @@ type TransactionInjector struct {
 	l2TransactionsLock sync.RWMutex
 	l2Transactions     core.L2Txs
 
-	interruptRun      *int32
-	fullyStoppedChan  chan bool
-	ethWallets        []wallet.Wallet
+	interruptRun     *int32
+	fullyStoppedChan chan bool
+
+	ethWallet         wallet.Wallet
 	erc20ContractAddr common.Address
 }
 
@@ -62,8 +57,7 @@ func NewTransactionInjector(
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
 	l1Nodes []ethclient.EthClient,
-	l2Nodes []*host.Node,
-	ethWallets []wallet.Wallet,
+	ethWallet wallet.Wallet,
 	addr common.Address,
 	l2NodeClients []*obscuroclient.Client,
 ) *TransactionInjector {
@@ -82,7 +76,7 @@ func NewTransactionInjector(
 		l2NodeClients:     l2NodeClients,
 		interruptRun:      &interrupt,
 		fullyStoppedChan:  make(chan bool),
-		ethWallets:        ethWallets,
+		ethWallet:         ethWallet,
 		erc20ContractAddr: addr,
 	}
 }
@@ -125,10 +119,10 @@ func (m *TransactionInjector) Start() {
 		return nil
 	})
 
-	//wg.Go(func() error {
-	//	m.issueRandomERC20Deposits()
-	//	return nil
-	//})
+	wg.Go(func() error {
+		m.issueRandomERC20Deposits()
+		return nil
+	})
 
 	_ = wg.Wait() // future proofing to return errors
 	m.fullyStoppedChan <- true
@@ -233,31 +227,33 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 	defaultGasPrice := big.NewInt(20000000000)
 	defaultGas := uint64(1024_000_000)
 	timeout := 30 * time.Second
-	w := m.ethWallets[0]
+
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		tx := &types.LegacyTx{
-			Nonce:    w.GetNonceAndIncrement(),
+			Nonce:    m.ethWallet.GetNonceAndIncrement(),
 			GasPrice: defaultGasPrice,
 			Gas:      defaultGas,
 			To:       &m.erc20ContractAddr,
 		}
 
 		v := obscurocommon.RndBtw(1, 100)
-		data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", w.Address(), big.NewInt(int64(v)))
+		data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", m.ethWallet.Address(), big.NewInt(int64(v)))
 		if err != nil {
 			panic(err)
 		}
 		tx.Data = data
 
-		node := m.rndL1Node()
-		issuedTx, err := node.SubmitTransaction(tx)
+		node := m.l1Nodes[len(m.l1Nodes)-1]
+		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
+		err = node.IssueTransaction(signedTx)
 		if err != nil {
+			fmt.Printf("Address: %s\n", m.ethWallet.Address())
 			panic(err)
 		}
 
 		var receipt *types.Receipt
 		for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-			receipt, err = node.FetchTxReceipt(issuedTx.Hash())
+			receipt, err = node.FetchTxReceipt(signedTx.Hash())
 			if err == nil && receipt != nil {
 				break
 			}
@@ -273,7 +269,7 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 		m.stats.Deposit(v)
 		go m.trackL1Tx(&obscurocommon.L1DepositTx{
 			Amount:        v,
-			To:            w.Address(),
+			To:            m.ethWallet.Address(),
 			TokenContract: m.erc20ContractAddr,
 		})
 	}
