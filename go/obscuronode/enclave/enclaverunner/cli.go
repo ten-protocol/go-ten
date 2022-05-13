@@ -1,4 +1,4 @@
-package main
+package enclaverunner
 
 import (
 	"flag"
@@ -19,17 +19,17 @@ const (
 	writeToLogsUsage   = "Whether to redirect the output to the log file."
 )
 
-type enclaveConfig struct {
-	nodeID      *int64
-	address     *string
-	writeToLogs *bool
+type EnclaveConfig struct {
+	NodeID      *int64
+	Address     *string
+	WriteToLogs *bool
 }
 
-func parseCLIArgs() enclaveConfig {
+func ParseCLIArgs() EnclaveConfig {
 	nodeID := flag.Int64(nodeIDName, nodeIDDefault, nodeIDUsage)
 	port := flag.String(addressName, addressDefault, addressUsage)
 	writeToLogs := flag.Bool(writeToLogsName, writeToLogsDefault, writeToLogsUsage)
 	flag.Parse()
 
-	return enclaveConfig{nodeID, port, writeToLogs}
+	return EnclaveConfig{NodeID: nodeID, Address: port, WriteToLogs: writeToLogs}
 }

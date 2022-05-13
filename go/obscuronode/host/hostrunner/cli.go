@@ -1,4 +1,4 @@
-package main
+package hostrunner
 
 import (
 	"flag"
@@ -36,32 +36,20 @@ const (
 	peerP2PAddrsUsage   = "The P2P addresses of our peer nodes as a comma-separated list (default \"\")"
 
 	clientServerAddrName    = "clientServerAddress"
-	clientServerAddrDefault = "http://localhost:12000"
+	clientServerAddrDefault = "localhost:12000"
 	clientServerAddrUsage   = "The address on which to listen for client application RPC requests"
 
 	privateKeyName    = "privateKey"
-	privateKeyDefault = ""
+	privateKeyDefault = "0000000000000000000000000000000000000000000000000000000000000001"
 	privateKeyUsage   = "The private key for the L1 node account"
 
 	contractAddrName    = "contractAddress"
 	contractAddrDefault = ""
-	contractAddrUsage   = "The management contract address"
+	contractAddrUsage   = "The management contract address on the L1"
 )
 
-type hostConfig struct {
-	nodeID           *string
-	isGenesis        *bool
-	gossipRoundNanos *uint64
-	rpcTimeoutSecs   *uint64
-	enclaveAddr      *string
-	ourP2PAddr       *string
-	peerP2PAddrs     []string
-	clientServerAddr *string
-	privateKeyString *string
-	contractAddress  *string
-}
-
-func parseCLIArgs() hostConfig {
+func ParseCLIArgs() HostConfig {
+	// TODO - Only provide defaults for certain flags. Some flags cannot be defaulted meaningfully (e.g. privateKeyString).
 	nodeID := flag.String(nodeIDName, nodeIDDefault, nodeIDUsage)
 	isGenesis := flag.Bool(genesisName, genesisDefault, genesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(gossipRoundNanosDefault), gossipRoundNanosUsage)
@@ -74,16 +62,16 @@ func parseCLIArgs() hostConfig {
 	contractAddress := flag.String(contractAddrName, contractAddrDefault, contractAddrUsage)
 	flag.Parse()
 
-	return hostConfig{
-		nodeID:           nodeID,
-		isGenesis:        isGenesis,
-		gossipRoundNanos: gossipRoundNanos,
-		rpcTimeoutSecs:   rpcTimeoutSecs,
-		enclaveAddr:      enclaveAddr,
-		ourP2PAddr:       ourP2PAddr,
-		peerP2PAddrs:     strings.Split(*peerP2PAddrs, ","),
-		clientServerAddr: clientServerAddr,
-		privateKeyString: privateKeyStr,
-		contractAddress:  contractAddress,
+	return HostConfig{
+		NodeID:           nodeID,
+		IsGenesis:        isGenesis,
+		GossipRoundNanos: gossipRoundNanos,
+		RPCTimeoutSecs:   rpcTimeoutSecs,
+		EnclaveAddr:      enclaveAddr,
+		OurP2PAddr:       ourP2PAddr,
+		PeerP2PAddrs:     strings.Split(*peerP2PAddrs, ","),
+		ClientServerAddr: clientServerAddr,
+		PrivateKeyString: privateKeyStr,
+		ContractAddress:  contractAddress,
 	}
 }
