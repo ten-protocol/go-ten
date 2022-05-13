@@ -70,9 +70,10 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	// process the blockchain of each node in parallel to minimize the difference between them since they are still running
 	heights := make([]uint64, len(s.ObscuroClients))
 	var wg sync.WaitGroup
-	for i, obscuroClient := range s.ObscuroClients {
+	for idx := range s.ObscuroClients {
+		obscuroClient := s.ObscuroClients[idx]
 		wg.Add(1)
-		go checkBlockchainOfObscuroNode(t, obscuroClient, minHeight, maxL1Height, s, &wg, heights, i)
+		go checkBlockchainOfObscuroNode(t, obscuroClient, minHeight, maxL1Height, s, &wg, heights, idx)
 	}
 	wg.Wait()
 	min, max := minMax(heights)
