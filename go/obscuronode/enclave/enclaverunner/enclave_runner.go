@@ -13,12 +13,12 @@ const logPath = "enclave_logs.txt"
 
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config EnclaveConfig) {
-	setLogs(*config.WriteToLogs)
+	setLogs(config.WriteToLogs)
 
-	nodeAddress := common.BigToAddress(big.NewInt(*config.NodeID))
+	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
 	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
-	if err := enclave.StartServer(*config.Address, nodeAddress, ethereum_mock.NewMockTxHandler(), false, nil, nil); err != nil {
+	if err := enclave.StartServer(config.Address, nodeAddress, ethereum_mock.NewMockTxHandler(), false, nil, nil); err != nil {
 		panic(err)
 	}
 

@@ -12,42 +12,29 @@ import (
 	"time"
 )
 
-type HostConfig struct {
-	NodeID           *string
-	IsGenesis        *bool
-	GossipRoundNanos *uint64
-	RPCTimeoutSecs   *uint64
-	EnclaveAddr      *string
-	OurP2PAddr       *string
-	PeerP2PAddrs     []string
-	ClientServerAddr *string
-	PrivateKeyString *string
-	ContractAddress  *string
-}
-
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config HostConfig) {
 	setLogs()
 
-	nodeID := common.BytesToAddress([]byte(*config.NodeID))
+	nodeID := common.BytesToAddress([]byte(config.NodeID))
 	hostCfg := host.AggregatorCfg{
-		GossipRoundDuration:  time.Duration(*config.GossipRoundNanos),
-		ClientRPCTimeoutSecs: *config.RPCTimeoutSecs,
+		GossipRoundDuration:  time.Duration(config.GossipRoundNanos),
+		ClientRPCTimeoutSecs: config.RPCTimeoutSecs,
 		HasRPC:               true,
-		RPCAddress:           config.ClientServerAddr,
+		RPCAddress:           &config.ClientServerAddr,
 	}
 
-	nodeWallet := wallet.NewInMemoryWallet(*config.PrivateKeyString)
-	contractAddr := common.HexToAddress(*config.ContractAddress)
+	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
+	contractAddr := common.HexToAddress(config.ContractAddress)
 	// todo - joel - create flags for these
 	l1Client, err := ethclient.NewEthClient(nodeID, "127.0.0.1", 8546, nodeWallet, contractAddr)
 	if err != nil {
 		panic(err)
 	}
-	enclaveClient := host.NewEnclaveRPCClient(*config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
-	aggP2P := p2p.NewSocketP2PLayer(*config.OurP2PAddr, config.PeerP2PAddrs)
+	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
+	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs)
 
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, *config.IsGenesis, aggP2P, l1Client, enclaveClient, ethereum_mock.NewMockTxHandler())
+	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, ethereum_mock.NewMockTxHandler())
 
 	agg.Start()
 }
