@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -35,9 +34,6 @@ type Simulation struct {
 func (s *Simulation) Start() {
 	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
-	// TODO - Remove this waiting period. The ability for nodes to catch up should be part of the tests.
-	waitForP2p(s.ObscuroP2PAddrs)
-
 	timer := time.Now()
 	go s.TxInjector.Start()
 
@@ -56,20 +52,4 @@ func (s *Simulation) Start() {
 
 func (s *Simulation) Stop() {
 	// nothing to do for now
-}
-
-// Waits for the L2 nodes to be ready to process P2P messages.
-func waitForP2p(obscuroP2PAddrs []string) {
-	for _, addr := range obscuroP2PAddrs {
-		for {
-			conn, _ := net.Dial("tcp", addr)
-			if conn != nil {
-				if closeErr := conn.Close(); closeErr != nil {
-					panic(closeErr)
-				}
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
 }
