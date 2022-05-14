@@ -31,17 +31,17 @@ type TxHandler interface {
 }
 
 type mgmtContractTxHandler struct {
-	contractAddr         common.Address
-	erc20ContractAddress common.Address
+	contractAddr         *common.Address
+	erc20ContractAddress *common.Address
 }
 
-func NewEthMgmtContractTxHandler(contractAddress common.Address) TxHandler {
+func NewEthMgmtContractTxHandler(contractAddress *common.Address) TxHandler {
 	return &mgmtContractTxHandler{
 		contractAddr: contractAddress,
 	}
 }
 
-func NewEthMgmtContractTxHandlerWithERC20(contractAddress common.Address, erc20ContractAddress common.Address) TxHandler {
+func NewEthMgmtContractTxHandlerWithERC20(contractAddress *common.Address, erc20ContractAddress *common.Address) TxHandler {
 	return &mgmtContractTxHandler{
 		contractAddr:         contractAddress,
 		erc20ContractAddress: erc20ContractAddress,
@@ -53,10 +53,10 @@ func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr c
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
 		Gas:      defaultGas,
-		To:       &h.contractAddr,
+		To:       h.contractAddr,
 	}
 
-	// using (obj) type instead of t.Type() to immediatly fetch the casted object
+	// using (obj) type instead of t.Type() to immediately fetch the cast object
 	switch tx := t.(type) {
 	case *obscurocommon.L1DepositTx:
 		ethTx.Value = big.NewInt(int64(tx.Amount))
@@ -137,7 +137,7 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 		return &obscurocommon.L1DepositTx{
 			Amount:        tx.Value().Uint64(),
 			To:            callData.(common.Address),
-			TokenContract: common.HexToAddress(""), // TODO have fixed Token contract for Eth deposits ?
+			TokenContract: nil, // TODO have fixed Token contract for Eth deposits ?
 		}
 
 	case contracts.AddRollupMethod:
@@ -155,7 +155,8 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 		}
 
 		return &obscurocommon.L1RollupTx{
-			Rollup: rollup}
+			Rollup: rollup,
+		}
 
 	case contracts.StoreSecretMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
@@ -167,7 +168,8 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 		}
 
 		return &obscurocommon.L1StoreSecretTx{
-			Secret: DecodeFromString(callData.(string))}
+			Secret: DecodeFromString(callData.(string)),
+		}
 
 	case contracts.RequestSecretMethod:
 		return &obscurocommon.L1RequestSecretTx{}
@@ -177,7 +179,6 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 }
 
 func (h *mgmtContractTxHandler) unpackPedroERC20(tx *types.Transaction) obscurocommon.L1Transaction {
-
 	method, err := contracts.PedroERC20ContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)

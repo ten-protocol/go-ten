@@ -13,7 +13,7 @@ func SetLog(f *os.File) {
 }
 
 func Trace(msg string, args ...interface{}) {
-	fmt.Printf(msg+"\n", args...)
+	// fmt.Printf(msg+"\n", args...)
 }
 
 func Log(msg string) {

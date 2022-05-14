@@ -29,7 +29,7 @@ func main() {
 
 	nodeWallet := wallet.NewInMemoryWallet(*config.privateKeyString)
 	contractAddr := common.HexToAddress(*config.contractAddress)
-	l1Client, err := ethclient.NewEthClient(nodeID, "127.0.0.1", 7545, nodeWallet, contractAddr)
+	l1Client, err := ethclient.NewEthClient(nodeID, "127.0.0.1", 7545, nodeWallet, &contractAddr)
 	if err != nil {
 		panic(err)
 	}

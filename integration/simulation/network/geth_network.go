@@ -62,7 +62,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		walletAddresses,
 	)
 
-	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0], n.workerWallet, common.Address{})
+	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0], n.workerWallet, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -139,7 +139,7 @@ func (n *networkInMemGeth) TearDown() {
 	n.gethNetwork.StopNodes()
 }
 
-func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contractAddr common.Address) ethclient.EthClient {
+func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contractAddr *common.Address) ethclient.EthClient {
 	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", port, wallet, contractAddr)
 	if err != nil {
 		panic(err)
@@ -147,7 +147,7 @@ func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contra
 	return ethnode
 }
 
-func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) common.Address {
+func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) *common.Address {
 	deployContractTx := types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(2000000000),
@@ -174,6 +174,6 @@ func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractByte
 		fmt.Printf("Contract deploy tx has not been mined into a block after %s...\n", time.Since(start))
 	}
 
-	fmt.Printf("Contract sucessfully deployed to %s \n", receipt.ContractAddress)
-	return receipt.ContractAddress
+	fmt.Printf("Contract successfully deployed to %s \n", receipt.ContractAddress)
+	return &receipt.ContractAddress
 }

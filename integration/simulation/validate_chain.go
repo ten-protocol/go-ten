@@ -108,7 +108,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 	regularDepositTxs, erc20Deposits := 0, 0
 	for _, tx := range s.TxInjector.GetL1Transactions() {
 		if l1tx, ok := tx.(*obscurocommon.L1DepositTx); ok {
-			if l1tx.TokenContract != common.HexToAddress("") {
+			if l1tx.TokenContract != nil {
 				erc20Deposits++
 				erc20Total += l1tx.Amount
 			}
@@ -156,7 +156,7 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 			case *obscurocommon.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
 				totalDeposited += l1tx.Amount
-				if l1tx.TokenContract != common.HexToAddress("") {
+				if l1tx.TokenContract != nil {
 					erc20Deposits++
 					erc20Total += l1tx.Amount
 				}
@@ -280,8 +280,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client
 	for _, wallet := range s.TxInjector.wallets {
 		total += balance(nodeClient, wallet.Address)
 	}
-	// also check for the worker wallet address
-	total += balance(nodeClient, s.TxInjector.ethWallet.Address())
+
+	if s.TxInjector.ethWallet != nil {
+		// also check for the worker wallet address
+		total += balance(nodeClient, s.TxInjector.ethWallet.Address())
+	}
+
 	if total != totalAmountInSystem {
 		t.Errorf("Node %d: The amount of money in accounts does not match the amount deposited. Found %d , expected %d", nodeAddr, total, totalAmountInSystem)
 	}

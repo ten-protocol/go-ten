@@ -22,14 +22,14 @@ func TestGethMemObscuroEthERC20MonteCarloSimulation(t *testing.T) {
 	numberOfWallets := numberOfNodes
 
 	// randomly create the ethereum wallets to be used and prefund them
-	wallets := make([]wallet.Wallet, numberOfWallets)
-	for i := 0; i < numberOfWallets; i++ {
+	// create one extra wallet as the worker wallet
+	wallets := make([]wallet.Wallet, numberOfWallets+1)
+	for i := 0; i < numberOfWallets+1; i++ {
 		wallets[i] = datagenerator.RandomWallet()
 	}
 
-	// add one worker wallet ( to deposit and inject transactions )
-	workerWallet := datagenerator.RandomWallet()
-	wallets = append(wallets, workerWallet)
+	// The last wallet as the worker wallet ( to deposit and inject transactions )
+	workerWallet := wallets[numberOfWallets]
 
 	// define contracts to be deployed
 	contractsBytes := []string{

@@ -151,7 +151,8 @@ func (a *Node) Start() {
 	if a.isGenesis {
 		// Create the shared secret and submit it to the management contract for storage
 		tx := &obscurocommon.L1StoreSecretTx{
-			Secret: a.EnclaveClient.GenerateSecret(), Attestation: a.EnclaveClient.Attestation()}
+			Secret: a.EnclaveClient.GenerateSecret(), Attestation: a.EnclaveClient.Attestation(),
+		}
 		a.broadcastTx(tx)
 	}
 
@@ -415,7 +416,8 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 				winnerRollup.Header.Number,
 			))
 			tx := &obscurocommon.L1RollupTx{
-				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
+				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
+			}
 			a.broadcastTx(tx)
 			// collect Stats
 		}
@@ -441,7 +443,8 @@ func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
 	log.Log(fmt.Sprintf(">   Agg%d: Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash())))
 	tx := &obscurocommon.L1RollupTx{
-		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())}
+		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
+	}
 	a.broadcastTx(tx)
 
 	return genesisResponse.ProducedRollup.Header.ParentHash

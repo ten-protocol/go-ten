@@ -21,7 +21,7 @@ func (t *L1RollupTx) Bytes() []byte { return []byte(fmt.Sprintf("%v", *t)) }
 type L1DepositTx struct {
 	Amount        uint64
 	To            common.Address
-	TokenContract common.Address
+	TokenContract *common.Address
 }
 
 func (t *L1DepositTx) Bytes() []byte { return []byte(fmt.Sprintf("%v", *t)) }

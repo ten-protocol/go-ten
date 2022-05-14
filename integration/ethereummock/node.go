@@ -299,7 +299,7 @@ func (m *Node) P2PGossipTx(tx *types.Transaction) {
 }
 
 func (m *Node) BroadcastTx(tx obscurocommon.L1Transaction) {
-	formattedTx, err := m.txHandler.PackTx(tx, common.Address{}, rand.Uint64())
+	formattedTx, err := m.txHandler.PackTx(tx, common.Address{}, rand.Uint64()) // nolint:gosec
 	if err != nil {
 		panic(err)
 	}

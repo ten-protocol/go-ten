@@ -47,7 +47,7 @@ type TransactionInjector struct {
 	fullyStoppedChan chan bool
 
 	ethWallet         wallet.Wallet
-	erc20ContractAddr common.Address
+	erc20ContractAddr *common.Address
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
@@ -58,7 +58,7 @@ func NewTransactionInjector(
 	stats *stats2.Stats,
 	l1Nodes []ethclient.EthClient,
 	ethWallet wallet.Wallet,
-	addr common.Address,
+	addr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
 ) *TransactionInjector {
 	// create a bunch of wallets
@@ -119,10 +119,12 @@ func (m *TransactionInjector) Start() {
 		return nil
 	})
 
-	wg.Go(func() error {
-		m.issueRandomERC20Deposits()
-		return nil
-	})
+	if m.erc20ContractAddr != nil {
+		wg.Go(func() error {
+			m.issueRandomERC20Deposits()
+			return nil
+		})
+	}
 
 	_ = wg.Wait() // future proofing to return errors
 	m.fullyStoppedChan <- true
@@ -233,7 +235,7 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 			Nonce:    m.ethWallet.GetNonceAndIncrement(),
 			GasPrice: defaultGasPrice,
 			Gas:      defaultGas,
-			To:       &m.erc20ContractAddr,
+			To:       m.erc20ContractAddr,
 		}
 
 		v := obscurocommon.RndBtw(1, 100)
@@ -245,6 +247,10 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 
 		node := m.l1Nodes[len(m.l1Nodes)-1]
 		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
+		if err != nil {
+			panic(err)
+		}
+
 		err = node.IssueTransaction(signedTx)
 		if err != nil {
 			fmt.Printf("Address: %s\n", m.ethWallet.Address())

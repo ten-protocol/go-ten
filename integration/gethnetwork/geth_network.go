@@ -243,7 +243,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 	args := []string{dataDirFlag, dataDir, attachCmd, path.Join(dataDir, ipcFileName), execFlag, command}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
-	cmd.Stderr = network.logNodeId(nodeIdx)
+	cmd.Stderr = network.logNodeID(nodeIdx)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -335,8 +335,8 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
-	cmd.Stdout = network.logNodeId(idx)
-	cmd.Stderr = network.logNodeId(idx)
+	cmd.Stdout = network.logNodeID(idx)
+	cmd.Stderr = network.logNodeID(idx)
 
 	if err := cmd.Start(); err != nil {
 		panic(err)
@@ -345,8 +345,8 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	network.WebSocketPorts[idx] = uint(webSocketPort)
 }
 
-// logNodeId prepends the nodeID to the log entries
-func (network *GethNetwork) logNodeId(idx int) io.Writer {
+// logNodeID prepends the nodeID to the log entries
+func (network *GethNetwork) logNodeID(idx int) io.Writer {
 	r, w, _ := os.Pipe()
 	go func() {
 		sc := bufio.NewScanner(r)

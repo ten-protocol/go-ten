@@ -30,8 +30,8 @@ type SimParams struct {
 	// TxHandler defines how the simulation should unpack transactions
 	TxHandler mgmtcontractlib.TxHandler
 	// MgmtContractAddr defines the management contract address
-	MgmtContractAddr common.Address
+	MgmtContractAddr *common.Address
 	// EthWallets contains the wallets to use for the l1 nodes
 	EthWallets        []wallet.Wallet
-	ERC20ContractAddr common.Address
+	ERC20ContractAddr *common.Address
 }

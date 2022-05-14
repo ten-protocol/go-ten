@@ -30,7 +30,7 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (EthClient, error) {
+func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress *common.Address) (EthClient, error) {
 	client, err := connect(ipaddress, port)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)

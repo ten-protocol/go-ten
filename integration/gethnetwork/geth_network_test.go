@@ -96,7 +96,7 @@ func TestTransactionIsMintedOverRPC(t *testing.T) {
 	network := NewGethNetwork(33000, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})
+	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, nil)
 	if err != nil {
 		panic(err)
 	}
