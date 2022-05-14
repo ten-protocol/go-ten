@@ -2,9 +2,9 @@ package enclaverunner
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 	"math/big"
 	"os"
 )
@@ -16,9 +16,13 @@ func RunEnclave(config EnclaveConfig) {
 	setLogs(config.WriteToLogs)
 
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
+	// todo - joel - need to move away from the mock tx handler. need contract address
+	contractAddr := common.HexToAddress(config.ContractAddress)
+	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
+
 	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
-	if err := enclave.StartServer(config.Address, nodeAddress, ethereum_mock.NewMockTxHandler(), false, nil, nil); err != nil {
+	if err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil); err != nil {
 		panic(err)
 	}
 
