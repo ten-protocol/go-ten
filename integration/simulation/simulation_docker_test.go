@@ -37,8 +37,7 @@ const (
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 // $> docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}") will stop and remove all images
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
-	runTest := os.Getenv(dockerTestEnv)
-	if runTest == "" {
+	if os.Getenv(dockerTestEnv) == "" {
 		t.Skipf("set %s to run this test", dockerTestEnv)
 	}
 

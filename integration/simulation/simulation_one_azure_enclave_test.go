@@ -19,8 +19,7 @@ const (
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
-	runTest := os.Getenv(azureTestEnv)
-	if runTest == "" {
+	if os.Getenv(azureTestEnv) == "" {
 		t.Skipf("set %s to run this test", azureTestEnv)
 	}
 	setupTestLog()
