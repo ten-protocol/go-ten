@@ -24,7 +24,6 @@ import (
 )
 
 type networkInMemGeth struct {
-	obscuroNodes   []*host.Node
 	obscuroClients []*obscuroclient.Client
 	gethNetwork    *gethnetwork.GethNetwork
 }
@@ -64,7 +63,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 
 	// Create the obscuro node, each connected to a geth node
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
-	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
+	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -88,23 +87,23 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 			true,
 			n.gethNetwork.GenesisJSON,
 		)
-		obscuroClient := host.NewInMemObscuroClient(int64(i), &agg.P2p, agg.DB(), &agg.EnclaveClient)
+		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
 
-		n.obscuroNodes[i] = agg
+		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
 		l1Clients[i] = miner
 	}
 
 	// make sure the aggregators can talk to each other
 	for i := 0; i < params.NumberOfNodes; i++ {
-		n.obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = n.obscuroNodes
+		obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = obscuroNodes
 	}
 
 	// start each obscuro node
-	for _, m := range n.obscuroNodes {
+	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
 		time.Sleep(params.AvgBlockDuration / 10)
@@ -116,12 +115,8 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 func (n *networkInMemGeth) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
+		_ = (*temp).Call(nil, obscuroclient.RPCStopHost)
 		go (*temp).Stop()
-	}
-
-	for _, node := range n.obscuroNodes {
-		temp := node
-		go temp.Stop()
 	}
 
 	n.gethNetwork.StopNodes()

@@ -19,7 +19,6 @@ import (
 
 type basicNetworkOfInMemoryNodes struct {
 	ethNodes       []*ethereum_mock.Node
-	obscuroNodes   []*host.Node
 	obscuroClients []*obscuroclient.Client
 }
 
@@ -31,7 +30,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
-	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
+	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -40,14 +39,14 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		agg := createInMemObscuroNode(int64(i), isGenesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats, false, nil)
-		obscuroClient := host.NewInMemObscuroClient(int64(i), &agg.P2p, agg.DB(), &agg.EnclaveClient)
+		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
 		n.ethNodes[i] = miner
-		n.obscuroNodes[i] = agg
+		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
 		l1Clients[i] = miner
 	}
@@ -55,7 +54,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-		n.obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = n.obscuroNodes
+		obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = obscuroNodes
 	}
 
 	// The sequence of starting the nodes is important to catch various edge cases.
@@ -71,7 +70,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	}
 
 	time.Sleep(params.AvgBlockDuration * 20)
-	for _, m := range n.obscuroNodes {
+	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
 		time.Sleep(params.AvgBlockDuration / 3)
@@ -83,12 +82,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
+		_ = (*temp).Call(nil, obscuroclient.RPCStopHost)
 		go (*temp).Stop()
-	}
-
-	for _, node := range n.obscuroNodes {
-		temp := node
-		go temp.Stop()
 	}
 
 	for _, node := range n.ethNodes {

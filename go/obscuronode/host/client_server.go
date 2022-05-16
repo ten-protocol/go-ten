@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -23,7 +21,7 @@ type clientServerImpl struct {
 
 // NewClientServer returns a `host.ClientServer` that wraps the Geth `node` package for client communication, and
 // offers `NewEthAPI` under the "eth" namespace.
-func NewClientServer(address string, p2p *P2P, db *DB, enclave *nodecommon.Enclave) ClientServer {
+func NewClientServer(address string, host *Node) ClientServer {
 	hostAndPort := strings.Split(address, ":")
 	if len(hostAndPort) != 2 {
 		panic(fmt.Sprintf("Client server expected address in the form <host>:<port>, but received %s", address))
@@ -47,7 +45,7 @@ func NewClientServer(address string, p2p *P2P, db *DB, enclave *nodecommon.Encla
 		{
 			Namespace: apiNamespaceObscuro,
 			Version:   apiVersion1,
-			Service:   NewObscuroAPI(p2p, db, enclave),
+			Service:   NewObscuroAPI(host),
 			Public:    true,
 		},
 	}
