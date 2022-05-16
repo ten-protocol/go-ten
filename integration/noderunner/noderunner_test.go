@@ -14,6 +14,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 )
 
+// TODO - Use the HostRunner/EnclaveRunner methods in the socket-based integration tests, and retire this smoketest.
+
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	privateKey, err := crypto.GenerateKey()
