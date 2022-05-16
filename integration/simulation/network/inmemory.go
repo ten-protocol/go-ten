@@ -82,7 +82,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
-		_ = (*temp).Call(nil, obscuroclient.RPCStopHost)
+		go (*temp).Call(nil, obscuroclient.RPCStopHost)
 		go (*temp).Stop()
 	}
 
