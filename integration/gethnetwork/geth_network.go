@@ -345,7 +345,7 @@ func waitForIPC(dataDir string) {
 		time.Sleep(100 * time.Millisecond)
 
 		if counter > 20 {
-			log.Log(fmt.Sprintf("Waiting for .ipc file of node at %s", dataDir))
+			log.Info(fmt.Sprintf("Waiting for .ipc file of node at %s", dataDir))
 			counter = 0
 		}
 		counter++
