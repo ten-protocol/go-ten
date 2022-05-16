@@ -30,4 +30,5 @@ go/obscuronode/host/main/main
 go/obscuronode/enclave/main/main
 
 # Logs files
-enclave_logs.txt
+**/enclave_logs.txt
+**/host_logs.txt
