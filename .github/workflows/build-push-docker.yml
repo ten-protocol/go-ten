@@ -27,4 +27,6 @@ jobs:
         run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
 
       - name: Test
-        run: DOCKER_TEST_ENABLED=true go test -v -run TestDocker ./...
+        run: go test -v -run TestDocker ./...
+        env:
+          DOCKER_TEST_ENABLED: true
