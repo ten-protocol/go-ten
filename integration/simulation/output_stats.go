@@ -17,6 +17,9 @@ type OutputStats struct {
 	l2RollupTxCountInL1Blocks int // Number of rollup Txs counted while traversing the node block header
 	l1Height                  int // Last known l1 block height
 	l2Height                  int // Last known l2 block height
+
+	canonicalNativeDepositCount int // Number of native deposits on the canonical chain
+	canonicalERC20DepositCount  int // Number of erc20 deposits on the canonical chain
 }
 
 // NewOutputStats processes the simulation and retrieves the output statistics
@@ -25,7 +28,7 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 		simulation: simulation,
 	}
 
-	outputStats.countRollups()
+	outputStats.countCanonicalChain()
 	outputStats.populateHeights()
 
 	return outputStats
@@ -37,7 +40,7 @@ func (o *OutputStats) populateHeights() {
 	o.l2Height = int(getCurrentRollupHead(obscuroClient).Number)
 }
 
-func (o *OutputStats) countRollups() {
+func (o *OutputStats) countCanonicalChain() {
 	l1Node := o.simulation.EthClients[0]
 	l2Client := o.simulation.ObscuroClients[0]
 
@@ -54,12 +57,20 @@ func (o *OutputStats) countRollups() {
 				continue
 			}
 
-			if rolTx, ok := t.(*obscurocommon.L1RollupTx); ok {
-				r := nodecommon.DecodeRollupOrPanic(rolTx.Rollup)
+			switch l1Tx := t.(type) {
+			case *obscurocommon.L1RollupTx:
+				r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}
+
+			case *obscurocommon.L1DepositTx:
+				if l1Tx.TokenContract != nil {
+					o.canonicalERC20DepositCount++
+					continue
+				}
+				o.canonicalNativeDepositCount++
 			}
 		}
 	}
@@ -82,7 +93,9 @@ func (o *OutputStats) String() string {
 		"totalDepositedAmount: %d\n"+
 		"totalWithdrawnAmount: %d\n"+
 		"rollupWithMoreRecentProof: %d\n"+
-		"nrTransferTransactions: %d\n",
+		"nrTransferTransactions: %d\n"+
+		"nrCanonicalNativeDeposits: %d\n"+
+		"nrCanonicalERC20Deposits: %d\n",
 		o.simulation.Stats.NrMiners,
 		o.l1Height,
 		o.l2Height,
@@ -99,5 +112,7 @@ func (o *OutputStats) String() string {
 		o.simulation.Stats.TotalWithdrawalRequestedAmount,
 		o.simulation.Stats.RollupWithMoreRecentProofCount,
 		o.simulation.Stats.NrTransferTransactions,
+		o.canonicalNativeDepositCount,
+		o.canonicalERC20DepositCount,
 	)
 }

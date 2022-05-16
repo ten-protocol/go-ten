@@ -4,11 +4,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -29,7 +28,7 @@ func RunHost(config HostConfig) {
 
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
 	contractAddr := common.HexToAddress(config.ContractAddress)
-	txHandler := txhandler.TxHandler(mgmtcontractlib.NewHandler(&contractAddr))
+	txHandler := txhandler.NewTransactionHandler(mgmtcontractlib.NewHandler(&contractAddr))
 	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), nodeWallet, &contractAddr)
 	if err != nil {
 		panic(err)

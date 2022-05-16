@@ -329,7 +329,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	args := []string{
 		websocketFlag, wsPortFlag, strconv.Itoa(webSocketPort), dataDirFlag, dataDirPath, portFlag,
 		strconv.Itoa(port), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
-		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag, "--verbosity", "2",
+		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
 		httpEnableFlag, httpPortFlag, strconv.Itoa(httpPort), httpEnableApis, allowedAPIs, allowCORSDomain, "*",
 		httpIPFlag, "0.0.0.0",
 	}

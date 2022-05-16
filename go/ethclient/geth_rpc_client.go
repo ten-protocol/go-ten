@@ -27,7 +27,7 @@ type gethRPCClient struct {
 	id        common.Address      // TODO remove the id common.Address
 	wallet    wallet.Wallet       // wallet containing the account information // TODO this does not need to be coupled together
 	chainID   int                 // chainID is used to sign transactions
-	txHandler txhandler.TxHandler // converts L1TxData to ethereum transactions
+	txHandler txhandler.TxHandler // converts L1Transaction to ethereum transactions
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
@@ -174,23 +174,6 @@ func (e *gethRPCClient) BroadcastTx(tx obscurocommon.L1Transaction) {
 	if err != nil {
 		panic(err)
 	}
-	//
-	//timeout := 30 * time.Second
-	//var receipt *types.Receipt
-	//for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-	//	receipt, err = e.FetchTxReceipt(issuedTx.Hash())
-	//	if err == nil && receipt != nil {
-	//		break
-	//	}
-	//	if !errors.Is(err, ethereum.NotFound) {
-	//		panic(err)
-	//	}
-	//	log.Log(fmt.Sprintf("Tx has not been mined into a block after %s...", time.Since(start)))
-	//}
-	//
-	//if receipt == nil || receipt.Status != types.ReceiptStatusSuccessful {
-	//	panic(fmt.Errorf("transaction not minted into a block after %s", timeout))
-	//}
 }
 
 func (e *gethRPCClient) BlockListener() chan *types.Header {

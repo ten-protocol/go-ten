@@ -5,20 +5,15 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/mempool"
-
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-
-	"github.com/ethereum/go-ethereum/core"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/mempool"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 

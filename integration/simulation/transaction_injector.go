@@ -239,7 +239,7 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 		}
 
 		v := obscurocommon.RndBtw(1, 100)
-		data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", m.ethWallet.Address(), big.NewInt(int64(v)))
+		data, err := contracts.StableTokenERC20ContractABIJSON.Pack("transfer", m.ethWallet.Address(), big.NewInt(int64(v)))
 		if err != nil {
 			panic(err)
 		}

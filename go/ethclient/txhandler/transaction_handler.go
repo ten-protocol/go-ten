@@ -23,7 +23,7 @@ func NewTransactionHandler(mgmtHandler ContractHandler, handlers ...ContractHand
 
 func (t *txHandlerImpl) PackTx(tx obscurocommon.L1Transaction, from common.Address, nonce uint64) (types.TxData, error) {
 	// obscuro will only ever pack transactions using the mgmt contract (for now)
-	return t.mgmtHandler.PackTx(tx, from, nonce)
+	return t.mgmtHandler.Pack(tx, from, nonce)
 }
 
 func (t *txHandlerImpl) UnPackTx(tx *types.Transaction) obscurocommon.L1Transaction {
@@ -33,13 +33,13 @@ func (t *txHandlerImpl) UnPackTx(tx *types.Transaction) obscurocommon.L1Transact
 		return nil
 	}
 
-	if tx.To() == t.mgmtHandler.Address() {
-		return t.mgmtHandler.UnPackTx(tx)
+	if tx.To().Hex() == t.mgmtHandler.Address().Hex() {
+		return t.mgmtHandler.UnPack(tx)
 	}
 
 	for _, handler := range t.handlers {
-		if tx.To() == handler.Address() {
-			return handler.UnPackTx(tx)
+		if tx.To().Hex() == handler.Address().Hex() {
+			return handler.UnPack(tx)
 		}
 	}
 

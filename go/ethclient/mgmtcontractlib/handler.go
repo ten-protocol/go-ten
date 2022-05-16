@@ -39,7 +39,7 @@ func (h *mgmtContractTxHandler) Address() *common.Address {
 	return h.addr
 }
 
-func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr common.Address, nonce uint64) (types.TxData, error) {
+func (h *mgmtContractTxHandler) Pack(t obscurocommon.L1Transaction, fromAddr common.Address, nonce uint64) (types.TxData, error) {
 	ethTx := &types.LegacyTx{
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
@@ -63,11 +63,11 @@ func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr c
 		if err != nil {
 			panic(err)
 		}
-		zipped, err := Compress(tx.Rollup)
+		zipped, err := compress(tx.Rollup)
 		if err != nil {
 			panic(err)
 		}
-		encRollupData := EncodeToString(zipped)
+		encRollupData := encodeToString(zipped)
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.AddRollupMethod, encRollupData)
 		if err != nil {
 			panic(err)
@@ -78,12 +78,12 @@ func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr c
 			obscurocommon.ShortHash(r.Hash()), len(r.Transactions), len(data), ethTx.Gas))
 
 	case *obscurocommon.L1StoreSecretTx:
-		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, EncodeToString(tx.Secret))
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, encodeToString(tx.Secret))
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Log(fmt.Sprintf("- Broadcasting - Issuing StoreSecretTx: encoded as %s", EncodeToString(tx.Secret)))
+		log.Log(fmt.Sprintf("- Broadcasting - Issuing StoreSecretTx: encoded as %s", encodeToString(tx.Secret)))
 	case *obscurocommon.L1RequestSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
 		if err != nil {
@@ -96,7 +96,7 @@ func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr c
 	return ethTx, nil
 }
 
-func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1Transaction {
+func (h *mgmtContractTxHandler) UnPack(tx *types.Transaction) obscurocommon.L1Transaction {
 	method, err := contracts.MgmtContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
@@ -127,8 +127,8 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 		if !found {
 			panic("call data not found for rollupData")
 		}
-		zipped := DecodeFromString(callData.(string))
-		rollup, err := Decompress(zipped)
+		zipped := decodeFromString(callData.(string))
+		rollup, err := decompress(zipped)
 		if err != nil {
 			panic(err)
 		}
@@ -147,7 +147,7 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 		}
 
 		return &obscurocommon.L1StoreSecretTx{
-			Secret: DecodeFromString(callData.(string)),
+			Secret: decodeFromString(callData.(string)),
 		}
 
 	case contracts.RequestSecretMethod:
@@ -157,13 +157,13 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 	return nil
 }
 
-// EncodeToString encodes a byte array to a string
-func EncodeToString(bytes []byte) string {
+// encodeToString encodes a byte array to a string
+func encodeToString(bytes []byte) string {
 	return base64.StdEncoding.EncodeToString(bytes)
 }
 
-// DecodeFromString decodes a string to a byte array
-func DecodeFromString(in string) []byte {
+// decodeFromString decodes a string to a byte array
+func decodeFromString(in string) []byte {
 	bytesStr, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		panic(err)
@@ -171,8 +171,8 @@ func DecodeFromString(in string) []byte {
 	return bytesStr
 }
 
-// Compress compresses the byte array using gzip
-func Compress(in []byte) ([]byte, error) {
+// compress the byte array using gzip
+func compress(in []byte) ([]byte, error) {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
 	if _, err := gz.Write(in); err != nil {
@@ -184,8 +184,8 @@ func Compress(in []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// Decompress decompresses the byte array using gzip
-func Decompress(in []byte) ([]byte, error) {
+// decompress the byte array using gzip
+func decompress(in []byte) ([]byte, error) {
 	reader := bytes.NewReader(in)
 	gz, err := gzip.NewReader(reader)
 	if err != nil {

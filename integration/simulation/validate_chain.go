@@ -103,23 +103,6 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 		dups := obscurocommon.FindRollupDups(rollups)
 		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeAddr, dups)
 	}
-
-	regularDepositTotal, erc20Total := uint64(0), uint64(0)
-	regularDepositTxs, erc20Deposits := 0, 0
-	for _, tx := range s.TxInjector.GetL1Transactions() {
-		if l1tx, ok := tx.(*obscurocommon.L1DepositTx); ok {
-			if l1tx.TokenContract != nil {
-				erc20Deposits++
-				erc20Total += l1tx.Amount
-			}
-			regularDepositTxs++
-			regularDepositTotal += l1tx.Amount
-		}
-	}
-	fmt.Printf("Regular regularDepositTxs:%d\n", regularDepositTxs)
-	fmt.Printf("Regular regularDepositTotal:%d\n", regularDepositTotal)
-	fmt.Printf("erc20Deposits DEPOSITS:%d\n", erc20Deposits)
-	fmt.Printf("erc20Total Total:%d\n", erc20Total)
 	if totalDeposited != s.Stats.TotalDepositedAmount {
 		t.Errorf("Node %d: Deposit amounts don't match. Found %d , expected %d", nodeAddr, totalDeposited, s.Stats.TotalDepositedAmount)
 	}
@@ -143,8 +126,6 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	regularDepositTotal, erc20Total := uint64(0), uint64(0)
-	regularDepositTxs, erc20Deposits := 0, 0
 	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
@@ -156,12 +137,6 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 			case *obscurocommon.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
 				totalDeposited += l1tx.Amount
-				if l1tx.TokenContract != nil {
-					erc20Deposits++
-					erc20Total += l1tx.Amount
-				}
-				regularDepositTxs++
-				regularDepositTotal += l1tx.Amount
 			case *obscurocommon.L1RollupTx:
 				r := nodecommon.DecodeRollupOrPanic(l1tx.Rollup)
 				rollups = append(rollups, r.Hash())
@@ -170,16 +145,9 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 					// todo - once logic is added to the l1 - this can be made into a check
 					s.Stats.NewRollup(node.Info().ID, r)
 				}
-			case *obscurocommon.L1RequestSecretTx:
-			case *obscurocommon.L1StoreSecretTx:
 			}
 		}
 	}
-
-	fmt.Printf("Regular regularDepositTxs:%d\n", regularDepositTxs)
-	fmt.Printf("Regular regularDepositTotal:%d\n", regularDepositTotal)
-	fmt.Printf("erc20Deposits DEPOSITS:%d\n", erc20Deposits)
-	fmt.Printf("erc20Total Total:%d\n", erc20Total)
 	return deposits, rollups, totalDeposited, len(blockchain)
 }
 

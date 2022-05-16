@@ -5,17 +5,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 const ClientRPCTimeoutSecs = 5

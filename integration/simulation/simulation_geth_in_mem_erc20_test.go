@@ -5,36 +5,32 @@ import (
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/contracts"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 )
 
-// TestGethMemObscuroEthERC20MonteCarloSimulation runs the simulation against a private geth network using Clique (PoA)
-func TestGethMemObscuroEthERC20MonteCarloSimulation(t *testing.T) {
+// TestGethSimulation runs the simulation against a private geth network using Clique (PoA)
+func TestGethSimulation(t *testing.T) {
 	setupTestLog()
 
 	numberOfNodes := 5
 
-	// there is one wallet per node, so there have to be at least numberOfNodes wallets available
-	numberOfWallets := numberOfNodes
-
 	// randomly create the ethereum wallets to be used and prefund them
 	// create one extra wallet as the worker wallet
-	wallets := make([]wallet.Wallet, numberOfWallets+1)
-	for i := 0; i < numberOfWallets+1; i++ {
+	wallets := make([]wallet.Wallet, numberOfNodes+1)
+	for i := 0; i < numberOfNodes+1; i++ {
 		wallets[i] = datagenerator.RandomWallet()
 	}
 
 	// The last wallet as the worker wallet ( to deposit and inject transactions )
-	workerWallet := wallets[numberOfWallets]
+	workerWallet := wallets[numberOfNodes]
 
 	// define contracts to be deployed
 	contractsBytes := []string{
 		contracts.MgmtContractByteCode,
-		contracts.PedroERC20ContractByteCode,
+		contracts.StableTokenERC20ContractByteCode,
 	}
 
 	// define the network to use
@@ -42,7 +38,7 @@ func TestGethMemObscuroEthERC20MonteCarloSimulation(t *testing.T) {
 
 	simParams := &params.SimParams{
 		NumberOfNodes:             numberOfNodes,
-		NumberOfObscuroWallets:    numberOfWallets,
+		NumberOfObscuroWallets:    numberOfNodes,
 		AvgBlockDuration:          1 * time.Second,
 		SimulationTime:            60 * time.Second,
 		L1EfficiencyThreshold:     0.2,

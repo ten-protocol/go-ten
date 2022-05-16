@@ -6,18 +6,13 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
-
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-
-	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -242,7 +237,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 			if t == nil {
 				continue
 			}
-			// transactions to a hardcoded bridge address
+
 			if depositTx, ok := t.(*obscurocommon.L1DepositTx); ok {
 				depL2TxData := core.L2TxData{
 					Type:   core.DepositTx,

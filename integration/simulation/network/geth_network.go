@@ -1,17 +1,17 @@
 package network
 
 import (
-	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/stabletokencontractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -71,13 +71,14 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	}
 
 	contractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.MgmtContractByteCode))
-	mgmtContractHandler := mgmtcontractlib.NewHandler(contractAddr)
-	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.PedroERC20ContractByteCode))
-	erc20ContractHandler := erc20contractlib.NewHandler(erc20ContractAddr)
+	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.StableTokenERC20ContractByteCode))
 
 	params.MgmtContractAddr = contractAddr
 	params.ERC20ContractAddr = erc20ContractAddr
-	params.TxHandler = txhandler.NewTransactionHandler(mgmtContractHandler, erc20ContractHandler)
+	params.TxHandler = txhandler.NewTransactionHandler(
+		mgmtcontractlib.NewHandler(contractAddr),
+		stabletokencontractlib.NewHandler(erc20ContractAddr),
+	)
 	// Create the obscuro node, each connected to a geth node
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
@@ -164,9 +165,8 @@ func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractByte
 		panic(err)
 	}
 
-	fmt.Printf("waiting for tx: %s\n", signedTx.Hash())
 	var receipt *types.Receipt
-	for start := time.Now(); time.Since(start) < 600*time.Second; time.Sleep(time.Second) {
+	for start := time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
 		receipt, err = tmpClient.FetchTxReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
@@ -175,9 +175,9 @@ func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractByte
 			break
 		}
 
-		fmt.Printf("Contract deploy tx has not been mined into a block after %s...\n", time.Since(start))
+		log.Log("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
 	}
 
-	fmt.Printf("Contract successfully deployed to %s \n", receipt.ContractAddress)
+	log.Log("Contract successfully deployed to %s", receipt.ContractAddress)
 	return &receipt.ContractAddress
 }

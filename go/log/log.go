@@ -16,15 +16,15 @@ func Trace(msg string, args ...interface{}) {
 	// fmt.Printf(msg+"\n", args...)
 }
 
-func Log(msg string) {
+func Log(msg string, args ...interface{}) {
 	if logFile == nil {
 		// defaults to outputting logs to stdout
 		// things like unit tests don't require a logfile
-		fmt.Println(msg)
+		fmt.Printf(msg+"\n", args...)
 		return
 	}
 
-	_, err := logFile.WriteString(fmt.Sprintf("%d %s\n", makeTimestamp(), msg))
+	_, err := logFile.WriteString(fmt.Sprintf("%d %s\n", makeTimestamp(), fmt.Sprintf(msg, args...)))
 	if err != nil {
 		panic(fmt.Errorf("logger could not write to log file: %w", err))
 	}

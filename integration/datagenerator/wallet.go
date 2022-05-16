@@ -3,7 +3,6 @@ package datagenerator
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 )
@@ -11,7 +10,6 @@ import (
 // RandomWallet returns a wallet with a random private key
 func RandomWallet() wallet.Wallet {
 	pk, err := randomHex(32)
-	fmt.Println(pk)
 	if err != nil {
 		panic(err) // this should never panic - world should stop if it does
 	}
