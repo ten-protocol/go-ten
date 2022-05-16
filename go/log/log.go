@@ -22,23 +22,23 @@ func SetLog(f *os.File) {
 }
 
 func Error(msg string, args ...interface{}) {
-	write("ERROR:"+msg, args...)
+	write("ERROR: "+msg, args...)
 }
 
 func Trace(msg string, args ...interface{}) {
 	if LogStatus >= TraceLevel {
-		write("TRACE:"+msg, args...)
+		write("TRACE: "+msg, args...)
 	}
 }
 
 func Debug(msg string, args ...interface{}) {
 	if LogStatus >= DebugLevel {
-		write("DEBUG:"+msg, args...)
+		write("DEBUG: "+msg, args...)
 	}
 }
 
 func Info(msg string, args ...interface{}) {
-	write("INFO:"+msg, args...)
+	write("INFO: "+msg, args...)
 }
 
 func write(msg string, args ...interface{}) {
