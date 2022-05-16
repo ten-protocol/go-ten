@@ -9,5 +9,5 @@ import (
 // LogWithID logs a message with the aggregator's identity prepended.
 func LogWithID(nodeID uint64, msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
-	log.Log(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
+	log.Info(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
 }
