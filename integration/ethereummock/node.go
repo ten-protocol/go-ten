@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -65,7 +65,7 @@ type Node struct {
 	// internal
 	headInCh  chan bool
 	headOutCh chan *types.Block
-	txHandler mgmtcontractlib.TxHandler
+	txHandler txhandler.TxHandler
 }
 
 func (m *Node) SubmitTransaction(_ types.TxData) (*types.Transaction, error) {

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/gob"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
@@ -84,6 +85,6 @@ func (m *MockTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1Transact
 	return t
 }
 
-func NewMockTxHandler() mgmtcontractlib.TxHandler {
+func NewMockTxHandler() txhandler.TxHandler {
 	return &MockTxHandler{}
 }

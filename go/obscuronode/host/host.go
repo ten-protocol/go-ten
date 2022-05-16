@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -91,7 +91,7 @@ type Node struct {
 	readyForWork *int32
 
 	// Handles tx conversion from eth to L1Data
-	txHandler mgmtcontractlib.TxHandler
+	txHandler txhandler.TxHandler
 }
 
 func NewObscuroAggregator(
@@ -102,7 +102,7 @@ func NewObscuroAggregator(
 	p2p P2P,
 	ethClient ethclient.EthClient,
 	enclaveClient nodecommon.Enclave,
-	txHandler mgmtcontractlib.TxHandler,
+	txHandler txhandler.TxHandler,
 ) Node {
 	db := NewDB()
 

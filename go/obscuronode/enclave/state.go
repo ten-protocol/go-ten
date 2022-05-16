@@ -6,10 +6,10 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -77,7 +77,7 @@ func executeDeposit(s db.StateDB, tx nodecommon.L2Tx) {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) *core.BlockState {
+func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler txhandler.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) *core.BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := bss.FetchBlockState(b.Hash())
 	if found {
@@ -220,7 +220,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
 // starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
-func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler) []nodecommon.L2Tx {
+func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver db.BlockResolver, txHandler txhandler.TxHandler) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
@@ -266,7 +266,7 @@ func processDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(b *types.Block, parentState *core.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*core.BlockState, db.StateDB, *core.Rollup) {
+func calculateBlockState(b *types.Block, parentState *core.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler txhandler.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*core.BlockState, db.StateDB, *core.Rollup) {
 	currentHead, found := rollupResolver.FetchRollup(parentState.HeadRollup)
 	if !found {
 		panic("should not happen")
@@ -314,7 +314,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state db.StateD
 	return w
 }
 
-func extractRollups(b *types.Block, blockResolver db.BlockResolver, handler mgmtcontractlib.TxHandler) []*core.Rollup {
+func extractRollups(b *types.Block, blockResolver db.BlockResolver, handler txhandler.TxHandler) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions

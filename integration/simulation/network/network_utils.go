@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
@@ -37,7 +37,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 func createInMemObscuroNode(
 	id int64,
 	genesis bool,
-	txHandler mgmtcontractlib.TxHandler,
+	txHandler txhandler.TxHandler,
 	avgGossipPeriod time.Duration,
 	avgBlockDuration time.Duration,
 	avgNetworkLatency time.Duration,

@@ -5,11 +5,14 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -68,12 +71,13 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	}
 
 	contractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.MgmtContractByteCode))
+	mgmtContractHandler := mgmtcontractlib.NewHandler(contractAddr)
 	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.PedroERC20ContractByteCode))
+	erc20ContractHandler := erc20contractlib.NewHandler(erc20ContractAddr)
 
 	params.MgmtContractAddr = contractAddr
 	params.ERC20ContractAddr = erc20ContractAddr
-	params.TxHandler = mgmtcontractlib.NewEthMgmtContractTxHandlerWithERC20(contractAddr, erc20ContractAddr)
-
+	params.TxHandler = txhandler.NewTransactionHandler(mgmtContractHandler, erc20ContractHandler)
 	// Create the obscuro node, each connected to a geth node
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)

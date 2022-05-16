@@ -1,12 +1,17 @@
 package mgmtcontractlib
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/contracts"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -20,32 +25,18 @@ var (
 	defaultGas      = uint64(1024_000_000)
 )
 
-type TxHandler interface {
-	// PackTx receives an obscurocommon.L1Transaction object and packs it into a types.TxData object
-	// Nonce generation, transaction signature and any other operations are responsibility of the caller
-	PackTx(tx obscurocommon.L1Transaction, from common.Address, nonce uint64) (types.TxData, error)
-
-	// UnPackTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
-	// Any transaction that is not calling the management contract is purposefully ignored
-	UnPackTx(tx *types.Transaction) obscurocommon.L1Transaction
-}
-
 type mgmtContractTxHandler struct {
-	contractAddr         *common.Address
-	erc20ContractAddress *common.Address
+	addr *common.Address
 }
 
-func NewEthMgmtContractTxHandler(contractAddress *common.Address) TxHandler {
+func NewHandler(addr *common.Address) txhandler.ContractHandler {
 	return &mgmtContractTxHandler{
-		contractAddr: contractAddress,
+		addr: addr,
 	}
 }
 
-func NewEthMgmtContractTxHandlerWithERC20(contractAddress *common.Address, erc20ContractAddress *common.Address) TxHandler {
-	return &mgmtContractTxHandler{
-		contractAddr:         contractAddress,
-		erc20ContractAddress: erc20ContractAddress,
-	}
+func (h *mgmtContractTxHandler) Address() *common.Address {
+	return h.addr
 }
 
 func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr common.Address, nonce uint64) (types.TxData, error) {
@@ -53,10 +44,9 @@ func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr c
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
 		Gas:      defaultGas,
-		To:       h.contractAddr,
+		To:       h.addr,
 	}
 
-	// using (obj) type instead of t.Type() to immediately fetch the cast object
 	switch tx := t.(type) {
 	case *obscurocommon.L1DepositTx:
 		ethTx.Value = big.NewInt(int64(tx.Amount))
@@ -107,17 +97,6 @@ func (h *mgmtContractTxHandler) PackTx(t obscurocommon.L1Transaction, fromAddr c
 }
 
 func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1Transaction {
-	// ignore transactions that are not calling the contract
-	if tx.To() == nil || (tx.To().Hex() != h.contractAddr.Hex() && tx.To().Hex() != h.erc20ContractAddress.Hex()) || len(tx.Data()) == 0 {
-		log.Log(fmt.Sprintf("UnpackTx: Ignoring transaction %+v", tx))
-		return nil
-	}
-
-	// TODO review this
-	if tx.To().Hex() == h.erc20ContractAddress.Hex() {
-		return h.unpackPedroERC20(tx)
-	}
-
 	method, err := contracts.MgmtContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
@@ -178,30 +157,41 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1
 	return nil
 }
 
-func (h *mgmtContractTxHandler) unpackPedroERC20(tx *types.Transaction) obscurocommon.L1Transaction {
-	method, err := contracts.PedroERC20ContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
+// EncodeToString encodes a byte array to a string
+func EncodeToString(bytes []byte) string {
+	return base64.StdEncoding.EncodeToString(bytes)
+}
+
+// DecodeFromString decodes a string to a byte array
+func DecodeFromString(in string) []byte {
+	bytesStr, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		panic(err)
 	}
+	return bytesStr
+}
 
-	contractCallData := map[string]interface{}{}
-	if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
-		panic(err)
+// Compress compresses the byte array using gzip
+func Compress(in []byte) ([]byte, error) {
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	if _, err := gz.Write(in); err != nil {
+		return nil, err
 	}
-	amount, found := contractCallData["amount"]
-	if !found {
-		panic("amount not found for transfer")
+	if err := gz.Close(); err != nil {
+		return nil, err
 	}
+	return b.Bytes(), nil
+}
 
-	signer := types.NewEIP155Signer(tx.ChainId())
-	sender, err := signer.Sender(tx)
+// Decompress decompresses the byte array using gzip
+func Decompress(in []byte) ([]byte, error) {
+	reader := bytes.NewReader(in)
+	gz, err := gzip.NewReader(reader)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	defer gz.Close()
 
-	return &obscurocommon.L1DepositTx{
-		Amount:        amount.(*big.Int).Uint64(),
-		To:            sender,
-		TokenContract: h.erc20ContractAddress,
-	}
+	return ioutil.ReadAll(gz)
 }

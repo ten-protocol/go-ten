@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -22,11 +23,11 @@ var connectionTimeout = 15 * time.Second
 // Beyond connection, EthClient requires transaction transformation to be handled (txhandle),
 // chainID and transaction signage to be done (wallet)
 type gethRPCClient struct {
-	client    *ethclient.Client         // the underlying eth rpc client
-	id        common.Address            // TODO remove the id common.Address
-	wallet    wallet.Wallet             // wallet containing the account information // TODO this does not need to be coupled together
-	chainID   int                       // chainID is used to sign transactions
-	txHandler mgmtcontractlib.TxHandler // converts L1TxData to ethereum transactions
+	client    *ethclient.Client   // the underlying eth rpc client
+	id        common.Address      // TODO remove the id common.Address
+	wallet    wallet.Wallet       // wallet containing the account information // TODO this does not need to be coupled together
+	chainID   int                 // chainID is used to sign transactions
+	txHandler txhandler.TxHandler // converts L1TxData to ethereum transactions
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
@@ -50,7 +51,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 		id:        id,
 		wallet:    wallet, // TODO this does not need to be coupled together
 		chainID:   1337,   // hardcoded for testnets // TODO this should be configured
-		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddress),
+		txHandler: txhandler.NewTransactionHandler(mgmtcontractlib.NewHandler(contractAddress)),
 	}, nil
 }
 
