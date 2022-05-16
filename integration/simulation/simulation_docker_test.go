@@ -1,11 +1,9 @@
-//go:build docker
-// +build docker
-
 package simulation
 
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -25,12 +23,13 @@ import (
 
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
 
-var (
+const (
 	enclaveDockerImg  = "obscuro_enclave"
 	nodeIDFlag        = "--nodeID"
 	addressFlag       = "--address"
 	enclaveAddress    = ":11000"
 	enclaveDockerPort = "11000/tcp"
+	dockerTestEnv     = "DOCKER_TEST_ENABLED"
 )
 
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
@@ -38,6 +37,11 @@ var (
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 // $> docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}") will stop and remove all images
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
+	fooAddr := os.Getenv(dockerTestEnv)
+	if fooAddr == "" {
+		t.Skipf("set %s to run this test", dockerTestEnv)
+	}
+
 	setupTestLog()
 
 	simParams := params.SimParams{

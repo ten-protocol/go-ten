@@ -1,9 +1,7 @@
-//go:build azure
-// +build azure
-
 package simulation
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -13,13 +11,18 @@ import (
 )
 
 const (
-	vmIP = "20.90.208.251" // Todo: replace with the IP of the vm
+	vmIP         = "20.90.208.251" // Todo: replace with the IP of the vm
+	azureTestEnv = "AZURE_TEST_ENABLED"
 )
 
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
+	fooAddr := os.Getenv(azureTestEnv)
+	if fooAddr == "" {
+		t.Skipf("set %s to run this test", azureTestEnv)
+	}
 	setupTestLog()
 
 	params := params.SimParams{
