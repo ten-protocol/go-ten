@@ -25,7 +25,7 @@ import (
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
 
 type StatsCollector interface {
-	// L2Recalc registers when a nodeID has to discard the speculative work built on top of the winner of the gossip round.
+	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
 	RollupWithMoreRecentProof()
 }
@@ -208,7 +208,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
 
-	// todo - A verifier nodeID will not produce rollups, we can check the e.mining to get the nodeID behaviour
+	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	hr, f := e.storage.FetchRollup(blockState.HeadRollup)
 	if !f {
 		panic("Failed to fetch rollup. Should not happen")
@@ -512,7 +512,7 @@ type processingEnvironment struct {
 
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
-// received from the L1 nodeID if `validateBlocks` is set to true.
+// received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(nodeID common.Address, mining bool, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
 	backingDB := db.NewInMemoryDB()
 	nodeShortID := obscurocommon.ShortAddress(nodeID)
