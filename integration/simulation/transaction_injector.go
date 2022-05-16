@@ -133,7 +133,7 @@ func (m *TransactionInjector) Start() {
 func (m *TransactionInjector) Stop() {
 	atomic.StoreInt32(m.interruptRun, 1)
 	for range m.fullyStoppedChan {
-		log.Log("TransactionInjector stopped successfully")
+		log.Info("TransactionInjector stopped successfully")
 		return
 	}
 }
@@ -200,7 +200,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			log.Log("Failed to issue transfer via RPC.")
+			log.Info("Failed to issue transfer via RPC.")
 			continue
 		}
 
@@ -266,7 +266,7 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 			if !errors.Is(err, ethereum.NotFound) {
 				panic(err)
 			}
-			log.Log(fmt.Sprintf("Tx has not been mined into a block after %s...", time.Since(start)))
+			log.Trace("Tx has not been mined into a block after %s...", time.Since(start))
 		}
 
 		if receipt == nil || receipt.Status != types.ReceiptStatusSuccessful {
@@ -293,7 +293,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			log.Log("Failed to issue withdrawal via RPC.")
+			log.Info("Failed to issue withdrawal via RPC.")
 			continue
 		}
 
@@ -313,7 +313,7 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
-			log.Log("Failed to issue withdrawal via RPC.")
+			log.Info("Failed to issue withdrawal via RPC.")
 			continue
 		}
 	}

@@ -1,8 +1,6 @@
 package txhandler
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -29,7 +27,7 @@ func (t *txHandlerImpl) PackTx(tx obscurocommon.L1Transaction, from common.Addre
 func (t *txHandlerImpl) UnPackTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	// ignore value transfers or contract creations
 	if tx.To() == nil {
-		log.Log(fmt.Sprintf("UnpackTx: Ignoring transaction %+v", tx))
+		log.Trace("UnpackTx: Ignoring transaction %+v", tx)
 		return nil
 	}
 
@@ -44,6 +42,6 @@ func (t *txHandlerImpl) UnPackTx(tx *types.Transaction) obscurocommon.L1Transact
 	}
 
 	// ignore contract executions that are not in the registered contract handlers
-	log.Log(fmt.Sprintf("UnpackTx: Ignoring transaction %+v", tx))
+	log.Trace("UnpackTx: Ignoring transaction %+v", tx)
 	return nil
 }

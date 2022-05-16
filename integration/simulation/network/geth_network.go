@@ -166,9 +166,9 @@ func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractByte
 			break
 		}
 
-		log.Log("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
+		log.Info("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
 	}
 
-	log.Log("Contract successfully deployed to %s", receipt.ContractAddress)
+	log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
 	return &receipt.ContractAddress
 }

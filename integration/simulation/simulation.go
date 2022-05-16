@@ -32,7 +32,7 @@ type Simulation struct {
 
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
-	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
+	log.Info(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	timer := time.Now()
 	go s.TxInjector.Start()

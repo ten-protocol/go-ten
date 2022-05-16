@@ -169,7 +169,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 
 	// only proceed if the parent is available
 	if !f {
-		log.Log(fmt.Sprintf("> M%d: Parent block not found=b_%d", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Header().ParentHash)))
+		log.Info(fmt.Sprintf("> M%d: Parent block not found=b_%d", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Header().ParentHash)))
 		return head
 	}
 
@@ -182,7 +182,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.ID)
 		fork := LCA(head, b, m.Resolver)
-		log.Log(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), b.NumberU64(), obscurocommon.ShortHash(head.Hash()), head.NumberU64(), obscurocommon.ShortHash(fork.Hash()), fork.NumberU64()))
+		log.Info(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), b.NumberU64(), obscurocommon.ShortHash(head.Hash()), head.NumberU64(), obscurocommon.ShortHash(fork.Hash()), fork.NumberU64()))
 		return m.setFork(m.BlocksBetween(fork, b))
 	}
 
@@ -250,7 +250,7 @@ func (m *Node) P2PReceiveBlock(b obscurocommon.EncodedBlock, p obscurocommon.Enc
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it
 // on the miningCh channel
 func (m *Node) startMining() {
-	log.Log(fmt.Sprintf("Node-%d: starting miner...", obscurocommon.ShortAddress(m.ID)))
+	log.Info(fmt.Sprintf("Node-%d: starting miner...", obscurocommon.ShortAddress(m.ID)))
 	// stores all transactions seen from the beginning of time.
 	mempool := make([]*types.Transaction, 0)
 	z := int32(0)
