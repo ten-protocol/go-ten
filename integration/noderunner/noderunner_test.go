@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// todo - joel - describe
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -31,18 +32,20 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
 
+	// todo - joel - avoid sleep
 	time.Sleep(3 * time.Second)
 
-	obscuroClient := obscuroclient.NewClient(0, hostConfig.ClientServerAddr)
+	// todo - joel - use proper node ID
+	// todo - joel - too brittle that must not add http
+	// todo - joel - use 127... in host runner too
+	obscuroClient := obscuroclient.NewClient(0, "127.0.0.1:12000")
 	var result uint64
-	err = obscuroClient.Call(&result, obscuroclient.RPCBalance, address)
+	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHeadHeight)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	println(result)
-
-	select {}
-
-	// todo - joel - use node client to check can make request against running host
+	if !(result > 0) {
+		t.Fatal("Zero blocks have been produced. Something is wrong.")
+	}
 }
