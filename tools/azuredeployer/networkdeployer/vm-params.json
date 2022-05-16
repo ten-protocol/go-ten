@@ -1,8 +1,8 @@
 {
     "vm_password": {
-        "value": "TempPassword1!"
+        "value": "replace_me"
     },
     "email_recipient": {
-        "value": "joel@obscu.ro"
+        "value": "replace@me.com"
     }
 }
