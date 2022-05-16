@@ -20,11 +20,15 @@ import (
 const methodBytesLen = 4
 
 var (
-	// TODO review estimating gas - these should not be static values
+	// TODO review gas estimation - these should not be static values
+	// Gas should be calculated so to not overpay what the operation requires
+	// The values are hardcoded at the moment to guarantee the txs will be minted
+	// It's using large gas values because rollups can be very expensive
 	defaultGasPrice = big.NewInt(20000000000)
 	defaultGas      = uint64(1024_000_000)
 )
 
+// mgmtContractTxHandler implements a txhandler.ContractHandler specific to the Management Contract
 type mgmtContractTxHandler struct {
 	addr *common.Address
 }
@@ -66,7 +70,7 @@ func (h *mgmtContractTxHandler) Pack(t obscurocommon.L1Transaction, fromAddr com
 		if err != nil {
 			panic(err)
 		}
-		encRollupData := encodeToString(zipped)
+		encRollupData := base64EncodeToString(zipped)
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.AddRollupMethod, encRollupData)
 		if err != nil {
 			panic(err)
@@ -77,12 +81,12 @@ func (h *mgmtContractTxHandler) Pack(t obscurocommon.L1Transaction, fromAddr com
 			obscurocommon.ShortHash(r.Hash()), len(r.Transactions), len(data), ethTx.Gas))
 
 	case *obscurocommon.L1StoreSecretTx:
-		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, encodeToString(tx.Secret))
+		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, base64EncodeToString(tx.Secret))
 		if err != nil {
 			panic(err)
 		}
 		ethTx.Data = data
-		log.Info(fmt.Sprintf("- Broadcasting - Issuing StoreSecretTx: encoded as %s", encodeToString(tx.Secret)))
+		log.Info(fmt.Sprintf("- Broadcasting - Issuing StoreSecretTx: encoded as %s", base64EncodeToString(tx.Secret)))
 	case *obscurocommon.L1RequestSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
 		if err != nil {
@@ -126,7 +130,7 @@ func (h *mgmtContractTxHandler) UnPack(tx *types.Transaction) obscurocommon.L1Tr
 		if !found {
 			panic("call data not found for rollupData")
 		}
-		zipped := decodeFromString(callData.(string))
+		zipped := base64DecodeFromString(callData.(string))
 		rollup, err := decompress(zipped)
 		if err != nil {
 			panic(err)
@@ -146,7 +150,7 @@ func (h *mgmtContractTxHandler) UnPack(tx *types.Transaction) obscurocommon.L1Tr
 		}
 
 		return &obscurocommon.L1StoreSecretTx{
-			Secret: decodeFromString(callData.(string)),
+			Secret: base64DecodeFromString(callData.(string)),
 		}
 
 	case contracts.RequestSecretMethod:
@@ -156,13 +160,13 @@ func (h *mgmtContractTxHandler) UnPack(tx *types.Transaction) obscurocommon.L1Tr
 	return nil
 }
 
-// encodeToString encodes a byte array to a string
-func encodeToString(bytes []byte) string {
+// base64EncodeToString encodes a byte array to a string
+func base64EncodeToString(bytes []byte) string {
 	return base64.StdEncoding.EncodeToString(bytes)
 }
 
-// decodeFromString decodes a string to a byte array
-func decodeFromString(in string) []byte {
+// base64DecodeFromString decodes a string to a byte array
+func base64DecodeFromString(in string) []byte {
 	bytesStr, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		panic(err)

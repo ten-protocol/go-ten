@@ -11,16 +11,19 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-const (
-	depositTxID uint64 = iota
-	rollupTxID
-	storeSecretTxID
-	requestSecretTxID
+var (
+	depositTxAddr       = common.HexToAddress("0x01")
+	rollupTxAddr        = common.HexToAddress("0x02")
+	storeSecretTxAddr   = common.HexToAddress("0x03")
+	requestSecretTxAddr = common.HexToAddress("0x04")
 )
 
 // MockTxHandler implements mgmtcontractlib.TxHandler for the ethereummock package
+// The ethereummock does not execute contracts. As such we need a way to emulate transactions that execute contracts.
+// The MockTxHandler uses the To Field to make contract executions. Both the PackTx and UnPackTx know how to handle these.
+//
 // PackTx encodes the obscurocommon.L1Transaction in the Data field of the types.LegacyTx
-// and specifies the obscurocommon.L1Transaction type in the Gas Field (since it is not used for anything else)
+// and specifies the obscurocommon.L1Transaction type in the To Field (since it is not used for anything else)
 //
 // UnPackTx does the reverse steps - understands obscurocommon.L1Transaction to return based on the types.Transaction Gas
 // and decodes the correct object
@@ -34,23 +37,23 @@ func (m *MockTxHandler) PackTx(tx obscurocommon.L1Transaction, _ common.Address,
 		panic(err)
 	}
 
-	gasType := uint64(0)
-
+	// in the mock implementation we use the TO address field to specify what is the L1 operation
+	contractAddress := common.Address{}
 	switch tx.(type) {
 	case *obscurocommon.L1RollupTx:
-		gasType = rollupTxID
+		contractAddress = rollupTxAddr
 	case *obscurocommon.L1DepositTx:
-		gasType = depositTxID
+		contractAddress = depositTxAddr
 	case *obscurocommon.L1RequestSecretTx:
-		gasType = requestSecretTxID
+		contractAddress = requestSecretTxAddr
 	case *obscurocommon.L1StoreSecretTx:
-		gasType = storeSecretTxID
+		contractAddress = storeSecretTxAddr
 	}
 
 	return &types.LegacyTx{
-		Gas:   gasType,
 		Nonce: nonce,
 		Data:  buf.Bytes(),
+		To:    &contractAddress,
 	}, nil
 }
 
@@ -63,16 +66,16 @@ func (m *MockTxHandler) UnPackTx(tx *types.Transaction) obscurocommon.L1Transact
 	buf := bytes.NewBuffer(tx.Data())
 	dec := gob.NewDecoder(buf)
 
-	// check type
+	// in the mock implementation we use the To address field to specify what is the L1 operation
 	var t obscurocommon.L1Transaction
-	switch tx.Gas() {
-	case rollupTxID:
+	switch tx.To().Hex() {
+	case rollupTxAddr.Hex():
 		t = &obscurocommon.L1RollupTx{}
-	case storeSecretTxID:
+	case storeSecretTxAddr.Hex():
 		t = &obscurocommon.L1StoreSecretTx{}
-	case depositTxID:
+	case depositTxAddr.Hex():
 		t = &obscurocommon.L1DepositTx{}
-	case requestSecretTxID:
+	case requestSecretTxAddr.Hex():
 		t = &obscurocommon.L1RequestSecretTx{}
 	default:
 		panic("unexpected type")
