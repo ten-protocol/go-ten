@@ -38,7 +38,7 @@ const (
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 14000
+	startPort := 3000
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
@@ -55,7 +55,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 14003
+	startPort := 3003
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
@@ -74,7 +74,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 14006
+	startPort := 3006
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -99,7 +99,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 14009
+	startPort := 3009
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -125,7 +125,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 14012
+	startPort := 3012
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -156,7 +156,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 14015
+	startPort := 3015
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -188,7 +188,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 14018
+	startPort := 3018
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -231,9 +231,15 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 	}
 	reqBody := bytes.NewBuffer(reqBodyBytes)
 
-	resp, err := http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:gosec,noctx
-	if err != nil {
-		t.Fatal(err)
+	var resp *http.Response
+	// We retry for three seconds to handle node start-up time.
+	timeout := time.Now().Add(3 * time.Second)
+	for i := time.Now(); i.Before(timeout); i = time.Now() {
+		resp, err = http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:gosec,noctx
+		if err == nil {
+			break
+		}
+		resp.Body.Close()
 	}
 	defer resp.Body.Close()
 
