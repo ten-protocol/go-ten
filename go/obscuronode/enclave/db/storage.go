@@ -20,10 +20,11 @@ import (
 type storageImpl struct {
 	tempDB *InMemoryDB // todo - has to be replaced completely by the ethdb.Database
 	db     ethdb.Database
+	nodeID uint64
 }
 
-func NewStorage(db *InMemoryDB) Storage {
-	return &storageImpl{tempDB: db, db: rawdb.NewMemoryDatabase()}
+func NewStorage(db *InMemoryDB, nodeID uint64) Storage {
+	return &storageImpl{tempDB: db, db: rawdb.NewMemoryDatabase(), nodeID: nodeID}
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
@@ -116,7 +117,7 @@ func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
 	s.assertSecretAvailable()
 	parent, found := s.FetchRollup(r.Header.ParentHash)
 	if !found {
-		log.Log(fmt.Sprintf("Could not find rollup: r_%d", obscurocommon.ShortHash(r.Hash())))
+		log.Log(fmt.Sprintf(">   Agg%d: Could not find rollup: r_%d", s.nodeID, obscurocommon.ShortHash(r.Hash())))
 		return nil
 	}
 	return parent

@@ -77,14 +77,14 @@ func executeDeposit(s db.StateDB, tx nodecommon.L2Tx) {
 
 // Determine the new canonical L2 head and calculate the State
 // Uses cache-ing to map the Head rollup and the State to each L1Node block.
-func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) *core.BlockState {
+func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage, nodeID uint64) *core.BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := bss.FetchBlockState(b.Hash())
 	if found {
 		return val
 	}
 
-	rollups := extractRollups(b, blockResolver, txHandler)
+	rollups := extractRollups(b, blockResolver, txHandler, nodeID)
 	genesisRollup := rollupResolver.FetchGenesisRollup()
 
 	// processing blocks before genesis, so there is nothing to do
@@ -94,7 +94,7 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handle the case of the block containing the genesis being processed multiple times.
-	genesisState, isGenesis := handleGenesisRollup(b, rollups, genesisRollup, rollupResolver, bss)
+	genesisState, isGenesis := handleGenesisRollup(b, rollups, genesisRollup, rollupResolver, bss, nodeID)
 	if isGenesis {
 		return genesisState
 	}
@@ -106,14 +106,15 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 		// go back and calculate the State of the Parent
 		p, f := blockResolver.FetchBlock(b.ParentHash())
 		if !f {
-			log.Log("Could not find block parent. This should not happen.")
+			log.Log(fmt.Sprintf(">   Agg%d: Could not find block parent. This should not happen.", nodeID))
 			return nil
 		}
-		parentState = updateState(p, blockResolver, txHandler, rollupResolver, bss)
+		parentState = updateState(p, blockResolver, txHandler, rollupResolver, bss, nodeID)
 	}
 
 	if parentState == nil {
-		log.Log(fmt.Sprintf("Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
+		log.Log(fmt.Sprintf(">   Agg%d: Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d - Header: %+v",
+			nodeID,
 			obscurocommon.ShortHash(b.Hash()),
 			obscurocommon.ShortHash(b.Header().ParentHash),
 			b.Header(),
@@ -136,12 +137,12 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 	return bs
 }
 
-func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *core.Rollup, resolver db.RollupResolver, bss db.BlockStateStorage) (genesisState *core.BlockState, isGenesis bool) {
+func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *core.Rollup, resolver db.RollupResolver, bss db.BlockStateStorage, nodeID uint64) (genesisState *core.BlockState, isGenesis bool) {
 	// the incoming block holds the genesis rollup
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
 	if genesisRollup == nil && len(rollups) == 1 {
-		log.Log("Found genesis rollup")
+		log.Log(fmt.Sprintf(">   Agg%d: Found genesis rollup", nodeID))
 
 		genesis := rollups[0]
 		resolver.StoreGenesisRollup(genesis)
@@ -311,7 +312,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state db.StateD
 	return w
 }
 
-func extractRollups(b *types.Block, blockResolver db.BlockResolver, handler mgmtcontractlib.TxHandler) []*core.Rollup {
+func extractRollups(b *types.Block, blockResolver db.BlockResolver, handler mgmtcontractlib.TxHandler, nodeID uint64) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
@@ -323,7 +324,8 @@ func extractRollups(b *types.Block, blockResolver db.BlockResolver, handler mgmt
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 				rollups = append(rollups, toEnclaveRollup(r))
-				log.Log(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
+				log.Log(fmt.Sprintf(">   Agg%d: Extracted Rollup r_%d from block b_%d",
+					nodeID,
 					obscurocommon.ShortHash(r.Hash()),
 					obscurocommon.ShortHash(b.Hash()),
 				))
