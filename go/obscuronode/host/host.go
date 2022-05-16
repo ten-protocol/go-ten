@@ -137,11 +137,9 @@ func NewObscuroAggregator(
 		txHandler: txHandler,
 	}
 
-	var clientServer ClientServer
 	if cfg.HasRPC {
-		clientServer = NewClientServer(*cfg.RPCAddress, &host)
+		host.clientServer = NewClientServer(*cfg.RPCAddress, &host)
 	}
-	host.clientServer = clientServer
 
 	return host
 }
