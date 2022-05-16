@@ -1,8 +1,6 @@
 package obscuroclient
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -36,14 +34,14 @@ type clientImpl struct {
 	rpcClient *rpc.Client
 }
 
-func NewClient(nodeID int64, address string) Client {
+func NewClient(nodeID common.Address, address string) Client {
 	rpcClient, err := rpc.Dial(http + address)
 	if err != nil {
 		panic(err)
 	}
 
 	return &clientImpl{
-		nodeID:    common.BigToAddress(big.NewInt(nodeID)),
+		nodeID:    nodeID,
 		rpcClient: rpcClient,
 	}
 }

@@ -22,9 +22,8 @@ const (
 	enclaveAddrName  = "enclaveAddress"
 	enclaveAddrUsage = "The address to use to connect to the Obscuro enclave service"
 
-	ourP2PAddrName    = "ourP2PAddr"
-	ourP2PAddrDefault = "localhost:10000"
-	ourP2PAddrUsage   = "The P2P address for our node"
+	ourP2PAddrName  = "ourP2PAddr"
+	ourP2PAddrUsage = "The P2P address for our node"
 
 	peerP2PAddrsName  = "peerP2PAddresses"
 	peerP2PAddrsUsage = "The P2P addresses of our peer nodes as a comma-separated list (default \"\")"
@@ -37,6 +36,12 @@ const (
 
 	contractAddrName  = "contractAddress"
 	contractAddrUsage = "The management contract address on the L1"
+
+	ethClientHostName  = "ethClientHost"
+	ethClientHostUsage = "The host on which to connect to the Ethereum client"
+
+	ethClientPortName  = "ethClientPort"
+	ethClientPortUsage = "The port on which to connect to the Ethereum client"
 )
 
 type HostConfig struct {
@@ -50,6 +55,8 @@ type HostConfig struct {
 	ClientServerAddr string
 	PrivateKeyString string
 	ContractAddress  string
+	EthClientHost    string
+	EthClientPort    uint64
 }
 
 func DefaultHostConfig() HostConfig {
@@ -58,12 +65,14 @@ func DefaultHostConfig() HostConfig {
 		IsGenesis:        true,
 		GossipRoundNanos: 8333,
 		RPCTimeoutSecs:   3,
-		EnclaveAddr:      "localhost:11000",
+		EnclaveAddr:      "127.0.0.1:11000",
 		OurP2PAddr:       "",
 		PeerP2PAddrs:     []string{},
-		ClientServerAddr: "localhost:12000",
+		ClientServerAddr: "127.0.0.1:12000",
 		PrivateKeyString: "0000000000000000000000000000000000000000000000000000000000000001",
 		ContractAddress:  "",
+		EthClientHost:    "127.0.0.1",
+		EthClientPort:    8546,
 	}
 }
 
@@ -81,6 +90,9 @@ func ParseCLIArgs() HostConfig {
 	clientServerAddr := flag.String(clientServerAddrName, defaultConfig.ClientServerAddr, clientServerAddrUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
+	ethClientHost := flag.String(ethClientHostName, defaultConfig.EthClientHost, ethClientHostUsage)
+	ethClientPort := flag.Uint64(ethClientPortName, defaultConfig.EthClientPort, ethClientPortUsage)
+
 	flag.Parse()
 
 	return HostConfig{
@@ -94,5 +106,7 @@ func ParseCLIArgs() HostConfig {
 		ClientServerAddr: *clientServerAddr,
 		PrivateKeyString: *privateKeyStr,
 		ContractAddress:  *contractAddress,
+		EthClientHost:    *ethClientHost,
+		EthClientPort:    *ethClientPort,
 	}
 }

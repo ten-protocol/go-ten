@@ -1,6 +1,9 @@
 package hostrunner
 
 import (
+	"os"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
@@ -8,8 +11,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
-	"os"
-	"time"
 )
 
 // RunHost runs an Obscuro host as a standalone process.
@@ -27,8 +28,7 @@ func RunHost(config HostConfig) {
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
 	contractAddr := common.HexToAddress(config.ContractAddress)
 	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
-	// todo - joel - create flags for these
-	l1Client, err := ethclient.NewEthClient(nodeID, "127.0.0.1", 8546, nodeWallet, contractAddr)
+	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), nodeWallet, contractAddr)
 	if err != nil {
 		panic(err)
 	}

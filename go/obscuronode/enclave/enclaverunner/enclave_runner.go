@@ -1,12 +1,13 @@
 package enclaverunner
 
 import (
+	"math/big"
+	"os"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"math/big"
-	"os"
 )
 
 const logPath = "enclave_logs.txt"
@@ -16,7 +17,6 @@ func RunEnclave(config EnclaveConfig) {
 	setLogs(config.WriteToLogs)
 
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
-	// todo - joel - need to move away from the mock tx handler. need contract address
 	contractAddr := common.HexToAddress(config.ContractAddress)
 	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
 
