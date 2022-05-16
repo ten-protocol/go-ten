@@ -57,6 +57,8 @@ const (
 	// todo - joel - provide script to start all the components, incl. Geth (start with one of each component)
 )
 
+// todo - joel - refactor below to share logic with enclave deployer where possible
+
 func main() {
 	ctx := context.Background()
 
