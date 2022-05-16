@@ -102,12 +102,7 @@ func NewObscuroAggregator(
 ) Node {
 	db := NewDB()
 
-	var clientServer ClientServer
-	if cfg.HasRPC {
-		clientServer = NewClientServer(*cfg.RPCAddress, &p2p, db, &enclaveClient)
-	}
-
-	return Node{
+	host := Node{
 		// config
 		ID:        id,
 		cfg:       cfg,
@@ -118,7 +113,6 @@ func NewObscuroAggregator(
 		P2p:           p2p,
 		ethClient:     ethClient,
 		EnclaveClient: enclaveClient,
-		clientServer:  clientServer,
 
 		stats: collector,
 
@@ -138,6 +132,12 @@ func NewObscuroAggregator(
 
 		txHandler: txHandler,
 	}
+
+	if cfg.HasRPC {
+		host.clientServer = NewClientServer(*cfg.RPCAddress, &host)
+	}
+
+	return host
 }
 
 // Start initializes the main loop of the node

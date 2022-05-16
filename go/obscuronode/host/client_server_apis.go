@@ -7,45 +7,46 @@ import (
 
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.
 type ObscuroAPI struct {
-	p2p     *P2P
-	db      *DB
-	enclave *nodecommon.Enclave
+	host *Node
 }
 
-func NewObscuroAPI(p2p *P2P, db *DB, enclave *nodecommon.Enclave) *ObscuroAPI {
+func NewObscuroAPI(host *Node) *ObscuroAPI {
 	return &ObscuroAPI{
-		p2p:     p2p,
-		db:      db,
-		enclave: enclave,
+		host: host,
 	}
 }
 
 // SendTransactionEncrypted sends the encrypted Obscuro transaction to all peer Obscuro nodes.
 func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.EncryptedTx) {
-	(*api.p2p).BroadcastTx(encryptedTx)
+	api.host.P2p.BroadcastTx(encryptedTx)
 }
 
 // GetCurrentBlockHeadHeight returns the height of the current head block.
 func (api *ObscuroAPI) GetCurrentBlockHeadHeight() int64 {
-	return api.db.GetCurrentBlockHead().Number.Int64()
+	return api.host.nodeDB.GetCurrentBlockHead().Number.Int64()
 }
 
 // GetCurrentRollupHead returns the current head rollup's header.
 func (api *ObscuroAPI) GetCurrentRollupHead() *nodecommon.Header {
-	return api.db.GetCurrentRollupHead()
+	return api.host.nodeDB.GetCurrentRollupHead()
 }
 
 // GetRollupHeader returns the header of the rollup with the given hash.
 func (api *ObscuroAPI) GetRollupHeader(hash common.Hash) *nodecommon.Header {
-	return api.db.GetRollupHeader(hash)
+	return api.host.nodeDB.GetRollupHeader(hash)
 }
 
 // GetTransaction returns the transaction with the given hash.
 func (api *ObscuroAPI) GetTransaction(hash common.Hash) *nodecommon.L2Tx {
-	return (*api.enclave).GetTransaction(hash)
+	return api.host.EnclaveClient.GetTransaction(hash)
 }
 
 // Balance returns the balance of the wallet with the given address.
 func (api *ObscuroAPI) Balance(address common.Address) uint64 {
-	return (*api.enclave).Balance(address)
+	return api.host.EnclaveClient.Balance(address)
+}
+
+// StopHost gracefully stops the host.
+func (api *ObscuroAPI) StopHost() {
+	api.host.Stop()
 }
