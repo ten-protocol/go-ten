@@ -4,8 +4,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/contracts"
@@ -14,9 +12,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient/stabletokencontractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -33,8 +31,6 @@ type networkInMemGeth struct {
 }
 
 func NewNetworkInMemoryGeth(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
-	// create one extra wallet to prefund and deploy contracts
-	wallets = append(wallets, datagenerator.RandomWallet())
 	return &networkInMemGeth{
 		wallets:      wallets,
 		workerWallet: workerWallet,
