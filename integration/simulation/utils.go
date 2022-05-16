@@ -12,8 +12,10 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
-const envLogToStdout = "LOG_TO_STDOUT"
-const testLogs = "../.build/simulations/"
+const (
+	envLogToStdout = "LOG_TO_STDOUT"
+	testLogs       = "../.build/simulations/"
+)
 
 func setupTestLog() {
 	_, isPresent := os.LookupEnv(envLogToStdout)
