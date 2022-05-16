@@ -48,6 +48,7 @@ type TransactionInjector struct {
 
 	ethWallet         wallet.Wallet
 	erc20ContractAddr *common.Address
+	mgmtContractAddr  *common.Address
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
@@ -58,7 +59,8 @@ func NewTransactionInjector(
 	stats *stats2.Stats,
 	l1Nodes []ethclient.EthClient,
 	ethWallet wallet.Wallet,
-	addr *common.Address,
+	mgmtContractAddr *common.Address,
+	erc20ContractAddr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
 ) *TransactionInjector {
 	// create a bunch of wallets
@@ -77,7 +79,8 @@ func NewTransactionInjector(
 		interruptRun:      &interrupt,
 		fullyStoppedChan:  make(chan bool),
 		ethWallet:         ethWallet,
-		erc20ContractAddr: addr,
+		erc20ContractAddr: erc20ContractAddr,
+		mgmtContractAddr:  mgmtContractAddr,
 	}
 }
 
@@ -239,7 +242,7 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 		}
 
 		v := obscurocommon.RndBtw(1, 100)
-		data, err := contracts.StableTokenERC20ContractABIJSON.Pack("transfer", m.ethWallet.Address(), big.NewInt(int64(v)))
+		data, err := contracts.StableTokenERC20ContractABIJSON.Pack("transfer", m.mgmtContractAddr, big.NewInt(int64(v)))
 		if err != nil {
 			panic(err)
 		}

@@ -13,12 +13,14 @@ import (
 const methodBytesLen = 4
 
 type stableTokenHandler struct {
-	addr *common.Address
+	addr             *common.Address
+	mgmtContractAddr *common.Address
 }
 
-func NewHandler(addr *common.Address) txhandler.ContractHandler {
+func NewHandler(addr *common.Address, mgmtContractAddr *common.Address) txhandler.ContractHandler {
 	return &stableTokenHandler{
-		addr: addr,
+		addr:             addr,
+		mgmtContractAddr: mgmtContractAddr,
 	}
 }
 
@@ -37,9 +39,20 @@ func (h *stableTokenHandler) UnPack(tx *types.Transaction) obscurocommon.L1Trans
 	}
 
 	contractCallData := map[string]interface{}{}
-	if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
+	if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:]); err != nil {
 		panic(err)
 	}
+
+	to, found := contractCallData[contracts.ToCallData]
+	if !found {
+		panic("to address not found for transfer")
+	}
+
+	// only process transfers made to the management contract
+	if toAddr, ok := to.(common.Address); !ok || toAddr.Hex() != h.mgmtContractAddr.Hex() {
+		return nil
+	}
+
 	amount, found := contractCallData[contracts.AmountCallData]
 	if !found {
 		panic("amount not found for transfer")

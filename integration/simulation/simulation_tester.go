@@ -35,6 +35,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		stats,
 		ethClients,
 		workerWallet,
+		params.MgmtContractAddr,
 		params.ERC20ContractAddr,
 		obscuroClients,
 	)

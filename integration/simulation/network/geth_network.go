@@ -72,7 +72,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	params.ERC20ContractAddr = erc20ContractAddr
 	params.TxHandler = txhandler.NewTransactionHandler(
 		mgmtcontractlib.NewHandler(contractAddr),
-		stabletokencontractlib.NewHandler(erc20ContractAddr),
+		stabletokencontractlib.NewHandler(erc20ContractAddr, contractAddr),
 	)
 	// Create the obscuro node, each connected to a geth node
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
