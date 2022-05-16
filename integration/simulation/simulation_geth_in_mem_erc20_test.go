@@ -40,10 +40,10 @@ func TestGethSimulation(t *testing.T) {
 		NumberOfNodes:             numberOfNodes,
 		NumberOfObscuroWallets:    numberOfNodes,
 		AvgBlockDuration:          1 * time.Second,
-		SimulationTime:            60 * time.Second,
+		SimulationTime:            30 * time.Second,
 		L1EfficiencyThreshold:     0.2,
-		L2EfficiencyThreshold:     0.9,
-		L2ToL1EfficiencyThreshold: 0.9, // one rollup every 2 blocks
+		L2EfficiencyThreshold:     0.5,
+		L2ToL1EfficiencyThreshold: 0.7, // Very hard to have precision here as blocks are continually produced and not dependent on the simulation execution thread
 		EthWallets:                wallets,
 	}
 
