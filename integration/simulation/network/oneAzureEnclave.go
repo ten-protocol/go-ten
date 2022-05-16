@@ -118,12 +118,8 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 func (n *networkWithOneAzureEnclave) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
+		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
 		go (*temp).Stop()
-	}
-
-	for _, node := range n.obscuroNodes {
-		temp := node
-		go temp.Stop()
 	}
 
 	for _, node := range n.ethNodes {
