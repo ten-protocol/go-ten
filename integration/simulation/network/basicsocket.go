@@ -22,7 +22,6 @@ import (
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfSocketNodes struct {
 	ethNodes       []*ethereum_mock.Node
-	obscuroNodes   []*host.Node
 	obscuroClients []*obscuroclient.Client
 }
 
@@ -33,7 +32,7 @@ func NewBasicNetworkOfSocketNodes() Network {
 func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
-	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
+	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
 	nodeP2pAddrs := make([]string, params.NumberOfNodes)
 
@@ -64,7 +63,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		miner.AddClient(agg)
 
 		n.ethNodes[i] = miner
-		n.obscuroNodes[i] = agg
+		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
 		l1Clients[i] = miner
 	}
@@ -87,7 +86,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 	}
 
 	time.Sleep(params.AvgBlockDuration * 2)
-	for _, m := range n.obscuroNodes {
+	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
 		time.Sleep(params.AvgBlockDuration / 3)
@@ -99,12 +98,8 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 func (n *basicNetworkOfSocketNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
+		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
 		go (*temp).Stop()
-	}
-
-	for _, node := range n.obscuroNodes {
-		temp := node
-		go temp.Stop()
 	}
 
 	for _, node := range n.ethNodes {

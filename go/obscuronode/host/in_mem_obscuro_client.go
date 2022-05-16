@@ -16,9 +16,9 @@ type inMemObscuroClient struct {
 	obscuroAPI ObscuroAPI
 }
 
-func NewInMemObscuroClient(nodeID int64, p2p *P2P, db *DB, enclave *nodecommon.Enclave) obscuroclient.Client {
+func NewInMemObscuroClient(nodeID int64, host *Node) obscuroclient.Client {
 	return &inMemObscuroClient{
-		obscuroAPI: *NewObscuroAPI(p2p, db, enclave),
+		obscuroAPI: *NewObscuroAPI(host),
 		nodeID:     common.BigToAddress(big.NewInt(nodeID)),
 	}
 }
@@ -79,6 +79,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		}
 
 		*result.(*uint64) = c.obscuroAPI.Balance(address)
+
+	case obscuroclient.RPCStopHost:
+		c.obscuroAPI.StopHost()
 
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
