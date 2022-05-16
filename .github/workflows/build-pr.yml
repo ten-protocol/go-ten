@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+env:
+  LOG_TO_STDOUT: true
+
 jobs:
   build:
     runs-on: ubuntu-latest

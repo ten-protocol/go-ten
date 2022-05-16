@@ -12,9 +12,15 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
+const envLogToStdout = "LOG_TO_STDOUT"
 const testLogs = "../.build/simulations/"
 
-func setupTestLog() *os.File {
+func setupTestLog() {
+	_, isPresent := os.LookupEnv(envLogToStdout)
+	if isPresent {
+		return
+	}
+
 	// create a folder specific for the test
 	err := os.MkdirAll(testLogs, 0o700)
 	if err != nil {
@@ -25,7 +31,6 @@ func setupTestLog() *os.File {
 		panic(err)
 	}
 	log.SetLog(f)
-	return f
 }
 
 func minMax(arr []uint64) (min uint64, max uint64) {
