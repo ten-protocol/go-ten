@@ -20,7 +20,7 @@ const (
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	if os.Getenv(azureTestEnv) == "" {
-		t.Skipf("set %s to run this test", azureTestEnv)
+		t.Skipf("set the variable to run this test: `%s=true`", azureTestEnv)
 	}
 	setupTestLog()
 

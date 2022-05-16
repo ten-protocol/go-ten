@@ -38,7 +38,7 @@ const (
 // $> docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}") will stop and remove all images
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	if os.Getenv(dockerTestEnv) == "" {
-		t.Skipf("set %s to run this test", dockerTestEnv)
+		t.Skipf("set the variable to run this test: `%s=true`", dockerTestEnv)
 	}
 
 	setupTestLog()
