@@ -37,13 +37,14 @@ func TestGethSimulation(t *testing.T) {
 	netw := network.NewNetworkInMemoryGeth(wallets, workerWallet, contractsBytes)
 
 	simParams := &params.SimParams{
-		NumberOfNodes:             numberOfNodes,
-		NumberOfObscuroWallets:    numberOfNodes,
-		AvgBlockDuration:          1 * time.Second,
-		SimulationTime:            30 * time.Second,
-		L1EfficiencyThreshold:     0.2,
-		L2EfficiencyThreshold:     0.5,
-		L2ToL1EfficiencyThreshold: 0.7, // Very hard to have precision here as blocks are continually produced and not dependent on the simulation execution thread
+		NumberOfNodes:          numberOfNodes,
+		NumberOfObscuroWallets: numberOfNodes,
+		AvgBlockDuration:       1 * time.Second,
+		SimulationTime:         30 * time.Second,
+		L1EfficiencyThreshold:  0.2,
+		// Very hard to have precision here as blocks are continually produced and not dependent on the simulation execution thread
+		L2EfficiencyThreshold:     0.6, // nodes might produce rollups because they receive a new block
+		L2ToL1EfficiencyThreshold: 0.7, // nodes might stop producing rollups but the geth network is still going
 		EthWallets:                wallets,
 	}
 
