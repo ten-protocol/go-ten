@@ -141,7 +141,7 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
 	if genesisRollup == nil && len(rollups) == 1 {
-		nodecommon.LogWithID(nodeID, "Found genesis rollup", nodeID)
+		nodecommon.LogWithID(nodeID, "Found genesis rollup")
 
 		genesis := rollups[0]
 		resolver.StoreGenesisRollup(genesis)
