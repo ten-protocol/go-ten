@@ -24,7 +24,8 @@ const (
 	pathRoot                = "/"
 	httpCodeErr             = 500
 
-	localhost = "localhost:"
+	localhost           = "localhost:"
+	websocketAddrPrefix = "ws://localhost:"
 
 	signedMsgPrefix = "vk"
 )
@@ -65,7 +66,7 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 // StartWalletExtension starts the wallet extension and Obscuro facade, and optionally a local Ethereum network. It
 // returns a handle to stop the wallet extension, Obscuro facade and local network nodes, if any were created.
 func StartWalletExtension(config RunConfig) func() {
-	gethWebsocketAddr := "ws://localhost:" + strconv.Itoa(config.StartPort+100+2)
+	gethWebsocketAddr := websocketAddrPrefix + strconv.Itoa(config.StartPort+100+2)
 
 	var localNetwork gethnetwork.GethNetwork
 	if config.LocalNetwork {
@@ -77,7 +78,7 @@ func StartWalletExtension(config RunConfig) func() {
 		localNetwork = gethnetwork.NewGethNetwork(config.StartPort+2, gethBinaryPath, 1, 1, config.PrefundedAccounts)
 		fmt.Println("Local Geth network started.")
 
-		gethWebsocketAddr = "ws://localhost:" + strconv.Itoa(int(localNetwork.WebSocketPorts[0]))
+		gethWebsocketAddr = websocketAddrPrefix + strconv.Itoa(int(localNetwork.WebSocketPorts[0]))
 	}
 
 	enclavePrivateKey, err := crypto.GenerateKey()

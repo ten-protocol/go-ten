@@ -6,11 +6,11 @@ import (
 	"net"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -34,7 +34,7 @@ type Message struct {
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
 // allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
-func NewSocketP2PLayer(ourAddress string, allAddresses []string) host.P2P {
+func NewSocketP2PLayer(ourAddress string, allAddresses []string, nodeID common.Address) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
 	var peerAddresses []string
 	for _, a := range allAddresses {
@@ -46,6 +46,7 @@ func NewSocketP2PLayer(ourAddress string, allAddresses []string) host.P2P {
 	return &p2pImpl{
 		OurAddress:    ourAddress,
 		PeerAddresses: peerAddresses,
+		nodeID:        obscurocommon.ShortAddress(nodeID),
 	}
 }
 
@@ -54,6 +55,7 @@ type p2pImpl struct {
 	PeerAddresses     []string
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
+	nodeID            uint64
 }
 
 func (p *p2pImpl) StartListening(callback host.P2PCallback) {
@@ -63,7 +65,7 @@ func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 		panic(err)
 	}
 
-	log.Log(fmt.Sprintf("Start listening on port: %s", p.OurAddress))
+	nodecommon.LogWithID(p.nodeID, "Start listening on port: %s", p.OurAddress)
 	i := int32(0)
 	p.listenerInterrupt = &i
 	p.listener = listener
@@ -76,7 +78,7 @@ func (p *p2pImpl) StopListening() {
 
 	if p.listener != nil {
 		if err := p.listener.Close(); err != nil {
-			log.Log(fmt.Sprintf("failed to close transaction P2P listener cleanly: %v", err))
+			nodecommon.LogWithID(p.nodeID, "failed to close transaction P2P listener cleanly: %v", err)
 		}
 	}
 }
@@ -99,12 +101,12 @@ func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
 			}
 			return
 		}
-		go handle(conn, callback)
+		go p.handle(conn, callback)
 	}
 }
 
 // Receives and decodes a P2P message, and pushes it to the correct channel.
-func handle(conn net.Conn, callback host.P2PCallback) {
+func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 	if conn != nil {
 		defer func(conn net.Conn) {
 			if closeErr := conn.Close(); closeErr != nil {
@@ -121,7 +123,7 @@ func handle(conn net.Conn, callback host.P2PCallback) {
 	msg := Message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		log.Log(fmt.Sprintf("failed to decode message received from peer: %v", err))
+		nodecommon.LogWithID(p.nodeID, "failed to decode message received from peer: %v", err)
 		return
 	}
 
@@ -134,7 +136,7 @@ func handle(conn net.Conn, callback host.P2PCallback) {
 		if err == nil {
 			callback.ReceiveTx(msg.MsgContents)
 		} else {
-			log.Log(fmt.Sprintf("failed to decode transaction received from peer: %v", err))
+			nodecommon.LogWithID(p.nodeID, "failed to decode transaction received from peer: %v", err)
 		}
 	case Rollup:
 		rollup := nodecommon.Rollup{}
@@ -144,7 +146,7 @@ func handle(conn net.Conn, callback host.P2PCallback) {
 		if err == nil {
 			callback.ReceiveRollup(msg.MsgContents)
 		} else {
-			log.Log(fmt.Sprintf("failed to decode rollup received from peer: %v", err))
+			nodecommon.LogWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
 		}
 	}
 }
@@ -173,7 +175,7 @@ func (p *p2pImpl) sendBytes(address string, tx []byte) {
 		}(conn)
 	}
 	if err != nil {
-		log.Log(fmt.Sprintf("could not send message to peer on address %s: %v", address, err))
+		nodecommon.LogWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
 		return
 	}
 

@@ -18,8 +18,8 @@ type inMemObscuroClient struct {
 
 func NewInMemObscuroClient(nodeID int64, host *Node) obscuroclient.Client {
 	return &inMemObscuroClient{
-		obscuroAPI: *NewObscuroAPI(host),
 		nodeID:     common.BigToAddress(big.NewInt(nodeID)),
+		obscuroAPI: *NewObscuroAPI(host),
 	}
 }
 
@@ -32,7 +32,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	switch method {
 	case obscuroclient.RPCSendTransactionEncrypted:
 		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
+			return fmt.Errorf(">   Agg%d: expected 1 arg to %s, got %d", c.nodeID, obscuroclient.RPCSendTransactionEncrypted, len(args))
 		}
 		tx, ok := args[0].(nodecommon.EncryptedTx)
 		if !ok {

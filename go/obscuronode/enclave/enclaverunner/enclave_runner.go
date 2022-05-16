@@ -4,8 +4,9 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )

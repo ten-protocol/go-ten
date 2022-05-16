@@ -231,9 +231,15 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 	}
 	reqBody := bytes.NewBuffer(reqBodyBytes)
 
-	resp, err := http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:gosec,noctx
-	if err != nil {
-		t.Fatal(err)
+	var resp *http.Response
+	// We retry for three seconds to handle node start-up time.
+	timeout := time.Now().Add(3 * time.Second)
+	for i := time.Now(); i.Before(timeout); i = time.Now() {
+		resp, err = http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:gosec,noctx
+		if err == nil {
+			break
+		}
+		resp.Body.Close()
 	}
 	defer resp.Body.Close()
 
