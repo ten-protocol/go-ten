@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	envLogToStdout = "LOG_TO_STDOUT"
-	testLogs       = "../.build/simulations/"
+	envLogToStdout          = "LOG_TO_STDOUT"
+	envLogToStdoutTrueValue = "true"
+	testLogs                = "../.build/simulations/"
 )
 
 func setupTestLog() {
-	_, isPresent := os.LookupEnv(envLogToStdout)
-	if isPresent {
+	if os.Getenv(envLogToStdout) == envLogToStdoutTrueValue {
 		return
 	}
 
