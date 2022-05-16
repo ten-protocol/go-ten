@@ -14,8 +14,15 @@ const (
 
 var (
 	logFile   *os.File
-	LogStatus = InfoLevel
+	logStatus = InfoLevel
 )
+
+func SetLogLevel(level int) {
+	if level < InfoLevel || level > TraceLevel {
+		panic("unrecognized log level")
+	}
+	logStatus = level
+}
 
 func SetLog(f *os.File) {
 	logFile = f
@@ -26,13 +33,13 @@ func Error(msg string, args ...interface{}) {
 }
 
 func Trace(msg string, args ...interface{}) {
-	if LogStatus >= TraceLevel {
+	if logStatus >= TraceLevel {
 		write("TRACE: "+msg, args...)
 	}
 }
 
 func Debug(msg string, args ...interface{}) {
-	if LogStatus >= DebugLevel {
+	if logStatus >= DebugLevel {
 		write("DEBUG: "+msg, args...)
 	}
 }
