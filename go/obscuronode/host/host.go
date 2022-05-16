@@ -177,14 +177,14 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for a.EnclaveClient.IsReady() != nil {
 		if counter >= 20 {
-			log.Log(fmt.Sprintf(">   Agg%d: Waiting for enclave. Error: %v", a.shortID, a.EnclaveClient.IsReady()))
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave. Error: %v", a.EnclaveClient.IsReady())
 			counter = 0
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
-	log.Log(fmt.Sprintf(">   Agg%d: Connected to enclave service...", a.shortID))
+	nodecommon.LogWithID(a.shortID, "Connected to enclave service...")
 }
 
 // Waits for blocks from the L1 node, printing a wait message every two seconds.
@@ -196,7 +196,7 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 
 	for len(allBlocks) == 0 {
 		if counter >= 20 {
-			log.Log(fmt.Sprintf(">   Agg%d: Waiting for blocks from L1 node...", a.shortID))
+			nodecommon.LogWithID(a.shortID, "Waiting for blocks from L1 node...")
 			counter = 0
 		}
 
@@ -215,18 +215,16 @@ func (a *Node) startProcessing() {
 	results := a.EnclaveClient.IngestBlocks(allBlocks)
 	for _, result := range results {
 		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
-			log.Log(fmt.Sprintf(
-				">   Agg%d: Failed to ingest block b_%d. Cause: %s",
-				a.shortID,
+			nodecommon.LogWithID(a.shortID, "Failed to ingest block b_%d. Cause: %s",
 				obscurocommon.ShortHash(result.BlockHeader.Hash()),
 				result.BlockNotIngestedCause,
-			))
+			)
 		}
 		a.storeBlockProcessingResult(result)
 	}
 
 	lastBlock := *allBlocks[len(allBlocks)-1]
-	log.Log(fmt.Sprintf(">   Agg%d: Start enclave on block b_%d.", a.shortID, obscurocommon.ShortHash(lastBlock.Header().Hash())))
+	nodecommon.LogWithID(a.shortID, "Start enclave on block b_%d.", obscurocommon.ShortHash(lastBlock.Header().Hash()))
 	a.EnclaveClient.Start(lastBlock)
 
 	if a.isGenesis {
@@ -264,7 +262,7 @@ func (a *Node) startProcessing() {
 				obscurocommon.ShortAddress(rol.Header.Agg),
 			))
 			if err != nil {
-				log.Log(fmt.Sprintf(">   Agg%d: Could not check enclave initialisation: %v", a.shortID, err))
+				nodecommon.LogWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
 
 			go a.EnclaveClient.SubmitRollup(nodecommon.ExtRollup{
@@ -352,7 +350,7 @@ func (a *Node) Stop() {
 	}
 
 	if err := a.EnclaveClient.Stop(); err != nil {
-		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", a.shortID, err.Error()))
+		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
 	}
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
@@ -390,7 +388,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		log.Log(fmt.Sprintf(">   Agg%d: Did not ingest block b_%d. Cause: %s", a.shortID, obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause))
+		nodecommon.LogWithID(a.shortID, "Did not ingest block b_%d. Cause: %s", obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause)
 		return
 	}
 
@@ -413,12 +411,11 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 			panic(err)
 		}
 		if isWinner {
-			log.Log(fmt.Sprintf(">   Agg%d: Winner (b_%d) r_%d(%d).",
-				a.shortID,
+			nodecommon.LogWithID(a.shortID, "Winner (b_%d) r_%d(%d).",
 				obscurocommon.ShortHash(result.BlockHeader.Hash()),
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,
-			))
+			)
 			tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
 			a.broadcastTx(tx)
 			// collect Stats
@@ -443,7 +440,7 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
-	log.Log(fmt.Sprintf(">   Agg%d: Initialising network. Genesis rollup r_%d.", a.shortID, obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash())))
+	nodecommon.LogWithID(a.shortID, "Initialising network. Genesis rollup r_%d.", obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash()))
 	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())}
 	a.broadcastTx(tx)
 
@@ -475,7 +472,7 @@ func (a *Node) requestSecret() {
 			for _, tx := range block.Transactions() {
 				t := a.txHandler.UnPackTx(tx)
 				if t != nil && t.TxType == obscurocommon.StoreSecretTx { // TODO properly handle t.Attestation.Owner == a.ID
-					log.Log(fmt.Sprintf(">   Agg%d: Secret was retrieved", a.shortID))
+					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
 					a.EnclaveClient.InitEnclave(t.Secret)
 					return
 				}
@@ -487,7 +484,7 @@ func (a *Node) requestSecret() {
 				t := a.txHandler.UnPackTx(tx)
 				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
 					// someone has replied
-					log.Log(fmt.Sprintf(">   Agg%d: Secret was retrieved", a.shortID))
+					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
 					a.EnclaveClient.InitEnclave(t.Secret)
 					return
 				}
@@ -522,7 +519,7 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 
 func (a *Node) monitorBlocks() {
 	listener := a.ethClient.BlockListener()
-	log.Log(fmt.Sprintf(">   Agg%d: Start monitoring Ethereum blocks..", a.shortID))
+	nodecommon.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
 	for {
 		latestBlkHeader := <-listener
 		block, err := a.ethClient.FetchBlock(latestBlkHeader.Hash())
@@ -534,10 +531,9 @@ func (a *Node) monitorBlocks() {
 			panic(err)
 		}
 
-		log.Log(fmt.Sprintf(">   Agg%d: Received a new block b_%d(%d)",
-			a.shortID,
+		nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
 			obscurocommon.ShortHash(latestBlkHeader.Hash()),
-			latestBlkHeader.Number.Uint64()))
+			latestBlkHeader.Number.Uint64())
 		a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
 	}
 }

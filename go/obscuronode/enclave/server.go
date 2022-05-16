@@ -17,7 +17,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"google.golang.org/grpc"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -50,11 +49,10 @@ func StartServer(address string, nodeID common.Address, txHandler mgmtcontractli
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {
-		// todo - joel - use short address
-		log.Log(fmt.Sprintf(">   Agg%d: Enclave server listening on address %s.", enclaveServer.nodeShortID, address))
+		nodecommon.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", address)
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
-			log.Log(fmt.Sprintf(">   Agg%d: enclave RPC server could not serve: %s", enclaveServer.nodeShortID, err))
+			nodecommon.LogWithID(enclaveServer.nodeShortID, "enclave RPC server could not serve: %s", err)
 		}
 	}(lis)
 
@@ -170,7 +168,7 @@ func (s *server) GetTransaction(_ context.Context, request *generated.GetTransac
 
 	var buffer bytes.Buffer
 	if err := tx.EncodeRLP(&buffer); err != nil {
-		log.Log(fmt.Sprintf(">   Agg%d: failed to decode transaction sent to enclave: %v", s.nodeShortID, err))
+		nodecommon.LogWithID(s.nodeShortID, "failed to decode transaction sent to enclave: %v", err)
 	}
 	return &generated.GetTransactionResponse{Known: true, EncodedTransaction: buffer.Bytes()}, nil
 }
@@ -179,7 +177,7 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
-		log.Log(fmt.Sprintf(">   Agg%d: failed to decode block sent to enclave: %v", s.nodeShortID, err))
+		nodecommon.LogWithID(s.nodeShortID, "failed to decode block sent to enclave: %v", err)
 	}
 	return block
 }

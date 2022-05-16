@@ -11,8 +11,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -67,7 +65,7 @@ func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 		panic(err)
 	}
 
-	log.Log(fmt.Sprintf(">   Agg%d: Start listening on port: %s", p.nodeID, p.OurAddress))
+	nodecommon.LogWithID(p.nodeID, "Start listening on port: %s", p.OurAddress)
 	i := int32(0)
 	p.listenerInterrupt = &i
 	p.listener = listener
@@ -80,7 +78,7 @@ func (p *p2pImpl) StopListening() {
 
 	if p.listener != nil {
 		if err := p.listener.Close(); err != nil {
-			log.Log(fmt.Sprintf(">   Agg%d: failed to close transaction P2P listener cleanly: %v", p.nodeID, err))
+			nodecommon.LogWithID(p.nodeID, "failed to close transaction P2P listener cleanly: %v", err)
 		}
 	}
 }
@@ -125,7 +123,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 	msg := Message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		log.Log(fmt.Sprintf(">   Agg%d: failed to decode message received from peer: %v", p.nodeID, err))
+		nodecommon.LogWithID(p.nodeID, "failed to decode message received from peer: %v", err)
 		return
 	}
 
@@ -138,7 +136,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 		if err == nil {
 			callback.ReceiveTx(msg.MsgContents)
 		} else {
-			log.Log(fmt.Sprintf(">   Agg%d: failed to decode transaction received from peer: %v", p.nodeID, err))
+			nodecommon.LogWithID(p.nodeID, "failed to decode transaction received from peer: %v", err)
 		}
 	case Rollup:
 		rollup := nodecommon.Rollup{}
@@ -148,7 +146,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 		if err == nil {
 			callback.ReceiveRollup(msg.MsgContents)
 		} else {
-			log.Log(fmt.Sprintf(">   Agg%d: failed to decode rollup received from peer: %v", p.nodeID, err))
+			nodecommon.LogWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
 		}
 	}
 }
@@ -177,7 +175,7 @@ func (p *p2pImpl) sendBytes(address string, tx []byte) {
 		}(conn)
 	}
 	if err != nil {
-		log.Log(fmt.Sprintf(">   Agg%d: could not send message to peer on address %s: %v", p.nodeID, address, err))
+		nodecommon.LogWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
 		return
 	}
 

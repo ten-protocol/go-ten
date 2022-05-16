@@ -1,12 +1,8 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	obscurorawdb "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rawdb"
 
@@ -117,7 +113,7 @@ func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
 	s.assertSecretAvailable()
 	parent, found := s.FetchRollup(r.Header.ParentHash)
 	if !found {
-		log.Log(fmt.Sprintf(">   Agg%d: Could not find rollup: r_%d", s.nodeID, obscurocommon.ShortHash(r.Hash())))
+		nodecommon.LogWithID(s.nodeID, "Could not find rollup: r_%d", obscurocommon.ShortHash(r.Hash()))
 		return nil
 	}
 	return parent

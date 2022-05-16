@@ -218,7 +218,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
 
-	log.Log(fmt.Sprintf(">   Agg%d: Processed block: b_%d(%d)", e.nodeShortID, obscurocommon.ShortHash(block.Hash()), block.NumberU64()))
+	nodecommon.LogWithID(e.nodeShortID, "Processed block: b_%d(%d)", obscurocommon.ShortHash(block.Hash()), block.NumberU64())
 
 	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
 }
@@ -234,7 +234,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	if found {
 		e.storage.StoreRollup(&r)
 	} else {
-		log.Log(fmt.Sprintf(">   Agg%d: Received rollup with no parent: r_%d", e.nodeShortID, obscurocommon.ShortHash(r.Hash())))
+		nodecommon.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", obscurocommon.ShortHash(r.Hash()))
 	}
 }
 
@@ -264,7 +264,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
-	log.Log(fmt.Sprintf(">   Agg%d: Round winner height: %d", e.nodeShortID, head.Header.Number))
+	nodecommon.LogWithID(e.nodeShortID, "Round winner height: %d", head.Header.Number)
 	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
@@ -288,8 +288,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	if winnerRollup.Header.Agg == e.nodeID {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
-		log.Log(fmt.Sprintf(">   Agg%d: Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
-			e.nodeShortID,
+		nodecommon.LogWithID(e.nodeShortID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
 			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
@@ -297,7 +296,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			len(winnerRollup.Transactions),
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State,
-		))
+		)
 		return winnerRollup.ToExtRollup(), true, nil
 	}
 	return nodecommon.ExtRollup{}, false, nil
@@ -339,12 +338,11 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 		speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
 
 		if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
-			log.Log(fmt.Sprintf(">   Agg%d: Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
-				e.nodeShortID,
+			nodecommon.LogWithID(e.nodeShortID, "Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
 				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
 				speculativeRollup.r.Header.Number,
 				obscurocommon.ShortHash(bs.HeadRollup),
-				headRollup.Header.Number))
+				headRollup.Header.Number)
 			if e.statsCollector != nil {
 				e.statsCollector.L2Recalc(e.nodeID)
 			}
@@ -525,7 +523,7 @@ func NewEnclave(nodeID common.Address, mining bool, txHandler mgmtcontractlib.Tx
 		}
 		l1Blockchain = NewL1Blockchain(genesisJSON)
 	} else {
-		log.Log(fmt.Sprintf(">   Agg%d: validateBlocks is set to false. L1 blocks will not be validated.", obscurocommon.ShortAddress(nodeID)))
+		nodecommon.LogWithID(obscurocommon.ShortAddress(nodeID), "validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
 	return &enclaveImpl{
