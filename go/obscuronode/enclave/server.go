@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"net"
+
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 

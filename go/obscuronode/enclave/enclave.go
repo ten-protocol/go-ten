@@ -156,7 +156,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.txHandler, e.storage, e.storage)
+		bs := updateState(block, e.blockResolver, e.txHandler, e.storage, e.storage, e.nodeShortID)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -203,7 +203,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.txHandler, e.storage, e.storage)
+	blockState := updateState(&block, e.blockResolver, e.txHandler, e.storage, e.storage, e.nodeShortID)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -515,7 +515,8 @@ type processingEnvironment struct {
 // received from the L1 nodeID if `validateBlocks` is set to true.
 func NewEnclave(nodeID common.Address, mining bool, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
 	backingDB := db.NewInMemoryDB()
-	storage := db.NewStorage(backingDB)
+	nodeShortID := obscurocommon.ShortAddress(nodeID)
+	storage := db.NewStorage(backingDB, nodeShortID)
 
 	var l1Blockchain *core.BlockChain
 	if validateBlocks {
@@ -529,7 +530,7 @@ func NewEnclave(nodeID common.Address, mining bool, txHandler mgmtcontractlib.Tx
 
 	return &enclaveImpl{
 		nodeID:                      nodeID,
-		nodeShortID:                 obscurocommon.ShortAddress(nodeID),
+		nodeShortID:                 nodeShortID,
 		mining:                      mining,
 		storage:                     storage,
 		blockResolver:               storage,
