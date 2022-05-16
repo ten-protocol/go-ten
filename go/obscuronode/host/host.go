@@ -58,7 +58,8 @@ type StatsCollector interface {
 
 // Node this will become the Obscuro "Node" type
 type Node struct {
-	ID common.Address
+	ID      common.Address
+	shortID uint64
 
 	P2p           P2P                 // For communication with other Obscuro nodes
 	ethClient     ethclient.EthClient // For communication with the L1 node
@@ -105,6 +106,7 @@ func NewObscuroAggregator(
 	host := Node{
 		// config
 		ID:        id,
+		shortID:   obscurocommon.ShortAddress(id),
 		cfg:       cfg,
 		isMiner:   true,
 		isGenesis: isGenesis,
@@ -169,14 +171,14 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for a.EnclaveClient.IsReady() != nil {
 		if counter >= 20 {
-			log.Log(fmt.Sprintf(">   Agg%d: Waiting for enclave. Error: %v", obscurocommon.ShortAddress(a.ID), a.EnclaveClient.IsReady()))
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave. Error: %v", a.EnclaveClient.IsReady())
 			counter = 0
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
-	log.Log(fmt.Sprintf(">   Agg%d: Connected to enclave service...", obscurocommon.ShortAddress(a.ID)))
+	nodecommon.LogWithID(a.shortID, "Connected to enclave service...")
 }
 
 // Waits for blocks from the L1 node, printing a wait message every two seconds.
@@ -188,7 +190,7 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 
 	for len(allBlocks) == 0 {
 		if counter >= 20 {
-			log.Log(fmt.Sprintf(">   Agg%d: Waiting for blocks from L1 node...", obscurocommon.ShortAddress(a.ID)))
+			nodecommon.LogWithID(a.shortID, "Waiting for blocks from L1 node...")
 			counter = 0
 		}
 
@@ -207,18 +209,16 @@ func (a *Node) startProcessing() {
 	results := a.EnclaveClient.IngestBlocks(allBlocks)
 	for _, result := range results {
 		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
-			log.Log(fmt.Sprintf(
-				"Agg%d:> Failed to ingest block b_%d. Cause: %s",
-				obscurocommon.ShortAddress(a.ID),
+			nodecommon.LogWithID(a.shortID, "Failed to ingest block b_%d. Cause: %s",
 				obscurocommon.ShortHash(result.BlockHeader.Hash()),
 				result.BlockNotIngestedCause,
-			))
+			)
 		}
 		a.storeBlockProcessingResult(result)
 	}
 
 	lastBlock := *allBlocks[len(allBlocks)-1]
-	log.Log(fmt.Sprintf(">   Agg%d: Start enclave on block b_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(lastBlock.Header().Hash())))
+	nodecommon.LogWithID(a.shortID, "Start enclave on block b_%d.", obscurocommon.ShortHash(lastBlock.Header().Hash()))
 	a.EnclaveClient.Start(lastBlock)
 
 	if a.isGenesis {
@@ -251,12 +251,12 @@ func (a *Node) startProcessing() {
 		case r := <-a.rollupsP2PCh:
 			rol, err := nodecommon.DecodeRollup(r)
 			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
-				obscurocommon.ShortAddress(a.ID),
+				a.shortID,
 				obscurocommon.ShortHash(rol.Hash()),
 				obscurocommon.ShortAddress(rol.Header.Agg),
 			))
 			if err != nil {
-				log.Log(fmt.Sprintf(">   Agg%d: Could not check enclave initialisation: %v", obscurocommon.ShortAddress(a.ID), err))
+				nodecommon.LogWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
 
 			go a.EnclaveClient.SubmitRollup(nodecommon.ExtRollup{
@@ -270,7 +270,7 @@ func (a *Node) startProcessing() {
 			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
 			if a.EnclaveClient.IsInitialised() {
 				if err := a.EnclaveClient.SubmitTx(tx); err != nil {
-					log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", obscurocommon.ShortAddress(a.ID), err))
+					log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
 				}
 			}
 
@@ -344,7 +344,7 @@ func (a *Node) Stop() {
 	}
 
 	if err := a.EnclaveClient.Stop(); err != nil {
-		log.Log(fmt.Sprintf(">   Agg%d: Could not stop enclave server. Error: %v", obscurocommon.ShortAddress(a.ID), err.Error()))
+		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
 	}
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
@@ -382,7 +382,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		log.Log(fmt.Sprintf(">   Agg%d: Did not ingest block b_%d. Cause: %s", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause))
+		nodecommon.LogWithID(a.shortID, "Did not ingest block b_%d. Cause: %s", obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause)
 		return
 	}
 
@@ -405,12 +405,11 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 			panic(err)
 		}
 		if isWinner {
-			log.Log(fmt.Sprintf(">   Agg%d: Winner (b_%d) r_%d(%d).",
-				obscurocommon.ShortAddress(a.ID),
+			nodecommon.LogWithID(a.shortID, "Winner (b_%d) r_%d(%d).",
 				obscurocommon.ShortHash(result.BlockHeader.Hash()),
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,
-			))
+			)
 			tx := &obscurocommon.L1RollupTx{
 				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
 			}
@@ -437,7 +436,7 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
-	log.Log(fmt.Sprintf(">   Agg%d: Initialising network. Genesis rollup r_%d.", obscurocommon.ShortAddress(a.ID), obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash())))
+	nodecommon.LogWithID(a.shortID, "Initialising network. Genesis rollup r_%d.", obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash()))
 	tx := &obscurocommon.L1RollupTx{
 		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
 	}
@@ -472,7 +471,7 @@ func (a *Node) requestSecret() {
 				}
 
 				if storeTx, ok := t.(*obscurocommon.L1StoreSecretTx); ok { // TODO properly handle t.Attestation.Owner == a.ID
-					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
+					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
 					a.EnclaveClient.InitEnclave(storeTx.Secret)
 					return
 				}
@@ -488,7 +487,7 @@ func (a *Node) requestSecret() {
 
 				if storeTx, ok := t.(*obscurocommon.L1StoreSecretTx); ok {
 					// someone has replied
-					log.Log(fmt.Sprintf("Node-%d: Secret was retrieved", obscurocommon.ShortAddress(a.ID)))
+					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
 					a.EnclaveClient.InitEnclave(storeTx.Secret)
 					return
 				}
@@ -526,7 +525,7 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 
 func (a *Node) monitorBlocks() {
 	listener := a.ethClient.BlockListener()
-	log.Log(fmt.Sprintf(">   Agg%d: Start monitoring Ethereum blocks..", obscurocommon.ShortAddress(a.ID)))
+	nodecommon.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
 	for {
 		latestBlkHeader := <-listener
 		block, err := a.ethClient.FetchBlock(latestBlkHeader.Hash())
@@ -538,10 +537,9 @@ func (a *Node) monitorBlocks() {
 			panic(err)
 		}
 
-		log.Log(fmt.Sprintf(">   Agg%d: Received a new block b_%d(%d)",
-			obscurocommon.ShortAddress(a.ID),
+		nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
 			obscurocommon.ShortHash(latestBlkHeader.Hash()),
-			latestBlkHeader.Number.Uint64()))
+			latestBlkHeader.Number.Uint64())
 		a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
 	}
 }

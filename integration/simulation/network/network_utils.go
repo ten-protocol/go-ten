@@ -65,7 +65,7 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 
 	// create a socket obscuro node
-	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs)
+	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
 	txHandler := ethereum_mock.NewMockTxHandler()
 	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, nodeP2p, nil, enclaveClient, txHandler)

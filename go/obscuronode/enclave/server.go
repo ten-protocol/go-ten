@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
@@ -15,7 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"google.golang.org/grpc"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,8 +24,9 @@ import (
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
 type server struct {
 	generated.UnimplementedEnclaveProtoServer
-	enclave   nodecommon.Enclave
-	rpcServer *grpc.Server
+	enclave     nodecommon.Enclave
+	rpcServer   *grpc.Server
+	nodeShortID uint64
 }
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
@@ -38,14 +39,19 @@ func StartServer(address string, nodeID common.Address, txHandler txhandler.TxHa
 	if err != nil {
 		return fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
-	enclaveServer := server{enclave: NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, collector), rpcServer: grpc.NewServer()}
+
+	enclaveServer := server{
+		enclave:     NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, collector),
+		rpcServer:   grpc.NewServer(),
+		nodeShortID: obscurocommon.ShortAddress(nodeID),
+	}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {
-		log.Log(fmt.Sprintf("Enclave server for node %s listening on address %s.", nodeID, address))
+		nodecommon.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", address)
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
-			log.Log(fmt.Sprintf("enclave RPC server could not serve: %s", err))
+			nodecommon.LogWithID(enclaveServer.nodeShortID, "enclave RPC server could not serve: %s", err)
 		}
 	}(lis)
 
@@ -93,7 +99,7 @@ func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGen
 func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocksRequest) (*generated.IngestBlocksResponse, error) {
 	blocks := make([]*types.Block, 0)
 	for _, encodedBlock := range request.EncodedBlocks {
-		bl := decodeBlock(encodedBlock)
+		bl := s.decodeBlock(encodedBlock)
 		blocks = append(blocks, &bl)
 	}
 
@@ -109,13 +115,13 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 }
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
-	bl := decodeBlock(request.EncodedBlock)
+	bl := s.decodeBlock(request.EncodedBlock)
 	s.enclave.Start(bl)
 	return &generated.StartResponse{}, nil
 }
 
 func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
-	bl := decodeBlock(request.EncodedBlock)
+	bl := s.decodeBlock(request.EncodedBlock)
 	blockSubmissionResponse := s.enclave.SubmitBlock(bl)
 
 	msg := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
@@ -161,16 +167,16 @@ func (s *server) GetTransaction(_ context.Context, request *generated.GetTransac
 
 	var buffer bytes.Buffer
 	if err := tx.EncodeRLP(&buffer); err != nil {
-		log.Log(fmt.Sprintf("failed to decode transaction sent to enclave: %v", err))
+		nodecommon.LogWithID(s.nodeShortID, "failed to decode transaction sent to enclave: %v", err)
 	}
 	return &generated.GetTransactionResponse{Known: true, EncodedTransaction: buffer.Bytes()}, nil
 }
 
-func decodeBlock(encodedBlock []byte) types.Block {
+func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
-		log.Log(fmt.Sprintf("failed to decode block sent to enclave: %v", err))
+		nodecommon.LogWithID(s.nodeShortID, "failed to decode block sent to enclave: %v", err)
 	}
 	return block
 }
