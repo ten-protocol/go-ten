@@ -15,34 +15,15 @@ import (
 // InMemoryDB lives purely in the encrypted memory space of an enclave.
 // Unlike Storage, methods in this class should have minimal logic, to map them more easily to our chosen datastore.
 type InMemoryDB struct {
-	statePerRollup map[obscurocommon.L2RootHash]*State
-	stateMutex     sync.RWMutex // Controls access to `statePerRollup`
-
 	txsPerRollupCache map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx
 	txMutex           sync.RWMutex // Controls access to `txsPerRollupCache`
 }
 
 func NewInMemoryDB() *InMemoryDB {
 	return &InMemoryDB{
-		stateMutex:        sync.RWMutex{},
-		statePerRollup:    make(map[obscurocommon.L2RootHash]*State),
 		txsPerRollupCache: make(map[obscurocommon.L2RootHash]map[common.Hash]nodecommon.L2Tx),
 		txMutex:           sync.RWMutex{},
 	}
-}
-
-func (db *InMemoryDB) SetRollupState(hash obscurocommon.L2RootHash, state *State) {
-	db.stateMutex.Lock()
-	defer db.stateMutex.Unlock()
-
-	db.statePerRollup[hash] = state
-}
-
-func (db *InMemoryDB) FetchRollupState(hash obscurocommon.L2RootHash) *State {
-	db.stateMutex.RLock()
-	defer db.stateMutex.RUnlock()
-
-	return db.statePerRollup[hash]
 }
 
 func (db *InMemoryDB) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
