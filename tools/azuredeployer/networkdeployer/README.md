@@ -1,7 +1,7 @@
 # Obscuro network deployer
 
-This tool automates the creation of an SGX-enabled Azure VM containing Docker images and binaries for running a full 
-Obscuro network and its associated L1 network.
+This tool automates the creation of an SGX-enabled Azure VM running a full Obscuro network and its associated L1 
+network.
 
 ## Usage
 
