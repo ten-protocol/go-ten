@@ -15,7 +15,8 @@ const (
 	azureTestEnv = "AZURE_TEST_ENABLED"
 )
 
-// This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
+// This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
+// The genesis node is connected to a remote enclave service running in Azure, while all other enclave services are local.
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {

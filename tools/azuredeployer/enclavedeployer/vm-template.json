@@ -7,7 +7,7 @@
       "type": "String"
     },
     "virtualNetworks_EnclaveServiceSGX_vnet_name": {
-      "defaultValue": "enclave-servoce-sgx-vnet",
+      "defaultValue": "enclave-service-sgx-vnet",
       "type": "String"
     },
     "publicIPAddresses_enclave_service_sgx_ip_name": {

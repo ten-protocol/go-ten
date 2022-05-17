@@ -1,4 +1,4 @@
-package main
+package azuredeployer
 
 import (
 	"context"
@@ -10,40 +10,33 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
-	"github.com/Azure/go-autorest/autorest"
-	"golang.org/x/crypto/ssh"
-
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
+	"golang.org/x/crypto/ssh"
 )
 
 const (
-	resourceGroupName     = "ObscuroEnclaveService"
-	deploymentName        = "ObscuroEnclaveService"
-	deploymentIPName      = "enclave-service-sgx-ip"
+	resourceGroupName     = "ObscuroNetwork"
+	deploymentName        = "ObscuroNetwork"
+	deploymentIPName      = "obscuro-network-ip"
 	resourceGroupLocation = "uksouth"
 	vmUsername            = "obscuro"
 
-	templateFile   = "tools/azuredeployer/vm-template.json"
-	parametersFile = "tools/azuredeployer/vm-params.json"
-	vmPasswordKey  = "vm_password"
-
+	vmPasswordKey     = "vm_password"
 	azureAuthLocation = "AZURE_AUTH_LOCATION"
 	subscriptionIDKey = "subscriptionId"
 
-	sshPort     = "22"
-	sshTimeout  = 5 * time.Second
-	setupScript = `
-		sudo apt-get update
-		sudo apt-get install -y docker.io
-		sudo systemctl enable --now docker
-		if ! [ -d "obscuro-playground" ]; then git clone https://github.com/obscuronet/obscuro-playground; else :; fi
-		sudo docker build -t obscuro_enclave - < obscuro-playground/dockerfiles/enclave.Dockerfile`
+	sshPort    = "22"
+	sshTimeout = 5 * time.Second
+
+	// todo - joel - provide script to start all the components, incl. Geth (start with one of each component)
 )
 
-func main() {
+// DeployToAzure creates the deployment described by the templateFile and paramsFile in Azure, then runs the setupScript on it.
+func DeployToAzure(templateFile string, paramsFile string, setupScript string) {
 	ctx := context.Background()
 
 	authorizer := getAuthorizer()
@@ -51,9 +44,9 @@ func main() {
 	groupsClient, deploymentsClient, addressClient := createClients((*authInfo)[subscriptionIDKey].(string), authorizer)
 
 	createResourceGroup(ctx, groupsClient)
-	createDeployment(ctx, deploymentsClient)
+	createDeployment(ctx, deploymentsClient, templateFile, paramsFile)
 	vmIP := getIPAddress(ctx, addressClient)
-	runSetupScript(vmIP)
+	runSetupScript(vmIP, paramsFile, setupScript)
 }
 
 // Authenticate with the Azure services using file-based authentication.
@@ -93,11 +86,11 @@ func createResourceGroup(ctx context.Context, client resources.GroupsClient) {
 }
 
 // Create the deployment.
-func createDeployment(ctx context.Context, client resources.DeploymentsClient) {
+func createDeployment(ctx context.Context, client resources.DeploymentsClient, templateFile string, paramsFile string) {
 	log.Printf("Creating deployment %s", deploymentName)
 
 	template := readJSON(templateFile)
-	params := readJSON(parametersFile)
+	params := readJSON(paramsFile)
 
 	deploymentFuture, err := client.CreateOrUpdate(
 		ctx, resourceGroupName, deploymentName, resources.Deployment{
@@ -121,9 +114,9 @@ func createDeployment(ctx context.Context, client resources.DeploymentsClient) {
 	case err != nil:
 		log.Fatalf("failed to create deployment: %v", err)
 	case result.Name == nil:
-		log.Printf("Completed deployment %s, but the provisioning state was not communicated back", deploymentName)
+		log.Printf("Created deployment %s, but the provisioning state was not communicated back", deploymentName)
 	default:
-		log.Printf("Completed deployment %s: %s", deploymentName, result.Properties.ProvisioningState)
+		log.Printf("Created deployment %s: %s", deploymentName, result.Properties.ProvisioningState)
 	}
 }
 
@@ -137,9 +130,9 @@ func getIPAddress(ctx context.Context, client network.PublicIPAddressesClient) s
 	return *ipAddress.PublicIPAddressPropertiesFormat.IPAddress
 }
 
-// Run the script to prepare the virtual machine for running the Obscuro enclave service.
-func runSetupScript(ipAddress string) {
-	params := readJSON(parametersFile)
+// Run the script to prepare the virtual machine for running the Obscuro network.
+func runSetupScript(ipAddress string, paramsFile string, setupScript string) {
+	params := readJSON(paramsFile)
 	vmPassword := (*params)[vmPasswordKey].(map[string]interface{})["value"].(string)
 
 	config := ssh.ClientConfig{

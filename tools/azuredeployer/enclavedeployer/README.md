@@ -1,10 +1,7 @@
 # Obscuro enclave service Azure deployer
 
-Obscuro uses [EGo](https://www.ego.dev/) to run the Obscuro enclave service inside SGX. EGo supports running the 
-enclave in simulation mode using the `OE_SIMULATION=1` environment variable.
-
-This tool automates the creation of an SGX-enabled Azure VM that is set up to run the enclave service outside of 
-simulation mode.
+This tool automates the creation of an SGX-enabled Azure VM that is set up to run the Obscuro enclave service outside 
+of simulation mode.
 
 ## Usage
 
@@ -15,7 +12,7 @@ simulation mode.
 * Choose values for the `vm_password` and `email_recipient` fields in the `vm-params.json` file
   * `vm_password` will be the Azure VM's SSH password. It must meet the requirements set out [here](https://docs.microsoft.com/en-us/azure/virtual-machines/windows/faq#what-are-the-password-requirements-when-creating-a-vm-)
   * `email_recipient` will be the email used for notifications
-* Create the VM using the `main` method under `main/azure_deployer.go`
+* Create the VM using the `main` method in `enclave_deployer.go`
 * SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`)
 * Start the enclave service outside of simulation mode using the following command, replacing `$1` with an integer 
   representing the 20 bytes of the node's address:
