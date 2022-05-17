@@ -15,11 +15,5 @@ Obscuro network and its associated L1 network.
 * Create the VM using the `main` method in `network_deployer.go`
 * SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`)
 
-// todo - joel - need to update the below
-
-* Start the enclave service outside of simulation mode using the following command, replacing `$1` with an integer 
-  representing the 20 bytes of the node's address:
-
-      sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 11000:11000/tcp obscuro_enclave --nodeID $1 --address :11000
-
-The enclave service is now running and exposed on port 11000.
+Immediately upon creation, the VM will be running two Obscuro hosts, two Obscuro enclaves, and two Geth nodes on a new 
+Ethereum network.
