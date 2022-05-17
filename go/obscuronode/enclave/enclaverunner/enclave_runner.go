@@ -14,11 +14,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
-const logPath = "enclave_logs.txt"
-
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config EnclaveConfig) {
-	setLogs(config.WriteToLogs)
+	setLogs(config.WriteToLogs, config.LogPath)
 
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
 	contractAddr := common.HexToAddress(config.ContractAddress)
@@ -36,7 +34,7 @@ func RunEnclave(config EnclaveConfig) {
 }
 
 // Sets the log file, defaulting to stdout if writeToLogs is false.
-func setLogs(writeToLogs bool) {
+func setLogs(writeToLogs bool, logPath string) {
 	var logFile *os.File
 	var err error
 

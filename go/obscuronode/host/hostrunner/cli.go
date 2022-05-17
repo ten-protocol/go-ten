@@ -42,6 +42,9 @@ const (
 
 	ethClientPortName  = "ethClientPort"
 	ethClientPortUsage = "The port on which to connect to the Ethereum client"
+
+	logPathName  = "logPath"
+	logPathUsage = "The path to use for the host's log file"
 )
 
 type HostConfig struct {
@@ -57,6 +60,7 @@ type HostConfig struct {
 	ContractAddress  string
 	EthClientHost    string
 	EthClientPort    uint64
+	LogPath          string
 }
 
 func DefaultHostConfig() HostConfig {
@@ -73,6 +77,7 @@ func DefaultHostConfig() HostConfig {
 		ContractAddress:  "",
 		EthClientHost:    "127.0.0.1",
 		EthClientPort:    8546,
+		LogPath:          "host_logs.txt",
 	}
 }
 
@@ -92,6 +97,7 @@ func ParseCLIArgs() HostConfig {
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
 	ethClientHost := flag.String(ethClientHostName, defaultConfig.EthClientHost, ethClientHostUsage)
 	ethClientPort := flag.Uint64(ethClientPortName, defaultConfig.EthClientPort, ethClientPortUsage)
+	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 
 	flag.Parse()
 
@@ -114,5 +120,6 @@ func ParseCLIArgs() HostConfig {
 		ContractAddress:  *contractAddress,
 		EthClientHost:    *ethClientHost,
 		EthClientPort:    *ethClientPort,
+		LogPath:          *logPath,
 	}
 }

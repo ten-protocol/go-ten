@@ -16,11 +16,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 )
 
-const logPath = "host_logs.txt"
-
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config HostConfig) {
-	setLogs()
+	setLogs(config.LogPath)
 
 	nodeID := common.BytesToAddress([]byte(config.NodeID))
 	hostCfg := host.AggregatorCfg{
@@ -51,7 +49,7 @@ func RunHost(config HostConfig) {
 }
 
 // Sets the log file.
-func setLogs() {
+func setLogs(logPath string) {
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		panic(err)
