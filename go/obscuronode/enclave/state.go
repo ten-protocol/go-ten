@@ -272,6 +272,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state vm.StateD
 			})
 		}
 	}
+	// TODO - fix the withdrawals logic
 	// clearWithdrawals(state, withdrawalTxs)
 	return w
 }
@@ -306,8 +307,7 @@ func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
 }
 
 func newL2Tx(data core.L2TxData) *nodecommon.L2Tx {
-	// We should probably use a deterministic nonce instead, as in the L1.
-	// nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	// Todo - fix the nonce logic for the synthetic deposit transactions.
 	nonce := big.NewInt(1)
 	enc, err := rlp.EncodeToBytes(data)
 	if err != nil {
