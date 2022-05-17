@@ -8,7 +8,7 @@ import (
 const (
 	// Flag names, defaults and usages.
 	nodeIDName  = "nodeID"
-	nodeIDUsage = "The 20 bytes of the node's address (default \"\")"
+	nodeIDUsage = "The 20 bytes of the node's address"
 
 	genesisName  = "isGenesis"
 	genesisUsage = "Whether the node is the first node to join the network"
@@ -26,7 +26,7 @@ const (
 	ourP2PAddrUsage = "The P2P address for our node"
 
 	peerP2PAddrsName  = "peerP2PAddresses"
-	peerP2PAddrsUsage = "The P2P addresses of our peer nodes as a comma-separated list (default \"\")"
+	peerP2PAddrsUsage = "The P2P addresses of our peer nodes as a comma-separated list"
 
 	clientServerAddrName  = "clientServerAddress"
 	clientServerAddrUsage = "The address on which to listen for client application RPC requests"
@@ -42,6 +42,9 @@ const (
 
 	ethClientPortName  = "ethClientPort"
 	ethClientPortUsage = "The port on which to connect to the Ethereum client"
+
+	logPathName  = "logPath"
+	logPathUsage = "The path to use for the host's log file"
 )
 
 type HostConfig struct {
@@ -57,6 +60,7 @@ type HostConfig struct {
 	ContractAddress  string
 	EthClientHost    string
 	EthClientPort    uint64
+	LogPath          string
 }
 
 func DefaultHostConfig() HostConfig {
@@ -68,11 +72,12 @@ func DefaultHostConfig() HostConfig {
 		EnclaveAddr:      "127.0.0.1:11000",
 		OurP2PAddr:       "",
 		PeerP2PAddrs:     []string{},
-		ClientServerAddr: "127.0.0.1:12000",
+		ClientServerAddr: "127.0.0.1:13000",
 		PrivateKeyString: "0000000000000000000000000000000000000000000000000000000000000001",
 		ContractAddress:  "",
 		EthClientHost:    "127.0.0.1",
 		EthClientPort:    8546,
+		LogPath:          "host_logs.txt",
 	}
 }
 
@@ -92,8 +97,15 @@ func ParseCLIArgs() HostConfig {
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
 	ethClientHost := flag.String(ethClientHostName, defaultConfig.EthClientHost, ethClientHostUsage)
 	ethClientPort := flag.Uint64(ethClientPortName, defaultConfig.EthClientPort, ethClientPortUsage)
+	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 
 	flag.Parse()
+
+	parsedP2PAddrs := strings.Split(*peerP2PAddrs, ",")
+	if *peerP2PAddrs == "" {
+		// We handle the special case of an empty list.
+		parsedP2PAddrs = []string{}
+	}
 
 	return HostConfig{
 		NodeID:           *nodeID,
@@ -102,11 +114,12 @@ func ParseCLIArgs() HostConfig {
 		RPCTimeoutSecs:   *rpcTimeoutSecs,
 		EnclaveAddr:      *enclaveAddr,
 		OurP2PAddr:       *ourP2PAddr,
-		PeerP2PAddrs:     strings.Split(*peerP2PAddrs, ","),
+		PeerP2PAddrs:     parsedP2PAddrs,
 		ClientServerAddr: *clientServerAddr,
 		PrivateKeyString: *privateKeyStr,
 		ContractAddress:  *contractAddress,
 		EthClientHost:    *ethClientHost,
 		EthClientPort:    *ethClientPort,
+		LogPath:          *logPath,
 	}
 }

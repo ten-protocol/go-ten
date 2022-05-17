@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
@@ -86,6 +88,8 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
 	txEncoder := ethereum_mock.NewMockTxEncoder()
 	txDecoder := ethereum_mock.NewMockTxDecoder()
+	ethWallet := datagenerator.RandomWallet()
+
 	node := host.NewObscuroAggregator(
 		nodeID,
 		obscuroNodeCfg,
@@ -94,7 +98,7 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 		nodeP2p,
 		nil,
 		enclaveClient,
-		nil,
+		ethWallet,
 		txEncoder,
 		txDecoder,
 	)

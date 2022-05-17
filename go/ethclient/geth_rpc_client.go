@@ -161,8 +161,7 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 }
 
 func (e *gethRPCClient) BroadcastTx(tx types.TxData) {
-	_, err := e.SubmitTransaction(tx)
-	if err != nil {
+	if _, err := e.SubmitTransaction(tx); err != nil {
 		panic(err)
 	}
 }

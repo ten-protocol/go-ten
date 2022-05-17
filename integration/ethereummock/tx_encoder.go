@@ -17,8 +17,7 @@ var (
 	requestSecretTxAddr = common.HexToAddress("0x04")
 )
 
-type mockEncoder struct {
-}
+type mockEncoder struct{}
 
 func (m *mockEncoder) CreateRollup(tx *obscurocommon.L1RollupTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, rollupTxAddr)

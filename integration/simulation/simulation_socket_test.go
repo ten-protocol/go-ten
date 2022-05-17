@@ -19,13 +19,13 @@ import (
 func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog()
 
-	simParams := params.SimParams{
+	simParams := &params.SimParams{
 		NumberOfNodes:             7,
 		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          250 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
-		L2EfficiencyThreshold:     0.3,
+		L2EfficiencyThreshold:     0.33,
 		L2ToL1EfficiencyThreshold: 0.4,
 		TxEncoder:                 ethereum_mock.NewMockTxEncoder(),
 		TxDecoder:                 ethereum_mock.NewMockTxDecoder(),
@@ -37,5 +37,5 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet())
 	}
 
-	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), &simParams)
+	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), simParams)
 }

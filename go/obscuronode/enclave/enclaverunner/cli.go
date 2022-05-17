@@ -17,21 +17,26 @@ const (
 
 	contractAddrName  = "contractAddress"
 	contractAddrUsage = "The management contract address on the L1"
+
+	logPathName  = "logPath"
+	logPathUsage = "The path to use for the enclave service's log file"
 )
 
 type EnclaveConfig struct {
 	NodeID          int64
 	Address         string
-	WriteToLogs     bool
 	ContractAddress string
+	WriteToLogs     bool
+	LogPath         string
 }
 
 func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
 		NodeID:          1,
 		Address:         "localhost:11000",
-		WriteToLogs:     false,
 		ContractAddress: "",
+		WriteToLogs:     false,
+		LogPath:         "enclave_logs.txt",
 	}
 }
 
@@ -42,7 +47,15 @@ func ParseCLIArgs() EnclaveConfig {
 	port := flag.String(addressName, defaultConfig.Address, addressUsage)
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
+	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
+
 	flag.Parse()
 
-	return EnclaveConfig{NodeID: *nodeID, Address: *port, WriteToLogs: *writeToLogs, ContractAddress: *contractAddress}
+	return EnclaveConfig{
+		NodeID:          *nodeID,
+		Address:         *port,
+		ContractAddress: *contractAddress,
+		WriteToLogs:     *writeToLogs,
+		LogPath:         *logPath,
+	}
 }

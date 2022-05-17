@@ -9,8 +9,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-type mockTxDecoder struct {
-}
+type mockTxDecoder struct{}
 
 func (m *mockTxDecoder) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	if len(tx.Data()) == 0 {
