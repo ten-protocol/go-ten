@@ -66,7 +66,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 			nodeID := common.BigToAddress(big.NewInt(int64(i)))
 			enclavePort := uint64(EnclaveStartPort + i)
 			enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
-			err := enclave.StartServer(enclaveAddress, nodeID, params.TxHandler, false, nil, stats)
+			err := enclave.StartServer(enclaveAddress, nodeID, params.TxDecoder, false, nil, stats)
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}

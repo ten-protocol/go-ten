@@ -8,9 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/stabletokencontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -65,15 +64,13 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		panic(err)
 	}
 
-	contractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.MgmtContractByteCode))
+	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.MgmtContractByteCode))
 	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.StableTokenERC20ContractByteCode))
 
-	params.MgmtContractAddr = contractAddr
+	params.MgmtContractAddr = mgmtContractAddr
 	params.ERC20ContractAddr = erc20ContractAddr
-	params.TxHandler = txhandler.NewTransactionHandler(
-		mgmtcontractlib.NewHandler(contractAddr),
-		stabletokencontractlib.NewHandler(erc20ContractAddr, contractAddr),
-	)
+	params.TxEncoder = txencoder.NewEncoder(mgmtContractAddr)
+	params.TxDecoder = txdecoder.NewTxDecoder(mgmtContractAddr, erc20ContractAddr)
 	// Create the obscuro node, each connected to a geth node
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
@@ -92,13 +89,15 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
-			params.TxHandler,
+			params.TxEncoder,
+			params.TxDecoder,
 			params.AvgGossipPeriod,
 			params.AvgBlockDuration,
 			params.AvgNetworkLatency,
 			stats,
 			true,
 			n.gethNetwork.GenesisJSON,
+			params.EthWallets[i],
 		)
 		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
 

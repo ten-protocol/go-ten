@@ -5,8 +5,7 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
@@ -19,11 +18,11 @@ func RunEnclave(config EnclaveConfig) {
 
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
 	contractAddr := common.HexToAddress(config.ContractAddress)
-	txHandler := txhandler.NewTransactionHandler(mgmtcontractlib.NewHandler(&contractAddr))
+	txDecoder := txdecoder.NewTxDecoder(&contractAddr, nil)
 
 	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
-	if err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil); err != nil {
+	if err := enclave.StartServer(config.Address, nodeAddress, txDecoder, false, nil, nil); err != nil {
 		panic(err)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -33,6 +34,10 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	}
 	params.AvgNetworkLatency = params.AvgBlockDuration / 15
 	params.AvgGossipPeriod = params.AvgBlockDuration / 3
+
+	for i := 0; i < simParams.NumberOfNodes+1; i++ {
+		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet())
+	}
 
 	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIP+":11000"), &params)
 }

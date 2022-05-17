@@ -13,9 +13,9 @@ import (
 
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
-
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -48,10 +48,14 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
-		TxHandler:                 ethereum_mock.NewMockTxHandler(),
+		TxDecoder:                 ethereum_mock.NewMockTxHandler(),
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
+
+	for i := 0; i < simParams.NumberOfNodes+1; i++ {
+		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet())
+	}
 
 	// We create a Docker client.
 	ctx := context.Background()

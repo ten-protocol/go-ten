@@ -6,19 +6,15 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
 	"google.golang.org/grpc"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
@@ -34,14 +30,14 @@ type server struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 // TODO - Use a genesis JSON hardcoded in a config file bundled in the signed SGX image instead.
-func StartServer(address string, nodeID common.Address, txHandler txhandler.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) error {
+func StartServer(address string, nodeID common.Address, txDecoder txdecoder.TxDecoder, validateBlocks bool, genesisJSON []byte, collector StatsCollector) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(nodeID, true, txDecoder, validateBlocks, genesisJSON, collector),
 		rpcServer:   grpc.NewServer(),
 		nodeShortID: obscurocommon.ShortAddress(nodeID),
 	}

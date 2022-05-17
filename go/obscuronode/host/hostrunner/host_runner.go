@@ -6,12 +6,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
 
 // RunHost runs an Obscuro host as a standalone process.
@@ -28,7 +29,9 @@ func RunHost(config HostConfig) {
 
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
 	contractAddr := common.HexToAddress(config.ContractAddress)
-	txHandler := txhandler.NewTransactionHandler(mgmtcontractlib.NewHandler(&contractAddr))
+	txDecoder := txdecoder.NewTxDecoder(&contractAddr, nil)
+	txEncoder := txencoder.NewEncoder(&contractAddr)
+
 	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), nodeWallet, &contractAddr)
 	if err != nil {
 		panic(err)
@@ -36,7 +39,7 @@ func RunHost(config HostConfig) {
 	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs, nodeID)
 
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, txHandler)
+	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, datagenerator.RandomWallet(), txEncoder, txDecoder)
 
 	agg.Start()
 }

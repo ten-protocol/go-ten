@@ -23,7 +23,7 @@ type EthClient interface {
 	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool
 
 	RPCBlockchainFeed() []*types.Block                             // returns all blocks from genesis to head
-	BroadcastTx(tx obscurocommon.L1Transaction)                    // issues an obscurocommon.L1Transaction to the L1 network
+	BroadcastTx(tx types.TxData)                                   // issues an obscurocommon.L1Transaction to the L1 network
 	BlockListener() chan *types.Header                             // subscribes to new blocks and returns a listener with the blocks heads
 	SubmitTransaction(tx types.TxData) (*types.Transaction, error) // signs and issues an ethereum transaction
 	IssueTransaction(signedTx *types.Transaction) error            // issues an ethereum transaction (expects signed tx)

@@ -3,11 +3,8 @@ package ethereummock
 import (
 	"fmt"
 	"math/big"
-	"math/rand"
 	"sync/atomic"
 	"time"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
@@ -65,15 +62,15 @@ type Node struct {
 	// internal
 	headInCh  chan bool
 	headOutCh chan *types.Block
-	txHandler txhandler.TxHandler
 }
 
 func (m *Node) SubmitTransaction(_ types.TxData) (*types.Transaction, error) {
 	panic("method should never be called in this mock")
 }
 
-func (m *Node) IssueTransaction(_ *types.Transaction) error {
-	panic("method should never be called in this mock")
+func (m *Node) IssueTransaction(tx *types.Transaction) error {
+	m.Network.BroadcastTx(tx)
+	return nil
 }
 
 func (m *Node) FetchTxReceipt(_ common.Hash) (*types.Receipt, error) {
@@ -298,13 +295,8 @@ func (m *Node) P2PGossipTx(tx *types.Transaction) {
 	m.mempoolCh <- tx
 }
 
-func (m *Node) BroadcastTx(tx obscurocommon.L1Transaction) {
-	formattedTx, err := m.txHandler.PackTx(tx, common.Address{}, rand.Uint64()) // nolint:gosec
-	if err != nil {
-		panic(err)
-	}
-
-	m.Network.BroadcastTx(types.NewTx(formattedTx))
+func (m *Node) BroadcastTx(tx types.TxData) {
+	m.Network.BroadcastTx(types.NewTx(tx))
 }
 
 func (m *Node) RPCBlockchainFeed() []*types.Block {
@@ -374,6 +366,5 @@ func NewMiner(
 		mempoolCh:    make(chan *types.Transaction),
 		headInCh:     make(chan bool),
 		headOutCh:    make(chan *types.Block),
-		txHandler:    NewMockTxHandler(),
 	}
 }

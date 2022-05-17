@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -24,7 +24,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	ethClients, obscuroClients, p2pAddrs := netw.Create(params, stats)
 
-	var workerWallet wallet.Wallet
+	workerWallet := datagenerator.RandomWallet()
 	if len(params.EthWallets) > 0 {
 		workerWallet = params.EthWallets[len(params.EthWallets)-1]
 	}
@@ -38,6 +38,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		params.MgmtContractAddr,
 		params.ERC20ContractAddr,
 		obscuroClients,
+		params.TxEncoder,
 	)
 
 	simulation := Simulation{

@@ -8,13 +8,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/mempool"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
+	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
 
 const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
@@ -41,7 +42,7 @@ type enclaveImpl struct {
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
 
-	txHandler txhandler.TxHandler
+	txDecoder txdecoder.TxDecoder
 
 	// Toggles the speculative execution background process
 	speculativeExecutionEnabled bool
@@ -151,7 +152,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.txHandler, e.storage, e.storage, e.nodeShortID)
+		bs := updateState(block, e.blockResolver, e.txDecoder, e.storage, e.storage, e.nodeShortID)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -198,7 +199,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.txHandler, e.storage, e.storage, e.nodeShortID)
+	blockState := updateState(&block, e.blockResolver, e.txDecoder, e.storage, e.storage, e.nodeShortID)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -357,7 +358,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := processDeposits(proof, b, e.blockResolver, e.txHandler)
+	depositTxs := processDeposits(proof, b, e.blockResolver, e.txDecoder)
 	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
@@ -506,7 +507,7 @@ type processingEnvironment struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(nodeID common.Address, mining bool, txHandler txhandler.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
+func NewEnclave(nodeID common.Address, mining bool, txDecoder txdecoder.TxDecoder, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
 	backingDB := db.NewInMemoryDB()
 	nodeShortID := obscurocommon.ShortAddress(nodeID)
 	storage := db.NewStorage(backingDB, nodeShortID)
@@ -535,7 +536,7 @@ func NewEnclave(nodeID common.Address, mining bool, txHandler txhandler.TxHandle
 		exitCh:                      make(chan bool),
 		speculativeWorkInCh:         make(chan bool),
 		speculativeWorkOutCh:        make(chan speculativeWork),
-		txHandler:                   txHandler,
+		txDecoder:                   txDecoder,
 		speculativeExecutionEnabled: true,
 	}
 }

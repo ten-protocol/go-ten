@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -49,6 +51,7 @@ type TransactionInjector struct {
 	ethWallet         wallet.Wallet
 	erc20ContractAddr *common.Address
 	mgmtContractAddr  *common.Address
+	txEncoder         txencoder.TxEncoder
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
@@ -62,6 +65,7 @@ func NewTransactionInjector(
 	mgmtContractAddr *common.Address,
 	erc20ContractAddr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
+	txEncoder txencoder.TxEncoder,
 ) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
@@ -81,6 +85,7 @@ func NewTransactionInjector(
 		ethWallet:         ethWallet,
 		erc20ContractAddr: erc20ContractAddr,
 		mgmtContractAddr:  mgmtContractAddr,
+		txEncoder:         txEncoder,
 	}
 }
 
@@ -94,7 +99,15 @@ func (m *TransactionInjector) Start() {
 			Amount: initialBalance,
 			To:     u.Address,
 		}
-		m.rndL1Node().BroadcastTx(txData)
+		tx := m.txEncoder.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
+		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
+		if err != nil {
+			panic(err)
+		}
+		err = m.rndL1Node().IssueTransaction(signedTx)
+		if err != nil {
+			panic(err)
+		}
 		m.stats.Deposit(initialBalance)
 		go m.trackL1Tx(txData)
 		time.Sleep(m.avgBlockDuration / 3)
@@ -220,7 +233,16 @@ func (m *TransactionInjector) issueRandomDeposits() {
 			Amount: v,
 			To:     rndWallet(m.wallets).Address,
 		}
-		m.rndL1Node().BroadcastTx(txData)
+		tx := m.txEncoder.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
+		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
+		if err != nil {
+			panic(err)
+		}
+		err = m.rndL1Node().IssueTransaction(signedTx)
+		if err != nil {
+			panic(err)
+		}
+
 		m.stats.Deposit(v)
 		go m.trackL1Tx(txData)
 	}

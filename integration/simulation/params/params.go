@@ -3,7 +3,9 @@ package params
 import (
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txhandler"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
@@ -28,11 +30,16 @@ type SimParams struct {
 	L2EfficiencyThreshold     float64 // number of dead obscuro blocks
 	L2ToL1EfficiencyThreshold float64 // number of ethereum blocks that don't include an obscuro node
 
-	// TxHandler defines how the simulation should unpack transactions
-	TxHandler txhandler.TxHandler
+	// TxDecoder defines how the simulation should unpack transactions
+	TxDecoder txdecoder.TxDecoder
+
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddr *common.Address
+
 	// EthWallets contains the wallets to use for the l1 nodes
 	EthWallets        []wallet.Wallet
 	ERC20ContractAddr *common.Address
+
+	// TxDecoder defines how the simulation should pack transactions
+	TxEncoder txencoder.TxEncoder
 }
