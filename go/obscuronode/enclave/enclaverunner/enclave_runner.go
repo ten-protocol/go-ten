@@ -1,8 +1,11 @@
 package enclaverunner
 
 import (
+	"fmt"
 	"math/big"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
@@ -11,11 +14,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
-const logPath = "enclave_logs.txt"
-
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config EnclaveConfig) {
-	setLogs(config.WriteToLogs)
+	setLogs(config.WriteToLogs, config.LogPath)
 
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
 	contractAddr := common.HexToAddress(config.ContractAddress)
@@ -23,15 +24,17 @@ func RunEnclave(config EnclaveConfig) {
 
 	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
-	if err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil); err != nil {
+	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil)
+	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Obscuro enclave service started.")
 
-	select {}
+	handleInterrupt(closeHandle)
 }
 
 // Sets the log file, defaulting to stdout if writeToLogs is false.
-func setLogs(writeToLogs bool) {
+func setLogs(writeToLogs bool, logPath string) {
 	var logFile *os.File
 	var err error
 
@@ -45,4 +48,14 @@ func setLogs(writeToLogs bool) {
 	}
 
 	log.SetLog(logFile)
+}
+
+// Shuts down the Obscuro enclave service when an interrupt is received.
+func handleInterrupt(closeHandle func()) {
+	interruptChannel := make(chan os.Signal, 1)
+	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
+	<-interruptChannel
+	closeHandle()
+	fmt.Println("Obscuro enclave service stopping...")
+	os.Exit(1)
 }

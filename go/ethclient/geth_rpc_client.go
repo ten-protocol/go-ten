@@ -44,7 +44,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 
 	wallet.SetNonce(nonce)
 
-	log.Log(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
+	log.Info(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
 	return &gethRPCClient{
 		client:    client,
 		id:        id,

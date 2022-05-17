@@ -43,7 +43,7 @@ func (n *MockEthNetwork) BroadcastBlock(b obscurocommon.EncodedBlock, p obscuroc
 			t := m
 			obscurocommon.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
-			log.Log(printBlock(bl, *m))
+			log.Info(printBlock(bl, *m))
 		}
 	}
 
