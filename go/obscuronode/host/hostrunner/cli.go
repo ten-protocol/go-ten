@@ -8,7 +8,7 @@ import (
 const (
 	// Flag names, defaults and usages.
 	nodeIDName  = "nodeID"
-	nodeIDUsage = "The 20 bytes of the node's address (default \"\")"
+	nodeIDUsage = "The 20 bytes of the node's address"
 
 	genesisName  = "isGenesis"
 	genesisUsage = "Whether the node is the first node to join the network"
@@ -26,7 +26,7 @@ const (
 	ourP2PAddrUsage = "The P2P address for our node"
 
 	peerP2PAddrsName  = "peerP2PAddresses"
-	peerP2PAddrsUsage = "The P2P addresses of our peer nodes as a comma-separated list (default \"\")"
+	peerP2PAddrsUsage = "The P2P addresses of our peer nodes as a comma-separated list"
 
 	clientServerAddrName  = "clientServerAddress"
 	clientServerAddrUsage = "The address on which to listen for client application RPC requests"
@@ -95,6 +95,12 @@ func ParseCLIArgs() HostConfig {
 
 	flag.Parse()
 
+	parsedP2PAddrs := strings.Split(*peerP2PAddrs, ",")
+	if *peerP2PAddrs == "" {
+		// We handle the special case of an empty list.
+		parsedP2PAddrs = []string{}
+	}
+
 	return HostConfig{
 		NodeID:           *nodeID,
 		IsGenesis:        *isGenesis,
@@ -102,7 +108,7 @@ func ParseCLIArgs() HostConfig {
 		RPCTimeoutSecs:   *rpcTimeoutSecs,
 		EnclaveAddr:      *enclaveAddr,
 		OurP2PAddr:       *ourP2PAddr,
-		PeerP2PAddrs:     strings.Split(*peerP2PAddrs, ","),
+		PeerP2PAddrs:     parsedP2PAddrs,
 		ClientServerAddr: *clientServerAddr,
 		PrivateKeyString: *privateKeyStr,
 		ContractAddress:  *contractAddress,

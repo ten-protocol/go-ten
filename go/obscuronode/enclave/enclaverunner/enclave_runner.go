@@ -1,6 +1,7 @@
 package enclaverunner
 
 import (
+	"fmt"
 	"math/big"
 	"os"
 
@@ -26,6 +27,7 @@ func RunEnclave(config EnclaveConfig) {
 	if err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil); err != nil {
 		panic(err)
 	}
+	fmt.Println("Obscuro enclave service started.")
 
 	select {}
 }

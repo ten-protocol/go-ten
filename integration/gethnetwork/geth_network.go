@@ -113,7 +113,7 @@ type GethNetwork struct {
 func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) GethNetwork {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	buildDir := path.Join(buildDirBase, timestamp)
+	buildDir := path.Join(basepath, buildDirBase, timestamp)
 	// We create a data directory for each node.
 	nodesDir, err := ioutil.TempDir("", timestamp)
 	fmt.Printf("Geth nodes created in: %s\n", nodesDir)
@@ -127,7 +127,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	}
 
 	// We push all the node logs to a single file.
-	err = os.MkdirAll(buildDir, 0o700)
+	err = os.MkdirAll(buildDir, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -308,7 +308,7 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 	cmd.Stderr = network.logFile
 
 	if err := cmd.Run(); err != nil {
-		panic(err)
+		panic(fmt.Errorf("could not initialise Geth node. Cause: %w", err))
 	}
 }
 
@@ -327,7 +327,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	cmd.Stderr = network.logFile
 
 	if err := cmd.Start(); err != nil {
-		panic(err)
+		panic(fmt.Errorf("could not start Geth node. Cause: %w", err))
 	}
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
