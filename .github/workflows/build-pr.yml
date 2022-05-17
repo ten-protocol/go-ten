@@ -25,3 +25,9 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: sim-logs
+          path: integration/.build/simulations/simulation-result-*.txt
