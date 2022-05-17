@@ -72,7 +72,7 @@ func DefaultHostConfig() HostConfig {
 		EnclaveAddr:      "127.0.0.1:11000",
 		OurP2PAddr:       "",
 		PeerP2PAddrs:     []string{},
-		ClientServerAddr: "127.0.0.1:12000",
+		ClientServerAddr: "127.0.0.1:13000",
 		PrivateKeyString: "0000000000000000000000000000000000000000000000000000000000000001",
 		ContractAddress:  "",
 		EthClientHost:    "127.0.0.1",

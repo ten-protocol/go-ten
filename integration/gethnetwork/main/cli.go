@@ -26,12 +26,12 @@ type GethConfig struct {
 func DefaultHostConfig() GethConfig {
 	return GethConfig{
 		NumNodes:       1,
-		StartPort:      30000,
+		StartPort:      12000,
 		PrefundedAddrs: []string{},
 	}
 }
 
-func ParseCLIArgs() GethConfig {
+func parseCLIArgs() GethConfig {
 	defaultConfig := DefaultHostConfig()
 
 	numNodes := flag.Int(numNodesName, defaultConfig.NumNodes, numNodesUsage)

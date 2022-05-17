@@ -11,7 +11,7 @@ import (
 
 // Spins up a new Geth network.
 func main() {
-	config := ParseCLIArgs()
+	config := parseCLIArgs()
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
