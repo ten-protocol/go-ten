@@ -23,7 +23,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 		AvgBlockDuration:          250 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
-		L2EfficiencyThreshold:     0.3,
+		L2EfficiencyThreshold:     0.33,
 		L2ToL1EfficiencyThreshold: 0.4,
 		TxHandler:                 ethereum_mock.NewMockTxHandler(),
 	}
