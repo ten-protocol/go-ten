@@ -157,7 +157,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	// calculate the state to compare with what is in the Rollup
 	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
 	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.txHandler)
-	log.Log(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.node), len(depositTxs)))
+	log.Info(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.nodeID), len(depositTxs)))
 
 	executeTransactions(headRollup.Transactions, stateDB, headRollup.Header)
 	executeTransactions(depositTxs, stateDB, headRollup.Header)

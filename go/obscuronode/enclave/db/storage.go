@@ -18,7 +18,7 @@ type storageImpl struct {
 	tempDB  *InMemoryDB // todo - has to be replaced completely by the ethdb.Database
 	db      ethdb.Database
 	stateDB state.Database
-	nodeID uint64
+	nodeID  uint64
 }
 
 func NewStorage(db *InMemoryDB, nodeID uint64) Storage {
@@ -27,7 +27,7 @@ func NewStorage(db *InMemoryDB, nodeID uint64) Storage {
 		tempDB:  db,
 		db:      backingDB,
 		stateDB: state.NewDatabase(backingDB),
-		nodeID: nodeID,
+		nodeID:  nodeID,
 	}
 }
 

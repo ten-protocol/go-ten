@@ -112,6 +112,6 @@ func executeTransfer(s vm.StateDB, tx nodecommon.L2Tx) {
 func executeDeposit(s vm.StateDB, tx nodecommon.L2Tx) {
 	txData := core.TxData(&tx)
 	to := getBalance(s, txData.To)
-	log.Log(fmt.Sprintf("Tx=%d; Process deposit %d into %s(old=%d).", obscurocommon.ShortHash(tx.Hash()), txData.Amount, txData.To, to))
+	log.Info(fmt.Sprintf("Tx=%d; Process deposit %d into %s(old=%d).", obscurocommon.ShortHash(tx.Hash()), txData.Amount, txData.To, to))
 	setBalance(s, txData.To, to+txData.Amount)
 }
