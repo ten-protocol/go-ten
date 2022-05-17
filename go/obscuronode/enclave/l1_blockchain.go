@@ -31,8 +31,8 @@ const (
 
 // TODO - Add the constants used in this file to the config framework.
 
-// NewL1Blockchain creates a Geth BlockChain object. `genesisJSON` is the Genesis block config in JSON format. A Geth
-// node can be made to output this using the `dumpgenesis` startup command.
+// NewL1Blockchain creates a Geth BlockChain object. `genesisJSON` is the Genesis block config in JSON format.
+// A Geth node can be made to output this using the `dumpgenesis` startup command.
 func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 	dataDir := createDataDir()
 

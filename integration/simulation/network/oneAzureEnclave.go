@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -19,57 +21,61 @@ import (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkWithOneAzureEnclave struct {
-	ethNodes         []*ethereum_mock.Node
-	obscuroNodes     []*host.Node
-	obscuroAddresses []string
-	enclaveAddress   string
+	ethNodes       []*ethereum_mock.Node
+	obscuroNodes   []*host.Node
+	obscuroClients []*obscuroclient.Client
+	enclaveAddress string
 }
 
 func NewNetworkWithOneAzureEnclave(enclaveAddress string) Network {
 	return &networkWithOneAzureEnclave{enclaveAddress: enclaveAddress}
 }
 
-func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string) {
+func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
+	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
+	nodeP2pAddrs := make([]string, params.NumberOfNodes)
 
-	var nodeP2pAddrs []string
-	var nodeClientServerAddrs []string
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
-		nodeP2pAddrs = append(nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i))
-		nodeClientServerAddrs = append(nodeClientServerAddrs, fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i))
+		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i)
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
-		genesis := false
-		if i == 0 {
-			genesis = true
+		isGenesis := i == 0
+
+		if isGenesis {
 			// create the in memory l1 and l2 node
 			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-			agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, n.enclaveAddress, nodeClientServerAddrs[i])
+			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
+			obscuroClient := obscuroclient.NewClient(common.BigToAddress(big.NewInt(int64(i))), obscuroClientAddr)
+			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, n.enclaveAddress, obscuroClientAddr)
 
 			// and connect them to each other
 			agg.ConnectToEthNode(miner)
 			miner.AddClient(agg)
 
+			l1Clients[i] = miner
 			n.ethNodes[i] = miner
 			n.obscuroNodes[i] = agg
-			l1Clients[i] = miner
+			n.obscuroClients[i] = &obscuroClient
 		} else {
 			// create a remote enclave server
 			nodeID := common.BigToAddress(big.NewInt(int64(i)))
 			enclavePort := uint64(EnclaveStartPort + i)
 			enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
-			err := enclave.StartServer(enclaveAddress, nodeID, params.TxHandler, false, nil, stats)
+			_, err := enclave.StartServer(enclaveAddress, nodeID, params.TxHandler, false, nil, stats)
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}
 
 			// create the in memory l1 and l2 node
 			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-			agg := createSocketObscuroNode(int64(i), genesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress, nodeClientServerAddrs[i])
+			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
+			obscuroClient := obscuroclient.NewClient(common.BigToAddress(big.NewInt(int64(i))), obscuroClientAddr)
+			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress, obscuroClientAddr)
 
 			// and connect them to each other
 			agg.ConnectToEthNode(miner)
@@ -77,6 +83,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 
 			n.ethNodes[i] = miner
 			n.obscuroNodes[i] = agg
+			n.obscuroClients[i] = &obscuroClient
 			l1Clients[i] = miner
 		}
 	}
@@ -85,7 +92,6 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
 	}
-	n.obscuroAddresses = nodeP2pAddrs
 
 	// The sequence of starting the nodes is important to catch various edge cases.
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
@@ -106,19 +112,18 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroNodes, nodeP2pAddrs
+	return l1Clients, n.obscuroClients, nodeP2pAddrs
 }
 
 func (n *networkWithOneAzureEnclave) TearDown() {
-	go func() {
-		for _, n := range n.obscuroNodes {
-			n.Stop()
-		}
-	}()
-	go func() {
-		for _, m := range n.ethNodes {
-			t := m
-			go t.Stop()
-		}
-	}()
+	for _, client := range n.obscuroClients {
+		temp := client
+		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+		go (*temp).Stop()
+	}
+
+	for _, node := range n.ethNodes {
+		temp := node
+		go temp.Stop()
+	}
 }

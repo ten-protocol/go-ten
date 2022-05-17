@@ -2,7 +2,7 @@ package network
 
 import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
@@ -14,8 +14,8 @@ import (
 // - Once we implement a few more versions: for example using Geth, or using enclaves running in azure, etc, we'll revisit and create better abstractions.
 // TODO Decompose the network so we can pick and choose different types of l1 and obscuro nodes
 type Network interface {
-	// Create - returns a group of started Ethereum nodes, a group of started Obscuro nodes, and the Obscuro nodes' P2P addresses.
+	// Create - returns the started Ethereum nodes, the started Obscuro node clients, and the Obscuro nodes' P2P addresses.
 	// todo - return interfaces to RPC handles to the nodes
-	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*host.Node, []string)
+	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string)
 	TearDown()
 }

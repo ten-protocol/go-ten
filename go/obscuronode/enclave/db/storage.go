@@ -1,13 +1,9 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	obscurorawdb "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rawdb"
 
@@ -22,14 +18,16 @@ type storageImpl struct {
 	tempDB  *InMemoryDB // todo - has to be replaced completely by the ethdb.Database
 	db      ethdb.Database
 	stateDB state.Database
+	nodeID uint64
 }
 
-func NewStorage(db *InMemoryDB) Storage {
+func NewStorage(db *InMemoryDB, nodeID uint64) Storage {
 	backingDB := rawdb.NewMemoryDatabase()
 	return &storageImpl{
 		tempDB:  db,
 		db:      backingDB,
 		stateDB: state.NewDatabase(backingDB),
+		nodeID: nodeID,
 	}
 }
 
@@ -123,7 +121,7 @@ func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
 	s.assertSecretAvailable()
 	parent, found := s.FetchRollup(r.Header.ParentHash)
 	if !found {
-		log.Log(fmt.Sprintf("Could not find rollup: r_%d", obscurocommon.ShortHash(r.Hash())))
+		nodecommon.LogWithID(s.nodeID, "Could not find rollup: r_%d", obscurocommon.ShortHash(r.Hash()))
 		return nil
 	}
 	return parent

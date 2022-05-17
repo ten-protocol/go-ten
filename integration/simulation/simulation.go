@@ -2,8 +2,9 @@ package simulation
 
 import (
 	"fmt"
-	"net"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -13,18 +14,15 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 )
 
-const (
-	INITIAL_BALANCE = 5000 // nolint:revive,stylecheck
-)
+const initialBalance = 5000
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethclient.EthClient // the list of mock ethereum clients
-	ObscuroNodes     []*host.Node          // the list of Obscuro nodes - todo - need to be interfaces to rpc handles
-	ObscuroP2PAddrs  []string              // the P2P addresses of the Obscuro nodes
+	EthClients       []ethclient.EthClient   // the list of mock ethereum clients
+	ObscuroClients   []*obscuroclient.Client // the list of Obscuro host clients
+	ObscuroP2PAddrs  []string                // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -34,10 +32,7 @@ type Simulation struct {
 
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
-	log.Log(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
-
-	// TODO - Remove this waiting period. The ability for nodes to catch up should be part of the tests.
-	waitForP2p(s.ObscuroP2PAddrs)
+	log.Info(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	timer := time.Now()
 	go s.TxInjector.Start()
@@ -57,20 +52,4 @@ func (s *Simulation) Start() {
 
 func (s *Simulation) Stop() {
 	// nothing to do for now
-}
-
-// Waits for the L2 nodes to be ready to process P2P messages.
-func waitForP2p(obscuroP2PAddrs []string) {
-	for _, addr := range obscuroP2PAddrs {
-		for {
-			conn, _ := net.Dial("tcp", addr)
-			if conn != nil {
-				if closeErr := conn.Close(); closeErr != nil {
-					panic(closeErr)
-				}
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-	}
 }
