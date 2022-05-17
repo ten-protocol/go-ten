@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 )
@@ -14,8 +17,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	gethnetwork.NewGethNetwork(config.StartPort, gethBinaryPath, config.NumNodes, 1, config.PrefundedAddrs)
+	gethNetwork := gethnetwork.NewGethNetwork(config.StartPort, gethBinaryPath, config.NumNodes, 1, config.PrefundedAddrs)
 	fmt.Println("Geth network started.")
 
-	select {}
+	handleInterrupt(gethNetwork)
+}
+
+// Shuts down the Geth network when an interrupt is received.
+func handleInterrupt(gethNetwork gethnetwork.GethNetwork) {
+	interruptChannel := make(chan os.Signal, 1)
+	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
+	<-interruptChannel
+	gethNetwork.StopNodes()
+	fmt.Println("Geth network stopping...")
+	os.Exit(1)
 }

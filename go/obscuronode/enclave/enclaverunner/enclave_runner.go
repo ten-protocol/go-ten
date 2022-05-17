@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
@@ -24,12 +26,13 @@ func RunEnclave(config EnclaveConfig) {
 
 	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
-	if err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil); err != nil {
+	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil)
+	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Obscuro enclave service started.")
 
-	select {}
+	handleInterrupt(closeHandle)
 }
 
 // Sets the log file, defaulting to stdout if writeToLogs is false.
@@ -47,4 +50,14 @@ func setLogs(writeToLogs bool) {
 	}
 
 	log.SetLog(logFile)
+}
+
+// Shuts down the Obscuro enclave service when an interrupt is received.
+func handleInterrupt(closeHandle func()) {
+	interruptChannel := make(chan os.Signal, 1)
+	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
+	<-interruptChannel
+	closeHandle()
+	fmt.Println("Obscuro enclave service stopping...")
+	os.Exit(1)
 }

@@ -3,6 +3,8 @@ package hostrunner
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -44,6 +46,8 @@ func RunHost(config HostConfig) {
 
 	fmt.Println("Starting Obscuro host...")
 	agg.Start()
+
+	handleInterrupt(agg)
 }
 
 // Sets the log file.
@@ -53,4 +57,14 @@ func setLogs() {
 		panic(err)
 	}
 	log.SetLog(logFile)
+}
+
+// Shuts down the Obscuro host when an interrupt is received.
+func handleInterrupt(host host.Node) {
+	interruptChannel := make(chan os.Signal, 1)
+	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
+	<-interruptChannel
+	host.Stop()
+	fmt.Println("Obscuro host stopping...")
+	os.Exit(1)
 }
