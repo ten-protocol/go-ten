@@ -31,8 +31,6 @@ const (
 
 	sshPort    = "22"
 	sshTimeout = 5 * time.Second
-
-	// todo - joel - provide script to start all the components, incl. Geth (start with one of each component)
 )
 
 // DeployToAzure creates the deployment described by the templateFile and paramsFile in Azure, then runs the setupScript on it.
