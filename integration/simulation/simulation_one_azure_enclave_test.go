@@ -20,6 +20,8 @@ const (
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv(azureTestEnv) == "" {
 		t.Skipf("set the variable to run this test: `%s=true`", azureTestEnv)
 	}
@@ -33,6 +35,7 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
+		StartPort:                 40000,
 	}
 	params.AvgNetworkLatency = params.AvgBlockDuration / 15
 	params.AvgGossipPeriod = params.AvgBlockDuration / 3

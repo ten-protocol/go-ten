@@ -37,6 +37,8 @@ const (
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 // $> docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}") will stop and remove all images
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv(dockerTestEnv) == "" {
 		t.Skipf("set the variable to run this test: `%s=true`", dockerTestEnv)
 	}
@@ -52,6 +54,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
 		TxHandler:                 ethereum_mock.NewMockTxHandler(),
+		StartPort:                 10000,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
@@ -72,7 +75,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
-	containerIDs := createDockerContainers(ctx, cli, simParams.NumberOfNodes)
+	containerIDs := createDockerContainers(ctx, cli, simParams.NumberOfNodes, simParams.StartPort)
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
 	// We start the Docker containers.
@@ -99,11 +102,11 @@ func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
 }
 
 // Creates the test Docker containers.
-func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int) []string {
+func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int) []string {
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", network.EnclaveStartPort+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+100+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))

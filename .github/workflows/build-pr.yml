@@ -24,4 +24,4 @@ jobs:
         run: bash ./integration/gethnetwork/build_geth_binary.sh --version=v1.10.17
 
       - name: Test
-        run: go test -v ./...
+        run: go test -v ./... -p 4

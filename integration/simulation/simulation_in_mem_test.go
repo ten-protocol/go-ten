@@ -17,6 +17,8 @@ import (
 // Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
 // the CPU usage will be very high during the simulation which might result in inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
+	t.Parallel()
+
 	setupTestLog()
 
 	simParams := params.SimParams{
@@ -28,6 +30,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.32,
 		L2ToL1EfficiencyThreshold: 0.36,
 		TxHandler:                 ethereummock.NewMockTxHandler(),
+		StartPort:                 30000,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

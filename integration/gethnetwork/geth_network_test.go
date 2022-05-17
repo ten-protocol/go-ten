@@ -32,7 +32,7 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(30000, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(60000, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)

@@ -12,6 +12,8 @@ import (
 
 // TestGethMemObscuroEthMonteCarloSimulation runs the simulation against a private geth network using Clique (PoA)
 func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
+	t.Parallel()
+
 	setupTestLog()
 
 	numberOfNodes := 5
@@ -34,6 +36,7 @@ func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.5,
 		L2ToL1EfficiencyThreshold: 0.5, // one rollup every 2 blocks
 		EthWallets:                wallets,
+		StartPort:                 20000,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
