@@ -77,8 +77,6 @@ func (e *enclaveImpl) start(block types.Block) {
 		env.headRollup, _ = e.storage.FetchRollup(blockState.HeadRollup)
 		if env.headRollup != nil {
 			env.state = e.storage.CreateStateDB(env.headRollup.Hash())
-			s := env.state.Snapshot()
-			fmt.Printf("%d", s)
 		}
 	}
 
@@ -90,8 +88,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.nodeID)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
-			env.state.Snapshot()
-			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculatve env  r_%d(%d).",
+			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculative env  r_%d(%d).",
 				e.nodeShortID,
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,

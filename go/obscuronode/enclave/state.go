@@ -106,7 +106,6 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 		}
 		bss.SetBlockState(b.Hash(), &bs, genesis)
 		s := bss.GenesisStateDB()
-		// todo
 		_, err := s.Commit(true)
 		if err != nil {
 			return nil, false
