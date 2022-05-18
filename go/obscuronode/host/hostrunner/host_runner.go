@@ -7,16 +7,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
 
 // RunHost runs an Obscuro host as a standalone process.
@@ -33,8 +32,8 @@ func RunHost(config HostConfig) {
 
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
 	contractAddr := common.HexToAddress(config.ContractAddress)
-	txDecoder := txdecoder.NewTxDecoder(&contractAddr, nil)
-	txEncoder := txencoder.NewEncoder(&contractAddr)
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
+	erc20ContracLib := erc20contractlib.NewERC20ContractLib(&contractAddr)
 	ethWallet := datagenerator.RandomWallet()
 
 	fmt.Println("Connecting to L1 network...")
@@ -45,7 +44,7 @@ func RunHost(config HostConfig) {
 
 	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs, nodeID)
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, ethWallet, txEncoder, txDecoder)
+	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib, erc20ContracLib)
 
 	fmt.Println("Starting Obscuro host...")
 	agg.Start()

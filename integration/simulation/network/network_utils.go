@@ -4,13 +4,12 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
 
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
@@ -43,8 +42,8 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 func createInMemObscuroNode(
 	id int64,
 	genesis bool,
-	txEncoder txencoder.TxEncoder,
-	txDecoder txdecoder.TxDecoder,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
 	avgBlockDuration time.Duration,
 	avgNetworkLatency time.Duration,
@@ -58,7 +57,7 @@ func createInMemObscuroNode(
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, false, nil)
 
 	nodeID := common.BigToAddress(big.NewInt(id))
-	enclaveClient := enclave.NewEnclave(nodeID, true, txDecoder, validateBlocks, genesisJSON, stats)
+	enclaveClient := enclave.NewEnclave(nodeID, true, mgmtContractLib, stableTokenContractLib, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
 	node := host.NewObscuroAggregator(
@@ -70,8 +69,8 @@ func createInMemObscuroNode(
 		nil,
 		enclaveClient,
 		ethWallet,
-		txEncoder,
-		txDecoder,
+		mgmtContractLib,
+		stableTokenContractLib,
 	)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
@@ -86,8 +85,8 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
-	txEncoder := ethereum_mock.NewMockTxEncoder()
-	txDecoder := ethereum_mock.NewMockTxDecoder()
+	mgmtContractLib := ethereum_mock.NewMgmtContractLibMock()
+	stableTokenContractLib := ethereum_mock.NewStableTokenContractLibMock()
 	ethWallet := datagenerator.RandomWallet()
 
 	node := host.NewObscuroAggregator(
@@ -99,8 +98,8 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 		nil,
 		enclaveClient,
 		ethWallet,
-		txEncoder,
-		txDecoder,
+		mgmtContractLib,
+		stableTokenContractLib,
 	)
 
 	return &node

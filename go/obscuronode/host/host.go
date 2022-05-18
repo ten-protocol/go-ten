@@ -5,11 +5,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -89,11 +90,8 @@ type Node struct {
 	// A node is ready once it has bootstrapped the existing blocks and has the enclave secret
 	readyForWork *int32
 
-	// Handles obs to eth transaction conversions
-	txEncoder txencoder.TxEncoder
-
-	// Handles eth to obs transaction conversions
-	txDecoder txdecoder.TxDecoder
+	mgmtContractLib   mgmtcontractlib.MgmtContractLib
+	stableContractLib erc20contractlib.ERC20ContractLib
 
 	// Wallet used to issue ethereum transactions
 	ethWallet wallet.Wallet
@@ -108,8 +106,8 @@ func NewObscuroAggregator(
 	ethClient ethclient.EthClient,
 	enclaveClient nodecommon.Enclave,
 	ethWallet wallet.Wallet,
-	mgmtContractLib txencoder.TxEncoder,
-	txDecoder txdecoder.TxDecoder,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	stableContractLib erc20contractlib.ERC20ContractLib,
 ) Node {
 	db := NewDB()
 
@@ -142,9 +140,9 @@ func NewObscuroAggregator(
 		nodeDB:       db,
 		readyForWork: new(int32),
 
-		txEncoder: mgmtContractLib,
-		txDecoder: txDecoder,
-		ethWallet: ethWallet,
+		mgmtContractLib:   mgmtContractLib,
+		stableContractLib: stableContractLib,
+		ethWallet:         ethWallet,
 	}
 
 	if cfg.HasRPC {
@@ -163,7 +161,7 @@ func (a *Node) Start() {
 		l1tx := &obscurocommon.L1StoreSecretTx{
 			Secret: a.EnclaveClient.GenerateSecret(), Attestation: a.EnclaveClient.Attestation(),
 		}
-		a.broadcastTx(a.txEncoder.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 	}
 
 	if !a.EnclaveClient.IsInitialised() {
@@ -427,7 +425,7 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
 			}
 
-			a.broadcastTx(a.txEncoder.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+			a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
 		}
 	}
 }
@@ -454,7 +452,7 @@ func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
 	}
 
-	a.broadcastTx(a.txEncoder.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	a.broadcastTx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	return genesisResponse.ProducedRollup.Header.ParentHash
 }
@@ -468,7 +466,7 @@ func (a *Node) broadcastTx(tx types.TxData) {
 func (a *Node) requestSecret() {
 	attestation := a.EnclaveClient.Attestation()
 	l1tx := &obscurocommon.L1RequestSecretTx{Attestation: attestation}
-	a.broadcastTx(a.txEncoder.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	// start listening for l1 blocks that contain the response to the request
 	for {
@@ -479,7 +477,7 @@ func (a *Node) requestSecret() {
 				panic(err)
 			}
 			for _, tx := range block.Transactions() {
-				t := a.txDecoder.DecodeTx(tx)
+				t := a.mgmtContractLib.DecodeTx(tx)
 				if t == nil {
 					continue
 				}
@@ -494,7 +492,7 @@ func (a *Node) requestSecret() {
 		case b := <-a.blockRPCCh:
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
-				t := a.txDecoder.DecodeTx(tx)
+				t := a.mgmtContractLib.DecodeTx(tx)
 				if t == nil {
 					continue
 				}
@@ -522,7 +520,7 @@ func (a *Node) requestSecret() {
 func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	b := block.DecodeBlock()
 	for _, tx := range b.Transactions() {
-		t := a.txDecoder.DecodeTx(tx)
+		t := a.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
 			continue
 		}
@@ -532,7 +530,7 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 				Secret:      a.EnclaveClient.FetchSecret(reqTx.Attestation),
 				Attestation: reqTx.Attestation,
 			}
-			a.broadcastTx(a.txEncoder.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+			a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		}
 	}
 }

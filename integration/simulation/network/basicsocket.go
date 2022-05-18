@@ -47,7 +47,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		// create a remote enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, EnclaveStartPort+i)
-		_, err := enclave.StartServer(enclaveAddr, nodeID, params.TxDecoder, false, nil, stats)
+		_, err := enclave.StartServer(enclaveAddr, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}

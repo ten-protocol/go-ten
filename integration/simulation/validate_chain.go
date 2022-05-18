@@ -129,7 +129,11 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
-			t := s.Params.TxDecoder.DecodeTx(tx)
+			t := s.Params.MgmtContractLib.DecodeTx(tx)
+			if t == nil {
+				t = s.Params.ERC20ContractLib.DecodeTx(tx)
+			}
+
 			if t == nil {
 				continue
 			}
@@ -249,10 +253,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client
 		total += balance(nodeClient, wallet.Address)
 	}
 
-	if s.TxInjector.ethWallet != nil {
-		// also check for the worker wallet address
-		total += balance(nodeClient, s.TxInjector.ethWallet.Address())
-	}
+	// also check for the worker wallet address
+	total += balance(nodeClient, s.TxInjector.ethWallet.Address())
 
 	if total != totalAmountInSystem {
 		t.Errorf("Node %d: The amount of money in accounts does not match the amount deposited. Found %d , expected %d", nodeAddr, total, totalAmountInSystem)

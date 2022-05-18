@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
@@ -43,7 +46,8 @@ type enclaveImpl struct {
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
 
-	txDecoder txdecoder.TxDecoder
+	mgmtContractLib  mgmtcontractlib.MgmtContractLib
+	erc20ContractLib erc20contractlib.ERC20ContractLib
 
 	// Toggles the speculative execution background process
 	speculativeExecutionEnabled bool
@@ -153,7 +157,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.txDecoder, e.storage, e.storage, e.nodeShortID)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -200,7 +204,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.txDecoder, e.storage, e.storage, e.nodeShortID)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -358,7 +362,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := extractDeposits(proof, b, e.blockResolver, e.txDecoder)
+	depositTxs := extractDeposits(proof, b, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib)
 	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
@@ -513,7 +517,15 @@ type processingEnvironment struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(nodeID common.Address, mining bool, txDecoder txdecoder.TxDecoder, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
+func NewEnclave(
+	nodeID common.Address,
+	mining bool,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	validateBlocks bool,
+	genesisJSON []byte,
+	collector StatsCollector,
+) nodecommon.Enclave {
 	backingDB := db.NewInMemoryDB()
 	nodeShortID := obscurocommon.ShortAddress(nodeID)
 	storage := db.NewStorage(backingDB, nodeShortID)
@@ -542,7 +554,8 @@ func NewEnclave(nodeID common.Address, mining bool, txDecoder txdecoder.TxDecode
 		exitCh:                      make(chan bool),
 		speculativeWorkInCh:         make(chan bool),
 		speculativeWorkOutCh:        make(chan speculativeWork),
-		txDecoder:                   txDecoder,
+		mgmtContractLib:             mgmtContractLib,
+		erc20ContractLib:            erc20ContractLib,
 		speculativeExecutionEnabled: false, // TODO - reenable
 	}
 }

@@ -41,8 +41,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
-			params.TxEncoder,
-			params.TxDecoder,
+			params.MgmtContractLib,
+			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
 			params.AvgBlockDuration,
 			params.AvgNetworkLatency,

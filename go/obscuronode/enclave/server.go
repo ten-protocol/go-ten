@@ -9,7 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txdecoder"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
@@ -30,14 +31,22 @@ type server struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 // TODO - Use a genesis JSON hardcoded in a config file bundled in the signed SGX image instead.
-func StartServer(address string, nodeID common.Address, txDecoder txdecoder.TxDecoder, validateBlocks bool, genesisJSON []byte, collector StatsCollector) (func(), error) {
+func StartServer(
+	address string,
+	nodeID common.Address,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	validateBlocks bool,
+	genesisJSON []byte,
+	collector StatsCollector,
+) (func(), error) {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, true, txDecoder, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(nodeID, true, mgmtContractLib, erc20ContractLib, validateBlocks, genesisJSON, collector),
 		rpcServer:   grpc.NewServer(),
 		nodeShortID: obscurocommon.ShortAddress(nodeID),
 	}

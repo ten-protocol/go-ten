@@ -51,8 +51,8 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
-		TxEncoder:                 ethereum_mock.NewMockTxEncoder(),
-		TxDecoder:                 ethereum_mock.NewMockTxDecoder(),
+		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
+		ERC20ContractLib:          ethereum_mock.NewStableTokenContractLibMock(),
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2

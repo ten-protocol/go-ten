@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/txencoder"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -51,7 +51,7 @@ type TransactionInjector struct {
 	ethWallet         wallet.Wallet
 	erc20ContractAddr *common.Address
 	mgmtContractAddr  *common.Address
-	txEncoder         txencoder.TxEncoder
+	mgmtContractLib   mgmtcontractlib.MgmtContractLib
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
@@ -65,7 +65,7 @@ func NewTransactionInjector(
 	mgmtContractAddr *common.Address,
 	erc20ContractAddr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
-	txEncoder txencoder.TxEncoder,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 ) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
@@ -85,7 +85,7 @@ func NewTransactionInjector(
 		ethWallet:         ethWallet,
 		erc20ContractAddr: erc20ContractAddr,
 		mgmtContractAddr:  mgmtContractAddr,
-		txEncoder:         txEncoder,
+		mgmtContractLib:   mgmtContractLib,
 	}
 }
 
@@ -99,7 +99,7 @@ func (m *TransactionInjector) Start() {
 			Amount: initialBalance,
 			To:     u.Address,
 		}
-		tx := m.txEncoder.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
+		tx := m.mgmtContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
 		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
 		if err != nil {
 			panic(err)
@@ -233,7 +233,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 			Amount: v,
 			To:     rndWallet(m.wallets).Address,
 		}
-		tx := m.txEncoder.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
+		tx := m.mgmtContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
 		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
 		if err != nil {
 			panic(err)
