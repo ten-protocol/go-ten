@@ -11,7 +11,7 @@ const initialize = () => {
     getBlockHeadHeightButton.addEventListener(eventClick, async () => {
         const blockHeadHeightResp = await fetch(pathBlockHeadHeight);
 
-        if (isOk(blockHeadHeightResp)) {
+        if (blockHeadHeightResp.ok) {
             statusArea.innerText = `Current block head height: ${await blockHeadHeightResp.text()}`;
         } else {
             statusArea.innerText = "Failed to retrieve block head height."
@@ -20,7 +20,3 @@ const initialize = () => {
 }
 
 window.addEventListener(eventDomLoaded, initialize);
-
-function isOk(response) {
-    return response.status >= 200 && response.status < 300
-}
