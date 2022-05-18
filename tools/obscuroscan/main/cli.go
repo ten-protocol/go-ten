@@ -12,9 +12,8 @@ const (
 	clientServerAddrName  = "clientServerAddress"
 	clientServerAddrUsage = "The address on which to send RPC requests"
 
-	startPortName    = "startPort"
-	startPortDefault = 3000
-	startPortUsage   = "The first port to allocate. Ports will be allocated incrementally from this port as needed"
+	startPortName  = "startPort"
+	startPortUsage = "The first port to allocate. Ports will be allocated incrementally from this port as needed"
 )
 
 type obscuroscanConfig struct {
