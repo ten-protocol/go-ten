@@ -36,4 +36,4 @@ jobs:
         with:
           name: sim-logs
           path: integration/.build/simulations/simulation-result-*.txt
-        if: always()
+        if: always() # Ensures the artifacts are created even if the tests fail.
