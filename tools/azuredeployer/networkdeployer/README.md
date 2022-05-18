@@ -14,6 +14,13 @@ network.
   * `email_recipient` will be the email used for notifications
 * Create the VM using the `main` method in `network_deployer.go`
 * SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`)
+* Start the components (two Obscuro hosts, two Obscuro enclaves, and two Geth nodes) by running
+  `sh obscuro-playground/tools/azuredeployer/networkdeployer/run.sh`
+  * After running the script, if you run `ps`, you should see two `geth-v1.10.17` processes, two `enclave` processes, 
+    and two `host` processes
+* Each component type will produce logs:
+  * The host logs are found under `~/host_logs.txt`
+  * The enclave logs are found under `~/enclave_logs.txt`
+  * The Geth network logs are found under `~/obscuro-playground/integration/.build/geth/<run-id>/node_logs.txt`
 
-Immediately upon creation, the VM will be running two Obscuro hosts, two Obscuro enclaves, and two Geth nodes on a new 
-Ethereum network.
+// todo - joel - say how this network is exposed
