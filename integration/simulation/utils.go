@@ -20,7 +20,7 @@ func setupTestLog(simType string) *os.File {
 	if err != nil {
 		panic(err)
 	}
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("simulation-result-%s-%d-*.txt", simType, time.Now().Unix()))
+	f, err := os.CreateTemp(testLogs, fmt.Sprintf("simulation-result-%d-%s-*.txt", time.Now().Unix(), simType))
 	if err != nil {
 		panic(err)
 	}
