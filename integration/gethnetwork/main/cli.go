@@ -17,25 +17,25 @@ const (
 	prefundedAddrsUsage = "The addresses to prefund as a comma-separated list"
 )
 
-type GethConfig struct {
-	NumNodes       int
-	StartPort      int
-	PrefundedAddrs []string
+type gethConfig struct {
+	numNodes       int
+	startPort      int
+	prefundedAddrs []string
 }
 
-func DefaultHostConfig() GethConfig {
-	return GethConfig{
-		NumNodes:       1,
-		StartPort:      12000,
-		PrefundedAddrs: []string{},
+func defaultHostConfig() gethConfig {
+	return gethConfig{
+		numNodes:       1,
+		startPort:      12000,
+		prefundedAddrs: []string{},
 	}
 }
 
-func parseCLIArgs() GethConfig {
-	defaultConfig := DefaultHostConfig()
+func parseCLIArgs() gethConfig {
+	defaultConfig := defaultHostConfig()
 
-	numNodes := flag.Int(numNodesName, defaultConfig.NumNodes, numNodesUsage)
-	startPort := flag.Int(startPortName, defaultConfig.StartPort, startPortUsage)
+	numNodes := flag.Int(numNodesName, defaultConfig.numNodes, numNodesUsage)
+	startPort := flag.Int(startPortName, defaultConfig.startPort, startPortUsage)
 	prefundedAddrs := flag.String(prefundedAddrsName, "", prefundedAddrsUsage)
 
 	flag.Parse()
@@ -46,9 +46,9 @@ func parseCLIArgs() GethConfig {
 		parsedPrefundedAddrs = []string{}
 	}
 
-	return GethConfig{
-		NumNodes:       *numNodes,
-		StartPort:      *startPort,
-		PrefundedAddrs: parsedPrefundedAddrs,
+	return gethConfig{
+		numNodes:       *numNodes,
+		startPort:      *startPort,
+		prefundedAddrs: parsedPrefundedAddrs,
 	}
 }

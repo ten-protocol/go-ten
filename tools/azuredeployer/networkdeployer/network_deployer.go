@@ -10,7 +10,6 @@ const (
 	// Creates a network of two Geth nodes, two Obscuro hosts, and two Obscuro enclaves.
 	// TODO - Start Obscuro enclave services in Docker.
 	// TODO - Re-enable blockchain validation for enclaves.
-	// TODO - Create local client to test the above.
 	setupScript = `
 		sudo apt-get update
 		sudo apt-get install -y docker.io
