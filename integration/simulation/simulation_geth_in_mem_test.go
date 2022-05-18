@@ -12,7 +12,7 @@ import (
 
 // TestGethMemObscuroEthMonteCarloSimulation runs the simulation against a private geth network using Clique (PoA)
 func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
-	setupTestLog()
+	setupTestLog("geth-in-mem")
 
 	numberOfNodes := 5
 

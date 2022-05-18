@@ -14,13 +14,13 @@ import (
 
 const testLogs = "../.build/simulations/"
 
-func setupTestLog() *os.File {
+func setupTestLog(simType string) *os.File {
 	// create a folder specific for the test
 	err := os.MkdirAll(testLogs, 0o700)
 	if err != nil {
 		panic(err)
 	}
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("simulation-result-%d-*.txt", time.Now().Unix()))
+	f, err := os.CreateTemp(testLogs, fmt.Sprintf("simulation-result-%s-%d-*.txt", simType, time.Now().Unix()))
 	if err != nil {
 		panic(err)
 	}
