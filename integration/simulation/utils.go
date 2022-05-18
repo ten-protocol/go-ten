@@ -21,7 +21,7 @@ func setupTestLog(simType string) *os.File {
 		panic(err)
 	}
 	timeFormatted := time.Now().Format("2006-01-02_15-04-05")
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("simulation-result-%s-%s-*.txt", timeFormatted, simType))
+	f, err := os.CreateTemp(testLogs, fmt.Sprintf("sim-log-%s-%s-*.txt", timeFormatted, simType))
 	if err != nil {
 		panic(err)
 	}
