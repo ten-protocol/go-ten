@@ -3,7 +3,7 @@
 This tool automates the creation of an SGX-enabled Azure VM running a full Obscuro network and its associated L1 
 network.
 
-## Usage
+## Deployment
 
 * Install the Azure CLI by following the instructions [here](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 * Set up file-based authentication by following the instructions [here](https://docs.microsoft.com/en-us/azure/developer/go/azure-sdk-authorization#use-file-based-authentication)
@@ -14,6 +14,18 @@ network.
   * `email_recipient` will be the email used for notifications
 * Create the VM using the `main` method in `network_deployer.go`
 * SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`)
+* Start the components (two Obscuro hosts, two Obscuro enclaves, and two Geth nodes) by running
+  `sh obscuro-playground/tools/azuredeployer/networkdeployer/run.sh`
+  * After running the script, if you run `ps`, you should see two `geth-v1.10.17` processes, two `enclave` processes, 
+    and two `host` processes
 
-Immediately upon creation, the VM will be running two Obscuro hosts, two Obscuro enclaves, and two Geth nodes on a new 
-Ethereum network.
+## Usage
+
+* Each component type will produce logs:
+  * The host logs are found under `~/host_logs.txt`
+  * The enclave logs are found under `~/enclave_logs.txt`
+  * The Geth network logs are found under `~/obscuro-playground/integration/.build/geth/<run-id>/node_logs.txt`
+
+* The first Obscuro host can be connected to remotely on port `13000`
+  * This repo contains a tool under `tools/obscuroclient/` that can be used to connect remotely to the running 
+    Obscuro host and retrieve the current block head height
