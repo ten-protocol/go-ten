@@ -23,7 +23,7 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	if os.Getenv(azureTestEnv) == "" {
 		t.Skipf("set the variable to run this test: `%s=true`", azureTestEnv)
 	}
-	setupTestLog()
+	setupTestLog("azure-enclave")
 
 	params := params.SimParams{
 		NumberOfNodes:             10,

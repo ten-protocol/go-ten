@@ -41,7 +41,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		t.Skipf("set the variable to run this test: `%s=true`", dockerTestEnv)
 	}
 
-	setupTestLog()
+	setupTestLog("docker")
 
 	simParams := params.SimParams{
 		NumberOfNodes:             10,
