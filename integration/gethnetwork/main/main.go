@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	gethNetwork := gethnetwork.NewGethNetwork(config.StartPort, gethBinaryPath, config.NumNodes, 1, config.PrefundedAddrs)
+	gethNetwork := gethnetwork.NewGethNetwork(config.startPort, gethBinaryPath, config.numNodes, 1, config.prefundedAddrs)
 	fmt.Println("Geth network started.")
 
 	handleInterrupt(gethNetwork)

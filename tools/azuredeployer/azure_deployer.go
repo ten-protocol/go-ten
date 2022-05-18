@@ -31,8 +31,6 @@ const (
 
 	sshPort    = "22"
 	sshTimeout = 5 * time.Second
-
-	// todo - joel - provide script to start all the components, incl. Geth (start with one of each component)
 )
 
 // DeployToAzure creates the deployment described by the templateFile and paramsFile in Azure, then runs the setupScript on it.
@@ -166,7 +164,7 @@ func runSetupScript(ipAddress string, paramsFile string, setupScript string) {
 		log.Fatalf("failed to run VM setup script: %v", err)
 	}
 
-	log.Printf("VM set-up complete. To connect, use configured password and run: ssh obscuro@%s", ipAddress)
+	log.Printf("VM set-up complete. To connect, use configured password (in the vm-params.json file) and run: ssh obscuro@%s", ipAddress)
 }
 
 // Read a JSON file into a map.

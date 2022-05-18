@@ -359,7 +359,9 @@ func (network *GethNetwork) logNodeID(idx int) io.Writer {
 
 // Waits for a node's IPC file to exist.
 func waitForIPC(dataDir string) {
+	totalCounter := 0
 	counter := 0
+
 	for {
 		ipcFilePath := path.Join(dataDir, ipcFileName)
 		_, err := os.Stat(ipcFilePath)
@@ -368,10 +370,16 @@ func waitForIPC(dataDir string) {
 		}
 		time.Sleep(100 * time.Millisecond)
 
+		if totalCounter > 300 {
+			panic(fmt.Errorf("waited over 30 seconds for .ipc file of node at %s", dataDir))
+		}
+
 		if counter > 20 {
 			log.Info(fmt.Sprintf("Waiting for .ipc file of node at %s", dataDir))
+			totalCounter += counter
 			counter = 0
 		}
+
 		counter++
 	}
 }
