@@ -1,23 +1,6 @@
-package contracts
-
-import (
-	"strings"
-
-	"github.com/ethereum/go-ethereum/accounts/abi"
-)
-
-// no point starting the node with invalid contracts
-func init() { //nolint:gochecknoinits
-	var err error
-	MgmtContractABIJSON, err = abi.JSON(strings.NewReader(MgmtContractABI))
-	if err != nil {
-		panic(err)
-	}
-}
+package mgmtcontractlib
 
 // MgmtContractABIJSON holds the compiled ABI
-// TODO it would be nice to have a auto generation script here
-var MgmtContractABIJSON = abi.ABI{}
 
 const (
 	AddRollupMethod     = "AddRollup"

@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -33,7 +32,6 @@ func RunHost(config HostConfig) {
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
 	contractAddr := common.HexToAddress(config.ContractAddress)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
-	erc20ContracLib := erc20contractlib.NewERC20ContractLib(&contractAddr)
 	ethWallet := datagenerator.RandomWallet()
 
 	fmt.Println("Connecting to L1 network...")
@@ -44,7 +42,7 @@ func RunHost(config HostConfig) {
 
 	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
 	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs, nodeID)
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib, erc20ContracLib)
+	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
 
 	fmt.Println("Starting Obscuro host...")
 	agg.Start()

@@ -6,10 +6,12 @@ import (
 	"encoding/base64"
 	"io/ioutil"
 	"math/big"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
@@ -37,12 +39,20 @@ type MgmtContractLib interface {
 }
 
 type contractLibImpl struct {
-	addr *common.Address
+	addr        *common.Address
+	contractABI abi.ABI
 }
 
 func NewMgmtContractLib(addr *common.Address) MgmtContractLib {
+	var err error
+	contractABI, err := abi.JSON(strings.NewReader(MgmtContractABI))
+	if err != nil {
+		panic(err)
+	}
+
 	return &contractLibImpl{
-		addr: addr,
+		addr:        addr,
+		contractABI: contractABI,
 	}
 }
 
@@ -50,15 +60,15 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 	if tx.To() == nil || tx.To().Hex() != c.addr.Hex() || len(tx.Data()) == 0 {
 		return nil
 	}
-	method, err := contracts.MgmtContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
+	method, err := c.contractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
 	}
 
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
-	case contracts.DepositMethod:
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
+	case DepositMethod:
+		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:]); err != nil {
 			panic(err)
 		}
 		callData, found := contractCallData["dest"]
@@ -72,7 +82,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 			TokenContract: nil, // TODO have fixed Token contract for Eth deposits ?
 		}
 
-	case contracts.AddRollupMethod:
+	case AddRollupMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -90,7 +100,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 			Rollup: rollup,
 		}
 
-	case contracts.StoreSecretMethod:
+	case StoreSecretMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
@@ -103,7 +113,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 			Secret: base64DecodeFromString(callData.(string)),
 		}
 
-	case contracts.RequestSecretMethod:
+	case RequestSecretMethod:
 		return &obscurocommon.L1RequestSecretTx{}
 	}
 
@@ -116,7 +126,7 @@ func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64
 		panic(err)
 	}
 	encRollupData := base64EncodeToString(zipped)
-	data, err := contracts.MgmtContractABIJSON.Pack(contracts.AddRollupMethod, encRollupData)
+	data, err := c.contractABI.Pack(AddRollupMethod, encRollupData)
 	if err != nil {
 		panic(err)
 	}
@@ -131,7 +141,7 @@ func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64
 }
 
 func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
-	data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
+	data, err := c.contractABI.Pack(RequestSecretMethod)
 	if err != nil {
 		panic(err)
 	}
@@ -146,7 +156,7 @@ func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 }
 
 func (c *contractLibImpl) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData {
-	data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, base64EncodeToString(tx.Secret))
+	data, err := c.contractABI.Pack(StoreSecretMethod, base64EncodeToString(tx.Secret))
 	if err != nil {
 		panic(err)
 	}
@@ -160,7 +170,7 @@ func (c *contractLibImpl) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, n
 }
 
 func (c *contractLibImpl) CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData {
-	data, err := contracts.MgmtContractABIJSON.Pack(contracts.DepositMethod, tx.To)
+	data, err := c.contractABI.Pack(DepositMethod, tx.To)
 	if err != nil {
 		panic(err)
 	}

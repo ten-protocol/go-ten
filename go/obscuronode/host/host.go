@@ -5,7 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -90,8 +89,7 @@ type Node struct {
 	// A node is ready once it has bootstrapped the existing blocks and has the enclave secret
 	readyForWork *int32
 
-	mgmtContractLib   mgmtcontractlib.MgmtContractLib
-	stableContractLib erc20contractlib.ERC20ContractLib
+	mgmtContractLib mgmtcontractlib.MgmtContractLib
 
 	// Wallet used to issue ethereum transactions
 	ethWallet wallet.Wallet
@@ -107,7 +105,6 @@ func NewObscuroAggregator(
 	enclaveClient nodecommon.Enclave,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	stableContractLib erc20contractlib.ERC20ContractLib,
 ) Node {
 	db := NewDB()
 
@@ -140,9 +137,8 @@ func NewObscuroAggregator(
 		nodeDB:       db,
 		readyForWork: new(int32),
 
-		mgmtContractLib:   mgmtContractLib,
-		stableContractLib: stableContractLib,
-		ethWallet:         ethWallet,
+		mgmtContractLib: mgmtContractLib,
+		ethWallet:       ethWallet,
 	}
 
 	if cfg.HasRPC {

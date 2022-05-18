@@ -4,12 +4,13 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -65,8 +66,8 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		panic(err)
 	}
 
-	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.MgmtContractByteCode))
-	stableTokenContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(contracts.StableTokenERC20ContractByteCode))
+	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	stableTokenContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
 
 	params.MgmtContractAddr = mgmtContractAddr
 	params.StableTokenContractAddr = stableTokenContractAddr

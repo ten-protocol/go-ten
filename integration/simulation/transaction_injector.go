@@ -9,12 +9,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -264,7 +265,7 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 		}
 
 		v := obscurocommon.RndBtw(1, 100)
-		data, err := contracts.StableTokenERC20ContractABIJSON.Pack("transfer", m.mgmtContractAddr, big.NewInt(int64(v)))
+		data, err := erc20contractlib.ContractABI.Pack("transfer", m.mgmtContractAddr, big.NewInt(int64(v)))
 		if err != nil {
 			panic(err)
 		}

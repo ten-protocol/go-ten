@@ -70,7 +70,6 @@ func createInMemObscuroNode(
 		enclaveClient,
 		ethWallet,
 		mgmtContractLib,
-		stableTokenContractLib,
 	)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
@@ -86,7 +85,6 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
 	mgmtContractLib := ethereum_mock.NewMgmtContractLibMock()
-	stableTokenContractLib := ethereum_mock.NewStableTokenContractLibMock()
 	ethWallet := datagenerator.RandomWallet()
 
 	node := host.NewObscuroAggregator(
@@ -99,7 +97,6 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 		enclaveClient,
 		ethWallet,
 		mgmtContractLib,
-		stableTokenContractLib,
 	)
 
 	return &node

@@ -21,7 +21,7 @@ func RunEnclave(config EnclaveConfig) {
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
 	contractAddr := common.HexToAddress(config.ContractAddress)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
-	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr)
+	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddrs...)
 
 	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.

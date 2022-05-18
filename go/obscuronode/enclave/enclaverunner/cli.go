@@ -2,6 +2,9 @@ package enclaverunner
 
 import (
 	"flag"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -20,23 +23,28 @@ const (
 
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the enclave service's log file"
+
+	erc20contractAddrsName  = "erc20contractAddresses"
+	erc20contractAddrsUsage = "The erc20 contract addresses to monitor on the L1"
 )
 
 type EnclaveConfig struct {
-	NodeID          int64
-	Address         string
-	ContractAddress string
-	WriteToLogs     bool
-	LogPath         string
+	NodeID             int64
+	Address            string
+	ContractAddress    string
+	WriteToLogs        bool
+	LogPath            string
+	ERC20ContractAddrs []*common.Address
 }
 
 func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
-		NodeID:          1,
-		Address:         "localhost:11000",
-		ContractAddress: "",
-		WriteToLogs:     false,
-		LogPath:         "enclave_logs.txt",
+		NodeID:             1,
+		Address:            "localhost:11000",
+		ContractAddress:    "",
+		WriteToLogs:        false,
+		LogPath:            "enclave_logs.txt",
+		ERC20ContractAddrs: []*common.Address{},
 	}
 }
 
@@ -48,8 +56,18 @@ func ParseCLIArgs() EnclaveConfig {
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
+	erc20ContractAddrs := flag.String(erc20contractAddrsName, "", erc20contractAddrsUsage)
 
 	flag.Parse()
+
+	parsedERC20ContractAddrs := strings.Split(*erc20ContractAddrs, ",")
+	erc20contracAddresses := make([]*common.Address, len(parsedERC20ContractAddrs))
+	if *erc20ContractAddrs != "" {
+		for i, addr := range parsedERC20ContractAddrs {
+			hexAddr := common.HexToAddress(addr)
+			erc20contracAddresses[i] = &hexAddr
+		}
+	}
 
 	return EnclaveConfig{
 		NodeID:          *nodeID,

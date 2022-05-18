@@ -4,7 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/contracts"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -29,8 +32,8 @@ func TestGethSimulation(t *testing.T) {
 
 	// define contracts to be deployed
 	contractsBytes := []string{
-		contracts.MgmtContractByteCode,
-		contracts.StableTokenERC20ContractByteCode,
+		mgmtcontractlib.MgmtContractByteCode,
+		erc20contract.ContractByteCode,
 	}
 
 	// define the network to use

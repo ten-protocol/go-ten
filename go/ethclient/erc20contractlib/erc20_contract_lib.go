@@ -2,10 +2,12 @@ package erc20contractlib
 
 import (
 	"math/big"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
@@ -25,11 +27,24 @@ type tokenContractLibImpl struct {
 	erc20ContractAddrs []*common.Address
 }
 
+func NewERC20ContractLib(mgmtContractAddr *common.Address, contractAddrs ...*common.Address) ERC20ContractLib {
+	var err error
+	ContractABI, err = abi.JSON(strings.NewReader(ERC20ContractABI))
+	if err != nil {
+		panic(err)
+	}
+
+	return &tokenContractLibImpl{
+		mgmtContractAddr:   mgmtContractAddr,
+		erc20ContractAddrs: contractAddrs,
+	}
+}
+
 func (t *tokenContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	if !t.isRelevant(tx) {
 		return nil
 	}
-	method, err := contracts.StableTokenERC20ContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
+	method, err := ContractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
 	}
@@ -39,7 +54,7 @@ func (t *tokenContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1T
 		panic(err)
 	}
 
-	to, found := contractCallData[contracts.ToCallData]
+	to, found := contractCallData[ToCallData]
 	if !found {
 		panic("to address not found for transfer")
 	}
@@ -49,7 +64,7 @@ func (t *tokenContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1T
 		return nil
 	}
 
-	amount, found := contractCallData[contracts.AmountCallData]
+	amount, found := contractCallData[AmountCallData]
 	if !found {
 		panic("amount not found for transfer")
 	}
@@ -77,11 +92,4 @@ func (t *tokenContractLibImpl) isRelevant(tx *types.Transaction) bool {
 		}
 	}
 	return false
-}
-
-func NewERC20ContractLib(mgmtContractAddr *common.Address, contractAddrs ...*common.Address) ERC20ContractLib {
-	return &tokenContractLibImpl{
-		mgmtContractAddr:   mgmtContractAddr,
-		erc20ContractAddrs: contractAddrs,
-	}
 }
