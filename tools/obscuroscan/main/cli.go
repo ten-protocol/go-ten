@@ -11,30 +11,37 @@ const (
 
 	clientServerAddrName  = "clientServerAddress"
 	clientServerAddrUsage = "The address on which to send RPC requests"
+
+	startPortName  = "startPort"
+	startPortUsage = "The first port to allocate. Ports will be allocated incrementally from this port as needed"
 )
 
-type obscuroClientConfig struct {
+type obscuroscanConfig struct {
 	nodeID           string
 	clientServerAddr string
+	startPort        int
 }
 
-func defaultObscuroClientConfig() obscuroClientConfig {
-	return obscuroClientConfig{
+func defaultObscuroClientConfig() obscuroscanConfig {
+	return obscuroscanConfig{
 		nodeID:           "",
 		clientServerAddr: "20.68.160.65:13000",
+		startPort:        3000,
 	}
 }
 
-func parseCLIArgs() obscuroClientConfig {
+func parseCLIArgs() obscuroscanConfig {
 	defaultConfig := defaultObscuroClientConfig()
 
 	nodeID := flag.String(nodeIDName, defaultConfig.nodeID, nodeIDUsage)
 	clientServerAddr := flag.String(clientServerAddrName, defaultConfig.clientServerAddr, clientServerAddrUsage)
+	startPort := flag.Int(startPortName, defaultConfig.startPort, startPortUsage)
 
 	flag.Parse()
 
-	return obscuroClientConfig{
+	return obscuroscanConfig{
 		nodeID:           *nodeID,
 		clientServerAddr: *clientServerAddr,
+		startPort:        *startPort,
 	}
 }
