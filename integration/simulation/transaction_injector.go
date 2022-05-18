@@ -53,6 +53,7 @@ type TransactionInjector struct {
 	erc20ContractAddr *common.Address
 	mgmtContractAddr  *common.Address
 	mgmtContractLib   mgmtcontractlib.MgmtContractLib
+	erc20ContractLib  erc20contractlib.ERC20ContractLib
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of wallets
@@ -67,6 +68,7 @@ func NewTransactionInjector(
 	erc20ContractAddr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
 	// create a bunch of wallets
 	wallets := make([]wallet_mock.Wallet, numberWallets)
@@ -87,6 +89,7 @@ func NewTransactionInjector(
 		erc20ContractAddr: erc20ContractAddr,
 		mgmtContractAddr:  mgmtContractAddr,
 		mgmtContractLib:   mgmtContractLib,
+		erc20ContractLib:  erc20ContractLib,
 	}
 }
 
@@ -95,12 +98,15 @@ func NewTransactionInjector(
 // Generates and issues L1 and L2 transactions to the network
 func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every user
-	for _, u := range m.wallets {
+	addr := m.ethWallet.Address()
+	for range m.wallets {
 		txData := &obscurocommon.L1DepositTx{
-			Amount: initialBalance,
-			To:     u.Address,
+			Amount:        initialBalance,
+			To:            m.mgmtContractAddr,
+			TokenContract: m.erc20ContractAddr,
+			Sender:        &addr,
 		}
-		tx := m.mgmtContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
+		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
 		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
 		if err != nil {
 			panic(err)
@@ -230,11 +236,14 @@ func (m *TransactionInjector) issueRandomTransfers() {
 func (m *TransactionInjector) issueRandomDeposits() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
+		addr := m.ethWallet.Address()
 		txData := &obscurocommon.L1DepositTx{
-			Amount: v,
-			To:     rndWallet(m.wallets).Address,
+			Amount:        v,
+			To:            m.mgmtContractAddr,
+			TokenContract: m.erc20ContractAddr,
+			Sender:        &addr,
 		}
-		tx := m.mgmtContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
+		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
 		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
 		if err != nil {
 			panic(err)
@@ -252,26 +261,20 @@ func (m *TransactionInjector) issueRandomDeposits() {
 // issueRandomERC20Deposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 // Generates L1 common.L1DepositTx transactions
 func (m *TransactionInjector) issueRandomERC20Deposits() {
-	defaultGasPrice := big.NewInt(20000000000)
-	defaultGas := uint64(1024_000_000)
 	timeout := 30 * time.Second
+	node := m.l1Nodes[len(m.l1Nodes)-1]
 
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
-		tx := &types.LegacyTx{
-			Nonce:    m.ethWallet.GetNonceAndIncrement(),
-			GasPrice: defaultGasPrice,
-			Gas:      defaultGas,
-			To:       m.erc20ContractAddr,
-		}
-
 		v := obscurocommon.RndBtw(1, 100)
-		data, err := erc20contractlib.ContractABI.Pack("transfer", m.mgmtContractAddr, big.NewInt(int64(v)))
-		if err != nil {
-			panic(err)
+		addr := m.ethWallet.Address()
+		txData := &obscurocommon.L1DepositTx{
+			Amount:        v,
+			To:            m.mgmtContractAddr,
+			TokenContract: m.erc20ContractAddr,
+			Sender:        &addr,
 		}
-		tx.Data = data
+		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
 
-		node := m.l1Nodes[len(m.l1Nodes)-1]
 		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
 		if err != nil {
 			panic(err)
@@ -279,7 +282,6 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 
 		err = node.IssueTransaction(signedTx)
 		if err != nil {
-			fmt.Printf("Address: %s\n", m.ethWallet.Address())
 			panic(err)
 		}
 
@@ -299,9 +301,10 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 			panic(fmt.Errorf("transaction not minted into a block after %s", timeout))
 		}
 		m.stats.Deposit(v)
+		trackAddr := m.ethWallet.Address()
 		go m.trackL1Tx(&obscurocommon.L1DepositTx{
 			Amount:        v,
-			To:            m.ethWallet.Address(),
+			To:            &trackAddr,
 			TokenContract: m.erc20ContractAddr,
 		})
 	}
@@ -313,7 +316,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
 		wallet := rndWallet(m.wallets)
-		tx := wallet_mock.NewL2Withdrawal(wallet.Address, v)
+		tx := wallet_mock.NewL2Withdrawal(m.ethWallet.Address(), v)
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 

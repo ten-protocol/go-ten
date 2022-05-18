@@ -4,12 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 )

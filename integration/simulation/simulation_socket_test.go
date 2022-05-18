@@ -28,6 +28,7 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.33,
 		L2ToL1EfficiencyThreshold: 0.4,
 		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
+		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 4

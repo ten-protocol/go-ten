@@ -27,6 +27,22 @@ func NewMgmtContractLibMock() mgmtcontractlib.MgmtContractLib {
 }
 
 func (m *mockContractLib) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
+	return decodeTx(tx)
+}
+
+func (m *mockContractLib) CreateRollup(tx *obscurocommon.L1RollupTx, nonce uint64) types.TxData {
+	return encodeTx(tx, nonce, rollupTxAddr)
+}
+
+func (m *mockContractLib) CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
+	return encodeTx(tx, nonce, requestSecretTxAddr)
+}
+
+func (m *mockContractLib) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData {
+	return encodeTx(tx, nonce, storeSecretTxAddr)
+}
+
+func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	if len(tx.Data()) == 0 {
 		panic("Data cannot be 0 in the mock implementation")
 	}
@@ -57,22 +73,6 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 		panic(err)
 	}
 	return t
-}
-
-func (m *mockContractLib) CreateRollup(tx *obscurocommon.L1RollupTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, rollupTxAddr)
-}
-
-func (m *mockContractLib) CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, requestSecretTxAddr)
-}
-
-func (m *mockContractLib) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, storeSecretTxAddr)
-}
-
-func (m *mockContractLib) CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, depositTxAddr)
 }
 
 func encodeTx(tx obscurocommon.L1Transaction, nonce uint64, opType common.Address) types.TxData {

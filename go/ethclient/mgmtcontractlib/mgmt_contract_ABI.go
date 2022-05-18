@@ -1,7 +1,5 @@
 package mgmtcontractlib
 
-// MgmtContractABIJSON holds the compiled ABI
-
 const (
 	AddRollupMethod     = "AddRollup"
 	DepositMethod       = "Deposit"

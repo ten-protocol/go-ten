@@ -71,7 +71,7 @@ func updateState(
 		return nil
 	}
 
-	bs, stateDB, head := calculateBlockState(b, parentState, blockResolver, rollups, mgmtContractLib, erc20ContractLib, rollupResolver, bss)
+	bs, stateDB, head := calculateBlockState(b, parentState, blockResolver, rollups, erc20ContractLib, rollupResolver, bss)
 	log.Trace(fmt.Sprintf(">   Agg%d: Calc block state b_%d: Found: %t - r_%d, ",
 		nodeID,
 		obscurocommon.ShortHash(b.Hash()),
@@ -158,7 +158,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	}
 	// calculate the state to compare with what is in the Rollup
 	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
-	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.mgmtContractLib, e.erc20ContractLib)
+	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.erc20ContractLib)
 	log.Info(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.nodeID), len(depositTxs)))
 
 	executeTransactions(headRollup.Transactions, stateDB, headRollup.Header)
@@ -190,7 +190,6 @@ func extractDeposits(
 	fromBlock *types.Block,
 	toBlock *types.Block,
 	blockResolver db.BlockResolver,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
@@ -210,11 +209,7 @@ func extractDeposits(
 			break
 		}
 		for _, tx := range b.Transactions() {
-			t := mgmtContractLib.DecodeTx(tx)
-			if t == nil {
-				t = erc20ContractLib.DecodeTx(tx)
-			}
-
+			t := erc20ContractLib.DecodeTx(tx)
 			if t == nil {
 				continue
 			}
@@ -222,7 +217,7 @@ func extractDeposits(
 			if depositTx, ok := t.(*obscurocommon.L1DepositTx); ok {
 				depL2TxData := core.L2TxData{
 					Type:   core.DepositTx,
-					To:     depositTx.To,
+					To:     *depositTx.Sender,
 					Amount: depositTx.Amount,
 				}
 				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
@@ -247,7 +242,6 @@ func calculateBlockState(
 	parentState *core.BlockState,
 	blockResolver db.BlockResolver,
 	rollups []*core.Rollup,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	rollupResolver db.RollupResolver,
 	bss db.BlockStateStorage,
@@ -264,7 +258,7 @@ func calculateBlockState(
 		// todo transform into an eth block structure
 		parentRollup := rollupResolver.ParentRollup(newHeadRollup)
 		p := blockResolver.Proof(parentRollup)
-		depositTxs := extractDeposits(p, blockResolver.Proof(newHeadRollup), blockResolver, mgmtContractLib, erc20ContractLib)
+		depositTxs := extractDeposits(p, blockResolver.Proof(newHeadRollup), blockResolver, erc20ContractLib)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)

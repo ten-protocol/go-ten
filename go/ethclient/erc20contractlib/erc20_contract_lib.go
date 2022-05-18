@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -13,38 +12,65 @@ import (
 
 const methodBytesLen = 4
 
+var (
+	// TODO review gas estimation - these should not be static values
+	// Gas should be calculated so to not overpay what the operation requires
+	// The values are hardcoded at the moment to guarantee the txs will be minted
+	// It's using large gas values because rollups can be very expensive
+	defaultGasPrice = big.NewInt(20000000000)
+	defaultGas      = uint64(1024_000_000)
+)
+
 // ERC20ContractLib provides methods for handling erc20 contracts
 type ERC20ContractLib interface {
 	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	// returns nil if the transaction is not convertible
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
+
+	CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData
 }
 
-// tokenContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
+// erc20ContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
 // Watches for contract executions that might be deposits towards the Management Contract
-type tokenContractLibImpl struct {
+type erc20ContractLibImpl struct {
 	mgmtContractAddr   *common.Address
 	erc20ContractAddrs []*common.Address
+	contractABI        abi.ABI
 }
 
 func NewERC20ContractLib(mgmtContractAddr *common.Address, contractAddrs ...*common.Address) ERC20ContractLib {
-	var err error
-	ContractABI, err = abi.JSON(strings.NewReader(ERC20ContractABI))
+	contractABI, err := abi.JSON(strings.NewReader(ERC20ContractABI))
 	if err != nil {
 		panic(err)
 	}
 
-	return &tokenContractLibImpl{
+	return &erc20ContractLibImpl{
 		mgmtContractAddr:   mgmtContractAddr,
 		erc20ContractAddrs: contractAddrs,
+		contractABI:        contractABI,
 	}
 }
 
-func (t *tokenContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
-	if !t.isRelevant(tx) {
+func (c *erc20ContractLibImpl) CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData {
+	data, err := c.contractABI.Pack("transfer", &tx.To, big.NewInt(int64(tx.Amount)))
+	if err != nil {
+		panic(err)
+	}
+
+	return &types.LegacyTx{
+		Nonce:    nonce,
+		GasPrice: defaultGasPrice,
+		Gas:      defaultGas,
+		To:       tx.TokenContract,
+		Data:     data,
+	}
+}
+
+func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
+	if !c.isRelevant(tx) {
 		return nil
 	}
-	method, err := ContractABI.MethodById(tx.Data()[:methodBytesLen])
+	method, err := c.contractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +86,8 @@ func (t *tokenContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1T
 	}
 
 	// only process transfers made to the management contract
-	if toAddr, ok := to.(common.Address); !ok || toAddr.Hex() != t.mgmtContractAddr.Hex() {
+	toAddr, ok := to.(common.Address)
+	if !ok || toAddr.Hex() != c.mgmtContractAddr.Hex() {
 		return nil
 	}
 
@@ -77,16 +104,17 @@ func (t *tokenContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1T
 
 	return &obscurocommon.L1DepositTx{
 		Amount:        amount.(*big.Int).Uint64(),
-		To:            sender,
+		To:            &toAddr,
 		TokenContract: tx.To(),
+		Sender:        &sender,
 	}
 }
 
-func (t *tokenContractLibImpl) isRelevant(tx *types.Transaction) bool {
+func (c *erc20ContractLibImpl) isRelevant(tx *types.Transaction) bool {
 	if tx.To() == nil || len(tx.Data()) == 0 {
 		return false
 	}
-	for _, addr := range t.erc20ContractAddrs {
+	for _, addr := range c.erc20ContractAddrs {
 		if tx.To().Hex() == addr.Hex() {
 			return true
 		}

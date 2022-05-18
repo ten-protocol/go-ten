@@ -4,18 +4,16 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -67,12 +65,13 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	}
 
 	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
-	stableTokenContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
 
 	params.MgmtContractAddr = mgmtContractAddr
-	params.StableTokenContractAddr = stableTokenContractAddr
+	params.StableTokenContractAddr = erc20ContractAddr
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, stableTokenContractAddr)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
+
 	// Create the obscuro node, each connected to a geth node
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)

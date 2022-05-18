@@ -1,9 +1,5 @@
 package erc20contractlib
 
-import "github.com/ethereum/go-ethereum/accounts/abi"
-
-var ContractABI abi.ABI
-
 const (
 	AmountCallData = "amount"
 	ToCallData     = "to"

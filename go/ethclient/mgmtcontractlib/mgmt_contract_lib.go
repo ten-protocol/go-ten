@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -32,7 +31,6 @@ type MgmtContractLib interface {
 	CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData
 	CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData
 	CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData
-	CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData
 
 	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
@@ -44,7 +42,6 @@ type contractLibImpl struct {
 }
 
 func NewMgmtContractLib(addr *common.Address) MgmtContractLib {
-	var err error
 	contractABI, err := abi.JSON(strings.NewReader(MgmtContractABI))
 	if err != nil {
 		panic(err)
@@ -67,21 +64,6 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
-	case DepositMethod:
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:]); err != nil {
-			panic(err)
-		}
-		callData, found := contractCallData["dest"]
-		if !found {
-			panic("call data not found for dest")
-		}
-
-		return &obscurocommon.L1DepositTx{
-			Amount:        tx.Value().Uint64(),
-			To:            callData.(common.Address),
-			TokenContract: nil, // TODO have fixed Token contract for Eth deposits ?
-		}
-
 	case AddRollupMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
@@ -166,22 +148,6 @@ func (c *contractLibImpl) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, n
 		Gas:      defaultGas,
 		To:       c.addr,
 		Data:     data,
-	}
-}
-
-func (c *contractLibImpl) CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData {
-	data, err := c.contractABI.Pack(DepositMethod, tx.To)
-	if err != nil {
-		panic(err)
-	}
-
-	return &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: defaultGasPrice,
-		Gas:      defaultGas,
-		To:       c.addr,
-		Data:     data,
-		Value:    big.NewInt(int64(tx.Amount)),
 	}
 }
 

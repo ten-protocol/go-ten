@@ -13,9 +13,10 @@ type L1RollupTx struct {
 }
 
 type L1DepositTx struct {
-	Amount        uint64
-	To            common.Address
-	TokenContract *common.Address
+	Amount        uint64          // Amount to be deposited
+	To            *common.Address // Address the ERC20 Transfer was made to (always be the Management Contract Addr)
+	Sender        *common.Address // Address that issued the ERC20, the token holder or tx.origin
+	TokenContract *common.Address // Address of the ERC20 Contract address that was executed
 }
 
 type L1StoreSecretTx struct {

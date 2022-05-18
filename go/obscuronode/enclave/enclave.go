@@ -362,7 +362,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := extractDeposits(proof, b, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib)
+	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib)
 	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 
 	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
