@@ -236,7 +236,7 @@ func waitForWalletExtension(t *testing.T, walletExtensionAddr string) {
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
 		}
-		if err != nil {
+		if err == nil {
 			return
 		}
 		time.Sleep(300 * time.Millisecond)
