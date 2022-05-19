@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
@@ -53,6 +55,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold: 0.5,
 		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
 		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
+		StartPort:                 integration.StartPortSimulationDocker,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
@@ -77,7 +80,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
-	containerIDs := createDockerContainers(ctx, cli, simParams.NumberOfNodes)
+	containerIDs := createDockerContainers(ctx, cli, simParams.NumberOfNodes, simParams.StartPort)
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
 	// We start the Docker containers.
@@ -104,11 +107,11 @@ func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
 }
 
 // Creates the test Docker containers.
-func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int) []string {
+func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int) []string {
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", network.EnclaveStartPort+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+100+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))

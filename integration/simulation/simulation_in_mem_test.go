@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
@@ -30,6 +31,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold: 0.36,
 		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
 		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
+		StartPort:                 integration.StartPortSimulationInMem,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

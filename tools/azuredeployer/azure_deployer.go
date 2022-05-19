@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 )
 
 const (
-	resourceGroupName     = "ObscuroNetwork"
 	deploymentName        = "ObscuroNetwork"
 	deploymentIPName      = "obscuro-network-ip"
 	resourceGroupLocation = "uksouth"
@@ -32,6 +32,8 @@ const (
 	sshPort    = "22"
 	sshTimeout = 5 * time.Second
 )
+
+var resourceGroupName = "ObscuroNetwork-" + randomSuffix(6)
 
 // DeployToAzure creates the deployment described by the templateFile and paramsFile in Azure, then runs the setupScript on it.
 func DeployToAzure(templateFile string, paramsFile string, setupScript string) {
@@ -179,4 +181,14 @@ func readJSON(path string) *map[string]interface{} {
 		log.Fatalf("failed to unmarshal JSON from file at %s: %v", path, err)
 	}
 	return &contents
+}
+
+// Generates a random suffix n characters long.
+func randomSuffix(n int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	suffix := make([]rune, n)
+	for i := range suffix {
+		suffix[i] = letters[rand.Intn(len(letters))] //nolint:gosec
+	}
+	return string(suffix)
 }

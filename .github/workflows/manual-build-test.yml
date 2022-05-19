@@ -31,5 +31,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: sim-logs
-          path: integration/.build/simulations/simulation-result-*.txt
+          path: integration/.build/simulations/sim-log-*.txt
         if: always() # Ensures the artifacts are created even if the tests fail.

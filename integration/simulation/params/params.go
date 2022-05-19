@@ -38,4 +38,5 @@ type SimParams struct {
 	// EthWallets contains the wallets to use for the l1 nodes
 	EthWallets              []wallet.Wallet
 	StableTokenContractAddr *common.Address
+	StartPort               int // The port from which to start allocating ports. Must be unique across all simulations.
 }

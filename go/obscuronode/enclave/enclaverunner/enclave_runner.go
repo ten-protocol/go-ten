@@ -16,8 +16,6 @@ import (
 
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config EnclaveConfig) {
-	setLogs(config.WriteToLogs, config.LogPath)
-
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
 	contractAddr := common.HexToAddress(config.ContractAddress)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
@@ -27,15 +25,17 @@ func RunEnclave(config EnclaveConfig) {
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
 	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, mgmtContractLib, erc20ContractLib, false, nil, nil)
 	if err != nil {
+		log.Error(err.Error())
 		panic(err)
 	}
+	log.Info("Obscuro enclave service started.")
 	fmt.Println("Obscuro enclave service started.")
 
 	handleInterrupt(closeHandle)
 }
 
-// Sets the log file, defaulting to stdout if writeToLogs is false.
-func setLogs(writeToLogs bool, logPath string) {
+// SetLogs sets the log file, defaulting to stdout if writeToLogs is false.
+func SetLogs(writeToLogs bool, logPath string) {
 	var logFile *os.File
 	var err error
 

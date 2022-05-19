@@ -38,7 +38,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i)
+		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+i)
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -46,7 +46,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 
 		// create a remote enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, EnclaveStartPort+i)
+		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+100+i)
 		_, err := enclave.StartServer(enclaveAddr, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
@@ -54,7 +54,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 
 		// create the in memory l1 and l2 node and the l2 client
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
+		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 		obscuroClient := obscuroclient.NewClient(nodeID, obscuroClientAddr)
 		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr)
 

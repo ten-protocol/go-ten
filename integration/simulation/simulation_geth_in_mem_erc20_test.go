@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
@@ -47,6 +49,7 @@ func TestGethSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.6, // nodes might produce rollups because they receive a new block
 		L2ToL1EfficiencyThreshold: 0.7, // nodes might stop producing rollups but the geth network is still going
 		EthWallets:                wallets,
+		StartPort:                 integration.StartPortSimulationGethInMem,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
