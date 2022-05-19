@@ -1,4 +1,4 @@
-name: Build after merge w/ docker
+name: Build after merge w/ docker and geth
 # Builds and runs tests after a PR is merged to main.
 
 on:
