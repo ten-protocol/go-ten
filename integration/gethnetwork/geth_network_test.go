@@ -3,8 +3,10 @@ package gethnetwork
 import (
 	"errors"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/integration"
 	"math/big"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -32,7 +34,7 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(30000, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
@@ -50,7 +52,7 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(31000, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	chainID := network.IssueCommand(0, chainIDCmd)
@@ -65,7 +67,7 @@ func TestTransactionCanBeSubmitted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(32000, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	account := network.addresses[0]
@@ -93,7 +95,7 @@ func TestTransactionIsMintedOverRPC(t *testing.T) {
 
 	// wallet should be prefunded
 	w := datagenerator.RandomWallet()
-	network := NewGethNetwork(33000, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
+	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
 	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})
@@ -137,4 +139,9 @@ func TestTransactionIsMintedOverRPC(t *testing.T) {
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Fatalf("Did not minted/mined the tx correctly - receipt: %+v", receipt)
 	}
+}
+
+// Returns a start port for a single test.
+func getStartPort() int {
+	return int(atomic.AddUint64(&integration.StartPortGethNetworkTest, numNodes))
 }

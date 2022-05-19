@@ -6,11 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/integration"
 	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -38,7 +40,7 @@ const (
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3000
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
@@ -55,7 +57,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3003
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
@@ -74,7 +76,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3006
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -99,7 +101,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3009
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -125,7 +127,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3012
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -156,7 +158,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3015
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -188,7 +190,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3018
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -344,4 +346,9 @@ func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *e
 	}
 
 	return txInfo["contractAddress"].(string)
+}
+
+// Returns a start port for a single test.
+func getStartPort() int {
+	return int(atomic.AddUint64(&integration.StartPortWalletExtensionTest, 3))
 }

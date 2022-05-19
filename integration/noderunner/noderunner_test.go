@@ -3,6 +3,7 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/integration"
 	"os"
 	"testing"
 	"time"
@@ -26,6 +27,11 @@ const testLogs = "../.build/noderunner/"
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	setupTestLog()
 
+	startPort := integration.StartPortNodeRunnerTest
+	enclaveAddr := fmt.Sprintf("127.0.0.1:%d", startPort)
+	clientServerAddr := fmt.Sprintf("127.0.0.1:%d", startPort+1)
+	ethClientPort := startPort + 2
+
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
@@ -34,13 +40,18 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	hostConfig := hostrunner.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
+	hostConfig.EnclaveAddr = enclaveAddr
+	hostConfig.ClientServerAddr = clientServerAddr
+	hostConfig.EthClientPort = ethClientPort
+
 	enclaveConfig := enclaverunner.DefaultEnclaveConfig()
+	enclaveConfig.Address = enclaveAddr
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
-	network := gethnetwork.NewGethNetwork(8446, gethBinaryPath, 1, 1, []string{address.String()})
+	network := gethnetwork.NewGethNetwork(int(ethClientPort)-100, gethBinaryPath, 1, 1, []string{address.String()})
 	defer network.StopNodes()
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
@@ -48,7 +59,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
 
-	obscuroClient := obscuroclient.NewClient(common.BytesToAddress([]byte(hostConfig.NodeID)), hostConfig.ClientServerAddr)
+	obscuroClient := obscuroclient.NewClient(common.BytesToAddress([]byte(hostConfig.NodeID)), clientServerAddr)
 	var result uint64
 	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHeadHeight)
 	if err != nil {
