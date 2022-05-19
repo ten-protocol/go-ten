@@ -232,7 +232,10 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 func waitForWalletExtension(t *testing.T, walletExtensionAddr string) {
 	retries := 10
 	for i := 0; i < retries; i++ {
-		_, err := http.Get(walletExtensionAddr)
+		resp, err := http.Get(walletExtensionAddr) //nolint:gosec,noctx
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 		if err != nil {
 			return
 		}
