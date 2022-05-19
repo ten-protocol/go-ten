@@ -251,6 +251,10 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 		t.Fatal(err)
 	}
 
+	if respBody[0] != '{' {
+		t.Fatalf("expected JSON response but received: %s", respBody)
+	}
+
 	return respBody
 }
 
