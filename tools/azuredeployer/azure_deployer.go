@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	//resourceGroupName     = "ObscuroNetwork"
 	deploymentName        = "ObscuroNetwork"
 	deploymentIPName      = "obscuro-network-ip"
 	resourceGroupLocation = "uksouth"
@@ -189,7 +188,7 @@ func randomSuffix(n int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	suffix := make([]rune, n)
 	for i := range suffix {
-		suffix[i] = letters[rand.Intn(len(letters))]
+		suffix[i] = letters[rand.Intn(len(letters))] //nolint:gosec
 	}
 	return string(suffix)
 }
