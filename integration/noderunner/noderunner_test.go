@@ -2,8 +2,12 @@ package noderunner
 
 import (
 	"encoding/hex"
+	"fmt"
+	"os"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -16,8 +20,12 @@ import (
 
 // TODO - Use the HostRunner/EnclaveRunner methods in the socket-based integration tests, and retire this smoketest.
 
+const testLogs = "../.build/noderunner/"
+
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
+	setupTestLog()
+
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
@@ -50,4 +58,19 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if !(result > 0) {
 		t.Fatal("Zero blocks have been produced. Something is wrong.")
 	}
+}
+
+func setupTestLog() *os.File {
+	// create a folder specific for the test
+	err := os.MkdirAll(testLogs, 0o700)
+	if err != nil {
+		panic(err)
+	}
+	timeFormatted := time.Now().Format("2006-01-02_15-04-05")
+	f, err := os.CreateTemp(testLogs, fmt.Sprintf("noderunner-%s-*.txt", timeFormatted))
+	if err != nil {
+		panic(err)
+	}
+	log.SetLog(f)
+	return f
 }
