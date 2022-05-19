@@ -242,7 +242,9 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 		if err == nil {
 			break
 		}
-		resp.Body.Close()
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 	}
 	defer resp.Body.Close()
 
