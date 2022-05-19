@@ -61,6 +61,7 @@ type HostConfig struct {
 	EthClientHost    string
 	EthClientPort    uint64
 	LogPath          string
+	ChainID          int64
 }
 
 func DefaultHostConfig() HostConfig {
@@ -78,6 +79,7 @@ func DefaultHostConfig() HostConfig {
 		EthClientHost:    "127.0.0.1",
 		EthClientPort:    8546,
 		LogPath:          "host_logs.txt",
+		ChainID:          1337, // TODO add this as a configurable flag
 	}
 }
 

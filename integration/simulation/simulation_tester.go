@@ -24,7 +24,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	ethClients, obscuroClients, p2pAddrs := netw.Create(params, stats)
 
-	workerWallet := datagenerator.RandomWallet()
+	workerWallet := datagenerator.RandomWallet(simChainID)
 	if len(params.EthWallets) > 0 {
 		workerWallet = params.EthWallets[len(params.EthWallets)-1]
 	}

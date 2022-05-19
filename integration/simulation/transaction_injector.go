@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
@@ -17,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
@@ -107,7 +108,7 @@ func (m *TransactionInjector) Start() {
 			Sender:        &addr,
 		}
 		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
-		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
+		signedTx, err := m.ethWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
@@ -244,7 +245,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 			Sender:        &addr,
 		}
 		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
-		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
+		signedTx, err := m.ethWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
@@ -275,7 +276,7 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 		}
 		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
 
-		signedTx, err := m.ethWallet.SignTransaction(1337, tx)
+		signedTx, err := m.ethWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}

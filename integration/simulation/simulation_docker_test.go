@@ -61,7 +61,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
 
 	for i := 0; i < simParams.NumberOfNodes+1; i++ {
-		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet())
+		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet(simChainID))
 	}
 
 	// We create a Docker client.

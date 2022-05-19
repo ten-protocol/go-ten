@@ -14,7 +14,7 @@ type Wallet interface {
 	// Address returns the pubkey Address of the wallet
 	Address() common.Address
 	// SignTransaction returns a signed transaction
-	SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error)
+	SignTransaction(tx types.TxData) (*types.Transaction, error)
 
 	// SetNonce overrides the current nonce
 	// The Nonce is expected to be the next nonce to use in a transaction, not the current account Nonce
@@ -28,9 +28,10 @@ type inMemoryWallet struct {
 	pubKey     *ecdsa.PublicKey
 	pubKeyAddr common.Address
 	nonce      uint64
+	chainID    *big.Int
 }
 
-func NewInMemoryWallet(pk string) Wallet {
+func NewInMemoryWallet(chainID *big.Int, pk string) Wallet {
 	privateKey, err := crypto.HexToECDSA(pk)
 	if err != nil {
 		panic(err)
@@ -41,6 +42,7 @@ func NewInMemoryWallet(pk string) Wallet {
 	}
 
 	return &inMemoryWallet{
+		chainID:    chainID,
 		prvKey:     privateKey,
 		pubKey:     publicKeyECDSA,
 		pubKeyAddr: crypto.PubkeyToAddress(*publicKeyECDSA),
@@ -48,8 +50,8 @@ func NewInMemoryWallet(pk string) Wallet {
 }
 
 // SignTransaction returns a signed transaction
-func (m *inMemoryWallet) SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error) {
-	return types.SignNewTx(m.prvKey, types.NewEIP155Signer(big.NewInt(int64(chainID))), tx)
+func (m *inMemoryWallet) SignTransaction(tx types.TxData) (*types.Transaction, error) {
+	return types.SignNewTx(m.prvKey, types.NewEIP155Signer(m.chainID), tx)
 }
 
 // Address returns the current wallet address

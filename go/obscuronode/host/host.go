@@ -5,12 +5,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -455,7 +456,15 @@ func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 
 func (a *Node) broadcastTx(tx types.TxData) {
 	// TODO add retry and deal with failures
-	a.ethClient.BroadcastTx(tx)
+	signedTx, err := a.ethWallet.SignTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+
+	err = a.ethClient.IssueTransaction(signedTx)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // This method implements the procedure by which a node obtains the secret

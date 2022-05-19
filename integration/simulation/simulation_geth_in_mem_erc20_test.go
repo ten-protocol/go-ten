@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -24,7 +25,7 @@ func TestGethSimulation(t *testing.T) {
 	// create one extra wallet as the worker wallet
 	wallets := make([]wallet.Wallet, numberOfNodes+1)
 	for i := 0; i < numberOfNodes+1; i++ {
-		wallets[i] = datagenerator.RandomWallet()
+		wallets[i] = datagenerator.RandomWallet(simChainID)
 	}
 
 	// The last wallet as the worker wallet ( to deposit and inject transactions )

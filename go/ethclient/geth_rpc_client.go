@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
@@ -21,33 +20,21 @@ var connectionTimeout = 15 * time.Second
 // Beyond connection, EthClient requires transaction transformation to be handled (txhandle),
 // chainID and transaction signage to be done (wallet)
 type gethRPCClient struct {
-	client  *ethclient.Client // the underlying eth rpc client
-	id      common.Address    // TODO remove the id common.Address
-	wallet  wallet.Wallet     // wallet containing the account information // TODO this does not need to be coupled together
-	chainID int               // chainID is used to sign transactions
+	client *ethclient.Client // the underlying eth rpc client
+	id     common.Address    // TODO remove the id common.Address
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress *common.Address) (EthClient, error) {
+func NewEthClient(id common.Address, ipaddress string, port uint, contractAddress *common.Address) (EthClient, error) {
 	client, err := connect(ipaddress, port)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	// gets the next nonce to use on the account
-	nonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
-	if err != nil {
-		panic(err)
-	}
-
-	wallet.SetNonce(nonce)
-
-	log.Trace("Initialized eth node connection - rollup contract address: %s - port: %d - wallet: %s - id: %s", contractAddress, port, wallet.Address(), id.String())
+	log.Trace("Initialized eth node connection - rollup contract address: %s - port: %d - id: %s", contractAddress, port, id.String())
 	return &gethRPCClient{
-		client:  client,
-		id:      id,
-		wallet:  wallet, // TODO this does not need to be coupled together
-		chainID: 1337,   // hardcoded for testnets // TODO this should be configured
+		client: client,
+		id:     id,
 	}, nil
 }
 
@@ -143,27 +130,12 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
-func (e *gethRPCClient) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
-	signedTx, err := e.wallet.SignTransaction(e.chainID, tx)
-	if err != nil {
-		panic(err)
-	}
-
-	return signedTx, e.IssueTransaction(signedTx)
-}
-
 func (e *gethRPCClient) IssueTransaction(signedTx *types.Transaction) error {
 	return e.client.SendTransaction(context.Background(), signedTx)
 }
 
 func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
 	return e.client.TransactionReceipt(context.Background(), hash)
-}
-
-func (e *gethRPCClient) BroadcastTx(tx types.TxData) {
-	if _, err := e.SubmitTransaction(tx); err != nil {
-		panic(err)
-	}
 }
 
 func (e *gethRPCClient) BlockListener() chan *types.Header {

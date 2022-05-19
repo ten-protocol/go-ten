@@ -64,10 +64,6 @@ type Node struct {
 	headOutCh chan *types.Block
 }
 
-func (m *Node) SubmitTransaction(_ types.TxData) (*types.Transaction, error) {
-	panic("method should never be called in this mock")
-}
-
 func (m *Node) IssueTransaction(tx *types.Transaction) error {
 	m.Network.BroadcastTx(tx)
 	return nil

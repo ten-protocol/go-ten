@@ -2,19 +2,20 @@ package hostrunner
 
 import (
 	"fmt"
+	"math/big"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
 
 // RunHost runs an Obscuro host as a standalone process.
@@ -27,13 +28,12 @@ func RunHost(config HostConfig) {
 		RPCAddress:           &config.ClientServerAddr,
 	}
 
-	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
 	contractAddr := common.HexToAddress(config.ContractAddress)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
-	ethWallet := datagenerator.RandomWallet()
+	ethWallet := wallet.NewInMemoryWallet(big.NewInt(config.ChainID), config.PrivateKeyString)
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), nodeWallet, &contractAddr)
+	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), &contractAddr)
 	if err != nil {
 		log.Error(err.Error())
 		panic(err)

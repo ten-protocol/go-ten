@@ -4,12 +4,13 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -59,7 +60,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		walletAddresses,
 	)
 
-	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0], n.workerWallet, nil)
+	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0], nil)
 	if err != nil {
 		panic(err)
 	}
@@ -84,7 +85,6 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		miner := createEthClientConnection(
 			int64(i),
 			n.gethNetwork.WebSocketPorts[i],
-			params.EthWallets[i],
 			params.MgmtContractAddr,
 		)
 		agg := createInMemObscuroNode(
@@ -135,15 +135,15 @@ func (n *networkInMemGeth) TearDown() {
 	n.gethNetwork.StopNodes()
 }
 
-func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contractAddr *common.Address) ethclient.EthClient {
-	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", port, wallet, contractAddr)
+func createEthClientConnection(id int64, port uint, contractAddr *common.Address) ethclient.EthClient {
+	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", port, contractAddr)
 	if err != nil {
 		panic(err)
 	}
 	return ethnode
 }
 
-func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) *common.Address {
+func deployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) *common.Address {
 	deployContractTx := types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(2000000000),
@@ -151,14 +151,19 @@ func deployContract(tmpClient ethclient.EthClient, w wallet.Wallet, contractByte
 		Data:     contractBytes,
 	}
 
-	signedTx, err := tmpClient.SubmitTransaction(&deployContractTx)
+	signedTx, err := w.SignTransaction(&deployContractTx)
+	if err != nil {
+		panic(err)
+	}
+
+	err = workerClient.IssueTransaction(signedTx)
 	if err != nil {
 		panic(err)
 	}
 
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
-		receipt, err = tmpClient.FetchTxReceipt(signedTx.Hash())
+		receipt, err = workerClient.FetchTxReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				panic("unable to deploy contract")

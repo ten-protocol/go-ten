@@ -61,11 +61,11 @@ func ParseCLIArgs() EnclaveConfig {
 	flag.Parse()
 
 	parsedERC20ContractAddrs := strings.Split(*erc20ContractAddrs, ",")
-	erc20contracAddresses := make([]*common.Address, len(parsedERC20ContractAddrs))
+	erc20contractAddresses := make([]*common.Address, len(parsedERC20ContractAddrs))
 	if *erc20ContractAddrs != "" {
 		for i, addr := range parsedERC20ContractAddrs {
 			hexAddr := common.HexToAddress(addr)
-			erc20contracAddresses[i] = &hexAddr
+			erc20contractAddresses[i] = &hexAddr
 		}
 	}
 

@@ -38,7 +38,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration * 2 / 7
 
 	for i := 0; i < simParams.NumberOfNodes+1; i++ {
-		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet())
+		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet(simChainID))
 	}
 
 	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), &simParams)

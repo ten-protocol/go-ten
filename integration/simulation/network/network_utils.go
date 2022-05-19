@@ -4,12 +4,12 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
@@ -23,7 +23,10 @@ import (
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
-const Localhost = "127.0.0.1"
+const (
+	simChainID = 1337
+	Localhost  = "127.0.0.1"
+)
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
 	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
@@ -80,7 +83,7 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
 	mgmtContractLib := ethereum_mock.NewMgmtContractLibMock()
-	ethWallet := datagenerator.RandomWallet()
+	ethWallet := datagenerator.RandomWallet(simChainID)
 
 	node := host.NewObscuroAggregator(
 		nodeID,

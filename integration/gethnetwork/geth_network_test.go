@@ -95,24 +95,26 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	}
 
 	// wallet should be prefunded
-	w := datagenerator.RandomWallet()
+	w := datagenerator.RandomWallet(1337)
 	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, nil)
+	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// pick the first address in the network and send some funds to it
 	toAddr := common.HexToAddress(fmt.Sprintf("0x%s", network.addresses[0]))
-	tx, err := ethClient.SubmitTransaction(&types.LegacyTx{
+	tx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(20000000000),
 		Gas:      uint64(1024_000_000),
 		To:       &toAddr,
 		Value:    big.NewInt(100),
-	})
+	}
+	signedTx, err := w.SignTransaction(tx)
+	err = ethClient.IssueTransaction(signedTx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +122,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	// make sure it's mined into a block within an acceptable time
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-		receipt, err = ethClient.FetchTxReceipt(tx.Hash())
+		receipt, err = ethClient.FetchTxReceipt(signedTx.Hash())
 		if err == nil {
 			break
 		}
