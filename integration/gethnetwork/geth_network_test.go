@@ -3,12 +3,13 @@ package gethnetwork
 import (
 	"errors"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration"
 	"math/big"
 	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

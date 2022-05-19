@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -15,6 +14,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum/accounts"
 
