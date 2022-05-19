@@ -20,11 +20,10 @@ jobs:
       - name: Build
         run: go build -v ./...
 
-      - name: Build geth qgv1.10.17
-        run: bash ./integration/gethnetwork/build_geth_binary.sh --version=v1.10.17
-
       - name: Test
         run: go test -v ./...
+        env:
+          USE_GETH_BINARY: true
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
