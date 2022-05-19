@@ -10,8 +10,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 )
 
-// TestGethMemObscuroEthMonteCarloSimulation runs the simulation against a private geth network using Clique (PoA)
-func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
+// TestInMemoryGethMonteCarloSimulation runs the simulation against a private geth network using Clique (PoA)
+func TestInMemoryGethMonteCarloSimulation(t *testing.T) {
 	setupTestLog("geth-in-mem")
 
 	numberOfNodes := 5

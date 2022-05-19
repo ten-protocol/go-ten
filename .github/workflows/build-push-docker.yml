@@ -26,10 +26,16 @@ jobs:
       - name: Build Docker images
         run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
 
-      - name: Test
+      - name: Test Docker
         run: go test -v -run TestDocker ./...
         env:
           DOCKER_TEST_ENABLED: true
+
+      - name: Build geth qgv1.10.17
+        run: bash ./integration/gethnetwork/build_geth_binary.sh --version=v1.10.17
+
+      - name: Test Geth binary
+        run: go test -v -run TestGeth ./...
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
