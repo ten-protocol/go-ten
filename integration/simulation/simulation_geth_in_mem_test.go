@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -34,6 +36,7 @@ func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.5,
 		L2ToL1EfficiencyThreshold: 0.5, // one rollup every 2 blocks
 		EthWallets:                wallets,
+		StartPort:                 integration.StartPortSimulationGethInMem,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

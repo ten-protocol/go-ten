@@ -18,12 +18,7 @@ import (
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
-const (
-	Localhost             = "127.0.0.1"
-	p2pStartPort          = 10000
-	EnclaveStartPort      = 11000
-	clientServerStartPort = 12000
-)
+const Localhost = "127.0.0.1"
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
 	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)

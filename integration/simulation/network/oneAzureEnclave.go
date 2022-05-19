@@ -40,7 +40,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, p2pStartPort+i)
+		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+i)
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -49,7 +49,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 		if isGenesis {
 			// create the in memory l1 and l2 node
 			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
+			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 			obscuroClient := obscuroclient.NewClient(common.BigToAddress(big.NewInt(int64(i))), obscuroClientAddr)
 			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, n.enclaveAddress, obscuroClientAddr)
 
@@ -64,7 +64,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 		} else {
 			// create a remote enclave server
 			nodeID := common.BigToAddress(big.NewInt(int64(i)))
-			enclavePort := uint64(EnclaveStartPort + i)
+			enclavePort := uint64(params.StartPort + 100 + i)
 			enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
 			_, err := enclave.StartServer(enclaveAddress, nodeID, params.TxHandler, false, nil, stats)
 			if err != nil {
@@ -73,7 +73,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 
 			// create the in memory l1 and l2 node
 			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, clientServerStartPort+i)
+			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 			obscuroClient := obscuroclient.NewClient(common.BigToAddress(big.NewInt(int64(i))), obscuroClientAddr)
 			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress, obscuroClientAddr)
 

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -33,6 +35,7 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
+		StartPort:                 integration.StartPortSimulationAzureEnclave,
 	}
 	params.AvgNetworkLatency = params.AvgBlockDuration / 15
 	params.AvgGossipPeriod = params.AvgBlockDuration / 3
