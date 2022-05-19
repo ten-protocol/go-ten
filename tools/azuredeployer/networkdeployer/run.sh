@@ -8,3 +8,4 @@ sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.
 sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.1:11001:11000/tcp obscuro_enclave --nodeID 2 --address :11000 > /dev/null &
 obscuro-playground/go/obscuronode/host/main/host --nodeID=1 --isGenesis=true --enclaveAddress=localhost:11000 --clientServerAddress=0.0.0.0:13000 --ethClientPort=12100 --privateKey=0000000000000000000000000000000000000000000000000000000000000001 > /dev/null &
 obscuro-playground/go/obscuronode/host/main/host --nodeID=2 --isGenesis=false --enclaveAddress=localhost:11001 --clientServerAddress=localhost:13001 --ethClientPort=12101 --privateKey=0000000000000000000000000000000000000000000000000000000000000002 > /dev/null &
+sudo obscuro-playground/tools/obscuroscan/main/obscuroscan --clientServerAddress=127.0.0.1:13000 --startPort=80 > /dev/null &
