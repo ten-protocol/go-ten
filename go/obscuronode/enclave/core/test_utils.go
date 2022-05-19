@@ -7,9 +7,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // Creates a dummy L2Tx for testing
@@ -19,9 +17,8 @@ func CreateL2Tx() *nodecommon.L2Tx {
 
 // Creates a dummy types.LegacyTx for testing
 func CreateL2TxData() *types.LegacyTx {
-	txData := L2TxData{TransferTx, common.Address{}, common.Address{}, 100}
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-	encodedTxData, _ := rlp.EncodeToBytes(txData)
+	encodedTxData := make([]byte, 0)
 	return &types.LegacyTx{
 		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: big.NewInt(1), Data: encodedTxData,
 	}

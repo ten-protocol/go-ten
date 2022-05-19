@@ -3,16 +3,18 @@ package enclave
 import (
 	"fmt"
 	"math/big"
+	"sort"
+	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/contracts"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/vm"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
-	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -121,9 +123,17 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 	return nil, false
 }
 
+type SortByNonce []nodecommon.L2Tx
+
+func (c SortByNonce) Len() int           { return len(c) }
+func (c SortByNonce) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c SortByNonce) Less(i, j int) bool { return c[i].Nonce() < c[j].Nonce() }
+
 // Calculate transactions to be included in the current rollup
 func currentTxs(head *core.Rollup, mempool []nodecommon.L2Tx, resolver db.RollupResolver) []nodecommon.L2Tx {
-	return findTxsNotIncluded(head, mempool, resolver)
+	txs := findTxsNotIncluded(head, mempool, resolver)
+	sort.Sort(SortByNonce(txs))
+	return txs
 }
 
 func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) {
@@ -155,11 +165,11 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	}
 	// calculate the state to compare with what is in the Rollup
 	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
-	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.txHandler)
+	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.txHandler, stateDB)
 	log.Info(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.nodeID), len(depositTxs)))
 
-	executeTransactions(headRollup.Transactions, stateDB, headRollup.Header)
-	executeTransactions(depositTxs, stateDB, headRollup.Header)
+	evm.ExecuteTransactions(headRollup.Transactions, stateDB, headRollup.Header, e.storage)
+	evm.ExecuteTransactions(depositTxs, stateDB, headRollup.Header, e.storage)
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		panic(err)
@@ -183,7 +193,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
 // starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
-func extractDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler) []nodecommon.L2Tx {
+func extractDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver db.BlockResolver, txHandler mgmtcontractlib.TxHandler, rollupState *state.StateDB) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
@@ -196,6 +206,8 @@ func extractDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 
 	allDeposits := make([]nodecommon.L2Tx, 0)
 	b := toBlock
+	zero := uint64(0)
+	i := &zero
 	for {
 		if b.Hash() == from {
 			break
@@ -204,12 +216,8 @@ func extractDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 			t := txHandler.UnPackTx(tx)
 			// transactions to a hardcoded bridge address
 			if t != nil && t.TxType == obscurocommon.DepositTx {
-				depL2TxData := core.L2TxData{
-					Type:   core.DepositTx,
-					To:     t.Dest,
-					Amount: t.Amount,
-				}
-				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
+				allDeposits = append(allDeposits, newDepositTx(t.Dest, t.Amount, rollupState, atomic.LoadUint64(i)))
+				atomic.AddUint64(i, 1)
 			}
 		}
 		if b.NumberU64() < height {
@@ -239,11 +247,11 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 		// todo transform into an eth block structure
 		parentRollup := rollupResolver.ParentRollup(newHeadRollup)
 		p := blockResolver.Proof(parentRollup)
-		depositTxs := extractDeposits(p, blockResolver.Proof(newHeadRollup), blockResolver, txHandler)
+		depositTxs := extractDeposits(p, blockResolver.Proof(newHeadRollup), blockResolver, txHandler, stateDB)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		executeTransactions(txsToProcess, stateDB, newHeadRollup.Header)
+		evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver)
 		// todo - handle failure , which means a new winner must be selected
 	} else {
 		newHeadRollup = currentHead
@@ -258,19 +266,43 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state vm.StateDB, header *nodecommon.Header) []nodecommon.Withdrawal {
+func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, header *nodecommon.Header, receipts map[common.Hash]*types.Receipt) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
-	withdrawalTxs := withdrawals(state, header.Hash())
 	// go through each transaction and check if the withdrawal was processed correctly
-	for i, t := range newHeadRollup.Transactions {
-		txData := core.TxData(&newHeadRollup.Transactions[i])
-		if txData.Type == core.WithdrawalTx && contains(withdrawalTxs, t.Hash()) {
-			w = append(w, nodecommon.Withdrawal{
-				Amount:  txData.Amount,
-				Address: txData.From,
-			})
+	for _, t := range newHeadRollup.Transactions {
+
+		method, err := contracts.PedroERC20ContractABIJSON.MethodById(t.Data()[:4])
+		if err != nil {
+			// fmt.Printf("%s\n", err)
+			continue
+		}
+
+		if method.Name != "transfer" {
+			continue
+		}
+
+		args := map[string]interface{}{}
+		if err := method.Inputs.UnpackIntoMap(args, t.Data()[4:]); err != nil {
+			panic(err)
+		}
+
+		if *t.To() == evm.Erc20ContractAddress && args["to"].(common.Address) == evm.WithdrawalAddress {
+			receipt := receipts[t.Hash()]
+			if receipt != nil && receipt.Status == 1 {
+				signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
+				from, err1 := types.Sender(signer, &t)
+				if err1 != nil {
+					panic(err1)
+				}
+				state.Logs()
+				w = append(w, nodecommon.Withdrawal{
+					Amount:  args["amount"].(*big.Int).Uint64(),
+					Address: from,
+				})
+			}
 		}
 	}
+
 	// TODO - fix the withdrawals logic
 	// clearWithdrawals(state, withdrawalTxs)
 	return w
@@ -305,20 +337,28 @@ func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
 	}
 }
 
-func newL2Tx(data core.L2TxData) *nodecommon.L2Tx {
-	// Todo - fix the nonce logic for the synthetic deposit transactions.
-	nonce := big.NewInt(1)
-	enc, err := rlp.EncodeToBytes(data)
+// todo - nonce
+func newDepositTx(address common.Address, amount uint64, rollupState *state.StateDB, i uint64) nodecommon.L2Tx {
+	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", address, big.NewInt(int64(amount)))
 	if err != nil {
-		// TODO - Surface this error properly.
 		panic(err)
 	}
+	signer := types.NewLondonSigner(big.NewInt(int64(evm.ChainID)))
 
-	return types.NewTx(&types.LegacyTx{
-		Nonce:    nonce.Uint64(),
-		Value:    big.NewInt(1),
-		Gas:      1,
-		GasPrice: big.NewInt(1),
-		Data:     enc,
+	nonce := rollupState.GetNonce(evm.Erc20OwnerAddress) + i
+
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    nonce,
+		Value:    common.Big0,
+		Gas:      1_000_000,
+		GasPrice: common.Big0,
+		Data:     transferERC20data,
+		To:       &evm.Erc20ContractAddress,
 	})
+
+	newTx, err := types.SignTx(tx, signer, evm.Erc20OwnerKey)
+	if err != nil {
+		panic(err)
+	}
+	return *newTx
 }

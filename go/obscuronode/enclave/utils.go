@@ -13,6 +13,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
+// todo - sorting by nonce
+
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
 func findTxsNotIncluded(head *core.Rollup, txs []nodecommon.L2Tx, s db.RollupResolver) []nodecommon.L2Tx {
@@ -86,23 +88,6 @@ func printTxs(txs []nodecommon.L2Tx) (txsString []string) {
 }
 
 func printTx(t nodecommon.L2Tx, txsString []string) []string {
-	txData := core.TxData(&t)
-	switch txData.Type {
-	case core.TransferTx:
-		txsString = append(txsString, fmt.Sprintf("%d->%d(%d){%d}", obscurocommon.ShortAddress(txData.From), obscurocommon.ShortAddress(txData.To), txData.Amount, obscurocommon.ShortHash(t.Hash())))
-	case core.WithdrawalTx:
-		txsString = append(txsString, fmt.Sprintf("%d->*(%d){%d}", obscurocommon.ShortAddress(txData.From), txData.Amount, obscurocommon.ShortHash(t.Hash())))
-	case core.DepositTx:
-		txsString = append(txsString, fmt.Sprintf("*->%d(%d){%d}", obscurocommon.ShortAddress(txData.To), txData.Amount, obscurocommon.ShortHash(t.Hash())))
-	}
+	txsString = append(txsString, fmt.Sprintf("%d,", obscurocommon.ShortHash(t.Hash())))
 	return txsString
-}
-
-func contains(s []obscurocommon.TxHash, e obscurocommon.TxHash) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }

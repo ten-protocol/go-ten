@@ -197,6 +197,10 @@ func (c *EnclaveRPCClient) Balance(address common.Address) uint64 {
 	return response.Balance
 }
 
+func (c *EnclaveRPCClient) Nonce(address common.Address) uint64 {
+	panic("not implemented")
+}
+
 func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()

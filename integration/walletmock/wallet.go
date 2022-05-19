@@ -2,21 +2,19 @@ package walletmock
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
 	"fmt"
-	"math"
 	"math/big"
+	"sync/atomic"
+	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-
+	"github.com/obscuronet/obscuro-playground/contracts"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 )
@@ -24,18 +22,38 @@ import (
 type Wallet struct {
 	Address common.Address
 	// TODO - Store key securely. Geth stores the key encrypted on disk.
-	Key keystore.Key
+	Key   keystore.Key
+	nonce uint64
 }
 
-func New() Wallet {
+func (w *Wallet) readNonce(cl *obscuroclient.Client) uint64 {
+	var result uint64
+	err := (*cl).Call(&result, obscuroclient.RPCNonce, w.Address)
+	if err != nil {
+		panic(err)
+	}
+	if result == 0 {
+		return 0
+	}
+	return result
+}
+
+func (w *Wallet) NextNonce(cl *obscuroclient.Client) uint64 {
+	// only returns the nonce when the previous transaction was recorded
+	for {
+		result := w.readNonce(cl)
+		if result == w.nonce {
+			atomic.AddUint64(&w.nonce, 1)
+			return result
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func New(privateKeyECDSA *ecdsa.PrivateKey) *Wallet {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		panic(fmt.Sprintf("Could not create random uuid: %v", err))
-	}
-
-	privateKeyECDSA, err := crypto.GenerateKey()
-	if err != nil {
-		panic(fmt.Sprintf("Could not generate keypair for wallet: %v", err))
 	}
 
 	key := keystore.Key{
@@ -44,50 +62,50 @@ func New() Wallet {
 		PrivateKey: privateKeyECDSA,
 	}
 
-	return Wallet{Address: key.Address, Key: key}
-}
-
-// NewL2Transfer creates an enclave.L2Tx of type enclave.TransferTx
-func NewL2Transfer(from common.Address, dest common.Address, amount uint64) *nodecommon.L2Tx {
-	txData := core.L2TxData{Type: core.TransferTx, From: from, To: dest, Amount: amount}
-	return NewL2Tx(txData)
-}
-
-// NewL2Withdrawal creates an enclave.L2Tx of type enclave.WithdrawalTx
-func NewL2Withdrawal(from common.Address, amount uint64) *nodecommon.L2Tx {
-	txData := core.L2TxData{Type: core.WithdrawalTx, From: from, Amount: amount}
-	return NewL2Tx(txData)
-}
-
-// NewL2Tx creates an enclave.L2Tx.
-//
-// A random nonce is used to avoid hash collisions. The enclave.L2TxData is encoded and stored in the transaction's
-// data field.
-func NewL2Tx(data core.L2TxData) *nodecommon.L2Tx {
-	// We should probably use a deterministic nonce instead, as in the L1.
-	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-
-	enc, err := rlp.EncodeToBytes(data)
-	if err != nil {
-		// TODO - Surface this error properly.
-		panic(err)
-	}
-
-	return types.NewTx(&types.LegacyTx{
-		Nonce:    nonce.Uint64(),
-		Value:    big.NewInt(1),
-		Gas:      1,
-		GasPrice: big.NewInt(1),
-		Data:     enc,
-	})
+	return &Wallet{Address: key.Address, Key: key}
 }
 
 // SignTx returns a copy of the enclave.L2Tx signed with the provided ecdsa.PrivateKey
 func SignTx(tx *nodecommon.L2Tx, privateKey *ecdsa.PrivateKey) *nodecommon.L2Tx {
-	signer := types.NewLondonSigner(big.NewInt(enclave.ChainID))
+	signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
 	signedTx, err := types.SignTx(tx, signer, privateKey)
 	if err != nil {
 		panic(fmt.Errorf("could not sign transaction: %w", err))
 	}
 	return signedTx
+}
+
+func NewObscuroTransferTx(from *Wallet, dest common.Address, amount uint64, client *obscuroclient.Client) *nodecommon.L2Tx {
+	data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", dest, big.NewInt(int64(amount)))
+	if err != nil {
+		panic(err)
+	}
+	return newTx(from, data, client)
+}
+
+func NewObscuroDepositTx(amount uint64, to common.Address, erc20OwnerWallet *Wallet, client *obscuroclient.Client) *nodecommon.L2Tx {
+	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", to, big.NewInt(int64(amount)))
+	if err != nil {
+		panic(err)
+	}
+	return newTx(erc20OwnerWallet, transferERC20data, client)
+}
+
+func NewObscuroWithdrawalTx(amount uint64, wallet *Wallet, client *obscuroclient.Client) *nodecommon.L2Tx {
+	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
+	if err != nil {
+		panic(err)
+	}
+	return newTx(wallet, transferERC20data, client)
+}
+
+func newTx(wallet *Wallet, data []byte, client *obscuroclient.Client) *nodecommon.L2Tx {
+	return types.NewTx(&types.LegacyTx{
+		Nonce:    wallet.NextNonce(client),
+		Value:    common.Big0,
+		Gas:      1_000_000,
+		GasPrice: common.Big0,
+		Data:     data,
+		To:       &evm.Erc20ContractAddress,
+	})
 }
