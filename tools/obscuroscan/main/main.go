@@ -8,7 +8,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/tools/obscuroscan"
 )
 
-const localhost = "localhost:"
+const localhost = "0.0.0.0:"
 
 func main() {
 	config := parseCLIArgs()
