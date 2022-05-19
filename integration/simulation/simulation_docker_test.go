@@ -26,7 +26,7 @@ import (
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
 
 const (
-	enclaveDockerImg  = "obscuro_enclave"
+	enclaveDockerImg  = "obscuro_enclavez"
 	nodeIDFlag        = "--nodeID"
 	addressFlag       = "--address"
 	enclaveAddress    = ":11000"
