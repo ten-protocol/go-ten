@@ -8,7 +8,6 @@ const (
 	templateFile   = "tools/azuredeployer/networkdeployer/vm-template.json"
 	parametersFile = "tools/azuredeployer/networkdeployer/vm-params.json"
 	// Creates a network of two Geth nodes, two Obscuro hosts, and two Obscuro enclaves.
-	// TODO - Start Obscuro enclave services in Docker.
 	// TODO - Re-enable blockchain validation for enclaves.
 	setupScript = `
 		sudo apt-get update

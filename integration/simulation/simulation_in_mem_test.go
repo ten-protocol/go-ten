@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -28,6 +30,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.32,
 		L2ToL1EfficiencyThreshold: 0.36,
 		TxHandler:                 ethereummock.NewMockTxHandler(),
+		StartPort:                 integration.StartPortSimulationInMem,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
