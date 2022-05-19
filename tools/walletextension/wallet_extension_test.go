@@ -242,7 +242,9 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 		if err == nil {
 			break
 		}
-		resp.Body.Close()
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 	}
 	defer resp.Body.Close()
 
@@ -257,6 +259,10 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 // Makes an Ethereum JSON RPC request and returns the response body as JSON.
 func makeEthJSONReqAsJSON(t *testing.T, walletExtensionAddr string, method string, params interface{}) map[string]interface{} {
 	respBody := makeEthJSONReq(t, walletExtensionAddr, method, params)
+
+	if respBody[0] != '{' {
+		t.Fatalf("expected JSON response but received: %s", respBody)
+	}
 
 	var respBodyJSON map[string]interface{}
 	err := json.Unmarshal(respBody, &respBodyJSON)
