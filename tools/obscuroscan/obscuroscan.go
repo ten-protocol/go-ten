@@ -16,7 +16,7 @@ import (
 const (
 	pathBlockHeadHeight = "/blockheadheight/"
 	pathHeadRollup      = "/headrollup/"
-	staticDir           = "./tools/obscuroscan/static"
+	staticDir           = "./tools/obscuroscan/static" // todo - joel - fix this - currently, depends on where server is invoked
 	pathRoot            = "/"
 	httpCodeErr         = 500
 )
