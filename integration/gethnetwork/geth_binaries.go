@@ -11,10 +11,12 @@ import (
 )
 
 const (
-	shCmd             = "bash"
-	gethScriptPathRel = "./build_geth_binary.sh"
-	gethBinaryPathRel = "../.build/geth_bin/geth"
-	versionFlag       = "--version"
+	shCmd                        = "bash"
+	gethScriptPathRel            = "./build_geth_binary.sh"
+	gethBinaryPathRel            = "../.build/geth_bin/geth"
+	gethPrecompiledBinaryPathRel = "./geth_bin/geth-v1.10.17"
+	versionFlag                  = "--version"
+	envUseGethBinary             = "USE_GETH_BINARY"
 
 	LatestVersion = "v1.10.17" // geths release version
 )
@@ -30,6 +32,10 @@ var (
 // EnsureBinariesExist makes sure geth binary exist, returns path where geth binaries exist
 // Runs the build_geth_binary.sh while handling source directory call
 func EnsureBinariesExist(version string) (string, error) {
+	if os.Getenv(envUseGethBinary) == "true" {
+		return path.Join(basepath, gethPrecompiledBinaryPathRel), nil
+	}
+
 	creationLock.Lock()
 	defer creationLock.Unlock()
 

@@ -29,7 +29,7 @@ const (
 
 var timeout = 15 * time.Second
 
-func TestAllNodesJoinSameNetwork(t *testing.T) {
+func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func TestAllNodesJoinSameNetwork(t *testing.T) {
 	}
 }
 
-func TestGenesisParamsAreUsed(t *testing.T) {
+func TestGethGenesisParamsAreUsed(t *testing.T) {
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestGenesisParamsAreUsed(t *testing.T) {
 	}
 }
 
-func TestTransactionCanBeSubmitted(t *testing.T) {
+func TestGethTransactionCanBeSubmitted(t *testing.T) {
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestTransactionCanBeSubmitted(t *testing.T) {
 	}
 }
 
-func TestTransactionIsMintedOverRPC(t *testing.T) {
+func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
