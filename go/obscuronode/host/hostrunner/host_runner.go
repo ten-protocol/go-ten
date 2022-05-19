@@ -18,8 +18,6 @@ import (
 
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config HostConfig) {
-	setLogs(config.LogPath)
-
 	nodeID := common.BytesToAddress([]byte(config.NodeID))
 	hostCfg := host.AggregatorCfg{
 		GossipRoundDuration:  time.Duration(config.GossipRoundNanos),
@@ -33,8 +31,10 @@ func RunHost(config HostConfig) {
 	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
 
 	fmt.Println("Connecting to L1 network...")
+	log.Info("Connecting to L1 network...")
 	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), nodeWallet, contractAddr)
 	if err != nil {
+		log.Error(err.Error())
 		panic(err)
 	}
 
@@ -43,13 +43,14 @@ func RunHost(config HostConfig) {
 	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, txHandler)
 
 	fmt.Println("Starting Obscuro host...")
+	log.Info("Starting Obscuro host...")
 	agg.Start()
 
 	handleInterrupt(agg)
 }
 
-// Sets the log file.
-func setLogs(logPath string) {
+// SetLogs sets the log file.
+func SetLogs(logPath string) {
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		panic(err)

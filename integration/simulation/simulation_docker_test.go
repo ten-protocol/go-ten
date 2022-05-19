@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -41,7 +43,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		t.Skipf("set the variable to run this test: `%s=true`", dockerTestEnv)
 	}
 
-	setupTestLog()
+	setupTestLog("docker")
 
 	simParams := params.SimParams{
 		NumberOfNodes:             10,
@@ -52,6 +54,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
 		TxHandler:                 ethereum_mock.NewMockTxHandler(),
+		StartPort:                 integration.StartPortSimulationDocker,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
@@ -72,7 +75,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
-	containerIDs := createDockerContainers(ctx, cli, simParams.NumberOfNodes)
+	containerIDs := createDockerContainers(ctx, cli, simParams.NumberOfNodes, simParams.StartPort)
 	defer terminateDockerContainers(ctx, cli, containerIDs)
 
 	// We start the Docker containers.
@@ -99,11 +102,11 @@ func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
 }
 
 // Creates the test Docker containers.
-func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int) []string {
+func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int) []string {
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", network.EnclaveStartPort+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+100+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))

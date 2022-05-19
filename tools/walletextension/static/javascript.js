@@ -19,7 +19,7 @@ const initialize = () => {
 
     generateViewingKeyButton.addEventListener(eventClick, async () => {
         const viewingKeyResp = await fetch(pathGenerateViewingKey);
-        if (!isOk(viewingKeyResp)) {
+        if (!viewingKeyResp.ok) {
             statusArea.innerText = "Failed to generate viewing key."
             return
         }
@@ -51,7 +51,7 @@ const initialize = () => {
                 body: JSON.stringify(signedViewingKeyJson)
             }
         );
-        if (isOk(submitViewingKeyResp)) {
+        if (submitViewingKeyResp.ok) {
             statusArea.innerText = `Account: ${account}\nViewing key: ${viewingKey}\nSigned bytes: ${signature}`
         } else {
             statusArea.innerText = "Failed to submit viewing key to enclave."
@@ -60,7 +60,3 @@ const initialize = () => {
 }
 
 window.addEventListener(eventDomLoaded, initialize);
-
-function isOk(response) {
-    return response.status >= 200 && response.status < 300
-}

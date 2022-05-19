@@ -11,8 +11,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum/accounts"
 
@@ -38,12 +41,13 @@ const (
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3000
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	respJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, reqJSONMethodChainID, []string{})
 
@@ -55,12 +59,13 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3003
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	respBody := makeEthJSONReq(t, walletExtensionAddr, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
 
@@ -74,7 +79,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3006
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -86,6 +91,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -99,7 +105,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3009
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -110,6 +116,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{dummyAccountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -125,7 +132,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3012
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -137,6 +144,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	contractAddr := deployERC20Contract(t, walletExtensionAddr, privateKey)
 
@@ -156,7 +164,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3015
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -168,6 +176,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -188,7 +197,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	t.Parallel()
 
-	startPort := 3018
+	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
 	privateKey, err := crypto.GenerateKey()
@@ -200,6 +209,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -216,6 +226,22 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	if trimmedRespBody != expectedErr {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
+}
+
+// Waits for wallet extension to be ready. Times out after three seconds.
+func waitForWalletExtension(t *testing.T, walletExtensionAddr string) {
+	retries := 10
+	for i := 0; i < retries; i++ {
+		resp, err := http.Get(walletExtensionAddr) //nolint:gosec,noctx
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+		if err == nil {
+			return
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	t.Fatal("could not establish connection to wallet extension")
 }
 
 // Makes an Ethereum JSON RPC request and returns the response body.
@@ -239,7 +265,9 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 		if err == nil {
 			break
 		}
-		resp.Body.Close()
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 	}
 	defer resp.Body.Close()
 
@@ -254,6 +282,10 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 // Makes an Ethereum JSON RPC request and returns the response body as JSON.
 func makeEthJSONReqAsJSON(t *testing.T, walletExtensionAddr string, method string, params interface{}) map[string]interface{} {
 	respBody := makeEthJSONReq(t, walletExtensionAddr, method, params)
+
+	if respBody[0] != '{' {
+		t.Fatalf("expected JSON response but received: %s", respBody)
+	}
 
 	var respBodyJSON map[string]interface{}
 	err := json.Unmarshal(respBody, &respBodyJSON)
@@ -344,4 +376,9 @@ func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *e
 	}
 
 	return txInfo["contractAddress"].(string)
+}
+
+// Returns a start port for a single test.
+func getStartPort() int {
+	return int(atomic.AddUint64(&integration.StartPortWalletExtensionTest, 3))
 }

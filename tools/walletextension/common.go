@@ -99,7 +99,7 @@ func StartWalletExtension(config RunConfig) func() {
 		"Without a viewing key, you will not be able to decrypt the enclave's secure responses to your "+
 		"eth_getBalance and eth_call requests.\n", walletExtensionAddr)
 
-	// We return a handle to stop the local network nodes, if any were created.
+	// We return a handle to stop the components, including the local network nodes if any were created.
 	if config.LocalNetwork {
 		return func() {
 			localNetwork.StopNodes()
@@ -107,5 +107,8 @@ func StartWalletExtension(config RunConfig) func() {
 			walletExtension.Shutdown()
 		}
 	}
-	return func() {}
+	return func() {
+		obscuroFacade.Shutdown()
+		walletExtension.Shutdown()
+	}
 }

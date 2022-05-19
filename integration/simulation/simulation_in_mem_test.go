@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -17,7 +19,7 @@ import (
 // Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
 // the CPU usage will be very high during the simulation which might result in inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
-	setupTestLog()
+	setupTestLog("in-mem")
 
 	simParams := params.SimParams{
 		NumberOfNodes:             7,
@@ -28,6 +30,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.32,
 		L2ToL1EfficiencyThreshold: 0.36,
 		TxHandler:                 ethereummock.NewMockTxHandler(),
+		StartPort:                 integration.StartPortSimulationInMem,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

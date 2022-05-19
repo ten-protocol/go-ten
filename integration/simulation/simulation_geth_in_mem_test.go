@@ -4,15 +4,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 )
 
-// TestGethMemObscuroEthMonteCarloSimulation runs the simulation against a private geth network using Clique (PoA)
-func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
-	setupTestLog()
+// TestInMemoryGethMonteCarloSimulation runs the simulation against a private geth network using Clique (PoA)
+func TestInMemoryGethMonteCarloSimulation(t *testing.T) {
+	setupTestLog("geth-in-mem")
 
 	numberOfNodes := 5
 
@@ -34,6 +36,7 @@ func TestGethMemObscuroEthMonteCarloSimulation(t *testing.T) {
 		L2EfficiencyThreshold:     0.5,
 		L2ToL1EfficiencyThreshold: 0.5, // one rollup every 2 blocks
 		EthWallets:                wallets,
+		StartPort:                 integration.StartPortSimulationGethInMem,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
