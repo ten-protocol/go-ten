@@ -47,6 +47,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	respJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, reqJSONMethodChainID, []string{})
 
@@ -64,6 +65,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	respBody := makeEthJSONReq(t, walletExtensionAddr, reqJSONMethodGetBalance, []string{dummyAccountAddr, "latest"})
 
@@ -89,6 +91,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -113,6 +116,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{dummyAccountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -140,6 +144,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	contractAddr := deployERC20Contract(t, walletExtensionAddr, privateKey)
 
@@ -171,6 +176,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -203,6 +209,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
+	waitForWalletExtension(t, walletExtensionAddr)
 
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
@@ -219,6 +226,19 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	if trimmedRespBody != expectedErr {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
+}
+
+// Waits for wallet extension to be ready. Times out after three seconds.
+func waitForWalletExtension(t *testing.T, walletExtensionAddr string) {
+	retries := 10
+	for i := 0; i < retries; i++ {
+		_, err := http.Get(walletExtensionAddr)
+		if err != nil {
+			return
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	t.Fatal("could not establish connection to wallet extension")
 }
 
 // Makes an Ethereum JSON RPC request and returns the response body.
