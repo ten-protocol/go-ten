@@ -48,7 +48,7 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 func getCurrentBlockHeadHeight(client *obscuroclient.Client) int64 {
 	method := obscuroclient.RPCGetCurrentBlockHead
 
-	var blockHead types.Header
+	var blockHead *types.Header
 	err := (*client).Call(&blockHead, method)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
