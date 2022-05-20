@@ -124,11 +124,10 @@ func (m *TransactionInjector) Start() {
 		return nil
 	})
 
-	// todo
-	//wg.Go(func() error {
-	//	m.issueInvalidWithdrawals()
-	//	return nil
-	//})
+	wg.Go(func() error {
+		m.issueInvalidWithdrawals()
+		return nil
+	})
 
 	_ = wg.Wait() // future proofing to return errors
 	m.fullyStoppedChan <- true
@@ -217,7 +216,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		for fromWallet.Address == to {
 			to = rndWallet(m.wallets).Address
 		}
-		tx := wallet_mock.NewObscuroTransferTx(fromWallet, to, obscurocommon.RndBtw(1, 500), m.l2NodeClients[0])
+		tx := NewObscuroTransferTx(fromWallet, to, obscurocommon.RndBtw(1, 500), m.l2NodeClients[0])
 		// fmt.Printf("Injected transfer tx: %d\n", obscurocommon.ShortHash(tx.Hash()))
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
@@ -256,7 +255,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
 		wallet := rndWallet(m.wallets)
-		tx := wallet_mock.NewObscuroWithdrawalTx(v, wallet, m.l2NodeClients[0])
+		tx := NewObscuroWithdrawalTx(v, wallet, m.l2NodeClients[0])
 		// fmt.Printf("Injected withdrawal tx: %d\n", obscurocommon.ShortHash(tx.Hash()))
 		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
@@ -277,8 +276,8 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 func (m *TransactionInjector) issueInvalidWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
 		fromWallet := rndWallet(m.wallets)
-		tx := wallet_mock.NewObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100), fromWallet, m.l2NodeClients[0])
-		signedTx := createInvalidSignature(tx, fromWallet, m.l2NodeClients[0])
+		tx := NewCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
+		signedTx := createInvalidSignature(tx, fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -290,7 +289,7 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 }
 
 // Uses one of three approaches to create an invalidly-signed transaction.
-func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet, client *obscuroclient.Client) *nodecommon.L2Tx {
+func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet) *nodecommon.L2Tx {
 	i := rand.Intn(3) //nolint:gosec
 	switch i {
 	case 0: // We sign the transaction with a bad signer.
@@ -304,10 +303,10 @@ func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet,
 
 	case 2: // We modify the transaction after signing.
 		// We create a new transaction, as we need access to the transaction's encapsulated transaction data.
-		newTx := wallet_mock.NewObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100), fromWallet, client)
+		newTx := NewCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
 		wallet_mock.SignTx(newTx, fromWallet.Key.PrivateKey)
 		// After signing the transaction, we create a new transaction based on the transaction data, breaking the signature.
-		return wallet_mock.NewObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100), fromWallet, client)
+		return NewCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
 	}
 	panic("Expected i to be in the range [0,2).")
 }
@@ -322,4 +321,39 @@ func (m *TransactionInjector) rndL1Node() ethclient.EthClient {
 
 func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
 	return m.l2NodeClients[rand.Intn(len(m.l2NodeClients))] //nolint:gosec
+}
+
+func NewObscuroTransferTx(from *wallet_mock.Wallet, dest common.Address, amount uint64, client *obscuroclient.Client) *nodecommon.L2Tx {
+	data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", dest, big.NewInt(int64(amount)))
+	if err != nil {
+		panic(err)
+	}
+	return newTx(data, from.NextNonce(client))
+}
+
+func NewObscuroWithdrawalTx(amount uint64, wallet *wallet_mock.Wallet, client *obscuroclient.Client) *nodecommon.L2Tx {
+	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
+	if err != nil {
+		panic(err)
+	}
+	return newTx(transferERC20data, wallet.NextNonce(client))
+}
+
+func NewCustomObscuroWithdrawalTx(amount uint64) *nodecommon.L2Tx {
+	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
+	if err != nil {
+		panic(err)
+	}
+	return newTx(transferERC20data, 1)
+}
+
+func newTx(data []byte, nonce uint64) *nodecommon.L2Tx {
+	return types.NewTx(&types.LegacyTx{
+		Nonce:    nonce,
+		Value:    common.Big0,
+		Gas:      1_000_000,
+		GasPrice: common.Big0,
+		Data:     data,
+		To:       &evm.Erc20ContractAddress,
+	})
 }

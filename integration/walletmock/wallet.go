@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -73,39 +72,4 @@ func SignTx(tx *nodecommon.L2Tx, privateKey *ecdsa.PrivateKey) *nodecommon.L2Tx 
 		panic(fmt.Errorf("could not sign transaction: %w", err))
 	}
 	return signedTx
-}
-
-func NewObscuroTransferTx(from *Wallet, dest common.Address, amount uint64, client *obscuroclient.Client) *nodecommon.L2Tx {
-	data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", dest, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
-	return newTx(from, data, client)
-}
-
-func NewObscuroDepositTx(amount uint64, to common.Address, erc20OwnerWallet *Wallet, client *obscuroclient.Client) *nodecommon.L2Tx {
-	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", to, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
-	return newTx(erc20OwnerWallet, transferERC20data, client)
-}
-
-func NewObscuroWithdrawalTx(amount uint64, wallet *Wallet, client *obscuroclient.Client) *nodecommon.L2Tx {
-	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
-	return newTx(wallet, transferERC20data, client)
-}
-
-func newTx(wallet *Wallet, data []byte, client *obscuroclient.Client) *nodecommon.L2Tx {
-	return types.NewTx(&types.LegacyTx{
-		Nonce:    wallet.NextNonce(client),
-		Value:    common.Big0,
-		Gas:      1_000_000,
-		GasPrice: common.Big0,
-		Data:     data,
-		To:       &evm.Erc20ContractAddress,
-	})
 }
