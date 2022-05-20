@@ -20,6 +20,9 @@ const (
 
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the enclave service's log file"
+
+	verifyBlocksName  = "verifyBlocks"
+	verifyBlocksUsage = "Whether to verify incoming blocks using the hardcoded L1 genesis.json config"
 )
 
 type EnclaveConfig struct {
@@ -28,6 +31,7 @@ type EnclaveConfig struct {
 	ContractAddress string
 	WriteToLogs     bool
 	LogPath         string
+	VerifyBlocks    bool
 }
 
 func DefaultEnclaveConfig() EnclaveConfig {
@@ -37,6 +41,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		ContractAddress: "",
 		WriteToLogs:     false,
 		LogPath:         "enclave_logs.txt",
+		VerifyBlocks:    false,
 	}
 }
 
@@ -48,6 +53,7 @@ func ParseCLIArgs() EnclaveConfig {
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
+	verifyBlocks := flag.Bool(verifyBlocksName, defaultConfig.VerifyBlocks, verifyBlocksUsage)
 
 	flag.Parse()
 
@@ -57,5 +63,6 @@ func ParseCLIArgs() EnclaveConfig {
 		ContractAddress: *contractAddress,
 		WriteToLogs:     *writeToLogs,
 		LogPath:         *logPath,
+		VerifyBlocks:    *verifyBlocks,
 	}
 }
