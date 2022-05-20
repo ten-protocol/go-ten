@@ -25,8 +25,7 @@ func RunEnclave(config EnclaveConfig) {
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
 	closeHandle, err := enclave.StartServer(config.Address, config.ChainID, nodeAddress, mgmtContractLib, erc20ContractLib, false, nil, nil)
 	if err != nil {
-		log.Error(err.Error())
-		panic(err)
+		log.Panic("could not start Obscuro enclave service. Cause: %s", err)
 	}
 	log.Info("Obscuro enclave service started.")
 	fmt.Println("Obscuro enclave service started.")
@@ -42,7 +41,7 @@ func SetLogs(writeToLogs bool, logPath string) {
 	if writeToLogs {
 		logFile, err = os.Create(logPath)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 		}
 	} else {
 		logFile = os.Stdout

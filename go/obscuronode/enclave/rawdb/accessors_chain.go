@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -50,11 +52,11 @@ func WriteHeader(db ethdb.KeyValueWriter, header *nodecommon.Header) {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
-		panic(err)
+		log.Panic("could not encode rollup header. Cause: %s", err)
 	}
 	key := headerKey(number, hash)
 	if err := db.Put(key, data); err != nil {
-		panic(err)
+		log.Panic("could not put header in DB. Cause: %s", err)
 	}
 }
 
@@ -63,7 +65,7 @@ func WriteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash, number uint64)
 	key := headerNumberKey(hash)
 	enc := encodeRollupNumber(number)
 	if err := db.Put(key, enc); err != nil {
-		panic(err)
+		log.Panic("could not put header number in DB. Cause: %s", err)
 	}
 }
 
@@ -75,7 +77,7 @@ func ReadHeader(db ethdb.KeyValueReader, hash common.Hash, number uint64) *nodec
 	}
 	header := new(nodecommon.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
-		panic(err)
+		log.Panic("could not decode rollup header. Cause: %s", err)
 	}
 	return header
 }
@@ -84,7 +86,7 @@ func ReadHeader(db ethdb.KeyValueReader, hash common.Hash, number uint64) *nodec
 func ReadHeaderRLP(db ethdb.KeyValueReader, hash common.Hash, number uint64) rlp.RawValue {
 	data, err := db.Get(headerKey(number, hash))
 	if err != nil {
-		panic(err)
+		log.Panic("could not retrieve block header. Cause: %s", err)
 	}
 	return data
 }
@@ -92,7 +94,7 @@ func ReadHeaderRLP(db ethdb.KeyValueReader, hash common.Hash, number uint64) rlp
 func WriteBody(db ethdb.KeyValueWriter, hash common.Hash, number uint64, body core.L2Txs) {
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {
-		panic(err)
+		log.Panic("could not encode L2 transactions. Cause: %s", err)
 	}
 	WriteBodyRLP(db, hash, number, data)
 }
@@ -105,7 +107,7 @@ func ReadBody(db ethdb.KeyValueReader, hash common.Hash, number uint64) core.L2T
 	}
 	body := new(core.L2Txs)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
-		panic(err)
+		log.Panic("could not decode L2 transactions. Cause: %s", err)
 	}
 	return *body
 }
@@ -113,7 +115,7 @@ func ReadBody(db ethdb.KeyValueReader, hash common.Hash, number uint64) core.L2T
 // WriteBodyRLP stores an RLP encoded block body into the database.
 func WriteBodyRLP(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rlp rlp.RawValue) {
 	if err := db.Put(rollupBodyKey(number, hash), rlp); err != nil {
-		panic(err)
+		log.Panic("could not put block body into DB. Cause: %s", err)
 	}
 }
 
@@ -121,7 +123,7 @@ func WriteBodyRLP(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rlp 
 func ReadBodyRLP(db ethdb.KeyValueReader, hash common.Hash, number uint64) rlp.RawValue {
 	data, err := db.Get(rollupBodyKey(number, hash))
 	if err != nil {
-		panic(err)
+		log.Panic("could not retrieve block body from DB. Cause: %s", err)
 	}
 	return data
 }
@@ -155,10 +157,10 @@ func ReadAllHashes(db ethdb.Iteratee, number uint64) []common.Hash {
 func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState) {
 	bytes, err := rlp.EncodeToBytes(bs)
 	if err != nil {
-		panic(err)
+		log.Panic("could not encode block state. Cause: %s", err)
 	}
 	if err := db.Put(blockStateKey(bs.Block), bytes); err != nil {
-		panic(err)
+		log.Panic("could not put block state in DB. Cause: %s", err)
 	}
 }
 
@@ -169,7 +171,7 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash common.Hash) *core.BlockState 
 	}
 	bs := new(core.BlockState)
 	if err := rlp.Decode(bytes.NewReader(data), bs); err != nil {
-		panic(err)
+		log.Panic("could not decode block state. Cause: %s", err)
 	}
 	return bs
 }

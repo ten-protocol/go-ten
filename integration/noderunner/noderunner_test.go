@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -61,13 +63,13 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	obscuroClient := obscuroclient.NewClient(common.BytesToAddress([]byte(hostConfig.NodeID)), clientServerAddr)
-	var result uint64
-	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHeadHeight)
+	var result types.Header
+	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !(result > 0) {
+	if result.Number.Uint64() == 0 {
 		t.Fatal("Zero blocks have been produced. Something is wrong.")
 	}
 }

@@ -35,8 +35,7 @@ func RunHost(config HostConfig) {
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), &contractAddr)
 	if err != nil {
-		log.Error(err.Error())
-		panic(err)
+		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
 
 	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
@@ -54,7 +53,7 @@ func RunHost(config HostConfig) {
 func SetLogs(logPath string) {
 	logFile, err := os.Create(logPath)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 	}
 	log.SetLog(logFile)
 }

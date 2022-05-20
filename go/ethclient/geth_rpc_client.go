@@ -41,7 +41,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, contractAddres
 func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 	blk, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
-		panic(err)
+		log.Panic("could not fetch head block. Cause: %s", err)
 	}
 	return blk
 }
@@ -60,7 +60,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
 		currentBlk, err = e.BlockByHash(currentBlk.ParentHash())
 		if err != nil {
-			panic(err)
+			log.Panic("could not fetch parent block with hash %s. Cause: %s", currentBlk.ParentHash().String(), err)
 		}
 		blocksBetween = append(blocksBetween, currentBlk)
 	}
@@ -79,7 +79,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 
 	resolvedBlock, err := e.BlockByHash(maybeAncestor)
 	if err != nil {
-		panic(err)
+		log.Panic("could not fetch parent block with hash %s. Cause: %s", maybeAncestor.String(), err)
 	}
 	if resolvedBlock == nil {
 		if resolvedBlock.Number().Int64() >= block.Number().Int64() {
@@ -89,7 +89,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 
 	p, err := e.BlockByHash(block.ParentHash())
 	if err != nil {
-		panic(err)
+		log.Panic("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err)
 	}
 	if p == nil {
 		return false
@@ -103,7 +103,7 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 
 	block, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
-		panic(err)
+		log.Panic("could not fetch head block. Cause: %s", err)
 	}
 	availBlocks = append(availBlocks, block)
 
@@ -115,7 +115,7 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 
 		block, err = e.client.BlockByHash(context.Background(), block.ParentHash())
 		if err != nil {
-			panic(err)
+			log.Panic("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err)
 		}
 
 		availBlocks = append(availBlocks, block)
@@ -143,7 +143,7 @@ func (e *gethRPCClient) BlockListener() chan *types.Header {
 	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown
 	_, err := e.client.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
-		panic(err)
+		log.Panic("could not subscribe for new head blocks. Cause: %s", err)
 	}
 
 	return ch

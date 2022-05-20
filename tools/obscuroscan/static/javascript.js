@@ -1,19 +1,34 @@
 const eventDomLoaded = "DOMContentLoaded";
-const idBlockHeadHeight = "blockHeadHeight";
-const pathBlockHeadHeight = "/blockheadheight/";
+const idBlockHead = "headBlock";
+const idHeadRollup = "headRollup";
+const pathHeadBlock = "/headblock/";
+const pathHeadRollup = "/headrollup/";
 
 const initialize = () => {
-    const statusArea = document.getElementById(idBlockHeadHeight);
+    const blockHeadArea = document.getElementById(idBlockHead);
+    const headRollupArea = document.getElementById(idHeadRollup);
 
     setInterval(async () => {
-        const blockHeadHeightResp = await fetch(pathBlockHeadHeight);
+        const headBlockResp = await fetch(pathHeadBlock);
 
-        if (blockHeadHeightResp.ok) {
-            statusArea.innerText = await blockHeadHeightResp.text();
+        if (headBlockResp.ok) {
+            const json = JSON.parse(await headBlockResp.text())
+            blockHeadArea.innerText = JSON.stringify(json, null, "\t");
         } else {
-            statusArea.innerText = "Failed to retrieve block head height."
+            blockHeadArea.innerText = "Failed to fetch head block."
         }
-    }, 2000);
+    }, 1000);
+
+    setInterval(async () => {
+        const headRollupResp = await fetch(pathHeadRollup);
+
+        if (headRollupResp.ok) {
+            const json = JSON.parse(await headRollupResp.text())
+            headRollupArea.innerText = JSON.stringify(json, null, "\t");
+        } else {
+            headRollupArea.innerText = "Failed to fetch head rollup."
+        }
+    }, 1000);
 }
 
 window.addEventListener(eventDomLoaded, initialize);

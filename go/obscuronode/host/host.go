@@ -409,7 +409,7 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 		// Request the round winner for the current head
 		winnerRollup, isWinner, err := a.EnclaveClient.RoundWinner(result.ProducedRollup.Header.ParentHash)
 		if err != nil {
-			panic(err)
+			log.Panic("could not determine round winner. Cause: %s", err)
 		}
 		if isWinner {
 			nodecommon.LogWithID(a.shortID, "Winner (b_%d) r_%d(%d).",
@@ -479,7 +479,7 @@ func (a *Node) requestSecret() {
 		case header := <-a.ethClient.BlockListener():
 			block, err := a.ethClient.BlockByHash(header.Hash())
 			if err != nil {
-				panic(err)
+				log.Panic("could not fetch block for hash %s. Cause: %s", header.Hash().String(), err)
 			}
 			for _, tx := range block.Transactions() {
 				t := a.mgmtContractLib.DecodeTx(tx)
@@ -547,11 +547,11 @@ func (a *Node) monitorBlocks() {
 		latestBlkHeader := <-listener
 		block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
 		if err != nil {
-			panic(err)
+			log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
 		}
 		blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
 		if err != nil {
-			panic(err)
+			log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
 		}
 
 		nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
