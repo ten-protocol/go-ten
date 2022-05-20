@@ -39,6 +39,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 	// gets the next nonce to use on the account
 	nonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
 	if err != nil {
+		log.Error(fmt.Sprintf("could not create Ethereum client. Cause: %s", err))
 		panic(err)
 	}
 
@@ -57,6 +58,7 @@ func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.
 func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 	blk, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not fetch head block. Cause: %s", err))
 		panic(err)
 	}
 	return blk
@@ -76,6 +78,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
 		currentBlk, err = e.FetchBlock(currentBlk.ParentHash())
 		if err != nil {
+			log.Error(fmt.Sprintf("could not fetch parent block with hash %s. Cause: %s", currentBlk.ParentHash().String(), err))
 			panic(err)
 		}
 		blocksBetween = append(blocksBetween, currentBlk)
@@ -95,6 +98,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 
 	resolvedBlock, err := e.FetchBlock(maybeAncestor)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not fetch parent block with hash %s. Cause: %s", maybeAncestor.String(), err))
 		panic(err)
 	}
 	if resolvedBlock == nil {
@@ -105,6 +109,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 
 	p, err := e.FetchBlock(block.ParentHash())
 	if err != nil {
+		log.Error(fmt.Sprintf("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err))
 		panic(err)
 	}
 	if p == nil {
@@ -119,6 +124,7 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 
 	block, err := e.client.BlockByNumber(context.Background(), nil)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not fetch head block. Cause: %s", err))
 		panic(err)
 	}
 	availBlocks = append(availBlocks, block)
@@ -131,6 +137,7 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 
 		block, err = e.client.BlockByHash(context.Background(), block.ParentHash())
 		if err != nil {
+			log.Error(fmt.Sprintf("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err))
 			panic(err)
 		}
 
@@ -149,6 +156,7 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 func (e *gethRPCClient) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
 	signedTx, err := e.wallet.SignTransaction(e.chainID, tx)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not sign transaction. Cause: %s", err))
 		panic(err)
 	}
 
@@ -162,11 +170,13 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
 	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.GetNonceAndIncrement())
 	if err != nil {
+		log.Error(fmt.Sprintf("could not pack transaction. Cause: %s", err))
 		panic(err)
 	}
 
 	_, err = e.SubmitTransaction(formattedTx)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not submit transaction. Cause: %s", err))
 		panic(err)
 	}
 }
@@ -176,6 +186,7 @@ func (e *gethRPCClient) BlockListener() chan *types.Header {
 	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown
 	_, err := e.client.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not subscribe for new head blocks. Cause: %s", err))
 		panic(err)
 	}
 

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/ethereum/go-ethereum/consensus/clique"
 
 	"github.com/ethereum/go-ethereum/consensus"
@@ -46,7 +48,8 @@ func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 
 	blockchain, err := core.NewBlockChain(db, cacheConfig, chainConfig, engine, vmConfig, shouldPreserve, &txLookupLimit)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain could not be created: %w", err))
+		log.Error(fmt.Sprintf("l1 blockchain could not be created. Cause: %s", err))
+		panic(err)
 	}
 	return blockchain
 }
@@ -54,11 +57,13 @@ func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 func createDataDir() string {
 	err := os.MkdirAll(dataDirRoot, 0o700)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain data directory could not be created: %w", err))
+		log.Error(fmt.Sprintf("l1 blockchain data directory could not be created. Cause: %s", err))
+		panic(err)
 	}
 	dataDir, err := os.MkdirTemp(dataDirRoot, "")
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain data directory could not be created: %w", err))
+		log.Error(fmt.Sprintf("l1 blockchain data directory could not be created. Cause: %s", err))
+		panic(err)
 	}
 
 	return dataDir
@@ -74,7 +79,8 @@ func createDB(dataDir string) ethdb.Database {
 
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace, readonly)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain database could not be created: %w", err))
+		log.Error(fmt.Sprintf("l1 blockchain database could not be created. Cause: %s", err))
+		panic(err)
 	}
 	return db
 }
@@ -97,7 +103,8 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 	genesis := &core.Genesis{}
 	err := genesis.UnmarshalJSON(genesisJSON)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain genesis JSON could not be parsed: %w", err))
+		log.Error(fmt.Sprintf("l1 blockchain genesis JSON could not be parsed. Cause: %s", err))
+		panic(err)
 	}
 
 	chainConfig, _, err := core.SetupGenesisBlockWithOverride(
@@ -107,7 +114,8 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 		nil, // Default.
 	)
 	if err != nil {
-		panic(fmt.Errorf("l1 blockchain genesis block could not be created: %w", err))
+		log.Error(fmt.Sprintf("l1 blockchain genesis block could not be created. Cause: %s", err))
+		panic(err)
 	}
 	return chainConfig
 }

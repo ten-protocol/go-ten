@@ -1,17 +1,17 @@
 package obscurocommon
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
-func EncodeBlockErr(b *types.Block) (EncodedBlock, error) {
-	return rlp.EncodeToBytes(b)
-}
-
 func EncodeBlock(b *types.Block) EncodedBlock {
-	encoded, err := EncodeBlockErr(b)
+	encoded, err := rlp.EncodeToBytes(b)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not encode block to bytes. Cause: %s", err))
 		panic(err)
 	}
 
@@ -21,13 +21,13 @@ func EncodeBlock(b *types.Block) EncodedBlock {
 func (eb EncodedBlock) Decode() (*types.Block, error) {
 	bl := types.Block{}
 	err := rlp.DecodeBytes(eb, &bl)
-
 	return &bl, err
 }
 
 func (eb EncodedBlock) DecodeBlock() *types.Block {
 	b, err := eb.Decode()
 	if err != nil {
+		log.Error(fmt.Sprintf("could not decode block from bytes. Cause: %s", err))
 		panic(err)
 	}
 

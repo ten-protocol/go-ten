@@ -34,7 +34,7 @@ func RunHost(config HostConfig) {
 	log.Info("Connecting to L1 network...")
 	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), nodeWallet, contractAddr)
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(fmt.Sprintf("could not create Ethereum client. Cause: %s", err))
 		panic(err)
 	}
 
@@ -53,7 +53,7 @@ func RunHost(config HostConfig) {
 func SetLogs(logPath string) {
 	logFile, err := os.Create(logPath)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 	}
 	log.SetLog(logFile)
 }

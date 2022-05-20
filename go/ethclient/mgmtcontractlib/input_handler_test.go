@@ -11,7 +11,7 @@ func TestSerialization(t *testing.T) {
 	rol := datagenerator.RandomRollup()
 
 	serializedRollup := EncodeToString(nodecommon.EncodeRollup(&rol))
-	deserializedRollup := DecodeFromString(serializedRollup)
+	deserializedRollup, _ := DecodeFromString(serializedRollup)
 	newRollup, err := nodecommon.DecodeRollup(deserializedRollup)
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestCompression(t *testing.T) {
 		t.Fatal(err)
 	}
 	serializedRollup := EncodeToString(compressedRollup)
-	deserializedRollup := DecodeFromString(serializedRollup)
+	deserializedRollup, _ := DecodeFromString(serializedRollup)
 	decompressedRollup, err := Decompress(deserializedRollup)
 	if err != nil {
 		t.Fatal(err)

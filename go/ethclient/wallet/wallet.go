@@ -2,8 +2,11 @@ package wallet
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"sync/atomic"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -33,10 +36,12 @@ type inMemoryWallet struct {
 func NewInMemoryWallet(pk string) Wallet {
 	privateKey, err := crypto.HexToECDSA(pk)
 	if err != nil {
+		log.Error(fmt.Sprintf("could not recover private key from hex. Cause: %s", err))
 		panic(err)
 	}
 	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
 	if !ok {
+		log.Error("error casting public key to ECDSA")
 		panic("error casting public key to ECDSA")
 	}
 

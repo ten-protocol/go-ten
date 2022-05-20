@@ -54,6 +54,7 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 		ethTx.Value = big.NewInt(int64(tx.Amount))
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.DepositMethod, tx.Dest)
 		if err != nil {
+			log.Error(fmt.Sprintf("could not pack transaction. Cause: %s", err))
 			panic(err)
 		}
 		ethTx.Data = data
@@ -63,15 +64,18 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 	case obscurocommon.RollupTx:
 		r, err := nodecommon.DecodeRollup(tx.Rollup)
 		if err != nil {
+			log.Error(fmt.Sprintf("could not decode rollup. Cause: %s", err))
 			panic(err)
 		}
 		zipped, err := Compress(tx.Rollup)
 		if err != nil {
+			log.Error(fmt.Sprintf("could not compress rollup. Cause: %s", err))
 			panic(err)
 		}
 		encRollupData := EncodeToString(zipped)
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.AddRollupMethod, encRollupData)
 		if err != nil {
+			log.Error(fmt.Sprintf("could not pack transaction. Cause: %s", err))
 			panic(err)
 		}
 
@@ -82,6 +86,7 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 	case obscurocommon.StoreSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.StoreSecretMethod, EncodeToString(tx.Secret))
 		if err != nil {
+			log.Error(fmt.Sprintf("could not pack transaction. Cause: %s", err))
 			panic(err)
 		}
 		ethTx.Data = data
@@ -89,6 +94,7 @@ func (h *mgmtContractTxHandler) PackTx(tx *obscurocommon.L1TxData, fromAddr comm
 	case obscurocommon.RequestSecretTx:
 		data, err := contracts.MgmtContractABIJSON.Pack(contracts.RequestSecretMethod)
 		if err != nil {
+			log.Error(fmt.Sprintf("could not pack transaction. Cause: %s", err))
 			panic(err)
 		}
 		ethTx.Data = data
@@ -107,6 +113,7 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 
 	method, err := contracts.MgmtContractABIJSON.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
+		log.Error(fmt.Sprintf("could not get contract method. Cause: %s", err))
 		panic(err)
 	}
 
@@ -120,10 +127,12 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 	switch method.Name {
 	case contracts.DepositMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
+			log.Error(fmt.Sprintf("could not unpack transaction. Cause: %s", err))
 			panic(err)
 		}
 		callData, found := contractCallData["dest"]
 		if !found {
+			log.Error("call data not found for dest")
 			panic("call data not found for dest")
 		}
 
@@ -133,28 +142,42 @@ func (h *mgmtContractTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L
 
 	case contracts.AddRollupMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
+			log.Error(fmt.Sprintf("could not unpack transaction. Cause: %s", err))
 			panic(err)
 		}
 		callData, found := contractCallData["rollupData"]
 		if !found {
+			log.Error("call data not found for rollupData")
 			panic("call data not found for rollupData")
 		}
-		zipped := DecodeFromString(callData.(string))
+		zipped, err := DecodeFromString(callData.(string))
+		if err != nil {
+			log.Error(fmt.Sprintf("could not decode call data. Cause: %s", err))
+			panic(err)
+		}
+
 		l1txData.Rollup, err = Decompress(zipped)
 		if err != nil {
+			log.Error(fmt.Sprintf("could not decompress rollup. Cause: %s", err))
 			panic(err)
 		}
 		l1txData.TxType = obscurocommon.RollupTx
 
 	case contracts.StoreSecretMethod:
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
+			log.Error(fmt.Sprintf("could not unpack transaction. Cause: %s", err))
 			panic(err)
 		}
 		callData, found := contractCallData["inputSecret"]
 		if !found {
+			log.Error("call data not found for inputSecret")
 			panic("call data not found for inputSecret")
 		}
-		l1txData.Secret = DecodeFromString(callData.(string))
+		l1txData.Secret, err = DecodeFromString(callData.(string))
+		if err != nil {
+			log.Error(fmt.Sprintf("could not decode call data. Cause: %s", err))
+			panic(err)
+		}
 		l1txData.TxType = obscurocommon.StoreSecretTx
 
 	case contracts.RequestSecretMethod:

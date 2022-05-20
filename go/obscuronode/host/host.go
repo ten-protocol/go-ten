@@ -408,6 +408,7 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 		// Request the round winner for the current head
 		winnerRollup, isWinner, err := a.EnclaveClient.RoundWinner(result.ProducedRollup.Header.ParentHash)
 		if err != nil {
+			log.Error(fmt.Sprintf("could not determine round winner. Cause: %s", err))
 			panic(err)
 		}
 		if isWinner {
@@ -467,6 +468,7 @@ func (a *Node) requestSecret() {
 		case header := <-a.ethClient.BlockListener():
 			block, err := a.ethClient.FetchBlock(header.Hash())
 			if err != nil {
+				log.Error(fmt.Sprintf("could not fetch block for hash %s. Cause: %s", header.Hash().String(), err))
 				panic(err)
 			}
 			for _, tx := range block.Transactions() {
@@ -524,10 +526,12 @@ func (a *Node) monitorBlocks() {
 		latestBlkHeader := <-listener
 		block, err := a.ethClient.FetchBlock(latestBlkHeader.Hash())
 		if err != nil {
+			log.Error(fmt.Sprintf("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err))
 			panic(err)
 		}
 		blockParent, err := a.ethClient.FetchBlock(block.ParentHash())
 		if err != nil {
+			log.Error(fmt.Sprintf("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err))
 			panic(err)
 		}
 

@@ -3,6 +3,7 @@ package enclave
 import (
 	"encoding/binary"
 	"fmt"
+	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -30,7 +31,8 @@ func executeTransactions(txs []nodecommon.L2Tx, s vm.StateDB, header *nodecommon
 func executeTx(s vm.StateDB, tx nodecommon.L2Tx, header *nodecommon.Header) {
 	// snap := s.Snapshot()
 	// log.Log(fmt.Sprintf("snap: %d", snap))
-	switch core.TxData(&tx).Type {
+	txType := core.TxData(&tx).Type
+	switch txType {
 	case core.TransferTx:
 		executeTransfer(s, tx)
 	case core.WithdrawalTx:
@@ -38,7 +40,9 @@ func executeTx(s vm.StateDB, tx nodecommon.L2Tx, header *nodecommon.Header) {
 	case core.DepositTx:
 		executeDeposit(s, tx)
 	default:
-		panic("Invalid transaction type")
+		msg := fmt.Sprintf("attempted to execute unrecognised transaction type %s", reflect.TypeOf(txType))
+		log.Error(msg)
+		panic(msg)
 	}
 }
 
@@ -77,6 +81,7 @@ func withdrawals(s vm.StateDB, _ common.Hash) []obscurocommon.TxHash {
 		return true
 	})
 	if err != nil {
+		log.Error(fmt.Sprintf("could not retrieve withdrawals. Cause: %s", err))
 		panic(err)
 	}
 	// fmt.Printf(">>>withd %d\n", len(withdrawalTxs))
