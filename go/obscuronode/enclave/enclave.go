@@ -22,8 +22,6 @@ import (
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
 
-const ChainID = 777 // The unique ID for the Obscuro chain. Required for Geth signing.
-
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -51,6 +49,7 @@ type enclaveImpl struct {
 
 	// Toggles the speculative execution background process
 	speculativeExecutionEnabled bool
+	chainID                     int64 // The unique ID for the Obscuro chain. Required for Geth signing.
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -241,7 +240,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	decryptedTx := obscurocore.DecryptTx(tx)
-	err := verifySignature(&decryptedTx)
+	err := verifySignature(e.chainID, &decryptedTx)
 	if err != nil {
 		return err
 	}
@@ -253,8 +252,8 @@ func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 }
 
 // Checks that the L2Tx has a valid signature.
-func verifySignature(decryptedTx *nodecommon.L2Tx) error {
-	signer := types.NewLondonSigner(big.NewInt(ChainID))
+func verifySignature(chainID int64, decryptedTx *nodecommon.L2Tx) error {
+	signer := types.NewLondonSigner(big.NewInt(chainID))
 	_, err := types.Sender(signer, decryptedTx)
 	return err
 }
@@ -519,6 +518,7 @@ type processingEnvironment struct {
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(
 	nodeID common.Address,
+	chainID int64,
 	mining bool,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
@@ -557,5 +557,6 @@ func NewEnclave(
 		mgmtContractLib:             mgmtContractLib,
 		erc20ContractLib:            erc20ContractLib,
 		speculativeExecutionEnabled: false, // TODO - reenable
+		chainID:                     chainID,
 	}
 }

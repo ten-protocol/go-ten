@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
@@ -21,7 +23,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -112,7 +113,7 @@ func (m *TransactionInjector) Start() {
 		if err != nil {
 			panic(err)
 		}
-		err = m.rndL1Node().IssueTransaction(signedTx)
+		err = m.rndL1Node().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
@@ -249,7 +250,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 		if err != nil {
 			panic(err)
 		}
-		err = m.rndL1Node().IssueTransaction(signedTx)
+		err = m.rndL1Node().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
@@ -281,14 +282,14 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 			panic(err)
 		}
 
-		err = node.IssueTransaction(signedTx)
+		err = node.SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
 
 		var receipt *types.Receipt
 		for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-			receipt, err = node.FetchTxReceipt(signedTx.Hash())
+			receipt, err = node.TransactionReceipt(signedTx.Hash())
 			if err == nil && receipt != nil {
 				break
 			}
@@ -354,7 +355,7 @@ func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet)
 	i := rand.Intn(3) //nolint:gosec
 	switch i {
 	case 0: // We sign the transaction with a bad signer.
-		incorrectChainID := int64(enclave.ChainID + 1)
+		incorrectChainID := int64(integration.ChainID + 1)
 		signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
 		signedTx, _ := types.SignTx(tx, signer, fromWallet.Key.PrivateKey)
 		return signedTx

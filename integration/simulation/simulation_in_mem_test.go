@@ -6,11 +6,10 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
@@ -38,7 +37,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration * 2 / 7
 
 	for i := 0; i < simParams.NumberOfNodes+1; i++ {
-		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet(simChainID))
+		simParams.EthWallets = append(simParams.EthWallets, datagenerator.RandomWallet(integration.ChainID))
 	}
 
 	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), &simParams)

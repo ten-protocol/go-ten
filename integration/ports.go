@@ -12,3 +12,5 @@ var (
 	StartPortSimulationAzureEnclave        = 36000
 	StartPortSimulationSocket              = 37000
 )
+
+const ChainID = 1337

@@ -12,6 +12,9 @@ const (
 	nodeIDName  = "nodeID"
 	nodeIDUsage = "A integer representing the 20 bytes of the node's address (default 1)"
 
+	chainIDName  = "chainID"
+	chainIDUsage = "A integer representing the unique chain id the enclave will connect to (default 1337)"
+
 	addressName  = "address"
 	addressUsage = "The address on which to serve the Obscuro enclave service"
 
@@ -30,6 +33,7 @@ const (
 
 type EnclaveConfig struct {
 	NodeID             int64
+	ChainID            int64
 	Address            string
 	ContractAddress    string
 	WriteToLogs        bool
@@ -40,6 +44,7 @@ type EnclaveConfig struct {
 func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
 		NodeID:             1,
+		ChainID:            1337,
 		Address:            "localhost:11000",
 		ContractAddress:    "",
 		WriteToLogs:        false,
@@ -52,6 +57,7 @@ func ParseCLIArgs() EnclaveConfig {
 	defaultConfig := DefaultEnclaveConfig()
 
 	nodeID := flag.Int64(nodeIDName, defaultConfig.NodeID, nodeIDUsage)
+	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
 	port := flag.String(addressName, defaultConfig.Address, addressUsage)
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
@@ -75,5 +81,6 @@ func ParseCLIArgs() EnclaveConfig {
 		ContractAddress: *contractAddress,
 		WriteToLogs:     *writeToLogs,
 		LogPath:         *logPath,
+		ChainID:         *chainID,
 	}
 }

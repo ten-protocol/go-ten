@@ -33,6 +33,7 @@ type server struct {
 // TODO - Use a genesis JSON hardcoded in a config file bundled in the signed SGX image instead.
 func StartServer(
 	address string,
+	chainID int64,
 	nodeID common.Address,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
@@ -46,7 +47,7 @@ func StartServer(
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, true, mgmtContractLib, erc20ContractLib, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(nodeID, chainID, true, mgmtContractLib, erc20ContractLib, validateBlocks, genesisJSON, collector),
 		rpcServer:   grpc.NewServer(),
 		nodeShortID: obscurocommon.ShortAddress(nodeID),
 	}

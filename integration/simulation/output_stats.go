@@ -49,7 +49,7 @@ func (o *OutputStats) countCanonicalChain() {
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && headBlock.Hash() != obscurocommon.GenesisHash; headBlock, _ = l1Node.FetchBlock(headBlock.ParentHash()) {
+	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && headBlock.Hash() != obscurocommon.GenesisHash; headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
 		for _, tx := range headBlock.Transactions() {
 			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 			if t == nil {

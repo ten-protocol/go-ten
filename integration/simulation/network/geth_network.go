@@ -156,14 +156,14 @@ func deployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractB
 		panic(err)
 	}
 
-	err = workerClient.IssueTransaction(signedTx)
+	err = workerClient.SendTransaction(signedTx)
 	if err != nil {
 		panic(err)
 	}
 
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
-		receipt, err = workerClient.FetchTxReceipt(signedTx.Hash())
+		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				panic("unable to deploy contract")

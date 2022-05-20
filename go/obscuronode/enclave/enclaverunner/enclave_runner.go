@@ -23,7 +23,7 @@ func RunEnclave(config EnclaveConfig) {
 
 	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
-	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, mgmtContractLib, erc20ContractLib, false, nil, nil)
+	closeHandle, err := enclave.StartServer(config.Address, config.ChainID, nodeAddress, mgmtContractLib, erc20ContractLib, false, nil, nil)
 	if err != nil {
 		log.Error(err.Error())
 		panic(err)

@@ -58,7 +58,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	var err error
 
 	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
-		currentBlk, err = e.FetchBlock(currentBlk.ParentHash())
+		currentBlk, err = e.BlockByHash(currentBlk.ParentHash())
 		if err != nil {
 			panic(err)
 		}
@@ -77,7 +77,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 		return false
 	}
 
-	resolvedBlock, err := e.FetchBlock(maybeAncestor)
+	resolvedBlock, err := e.BlockByHash(maybeAncestor)
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +87,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 		}
 	}
 
-	p, err := e.FetchBlock(block.ParentHash())
+	p, err := e.BlockByHash(block.ParentHash())
 	if err != nil {
 		panic(err)
 	}
@@ -130,11 +130,11 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
-func (e *gethRPCClient) IssueTransaction(signedTx *types.Transaction) error {
+func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
 	return e.client.SendTransaction(context.Background(), signedTx)
 }
 
-func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
+func (e *gethRPCClient) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
 	return e.client.TransactionReceipt(context.Background(), hash)
 }
 
@@ -149,11 +149,11 @@ func (e *gethRPCClient) BlockListener() chan *types.Header {
 	return ch
 }
 
-func (e *gethRPCClient) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
 	return e.client.BlockByNumber(context.Background(), n)
 }
 
-func (e *gethRPCClient) FetchBlock(hash common.Hash) (*types.Block, error) {
+func (e *gethRPCClient) BlockByHash(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
 }
 

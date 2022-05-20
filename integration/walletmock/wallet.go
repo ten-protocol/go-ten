@@ -7,17 +7,17 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
 )
 
@@ -83,8 +83,8 @@ func NewL2Tx(data core.L2TxData) *nodecommon.L2Tx {
 }
 
 // SignTx returns a copy of the enclave.L2Tx signed with the provided ecdsa.PrivateKey
-func SignTx(tx *nodecommon.L2Tx, privateKey *ecdsa.PrivateKey) *nodecommon.L2Tx {
-	signer := types.NewLondonSigner(big.NewInt(enclave.ChainID))
+func SignTx(tx *nodecommon.L2Tx, privateKey *ecdsa.PrivateKey) *types.Transaction {
+	signer := types.NewLondonSigner(big.NewInt(integration.ChainID))
 	signedTx, err := types.SignTx(tx, signer, privateKey)
 	if err != nil {
 		panic(fmt.Errorf("could not sign transaction: %w", err))

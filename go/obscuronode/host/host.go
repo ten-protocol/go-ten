@@ -461,7 +461,7 @@ func (a *Node) broadcastTx(tx types.TxData) {
 		panic(err)
 	}
 
-	err = a.ethClient.IssueTransaction(signedTx)
+	err = a.ethClient.SendTransaction(signedTx)
 	if err != nil {
 		panic(err)
 	}
@@ -477,7 +477,7 @@ func (a *Node) requestSecret() {
 	for {
 		select {
 		case header := <-a.ethClient.BlockListener():
-			block, err := a.ethClient.FetchBlock(header.Hash())
+			block, err := a.ethClient.BlockByHash(header.Hash())
 			if err != nil {
 				panic(err)
 			}
@@ -545,11 +545,11 @@ func (a *Node) monitorBlocks() {
 	nodecommon.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
 	for {
 		latestBlkHeader := <-listener
-		block, err := a.ethClient.FetchBlock(latestBlkHeader.Hash())
+		block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
 		if err != nil {
 			panic(err)
 		}
-		blockParent, err := a.ethClient.FetchBlock(block.ParentHash())
+		blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
 		if err != nil {
 			panic(err)
 		}

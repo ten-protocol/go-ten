@@ -25,7 +25,7 @@ func TestGethSimulation(t *testing.T) {
 	// create one extra wallet as the worker wallet
 	wallets := make([]wallet.Wallet, numberOfNodes+1)
 	for i := 0; i < numberOfNodes+1; i++ {
-		wallets[i] = datagenerator.RandomWallet(simChainID)
+		wallets[i] = datagenerator.RandomWallet(integration.ChainID)
 	}
 
 	// The last wallet as the worker wallet ( to deposit and inject transactions )

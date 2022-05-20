@@ -12,10 +12,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
-const (
-	simChainID = 1337
-	testLogs   = "../.build/simulations/"
-)
+const testLogs = "../.build/simulations/"
 
 func setupTestLog(simType string) *os.File {
 	// create a folder specific for the test

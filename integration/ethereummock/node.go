@@ -64,12 +64,12 @@ type Node struct {
 	headOutCh chan *types.Block
 }
 
-func (m *Node) IssueTransaction(tx *types.Transaction) error {
+func (m *Node) SendTransaction(tx *types.Transaction) error {
 	m.Network.BroadcastTx(tx)
 	return nil
 }
 
-func (m *Node) FetchTxReceipt(_ common.Hash) (*types.Receipt, error) {
+func (m *Node) TransactionReceipt(_ common.Hash) (*types.Receipt, error) {
 	panic("method should never be called in this mock")
 }
 
@@ -78,7 +78,7 @@ func (m *Node) BlockListener() chan *types.Header {
 	return make(chan *types.Header)
 }
 
-func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	if n.Int64() == 0 {
 		return obscurocommon.GenesisBlock, nil
 	}
@@ -97,7 +97,7 @@ func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 	return nil, nil // nolint:nilnil
 }
 
-func (m *Node) FetchBlock(id common.Hash) (*types.Block, error) {
+func (m *Node) BlockByHash(id common.Hash) (*types.Block, error) {
 	blk, f := m.Resolver.FetchBlock(id)
 	if !f {
 		return nil, fmt.Errorf("blk not found")

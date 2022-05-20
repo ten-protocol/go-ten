@@ -11,21 +11,17 @@ import (
 // EthClient defines the interface for RPC communications with the ethereum nodes
 // TODO Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
 type EthClient interface {
-	FetchBlock(id common.Hash) (*types.Block, error)     // retrieves a block
-	FetchBlockByNumber(n *big.Int) (*types.Block, error) // retrieves a block given a number - returns head block if n is nil
-	FetchHeadBlock() *types.Block                        // retrieves the block at head height
+	BlockByHash(id common.Hash) (*types.Block, error)            // retrieves a block given a hash
+	BlockByNumber(n *big.Int) (*types.Block, error)              // retrieves a block given a number - returns head block if n is nil
+	SendTransaction(signedTx *types.Transaction) error           // issues an ethereum transaction (expects signed tx)
+	TransactionReceipt(hash common.Hash) (*types.Receipt, error) // fetches the ethereum transaction receipt
 
-	Info() Info // retrieves the node Info
-
-	// BlocksBetween returns the blocks between two blocks
-	BlocksBetween(block *types.Block, head *types.Block) []*types.Block
-	// IsBlockAncestor checks if the node recognizes a block like the ancestor
-	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool
-
-	RPCBlockchainFeed() []*types.Block                       // returns all blocks from genesis to head
-	BlockListener() chan *types.Header                       // subscribes to new blocks and returns a listener with the blocks heads
-	IssueTransaction(signedTx *types.Transaction) error      // issues an ethereum transaction (expects signed tx)
-	FetchTxReceipt(hash common.Hash) (*types.Receipt, error) // fetches the ethereum transaction receipt
+	Info() Info                                                              // retrieves the node Info
+	FetchHeadBlock() *types.Block                                            // retrieves the block at head height
+	BlocksBetween(block *types.Block, head *types.Block) []*types.Block      // returns the blocks between two blocks
+	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool // returns if the node considers a block the ancestor
+	RPCBlockchainFeed() []*types.Block                                       // returns all blocks from genesis to head
+	BlockListener() chan *types.Header                                       // subscribes to new blocks and returns a listener with the blocks heads
 
 	Stop() // tries to cleanly stop the client and release any resources
 }

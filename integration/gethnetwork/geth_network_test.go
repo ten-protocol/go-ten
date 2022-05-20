@@ -114,7 +114,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 		Value:    big.NewInt(100),
 	}
 	signedTx, err := w.SignTransaction(tx)
-	err = ethClient.IssueTransaction(signedTx)
+	err = ethClient.SendTransaction(signedTx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	// make sure it's mined into a block within an acceptable time
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-		receipt, err = ethClient.FetchTxReceipt(signedTx.Hash())
+		receipt, err = ethClient.TransactionReceipt(signedTx.Hash())
 		if err == nil {
 			break
 		}

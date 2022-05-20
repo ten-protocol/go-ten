@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -47,7 +49,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 		// create a remote enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+100+i)
-		_, err := enclave.StartServer(enclaveAddr, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, nil, stats)
+		_, err := enclave.StartServer(enclaveAddr, integration.ChainID, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}
