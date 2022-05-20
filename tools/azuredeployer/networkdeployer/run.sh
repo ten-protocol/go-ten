@@ -3,7 +3,7 @@
 export PATH=$PATH:/usr/local/go/bin
 sudo systemctl enable --now docker
 
-rm ./run_logs.txt
+rm -f ./run_logs.txt
 touch ./run_logs.txt
 
 obscuro-playground/integration/gethnetwork/main/geth --numNodes=2 --prefundedAddrs=0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf,0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF &>> ./run_logs.txt &
