@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net"
 	"sync/atomic"
@@ -64,8 +63,7 @@ func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.OurAddress)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not listen for P2P connections on %s. Cause: %s", p.OurAddress, err))
-		panic(err)
+		log.Panic("could not listen for P2P connections on %s. Cause: %s", p.OurAddress, err)
 	}
 
 	nodecommon.LogWithID(p.nodeID, "Start listening on port: %s", p.OurAddress)
@@ -100,8 +98,7 @@ func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
-				log.Error(fmt.Sprintf("host could not handle P2P connection: %s", err))
-				panic(err)
+				log.Panic("host could not handle P2P connection: %s", err)
 			}
 			return
 		}
@@ -157,8 +154,7 @@ func (p *p2pImpl) broadcast(msgType Type, bytes []byte) {
 	msg := Message{Type: msgType, MsgContents: bytes}
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not encode message. Cause: %s", err))
-		panic(err)
+		log.Panic("could not encode message. Cause: %s", err)
 	}
 
 	for _, address := range p.PeerAddresses {

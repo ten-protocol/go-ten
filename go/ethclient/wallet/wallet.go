@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"crypto/ecdsa"
-	"fmt"
 	"math/big"
 	"sync/atomic"
 
@@ -36,13 +35,11 @@ type inMemoryWallet struct {
 func NewInMemoryWallet(pk string) Wallet {
 	privateKey, err := crypto.HexToECDSA(pk)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not recover private key from hex. Cause: %s", err))
-		panic(err)
+		log.Panic("could not recover private key from hex. Cause: %s", err)
 	}
 	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
 	if !ok {
-		log.Error("error casting public key to ECDSA")
-		panic("error casting public key to ECDSA")
+		log.Panic("error casting public key to ECDSA")
 	}
 
 	return &inMemoryWallet{

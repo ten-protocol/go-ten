@@ -24,8 +24,7 @@ func RunEnclave(config EnclaveConfig) {
 	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
 	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, nil, nil)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not start Obscuro enclave service. Cause: %s", err))
-		panic(err)
+		log.Panic("could not start Obscuro enclave service. Cause: %s", err)
 	}
 	log.Info("Obscuro enclave service started.")
 	fmt.Println("Obscuro enclave service started.")

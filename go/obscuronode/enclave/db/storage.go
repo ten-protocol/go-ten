@@ -1,8 +1,6 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -54,8 +52,7 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	batch := s.db.NewBatch()
 	obscurorawdb.WriteRollup(batch, rollup)
 	if err := batch.Write(); err != nil {
-		log.Error(fmt.Sprintf("could not write rollup to storage. Cause: %s", err))
-		panic(err)
+		log.Panic("could not write rollup to storage. Cause: %s", err)
 	}
 }
 
@@ -203,9 +200,7 @@ func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	v, f := s.FetchBlock(r.Header.L1Proof)
 	if !f {
-		msg := "could not find proof for this rollup"
-		log.Error(msg)
-		panic(msg)
+		log.Panic("could not find proof for this rollup")
 	}
 	return v
 }
@@ -220,9 +215,7 @@ func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.Bloc
 
 func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup) {
 	if state.Block != hash {
-		msg := "failed sanity check: `state.Block.Hash() != hash`"
-		log.Error(msg)
-		panic(msg)
+		log.Panic("failed sanity check: `state.Block.Hash() != hash`")
 	}
 
 	if state.FoundNewRollup {
@@ -235,15 +228,12 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.B
 func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB {
 	rollup, f := s.FetchRollup(hash)
 	if !f {
-		msg := fmt.Sprintf("could not retrieve rollup for hash %s", hash.String())
-		log.Error(msg)
-		panic(msg)
+		log.Panic("could not retrieve rollup for hash %s", hash.String())
 	}
 	// todo - snapshots?
 	statedb, err := state.New(rollup.Header.State, s.stateDB, nil)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not create state DB. Cause: %s", err))
-		panic(err)
+		log.Panic("could not create state DB. Cause: %s", err)
 	}
 	return statedb
 }
@@ -255,9 +245,7 @@ func (s *storageImpl) GenesisStateDB() *state.StateDB {
 func (s *storageImpl) FetchHeadState() *core.BlockState {
 	h := rawdb.ReadHeadHeaderHash(s.db)
 	if (h == common.Hash{}) {
-		msg := "could not read head header hash from storage"
-		log.Error(msg)
-		panic(msg)
+		log.Panic("could not read head header hash from storage")
 	}
 	return obscurorawdb.ReadBlockState(s.db, h)
 }

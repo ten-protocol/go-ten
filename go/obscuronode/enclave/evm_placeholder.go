@@ -40,9 +40,7 @@ func executeTx(s vm.StateDB, tx nodecommon.L2Tx, header *nodecommon.Header) {
 	case core.DepositTx:
 		executeDeposit(s, tx)
 	default:
-		msg := fmt.Sprintf("attempted to execute unrecognised transaction type %s", reflect.TypeOf(txType))
-		log.Error(msg)
-		panic(msg)
+		log.Panic("attempted to execute unrecognised transaction type %s", reflect.TypeOf(txType))
 	}
 }
 
@@ -81,8 +79,7 @@ func withdrawals(s vm.StateDB, _ common.Hash) []obscurocommon.TxHash {
 		return true
 	})
 	if err != nil {
-		log.Error(fmt.Sprintf("could not retrieve withdrawals. Cause: %s", err))
-		panic(err)
+		log.Panic("could not retrieve withdrawals. Cause: %s", err)
 	}
 	// fmt.Printf(">>>withd %d\n", len(withdrawalTxs))
 	return withdrawalTxs

@@ -1,8 +1,6 @@
 package nodecommon
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -11,8 +9,7 @@ import (
 func EncodeRollup(r *Rollup) obscurocommon.EncodedRollup {
 	encoded, err := rlp.EncodeToBytes(r)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not encode rollup. Cause: %s", err))
-		panic(err)
+		log.Panic("could not encode rollup. Cause: %s", err)
 	}
 
 	return encoded
@@ -28,8 +25,7 @@ func DecodeRollup(encoded obscurocommon.EncodedRollup) (*Rollup, error) {
 func DecodeRollupOrPanic(rollup obscurocommon.EncodedRollup) *Rollup {
 	r, err := DecodeRollup(rollup)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not decode rollup. Cause: %s", err))
-		panic(err)
+		log.Panic("could not decode rollup. Cause: %s", err)
 	}
 
 	return r

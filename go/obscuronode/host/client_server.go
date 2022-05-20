@@ -1,7 +1,6 @@
 package host
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -26,15 +25,11 @@ type clientServerImpl struct {
 func NewClientServer(address string, host *Node) ClientServer {
 	hostAndPort := strings.Split(address, ":")
 	if len(hostAndPort) != 2 {
-		msg := fmt.Sprintf("client server expected address in the form <host>:<port>, but received %s", address)
-		log.Error(msg)
-		panic(msg)
+		log.Panic("client server expected address in the form <host>:<port>, but received %s", address)
 	}
 	port, err := strconv.Atoi(hostAndPort[1])
 	if err != nil {
-		msg := fmt.Sprintf("client server port %s could not be converted to an integer", hostAndPort[1])
-		log.Error(msg)
-		panic(msg)
+		log.Panic("client server port %s could not be converted to an integer", hostAndPort[1])
 	}
 
 	nodeConfig := node.Config{
@@ -44,8 +39,7 @@ func NewClientServer(address string, host *Node) ClientServer {
 	}
 	clientServerNode, err := node.New(&nodeConfig)
 	if err != nil {
-		log.Error(fmt.Sprintf("could not create new client server. Cause: %s", err))
-		panic(err)
+		log.Panic("could not create new client server. Cause: %s", err)
 	}
 
 	rpcAPIs := []rpc.API{
@@ -63,8 +57,7 @@ func NewClientServer(address string, host *Node) ClientServer {
 
 func (s clientServerImpl) Start() {
 	if err := s.node.Start(); err != nil {
-		log.Error(fmt.Sprintf("could not start node client server. Cause: %s", err))
-		panic(err)
+		log.Panic("could not start node client server. Cause: %s", err)
 	}
 }
 

@@ -1,8 +1,6 @@
 package core
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -36,9 +34,7 @@ func TxData(tx *nodecommon.L2Tx) L2TxData {
 
 	err := rlp.DecodeBytes(tx.Data(), &data)
 	if err != nil {
-		// TODO - Surface this error properly.
-		log.Error(fmt.Sprintf("could not decode L2 transaction. Cause: %s", err))
-		panic(err)
+		log.Panic("could not decode L2 transaction. Cause: %s", err)
 	}
 
 	return data
