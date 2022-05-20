@@ -27,24 +27,28 @@ type Wallet struct {
 	Key keystore.Key
 }
 
-func New() Wallet {
+func NewFromPk(pk *ecdsa.PrivateKey) Wallet {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		panic(fmt.Sprintf("Could not create random uuid: %v", err))
 	}
 
+	key := keystore.Key{
+		Id:         id,
+		Address:    crypto.PubkeyToAddress(pk.PublicKey),
+		PrivateKey: pk,
+	}
+
+	return Wallet{Address: key.Address, Key: key}
+}
+
+func New() Wallet {
 	privateKeyECDSA, err := crypto.GenerateKey()
 	if err != nil {
 		panic(fmt.Sprintf("Could not generate keypair for wallet: %v", err))
 	}
 
-	key := keystore.Key{
-		Id:         id,
-		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
-		PrivateKey: privateKeyECDSA,
-	}
-
-	return Wallet{Address: key.Address, Key: key}
+	return NewFromPk(privateKeyECDSA)
 }
 
 // NewL2Transfer creates an enclave.L2Tx of type enclave.TransferTx

@@ -98,7 +98,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 			stats,
 			true,
 			n.gethNetwork.GenesisJSON,
-			params.EthWallets[i],
+			params.NodeEthWallets[i],
 		)
 		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
 

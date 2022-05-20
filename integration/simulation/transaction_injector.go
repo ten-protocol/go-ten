@@ -29,14 +29,14 @@ import (
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
-var txTimeout = 30 * time.Second // how long we should wait for a tx related operation
-
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
 	// settings
 	avgBlockDuration time.Duration
 	stats            *stats2.Stats
-	wallets          []wallet_mock.Wallet
+
+	obsWallets []wallet_mock.Wallet
+	ethWallets []wallet.Wallet
 
 	l1Nodes       []ethclient.EthClient
 	l2NodeClients []*obscuroclient.Client
@@ -50,47 +50,45 @@ type TransactionInjector struct {
 	interruptRun     *int32
 	fullyStoppedChan chan bool
 
-	ethWallet         wallet.Wallet
 	erc20ContractAddr *common.Address
 	mgmtContractAddr  *common.Address
 	mgmtContractLib   mgmtcontractlib.MgmtContractLib
 	erc20ContractLib  erc20contractlib.ERC20ContractLib
 }
 
-// NewTransactionInjector returns a transaction manager with a given number of wallets
+// NewTransactionInjector returns a transaction manager with a given number of obsWallets
 // todo Add methods that generate deterministic scenarios
 func NewTransactionInjector(
-	numberWallets int,
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
 	l1Nodes []ethclient.EthClient,
-	ethWallet wallet.Wallet,
+	ethWallets []wallet.Wallet,
 	mgmtContractAddr *common.Address,
 	erc20ContractAddr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
-	// create a bunch of wallets
-	wallets := make([]wallet_mock.Wallet, numberWallets)
-	for i := 0; i < numberWallets; i++ {
-		wallets[i] = wallet_mock.New()
+	// convert the eth wallets into obs wallets
+	wallets := make([]wallet_mock.Wallet, len(ethWallets))
+	for i := 0; i < len(ethWallets); i++ {
+		wallets[i] = wallet_mock.NewFromPk(ethWallets[i].PK())
 	}
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		wallets:           wallets,
+		obsWallets:        wallets,
 		avgBlockDuration:  avgBlockDuration,
 		stats:             stats,
 		l1Nodes:           l1Nodes,
 		l2NodeClients:     l2NodeClients,
 		interruptRun:      &interrupt,
 		fullyStoppedChan:  make(chan bool),
-		ethWallet:         ethWallet,
 		erc20ContractAddr: erc20ContractAddr,
 		mgmtContractAddr:  mgmtContractAddr,
 		mgmtContractLib:   mgmtContractLib,
 		erc20ContractLib:  erc20ContractLib,
+		ethWallets:        ethWallets,
 	}
 }
 
@@ -99,17 +97,16 @@ func NewTransactionInjector(
 // Generates and issues L1 and L2 transactions to the network
 func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every user
-
-	addr := m.ethWallet.Address()
-	for range m.wallets {
+	for _, w := range m.ethWallets {
+		addr := w.Address()
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        initialBalance,
 			To:            m.mgmtContractAddr,
 			TokenContract: m.erc20ContractAddr,
 			Sender:        &addr,
 		}
-		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
-		signedTx, err := m.ethWallet.SignTransaction(tx)
+		tx := m.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
+		signedTx, err := w.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
@@ -207,12 +204,12 @@ func (m *TransactionInjector) GetL2WithdrawalRequests() []nodecommon.Withdrawal 
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (m *TransactionInjector) issueRandomTransfers() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
-		fromWallet := rndWallet(m.wallets)
-		to := rndWallet(m.wallets).Address
-		for fromWallet.Address == to {
-			to = rndWallet(m.wallets).Address
+		fromWallet := m.rndObsWallet()
+		toWallet := m.rndObsWallet()
+		for fromWallet.Address == toWallet.Address {
+			toWallet = m.rndObsWallet()
 		}
-		tx := wallet_mock.NewL2Transfer(fromWallet.Address, to, obscurocommon.RndBtw(1, 500))
+		tx := wallet_mock.NewL2Transfer(fromWallet.Address, toWallet.Address, obscurocommon.RndBtw(1, 500))
 		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
@@ -231,15 +228,16 @@ func (m *TransactionInjector) issueRandomTransfers() {
 func (m *TransactionInjector) issueRandomDeposits() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
-		addr := m.ethWallet.Address()
+		ethWallet := m.rndEthWallet()
+		addr := ethWallet.Address()
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        v,
 			To:            m.mgmtContractAddr,
 			TokenContract: m.erc20ContractAddr,
 			Sender:        &addr,
 		}
-		tx := m.erc20ContractLib.CreateDepositTx(txData, m.ethWallet.GetNonceAndIncrement())
-		signedTx, err := m.ethWallet.SignTransaction(tx)
+		tx := m.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
+		signedTx, err := ethWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
@@ -258,9 +256,9 @@ func (m *TransactionInjector) issueRandomDeposits() {
 func (m *TransactionInjector) issueRandomWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
-		wallet := rndWallet(m.wallets)
-		tx := wallet_mock.NewL2Withdrawal(m.ethWallet.Address(), v)
-		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
+		obsWallet := m.rndObsWallet()
+		tx := wallet_mock.NewL2Withdrawal(obsWallet.Address, v)
+		signedTx := wallet_mock.SignTx(tx, obsWallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -278,7 +276,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 // These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation withdrawal checks.
 func (m *TransactionInjector) issueInvalidWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
-		fromWallet := rndWallet(m.wallets)
+		fromWallet := m.rndObsWallet()
 		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
 		signedTx := createInvalidSignature(tx, &fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
@@ -315,8 +313,12 @@ func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet)
 	panic("Expected i to be in the range [0,2).")
 }
 
-func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
-	return wallets[rand.Intn(len(wallets))] //nolint:gosec
+func (m *TransactionInjector) rndObsWallet() wallet_mock.Wallet {
+	return m.obsWallets[rand.Intn(len(m.obsWallets)-1)] //nolint:gosec
+}
+
+func (m *TransactionInjector) rndEthWallet() wallet.Wallet {
+	return m.ethWallets[rand.Intn(len(m.ethWallets)-1)] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL1Node() ethclient.EthClient {

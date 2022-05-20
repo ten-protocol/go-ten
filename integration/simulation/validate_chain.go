@@ -246,12 +246,9 @@ func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client
 	// check that the sum of all balances matches the total amount of money that must be in the system
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
-	for _, wallet := range s.TxInjector.wallets {
+	for _, wallet := range s.TxInjector.obsWallets {
 		total += balance(nodeClient, wallet.Address)
 	}
-
-	// also check for the worker wallet address
-	total += balance(nodeClient, s.TxInjector.ethWallet.Address())
 
 	if total != totalAmountInSystem {
 		t.Errorf("Node %d: The amount of money in accounts does not match the amount deposited. Found %d , expected %d", nodeAddr, total, totalAmountInSystem)

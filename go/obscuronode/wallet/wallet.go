@@ -23,6 +23,10 @@ type Wallet interface {
 	SetNonce(nonce uint64)
 	// GetNonceAndIncrement atomically increments the nonce by one and returns the previous value
 	GetNonceAndIncrement() uint64
+
+	// PK is a temp method that should be removed when the l2 wallet (wallet_mock.Wallet) is updated
+	// TODO remove this
+	PK() *ecdsa.PrivateKey
 }
 
 type inMemoryWallet struct {
@@ -67,4 +71,8 @@ func (m *inMemoryWallet) GetNonceAndIncrement() uint64 {
 
 func (m *inMemoryWallet) SetNonce(nonce uint64) {
 	m.nonce = nonce
+}
+
+func (m *inMemoryWallet) PK() *ecdsa.PrivateKey {
+	return m.prvKey
 }

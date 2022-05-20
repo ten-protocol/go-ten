@@ -5,10 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration"
-
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -26,17 +22,11 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	ethClients, obscuroClients, p2pAddrs := netw.Create(params, stats)
 
-	workerWallet := datagenerator.RandomWallet(integration.ChainID)
-	if len(params.EthWallets) > 0 {
-		workerWallet = params.EthWallets[len(params.EthWallets)-1]
-	}
-
 	txInjector := NewTransactionInjector(
-		params.NumberOfObscuroWallets,
 		params.AvgBlockDuration,
 		stats,
 		ethClients,
-		workerWallet,
+		params.SimEthWallets,
 		params.MgmtContractAddr,
 		params.StableTokenContractAddr,
 		obscuroClients,

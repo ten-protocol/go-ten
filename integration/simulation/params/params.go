@@ -13,8 +13,7 @@ import (
 
 // SimParams are the parameters for setting up the simulation.
 type SimParams struct {
-	NumberOfNodes          int
-	NumberOfObscuroWallets int
+	NumberOfNodes int
 
 	// A critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
 	AvgBlockDuration  time.Duration
@@ -36,8 +35,12 @@ type SimParams struct {
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddr *common.Address
 
-	// EthWallets contains the wallets to use for the l1 nodes
-	EthWallets              []wallet.Wallet
+	// NodeEthWallets contains the wallets for the l1 nodes
+	NodeEthWallets []wallet.Wallet
+
+	// SimEthWallets are the wallets used for the simulation
+	SimEthWallets []wallet.Wallet
+
 	StableTokenContractAddr *common.Address
 	StartPort               int // The port from which to start allocating ports. Must be unique across all simulations.
 }

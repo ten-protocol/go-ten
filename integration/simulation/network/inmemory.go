@@ -49,7 +49,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			stats,
 			false,
 			nil,
-			params.EthWallets[i],
+			params.NodeEthWallets[i],
 		)
 		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
 
