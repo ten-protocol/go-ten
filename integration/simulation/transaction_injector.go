@@ -1,59 +1,51 @@
 package simulation
 
 import (
+	"math"
 	"math/big"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	"golang.org/x/sync/errgroup"
 
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
-	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
+	// counters
+	counter *txInjectorCounter
+	stats   *stats2.Stats
+
 	// settings
 	avgBlockDuration time.Duration
-	stats            *stats2.Stats
 
-	obsWallets []wallet_mock.Wallet
-	ethWallets []wallet.Wallet
+	// connections
+	wallets   []wallet.Wallet
+	l1Clients []ethclient.EthClient
+	l2Clients []*obscuroclient.Client
 
-	l1Nodes       []ethclient.EthClient
-	l2NodeClients []*obscuroclient.Client
-
-	l1TransactionsLock sync.RWMutex
-	l1Transactions     []obscurocommon.L1Transaction
-
-	l2TransactionsLock sync.RWMutex
-	l2Transactions     core.L2Txs
-
-	interruptRun     *int32
-	fullyStoppedChan chan bool
-
+	// addrs and libs
 	erc20ContractAddr *common.Address
 	mgmtContractAddr  *common.Address
 	mgmtContractLib   mgmtcontractlib.MgmtContractLib
 	erc20ContractLib  erc20contractlib.ERC20ContractLib
+
+	// controls
+	interruptRun     *int32
+	fullyStoppedChan chan bool
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of obsWallets
@@ -69,26 +61,20 @@ func NewTransactionInjector(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
-	// convert the eth wallets into obs wallets
-	wallets := make([]wallet_mock.Wallet, len(ethWallets))
-	for i := 0; i < len(ethWallets); i++ {
-		wallets[i] = wallet_mock.NewFromPk(ethWallets[i].PK())
-	}
 	interrupt := int32(0)
-
 	return &TransactionInjector{
-		obsWallets:        wallets,
 		avgBlockDuration:  avgBlockDuration,
 		stats:             stats,
-		l1Nodes:           l1Nodes,
-		l2NodeClients:     l2NodeClients,
+		l1Clients:         l1Nodes,
+		l2Clients:         l2NodeClients,
 		interruptRun:      &interrupt,
 		fullyStoppedChan:  make(chan bool),
 		erc20ContractAddr: erc20ContractAddr,
 		mgmtContractAddr:  mgmtContractAddr,
 		mgmtContractLib:   mgmtContractLib,
 		erc20ContractLib:  erc20ContractLib,
-		ethWallets:        ethWallets,
+		wallets:           ethWallets,
+		counter:           newCounter(),
 	}
 }
 
@@ -96,8 +82,8 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (m *TransactionInjector) Start() {
-	// deposit some initial amount into every user
-	for _, w := range m.ethWallets {
+	// deposit some initial amount into every simulation wallet
+	for _, w := range m.wallets {
 		addr := w.Address()
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        initialBalance,
@@ -116,8 +102,7 @@ func (m *TransactionInjector) Start() {
 		}
 
 		m.stats.Deposit(initialBalance)
-		go m.trackL1Tx(txData)
-		time.Sleep(m.avgBlockDuration / 3)
+		go m.counter.trackL1Tx(txData)
 	}
 
 	// start transactions issuance
@@ -154,73 +139,30 @@ func (m *TransactionInjector) Stop() {
 	}
 }
 
-// trackL1Tx adds an L1Tx to the internal list
-func (m *TransactionInjector) trackL1Tx(tx obscurocommon.L1Transaction) {
-	m.l1TransactionsLock.Lock()
-	defer m.l1TransactionsLock.Unlock()
-	m.l1Transactions = append(m.l1Transactions, tx)
-}
-
-// trackL2Tx adds an L2Tx to the internal list
-func (m *TransactionInjector) trackL2Tx(tx nodecommon.L2Tx) {
-	m.l2TransactionsLock.Lock()
-	defer m.l2TransactionsLock.Unlock()
-	m.l2Transactions = append(m.l2Transactions, tx)
-}
-
-// GetL1Transactions returns all generated L1 L2Txs
-func (m *TransactionInjector) GetL1Transactions() []obscurocommon.L1Transaction {
-	return m.l1Transactions
-}
-
-// GetL2Transactions returns all generated non-WithdrawalTx transactions
-func (m *TransactionInjector) GetL2Transactions() (core.L2Txs, core.L2Txs) {
-	var transfers, withdrawals core.L2Txs
-	for _, req := range m.l2Transactions {
-		r := req
-		switch core.TxData(&r).Type {
-		case core.TransferTx:
-			transfers = append(transfers, req)
-		case core.WithdrawalTx:
-			withdrawals = append(withdrawals, req)
-		case core.DepositTx:
-		}
-	}
-	return transfers, withdrawals
-}
-
-// GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions
-func (m *TransactionInjector) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
-	var withdrawals []nodecommon.Withdrawal
-	for _, req := range m.l2Transactions {
-		tx := core.TxData(&req) //nolint:gosec
-		if tx.Type == core.WithdrawalTx {
-			withdrawals = append(withdrawals, nodecommon.Withdrawal{Amount: tx.Amount, Address: tx.To})
-		}
-	}
-	return withdrawals
-}
-
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (m *TransactionInjector) issueRandomTransfers() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
-		fromWallet := m.rndObsWallet()
-		toWallet := m.rndObsWallet()
-		for fromWallet.Address == toWallet.Address {
-			toWallet = m.rndObsWallet()
+		fromWallet := m.rndWallet()
+		toWallet := m.rndWallet()
+		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
+			toWallet = m.rndWallet()
 		}
-		tx := wallet_mock.NewL2Transfer(fromWallet.Address, toWallet.Address, obscurocommon.RndBtw(1, 500))
-		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
+		tx := NewL2Transfer(fromWallet.Address(), toWallet.Address(), obscurocommon.RndBtw(1, 500))
+		signedTx, err := fromWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
 
-		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC.")
 			continue
 		}
 
-		go m.trackL2Tx(*signedTx)
+		go m.counter.trackL2Tx(*signedTx)
 	}
 }
 
@@ -228,7 +170,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 func (m *TransactionInjector) issueRandomDeposits() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
-		ethWallet := m.rndEthWallet()
+		ethWallet := m.rndWallet()
 		addr := ethWallet.Address()
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        v,
@@ -247,28 +189,30 @@ func (m *TransactionInjector) issueRandomDeposits() {
 		}
 
 		m.stats.Deposit(v)
-		go m.trackL1Tx(txData)
+		go m.counter.trackL1Tx(txData)
 	}
 }
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
-// Generates L2 enclave2.WithdrawalTx transactions
 func (m *TransactionInjector) issueRandomWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
-		obsWallet := m.rndObsWallet()
-		tx := wallet_mock.NewL2Withdrawal(obsWallet.Address, v)
-		signedTx := wallet_mock.SignTx(tx, obsWallet.Key.PrivateKey)
+		obsWallet := m.rndWallet()
+		tx := NewL2Withdrawal(obsWallet.Address(), v)
+		signedTx, err := obsWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
 		encryptedTx := core.EncryptTx(signedTx)
 
-		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC.")
 			continue
 		}
 
 		m.stats.Withdrawal(v)
-		go m.trackL2Tx(*signedTx)
+		go m.counter.trackL2Tx(*signedTx)
 	}
 }
 
@@ -276,9 +220,9 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 // These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation withdrawal checks.
 func (m *TransactionInjector) issueInvalidWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
-		fromWallet := m.rndObsWallet()
-		tx := wallet_mock.NewL2Withdrawal(fromWallet.Address, obscurocommon.RndBtw(1, 100))
-		signedTx := createInvalidSignature(tx, &fromWallet)
+		fromWallet := m.rndWallet()
+		tx := NewL2Withdrawal(fromWallet.Address(), obscurocommon.RndBtw(1, 100))
+		signedTx := m.createInvalidSignature(tx, fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -289,42 +233,70 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 	}
 }
 
-// Uses one of three approaches to create an invalidly-signed transaction.
-func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet) *nodecommon.L2Tx {
-	i := rand.Intn(3) //nolint:gosec
-	switch i {
-	case 0: // We sign the transaction with a bad signer.
-		incorrectChainID := int64(integration.ChainID + 1)
-		signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
-		signedTx, _ := types.SignTx(tx, signer, fromWallet.Key.PrivateKey)
-		return signedTx
+// Uses one of the approaches to create an invalidly-signed transaction.
+func (m *TransactionInjector) createInvalidSignature(tx types.TxData, _ wallet.Wallet) *types.Transaction {
+	switch 0 {
+	case 0: // We do not sign the transaction.
+		return types.NewTx(tx)
 
-	case 1: // We do not sign the transaction.
-		return tx
-
-	case 2: // We modify the transaction after signing.
-		// We create a new transaction, as we need access to the transaction's encapsulated transaction data.
-		txData := core.L2TxData{Type: core.WithdrawalTx, From: fromWallet.Address, Amount: obscurocommon.RndBtw(1, 100)}
-		newTx := wallet_mock.NewL2Tx(txData)
-		wallet_mock.SignTx(newTx, fromWallet.Key.PrivateKey)
-		// After signing the transaction, we create a new transaction based on the transaction data, breaking the signature.
-		return wallet_mock.NewL2Tx(txData)
+		// TODO uncomment this when the withdrawals look into the signature
+		// case 1: // We sign with the wrong wallet
+		//	otherWallet := m.rndWallet()
+		//	for otherWallet.Address().Hex() == fromWallet.Address().Hex() {
+		//		otherWallet = m.rndWallet()
+		//	}
+		//	signedTx, err := otherWallet.SignTransaction(tx)
+		//	if err != nil {
+		//		panic(err)
+		//	}
+		//	return signedTx
 	}
-	panic("Expected i to be in the range [0,2).")
+	panic("Expected i to be in the range [0,1].")
 }
 
-func (m *TransactionInjector) rndObsWallet() wallet_mock.Wallet {
-	return m.obsWallets[rand.Intn(len(m.obsWallets)-1)] //nolint:gosec
-}
-
-func (m *TransactionInjector) rndEthWallet() wallet.Wallet {
-	return m.ethWallets[rand.Intn(len(m.ethWallets)-1)] //nolint:gosec
+func (m *TransactionInjector) rndWallet() wallet.Wallet {
+	return m.wallets[rand.Intn(len(m.wallets)-1)] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL1Node() ethclient.EthClient {
-	return m.l1Nodes[rand.Intn(len(m.l1Nodes))] //nolint:gosec
+	return m.l1Clients[rand.Intn(len(m.l1Clients))] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
-	return m.l2NodeClients[rand.Intn(len(m.l2NodeClients))] //nolint:gosec
+	return m.l2Clients[rand.Intn(len(m.l2Clients))] //nolint:gosec
+}
+
+// NewL2Transfer creates an enclave.L2Tx of type enclave.TransferTx
+func NewL2Transfer(from common.Address, dest common.Address, amount uint64) types.TxData {
+	txData := core.L2TxData{Type: core.TransferTx, From: from, To: dest, Amount: amount}
+	return NewL2Tx(txData)
+}
+
+// NewL2Withdrawal creates an enclave.L2Tx of type enclave.WithdrawalTx
+func NewL2Withdrawal(from common.Address, amount uint64) types.TxData {
+	txData := core.L2TxData{Type: core.WithdrawalTx, From: from, Amount: amount}
+	return NewL2Tx(txData)
+}
+
+// NewL2Tx creates an enclave.L2Tx.
+//
+// A random nonce is used to avoid hash collisions. The enclave.L2TxData is encoded and stored in the transaction's
+// data field.
+func NewL2Tx(data core.L2TxData) types.TxData {
+	// We should probably use a deterministic nonce instead, as in the L1.
+	nonce := rand.Intn(math.MaxInt) //nolint:gosec
+
+	enc, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		// TODO - Surface this error properly.
+		panic(err)
+	}
+
+	return &types.LegacyTx{
+		Nonce:    uint64(nonce),
+		Value:    big.NewInt(1),
+		Gas:      1,
+		GasPrice: big.NewInt(1),
+		Data:     enc,
+	}
 }
