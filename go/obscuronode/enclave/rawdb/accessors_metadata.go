@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
 
@@ -24,10 +25,10 @@ func ReadSharedSecret(db ethdb.KeyValueReader) *core.SharedEnclaveSecret {
 func WriteSharedSecret(db ethdb.KeyValueWriter, ss core.SharedEnclaveSecret) {
 	enc, err := rlp.EncodeToBytes(ss)
 	if err != nil {
-		panic(err)
+		log.Panic("could not encode shared secret. Cause: %s", err)
 	}
 	if err = db.Put(sharedSecret, enc); err != nil {
-		panic(err)
+		log.Panic("could not put shared secret in DB. Cause: %s", err)
 	}
 }
 
@@ -48,9 +49,9 @@ func ReadGenesisHash(db ethdb.KeyValueReader) *common.Hash {
 func WriteGenesisHash(db ethdb.KeyValueWriter, hash common.Hash) {
 	enc, err := rlp.EncodeToBytes(hash)
 	if err != nil {
-		panic(err)
+		log.Panic("could not encode genesis hash. Cause: %s", err)
 	}
 	if err = db.Put(genesisRollupHash, enc); err != nil {
-		panic(err)
+		log.Panic("could not put genesis hash in DB. Cause: %s", err)
 	}
 }

@@ -26,6 +26,10 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+const (
+	msgNoRollup = "could not fetch rollup"
+)
+
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -137,7 +141,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
 	b, f := e.storage.FetchBlock(blkHash)
 	if !f {
-		panic("Could not find the block used as proof for the genesis rollup.")
+		log.Panic("Could not find the block used as proof for the genesis rollup.")
 	}
 	return nodecommon.BlockSubmissionResponse{
 		ProducedRollup: rolGenesis.ToExtRollup(),
@@ -166,7 +170,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 			if bs.FoundNewRollup {
 				hr, f := e.storage.FetchRollup(bs.HeadRollup)
 				if !f {
-					panic("Should not happen")
+					log.Panic(msgNoRollup)
 				}
 
 				rollup = hr.ToExtRollup()
@@ -213,7 +217,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	hr, f := e.storage.FetchRollup(blockState.HeadRollup)
 	if !f {
-		panic("Failed to fetch rollup. Should not happen")
+		log.Panic(msgNoRollup)
 	}
 	e.mempool.RemoveMempoolTxs(historicTxs(hr, e.storage))
 	r := e.produceRollup(&block, blockState)
@@ -333,7 +337,7 @@ func (e *enclaveImpl) Nonce(address common.Address) uint64 {
 func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
 	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
 	if !f {
-		panic("Should not happen")
+		log.Panic(msgNoRollup)
 	}
 
 	// These variables will be used to create the new rollup
@@ -423,7 +427,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	}
 	rollup, found := e.storage.FetchRollup(hs.HeadRollup)
 	if !found {
-		panic("should not happen")
+		log.Panic("could not fetch block's head rollup")
 	}
 
 	for {
@@ -457,7 +461,7 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 	secret := make([]byte, 32)
 	n, err := rand.Read(secret)
 	if n != 32 || err != nil {
-		panic(fmt.Sprintf("Could not generate secret: %s", err))
+		log.Panic("could not generate secret. Cause: %s", err)
 	}
 	e.storage.StoreSecret(secret)
 	return encryptSecret(secret)
@@ -504,12 +508,12 @@ func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) no
 func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
 	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
 	if !f {
-		panic("Should not happen")
+		log.Panic(msgNoRollup)
 	}
 
 	headBlock, f := e.storage.FetchBlock(bs.Block)
 	if !f {
-		panic("Should not happen")
+		log.Panic("could not fetch block")
 	}
 
 	var head *nodecommon.Header
@@ -564,7 +568,7 @@ func NewEnclave(nodeID common.Address, mining bool, txHandler mgmtcontractlib.Tx
 	var l1Blockchain *core.BlockChain
 	if validateBlocks {
 		if genesisJSON == nil {
-			panic("enclave was configured to validate blocks, but genesis JSON was nil")
+			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
 		}
 		l1Blockchain = NewL1Blockchain(genesisJSON)
 	} else {

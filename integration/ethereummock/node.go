@@ -302,7 +302,10 @@ func (m *Node) P2PGossipTx(tx obscurocommon.EncodedL1Tx) {
 }
 
 func (m *Node) BroadcastTx(txData *obscurocommon.L1TxData) {
-	tx := obscurocommon.NewL1Tx(*txData)
+	tx, err := obscurocommon.NewL1Tx(*txData)
+	if err != nil {
+		log.Panic("could not create new L1 transaction. Cause: %s", err)
+	}
 	t, _ := obscurocommon.EncodeTx(tx)
 	m.Network.BroadcastTx(t)
 }

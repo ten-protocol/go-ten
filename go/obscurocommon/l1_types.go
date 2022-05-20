@@ -40,10 +40,10 @@ type L1TxData struct {
 
 type L1Tx = types.Transaction
 
-func NewL1Tx(data L1TxData) *L1Tx {
+func NewL1Tx(data L1TxData) (*L1Tx, error) {
 	enc, err := rlp.EncodeToBytes(data)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return types.NewTx(&types.LegacyTx{
 		Nonce:    rand.Uint64(), //nolint:gosec
@@ -51,16 +51,16 @@ func NewL1Tx(data L1TxData) *L1Tx {
 		Gas:      1,
 		GasPrice: big.NewInt(1),
 		Data:     enc,
-	})
+	}), nil
 }
 
-func TxData(tx *L1Tx) L1TxData {
+func TxData(tx *L1Tx) (*L1TxData, error) {
 	data := L1TxData{}
 	err := rlp.DecodeBytes(tx.Data(), &data)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return data
+	return &data, nil
 }
 
 type (

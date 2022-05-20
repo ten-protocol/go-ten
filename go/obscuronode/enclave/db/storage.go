@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	obscurorawdb "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rawdb"
 
@@ -51,7 +52,7 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	batch := s.db.NewBatch()
 	obscurorawdb.WriteRollup(batch, rollup)
 	if err := batch.Write(); err != nil {
-		panic(err)
+		log.Panic("could not write rollup to storage. Cause: %s", err)
 	}
 }
 
@@ -199,7 +200,7 @@ func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	v, f := s.FetchBlock(r.Header.L1Proof)
 	if !f {
-		panic("Could not find proof for this rollup")
+		log.Panic("could not find proof for this rollup")
 	}
 	return v
 }
@@ -214,7 +215,7 @@ func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.Bloc
 
 func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup) {
 	if state.Block != hash {
-		panic("Failed on a sanity check: `state.Block.Hash() != hash`")
+		log.Panic("failed sanity check: `state.Block.Hash() != hash`")
 	}
 
 	if state.FoundNewRollup {
@@ -227,12 +228,12 @@ func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.B
 func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB {
 	rollup, f := s.FetchRollup(hash)
 	if !f {
-		panic("should not happen")
+		log.Panic("could not retrieve rollup for hash %s", hash.String())
 	}
 	// todo - snapshots?
 	statedb, err := state.New(rollup.Header.State, s.stateDB, nil)
 	if err != nil {
-		panic(err)
+		log.Panic("could not create state DB. Cause: %s", err)
 	}
 	return statedb
 }
@@ -246,6 +247,5 @@ func (s *storageImpl) FetchHeadState() *core.BlockState {
 	if (h == common.Hash{}) {
 		return nil
 	}
-	val := obscurorawdb.ReadBlockState(s.db, h)
-	return val
+	return obscurorawdb.ReadBlockState(s.db, h)
 }

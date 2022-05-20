@@ -13,12 +13,12 @@ func EncodeToString(bytes []byte) string {
 }
 
 // DecodeFromString decodes a string to a byte array
-func DecodeFromString(in string) []byte {
+func DecodeFromString(in string) ([]byte, error) {
 	bytesStr, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return bytesStr
+	return bytesStr, nil
 }
 
 // Compress compresses the byte array using gzip

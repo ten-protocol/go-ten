@@ -43,6 +43,7 @@ const (
 	unlockInsecureFlag = "--allow-insecure-unlock"
 	websocketFlag      = "--ws" // Enables websocket connections to the node.
 	wsPortFlag         = "--ws.port"
+	gasLimitFlag       = "--miner.gaslimit=2000000000" // Ensures the miners don't gradually reduce the block gas limit.
 
 	// syncModeFlag defines the node block sync approach
 	// snap (the default) mode does not work well for small, rapidly deployed private networks
@@ -76,7 +77,7 @@ const (
 	  "coinbase": "0x0000000000000000000000000000000000000000",
 	  "difficulty": "0x20000",
 	  "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000%s0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-	  "gasLimit": "0x77359400",
+	  "gasLimit": "2000000000",
 	  "nonce": "0x0000000000000042",
 	  "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -320,7 +321,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	args := []string{
 		websocketFlag, wsPortFlag, strconv.Itoa(webSocketPort), dataDirFlag, dataDirPath, portFlag,
 		strconv.Itoa(port), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
-		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
+		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag, gasLimitFlag,
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 	cmd.Stdout = network.logFile

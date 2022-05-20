@@ -28,6 +28,12 @@ func SetLog(f *os.File) {
 	logFile = f
 }
 
+func Panic(msg string, args ...interface{}) {
+	write("PANIC: "+msg, args...)
+	logFile.Close()
+	panic(fmt.Sprintf(msg, args...))
+}
+
 func Error(msg string, args ...interface{}) {
 	write("ERROR: "+msg, args...)
 }
