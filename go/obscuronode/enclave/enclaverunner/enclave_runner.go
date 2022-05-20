@@ -24,7 +24,7 @@ func RunEnclave(config EnclaveConfig) {
 	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
 
 	var genesisJSON []byte
-	if config.VerifyBlocks {
+	if config.VerifyL1Blocks {
 		genesisJSON = []byte(hardcodedGenesisJSON)
 	} else {
 		genesisJSON = nil
