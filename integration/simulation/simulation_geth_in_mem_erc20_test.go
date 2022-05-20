@@ -42,7 +42,7 @@ func TestGethSimulation(t *testing.T) {
 	}
 
 	// define the network to use
-	prefundedWallets := append(append(nodeWallets, simWallets...), workerWallet)
+	prefundedWallets := append(append(nodeWallets, simWallets...), workerWallet) //nolint:makezero
 	netw := network.NewNetworkInMemoryGeth(prefundedWallets, workerWallet, contractsBytes)
 
 	simParams := &params.SimParams{
