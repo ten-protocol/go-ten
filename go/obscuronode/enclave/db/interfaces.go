@@ -52,7 +52,7 @@ type RollupResolver interface {
 type BlockStateStorage interface {
 	// FetchBlockState returns the head rollup found in the block
 	FetchBlockState(blockHash obscurocommon.L1RootHash) (*core.BlockState, bool)
-	// FetchHeadState returns the head rollup
+	// FetchHeadState returns the head rollup. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
 	// SetBlockState save the rollup-block mapping
 	SetBlockState(blockHash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup)

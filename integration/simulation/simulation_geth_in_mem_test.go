@@ -31,7 +31,7 @@ func TestInMemoryGethMonteCarloSimulation(t *testing.T) {
 		NumberOfNodes:             numberOfNodes,
 		NumberOfObscuroWallets:    numberOfWallets,
 		AvgBlockDuration:          6 * time.Second,
-		SimulationTime:            60 * time.Second,
+		SimulationTime:            90 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.5,
 		L2ToL1EfficiencyThreshold: 0.5, // one rollup every 2 blocks

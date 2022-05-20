@@ -308,17 +308,25 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 
 func (e *enclaveImpl) Balance(address common.Address) uint64 {
 	// todo user encryption
-	s := e.storage.CreateStateDB(e.storage.FetchHeadState().HeadRollup)
-	r, f := e.storage.FetchRollup(e.storage.FetchHeadState().HeadRollup)
+	hs := e.storage.FetchHeadState()
+	if hs == nil {
+		panic("Not initialised")
+	}
+	r, f := e.storage.FetchRollup(hs.HeadRollup)
 	if !f {
 		panic("not found")
 	}
+	s := e.storage.CreateStateDB(hs.HeadRollup)
 	return evm.BalanceOfErc20(s, address, r.Header, e.storage)
 }
 
 func (e *enclaveImpl) Nonce(address common.Address) uint64 {
 	// todo user encryption
-	s := e.storage.CreateStateDB(e.storage.FetchHeadState().HeadRollup)
+	hs := e.storage.FetchHeadState()
+	if hs == nil {
+		return 0
+	}
+	s := e.storage.CreateStateDB(hs.HeadRollup)
 	return s.GetNonce(address)
 }
 
@@ -409,7 +417,11 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 
 func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	// todo add some sort of cache
-	rollup, found := e.storage.FetchRollup(e.storage.FetchHeadState().HeadRollup)
+	hs := e.storage.FetchHeadState()
+	if hs == nil {
+		panic("should not happen")
+	}
+	rollup, found := e.storage.FetchRollup(hs.HeadRollup)
 	if !found {
 		panic("should not happen")
 	}

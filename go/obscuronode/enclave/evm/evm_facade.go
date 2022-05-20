@@ -27,7 +27,7 @@ var Erc20OwnerAddress = crypto.PubkeyToAddress(Erc20OwnerKey.PublicKey)
 
 var Erc20ContractAddress = common.BytesToAddress(common.Hex2Bytes("f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"))
 
-// Custom address used to highlight that an erc20 transfer is actually an exit
+// WithdrawalAddress Custom address used for exiting Obscuro
 // Todo - This should be the address of a Bridge contract.
 var WithdrawalAddress = common.HexToAddress("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 

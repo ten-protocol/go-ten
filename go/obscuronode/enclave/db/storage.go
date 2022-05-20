@@ -244,7 +244,7 @@ func (s *storageImpl) GenesisStateDB() *state.StateDB {
 func (s *storageImpl) FetchHeadState() *core.BlockState {
 	h := rawdb.ReadHeadHeaderHash(s.db)
 	if (h == common.Hash{}) {
-		panic("Should not happen")
+		return nil
 	}
 	val := obscurorawdb.ReadBlockState(s.db, h)
 	return val

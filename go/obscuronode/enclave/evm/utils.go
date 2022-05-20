@@ -36,11 +36,11 @@ func convertToEthHeader(h *nodecommon.Header) *types.Header {
 	}
 }
 
-//func convertFromEthHeader(header *types.Header) *nodecommon.Header {
-//	h := new(nodecommon.Header)
-//	err := rlp.DecodeBytes(header.Extra, h)
-//	if err != nil {
-//		panic(err)
-//	}
-//	return h
-//}
+func convertFromEthHeader(header *types.Header) *nodecommon.Header {
+	h := new(nodecommon.Header)
+	err := rlp.DecodeBytes(header.Extra, h)
+	if err != nil {
+		panic(err)
+	}
+	return h
+}
