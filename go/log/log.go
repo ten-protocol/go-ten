@@ -30,6 +30,7 @@ func SetLog(f *os.File) {
 
 func Panic(msg string, args ...interface{}) {
 	write("PANIC: "+msg, args...)
+	logFile.Close()
 	panic(fmt.Sprintf(msg, args...))
 }
 
