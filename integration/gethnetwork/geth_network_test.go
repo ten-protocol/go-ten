@@ -114,6 +114,9 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 		Value:    big.NewInt(100),
 	}
 	signedTx, err := w.SignTransaction(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = ethClient.SendTransaction(signedTx)
 	if err != nil {
 		t.Fatal(err)
