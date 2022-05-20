@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -44,15 +46,15 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 
 // Uses the client to retrieve the height of the current block head.
 func getCurrentBlockHeadHeight(client *obscuroclient.Client) int64 {
-	method := obscuroclient.RPCGetCurrentBlockHeadHeight
+	method := obscuroclient.RPCGetCurrentBlockHead
 
-	var l1Height int64
-	err := (*client).Call(&l1Height, method)
+	var blockHead types.Header
+	err := (*client).Call(&blockHead, method)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
 
-	return l1Height
+	return blockHead.Number.Int64()
 }
 
 // Uses the client to retrieve the current rollup head.

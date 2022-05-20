@@ -10,13 +10,13 @@ type RPCMethod uint8
 const (
 	http = "http://"
 
-	RPCSendTransactionEncrypted  = "obscuro_sendTransactionEncrypted"
-	RPCGetCurrentBlockHeadHeight = "obscuro_getCurrentBlockHeadHeight"
-	RPCGetCurrentRollupHead      = "obscuro_getCurrentRollupHead"
-	RPCGetRollupHeader           = "obscuro_getRollupHeader"
-	RPCGetTransaction            = "obscuro_getTransaction"
-	RPCBalance                   = "obscuro_balance"
-	RPCStopHost                  = "obscuro_stopHost"
+	RPCSendTransactionEncrypted = "obscuro_sendTransactionEncrypted"
+	RPCGetCurrentBlockHead      = "obscuro_getCurrentBlockHead"
+	RPCGetCurrentRollupHead     = "obscuro_getCurrentRollupHead"
+	RPCGetRollupHeader          = "obscuro_getRollupHeader"
+	RPCGetTransaction           = "obscuro_getTransaction"
+	RPCBalance                  = "obscuro_balance"
+	RPCStopHost                 = "obscuro_stopHost"
 )
 
 // Client is used by client applications to interact with the Obscuro node.

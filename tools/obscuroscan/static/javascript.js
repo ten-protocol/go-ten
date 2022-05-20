@@ -1,20 +1,20 @@
 const eventDomLoaded = "DOMContentLoaded";
-const idBlockHeadHeight = "blockHeadHeight";
+const idBlockHead = "blockHead";
 const idHeadRollup = "headRollup";
-const pathBlockHeadHeight = "/blockheadheight/";
+const pathBlockHead = "/blockhead/";
 const pathHeadRollup      = "/headrollup/";
 
 const initialize = () => {
-    const blockHeadHeightArea = document.getElementById(idBlockHeadHeight);
+    const blockHeadArea = document.getElementById(idBlockHead);
     const headRollupArea = document.getElementById(idHeadRollup);
 
     setInterval(async () => {
-        const blockHeadHeightResp = await fetch(pathBlockHeadHeight);
+        const headBlockResp = await fetch(pathBlockHead);
 
-        if (blockHeadHeightResp.ok) {
-            blockHeadHeightArea.innerText = await blockHeadHeightResp.text();
+        if (headBlockResp.ok) {
+            blockHeadArea.innerText = await headBlockResp.text();
         } else {
-            blockHeadHeightArea.innerText = "Failed to retrieve block head height."
+            blockHeadArea.innerText = "Failed to retrieve head block."
         }
     }, 1000);
 
