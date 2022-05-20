@@ -1,15 +1,15 @@
 const eventDomLoaded = "DOMContentLoaded";
-const idBlockHead = "blockHead";
+const idBlockHead = "headBlock";
 const idHeadRollup = "headRollup";
-const pathBlockHead = "/blockhead/";
-const pathHeadRollup      = "/headrollup/";
+const pathHeadBlock = "/headblock/";
+const pathHeadRollup = "/headrollup/";
 
 const initialize = () => {
     const blockHeadArea = document.getElementById(idBlockHead);
     const headRollupArea = document.getElementById(idHeadRollup);
 
     setInterval(async () => {
-        const headBlockResp = await fetch(pathBlockHead);
+        const headBlockResp = await fetch(pathHeadBlock);
 
         if (headBlockResp.ok) {
             blockHeadArea.innerText = await headBlockResp.text();

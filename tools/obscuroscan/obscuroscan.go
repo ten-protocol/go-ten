@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	pathBlockHead  = "/blockhead/"
+	pathHeadBlock  = "/headblock/"
 	pathHeadRollup = "/headrollup/"
 	staticDir      = "./tools/obscuroscan/static"
 	pathRoot       = "/"
@@ -41,7 +41,7 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	// Serves the web interface.
 	serveMux.Handle(pathRoot, http.FileServer(http.Dir(staticDir)))
 	// Handle requests for block head height.
-	serveMux.HandleFunc(pathBlockHead, o.getBlockHead)
+	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
 	// Handle requests for the head rollup.
 	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
