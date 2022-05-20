@@ -266,11 +266,10 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, header *nodecommon.Header, receipts map[common.Hash]*types.Receipt) []nodecommon.Withdrawal {
+func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receipts map[common.Hash]*types.Receipt) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
-	for _, t := range newHeadRollup.Transactions {
-
+	for i, t := range newHeadRollup.Transactions {
 		method, err := contracts.PedroERC20ContractABIJSON.MethodById(t.Data()[:4])
 		if err != nil {
 			// fmt.Printf("%s\n", err)
@@ -290,7 +289,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.St
 			receipt := receipts[t.Hash()]
 			if receipt != nil && receipt.Status == 1 {
 				signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
-				from, err1 := types.Sender(signer, &t)
+				from, err1 := types.Sender(signer, &newHeadRollup.Transactions[i])
 				if err1 != nil {
 					panic(err1)
 				}

@@ -148,6 +148,11 @@ func (s *server) Balance(_ context.Context, request *generated.BalanceRequest) (
 	return &generated.BalanceResponse{Balance: balance}, nil
 }
 
+func (s *server) Nonce(_ context.Context, request *generated.NonceRequest) (*generated.NonceResponse, error) {
+	nonce := s.enclave.Nonce(common.BytesToAddress(request.Address))
+	return &generated.NonceResponse{Nonce: nonce}, nil
+}
+
 func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
 	extRollup, winner, err := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
 	if err != nil {

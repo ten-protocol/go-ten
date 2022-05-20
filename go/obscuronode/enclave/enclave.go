@@ -340,7 +340,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 		e.speculativeWorkInCh <- true
 		speculativeRollup := <-e.speculativeWorkOutCh
 
-		newRollupTxs = speculativeRollup.txs
+		// newRollupTxs = speculativeRollup.txs
 		newRollupState = speculativeRollup.s
 		newRollupHeader = speculativeRollup.h
 
@@ -402,7 +402,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, obscurocommon.GenerateNonce(), rootHash)
 
 	// Postprocessing - withdrawals
-	r.Header.Withdrawals = rollupPostProcessingWithdrawals(&r, newRollupState, newRollupHeader, receipts)
+	r.Header.Withdrawals = rollupPostProcessingWithdrawals(&r, newRollupState, receipts)
 
 	return &r
 }

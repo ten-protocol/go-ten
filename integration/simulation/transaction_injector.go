@@ -42,7 +42,6 @@ type TransactionInjector struct {
 	l1Transactions     []obscurocommon.L1TxData
 
 	l2TransactionsLock       sync.RWMutex
-	depositL2Transactions    core.L2Txs
 	transferL2Transactions   core.L2Txs
 	withdrawalL2Transactions core.L2Txs
 
@@ -69,7 +68,6 @@ func NewTransactionInjector(
 			panic(fmt.Sprintf("Could not generate keypair for wallet: %v", err))
 		}
 		wallets[i] = wallet_mock.New(key)
-
 	}
 	interrupt := int32(0)
 
@@ -126,6 +124,7 @@ func (m *TransactionInjector) Start() {
 		return nil
 	})
 
+	// todo
 	//wg.Go(func() error {
 	//	m.issueInvalidWithdrawals()
 	//	return nil
@@ -170,12 +169,6 @@ func (m *TransactionInjector) trackL1Tx(tx obscurocommon.L1TxData) {
 	m.l1Transactions = append(m.l1Transactions, tx)
 }
 
-func (m *TransactionInjector) trackDepositL2Tx(tx nodecommon.L2Tx) {
-	m.l2TransactionsLock.Lock()
-	defer m.l2TransactionsLock.Unlock()
-	m.depositL2Transactions = append(m.depositL2Transactions, tx)
-}
-
 func (m *TransactionInjector) trackWithdrawalL2Tx(tx nodecommon.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
@@ -200,7 +193,7 @@ func (m *TransactionInjector) GetL2Transactions() (core.L2Txs, core.L2Txs) {
 
 // GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions
 func (m *TransactionInjector) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
-	var withdrawals []nodecommon.Withdrawal
+	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, req := range m.withdrawalL2Transactions {
 		// todo - helper
 		method, err := contracts.PedroERC20ContractABIJSON.MethodById(req.Data()[:4])
@@ -254,24 +247,6 @@ func (m *TransactionInjector) issueRandomL1Deposits() {
 		m.rndL1Node().BroadcastTx(&txData)
 		m.stats.Deposit(v)
 		go m.trackL1Tx(txData)
-	}
-}
-
-func (m *TransactionInjector) issueRandomL2Deposits() {
-	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration*4, m.avgBlockDuration*6)) {
-		v := obscurocommon.RndBtw(1, 100)
-		to := rndWallet(m.wallets)
-		tx := wallet_mock.NewObscuroDepositTx(v, to.Address, m.issuingWallet, m.l2NodeClients[0])
-		tx = wallet_mock.SignTx(tx, m.issuingWallet.Key.PrivateKey)
-
-		fmt.Printf("Injecting deposit tx: %d to %d. Nonce: %d\n", obscurocommon.ShortHash(tx.Hash()), obscurocommon.ShortAddress(to.Address), tx.Nonce())
-		encryptedTx := core.EncryptTx(tx)
-		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
-		if err != nil {
-			panic(err)
-		}
-		m.stats.Deposit(v)
-		go m.trackDepositL2Tx(*tx)
 	}
 }
 

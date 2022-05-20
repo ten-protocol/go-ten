@@ -198,7 +198,14 @@ func (c *EnclaveRPCClient) Balance(address common.Address) uint64 {
 }
 
 func (c *EnclaveRPCClient) Nonce(address common.Address) uint64 {
-	panic("not implemented")
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	response, err := c.protoClient.Nonce(timeoutCtx, &generated.NonceRequest{Address: address.Bytes()})
+	if err != nil {
+		panic(fmt.Errorf(">   Agg%d: Failed to retrieve nonce: %w", obscurocommon.ShortAddress(c.nodeID), err))
+	}
+	return response.Nonce
 }
 
 func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
