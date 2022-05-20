@@ -3,6 +3,7 @@ package obscuroclient
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
 type RPCMethod uint8
@@ -38,7 +39,7 @@ type clientImpl struct {
 func NewClient(nodeID common.Address, address string) Client {
 	rpcClient, err := rpc.Dial(http + address)
 	if err != nil {
-		panic(err)
+		log.Panic("could not create RPC client on %s. Cause: %s", http+address, err)
 	}
 
 	return &clientImpl{

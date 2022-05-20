@@ -81,7 +81,7 @@ func updateState(b *types.Block, blockResolver db.BlockResolver, txHandler mgmtc
 		// todo - root
 		_, err := stateDB.Commit(true)
 		if err != nil {
-			panic(err)
+			log.Panic("could not commit new rollup to state DB. Cause: %s", err)
 		}
 	}
 
@@ -151,7 +151,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup, stateDB *state.StateDB, blockResolver db.BlockResolver, rollupResolver db.RollupResolver) (*core.Rollup, *state.StateDB) {
 	headRollup, found := FindWinner(parent, receivedRollups, blockResolver)
 	if !found {
-		panic("This should not happen for gossip rounds.")
+		log.Panic("could not find winner. This should not happen for gossip rounds")
 	}
 	// calculate the state to compare with what is in the Rollup
 	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
@@ -162,19 +162,14 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	executeTransactions(depositTxs, stateDB, headRollup.Header)
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
-		panic(err)
+		log.Panic("could not commit to state DB. Cause: %s", err)
 	}
 
 	if rootHash != headRollup.Header.State {
 		// dump := stateDB.Dump(&state.DumpConfig{})
 		dump := ""
-		panic(fmt.Sprintf("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s",
-			rootHash,
-			headRollup.Header.State,
-			headRollup.Header.Number,
-			printTxs(headRollup.Transactions),
-			dump),
-		)
+		log.Panic("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s",
+			rootHash, headRollup.Header.State, headRollup.Header.Number, printTxs(headRollup.Transactions), dump)
 	}
 	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
@@ -190,7 +185,7 @@ func extractDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 		from = fromBlock.Hash()
 		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
-			panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+			log.Panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
 	}
 
@@ -213,11 +208,11 @@ func extractDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 			}
 		}
 		if b.NumberU64() < height {
-			panic("something went wrong")
+			log.Panic("block height is less than genesis height")
 		}
 		p, f := blockResolver.ParentBlock(b)
 		if !f {
-			panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+			log.Panic("deposits can't be processed because the rollups are not on the same Ethereum fork")
 		}
 		b = p
 	}
@@ -229,7 +224,7 @@ func extractDeposits(fromBlock *types.Block, toBlock *types.Block, blockResolver
 func calculateBlockState(b *types.Block, parentState *core.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, txHandler mgmtcontractlib.TxHandler, rollupResolver db.RollupResolver, bss db.BlockStateStorage) (*core.BlockState, *state.StateDB, *core.Rollup) {
 	currentHead, found := rollupResolver.FetchRollup(parentState.HeadRollup)
 	if !found {
-		panic("should not happen")
+		log.Panic("could not fetch parent rollup")
 	}
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
 	stateDB := bss.CreateStateDB(parentState.HeadRollup)
@@ -310,8 +305,7 @@ func newL2Tx(data core.L2TxData) *nodecommon.L2Tx {
 	nonce := big.NewInt(1)
 	enc, err := rlp.EncodeToBytes(data)
 	if err != nil {
-		// TODO - Surface this error properly.
-		panic(err)
+		log.Panic("could not encode L2 transaction data. Cause: %s", err)
 	}
 
 	return types.NewTx(&types.LegacyTx{

@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
@@ -17,8 +18,11 @@ func (m MockTxHandler) PackTx(*obscurocommon.L1TxData, common.Address, uint64) (
 }
 
 func (m MockTxHandler) UnPackTx(tx *types.Transaction) *obscurocommon.L1TxData {
-	t := obscurocommon.TxData(tx)
-	return &t
+	t, err := obscurocommon.TxData(tx)
+	if err != nil {
+		log.Panic("could not retrieve transaction data. Cause: %s", err)
+	}
+	return t
 }
 
 func NewMockTxHandler() mgmtcontractlib.TxHandler {
