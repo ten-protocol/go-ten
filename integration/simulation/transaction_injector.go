@@ -32,6 +32,8 @@ import (
 	wallet_mock "github.com/obscuronet/obscuro-playground/integration/walletmock"
 )
 
+var txTimeout = 30 * time.Second // how long we should wait for a tx related operation
+
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
 	// settings
@@ -100,7 +102,10 @@ func NewTransactionInjector(
 // Generates and issues L1 and L2 transactions to the network
 func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every user
+
 	addr := m.ethWallet.Address()
+	// TODO in the future this should to be awaited
+	// addresses should only be able to make txs after the initial deposits are minted into a block
 	for range m.wallets {
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        initialBalance,
@@ -117,6 +122,7 @@ func (m *TransactionInjector) Start() {
 		if err != nil {
 			panic(err)
 		}
+
 		m.stats.Deposit(initialBalance)
 		go m.trackL1Tx(txData)
 		time.Sleep(m.avgBlockDuration / 3)
@@ -126,6 +132,11 @@ func (m *TransactionInjector) Start() {
 	var wg errgroup.Group
 	wg.Go(func() error {
 		m.issueRandomDeposits()
+		return nil
+	})
+
+	wg.Go(func() error {
+		m.issueAwaitedRandomDeposits()
 		return nil
 	})
 
@@ -143,13 +154,6 @@ func (m *TransactionInjector) Start() {
 		m.issueInvalidWithdrawals()
 		return nil
 	})
-
-	if m.erc20ContractAddr != nil {
-		wg.Go(func() error {
-			m.issueRandomERC20Deposits()
-			return nil
-		})
-	}
 
 	_ = wg.Wait() // future proofing to return errors
 	m.fullyStoppedChan <- true
@@ -234,7 +238,6 @@ func (m *TransactionInjector) issueRandomTransfers() {
 }
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
-// Generates L1 common.L1DepositTx transactions
 func (m *TransactionInjector) issueRandomDeposits() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
@@ -260,13 +263,11 @@ func (m *TransactionInjector) issueRandomDeposits() {
 	}
 }
 
-// issueRandomERC20Deposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
-// Generates L1 common.L1DepositTx transactions
-func (m *TransactionInjector) issueRandomERC20Deposits() {
-	timeout := 30 * time.Second
-	node := m.l1Nodes[len(m.l1Nodes)-1]
-
+// issueAwaitedRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
+// awaits for each deposit tx to be minted into a block before proceeding
+func (m *TransactionInjector) issueAwaitedRandomDeposits() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
+		node := m.rndL1Node()
 		v := obscurocommon.RndBtw(1, 100)
 		addr := m.ethWallet.Address()
 		txData := &obscurocommon.L1DepositTx{
@@ -287,29 +288,36 @@ func (m *TransactionInjector) issueRandomERC20Deposits() {
 			panic(err)
 		}
 
-		var receipt *types.Receipt
-		for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-			receipt, err = node.TransactionReceipt(signedTx.Hash())
-			if err == nil && receipt != nil {
-				break
-			}
-			if !errors.Is(err, ethereum.NotFound) {
-				panic(err)
-			}
-			log.Trace("Tx has not been mined into a block after %s...", time.Since(start))
+		err = m.awaitTransaction(node, signedTx)
+		if err != nil {
+			panic(err)
 		}
 
-		if receipt == nil || receipt.Status != types.ReceiptStatusSuccessful {
-			panic(fmt.Errorf("transaction not minted into a block after %s", timeout))
-		}
 		m.stats.Deposit(v)
-		trackAddr := m.ethWallet.Address()
-		go m.trackL1Tx(&obscurocommon.L1DepositTx{
-			Amount:        v,
-			To:            &trackAddr,
-			TokenContract: m.erc20ContractAddr,
-		})
+		go m.trackL1Tx(txData)
 	}
+}
+
+// awaitTransaction checks if a transactions has been minted into a block successfully within a txTimeout
+func (m *TransactionInjector) awaitTransaction(node ethclient.EthClient, tx *types.Transaction) error {
+	var receipt *types.Receipt
+	var err error
+	for start := time.Now(); time.Since(start) < txTimeout; time.Sleep(time.Second) {
+		receipt, err = node.TransactionReceipt(tx.Hash())
+		if err == nil && receipt != nil {
+			break
+		}
+		if !errors.Is(err, ethereum.NotFound) {
+			return err
+		}
+		log.Trace("Tx has not been mined into a block after %s...", time.Since(start))
+	}
+
+	if receipt == nil || receipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf("transaction not minted into a block after %s", txTimeout)
+	}
+
+	return nil
 }
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed

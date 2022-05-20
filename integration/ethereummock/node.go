@@ -70,7 +70,10 @@ func (m *Node) SendTransaction(tx *types.Transaction) error {
 }
 
 func (m *Node) TransactionReceipt(_ common.Hash) (*types.Receipt, error) {
-	panic("method should never be called in this mock")
+	// all transactions are immediately processed
+	return &types.Receipt{
+		Status: types.ReceiptStatusSuccessful,
+	}, nil
 }
 
 // BlockListener is not used in the mock
