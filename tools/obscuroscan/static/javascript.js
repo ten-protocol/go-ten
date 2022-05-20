@@ -12,7 +12,8 @@ const initialize = () => {
         const headBlockResp = await fetch(pathHeadBlock);
 
         if (headBlockResp.ok) {
-            blockHeadArea.innerText = await headBlockResp.text();
+            const json = JSON.parse(await headBlockResp.text())
+            blockHeadArea.innerText = JSON.stringify(json, null, "\t");
         } else {
             blockHeadArea.innerText = "Failed to retrieve head block."
         }
@@ -22,7 +23,8 @@ const initialize = () => {
         const headRollupResp = await fetch(pathHeadRollup);
 
         if (headRollupResp.ok) {
-            headRollupArea.innerText = await headRollupResp.text();
+            const json = JSON.parse(await headRollupResp.text())
+            headRollupArea.innerText = JSON.stringify(json, null, "\t");
         } else {
             headRollupArea.innerText = "Failed to retrieve head rollup."
         }
