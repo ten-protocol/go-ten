@@ -185,10 +185,12 @@ func readJSON(path string) *map[string]interface{} {
 
 // Generates a random suffix n characters long.
 func randomSuffix(n int) string {
+	randGen := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
+
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	suffix := make([]rune, n)
 	for i := range suffix {
-		suffix[i] = letters[rand.Intn(len(letters))] //nolint:gosec
+		suffix[i] = letters[randGen.Intn(len(letters))]
 	}
 	return string(suffix)
 }

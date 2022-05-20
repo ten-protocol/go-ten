@@ -2,19 +2,24 @@ package obscuroscan
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
+
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 )
 
 const (
-	pathGetBlockHeadHeight = "/blockheadheight/"
-	staticDir              = "./tools/obscuroscan/static"
-	pathRoot               = "/"
-	httpCodeErr            = 500
+	pathHeadBlock  = "/headblock/"
+	pathHeadRollup = "/headrollup/"
+	staticDir      = "./tools/obscuroscan/static"
+	pathRoot       = "/"
+	httpCodeErr    = 500
 )
 
 // Obscuroscan is a server that allows the monitoring of a running Obscuro network.
@@ -36,7 +41,9 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	// Serves the web interface.
 	serveMux.Handle(pathRoot, http.FileServer(http.Dir(staticDir)))
 	// Handle requests for block head height.
-	serveMux.HandleFunc(pathGetBlockHeadHeight, o.getBlockHeadHeight)
+	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
+	// Handle requests for the head rollup.
+	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
 	err := o.server.ListenAndServe()
@@ -54,18 +61,44 @@ func (o *Obscuroscan) Shutdown() {
 	}
 }
 
-// Retrieves the current block head height for the Obscuro network.
-func (o *Obscuroscan) getBlockHeadHeight(resp http.ResponseWriter, req *http.Request) {
-	var currentBlockHeadHeight uint64
-	err := (*o.client).Call(&currentBlockHeadHeight, obscuroclient.RPCGetCurrentBlockHeadHeight)
+// Retrieves the current block header for the Obscuro network.
+func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
+	var headBlock *types.Header
+	err := (*o.client).Call(&headBlock, obscuroclient.RPCGetCurrentBlockHead)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve current block head height: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block: %s", err))
 		return
 	}
 
-	_, err = resp.Write([]byte(strconv.FormatUint(currentBlockHeadHeight, 10)))
+	jsonRollup, err := json.Marshal(headBlock)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return current block head height to client: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return head block to client: %s", err))
+		return
+	}
+	_, err = resp.Write(jsonRollup)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return head block to client: %s", err))
+		return
+	}
+}
+
+// Retrieves the head rollup for the Obscuro network.
+func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
+	var headRollup *nodecommon.Header
+	err := (*o.client).Call(&headRollup, obscuroclient.RPCGetCurrentRollupHead)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup: %s", err))
+		return
+	}
+
+	jsonRollup, err := json.Marshal(headRollup)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client: %s", err))
+		return
+	}
+	_, err = resp.Write(jsonRollup)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client: %s", err))
 		return
 	}
 }
