@@ -3,11 +3,11 @@ package walletmock
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
@@ -66,7 +66,7 @@ func New(privateKeyECDSA *ecdsa.PrivateKey) *Wallet {
 
 // SignTx returns a copy of the enclave.L2Tx signed with the provided ecdsa.PrivateKey
 func SignTx(tx *nodecommon.L2Tx, privateKey *ecdsa.PrivateKey) *nodecommon.L2Tx {
-	signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
+	signer := types.NewLondonSigner(obscurocommon.ChainID)
 	signedTx, err := types.SignTx(tx, signer, privateKey)
 	if err != nil {
 		panic(fmt.Errorf("could not sign transaction: %w", err))

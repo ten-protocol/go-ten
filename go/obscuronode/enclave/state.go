@@ -288,7 +288,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.St
 		if *t.To() == evm.Erc20ContractAddress && args["to"].(common.Address) == evm.WithdrawalAddress {
 			receipt := receipts[t.Hash()]
 			if receipt != nil && receipt.Status == 1 {
-				signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
+				signer := types.NewLondonSigner(obscurocommon.ChainID)
 				from, err1 := types.Sender(signer, &newHeadRollup.Transactions[i])
 				if err1 != nil {
 					panic(err1)
@@ -342,7 +342,7 @@ func newDepositTx(address common.Address, amount uint64, rollupState *state.Stat
 	if err != nil {
 		panic(err)
 	}
-	signer := types.NewLondonSigner(big.NewInt(int64(evm.ChainID)))
+	signer := types.NewLondonSigner(obscurocommon.ChainID)
 
 	nonce := rollupState.GetNonce(evm.Erc20OwnerAddress) + i
 

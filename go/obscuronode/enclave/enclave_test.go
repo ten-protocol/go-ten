@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
@@ -19,7 +19,7 @@ import (
 func TestValidSignatureVerifies(t *testing.T) {
 	tx := obscurocore.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
-	signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
+	signer := types.NewLondonSigner(obscurocommon.ChainID)
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
 	if err := verifySignature(signedTx); err != nil {
@@ -39,7 +39,7 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 	txData := obscurocore.CreateL2TxData()
 	tx := types.NewTx(txData)
 	privateKey, _ := crypto.GenerateKey()
-	signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
+	signer := types.NewLondonSigner(obscurocommon.ChainID)
 	_, _ = types.SignTx(tx, signer, privateKey)
 
 	// We create a new transaction around the transaction data, breaking the signature.
@@ -53,7 +53,7 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 func TestIncorrectSignerDoesNotVerify(t *testing.T) {
 	tx := obscurocore.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
-	incorrectChainID := int64(evm.ChainID + 1)
+	incorrectChainID := int64(obscurocommon.ChainID.Uint64() + 1)
 	signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 

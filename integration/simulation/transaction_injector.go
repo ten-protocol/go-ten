@@ -142,7 +142,7 @@ func (m *TransactionInjector) deployERC20(w *wallet_mock.Wallet) {
 		GasPrice: common.Big0,
 		Data:     contractBytes,
 	}
-	signedTx, err := types.SignTx(types.NewTx(&deployContractTx), types.NewLondonSigner(big.NewInt(int64(evm.ChainID))), w.Key.PrivateKey)
+	signedTx, err := types.SignTx(types.NewTx(&deployContractTx), types.NewLondonSigner(obscurocommon.ChainID), w.Key.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
@@ -293,7 +293,7 @@ func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet)
 	i := rand.Intn(3) //nolint:gosec
 	switch i {
 	case 0: // We sign the transaction with a bad signer.
-		incorrectChainID := int64(evm.ChainID + 1)
+		incorrectChainID := obscurocommon.ChainID.Int64() + 1
 		signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
 		signedTx, _ := types.SignTx(tx, signer, fromWallet.Key.PrivateKey)
 		return signedTx

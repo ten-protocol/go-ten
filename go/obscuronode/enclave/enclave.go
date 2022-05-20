@@ -255,7 +255,7 @@ func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 
 // Checks that the L2Tx has a valid signature.
 func verifySignature(decryptedTx *nodecommon.L2Tx) error {
-	signer := types.NewLondonSigner(big.NewInt(evm.ChainID))
+	signer := types.NewLondonSigner(obscurocommon.ChainID)
 	_, err := types.Sender(signer, decryptedTx)
 	return err
 }
@@ -317,7 +317,7 @@ func (e *enclaveImpl) Balance(address common.Address) uint64 {
 		panic("not found")
 	}
 	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return evm.BalanceOfErc20(s, address, r.Header, e.storage)
+	return evm.BalanceOfErc20(address, s, r.Header, e.storage)
 }
 
 func (e *enclaveImpl) Nonce(address common.Address) uint64 {
@@ -384,7 +384,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 			if f {
 				successfulTransactions = append(successfulTransactions, tx)
 			} else {
-				fmt.Printf("Excluding transaction %d\n", obscurocommon.ShortHash(tx.Hash()))
+				log.Info(">   Agg%d: Excluding transaction %d\n", obscurocommon.ShortAddress(e.nodeID), obscurocommon.ShortHash(tx.Hash()))
 			}
 		}
 	}

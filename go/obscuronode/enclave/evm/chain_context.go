@@ -7,13 +7,13 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 )
 
-// Obscuro implementation of the ChainContext
+// ObscuroChainContext - basic implementation of the ChainContext needed for the EVM integration
 type ObscuroChainContext struct {
 	rollupResolver db.RollupResolver
 }
 
 func (*ObscuroChainContext) Engine() consensus.Engine {
-	return &NoOpEngine{}
+	return &ObscuroNoOpConsensusEngine{}
 }
 
 func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *types.Header {
