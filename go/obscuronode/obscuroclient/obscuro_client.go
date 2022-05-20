@@ -37,10 +37,9 @@ type clientImpl struct {
 }
 
 func NewClient(nodeID common.Address, address string) Client {
-	httpAddr := http + address
-	rpcClient, err := rpc.Dial(httpAddr)
+	rpcClient, err := rpc.Dial(http + address)
 	if err != nil {
-		log.Panic("could not create RPC client on %s. Cause: %s", httpAddr, err)
+		log.Panic("could not create RPC client on %s. Cause: %s", http+address, err)
 	}
 
 	return &clientImpl{
