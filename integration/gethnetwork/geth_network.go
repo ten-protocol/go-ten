@@ -83,9 +83,6 @@ const (
 	  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	  "timestamp": "0x00"
   }`
-	allocBlockTemplate = `		"0x%s": {
-		  "balance": "1000000000000000000000"
-		}`
 	addrBlockTemplate = `		"%s": {
 		  "balance": "1000000000000000000000"
 		}`
@@ -171,14 +168,10 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	}
 	wg.Wait()
 
-	// We generate the genesis config file based on the accounts above.
+	// We generate the genesis config file based on the accounts above and the prefunded addresses.
 	allocs := make([]string, numNodes+len(preFundedAddrs))
-	for i, addr := range network.addresses {
-		allocs[i] = fmt.Sprintf(allocBlockTemplate, addr)
-	}
-	// add prefunded addresses to the genesis
-	for i, addr := range preFundedAddrs {
-		allocs[numNodes+i] = fmt.Sprintf(addrBlockTemplate, addr)
+	for i, addr := range append(network.addresses, preFundedAddrs...) {
+		allocs[i] = fmt.Sprintf(addrBlockTemplate, addr)
 	}
 	network.GenesisJSON = []byte(
 		fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, "")),
