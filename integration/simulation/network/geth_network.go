@@ -113,17 +113,14 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 }
 
 func (n *networkInMemGeth) TearDown() {
+	defer n.gethNetwork.StopNodes()
 	for _, client := range n.obscuroClients {
 		temp := client
 		go func() {
+			defer (*temp).Stop()
 			_ = (*temp).Call(nil, obscuroclient.RPCStopHost)
-			(*temp).Stop()
 		}()
 	}
-
-	n.gethNetwork.StopNodes()
-	// double tap. todo: this is probably unnecessary
-	defer n.gethNetwork.StopNodes()
 }
 
 func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contractAddr common.Address) ethclient.EthClient {

@@ -538,8 +538,9 @@ func (a *Node) monitorBlocks() {
 				latestBlkHeader.Number.Uint64())
 			a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
 
+		// this timeout ensures we don't leak the goroutine
 		case <-time.After(1 * time.Second):
-			// check for interrupt
+			// break out of select and check for interrupt on the for loop
 		}
 	}
 }
