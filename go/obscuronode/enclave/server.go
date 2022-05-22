@@ -163,8 +163,8 @@ func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRe
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
+	defer s.rpcServer.GracefulStop()
 	err := s.enclave.Stop()
-	s.rpcServer.GracefulStop()
 	return &generated.StopResponse{}, err
 }
 

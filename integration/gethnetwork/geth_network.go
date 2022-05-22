@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -91,13 +92,12 @@ const (
 	  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	  "timestamp": "0x00"
   }`
-	allocBlockTemplate = `		"0x%s": {
-		  "balance": "1000000000000000000000"
-		}`
 	addrBlockTemplate = `		"%s": {
 		  "balance": "1000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
+
+	wsPortOffset = 100
 )
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
@@ -119,6 +119,11 @@ type GethNetwork struct {
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
 func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) *GethNetwork {
+	err := ensurePortsAreAvailable(portStart, numNodes)
+	if err != nil {
+		panic(err)
+	}
+
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	buildDir := path.Join(basepath, buildDirBase, timestamp)
@@ -177,14 +182,10 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	}
 	wg.Wait()
 
-	// We generate the genesis config file based on the accounts above.
+	// We generate the genesis config file based on the accounts above and the prefunded addresses.
 	allocs := make([]string, numNodes+len(preFundedAddrs))
-	for i, addr := range network.addresses {
-		allocs[i] = fmt.Sprintf(allocBlockTemplate, addr)
-	}
-	// add prefunded addresses to the genesis
-	for i, addr := range preFundedAddrs {
-		allocs[numNodes+i] = fmt.Sprintf(addrBlockTemplate, addr)
+	for i, addr := range append(network.addresses, preFundedAddrs...) {
+		allocs[i] = fmt.Sprintf(addrBlockTemplate, addr)
 	}
 	network.GenesisJSON = []byte(
 		fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, "")),
@@ -381,4 +382,33 @@ func waitForIPC(dataDir string) {
 
 		counter++
 	}
+}
+
+func ensurePortsAreAvailable(startPort int, numberNodes int) error {
+	var unavailablePorts []int
+
+	for i := 0; i < numberNodes; i++ {
+		commsPort := startPort + i
+		if !isPortAvailable(commsPort) {
+			unavailablePorts = append(unavailablePorts, commsPort)
+		}
+		wsPort := startPort + wsPortOffset + i
+		if !isPortAvailable(wsPort) {
+			unavailablePorts = append(unavailablePorts, wsPort)
+		}
+	}
+
+	if len(unavailablePorts) > 0 {
+		list, _ := json.Marshal(unavailablePorts)
+		return fmt.Errorf("could not run geth network because test ports are unavalable for use - the following ports were unavailable: %s", list)
+	}
+	return nil
+}
+
+func isPortAvailable(port int) bool {
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if ln != nil {
+		_ = ln.Close()
+	}
+	return err == nil
 }

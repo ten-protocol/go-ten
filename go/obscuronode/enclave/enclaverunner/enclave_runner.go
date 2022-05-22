@@ -14,6 +14,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
+// TODO - Replace with the genesis.json of Obscuro's L1 network.
+const hardcodedGenesisJSON = "TODO - REPLACE ME"
+
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config EnclaveConfig) {
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
@@ -21,9 +24,13 @@ func RunEnclave(config EnclaveConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddrs...)
 
-	// TODO - For now, genesisJSON is nil. This means that incoming L1 blocks are not validated by the enclave. In the
-	//  future, we should allow the genesisJSON to be passed in somehow, with a default of the default genesis.
-	closeHandle, err := enclave.StartServer(config.Address, config.ChainID, nodeAddress, mgmtContractLib, erc20ContractLib, false, nil, nil)
+	var genesisJSON []byte
+	if config.VerifyL1Blocks {
+		genesisJSON = []byte(hardcodedGenesisJSON)
+	} else {
+		genesisJSON = nil
+	}
+	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, mgmtContractLib, erc20ContractLib, false, genesisJSON, nil)
 	if err != nil {
 		log.Panic("could not start Obscuro enclave service. Cause: %s", err)
 	}

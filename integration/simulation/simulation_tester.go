@@ -2,12 +2,14 @@ package simulation
 
 import (
 	"math/rand"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
 	"github.com/google/uuid"
@@ -15,12 +17,18 @@ import (
 
 // testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
 func testSimulation(t *testing.T, netw network.Network, params *params.SimParams) {
+	defer func() {
+		// wait until clean up is complete before we log the lingering goroutine count
+		log.Info("goroutine leak monitor - simulation end - %d goroutines currently running", runtime.NumGoroutine())
+	}()
+	log.Info("goroutine leak monitor - simulation start - %d goroutines currently running", runtime.NumGoroutine())
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
 	stats := stats2.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
 	ethClients, obscuroClients, p2pAddrs := netw.Create(params, stats)
+	defer netw.TearDown()
 
 	txInjector := NewTransactionInjector(
 		params.AvgBlockDuration,
@@ -55,5 +63,4 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
-	netw.TearDown()
 }

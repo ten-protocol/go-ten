@@ -86,7 +86,6 @@ func DefaultHostConfig() HostConfig {
 func ParseCLIArgs() HostConfig {
 	defaultConfig := DefaultHostConfig()
 
-	// TODO - Only provide defaults for certain flags. Some flags cannot be defaulted meaningfully (e.g. privateKeyString).
 	nodeID := flag.String(nodeIDName, defaultConfig.NodeID, nodeIDUsage)
 	isGenesis := flag.Bool(genesisName, defaultConfig.IsGenesis, genesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, defaultConfig.GossipRoundNanos, gossipRoundNanosUsage)

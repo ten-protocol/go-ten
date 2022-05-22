@@ -542,21 +542,28 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 func (a *Node) monitorBlocks() {
 	listener := a.ethClient.BlockListener()
 	nodecommon.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
-	for {
-		latestBlkHeader := <-listener
-		block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
-		if err != nil {
-			log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
-		}
-		blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
-		if err != nil {
-			log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
-		}
 
-		nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
-			obscurocommon.ShortHash(latestBlkHeader.Hash()),
-			latestBlkHeader.Number.Uint64())
-		a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
+	for atomic.LoadInt32(a.interrupt) == 0 {
+		select {
+		case latestBlkHeader := <-listener:
+			block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
+			if err != nil {
+				log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
+			}
+			blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
+			if err != nil {
+				log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+			}
+
+			nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
+				obscurocommon.ShortHash(latestBlkHeader.Hash()),
+				latestBlkHeader.Number.Uint64())
+			a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
+
+		// this timeout ensures we don't leak the goroutine
+		case <-time.After(1 * time.Second):
+			// break out of select and check for interrupt on the for loop
+		}
 	}
 }
 

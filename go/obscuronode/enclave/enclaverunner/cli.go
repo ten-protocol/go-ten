@@ -29,6 +29,9 @@ const (
 
 	erc20contractAddrsName  = "erc20contractAddresses"
 	erc20contractAddrsUsage = "The erc20 contract addresses to monitor on the L1"
+
+	verifyL1BlocksName  = "verifyL1Blocks"
+	verifyL1BlocksUsage = "Whether to verify incoming blocks using the hardcoded L1 genesis.json config"
 )
 
 type EnclaveConfig struct {
@@ -39,6 +42,7 @@ type EnclaveConfig struct {
 	WriteToLogs        bool
 	LogPath            string
 	ERC20ContractAddrs []*common.Address
+	VerifyL1Blocks     bool
 }
 
 func DefaultEnclaveConfig() EnclaveConfig {
@@ -50,6 +54,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		WriteToLogs:        false,
 		LogPath:            "enclave_logs.txt",
 		ERC20ContractAddrs: []*common.Address{},
+		VerifyL1Blocks:     false,
 	}
 }
 
@@ -63,6 +68,7 @@ func ParseCLIArgs() EnclaveConfig {
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	erc20ContractAddrs := flag.String(erc20contractAddrsName, "", erc20contractAddrsUsage)
+	verifyL1Blocks := flag.Bool(verifyL1BlocksName, defaultConfig.VerifyL1Blocks, verifyL1BlocksUsage)
 
 	flag.Parse()
 
@@ -82,5 +88,6 @@ func ParseCLIArgs() EnclaveConfig {
 		WriteToLogs:     *writeToLogs,
 		LogPath:         *logPath,
 		ChainID:         *chainID,
+		VerifyL1Blocks:  *verifyL1Blocks,
 	}
 }
