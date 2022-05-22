@@ -40,10 +40,10 @@ type SimParams struct {
 	// StableTokenContractAddr defines an erc20 contract address instance that has bee deployed
 	StableTokenContractAddr *common.Address
 
-	// NodeEthWallets contains the wallets for the l1 nodes
+	// NodeEthWallets contains the wallets of the l1 nodes
 	NodeEthWallets []wallet.Wallet
 
-	// SimEthWallets are the wallets used for the simulation
+	// SimEthWallets are the wallets used for the simulation tx injection
 	SimEthWallets []wallet.Wallet
 
 	StartPort int // The port from which to start allocating ports. Must be unique across all simulations.
