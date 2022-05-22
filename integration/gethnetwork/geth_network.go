@@ -112,6 +112,11 @@ type GethNetwork struct {
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
 func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) GethNetwork {
+	err := ensurePortsAreAvailable(portStart, numNodes)
+	if err != nil {
+		panic(err)
+	}
+
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	buildDir := path.Join(basepath, buildDirBase, timestamp)
@@ -357,17 +362,19 @@ func waitForIPC(dataDir string) {
 	}
 }
 
-func EnsurePortsAreAvailable(startPort int, numberNodes int) error {
+func ensurePortsAreAvailable(startPort int, numberNodes int) error {
 	var unavailablePorts []int
-	mu := &sync.Mutex{}
-	wg := &sync.WaitGroup{}
 
 	for i := 0; i < numberNodes; i++ {
-		wg.Add(2)
-		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+i)              // commsPort
-		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+wsPortOffset+i) // wsPort
+		commsPort := startPort + i
+		if !isPortAvailable(commsPort) {
+			unavailablePorts = append(unavailablePorts, commsPort)
+		}
+		wsPort := startPort + wsPortOffset + i
+		if !isPortAvailable(wsPort) {
+			unavailablePorts = append(unavailablePorts, wsPort)
+		}
 	}
-	wg.Wait()
 
 	if len(unavailablePorts) > 0 {
 		list, _ := json.Marshal(unavailablePorts)
@@ -376,19 +383,10 @@ func EnsurePortsAreAvailable(startPort int, numberNodes int) error {
 	return nil
 }
 
-func ensurePortAvailable(wg *sync.WaitGroup, portsListMtx *sync.Mutex, unavailablePorts *[]int, port int) {
+func isPortAvailable(port int) bool {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	defer func() {
-		if ln != nil {
-			_ = ln.Close()
-		}
-	}()
-
-	if err != nil {
-		portsListMtx.Lock()
-		*unavailablePorts = append(*unavailablePorts, port)
-		portsListMtx.Unlock()
+	if ln != nil {
+		_ = ln.Close()
 	}
-
-	wg.Done()
+	return err == nil
 }

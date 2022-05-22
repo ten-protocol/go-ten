@@ -40,11 +40,6 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		panic(err)
 	}
 
-	err = gethnetwork.EnsurePortsAreAvailable(params.StartPort, params.NumberOfNodes)
-	if err != nil {
-		panic(err)
-	}
-
 	// convert the wallets to strings
 	walletAddresses := make([]string, params.NumberOfObscuroWallets)
 	for i := 0; i < params.NumberOfObscuroWallets; i++ {
