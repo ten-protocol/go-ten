@@ -88,6 +88,8 @@ const (
 		  "balance": "1000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
+
+	wsPortOffset = 100
 )
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
@@ -154,7 +156,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 		passwordFilePath: passwordFile.Name(),
 		WebSocketPorts:   make([]uint, numNodes),
 		commStartPort:    portStart,
-		wsStartPort:      portStart + 100,
+		wsStartPort:      portStart + wsPortOffset,
 	}
 
 	// We create an account for each node.
@@ -362,10 +364,9 @@ func EnsurePortsAreAvailable(startPort int, numberNodes int) error {
 
 	for i := 0; i < numberNodes; i++ {
 		wg.Add(2)
-		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+i)     // commsPort
-		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+100+i) // wsPort
+		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+i)              // commsPort
+		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+wsPortOffset+i) // wsPort
 	}
-
 	wg.Wait()
 
 	if len(unavailablePorts) > 0 {
