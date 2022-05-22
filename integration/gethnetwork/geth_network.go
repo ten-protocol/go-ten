@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -87,6 +88,8 @@ const (
 		  "balance": "1000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
+
+	wsPortOffset = 100
 )
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
@@ -109,6 +112,11 @@ type GethNetwork struct {
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
 func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) GethNetwork {
+	err := ensurePortsAreAvailable(portStart, numNodes)
+	if err != nil {
+		panic(err)
+	}
+
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	buildDir := path.Join(basepath, buildDirBase, timestamp)
@@ -153,7 +161,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 		passwordFilePath: passwordFile.Name(),
 		WebSocketPorts:   make([]uint, numNodes),
 		commStartPort:    portStart,
-		wsStartPort:      portStart + 100,
+		wsStartPort:      portStart + wsPortOffset,
 	}
 
 	// We create an account for each node.
@@ -352,4 +360,33 @@ func waitForIPC(dataDir string) {
 
 		counter++
 	}
+}
+
+func ensurePortsAreAvailable(startPort int, numberNodes int) error {
+	var unavailablePorts []int
+
+	for i := 0; i < numberNodes; i++ {
+		commsPort := startPort + i
+		if !isPortAvailable(commsPort) {
+			unavailablePorts = append(unavailablePorts, commsPort)
+		}
+		wsPort := startPort + wsPortOffset + i
+		if !isPortAvailable(wsPort) {
+			unavailablePorts = append(unavailablePorts, wsPort)
+		}
+	}
+
+	if len(unavailablePorts) > 0 {
+		list, _ := json.Marshal(unavailablePorts)
+		return fmt.Errorf("could not run geth network because test ports are unavalable for use - the following ports were unavailable: %s", list)
+	}
+	return nil
+}
+
+func isPortAvailable(port int) bool {
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if ln != nil {
+		_ = ln.Close()
+	}
+	return err == nil
 }
