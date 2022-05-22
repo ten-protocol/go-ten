@@ -32,8 +32,8 @@ type networkInMemGeth struct {
 func NewNetworkInMemoryGeth(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
 	return &networkInMemGeth{
 		wallets:      wallets,
-		workerWallet: workerWallet,
 		contracts:    contracts,
+		workerWallet: workerWallet,
 	}
 }
 

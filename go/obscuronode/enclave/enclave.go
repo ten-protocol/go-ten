@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"

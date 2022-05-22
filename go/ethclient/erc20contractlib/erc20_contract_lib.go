@@ -27,6 +27,7 @@ type ERC20ContractLib interface {
 	// returns nil if the transaction is not convertible
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
 
+	// CreateDepositTx receives an obscurocommon.L1Transaction and converts it to an eth transaction
 	CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData
 }
 

@@ -29,11 +29,16 @@ type SimParams struct {
 	L2EfficiencyThreshold     float64 // number of dead obscuro blocks
 	L2ToL1EfficiencyThreshold float64 // number of ethereum blocks that don't include an obscuro node
 
-	MgmtContractLib  mgmtcontractlib.MgmtContractLib
+	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
+	MgmtContractLib mgmtcontractlib.MgmtContractLib
+	// MgmtContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddr *common.Address
+
+	// StableTokenContractAddr defines an erc20 contract address instance that has bee deployed
+	StableTokenContractAddr *common.Address
 
 	// NodeEthWallets contains the wallets for the l1 nodes
 	NodeEthWallets []wallet.Wallet
@@ -41,6 +46,5 @@ type SimParams struct {
 	// SimEthWallets are the wallets used for the simulation
 	SimEthWallets []wallet.Wallet
 
-	StableTokenContractAddr *common.Address
-	StartPort               int // The port from which to start allocating ports. Must be unique across all simulations.
+	StartPort int // The port from which to start allocating ports. Must be unique across all simulations.
 }

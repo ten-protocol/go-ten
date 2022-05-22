@@ -5,16 +5,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
 
 const ClientRPCTimeoutSecs = 5
@@ -156,7 +154,8 @@ func (a *Node) Start() {
 	if a.isGenesis {
 		// Create the shared secret and submit it to the management contract for storage
 		l1tx := &obscurocommon.L1StoreSecretTx{
-			Secret: a.EnclaveClient.GenerateSecret(), Attestation: a.EnclaveClient.Attestation(),
+			Secret:      a.EnclaveClient.GenerateSecret(),
+			Attestation: a.EnclaveClient.Attestation(),
 		}
 		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 	}

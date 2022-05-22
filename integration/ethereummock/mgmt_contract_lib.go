@@ -51,7 +51,7 @@ func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	buf := bytes.NewBuffer(tx.Data())
 	dec := gob.NewDecoder(buf)
 
-	// in the mock implementation we use the To address field to specify what is the L1 operation
+	// in the mock implementation we use the To address field to specify the L1 operation (rollup/storesecret/requestsecret)
 	// the mock implementation does not process contracts
 	// so this is a way that we can differentiate different contract calls
 	var t obscurocommon.L1Transaction

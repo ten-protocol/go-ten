@@ -9,18 +9,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration"
-
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.

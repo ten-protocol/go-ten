@@ -122,7 +122,7 @@ func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64
 	}
 }
 
-func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRequestSecret(_ *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack(RequestSecretMethod)
 	if err != nil {
 		panic(err)

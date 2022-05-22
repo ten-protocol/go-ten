@@ -27,7 +27,7 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 		simulation: simulation,
 	}
 
-	outputStats.countCanonicalChain()
+	outputStats.countBlockChain()
 	outputStats.populateHeights()
 
 	return outputStats
@@ -39,7 +39,7 @@ func (o *OutputStats) populateHeights() {
 	o.l2Height = int(getCurrentRollupHead(obscuroClient).Number)
 }
 
-func (o *OutputStats) countCanonicalChain() {
+func (o *OutputStats) countBlockChain() {
 	l1Node := o.simulation.EthClients[0]
 	l2Client := o.simulation.ObscuroClients[0]
 
@@ -93,7 +93,7 @@ func (o *OutputStats) String() string {
 		"totalWithdrawnAmount: %d\n"+
 		"rollupWithMoreRecentProof: %d\n"+
 		"nrTransferTransactions: %d\n"+
-		"nrCanonicalERC20Deposits: %d\n",
+		"nrBlockParsedERC20Deposits: %d\n",
 		o.simulation.Stats.NrMiners,
 		o.l1Height,
 		o.l2Height,

@@ -96,7 +96,7 @@ func (m *TransactionInjector) Start() {
 		if err != nil {
 			panic(err)
 		}
-		err = m.rndL1Node().SendTransaction(signedTx)
+		err = m.rndL1NodeClient().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
@@ -183,7 +183,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 		if err != nil {
 			panic(err)
 		}
-		err = m.rndL1Node().SendTransaction(signedTx)
+		err = m.rndL1NodeClient().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
@@ -235,30 +235,15 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 
 // Uses one of the approaches to create an invalidly-signed transaction.
 func (m *TransactionInjector) createInvalidSignature(tx types.TxData, _ wallet.Wallet) *types.Transaction {
-	switch 0 {
-	case 0: // We do not sign the transaction.
-		return types.NewTx(tx)
-
-		// TODO uncomment this when the withdrawals look into the signature
-		// case 1: // We sign with the wrong wallet
-		//	otherWallet := m.rndWallet()
-		//	for otherWallet.Address().Hex() == fromWallet.Address().Hex() {
-		//		otherWallet = m.rndWallet()
-		//	}
-		//	signedTx, err := otherWallet.SignTransaction(tx)
-		//	if err != nil {
-		//		panic(err)
-		//	}
-		//	return signedTx
-	}
-	panic("Expected i to be in the range [0,1].")
+	return types.NewTx(tx)
+	// TODO sign with the wrong wallet when the withdrawals look into the signature
 }
 
 func (m *TransactionInjector) rndWallet() wallet.Wallet {
 	return m.wallets[rand.Intn(len(m.wallets)-1)] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL1Node() ethclient.EthClient {
+func (m *TransactionInjector) rndL1NodeClient() ethclient.EthClient {
 	return m.l1Clients[rand.Intn(len(m.l1Clients))] //nolint:gosec
 }
 
