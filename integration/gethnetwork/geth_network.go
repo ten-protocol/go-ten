@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -352,4 +353,41 @@ func waitForIPC(dataDir string) {
 
 		counter++
 	}
+}
+
+func EnsurePortsAreAvailable(startPort int, numberNodes int) error {
+	var unavailablePorts []int
+	mu := &sync.Mutex{}
+	wg := &sync.WaitGroup{}
+
+	for i := 0; i < numberNodes; i++ {
+		wg.Add(2)
+		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+i)     // commsPort
+		go ensurePortAvailable(wg, mu, &unavailablePorts, startPort+100+i) // wsPort
+	}
+
+	wg.Wait()
+
+	if len(unavailablePorts) > 0 {
+		list, _ := json.Marshal(unavailablePorts)
+		return fmt.Errorf("could not run geth network because test ports are unavalable for use - the following ports were unavailable: %s", list)
+	}
+	return nil
+}
+
+func ensurePortAvailable(wg *sync.WaitGroup, portsListMtx *sync.Mutex, unavailablePorts *[]int, port int) {
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	defer func() {
+		if ln != nil {
+			_ = ln.Close()
+		}
+	}()
+
+	if err != nil {
+		portsListMtx.Lock()
+		*unavailablePorts = append(*unavailablePorts, port)
+		portsListMtx.Unlock()
+	}
+
+	wg.Done()
 }
