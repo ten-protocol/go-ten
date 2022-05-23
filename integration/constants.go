@@ -12,4 +12,7 @@ var (
 	StartPortSimulationSocket              = 37000
 )
 
-const ChainID = 1337
+const (
+	EthereumChainID = 1337
+	ObscuroChainID  = 777
+)

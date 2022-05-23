@@ -58,8 +58,8 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
 
 	for i := 0; i < simParams.NumberOfNodes+1; i++ {
-		simParams.NodeEthWallets = append(simParams.NodeEthWallets, datagenerator.RandomWallet(integration.ChainID))
-		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.ChainID))
+		simParams.NodeEthWallets = append(simParams.NodeEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
+		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
 	}
 
 	// We create a Docker client.

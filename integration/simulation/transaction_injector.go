@@ -35,9 +35,10 @@ type TransactionInjector struct {
 	avgBlockDuration time.Duration
 
 	// connections
-	wallets   []wallet.Wallet
-	l1Clients []ethclient.EthClient
-	l2Clients []*obscuroclient.Client
+	ethWallets []wallet.Wallet
+	obsWallets []wallet.Wallet
+	l1Clients  []ethclient.EthClient
+	l2Clients  []*obscuroclient.Client
 
 	// addrs and libs
 	erc20ContractAddr *common.Address
@@ -64,6 +65,11 @@ func NewTransactionInjector(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
 	interrupt := int32(0)
+
+	obsWallets := make([]wallet.Wallet, len(ethWallets))
+	for i, w := range ethWallets {
+		obsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), w.PrivateKey())
+	}
 	return &TransactionInjector{
 		avgBlockDuration:  avgBlockDuration,
 		stats:             stats,
@@ -75,7 +81,8 @@ func NewTransactionInjector(
 		mgmtContractAddr:  mgmtContractAddr,
 		mgmtContractLib:   mgmtContractLib,
 		erc20ContractLib:  erc20ContractLib,
-		wallets:           ethWallets,
+		ethWallets:        ethWallets,
+		obsWallets:        obsWallets,
 		counter:           newCounter(),
 	}
 }
@@ -85,7 +92,7 @@ func NewTransactionInjector(
 // Generates and issues L1 and L2 transactions to the network
 func (m *TransactionInjector) Start() {
 	// deposit some initial amount into every simulation wallet
-	for _, w := range m.wallets {
+	for _, w := range m.ethWallets {
 		addr := w.Address()
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        initialBalance,
@@ -144,10 +151,10 @@ func (m *TransactionInjector) Stop() {
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (m *TransactionInjector) issueRandomTransfers() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
-		fromWallet := m.rndWallet()
-		toWallet := m.rndWallet()
+		fromWallet := m.rndObsWallet()
+		toWallet := m.rndObsWallet()
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
-			toWallet = m.rndWallet()
+			toWallet = m.rndObsWallet()
 		}
 		tx := NewL2Transfer(fromWallet.Address(), toWallet.Address(), obscurocommon.RndBtw(1, 500))
 		signedTx, err := fromWallet.SignTransaction(tx)
@@ -172,7 +179,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 func (m *TransactionInjector) issueRandomDeposits() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
-		ethWallet := m.rndWallet()
+		ethWallet := m.rndEthWallet()
 		addr := ethWallet.Address()
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        v,
@@ -199,7 +206,7 @@ func (m *TransactionInjector) issueRandomDeposits() {
 func (m *TransactionInjector) issueRandomWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
-		obsWallet := m.rndWallet()
+		obsWallet := m.rndObsWallet()
 		tx := NewL2Withdrawal(obsWallet.Address(), v)
 		signedTx, err := obsWallet.SignTransaction(tx)
 		if err != nil {
@@ -222,10 +229,10 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 // These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
 func (m *TransactionInjector) issueInvalidL2Txs() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
-		fromWallet := m.rndWallet()
-		toWallet := m.rndWallet()
+		fromWallet := m.rndObsWallet()
+		toWallet := m.rndObsWallet()
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
-			toWallet = m.rndWallet()
+			toWallet = m.rndObsWallet()
 		}
 		var tx types.TxData
 		switch rand.Intn(1) { //nolint:gosec
@@ -250,7 +257,7 @@ func (m *TransactionInjector) issueInvalidL2Txs() {
 func (m *TransactionInjector) createInvalidSignage(tx types.TxData, w wallet.Wallet) *types.Transaction {
 	switch rand.Intn(1) { //nolint:gosec
 	case 0: // We sign the transaction with a bad signer.
-		incorrectChainID := int64(integration.ChainID + 1)
+		incorrectChainID := int64(integration.EthereumChainID + 1)
 		signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
 		signedTx, _ := types.SignNewTx(w.PrivateKey(), signer, tx)
 		return signedTx
@@ -261,8 +268,12 @@ func (m *TransactionInjector) createInvalidSignage(tx types.TxData, w wallet.Wal
 	return nil
 }
 
-func (m *TransactionInjector) rndWallet() wallet.Wallet {
-	return m.wallets[rand.Intn(len(m.wallets)-1)] //nolint:gosec
+func (m *TransactionInjector) rndObsWallet() wallet.Wallet {
+	return m.obsWallets[rand.Intn(len(m.obsWallets)-1)] //nolint:gosec
+}
+
+func (m *TransactionInjector) rndEthWallet() wallet.Wallet {
+	return m.ethWallets[rand.Intn(len(m.ethWallets)-1)] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL1NodeClient() ethclient.EthClient {

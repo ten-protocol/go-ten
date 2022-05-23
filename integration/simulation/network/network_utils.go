@@ -57,7 +57,7 @@ func createInMemObscuroNode(
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, false, nil)
 
 	nodeID := common.BigToAddress(big.NewInt(id))
-	enclaveClient := enclave.NewEnclave(nodeID, integration.ChainID, true, mgmtContractLib, stableTokenContractLib, validateBlocks, genesisJSON, stats)
+	enclaveClient := enclave.NewEnclave(nodeID, integration.ObscuroChainID, true, mgmtContractLib, stableTokenContractLib, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
 	node := host.NewObscuroAggregator(
@@ -85,7 +85,7 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
 	mgmtContractLib := ethereum_mock.NewMgmtContractLibMock()
-	ethWallet := datagenerator.RandomWallet(integration.ChainID)
+	ethWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
 	node := host.NewObscuroAggregator(
 		nodeID,

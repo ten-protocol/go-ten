@@ -36,22 +36,27 @@ type inMemoryWallet struct {
 	chainID    *big.Int
 }
 
-func NewInMemoryWallet(chainID *big.Int, pk string) Wallet {
-	privateKey, err := crypto.HexToECDSA(pk)
-	if err != nil {
-		log.Panic("could not recover private key from hex. Cause: %s", err)
-	}
-	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
+func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
+	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
 	if !ok {
 		log.Panic("error casting public key to ECDSA")
 	}
 
 	return &inMemoryWallet{
 		chainID:    chainID,
-		prvKey:     privateKey,
+		prvKey:     pk,
 		pubKey:     publicKeyECDSA,
 		pubKeyAddr: crypto.PubkeyToAddress(*publicKeyECDSA),
 	}
+}
+
+func NewInMemoryWalletFromString(chainID *big.Int, pk string) Wallet {
+	privateKey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		log.Panic("could not recover private key from hex. Cause: %s", err)
+	}
+	return NewInMemoryWalletFromPK(chainID, privateKey)
+
 }
 
 // SignTransaction returns a signed transaction

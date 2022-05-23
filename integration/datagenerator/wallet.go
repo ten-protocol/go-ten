@@ -14,7 +14,7 @@ func RandomWallet(chainID int64) wallet.Wallet {
 	if err != nil {
 		panic(err) // this should never panic - world should stop if it does
 	}
-	return wallet.NewInMemoryWallet(big.NewInt(chainID), pk)
+	return wallet.NewInMemoryWalletFromString(big.NewInt(chainID), pk)
 }
 
 func randomHex(n int) (string, error) {

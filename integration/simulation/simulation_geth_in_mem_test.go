@@ -25,15 +25,15 @@ func TestGethSimulation(t *testing.T) {
 	// create the ethereum obsWallets to be used by the nodes and prefund them
 	nodeWallets := make([]wallet.Wallet, numberOfNodes)
 	for i := 0; i < numberOfNodes; i++ {
-		nodeWallets[i] = datagenerator.RandomWallet(integration.ChainID)
+		nodeWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
 	}
 	// create the ethereum obsWallets to be used by the simulation and prefund them
 	simWallets := make([]wallet.Wallet, numberOfSimWallets)
 	for i := 0; i < numberOfSimWallets; i++ {
-		simWallets[i] = datagenerator.RandomWallet(integration.ChainID)
+		simWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
 	}
 	// create one extra wallet as the worker wallet ( to deploy contracts )
-	workerWallet := datagenerator.RandomWallet(integration.ChainID)
+	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
 	// define contracts to be deployed
 	contractsBytes := []string{

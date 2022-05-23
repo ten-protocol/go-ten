@@ -30,7 +30,7 @@ func RunHost(config HostConfig) {
 
 	contractAddr := common.HexToAddress(config.ContractAddress)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
-	ethWallet := wallet.NewInMemoryWallet(big.NewInt(config.ChainID), config.PrivateKeyString)
+	ethWallet := wallet.NewInMemoryWalletFromString(big.NewInt(config.ChainID), config.PrivateKeyString)
 
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), &contractAddr)
