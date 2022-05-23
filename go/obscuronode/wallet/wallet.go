@@ -56,7 +56,6 @@ func NewInMemoryWalletFromString(chainID *big.Int, pk string) Wallet {
 		log.Panic("could not recover private key from hex. Cause: %s", err)
 	}
 	return NewInMemoryWalletFromPK(chainID, privateKey)
-
 }
 
 // SignTransaction returns a signed transaction
