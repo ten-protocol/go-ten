@@ -27,7 +27,7 @@ func main() {
 	}
 
 	fmt.Println("Connecting to Obscuro host...")
-	l2Client := obscuroclient.NewClient(nodeID, config.clientServerAddr)
+	l2Client := obscuroclient.NewClient(config.clientServerAddr)
 
 	txInjector := simulation.NewTransactionInjector(
 		3,
