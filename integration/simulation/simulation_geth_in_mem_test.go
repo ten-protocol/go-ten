@@ -17,9 +17,7 @@ func TestInMemoryGethMonteCarloSimulation(t *testing.T) {
 	setupTestLog("geth-in-mem")
 
 	numberOfNodes := 5
-
-	// there is one wallet per node, so there have to be at least numberOfNodes wallets available
-	numberOfWallets := numberOfNodes
+	numberOfWallets := numberOfNodes // We need at least one wallet per node.
 
 	// randomly create the ethereum wallets to be used and prefund them
 	wallets := make([]wallet.Wallet, numberOfWallets)

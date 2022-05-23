@@ -2,10 +2,11 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
@@ -31,31 +32,8 @@ func NewNetworkOfSocketNodes() Network {
 }
 
 func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
-	// todo - joel - move shared logic into one place
-	// make sure the geth network binaries exist
-	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
-	if err != nil {
-		panic(err)
-	}
-
-	// convert the wallets to strings
-	walletAddresses := make([]string, params.NumberOfObscuroWallets)
-	for i := 0; i < params.NumberOfObscuroWallets; i++ {
-		walletAddresses[i] = params.EthWallets[i].Address().String()
-	}
-
-	// kickoff the network with the prefunded wallet addresses
-	gn := gethnetwork.NewGethNetwork(
-		params.StartPort+300,
-		params.StartPort+300+100,
-		path,
-		params.NumberOfNodes,
-		int(params.AvgBlockDuration.Seconds()),
-		walletAddresses,
-	)
-	n.gethNetwork = &gn
-	// take the first random wallet and deploy the contract in the network
-	contractAddr := deployContract(params.EthWallets[0], gn.WebSocketPorts[0])
+	gethNetwork, contractAddr := createGethNetwork(params)
+	n.gethNetwork = &gethNetwork
 
 	params.MgmtContractAddr = contractAddr
 	params.TxHandler = mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
@@ -67,7 +45,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+i)
+		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -75,30 +53,29 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 
 		// create a remote enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+100+i)
+		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+300+i)
 		_, err := enclave.StartServer(enclaveAddr, nodeID, params.TxHandler, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}
 
-		// create the in memory l1 and l2 node and the l2 client
-		miner := createEthClientConnection(
+		// create the L1 client, the Obscuro host and enclave service, and the L2 client
+		l1Client := createEthClientConnection(
 			int64(i),
 			n.gethNetwork.WebSocketPorts[i],
 			params.EthWallets[i],
 			params.MgmtContractAddr,
 		)
-
-		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
+		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+400+i)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
 		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr, params.TxHandler)
 
-		// and connect them to each other
-		agg.ConnectToEthNode(miner)
+		// connect the L1 and L2 nodes
+		agg.ConnectToEthNode(l1Client)
 
 		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
-		l1Clients[i] = miner
+		l1Clients[i] = l1Client
 	}
 
 	// start each obscuro node

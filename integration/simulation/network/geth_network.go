@@ -34,30 +34,8 @@ func NewNetworkInMemoryGeth() Network {
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
 func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
-	// make sure the geth network binaries exist
-	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
-	if err != nil {
-		panic(err)
-	}
-
-	// convert the wallets to strings
-	walletAddresses := make([]string, params.NumberOfObscuroWallets)
-	for i := 0; i < params.NumberOfObscuroWallets; i++ {
-		walletAddresses[i] = params.EthWallets[i].Address().String()
-	}
-
-	// kickoff the network with the prefunded wallet addresses
-	gn := gethnetwork.NewGethNetwork(
-		params.StartPort,
-		params.StartPort+100,
-		path,
-		params.NumberOfNodes,
-		int(params.AvgBlockDuration.Seconds()),
-		walletAddresses,
-	)
-	n.gethNetwork = &gn
-	// take the first random wallet and deploy the contract in the network
-	contractAddr := deployContract(params.EthWallets[0], gn.WebSocketPorts[0])
+	gethNetwork, contractAddr := createGethNetwork(params)
+	n.gethNetwork = &gethNetwork
 
 	params.MgmtContractAddr = contractAddr
 	params.TxHandler = mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
@@ -130,6 +108,33 @@ func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contra
 		panic(err)
 	}
 	return ethnode
+}
+
+func createGethNetwork(params *params.SimParams) (gethnetwork.GethNetwork, common.Address) {
+	// make sure the geth network binaries exist
+	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	// convert the wallets to strings
+	walletAddresses := make([]string, params.NumberOfObscuroWallets)
+	for i := 0; i < params.NumberOfObscuroWallets; i++ {
+		walletAddresses[i] = params.EthWallets[i].Address().String()
+	}
+
+	// kickoff the network with the prefunded wallet addresses
+	gethNetwork := gethnetwork.NewGethNetwork(
+		params.StartPort,
+		params.StartPort+100,
+		path,
+		params.NumberOfNodes,
+		int(params.AvgBlockDuration.Seconds()),
+		walletAddresses,
+	)
+	// take the first random wallet and deploy the contract in the network
+	contractAddr := deployContract(params.EthWallets[0], uint(params.StartPort+100))
+	return gethNetwork, contractAddr
 }
 
 func deployContract(w wallet.Wallet, port uint) common.Address {
