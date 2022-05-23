@@ -55,7 +55,7 @@ func SetLogs(logPath string) {
 	if err != nil {
 		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 	}
-	log.SetLog(logFile)
+	log.OutputToFile(logFile)
 }
 
 // Shuts down the Obscuro host when an interrupt is received.

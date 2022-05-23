@@ -40,5 +40,5 @@ func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.ChainID))
 	}
 
-	testSimulation(t, network.NewBasicNetworkOfSocketNodes(), simParams)
+	testSimulation(t, network.NewNetworkOfSocketNodes(), simParams)
 }

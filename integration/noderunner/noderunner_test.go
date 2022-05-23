@@ -52,7 +52,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	network := gethnetwork.NewGethNetwork(int(ethClientPort)-100, gethBinaryPath, 1, 1, []string{address.String()})
+	network := gethnetwork.NewGethNetwork(int(ethClientPort)-100, int(ethClientPort), gethBinaryPath, 1, 1, []string{address.String()})
 	defer network.StopNodes()
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
@@ -83,6 +83,6 @@ func setupTestLog() *os.File {
 	if err != nil {
 		panic(err)
 	}
-	log.SetLog(f)
+	log.OutputToFile(f)
 	return f
 }

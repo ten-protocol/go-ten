@@ -13,21 +13,31 @@ const (
 	startPortName  = "startPort"
 	startPortUsage = "The initial port to start allocating ports from"
 
+	websocketStartPortName  = "websocketStartPort"
+	websocketStartPortUsage = "The initial port to start allocating websocket ports from"
+
 	prefundedAddrsName  = "prefundedAddrs"
 	prefundedAddrsUsage = "The addresses to prefund as a comma-separated list"
+
+	blockTimeSecsName  = "blockTimeSecs"
+	blockTimeSecsUsage = "The block time in seconds"
 )
 
 type gethConfig struct {
-	numNodes       int
-	startPort      int
-	prefundedAddrs []string
+	numNodes           int
+	startPort          int
+	websocketStartPort int
+	prefundedAddrs     []string
+	blockTimeSecs      int
 }
 
 func defaultHostConfig() gethConfig {
 	return gethConfig{
-		numNodes:       1,
-		startPort:      12000,
-		prefundedAddrs: []string{},
+		numNodes:           1,
+		startPort:          12000,
+		websocketStartPort: 12100,
+		prefundedAddrs:     []string{},
+		blockTimeSecs:      6,
 	}
 }
 
@@ -36,7 +46,9 @@ func parseCLIArgs() gethConfig {
 
 	numNodes := flag.Int(numNodesName, defaultConfig.numNodes, numNodesUsage)
 	startPort := flag.Int(startPortName, defaultConfig.startPort, startPortUsage)
+	websocketStartPort := flag.Int(websocketStartPortName, defaultConfig.websocketStartPort, websocketStartPortUsage)
 	prefundedAddrs := flag.String(prefundedAddrsName, "", prefundedAddrsUsage)
+	blockTimeSecs := flag.Int(blockTimeSecsName, defaultConfig.blockTimeSecs, blockTimeSecsUsage)
 
 	flag.Parse()
 
@@ -47,8 +59,10 @@ func parseCLIArgs() gethConfig {
 	}
 
 	return gethConfig{
-		numNodes:       *numNodes,
-		startPort:      *startPort,
-		prefundedAddrs: parsedPrefundedAddrs,
+		numNodes:           *numNodes,
+		startPort:          *startPort,
+		websocketStartPort: *websocketStartPort,
+		prefundedAddrs:     parsedPrefundedAddrs,
+		blockTimeSecs:      *blockTimeSecs,
 	}
 }

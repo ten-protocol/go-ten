@@ -66,8 +66,8 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 		} else {
 			// create a remote enclave server
 			nodeID := common.BigToAddress(big.NewInt(int64(i)))
-			enclavePort := uint64(params.StartPort + 100 + i)
-			enclaveAddress := fmt.Sprintf("localhost:%d", enclavePort)
+			enclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
+			enclaveAddress := fmt.Sprintf("%s:%d", Localhost, enclavePort)
 			_, err := enclave.StartServer(enclaveAddress, integration.ChainID, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, nil, stats)
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))

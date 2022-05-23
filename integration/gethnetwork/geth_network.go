@@ -118,8 +118,8 @@ type GethNetwork struct {
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
-func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) *GethNetwork {
-	err := ensurePortsAreAvailable(portStart, numNodes)
+func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) *GethNetwork {
+	err := ensurePortsAreAvailable(portStart, websocketPortStart, numNodes)
 	if err != nil {
 		panic(err)
 	}
@@ -384,7 +384,7 @@ func waitForIPC(dataDir string) {
 	}
 }
 
-func ensurePortsAreAvailable(startPort int, numberNodes int) error {
+func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes int) error {
 	var unavailablePorts []int
 
 	for i := 0; i < numberNodes; i++ {
@@ -392,7 +392,7 @@ func ensurePortsAreAvailable(startPort int, numberNodes int) error {
 		if !isPortAvailable(commsPort) {
 			unavailablePorts = append(unavailablePorts, commsPort)
 		}
-		wsPort := startPort + wsPortOffset + i
+		wsPort := websocketStartPort + i
 		if !isPortAvailable(wsPort) {
 			unavailablePorts = append(unavailablePorts, wsPort)
 		}
