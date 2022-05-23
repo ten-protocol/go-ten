@@ -23,13 +23,13 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, websocketPort uint, contractAddress *common.Address) (EthClient, error) {
+func NewEthClient(id common.Address, ipaddress string, websocketPort uint) (EthClient, error) {
 	client, err := connect(ipaddress, websocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	log.Trace("Initialized eth node connection - rollup contract address: %s - port: %d - id: %s", contractAddress, websocketPort, id.String())
+	log.Trace("Initialized eth node connection - port: %d - id: %s", websocketPort, id.String())
 	return &gethRPCClient{
 		client: client,
 		id:     id,

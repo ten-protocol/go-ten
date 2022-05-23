@@ -61,7 +61,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		walletAddresses,
 	)
 
-	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0], nil)
+	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0])
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +86,6 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		miner := createEthClientConnection(
 			int64(i),
 			n.gethNetwork.WebSocketPorts[i],
-			params.MgmtContractAddr,
 		)
 		agg := createInMemObscuroNode(
 			int64(i),
@@ -137,8 +136,8 @@ func (n *networkInMemGeth) TearDown() {
 	}
 }
 
-func createEthClientConnection(id int64, port uint, contractAddr *common.Address) ethclient.EthClient {
-	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), Localhost, port, contractAddr)
+func createEthClientConnection(id int64, port uint) ethclient.EthClient {
+	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), Localhost, port)
 	if err != nil {
 		panic(err)
 	}

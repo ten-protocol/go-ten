@@ -11,8 +11,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
@@ -75,7 +73,18 @@ func createInMemObscuroNode(
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string) *host.Node {
+func createSocketObscuroNode(
+	id int64,
+	genesis bool,
+	avgGossipPeriod time.Duration,
+	stats *stats.Stats,
+	p2pAddr string,
+	peerAddrs []string,
+	enclaveAddr string,
+	clientServerAddr string,
+	ethWallet wallet.Wallet,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
@@ -84,8 +93,6 @@ func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Durati
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
 	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
-	mgmtContractLib := ethereum_mock.NewMgmtContractLibMock()
-	ethWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
 	node := host.NewObscuroAggregator(
 		nodeID,

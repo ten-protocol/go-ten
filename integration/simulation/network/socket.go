@@ -5,7 +5,14 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+
 	"github.com/obscuronet/obscuro-playground/integration"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
@@ -18,29 +25,69 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
-	ethNodes       []*ethereum_mock.Node
 	obscuroClients []*obscuroclient.Client
+	gethNetwork    *gethnetwork.GethNetwork
+	wallets        []wallet.Wallet
+	contracts      []string
+	workerWallet   wallet.Wallet
 }
 
-func NewNetworkOfSocketNodes() Network {
-	return &networkOfSocketNodes{}
+func NewNetworkOfSocketNodes(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
+	return &networkOfSocketNodes{
+		wallets:      wallets,
+		contracts:    contracts,
+		workerWallet: workerWallet,
+	}
 }
 
 func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
+	// make sure the geth network binaries exist
+	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	// get wallet addresses to prefund them
+	walletAddresses := make([]string, len(n.wallets))
+	for i, w := range n.wallets {
+		walletAddresses[i] = w.Address().String()
+	}
+
+	// kickoff the network with the prefunded wallet addresses
+	n.gethNetwork = gethnetwork.NewGethNetwork(
+		params.StartPort,
+		params.StartPort+DefaultWsPortOffset,
+		path,
+		params.NumberOfNodes,
+		int(params.AvgBlockDuration.Seconds()),
+		walletAddresses,
+	)
+
+	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0])
+	if err != nil {
+		panic(err)
+	}
+
+	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+
+	params.MgmtContractAddr = mgmtContractAddr
+	params.StableTokenContractAddr = erc20ContractAddr
+	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
+
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
-	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
 	nodeP2pAddrs := make([]string, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+i)
+		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -54,40 +101,35 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}
 
-		// create the in memory l1 and l2 node and the l2 client
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
+		// create the L1 client, the Obscuro host and enclave service, and the L2 client
+		l1Client := createEthClientConnection(
+			int64(i),
+			n.gethNetwork.WebSocketPorts[i],
+		)
+		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+400+i)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
-		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr)
+		agg := createSocketObscuroNode(
+			int64(i),
+			isGenesis,
+			params.AvgGossipPeriod,
+			stats,
+			nodeP2pAddrs[i],
+			nodeP2pAddrs,
+			enclaveAddr,
+			obscuroClientAddr,
+			params.NodeEthWallets[i],
+			params.MgmtContractLib,
+		)
 
-		// and connect them to each other
-		agg.ConnectToEthNode(miner)
-		miner.AddClient(agg)
+		// connect the L1 and L2 nodes
+		agg.ConnectToEthNode(l1Client)
 
-		n.ethNodes[i] = miner
 		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
-		l1Clients[i] = miner
+		l1Clients[i] = l1Client
 	}
 
-	// populate the nodes field of the L1 network
-	for i := 0; i < params.NumberOfNodes; i++ {
-		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-	}
-
-	// The sequence of starting the nodes is important to catch various edge cases.
-	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
-	// The reason is to make sure that they catch up correctly.
-	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
-	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
-	// Note: Other simulations might test variations of this pattern.
-	for _, m := range n.ethNodes {
-		t := m
-		go t.Start()
-		time.Sleep(params.AvgBlockDuration / 8)
-	}
-
-	time.Sleep(params.AvgBlockDuration * 2)
+	// start each obscuro node
 	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
@@ -98,14 +140,13 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 }
 
 func (n *networkOfSocketNodes) TearDown() {
+	defer n.gethNetwork.StopNodes()
+
 	for _, client := range n.obscuroClients {
 		temp := client
-		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
-		go (*temp).Stop()
-	}
-
-	for _, node := range n.ethNodes {
-		temp := node
-		go temp.Stop()
+		go func() {
+			defer (*temp).Stop()
+			(*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+		}()
 	}
 }

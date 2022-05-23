@@ -33,7 +33,7 @@ func RunHost(config HostConfig) {
 	ethWallet := wallet.NewInMemoryWalletFromString(big.NewInt(config.ChainID), config.PrivateKeyString)
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), &contractAddr)
+	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort))
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
