@@ -1,12 +1,12 @@
 package simulation
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"testing"
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/integration"
-
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -15,23 +15,34 @@ import (
 
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
-// All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
+// All nodes and enclaves live in the same process. The L1 network is a private geth network using Clique (PoA).
 func TestSocketNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog("socket")
 
+	numberOfNodes := 5
+
+	// there is one wallet per node, so there have to be at least numberOfNodes wallets available
+	numberOfWallets := numberOfNodes
+
+	// randomly create the ethereum wallets to be used and prefund them
+	wallets := make([]wallet.Wallet, numberOfWallets)
+	for i := 0; i < numberOfWallets; i++ {
+		wallets[i] = datagenerator.RandomWallet()
+	}
+
 	simParams := params.SimParams{
-		NumberOfNodes:             7,
-		NumberOfObscuroWallets:    5,
-		AvgBlockDuration:          250 * time.Millisecond,
-		SimulationTime:            25 * time.Second,
+		NumberOfNodes:             numberOfNodes,
+		NumberOfObscuroWallets:    numberOfWallets,
+		AvgBlockDuration:          6 * time.Second,
+		SimulationTime:            60 * time.Second,
 		L1EfficiencyThreshold:     0.2,
-		L2EfficiencyThreshold:     0.33,
-		L2ToL1EfficiencyThreshold: 0.4,
-		TxHandler:                 ethereum_mock.NewMockTxHandler(),
+		L2EfficiencyThreshold:     0.5,
+		L2ToL1EfficiencyThreshold: 0.5, // one rollup every 2 blocks
+		EthWallets:                wallets,
 		StartPort:                 integration.StartPortSimulationSocket,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
-	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 4
+	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
 
 	testSimulation(t, network.NewNetworkOfSocketNodes(), &simParams)
 }

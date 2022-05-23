@@ -2,6 +2,8 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"math/big"
 	"time"
 
@@ -16,13 +18,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
-	ethNodes       []*ethereum_mock.Node
 	obscuroClients []*obscuroclient.Client
+	gethNetwork    *gethnetwork.GethNetwork
 }
 
 func NewNetworkOfSocketNodes() Network {
@@ -30,8 +31,36 @@ func NewNetworkOfSocketNodes() Network {
 }
 
 func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
+	// todo - joel - move shared logic into one place
+	// make sure the geth network binaries exist
+	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	// convert the wallets to strings
+	walletAddresses := make([]string, params.NumberOfObscuroWallets)
+	for i := 0; i < params.NumberOfObscuroWallets; i++ {
+		walletAddresses[i] = params.EthWallets[i].Address().String()
+	}
+
+	// kickoff the network with the prefunded wallet addresses
+	gn := gethnetwork.NewGethNetwork(
+		params.StartPort+300,
+		params.StartPort+300+100,
+		path,
+		params.NumberOfNodes,
+		int(params.AvgBlockDuration.Seconds()),
+		walletAddresses,
+	)
+	n.gethNetwork = &gn
+	// take the first random wallet and deploy the contract in the network
+	contractAddr := deployContract(params.EthWallets[0], gn.WebSocketPorts[0])
+
+	params.MgmtContractAddr = contractAddr
+	params.TxHandler = mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
+
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
-	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
 	nodeP2pAddrs := make([]string, params.NumberOfNodes)
@@ -53,39 +82,26 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		}
 
 		// create the in memory l1 and l2 node and the l2 client
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		miner := createEthClientConnection(
+			int64(i),
+			n.gethNetwork.WebSocketPorts[i],
+			params.EthWallets[i],
+			params.MgmtContractAddr,
+		)
+
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
-		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr)
+		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr, params.TxHandler)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
-		miner.AddClient(agg)
 
-		n.ethNodes[i] = miner
 		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
 		l1Clients[i] = miner
 	}
 
-	// populate the nodes field of the L1 network
-	for i := 0; i < params.NumberOfNodes; i++ {
-		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-	}
-
-	// The sequence of starting the nodes is important to catch various edge cases.
-	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
-	// The reason is to make sure that they catch up correctly.
-	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
-	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
-	// Note: Other simulations might test variations of this pattern.
-	for _, m := range n.ethNodes {
-		t := m
-		go t.Start()
-		time.Sleep(params.AvgBlockDuration / 8)
-	}
-
-	time.Sleep(params.AvgBlockDuration * 2)
+	// start each obscuro node
 	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
@@ -96,14 +112,11 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 }
 
 func (n *networkOfSocketNodes) TearDown() {
+	defer n.gethNetwork.StopNodes()
+
 	for _, client := range n.obscuroClients {
 		temp := client
 		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
 		go (*temp).Stop()
-	}
-
-	for _, node := range n.ethNodes {
-		temp := node
-		go temp.Stop()
 	}
 }

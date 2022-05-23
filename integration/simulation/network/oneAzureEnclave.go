@@ -51,7 +51,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 			obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
-			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, n.enclaveAddress, obscuroClientAddr)
+			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, n.enclaveAddress, obscuroClientAddr, ethereum_mock.NewMockTxHandler())
 
 			// and connect them to each other
 			agg.ConnectToEthNode(miner)
@@ -75,7 +75,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 			miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 			obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 			obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
-			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress, obscuroClientAddr)
+			agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddress, obscuroClientAddr, ethereum_mock.NewMockTxHandler())
 
 			// and connect them to each other
 			agg.ConnectToEthNode(miner)
