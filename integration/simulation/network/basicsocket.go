@@ -20,16 +20,16 @@ import (
 )
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
-type basicNetworkOfSocketNodes struct {
+type networkOfSocketNodes struct {
 	ethNodes       []*ethereum_mock.Node
 	obscuroClients []*obscuroclient.Client
 }
 
-func NewBasicNetworkOfSocketNodes() Network {
-	return &basicNetworkOfSocketNodes{}
+func NewNetworkOfSocketNodes() Network {
+	return &networkOfSocketNodes{}
 }
 
-func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
+func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
@@ -95,7 +95,7 @@ func (n *basicNetworkOfSocketNodes) Create(params *params.SimParams, stats *stat
 	return l1Clients, n.obscuroClients, nodeP2pAddrs
 }
 
-func (n *basicNetworkOfSocketNodes) TearDown() {
+func (n *networkOfSocketNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
 		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
