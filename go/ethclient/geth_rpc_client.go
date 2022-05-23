@@ -162,12 +162,12 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
 	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.GetNonceAndIncrement())
 	if err != nil {
-		log.Panic("could not pack transaction. Cause: %s", err)
+		log.Error("could not pack transaction. Cause: %s", err)
 	}
 
 	_, err = e.SubmitTransaction(formattedTx)
 	if err != nil {
-		log.Panic("could not submit transaction. Cause: %s", err)
+		log.Error("could not submit transaction. Cause: %s", err)
 	}
 }
 
