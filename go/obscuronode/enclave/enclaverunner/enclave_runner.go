@@ -53,7 +53,7 @@ func SetLogs(writeToLogs bool, logPath string) {
 		logFile = os.Stdout
 	}
 
-	log.SetLog(logFile)
+	log.OutputToFile(logFile)
 }
 
 // Shuts down the Obscuro enclave service when an interrupt is received.
