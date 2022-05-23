@@ -23,8 +23,7 @@ const (
 
 // singleton usage of the logger
 var (
-	logger        = zerolog.Logger{}
-	fileLoggerSet = false
+	logger = zerolog.Logger{}
 )
 
 func SetLogLevel(level zerolog.Level) {
@@ -32,11 +31,6 @@ func SetLogLevel(level zerolog.Level) {
 }
 
 func OutputToFile(f *os.File) {
-	if fileLoggerSet {
-		Error("log file already set")
-		return
-	}
-	fileLoggerSet = true
 	logger = zerolog.New(zerolog.ConsoleWriter{Out: f, TimeFormat: time.StampMilli, NoColor: true}).With().Timestamp().Logger()
 }
 
