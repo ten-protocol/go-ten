@@ -85,6 +85,6 @@ func setupTestLog() *os.File {
 	if err != nil {
 		panic(err)
 	}
-	log.SetLog(f)
+	log.OutputToFile(f)
 	return f
 }
