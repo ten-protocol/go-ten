@@ -35,7 +35,8 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
@@ -53,7 +54,8 @@ func TestGethGenesisParamsAreUsed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	chainID := network.IssueCommand(0, chainIDCmd)
@@ -68,7 +70,8 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	account := network.addresses[0]
@@ -96,7 +99,8 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 
 	// wallet should be prefunded
 	w := datagenerator.RandomWallet()
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, []string{w.Address().String()})
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
 	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})
