@@ -157,7 +157,11 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) uint64 {
-	nodeID := (*nodeClient).ID()
+	var nodeID common.Address
+	err := (*nodeClient).Call(&nodeID, obscuroclient.RPCGetID)
+	if err != nil {
+		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
+	}
 	nodeAddr := obscurocommon.ShortAddress(nodeID)
 	l1Height := getCurrentBlockHeadHeight(nodeClient)
 
@@ -218,7 +222,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client
 		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in the enclave", nodeAddr, notFoundWithdrawals, len(withdrawals))
 	}
 
-	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(nodeClient)
+	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(nodeClient, nodeAddr)
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.GetL2WithdrawalRequests()) {
@@ -259,8 +263,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, nodeClient *obscuroclient.Client
 	return l2Height
 }
 
-func extractWithdrawals(nodeClient *obscuroclient.Client) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
-	nodeAddr := obscurocommon.ShortAddress((*nodeClient).ID())
+func extractWithdrawals(nodeClient *obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {

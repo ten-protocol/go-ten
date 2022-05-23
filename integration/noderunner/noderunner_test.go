@@ -13,8 +13,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/hostrunner"
@@ -62,7 +60,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
 
-	obscuroClient := obscuroclient.NewClient(common.BytesToAddress([]byte(hostConfig.NodeID)), clientServerAddr)
+	obscuroClient := obscuroclient.NewClient(clientServerAddr)
 	var result types.Header
 	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
 	if err != nil {
