@@ -64,7 +64,6 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 		} else {
 			// create a remote enclave server
 			nodeID := common.BigToAddress(big.NewInt(int64(i)))
-
 			enclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
 			enclaveAddress := fmt.Sprintf("%s:%d", Localhost, enclavePort)
 			_, err := enclave.StartServer(enclaveAddress, nodeID, params.TxHandler, false, nil, stats)
