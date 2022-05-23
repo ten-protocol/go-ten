@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum"
@@ -36,7 +38,7 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 	}
 
 	startPort := getStartPort()
-	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(startPort, startPort+network.DefaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
@@ -55,7 +57,7 @@ func TestGethGenesisParamsAreUsed(t *testing.T) {
 	}
 
 	startPort := getStartPort()
-	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(startPort, startPort+network.DefaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	chainID := network.IssueCommand(0, chainIDCmd)
@@ -71,7 +73,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 	}
 
 	startPort := getStartPort()
-	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(startPort, startPort+network.DefaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	account := network.addresses[0]
@@ -100,7 +102,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	// wallet should be prefunded
 	w := datagenerator.RandomWallet()
 	startPort := getStartPort()
-	network := NewGethNetwork(startPort, startPort+100, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
+	network := NewGethNetwork(startPort, startPort+network.DefaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
 	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})

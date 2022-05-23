@@ -106,7 +106,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+100+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+network.DefaultWsPortOffset+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))

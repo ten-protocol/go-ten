@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
@@ -66,7 +68,7 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 // StartWalletExtension starts the wallet extension and Obscuro facade, and optionally a local Ethereum network. It
 // returns a handle to stop the wallet extension, Obscuro facade and local network nodes, if any were created.
 func StartWalletExtension(config RunConfig) func() {
-	gethWebsocketAddr := websocketAddrPrefix + strconv.Itoa(config.StartPort+100+2)
+	gethWebsocketAddr := websocketAddrPrefix + strconv.Itoa(config.StartPort+network.DefaultWsPortOffset+2)
 
 	var localNetwork gethnetwork.GethNetwork
 	if config.LocalNetwork {
@@ -75,7 +77,7 @@ func StartWalletExtension(config RunConfig) func() {
 			panic(err)
 		}
 
-		localNetwork = gethnetwork.NewGethNetwork(config.StartPort+2, config.StartPort+100+2, gethBinaryPath, 1, 1, config.PrefundedAccounts)
+		localNetwork = gethnetwork.NewGethNetwork(config.StartPort+2, config.StartPort+network.DefaultWsPortOffset+2, gethBinaryPath, 1, 1, config.PrefundedAccounts)
 		fmt.Println("Local Geth network started.")
 
 		gethWebsocketAddr = websocketAddrPrefix + strconv.Itoa(int(localNetwork.WebSocketPorts[0]))

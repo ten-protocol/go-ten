@@ -49,7 +49,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	// kickoff the network with the prefunded wallet addresses
 	gn := gethnetwork.NewGethNetwork(
 		params.StartPort,
-		params.StartPort+100,
+		params.StartPort+DefaultWsPortOffset,
 		path,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
