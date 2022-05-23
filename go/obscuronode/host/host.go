@@ -401,8 +401,11 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			// todo: implement protocol so only one host responds to this secret requests initially
-			a.checkForSharedSecretRequests(block)
+			// todo: implement proper protocol so only one host responds to this secret requests initially
+			// 	for now we just have the genesis host respond until protocol implemented
+			if a.isGenesis {
+				a.checkForSharedSecretRequests(block)
+			}
 
 			// submit each block to the enclave for ingestion plus validation
 			result = a.EnclaveClient.SubmitBlock(*block.DecodeBlock())
