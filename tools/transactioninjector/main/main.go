@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -29,10 +30,12 @@ func main() {
 	fmt.Println("Connecting to Obscuro host...")
 	l2Client := obscuroclient.NewClient(config.clientServerAddr)
 
+	// todo - joel - parameterise number of nodes
+	stats := stats2.NewStats(2)
 	txInjector := simulation.NewTransactionInjector(
 		3,
 		time.Second,
-		nil,
+		stats,
 		[]ethclient.EthClient{l1Client},
 		[]*obscuroclient.Client{&l2Client},
 	)
