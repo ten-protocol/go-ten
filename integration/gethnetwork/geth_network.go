@@ -38,10 +38,10 @@ const (
 	execFlag           = "--exec"
 	mineFlag           = "--mine"
 	passwordFlag       = "--password"
-	portFlag           = "--port"
 	rpcFeeCapFlag      = "--rpc.txfeecap=0" // Disables the 1 ETH cap for RPC transactions.
 	unlockFlag         = "--unlock"
 	unlockInsecureFlag = "--allow-insecure-unlock"
+	portFlag           = "--port"
 	websocketFlag      = "--ws" // Enables websocket connections to the node.
 	wsPortFlag         = "--ws.port"
 	gasLimitFlag       = "--miner.gaslimit=2000000000" // Ensures the miners don't gradually reduce the block gas limit.
@@ -88,8 +88,6 @@ const (
 		  "balance": "1000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
-
-	wsPortOffset = 100
 )
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
@@ -111,8 +109,8 @@ type GethNetwork struct {
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
-func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) GethNetwork {
-	err := ensurePortsAreAvailable(portStart, numNodes)
+func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) GethNetwork {
+	err := ensurePortsAreAvailable(portStart, websocketPortStart, numNodes)
 	if err != nil {
 		panic(err)
 	}
@@ -161,7 +159,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 		passwordFilePath: passwordFile.Name(),
 		WebSocketPorts:   make([]uint, numNodes),
 		commStartPort:    portStart,
-		wsStartPort:      portStart + wsPortOffset,
+		wsStartPort:      websocketPortStart,
 	}
 
 	// We create an account for each node.
@@ -362,7 +360,7 @@ func waitForIPC(dataDir string) {
 	}
 }
 
-func ensurePortsAreAvailable(startPort int, numberNodes int) error {
+func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes int) error {
 	var unavailablePorts []int
 
 	for i := 0; i < numberNodes; i++ {
@@ -370,7 +368,7 @@ func ensurePortsAreAvailable(startPort int, numberNodes int) error {
 		if !isPortAvailable(commsPort) {
 			unavailablePorts = append(unavailablePorts, commsPort)
 		}
-		wsPort := startPort + wsPortOffset + i
+		wsPort := websocketStartPort + i
 		if !isPortAvailable(wsPort) {
 			unavailablePorts = append(unavailablePorts, wsPort)
 		}

@@ -37,7 +37,7 @@ type EnclaveConfig struct {
 func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
 		NodeID:          1,
-		Address:         "localhost:11000",
+		Address:         "127.0.0.1:11000",
 		ContractAddress: "",
 		WriteToLogs:     false,
 		LogPath:         "enclave_logs.txt",

@@ -30,8 +30,8 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, port uint, wallet wallet.Wallet, contractAddress common.Address) (EthClient, error) {
-	client, err := connect(ipaddress, port)
+func NewEthClient(id common.Address, ipaddress string, websocketPort uint, wallet wallet.Wallet, contractAddress common.Address) (EthClient, error) {
+	client, err := connect(ipaddress, websocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
@@ -162,12 +162,12 @@ func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error)
 func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
 	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.GetNonceAndIncrement())
 	if err != nil {
-		log.Panic("could not pack transaction. Cause: %s", err)
+		log.Error("could not pack transaction. Cause: %s", err)
 	}
 
 	_, err = e.SubmitTransaction(formattedTx)
 	if err != nil {
-		log.Panic("could not submit transaction. Cause: %s", err)
+		log.Error("could not submit transaction. Cause: %s", err)
 	}
 }
 
