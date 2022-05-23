@@ -96,8 +96,6 @@ const (
 		  "balance": "1000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
-
-	wsPortOffset = 100
 )
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
