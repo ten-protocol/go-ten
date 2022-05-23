@@ -51,7 +51,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			nil,
 			params.NodeEthWallets[i],
 		)
-		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
+		obscuroClient := host.NewInMemObscuroClient(agg)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)

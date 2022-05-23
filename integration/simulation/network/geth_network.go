@@ -100,7 +100,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 			n.gethNetwork.GenesisJSON,
 			params.NodeEthWallets[i],
 		)
-		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
+		obscuroClient := host.NewInMemObscuroClient(agg)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
@@ -137,7 +137,7 @@ func (n *networkInMemGeth) TearDown() {
 }
 
 func createEthClientConnection(id int64, port uint, contractAddr *common.Address) ethclient.EthClient {
-	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), "127.0.0.1", port, contractAddr)
+	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), Localhost, port, contractAddr)
 	if err != nil {
 		panic(err)
 	}
