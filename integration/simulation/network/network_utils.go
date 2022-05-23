@@ -18,7 +18,10 @@ import (
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
-const Localhost = "127.0.0.1"
+const (
+	Localhost           = "127.0.0.1"
+	DefaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
+)
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
 	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)

@@ -44,7 +44,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		isGenesis := i == 0
 
 		// create the in memory l1 and l2 node
-		enclavePort := uint64(params.StartPort + 100 + i)
+		enclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
