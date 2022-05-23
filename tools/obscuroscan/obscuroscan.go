@@ -10,7 +10,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 )
 
@@ -28,8 +27,8 @@ type Obscuroscan struct {
 	client *obscuroclient.Client
 }
 
-func NewObscuroscan(nodeID common.Address, address string) *Obscuroscan {
-	client := obscuroclient.NewClient(nodeID, address)
+func NewObscuroscan(address string) *Obscuroscan {
+	client := obscuroclient.NewClient(address)
 	return &Obscuroscan{
 		client: &client,
 	}
