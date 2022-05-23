@@ -93,7 +93,9 @@ func (n *networkOfSocketNodes) TearDown() {
 
 	for _, client := range n.obscuroClients {
 		temp := client
-		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
-		go (*temp).Stop()
+		go func() {
+			defer (*temp).Stop()
+			(*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+		}()
 	}
 }
