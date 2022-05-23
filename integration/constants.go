@@ -9,7 +9,7 @@ var (
 	StartPortSimulationGethInMem           = 34000
 	StartPortSimulationInMem               = 35000
 	StartPortSimulationAzureEnclave        = 36000
-	StartPortSimulationSocket              = 37000
+	StartPortSimulationFullNetwork         = 37000
 )
 
 const (

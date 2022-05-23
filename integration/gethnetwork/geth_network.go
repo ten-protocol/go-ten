@@ -110,7 +110,8 @@ type GethNetwork struct {
 	logFile          *os.File
 	passwordFilePath string // The path to the file storing the password to unlock node accounts.
 	WebSocketPorts   []uint // Ports exposed by the geth nodes for
-	startPort        int
+	commStartPort    int
+	wsStartPort      int
 }
 
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
@@ -165,7 +166,8 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		logFile:          logFile,
 		passwordFilePath: passwordFile.Name(),
 		WebSocketPorts:   make([]uint, numNodes),
-		startPort:        portStart,
+		commStartPort:    portStart,
+		wsStartPort:      websocketPortStart,
 	}
 
 	// We create an account for each node.
@@ -320,9 +322,9 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 
 // Starts a Geth miner.
 func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
-	webSocketPort := network.startPort + 25 + idx
-	port := network.startPort + 50 + idx
-	httpPort := network.startPort + 75 + idx
+	webSocketPort := network.wsStartPort + idx
+	port := network.commStartPort + idx
+	httpPort := network.commStartPort + 25 + idx
 
 	args := []string{
 		websocketFlag, wsPortFlag, strconv.Itoa(webSocketPort), dataDirFlag, dataDirPath, portFlag,
