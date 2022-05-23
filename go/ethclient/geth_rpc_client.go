@@ -17,8 +17,6 @@ import (
 var connectionTimeout = 15 * time.Second
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
-// Beyond connection, EthClient requires transaction transformation to be handled (txhandle),
-// chainID and transaction signage to be done (wallet)
 type gethRPCClient struct {
 	client *ethclient.Client // the underlying eth rpc client
 	id     common.Address    // TODO remove the id common.Address
