@@ -3,8 +3,6 @@ package host
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -26,7 +24,7 @@ func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case obscuroclient.RPCGetID:
-		*result.(*common.Address) = c.obscuroAPI.GetID()
+		result = c.obscuroAPI.GetID()
 
 	case obscuroclient.RPCSendTransactionEncrypted:
 		if len(args) != 1 {
@@ -40,10 +38,10 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		c.obscuroAPI.SendTransactionEncrypted(tx)
 
 	case obscuroclient.RPCGetCurrentBlockHead:
-		*result.(**types.Header) = c.obscuroAPI.GetCurrentBlockHead()
+		result = c.obscuroAPI.GetCurrentBlockHead()
 
 	case obscuroclient.RPCGetCurrentRollupHead:
-		*result.(**nodecommon.Header) = c.obscuroAPI.GetCurrentRollupHead()
+		result = c.obscuroAPI.GetCurrentRollupHead()
 
 	case obscuroclient.RPCGetRollupHeader:
 		if len(args) != 1 {
@@ -54,7 +52,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCGetRollupHeader)
 		}
 
-		*result.(**nodecommon.Header) = c.obscuroAPI.GetRollupHeader(hash)
+		result = c.obscuroAPI.GetRollupHeader(hash)
 
 	case obscuroclient.RPCGetTransaction:
 		if len(args) != 1 {
@@ -65,7 +63,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCGetTransaction)
 		}
 
-		*result.(**nodecommon.L2Tx) = c.obscuroAPI.GetTransaction(hash)
+		result = c.obscuroAPI.GetTransaction(hash)
 
 	case obscuroclient.RPCBalance:
 		if len(args) != 1 {
@@ -76,7 +74,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Address", obscuroclient.RPCBalance)
 		}
 
-		*result.(*uint64) = c.obscuroAPI.Balance(address)
+		result = c.obscuroAPI.Balance(address)
 
 	case obscuroclient.RPCStopHost:
 		c.obscuroAPI.StopHost()
