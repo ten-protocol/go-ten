@@ -22,6 +22,7 @@ import (
 const (
 	numNodes        = 3
 	expectedChainID = "1337"
+	genesisChainID  = 1337
 
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
@@ -95,7 +96,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	}
 
 	// wallet should be prefunded
-	w := datagenerator.RandomWallet(1337)
+	w := datagenerator.RandomWallet(genesisChainID)
 	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 

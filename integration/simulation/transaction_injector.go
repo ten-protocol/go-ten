@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -123,7 +125,7 @@ func (m *TransactionInjector) Start() {
 	})
 
 	wg.Go(func() error {
-		m.issueInvalidWithdrawals()
+		m.issueInvalidL2Txs()
 		return nil
 	})
 
@@ -216,13 +218,24 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 	}
 }
 
-// issueInvalidWithdrawals creates and issues a number of invalidly-signed L2 withdrawal transactions proportional to the simulation time.
-// These transactions should be rejected by the nodes, and thus we expect them not to show up in the simulation withdrawal checks.
-func (m *TransactionInjector) issueInvalidWithdrawals() {
+// issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
+// These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
+func (m *TransactionInjector) issueInvalidL2Txs() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration/4, m.avgBlockDuration)) {
 		fromWallet := m.rndWallet()
-		tx := NewL2Withdrawal(fromWallet.Address(), obscurocommon.RndBtw(1, 100))
-		signedTx := m.createInvalidSignature(tx, fromWallet)
+		toWallet := m.rndWallet()
+		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
+			toWallet = m.rndWallet()
+		}
+		var tx types.TxData
+		switch rand.Intn(1) {
+		case 0:
+			tx = NewL2Withdrawal(fromWallet.Address(), obscurocommon.RndBtw(1, 100))
+		case 1:
+			tx = NewL2Transfer(fromWallet.Address(), toWallet.Address(), obscurocommon.RndBtw(1, 500))
+		}
+
+		signedTx := m.createInvalidSignage(tx, fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -234,9 +247,18 @@ func (m *TransactionInjector) issueInvalidWithdrawals() {
 }
 
 // Uses one of the approaches to create an invalidly-signed transaction.
-func (m *TransactionInjector) createInvalidSignature(tx types.TxData, _ wallet.Wallet) *types.Transaction {
-	return types.NewTx(tx)
-	// TODO sign with the wrong wallet when the withdrawals look into the signature
+func (m *TransactionInjector) createInvalidSignage(tx types.TxData, w wallet.Wallet) *types.Transaction {
+	switch rand.Intn(1) {
+	case 0: // We sign the transaction with a bad signer.
+		incorrectChainID := int64(integration.ChainID + 1)
+		signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
+		signedTx, _ := types.SignNewTx(w.PrivateKey(), signer, tx)
+		return signedTx
+
+	case 1: // We do not sign the transaction.
+		return types.NewTx(tx)
+	}
+	return nil
 }
 
 func (m *TransactionInjector) rndWallet() wallet.Wallet {

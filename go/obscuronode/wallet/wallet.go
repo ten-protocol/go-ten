@@ -23,6 +23,9 @@ type Wallet interface {
 	SetNonce(nonce uint64)
 	// GetNonceAndIncrement atomically increments the nonce by one and returns the previous value
 	GetNonceAndIncrement() uint64
+
+	// PrivateKey returns the wallets private key
+	PrivateKey() *ecdsa.PrivateKey
 }
 
 type inMemoryWallet struct {
@@ -67,4 +70,8 @@ func (m *inMemoryWallet) GetNonceAndIncrement() uint64 {
 
 func (m *inMemoryWallet) SetNonce(nonce uint64) {
 	m.nonce = nonce
+}
+
+func (m *inMemoryWallet) PrivateKey() *ecdsa.PrivateKey {
+	return m.prvKey
 }

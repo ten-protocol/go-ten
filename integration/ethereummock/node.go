@@ -6,6 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -60,8 +63,10 @@ type Node struct {
 	mempoolCh   chan *types.Transaction // where l1 transactions to be published in the next block are added
 
 	// internal
-	headInCh  chan bool
-	headOutCh chan *types.Block
+	headInCh         chan bool
+	headOutCh        chan *types.Block
+	erc20ContractLib erc20contractlib.ERC20ContractLib
+	mgmtContractLib  mgmtcontractlib.MgmtContractLib
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
@@ -349,21 +354,23 @@ func NewMiner(
 	statsCollector StatsCollector,
 ) *Node {
 	return &Node{
-		ID:           id,
-		mining:       true,
-		cfg:          cfg,
-		stats:        statsCollector,
-		Resolver:     NewResolver(),
-		db:           NewTxDB(),
-		Network:      network,
-		exitCh:       make(chan bool),
-		exitMiningCh: make(chan bool),
-		interrupt:    new(int32),
-		p2pCh:        make(chan *types.Block),
-		miningCh:     make(chan *types.Block),
-		canonicalCh:  make(chan *types.Block),
-		mempoolCh:    make(chan *types.Transaction),
-		headInCh:     make(chan bool),
-		headOutCh:    make(chan *types.Block),
+		ID:               id,
+		mining:           true,
+		cfg:              cfg,
+		stats:            statsCollector,
+		Resolver:         NewResolver(),
+		db:               NewTxDB(),
+		Network:          network,
+		exitCh:           make(chan bool),
+		exitMiningCh:     make(chan bool),
+		interrupt:        new(int32),
+		p2pCh:            make(chan *types.Block),
+		miningCh:         make(chan *types.Block),
+		canonicalCh:      make(chan *types.Block),
+		mempoolCh:        make(chan *types.Transaction),
+		headInCh:         make(chan bool),
+		headOutCh:        make(chan *types.Block),
+		erc20ContractLib: NewERC20ContractLibMock(),
+		mgmtContractLib:  NewMgmtContractLibMock(),
 	}
 }
