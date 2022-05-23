@@ -64,7 +64,7 @@ func write(msg string, args ...interface{}) {
 	if logFile == nil {
 		// defaults to outputting logs to stdout
 		// things like unit tests don't require a logfile
-		fmt.Println(msg)
+		fmt.Println(wMsg)
 		return
 	}
 
