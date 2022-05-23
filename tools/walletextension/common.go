@@ -75,7 +75,7 @@ func StartWalletExtension(config RunConfig) func() {
 			panic(err)
 		}
 
-		localNetwork = gethnetwork.NewGethNetwork(config.StartPort+2, config.StartPort+102, gethBinaryPath, 1, 1, config.PrefundedAccounts)
+		localNetwork = gethnetwork.NewGethNetwork(config.StartPort+2, config.StartPort+100+2, gethBinaryPath, 1, 1, config.PrefundedAccounts)
 		fmt.Println("Local Geth network started.")
 
 		gethWebsocketAddr = websocketAddrPrefix + strconv.Itoa(int(localNetwork.WebSocketPorts[0]))
