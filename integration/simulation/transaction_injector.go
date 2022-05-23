@@ -266,7 +266,7 @@ func createInvalidSignature(tx *nodecommon.L2Tx, fromWallet *wallet_mock.Wallet)
 		// After signing the transaction, we create a new transaction based on the transaction data, breaking the signature.
 		return wallet_mock.NewL2Tx(txData)
 	}
-	panic("Expected i to be in the range [0,2).")
+	panic("Expected i to be in the range [0,1).")
 }
 
 func rndWallet(wallets []wallet_mock.Wallet) wallet_mock.Wallet {
