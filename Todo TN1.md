@@ -36,6 +36,7 @@ Todo TN1
 
 - some restructuring of the repo (renaming of packages, consistency, etc) + better documentation, to make it easier for reviewers to understand what's gong on
 
+- read ip/port from from the management contract
 
 # Management contract:
 
