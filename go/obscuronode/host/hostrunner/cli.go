@@ -13,7 +13,7 @@ import (
 
 const (
 	// Flag names, defaults and usages.
-	nodeIDName  = "nodeID"
+	nodeIDName  = "id"
 	nodeIDUsage = "The 20 bytes of the node's address"
 
 	isGenesisName  = "isGenesis"
@@ -22,38 +22,38 @@ const (
 	gossipRoundNanosName  = "gossipRoundNanos"
 	gossipRoundNanosUsage = "The duration of the gossip round"
 
-	enclaveRPCTimeoutSecsName  = "enclaveRPCTimeoutSecs"
-	enclaveRPCTimeoutSecsUsage = "The timeout for host <-> enclave RPC communication"
-
-	enclaveAddrName  = "enclaveAddress"
-	enclaveAddrUsage = "The address to use to connect to the Obscuro enclave service"
-
-	ourP2PAddrName  = "ourP2PAddr"
-	ourP2PAddrUsage = "The P2P address for our node"
-
-	peerP2PAddrsName  = "peerP2PAddresses"
-	peerP2PAddrsUsage = "The P2P addresses of our peer nodes as a comma-separated list"
-
-	clientServerAddrName  = "clientServerAddress"
-	clientServerAddrUsage = "The address on which to listen for client application RPC requests"
+	clientRPCAddressName  = "clientRPCAddress"
+	clientRPCAddressUsage = "The address on which to listen for client application RPC requests"
 
 	clientRPCTimeoutSecsName  = "clientRPCTimeoutSecs"
 	clientRPCTimeoutSecsUsage = "The timeout for client <-> host RPC communication"
 
-	privateKeyName  = "privateKey"
-	privateKeyUsage = "The private key for the L1 node account"
+	enclaveRPCAddressName  = "enclaveRPCAddress"
+	enclaveRPCAddressUsage = "The address to use to connect to the Obscuro enclave service"
 
-	contractAddrName  = "contractAddress"
-	contractAddrUsage = "The management contract address on the L1"
+	enclaveRPCTimeoutSecsName  = "enclaveRPCTimeoutSecs"
+	enclaveRPCTimeoutSecsUsage = "The timeout for host <-> enclave RPC communication"
 
-	ethClientHostName  = "ethClientHost"
-	ethClientHostUsage = "The host on which to connect to the Ethereum client"
+	p2pAddressName  = "p2pAddress"
+	p2pAddressUsage = "The P2P address for our node"
 
-	ethClientPortName  = "ethClientPort"
-	ethClientPortUsage = "The port on which to connect to the Ethereum client"
+	peerP2PAddressesName = "peerP2PAddresses"
+	peerP2PAddrsUsage    = "The P2P addresses of our peer nodes as a comma-separated list"
+
+	l1NodeHostName  = "l1NodeHost"
+	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
+
+	l1NodePortName  = "l1NodePort"
+	l1NodePortUsage = "The port on which to connect to the Ethereum client"
+
+	rollupContractAddrName  = "rollupContractAddress"
+	rollupContractAddrUsage = "The management contract address on the L1"
 
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the host's log file"
+
+	privateKeyName  = "privateKey"
+	privateKeyUsage = "The private key for the L1 node account"
 
 	chainIDName  = "chainID"
 	chainIDUsage = "The ID of the L1 chain"
@@ -61,25 +61,7 @@ const (
 	defaultRPCTimeoutSecs = 3
 )
 
-type DefaultHostConfig struct {
-	NodeID                string
-	IsGenesis             bool
-	GossipRoundNanos      uint64
-	EnclaveRPCTimeoutSecs uint64
-	ClientRPCTimeoutSecs  uint64
-	EnclaveAddr           string
-	OurP2PAddr            string
-	PeerP2PAddrs          []string
-	ClientServerAddr      string
-	PrivateKeyString      string
-	ContractAddress       string
-	EthClientHost         string
-	EthClientPort         uint64
-	LogPath               string
-	ChainID               int64
-}
-
-func GetDefaultConfig() config.HostConfig {
+func DefaultHostConfig() config.HostConfig {
 	return config.HostConfig{
 		ID:                    common.BytesToAddress([]byte("")),
 		IsGenesis:             true,
@@ -101,20 +83,20 @@ func GetDefaultConfig() config.HostConfig {
 }
 
 func ParseCLIArgs() config.HostConfig {
-	defaultConfig := GetDefaultConfig()
+	defaultConfig := DefaultHostConfig()
 
 	nodeID := flag.String(nodeIDName, "", nodeIDUsage)
 	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
-	clientRPCAddress := flag.String(clientServerAddrName, defaultConfig.ClientRPCAddress, clientServerAddrUsage)
+	clientRPCAddress := flag.String(clientRPCAddressName, defaultConfig.ClientRPCAddress, clientRPCAddressUsage)
 	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, defaultRPCTimeoutSecs, clientRPCTimeoutSecsUsage)
-	enclaveRPCAddress := flag.String(enclaveAddrName, defaultConfig.EnclaveRPCAddress, enclaveAddrUsage)
+	enclaveRPCAddress := flag.String(enclaveRPCAddressName, defaultConfig.EnclaveRPCAddress, enclaveRPCAddressUsage)
 	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, defaultRPCTimeoutSecs, enclaveRPCTimeoutSecsUsage)
-	p2pAddress := flag.String(ourP2PAddrName, defaultConfig.P2PAddress, ourP2PAddrUsage)
-	allP2PAddresses := flag.String(peerP2PAddrsName, "", peerP2PAddrsUsage)
-	l1NodeHost := flag.String(ethClientHostName, defaultConfig.L1NodeHost, ethClientHostUsage)
-	l1NodePort := flag.Uint64(ethClientPortName, uint64(defaultConfig.L1NodeWebsocketPort), ethClientPortUsage)
-	rollupContractAddress := flag.String(contractAddrName, "", contractAddrUsage)
+	p2pAddress := flag.String(p2pAddressName, defaultConfig.P2PAddress, p2pAddressUsage)
+	allP2PAddresses := flag.String(peerP2PAddressesName, "", peerP2PAddrsUsage)
+	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.L1NodeHost, l1NodeHostUsage)
+	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.L1NodeWebsocketPort), l1NodePortUsage)
+	rollupContractAddress := flag.String(rollupContractAddrName, "", rollupContractAddrUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
