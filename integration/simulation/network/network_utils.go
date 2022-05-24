@@ -61,16 +61,16 @@ func createInMemObscuroNode(
 
 func createSocketObscuroNode(id int64, isGenesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string, txHandler mgmtcontractlib.TxHandler) *host.Node {
 	hostConfig := host.Config{
-		ID:                   common.BigToAddress(big.NewInt(id)),
-		IsGenesis:            isGenesis,
-		GossipRoundDuration:  avgGossipPeriod,
-		HasClientRPC:         true,
-		ClientRPCAddress:     &clientServerAddr,
-		ClientRPCTimeoutSecs: ClientRPCTimeoutSecs,
-		EnclaveRPCTimeout:    ClientRPCTimeoutSecs * time.Second,
-		EnclaveRPCAddress:    &enclaveAddr,
-		P2PAddress:           &p2pAddr,
-		AllP2PAddresses:      peerAddrs,
+		ID:                  common.BigToAddress(big.NewInt(id)),
+		IsGenesis:           isGenesis,
+		GossipRoundDuration: avgGossipPeriod,
+		HasClientRPC:        true,
+		ClientRPCAddress:    clientServerAddr,
+		ClientRPCTimeout:    ClientRPCTimeoutSecs * time.Second,
+		EnclaveRPCTimeout:   ClientRPCTimeoutSecs * time.Second,
+		EnclaveRPCAddress:   enclaveAddr,
+		P2PAddress:          p2pAddr,
+		AllP2PAddresses:     peerAddrs,
 	}
 
 	enclaveClient := host.NewEnclaveRPCClient(hostConfig)

@@ -43,11 +43,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 	address := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	hostConfig := hostrunner.DefaultHostConfig()
+	hostConfig := hostrunner.ParseCLIArgs()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
-	hostConfig.EnclaveAddr = enclaveAddr
-	hostConfig.ClientServerAddr = clientServerAddr
-	hostConfig.EthClientPort = gethWebsocketPort
+	hostConfig.EnclaveRPCAddress = enclaveAddr
+	hostConfig.ClientRPCAddress = clientServerAddr
+	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
 	enclaveConfig := enclaverunner.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr

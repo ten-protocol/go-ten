@@ -29,7 +29,7 @@ type EnclaveRPCClient struct {
 
 func NewEnclaveRPCClient(config Config) *EnclaveRPCClient {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	connection, err := grpc.Dial(*config.EnclaveRPCAddress, opts...)
+	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
 		log.Panic(">   Agg%d: Failed to connect to enclave RPC service. Cause: %s", obscurocommon.ShortAddress(config.ID), err)
 	}

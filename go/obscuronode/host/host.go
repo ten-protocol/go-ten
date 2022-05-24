@@ -18,8 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// todo - joel - extend this config. Use a single config object for the P2P, eth client and enclave client
-
 // Config contains the full configuration for an Obscuro host.
 type Config struct {
 	// The host's identity
@@ -31,23 +29,27 @@ type Config struct {
 	// Whether to serve client RPC requests
 	HasClientRPC bool
 	// Address on which to serve client RPC requests
-	ClientRPCAddress *string
-	// Timeout duration in seconds for RPC requests from client applications
-	ClientRPCTimeoutSecs uint64
+	ClientRPCAddress string
+	// Timeout duration for RPC requests from client applications
+	ClientRPCTimeout time.Duration
 	// Address on which to connect to the enclave
-	EnclaveRPCAddress *string
-	// Timeout duration in seconds for RPC requests to the enclave service
+	EnclaveRPCAddress string
+	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
 	// Our network for P2P communication with peer Obscuro nodes
-	P2PAddress *string
+	P2PAddress string
 	// The addresses of all the Obscuro nodes on the network
 	AllP2PAddresses []string
 	// The host of the connected L1 node
-	L1NodeHost *string
+	L1NodeHost string
 	// The websocket port of the connected L1 node
 	L1NodeWebsocketPort uint
 	// The rollup contract address on the L1 network
-	RollupContractAddress *common.Address
+	RollupContractAddress common.Address
+	// The path that the node's logs are written to
+	LogPath string
+	// The stringified private key for the host's L1 wallet
+	PrivateKeyString string
 }
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
@@ -147,7 +149,7 @@ func NewHost(
 	}
 
 	if config.HasClientRPC {
-		host.clientServer = NewClientServer(*config.ClientRPCAddress, &host)
+		host.clientServer = NewClientServer(config.ClientRPCAddress, &host)
 	}
 
 	return host

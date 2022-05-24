@@ -37,13 +37,13 @@ func NewSocketP2PLayer(config host.Config) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
 	var peerAddresses []string
 	for _, address := range config.AllP2PAddresses {
-		if address != *config.P2PAddress {
+		if address != config.P2PAddress {
 			peerAddresses = append(peerAddresses, address)
 		}
 	}
 
 	return &p2pImpl{
-		OurAddress:    *config.P2PAddress,
+		OurAddress:    config.P2PAddress,
 		PeerAddresses: peerAddresses,
 		nodeID:        obscurocommon.ShortAddress(config.ID),
 	}

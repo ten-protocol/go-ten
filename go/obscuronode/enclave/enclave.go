@@ -518,8 +518,6 @@ type processingEnvironment struct {
 	state           *state.StateDB                  // the state as calculated from the previous rollup and the processed transactions
 }
 
-// todo - joel - decide on a single config, or one for the host and one for the enclave
-
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.

@@ -106,9 +106,9 @@ func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contra
 	localhost := Localhost
 	hostConfig := host.Config{
 		ID:                    common.BigToAddress(big.NewInt(id)),
-		L1NodeHost:            &localhost,
+		L1NodeHost:            localhost,
 		L1NodeWebsocketPort:   port,
-		RollupContractAddress: &contractAddr,
+		RollupContractAddress: contractAddr,
 	}
 	ethnode, err := host.NewEthClient(hostConfig, wallet)
 	if err != nil {
@@ -147,7 +147,7 @@ func createGethNetwork(params *params.SimParams) (gethnetwork.GethNetwork, commo
 func deployContract(w wallet.Wallet, port uint) common.Address {
 	localhost := Localhost
 	tmpConfig := host.Config{
-		L1NodeHost:          &localhost,
+		L1NodeHost:          localhost,
 		L1NodeWebsocketPort: port,
 	}
 	tmpClient, err := host.NewEthClient(tmpConfig, w)

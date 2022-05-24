@@ -33,7 +33,7 @@ type gethRPCClient struct {
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
 func NewEthClient(config Config, wallet wallet.Wallet) (ethclient2.EthClient, error) {
-	client, err := connect(*config.L1NodeHost, config.L1NodeWebsocketPort)
+	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
@@ -52,7 +52,7 @@ func NewEthClient(config Config, wallet wallet.Wallet) (ethclient2.EthClient, er
 		id:        config.ID,
 		wallet:    wallet, // TODO this does not need to be coupled together
 		chainID:   1337,   // hardcoded for testnets // TODO this should be configured
-		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(*config.RollupContractAddress),
+		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(config.RollupContractAddress),
 	}, nil
 }
 

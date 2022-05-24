@@ -116,7 +116,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 
 	localhost := "127.0.0.1"
 	hostConfig := host.Config{
-		L1NodeHost:          &localhost,
+		L1NodeHost:          localhost,
 		L1NodeWebsocketPort: network.WebSocketPorts[0],
 	}
 	ethClient, err := host.NewEthClient(hostConfig, w)
