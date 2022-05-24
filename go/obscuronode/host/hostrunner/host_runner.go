@@ -21,13 +21,16 @@ const ClientRPCTimeoutSecs = 5
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config HostConfig) {
 	nodeID := common.BytesToAddress([]byte(config.NodeID))
+	// todo - joel - rebuild this around the host.Config object
 	hostCfg := host.Config{
 		ID:                   nodeID,
 		IsGenesis:            config.IsGenesis,
 		GossipRoundDuration:  time.Duration(config.GossipRoundNanos),
 		ClientRPCTimeoutSecs: config.RPCTimeoutSecs,
-		HasRPC:               true,
-		RPCAddress:           &config.ClientServerAddr,
+		HasClientRPC:         true,
+		ClientRPCAddress:     &config.ClientServerAddr,
+		EnclaveRPCAddress:    &config.EnclaveAddr,
+		EnclaveRPCTimeout:    ClientRPCTimeoutSecs * time.Second, // todo - joel - pass this via CLI
 	}
 
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
@@ -41,7 +44,7 @@ func RunHost(config HostConfig) {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
 
-	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, ClientRPCTimeoutSecs*time.Second, nodeID)
+	enclaveClient := host.NewEnclaveRPCClient(hostCfg)
 	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs, nodeID)
 	agg := host.NewHost(hostCfg, nil, aggP2P, l1Client, enclaveClient, txHandler)
 

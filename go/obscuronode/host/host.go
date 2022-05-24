@@ -24,16 +24,20 @@ import (
 type Config struct {
 	// The host's identity
 	ID common.Address
-	// Whether the host is the genesis Obscuro node.
+	// Whether the host is the genesis Obscuro node
 	IsGenesis bool
 	// Duration of the gossip round
 	GossipRoundDuration time.Duration
-	// Timeout duration in seconds for RPC requests to the enclave service
+	// Timeout duration in seconds for RPC requests from client applications
 	ClientRPCTimeoutSecs uint64
+	// Timeout duration in seconds for RPC requests to the enclave service
+	EnclaveRPCTimeout time.Duration
 	// Whether to serve client RPC requests
-	HasRPC bool
+	HasClientRPC bool
 	// Address on which to serve client RPC requests
-	RPCAddress *string
+	ClientRPCAddress *string
+	// Address on which to connect to the enclave
+	EnclaveRPCAddress *string
 }
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
@@ -89,6 +93,7 @@ type Node struct {
 	nodeDB       *DB    // Stores the node's publicly-available data
 	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
 
+	// todo - joel - can I just grab the ethclient's tx handler here?
 	txHandler mgmtcontractlib.TxHandler // Handles tx conversion from eth to L1Data
 }
 
@@ -132,8 +137,8 @@ func NewHost(
 		txHandler: txHandler,
 	}
 
-	if config.HasRPC {
-		host.clientServer = NewClientServer(*config.RPCAddress, &host)
+	if config.HasClientRPC {
+		host.clientServer = NewClientServer(*config.ClientRPCAddress, &host)
 	}
 
 	return host

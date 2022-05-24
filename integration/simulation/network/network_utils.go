@@ -44,41 +44,38 @@ func createInMemObscuroNode(
 	validateBlocks bool,
 	genesisJSON []byte,
 ) *host.Node {
+	hostConfig := host.Config{
+		ID:                  common.BigToAddress(big.NewInt(id)),
+		IsGenesis:           isGenesis,
+		GossipRoundDuration: avgGossipPeriod,
+		HasClientRPC:        false,
+	}
+
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
+	enclaveClient := enclave.NewEnclave(hostConfig.ID, true, txHandler, validateBlocks, genesisJSON, stats)
+	node := host.NewHost(hostConfig, stats, obscuroInMemNetwork, nil, enclaveClient, txHandler)
 
-	nodeID := common.BigToAddress(big.NewInt(id))
-	obscuroNodeCfg := defaultObscuroNodeCfg(nodeID, isGenesis, avgGossipPeriod, false, nil)
-	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
-
-	// create an in memory obscuro node
-	node := host.NewHost(obscuroNodeCfg, stats, obscuroInMemNetwork, nil, enclaveClient, txHandler)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
 
 func createSocketObscuroNode(id int64, isGenesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string, txHandler mgmtcontractlib.TxHandler) *host.Node {
-	nodeID := common.BigToAddress(big.NewInt(id))
+	hostConfig := host.Config{
+		ID:                   common.BigToAddress(big.NewInt(id)),
+		IsGenesis:            isGenesis,
+		GossipRoundDuration:  avgGossipPeriod,
+		HasClientRPC:         true,
+		ClientRPCAddress:     &clientServerAddr,
+		ClientRPCTimeoutSecs: ClientRPCTimeoutSecs,
+		EnclaveRPCTimeout:    ClientRPCTimeoutSecs * time.Second,
+		EnclaveRPCAddress:    &enclaveAddr,
+	}
 
-	// create an enclave client
-	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, ClientRPCTimeoutSecs*time.Second, nodeID)
-
-	// create a socket obscuro node
-	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
-	obscuroNodeCfg := defaultObscuroNodeCfg(nodeID, isGenesis, avgGossipPeriod, true, &clientServerAddr)
-	node := host.NewHost(obscuroNodeCfg, stats, nodeP2p, nil, enclaveClient, txHandler)
+	enclaveClient := host.NewEnclaveRPCClient(hostConfig)
+	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, hostConfig.ID)
+	node := host.NewHost(hostConfig, stats, nodeP2p, nil, enclaveClient, txHandler)
 
 	return &node
-}
-
-func defaultObscuroNodeCfg(nodeID common.Address, isGenesis bool, gossipPeriod time.Duration, hasRPC bool, rpcAddress *string) host.Config {
-	return host.Config{
-		ID:                   nodeID,
-		IsGenesis:            isGenesis,
-		ClientRPCTimeoutSecs: ClientRPCTimeoutSecs,
-		GossipRoundDuration:  gossipPeriod,
-		HasRPC:               hasRPC,
-		RPCAddress:           rpcAddress,
-	}
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {
