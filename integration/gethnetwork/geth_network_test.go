@@ -90,7 +90,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 	// check the transaction has expected values
 	issuedTx := map[string]interface{}{}
 	if err := yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
-		t.Fatalf("unable to unmarshall transaction issuance response to YAML. Cause: %s. Response: %s", err, issuedTxStr)
+		t.Fatalf("unable to unmarshall getTransaction response to YAML. Cause: %s. Response: %s", err, issuedTxStr)
 	}
 
 	if issuedTx["value"].(int) != 1000000000000000 ||
