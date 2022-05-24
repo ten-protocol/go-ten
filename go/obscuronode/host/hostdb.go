@@ -1,6 +1,7 @@
 package host
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -78,6 +79,7 @@ func (n *DB) AddRollupHeader(header *nodecommon.Header) {
 	n.rollupLock.Lock()
 	defer n.rollupLock.Unlock()
 
+	log.Info("jjj storing hash. Hash is %s", header.Hash().String())
 	n.rollupDB[header.Hash()] = header
 
 	// update the head if the new height is greater than the existing one
