@@ -55,6 +55,8 @@ const (
 
 	chainIDName  = "chainID"
 	chainIDUsage = "The ID of the L1 chain"
+
+	defaultRPCTimeoutSecs = 3
 )
 
 type DefaultHostConfig struct {
@@ -75,42 +77,43 @@ type DefaultHostConfig struct {
 	ChainID               int64
 }
 
-func GetDefaults() DefaultHostConfig {
-	return DefaultHostConfig{
-		NodeID:                "",
+func GetDefaultConfig() host.Config {
+	return host.Config{
+		ID:                    common.BytesToAddress([]byte("")),
 		IsGenesis:             true,
-		GossipRoundNanos:      8333,
-		EnclaveRPCTimeoutSecs: 3,
-		ClientRPCTimeoutSecs:  3,
-		EnclaveAddr:           "127.0.0.1:11000",
-		OurP2PAddr:            "",
-		PeerP2PAddrs:          []string{},
-		ClientServerAddr:      "127.0.0.1:13000",
-		PrivateKeyString:      "0000000000000000000000000000000000000000000000000000000000000001",
-		ContractAddress:       "",
-		EthClientHost:         "127.0.0.1",
-		EthClientPort:         8546,
+		GossipRoundDuration:   8333,
+		HasClientRPC:          true,
+		ClientRPCAddress:      "127.0.0.1:13000",
+		ClientRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		EnclaveRPCAddress:     "127.0.0.1:11000",
+		EnclaveRPCTimeout:     time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		P2PAddress:            "",
+		AllP2PAddresses:       []string{},
+		L1NodeHost:            "127.0.0.1",
+		L1NodeWebsocketPort:   8546,
+		RollupContractAddress: common.BytesToAddress([]byte("")),
 		LogPath:               "host_logs.txt",
+		PrivateKeyString:      "0000000000000000000000000000000000000000000000000000000000000001",
 		ChainID:               1337,
 	}
 }
 
 func ParseCLIArgs() host.Config {
-	defaultConfig := GetDefaults()
+	defaultConfig := GetDefaultConfig()
 
-	nodeID := flag.String(nodeIDName, defaultConfig.NodeID, nodeIDUsage)
+	nodeID := flag.String(nodeIDName, "", nodeIDUsage)
 	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
-	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, defaultConfig.GossipRoundNanos, gossipRoundNanosUsage)
-	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, defaultConfig.EnclaveRPCTimeoutSecs, enclaveRPCTimeoutSecsUsage)
-	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, defaultConfig.ClientRPCTimeoutSecs, clientRPCTimeoutSecsUsage)
-	enclaveAddr := flag.String(enclaveAddrName, defaultConfig.EnclaveAddr, enclaveAddrUsage)
-	ourP2PAddr := flag.String(ourP2PAddrName, defaultConfig.OurP2PAddr, ourP2PAddrUsage)
+	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
+	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, defaultRPCTimeoutSecs, enclaveRPCTimeoutSecsUsage)
+	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, defaultRPCTimeoutSecs, clientRPCTimeoutSecsUsage)
+	enclaveAddr := flag.String(enclaveAddrName, defaultConfig.EnclaveRPCAddress, enclaveAddrUsage)
+	ourP2PAddr := flag.String(ourP2PAddrName, defaultConfig.P2PAddress, ourP2PAddrUsage)
 	peerP2PAddrs := flag.String(peerP2PAddrsName, "", peerP2PAddrsUsage)
-	clientServerAddr := flag.String(clientServerAddrName, defaultConfig.ClientServerAddr, clientServerAddrUsage)
+	clientServerAddr := flag.String(clientServerAddrName, defaultConfig.ClientRPCAddress, clientServerAddrUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
-	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
-	ethClientHost := flag.String(ethClientHostName, defaultConfig.EthClientHost, ethClientHostUsage)
-	ethClientPort := flag.Uint64(ethClientPortName, defaultConfig.EthClientPort, ethClientPortUsage)
+	contractAddress := flag.String(contractAddrName, "", contractAddrUsage)
+	ethClientHost := flag.String(ethClientHostName, defaultConfig.L1NodeHost, ethClientHostUsage)
+	ethClientPort := flag.Uint64(ethClientPortName, uint64(defaultConfig.L1NodeWebsocketPort), ethClientPortUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
 
