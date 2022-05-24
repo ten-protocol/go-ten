@@ -31,6 +31,8 @@ func RunHost(config HostConfig) {
 		ClientRPCAddress:     &config.ClientServerAddr,
 		EnclaveRPCAddress:    &config.EnclaveAddr,
 		EnclaveRPCTimeout:    ClientRPCTimeoutSecs * time.Second, // todo - joel - pass this via CLI
+		P2PAddress:           &config.OurP2PAddr,
+		AllP2PAddresses:      config.PeerP2PAddrs,
 	}
 
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
@@ -45,7 +47,7 @@ func RunHost(config HostConfig) {
 	}
 
 	enclaveClient := host.NewEnclaveRPCClient(hostCfg)
-	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs, nodeID)
+	aggP2P := p2p.NewSocketP2PLayer(hostCfg)
 	agg := host.NewHost(hostCfg, nil, aggP2P, l1Client, enclaveClient, txHandler)
 
 	fmt.Println("Starting Obscuro host...")

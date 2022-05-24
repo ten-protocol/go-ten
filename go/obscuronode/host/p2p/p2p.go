@@ -7,8 +7,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -35,19 +33,19 @@ type Message struct {
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
 // allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
-func NewSocketP2PLayer(ourAddress string, allAddresses []string, nodeID common.Address) host.P2P {
+func NewSocketP2PLayer(config host.Config) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
 	var peerAddresses []string
-	for _, a := range allAddresses {
-		if a != ourAddress {
-			peerAddresses = append(peerAddresses, a)
+	for _, address := range config.AllP2PAddresses {
+		if address != *config.P2PAddress {
+			peerAddresses = append(peerAddresses, address)
 		}
 	}
 
 	return &p2pImpl{
-		OurAddress:    ourAddress,
+		OurAddress:    *config.P2PAddress,
 		PeerAddresses: peerAddresses,
-		nodeID:        obscurocommon.ShortAddress(nodeID),
+		nodeID:        obscurocommon.ShortAddress(config.ID),
 	}
 }
 

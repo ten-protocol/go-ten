@@ -28,16 +28,20 @@ type Config struct {
 	IsGenesis bool
 	// Duration of the gossip round
 	GossipRoundDuration time.Duration
-	// Timeout duration in seconds for RPC requests from client applications
-	ClientRPCTimeoutSecs uint64
-	// Timeout duration in seconds for RPC requests to the enclave service
-	EnclaveRPCTimeout time.Duration
 	// Whether to serve client RPC requests
 	HasClientRPC bool
 	// Address on which to serve client RPC requests
 	ClientRPCAddress *string
+	// Timeout duration in seconds for RPC requests from client applications
+	ClientRPCTimeoutSecs uint64
 	// Address on which to connect to the enclave
 	EnclaveRPCAddress *string
+	// Timeout duration in seconds for RPC requests to the enclave service
+	EnclaveRPCTimeout time.Duration
+	// Our network for P2P communication with peer Obscuro nodes.
+	P2PAddress *string
+	// The addresses of all the Obscuro nodes on the network.
+	AllP2PAddresses []string
 }
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
@@ -93,7 +97,6 @@ type Node struct {
 	nodeDB       *DB    // Stores the node's publicly-available data
 	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
 
-	// todo - joel - can I just grab the ethclient's tx handler here?
 	txHandler mgmtcontractlib.TxHandler // Handles tx conversion from eth to L1Data
 }
 

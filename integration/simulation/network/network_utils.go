@@ -69,10 +69,12 @@ func createSocketObscuroNode(id int64, isGenesis bool, avgGossipPeriod time.Dura
 		ClientRPCTimeoutSecs: ClientRPCTimeoutSecs,
 		EnclaveRPCTimeout:    ClientRPCTimeoutSecs * time.Second,
 		EnclaveRPCAddress:    &enclaveAddr,
+		P2PAddress:           &p2pAddr,
+		AllP2PAddresses:      peerAddrs,
 	}
 
 	enclaveClient := host.NewEnclaveRPCClient(hostConfig)
-	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, hostConfig.ID)
+	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
 	node := host.NewHost(hostConfig, stats, nodeP2p, nil, enclaveClient, txHandler)
 
 	return &node
