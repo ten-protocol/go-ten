@@ -70,7 +70,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 		var result types.Header
 		err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
-		if err != nil && result.Number != nil && result.Number.Uint64() > 0 {
+		if err == nil && result.Number != nil && result.Number.Uint64() > 0 {
 			return
 		}
 	}
