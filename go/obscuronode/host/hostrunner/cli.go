@@ -106,23 +106,23 @@ func ParseCLIArgs() config.HostConfig {
 	nodeID := flag.String(nodeIDName, "", nodeIDUsage)
 	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
-	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, defaultRPCTimeoutSecs, enclaveRPCTimeoutSecsUsage)
+	clientRPCAddress := flag.String(clientServerAddrName, defaultConfig.ClientRPCAddress, clientServerAddrUsage)
 	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, defaultRPCTimeoutSecs, clientRPCTimeoutSecsUsage)
-	enclaveAddr := flag.String(enclaveAddrName, defaultConfig.EnclaveRPCAddress, enclaveAddrUsage)
-	ourP2PAddr := flag.String(ourP2PAddrName, defaultConfig.P2PAddress, ourP2PAddrUsage)
-	peerP2PAddrs := flag.String(peerP2PAddrsName, "", peerP2PAddrsUsage)
-	clientServerAddr := flag.String(clientServerAddrName, defaultConfig.ClientRPCAddress, clientServerAddrUsage)
-	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
-	contractAddress := flag.String(contractAddrName, "", contractAddrUsage)
-	ethClientHost := flag.String(ethClientHostName, defaultConfig.L1NodeHost, ethClientHostUsage)
-	ethClientPort := flag.Uint64(ethClientPortName, uint64(defaultConfig.L1NodeWebsocketPort), ethClientPortUsage)
+	enclaveRPCAddress := flag.String(enclaveAddrName, defaultConfig.EnclaveRPCAddress, enclaveAddrUsage)
+	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, defaultRPCTimeoutSecs, enclaveRPCTimeoutSecsUsage)
+	p2pAddress := flag.String(ourP2PAddrName, defaultConfig.P2PAddress, ourP2PAddrUsage)
+	allP2PAddresses := flag.String(peerP2PAddrsName, "", peerP2PAddrsUsage)
+	l1NodeHost := flag.String(ethClientHostName, defaultConfig.L1NodeHost, ethClientHostUsage)
+	l1NodePort := flag.Uint64(ethClientPortName, uint64(defaultConfig.L1NodeWebsocketPort), ethClientPortUsage)
+	rollupContractAddress := flag.String(contractAddrName, "", contractAddrUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
+	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
 
 	flag.Parse()
 
-	parsedP2PAddrs := strings.Split(*peerP2PAddrs, ",")
-	if *peerP2PAddrs == "" {
+	parsedP2PAddrs := strings.Split(*allP2PAddresses, ",")
+	if *allP2PAddresses == "" {
 		// We handle the special case of an empty list.
 		parsedP2PAddrs = []string{}
 	}
@@ -132,15 +132,15 @@ func ParseCLIArgs() config.HostConfig {
 		IsGenesis:             *isGenesis,
 		GossipRoundDuration:   time.Duration(*gossipRoundNanos),
 		HasClientRPC:          true,
-		ClientRPCAddress:      *clientServerAddr,
+		ClientRPCAddress:      *clientRPCAddress,
 		ClientRPCTimeout:      time.Second * time.Duration(*enclaveRPCTimeoutSecs),
-		EnclaveRPCAddress:     *enclaveAddr,
+		EnclaveRPCAddress:     *enclaveRPCAddress,
 		EnclaveRPCTimeout:     time.Second * time.Duration(*clientRPCTimeoutSecs),
-		P2PAddress:            *ourP2PAddr,
+		P2PAddress:            *p2pAddress,
 		AllP2PAddresses:       parsedP2PAddrs,
-		L1NodeHost:            *ethClientHost,
-		L1NodeWebsocketPort:   uint(*ethClientPort),
-		RollupContractAddress: common.BytesToAddress([]byte(*contractAddress)),
+		L1NodeHost:            *l1NodeHost,
+		L1NodeWebsocketPort:   uint(*l1NodePort),
+		RollupContractAddress: common.BytesToAddress([]byte(*rollupContractAddress)),
 		PrivateKeyString:      *privateKeyStr,
 		LogPath:               *logPath,
 		ChainID:               *big.NewInt(*chainID),
