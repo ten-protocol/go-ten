@@ -2,6 +2,7 @@ package enclaverunner
 
 import (
 	"flag"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -34,31 +35,21 @@ const (
 	verifyL1BlocksUsage = "Whether to verify incoming blocks using the hardcoded L1 genesis.json config"
 )
 
-type EnclaveConfig struct {
-	NodeID             int64
-	ChainID            int64
-	Address            string
-	ContractAddress    string
-	WriteToLogs        bool
-	LogPath            string
-	ERC20ContractAddrs []*common.Address
-	VerifyL1Blocks     bool
-}
-
-func DefaultEnclaveConfig() EnclaveConfig {
-	return EnclaveConfig{
-		NodeID:             1,
-		ChainID:            1337,
+func DefaultEnclaveConfig() config.EnclaveConfig {
+	return config.EnclaveConfig{
+		HostID:             common.BytesToAddress([]byte("")),
 		Address:            "127.0.0.1:11000",
+		ChainID:            777,
+		ValidateL1Blocks:   false,
+		GenesisJSON:        nil,
 		ContractAddress:    "",
 		WriteToLogs:        false,
 		LogPath:            "enclave_logs.txt",
 		ERC20ContractAddrs: []*common.Address{},
-		VerifyL1Blocks:     false,
 	}
 }
 
-func ParseCLIArgs() EnclaveConfig {
+func ParseCLIArgs() config.EnclaveConfig {
 	defaultConfig := DefaultEnclaveConfig()
 
 	nodeID := flag.Int64(nodeIDName, defaultConfig.NodeID, nodeIDUsage)

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -31,7 +33,6 @@ type StatsCollector interface {
 type enclaveImpl struct {
 	nodeID         common.Address
 	nodeShortID    uint64
-	mining         bool
 	storage        db.Storage
 	blockResolver  db.BlockResolver
 	mempool        mempool.Manager
@@ -517,33 +518,28 @@ type processingEnvironment struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(
-	nodeID common.Address,
-	chainID int64,
-	mining bool,
+	config config.EnclaveConfig,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	validateBlocks bool,
-	genesisJSON []byte,
 	collector StatsCollector,
 ) nodecommon.Enclave {
 	backingDB := db.NewInMemoryDB()
-	nodeShortID := obscurocommon.ShortAddress(nodeID)
+	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 	storage := db.NewStorage(backingDB, nodeShortID)
 
 	var l1Blockchain *core.BlockChain
-	if validateBlocks {
-		if genesisJSON == nil {
+	if config.ValidateL1Blocks {
+		if config.GenesisJSON == nil {
 			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
 		}
-		l1Blockchain = NewL1Blockchain(genesisJSON)
+		l1Blockchain = NewL1Blockchain(config.GenesisJSON)
 	} else {
-		nodecommon.LogWithID(obscurocommon.ShortAddress(nodeID), "validateBlocks is set to false. L1 blocks will not be validated.")
+		nodecommon.LogWithID(obscurocommon.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
 	return &enclaveImpl{
-		nodeID:                      nodeID,
+		nodeID:                      config.HostID,
 		nodeShortID:                 nodeShortID,
-		mining:                      mining,
 		storage:                     storage,
 		blockResolver:               storage,
 		mempool:                     mempool.New(),
@@ -557,6 +553,6 @@ func NewEnclave(
 		mgmtContractLib:             mgmtContractLib,
 		erc20ContractLib:            erc20ContractLib,
 		speculativeExecutionEnabled: false, // TODO - reenable
-		chainID:                     chainID,
+		chainID:                     config.ChainID,
 	}
 }

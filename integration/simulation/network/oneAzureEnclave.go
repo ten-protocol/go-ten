@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	config2 "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -76,10 +78,15 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 			n.obscuroClients[i] = &obscuroClient
 		} else {
 			// create a remote enclave server
-			nodeID := common.BigToAddress(big.NewInt(int64(i)))
 			enclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
-			enclaveAddress := fmt.Sprintf("%s:%d", Localhost, enclavePort)
-			_, err := enclave.StartServer(enclaveAddress, integration.ObscuroChainID, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, nil, stats)
+			enclaveConfig := config2.EnclaveConfig{
+				HostID:           common.BigToAddress(big.NewInt(int64(i))),
+				Address:          fmt.Sprintf("%s:%d", Localhost, enclavePort),
+				ChainID:          integration.ObscuroChainID,
+				ValidateL1Blocks: false,
+				GenesisJSON:      nil,
+			}
+			_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 			if err != nil {
 				panic(fmt.Sprintf("failed to create enclave server: %v", err))
 			}
@@ -95,7 +102,7 @@ func (n *networkWithOneAzureEnclave) Create(params *params.SimParams, stats *sta
 				stats,
 				nodeP2pAddrs[i],
 				nodeP2pAddrs,
-				enclaveAddress,
+				enclaveConfig.Address,
 				obscuroClientAddr,
 				params.NodeEthWallets[i],
 				params.MgmtContractLib,

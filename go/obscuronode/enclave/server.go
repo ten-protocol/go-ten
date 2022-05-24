@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 
+	config2 "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -28,33 +30,26 @@ type server struct {
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-// `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
-// received from the L1 node if `validateBlocks` is set to true.
-// TODO - Use a genesis JSON hardcoded in a config file bundled in the signed SGX image instead.
 func StartServer(
-	address string,
-	chainID int64,
-	nodeID common.Address,
+	config config2.EnclaveConfig,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	validateBlocks bool,
-	genesisJSON []byte,
 	collector StatsCollector,
 ) (func(), error) {
-	lis, err := net.Listen("tcp", address)
+	lis, err := net.Listen("tcp", config.Address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, chainID, true, mgmtContractLib, erc20ContractLib, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(config, mgmtContractLib, erc20ContractLib, collector),
 		rpcServer:   grpc.NewServer(),
-		nodeShortID: obscurocommon.ShortAddress(nodeID),
+		nodeShortID: obscurocommon.ShortAddress(config.HostID),
 	}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {
-		nodecommon.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", address)
+		nodecommon.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", config.Address)
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
 			nodecommon.LogWithID(enclaveServer.nodeShortID, "enclave RPC server could not serve: %s", err)
