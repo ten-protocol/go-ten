@@ -23,11 +23,14 @@ import (
 const (
 	numNodes        = 3
 	expectedChainID = "1337"
+	genesisChainID  = 1337
 
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 
 	defaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
+
+	localhost = "127.0.0.1"
 )
 
 var timeout = 15 * time.Second
@@ -109,30 +112,34 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	}
 
 	// wallet should be prefunded
-	w := datagenerator.RandomWallet()
+	w := datagenerator.RandomWallet(genesisChainID)
 	startPort := getStartPort()
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	localhost := "127.0.0.1"
 	hostConfig := host.Config{
 		L1NodeHost:          localhost,
 		L1NodeWebsocketPort: network.WebSocketPorts[0],
 	}
-	ethClient, err := host.NewEthClient(hostConfig, w)
+	ethClient, err := host.NewEthClient(hostConfig)
 	if err != nil {
 		panic(err)
 	}
 
 	// pick the first address in the network and send some funds to it
 	toAddr := common.HexToAddress(fmt.Sprintf("0x%s", network.addresses[0]))
-	tx, err := ethClient.SubmitTransaction(&types.LegacyTx{
-		Nonce:    0,
+	tx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(20000000000),
 		Gas:      uint64(1024_000_000),
 		To:       &toAddr,
 		Value:    big.NewInt(100),
-	})
+	}
+	signedTx, err := w.SignTransaction(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ethClient.SendTransaction(signedTx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +147,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	// make sure it's mined into a block within an acceptable time
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-		receipt, err = ethClient.FetchTxReceipt(tx.Hash())
+		receipt, err = ethClient.TransactionReceipt(signedTx.Hash())
 		if err == nil {
 			break
 		}

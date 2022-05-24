@@ -6,9 +6,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -24,7 +25,7 @@ import (
 type L1Network interface {
 	// BroadcastBlock - send the block and the parent to make sure there are no gaps
 	BroadcastBlock(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock)
-	BroadcastTx(tx obscurocommon.EncodedL1Tx)
+	BroadcastTx(tx *types.Transaction)
 }
 
 type MiningConfig struct {
@@ -32,8 +33,8 @@ type MiningConfig struct {
 }
 
 type TxDB interface {
-	Txs(block *types.Block) (map[obscurocommon.TxHash]*obscurocommon.L1Tx, bool)
-	AddTxs(*types.Block, map[obscurocommon.TxHash]*obscurocommon.L1Tx)
+	Txs(block *types.Block) (map[obscurocommon.TxHash]*types.Transaction, bool)
+	AddTxs(*types.Block, map[obscurocommon.TxHash]*types.Transaction)
 }
 
 type StatsCollector interface {
@@ -59,20 +60,25 @@ type Node struct {
 	p2pCh       chan *types.Block       // this is where blocks received from peers are dropped
 	miningCh    chan *types.Block       // this is where blocks created by the mining setup of the current node are dropped
 	canonicalCh chan *types.Block       // this is where the main processing routine drops blocks that are canonical
-	mempoolCh   chan obscurocommon.L1Tx // where l1 transactions to be published in the next block are added
+	mempoolCh   chan *types.Transaction // where l1 transactions to be published in the next block are added
 
 	// internal
-	headInCh  chan bool
-	headOutCh chan *types.Block
-	txHandler mgmtcontractlib.TxHandler
+	headInCh         chan bool
+	headOutCh        chan *types.Block
+	erc20ContractLib erc20contractlib.ERC20ContractLib
+	mgmtContractLib  mgmtcontractlib.MgmtContractLib
 }
 
-func (m *Node) SubmitTransaction(_ types.TxData) (*types.Transaction, error) {
-	panic("method should never be called in this mock")
+func (m *Node) SendTransaction(tx *types.Transaction) error {
+	m.Network.BroadcastTx(tx)
+	return nil
 }
 
-func (m *Node) FetchTxReceipt(_ common.Hash) (*types.Receipt, error) {
-	panic("method should never be called in this mock")
+func (m *Node) TransactionReceipt(_ common.Hash) (*types.Receipt, error) {
+	// all transactions are immediately processed
+	return &types.Receipt{
+		Status: types.ReceiptStatusSuccessful,
+	}, nil
 }
 
 // BlockListener is not used in the mock
@@ -80,7 +86,7 @@ func (m *Node) BlockListener() chan *types.Header {
 	return make(chan *types.Header)
 }
 
-func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	if n.Int64() == 0 {
 		return obscurocommon.GenesisBlock, nil
 	}
@@ -99,7 +105,7 @@ func (m *Node) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
 	return nil, nil // nolint:nilnil
 }
 
-func (m *Node) FetchBlock(id common.Hash) (*types.Block, error) {
+func (m *Node) BlockByHash(id common.Hash) (*types.Block, error) {
 	blk, f := m.Resolver.FetchBlock(id)
 	if !f {
 		return nil, fmt.Errorf("blk not found")
@@ -109,10 +115,6 @@ func (m *Node) FetchBlock(id common.Hash) (*types.Block, error) {
 
 func (m *Node) FetchHeadBlock() *types.Block {
 	return m.Resolver.FetchHeadBlock()
-}
-
-func (m *Node) IssueTx(tx obscurocommon.EncodedL1Tx) {
-	m.Network.BroadcastTx(tx)
 }
 
 func (m *Node) Info() ethclient.Info {
@@ -251,7 +253,7 @@ func (m *Node) P2PReceiveBlock(b obscurocommon.EncodedBlock, p obscurocommon.Enc
 func (m *Node) startMining() {
 	log.Info(fmt.Sprintf("Node-%d: starting miner...", obscurocommon.ShortAddress(m.ID)))
 	// stores all transactions seen from the beginning of time.
-	mempool := make([]*obscurocommon.L1Tx, 0)
+	mempool := make([]*types.Transaction, 0)
 	z := int32(0)
 	interrupt := &z
 
@@ -260,7 +262,7 @@ func (m *Node) startMining() {
 		case <-m.exitMiningCh:
 			return
 		case tx := <-m.mempoolCh:
-			mempool = append(mempool, &tx)
+			mempool = append(mempool, tx)
 
 		case canonicalBlock := <-m.canonicalCh:
 			// A new canonical block was found. Start a new round based on that block.
@@ -281,33 +283,24 @@ func (m *Node) startMining() {
 				if atomic.LoadInt32(m.interrupt) == 1 {
 					return
 				}
-				b := obscurocommon.NewBlock(canonicalBlock, m.ID, toInclude)
-				m.miningCh <- b
+
+				m.miningCh <- obscurocommon.NewBlock(canonicalBlock, m.ID, toInclude)
 			})
 		}
 	}
 }
 
 // P2PGossipTx receive rollups to publish from the linked aggregators
-func (m *Node) P2PGossipTx(tx obscurocommon.EncodedL1Tx) {
+func (m *Node) P2PGossipTx(tx *types.Transaction) {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return
 	}
-	t, err := tx.Decode()
-	if err != nil {
-		panic(err)
-	}
 
-	m.mempoolCh <- t
+	m.mempoolCh <- tx
 }
 
-func (m *Node) BroadcastTx(txData *obscurocommon.L1TxData) {
-	tx, err := obscurocommon.NewL1Tx(*txData)
-	if err != nil {
-		log.Panic("could not create new L1 transaction. Cause: %s", err)
-	}
-	t, _ := obscurocommon.EncodeTx(tx)
-	m.Network.BroadcastTx(t)
+func (m *Node) BroadcastTx(tx types.TxData) {
+	m.Network.BroadcastTx(types.NewTx(tx))
 }
 
 func (m *Node) RPCBlockchainFeed() []*types.Block {
@@ -361,22 +354,23 @@ func NewMiner(
 	statsCollector StatsCollector,
 ) *Node {
 	return &Node{
-		ID:           id,
-		mining:       true,
-		cfg:          cfg,
-		stats:        statsCollector,
-		Resolver:     NewResolver(),
-		db:           NewTxDB(),
-		Network:      network,
-		exitCh:       make(chan bool),
-		exitMiningCh: make(chan bool),
-		interrupt:    new(int32),
-		p2pCh:        make(chan *types.Block),
-		miningCh:     make(chan *types.Block),
-		canonicalCh:  make(chan *types.Block),
-		mempoolCh:    make(chan obscurocommon.L1Tx),
-		headInCh:     make(chan bool),
-		headOutCh:    make(chan *types.Block),
-		txHandler:    NewMockTxHandler(),
+		ID:               id,
+		mining:           true,
+		cfg:              cfg,
+		stats:            statsCollector,
+		Resolver:         NewResolver(),
+		db:               NewTxDB(),
+		Network:          network,
+		exitCh:           make(chan bool),
+		exitMiningCh:     make(chan bool),
+		interrupt:        new(int32),
+		p2pCh:            make(chan *types.Block),
+		miningCh:         make(chan *types.Block),
+		canonicalCh:      make(chan *types.Block),
+		mempoolCh:        make(chan *types.Transaction),
+		headInCh:         make(chan bool),
+		headOutCh:        make(chan *types.Block),
+		erc20ContractLib: NewERC20ContractLibMock(),
+		mgmtContractLib:  NewMgmtContractLibMock(),
 	}
 }

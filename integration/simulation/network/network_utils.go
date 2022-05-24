@@ -4,15 +4,19 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/integration"
 	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
@@ -20,7 +24,8 @@ import (
 
 const (
 	Localhost            = "127.0.0.1"
-	DefaultWsPortOffset  = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	DefaultWsPortOffset  = 100 // The default offset between a Geth node's port and websocket ports.
+	DefaultEnclaveOffset = 300 //  The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
 	ClientRPCTimeoutSecs = 5
 )
 
@@ -36,14 +41,18 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 func createInMemObscuroNode(
 	id int64,
 	isGenesis bool,
-	txHandler mgmtcontractlib.TxHandler,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
 	avgBlockDuration time.Duration,
 	avgNetworkLatency time.Duration,
 	stats *stats.Stats,
 	validateBlocks bool,
 	genesisJSON []byte,
+	ethWallet wallet.Wallet,
 ) *host.Node {
+	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
+
 	hostConfig := host.Config{
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
@@ -51,15 +60,34 @@ func createInMemObscuroNode(
 		HasClientRPC:        false,
 	}
 
-	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
-	enclaveClient := enclave.NewEnclave(hostConfig.ID, true, txHandler, validateBlocks, genesisJSON, stats)
-	node := host.NewHost(hostConfig, stats, obscuroInMemNetwork, nil, enclaveClient, txHandler)
+	enclaveClient := enclave.NewEnclave(hostConfig.ID, integration.ObscuroChainID, true, mgmtContractLib, stableTokenContractLib, validateBlocks, genesisJSON, stats)
 
+	// create an in memory obscuro node
+	node := host.NewHost(
+		hostConfig,
+		stats,
+		obscuroInMemNetwork,
+		nil,
+		enclaveClient,
+		ethWallet,
+		mgmtContractLib,
+	)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
 
-func createSocketObscuroNode(id int64, isGenesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string, txHandler mgmtcontractlib.TxHandler) *host.Node {
+func createSocketObscuroNode(
+	id int64,
+	isGenesis bool,
+	avgGossipPeriod time.Duration,
+	stats *stats.Stats,
+	p2pAddr string,
+	peerAddrs []string,
+	enclaveAddr string,
+	clientServerAddr string,
+	ethWallet wallet.Wallet,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+) *host.Node {
 	hostConfig := host.Config{
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
@@ -73,9 +101,21 @@ func createSocketObscuroNode(id int64, isGenesis bool, avgGossipPeriod time.Dura
 		AllP2PAddresses:     peerAddrs,
 	}
 
+	// create an enclave client
 	enclaveClient := host.NewEnclaveRPCClient(hostConfig)
+
+	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
-	node := host.NewHost(hostConfig, stats, nodeP2p, nil, enclaveClient, txHandler)
+
+	node := host.NewHost(
+		hostConfig,
+		stats,
+		nodeP2p,
+		nil,
+		enclaveClient,
+		ethWallet,
+		mgmtContractLib,
+	)
 
 	return &node
 }

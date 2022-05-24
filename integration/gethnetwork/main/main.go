@@ -24,7 +24,7 @@ func main() {
 }
 
 // Shuts down the Geth network when an interrupt is received.
-func handleInterrupt(gethNetwork gethnetwork.GethNetwork) {
+func handleInterrupt(gethNetwork *gethnetwork.GethNetwork) {
 	interruptChannel := make(chan os.Signal, 1)
 	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 	<-interruptChannel

@@ -111,18 +111,18 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor o
 
 // The cache of included transactions
 type txDBInMem struct {
-	transactionsPerBlockCache map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*obscurocommon.L1Tx
+	transactionsPerBlockCache map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*types.Transaction
 	rpbcM                     *sync.RWMutex
 }
 
 func NewTxDB() TxDB {
 	return &txDBInMem{
-		transactionsPerBlockCache: make(map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*obscurocommon.L1Tx),
+		transactionsPerBlockCache: make(map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*types.Transaction),
 		rpbcM:                     &sync.RWMutex{},
 	}
 }
 
-func (n *txDBInMem) Txs(b *types.Block) (map[obscurocommon.TxHash]*obscurocommon.L1Tx, bool) {
+func (n *txDBInMem) Txs(b *types.Block) (map[obscurocommon.TxHash]*types.Transaction, bool) {
 	n.rpbcM.RLock()
 	val, found := n.transactionsPerBlockCache[b.Hash()]
 	n.rpbcM.RUnlock()
@@ -130,7 +130,7 @@ func (n *txDBInMem) Txs(b *types.Block) (map[obscurocommon.TxHash]*obscurocommon
 	return val, found
 }
 
-func (n *txDBInMem) AddTxs(b *types.Block, newMap map[obscurocommon.TxHash]*obscurocommon.L1Tx) {
+func (n *txDBInMem) AddTxs(b *types.Block, newMap map[obscurocommon.TxHash]*types.Transaction) {
 	n.rpbcM.Lock()
 	n.transactionsPerBlockCache[b.Hash()] = newMap
 	n.rpbcM.Unlock()
@@ -140,10 +140,10 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[obscurocommon.TxHash]*obsc
 // deep have been removed.
 func removeCommittedTransactions(
 	cb *types.Block,
-	mempool []*obscurocommon.L1Tx,
+	mempool []*types.Transaction,
 	resolver db.BlockResolver,
 	db TxDB,
-) []*obscurocommon.L1Tx {
+) []*types.Transaction {
 	if cb.NumberU64() <= obscurocommon.HeightCommittedBlocks {
 		return mempool
 	}

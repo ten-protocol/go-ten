@@ -2,12 +2,14 @@ package hostrunner
 
 import (
 	"fmt"
+	"math/big"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
@@ -15,19 +17,20 @@ import (
 
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config host.Config) {
-	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
-	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(config.RollupContractAddress)
+	config = ParseCLIArgs()
+
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
+	ethWallet := wallet.NewInMemoryWalletFromString(big.NewInt(config.ChainID), config.PrivateKeyString)
 
 	fmt.Println("Connecting to L1 network...")
-	log.Info("Connecting to L1 network...")
-	l1Client, err := host.NewEthClient(config, nodeWallet)
+	l1Client, err := host.NewEthClient(config)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
 
 	enclaveClient := host.NewEnclaveRPCClient(config)
 	aggP2P := p2p.NewSocketP2PLayer(config)
-	agg := host.NewHost(config, nil, aggP2P, l1Client, enclaveClient, txHandler)
+	agg := host.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
 
 	fmt.Println("Starting Obscuro host...")
 	log.Info("Starting Obscuro host...")

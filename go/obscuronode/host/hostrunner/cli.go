@@ -52,6 +52,9 @@ const (
 
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the host's log file"
+
+	chainIDName  = "chainID"
+	chainIDUsage = "The ID of the L1 chain"
 )
 
 type DefaultHostConfig struct {
@@ -69,6 +72,7 @@ type DefaultHostConfig struct {
 	EthClientHost         string
 	EthClientPort         uint64
 	LogPath               string
+	ChainID               int64
 }
 
 func GetDefaults() DefaultHostConfig {
@@ -87,6 +91,7 @@ func GetDefaults() DefaultHostConfig {
 		EthClientHost:         "127.0.0.1",
 		EthClientPort:         8546,
 		LogPath:               "host_logs.txt",
+		ChainID:               1337,
 	}
 }
 
@@ -107,6 +112,7 @@ func ParseCLIArgs() host.Config {
 	ethClientHost := flag.String(ethClientHostName, defaultConfig.EthClientHost, ethClientHostUsage)
 	ethClientPort := flag.Uint64(ethClientPortName, defaultConfig.EthClientPort, ethClientPortUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
+	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
 
 	flag.Parse()
 
@@ -132,5 +138,6 @@ func ParseCLIArgs() host.Config {
 		RollupContractAddress: common.BytesToAddress([]byte(*contractAddress)),
 		PrivateKeyString:      *privateKeyStr,
 		LogPath:               *logPath,
+		ChainID:               *chainID,
 	}
 }

@@ -2,70 +2,10 @@ package obscurocommon
 
 import (
 	"math/big"
-	"math/rand"
-
-	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
-)
-
-// L1TxType - Just two types of relevant L1 transactions: Deposits and Rollups
-// this does not actually exist in the real implementation
-type L1TxType uint8
-
-const (
-	DepositTx L1TxType = iota
-	RollupTx
-	StoreSecretTx
-	RequestSecretTx
-)
-
-// For now all the fields are placeholders for arguments sent to the management contract
-type L1TxData struct {
-	TxType L1TxType
-
-	// if the type is rollup
-	// todo -payload
-	Rollup EncodedRollup
-
-	Secret      EncryptedSharedEnclaveSecret
-	Attestation AttestationReport
-
-	// if the type is deposit
-	Amount uint64
-	Dest   common.Address
-}
-
-type L1Tx = types.Transaction
-
-func NewL1Tx(data L1TxData) (*L1Tx, error) {
-	enc, err := rlp.EncodeToBytes(data)
-	if err != nil {
-		return nil, err
-	}
-	return types.NewTx(&types.LegacyTx{
-		Nonce:    rand.Uint64(), //nolint:gosec
-		Value:    big.NewInt(1),
-		Gas:      1,
-		GasPrice: big.NewInt(1),
-		Data:     enc,
-	}), nil
-}
-
-func TxData(tx *L1Tx) (*L1TxData, error) {
-	data := L1TxData{}
-	err := rlp.DecodeBytes(tx.Data(), &data)
-	if err != nil {
-		return nil, err
-	}
-	return &data, nil
-}
-
-type (
-	EncodedL1Tx  []byte
-	Transactions types.Transactions
+	"github.com/ethereum/go-ethereum/trie"
 )
 
 // the encoded version of an ExtBlock
@@ -73,10 +13,10 @@ type EncodedBlock []byte
 
 var (
 	GenesisHash  = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
-	GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*L1Tx{})
+	GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
 )
 
-func NewBlock(parent *types.Block, nodeID common.Address, txs []*L1Tx) *types.Block {
+func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transaction) *types.Block {
 	parentHash := GenesisHash
 	height := L1GenesisHeight
 	if parent != nil {

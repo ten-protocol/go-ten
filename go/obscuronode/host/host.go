@@ -5,17 +5,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
 
 // Config contains the full configuration for an Obscuro host.
@@ -50,6 +47,8 @@ type Config struct {
 	LogPath string
 	// The stringified private key for the host's L1 wallet
 	PrivateKeyString string
+	// The ID of the L1 chain
+	ChainID int64
 }
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
@@ -105,7 +104,10 @@ type Node struct {
 	nodeDB       *DB    // Stores the node's publicly-available data
 	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
 
-	txHandler mgmtcontractlib.TxHandler // Handles tx conversion from eth to L1Data
+	mgmtContractLib mgmtcontractlib.MgmtContractLib
+
+	// Wallet used to issue ethereum transactions
+	ethWallet wallet.Wallet
 }
 
 func NewHost(
@@ -114,7 +116,8 @@ func NewHost(
 	p2p P2P,
 	ethClient ethclient.EthClient,
 	enclaveClient nodecommon.Enclave,
-	txHandler mgmtcontractlib.TxHandler,
+	ethWallet wallet.Wallet,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 ) Node {
 	db := NewDB()
 
@@ -145,7 +148,8 @@ func NewHost(
 		nodeDB:       db,
 		readyForWork: new(int32),
 
-		txHandler: txHandler,
+		mgmtContractLib: mgmtContractLib,
+		ethWallet:       ethWallet,
 	}
 
 	if config.HasClientRPC {
@@ -161,12 +165,11 @@ func (a *Node) Start() {
 
 	if a.config.IsGenesis {
 		// Create the shared secret and submit it to the management contract for storage
-		tx := &obscurocommon.L1TxData{
-			TxType:      obscurocommon.StoreSecretTx,
+		l1tx := &obscurocommon.L1StoreSecretTx{
 			Secret:      a.EnclaveClient.GenerateSecret(),
 			Attestation: a.EnclaveClient.Attestation(),
 		}
-		a.broadcastTx(tx)
+		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 	}
 
 	if !a.EnclaveClient.IsInitialised() {
@@ -425,9 +428,12 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,
 			)
-			tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup())}
-			a.broadcastTx(tx)
-			// collect Stats
+
+			tx := &obscurocommon.L1RollupTx{
+				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
+			}
+
+			a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
 		}
 	}
 }
@@ -450,39 +456,51 @@ func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
 	nodecommon.LogWithID(a.shortID, "Initialising network. Genesis rollup r_%d.", obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash()))
-	tx := &obscurocommon.L1TxData{TxType: obscurocommon.RollupTx, Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())}
-	a.broadcastTx(tx)
+	l1tx := &obscurocommon.L1RollupTx{
+		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
+	}
+
+	a.broadcastTx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	return genesisResponse.ProducedRollup.Header.ParentHash
 }
 
-func (a *Node) broadcastTx(tx *obscurocommon.L1TxData) {
+func (a *Node) broadcastTx(tx types.TxData) {
 	// TODO add retry and deal with failures
-	a.ethClient.BroadcastTx(tx)
+	signedTx, err := a.ethWallet.SignTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+
+	err = a.ethClient.SendTransaction(signedTx)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
 	attestation := a.EnclaveClient.Attestation()
-	tx := &obscurocommon.L1TxData{
-		TxType:      obscurocommon.RequestSecretTx,
-		Attestation: attestation,
-	}
-	a.broadcastTx(tx)
+	l1tx := &obscurocommon.L1RequestSecretTx{Attestation: attestation}
+	a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	// start listening for l1 blocks that contain the response to the request
 	for {
 		select {
 		case header := <-a.ethClient.BlockListener():
-			block, err := a.ethClient.FetchBlock(header.Hash())
+			block, err := a.ethClient.BlockByHash(header.Hash())
 			if err != nil {
 				log.Panic("could not fetch block for hash %s. Cause: %s", header.Hash().String(), err)
 			}
 			for _, tx := range block.Transactions() {
-				t := a.txHandler.UnPackTx(tx)
-				if t != nil && t.TxType == obscurocommon.StoreSecretTx { // TODO properly handle t.Attestation.Owner == a.ID
+				t := a.mgmtContractLib.DecodeTx(tx)
+				if t == nil {
+					continue
+				}
+
+				if storeTx, ok := t.(*obscurocommon.L1StoreSecretTx); ok { // TODO properly handle t.Attestation.Owner == a.ID
 					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
-					a.EnclaveClient.InitEnclave(t.Secret)
+					a.EnclaveClient.InitEnclave(storeTx.Secret)
 					return
 				}
 			}
@@ -490,11 +508,15 @@ func (a *Node) requestSecret() {
 		case b := <-a.blockRPCCh:
 			txs := b.b.DecodeBlock().Transactions()
 			for _, tx := range txs {
-				t := a.txHandler.UnPackTx(tx)
-				if t != nil && t.TxType == obscurocommon.StoreSecretTx && t.Attestation.Owner == a.ID {
+				t := a.mgmtContractLib.DecodeTx(tx)
+				if t == nil {
+					continue
+				}
+
+				if storeTx, ok := t.(*obscurocommon.L1StoreSecretTx); ok {
 					// someone has replied
 					nodecommon.LogWithID(a.shortID, "Secret was retrieved")
-					a.EnclaveClient.InitEnclave(t.Secret)
+					a.EnclaveClient.InitEnclave(storeTx.Secret)
 					return
 				}
 			}
@@ -514,14 +536,17 @@ func (a *Node) requestSecret() {
 func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	b := block.DecodeBlock()
 	for _, tx := range b.Transactions() {
-		t := a.txHandler.UnPackTx(tx)
-		if t != nil && t.TxType == obscurocommon.RequestSecretTx {
-			txData := &obscurocommon.L1TxData{
-				TxType:      obscurocommon.StoreSecretTx,
-				Secret:      a.EnclaveClient.FetchSecret(t.Attestation),
-				Attestation: t.Attestation,
+		t := a.mgmtContractLib.DecodeTx(tx)
+		if t == nil {
+			continue
+		}
+
+		if reqTx, ok := t.(*obscurocommon.L1RequestSecretTx); ok {
+			l1tx := &obscurocommon.L1StoreSecretTx{
+				Secret:      a.EnclaveClient.FetchSecret(reqTx.Attestation),
+				Attestation: reqTx.Attestation,
 			}
-			a.broadcastTx(txData)
+			a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		}
 	}
 }
@@ -533,11 +558,11 @@ func (a *Node) monitorBlocks() {
 	for atomic.LoadInt32(a.interrupt) == 0 {
 		select {
 		case latestBlkHeader := <-listener:
-			block, err := a.ethClient.FetchBlock(latestBlkHeader.Hash())
+			block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
 			if err != nil {
 				log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
 			}
-			blockParent, err := a.ethClient.FetchBlock(block.ParentHash())
+			blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
 			if err != nil {
 				log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
 			}

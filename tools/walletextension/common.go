@@ -70,7 +70,7 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 func StartWalletExtension(config RunConfig) func() {
 	gethWebsocketAddr := websocketAddrPrefix + strconv.Itoa(config.StartPort+defaultWsPortOffset+2)
 
-	var localNetwork gethnetwork.GethNetwork
+	var localNetwork *gethnetwork.GethNetwork
 	if config.LocalNetwork {
 		gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 		if err != nil {

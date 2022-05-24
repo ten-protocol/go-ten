@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
@@ -21,7 +21,8 @@ const hardcodedGenesisJSON = "TODO - REPLACE ME"
 func RunEnclave(config EnclaveConfig) {
 	nodeAddress := common.BigToAddress(big.NewInt(config.NodeID))
 	contractAddr := common.HexToAddress(config.ContractAddress)
-	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
+	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddrs...)
 
 	var genesisJSON []byte
 	if config.VerifyL1Blocks {
@@ -29,7 +30,7 @@ func RunEnclave(config EnclaveConfig) {
 	} else {
 		genesisJSON = nil
 	}
-	closeHandle, err := enclave.StartServer(config.Address, nodeAddress, txHandler, false, genesisJSON, nil)
+	closeHandle, err := enclave.StartServer(config.Address, config.ChainID, nodeAddress, mgmtContractLib, erc20ContractLib, false, genesisJSON, nil)
 	if err != nil {
 		log.Panic("could not start Obscuro enclave service. Cause: %s", err)
 	}

@@ -1,22 +1,20 @@
 package network
 
 import (
-	"errors"
-	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/contracts"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -26,19 +24,59 @@ import (
 type networkInMemGeth struct {
 	obscuroClients []*obscuroclient.Client
 	gethNetwork    *gethnetwork.GethNetwork
+	wallets        []wallet.Wallet
+	contracts      []string
+	workerWallet   wallet.Wallet
 }
 
-func NewNetworkInMemoryGeth() Network {
-	return &networkInMemGeth{}
+func NewNetworkInMemoryGeth(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
+	return &networkInMemGeth{
+		wallets:      wallets,
+		contracts:    contracts,
+		workerWallet: workerWallet,
+	}
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
 func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
-	gethNetwork, contractAddr := createGethNetwork(params)
-	n.gethNetwork = &gethNetwork
+	// make sure the geth network binaries exist
+	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	if err != nil {
+		panic(err)
+	}
 
-	params.MgmtContractAddr = contractAddr
-	params.TxHandler = mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
+	// get wallet addresses to prefund them
+	walletAddresses := make([]string, len(n.wallets))
+	for i, w := range n.wallets {
+		walletAddresses[i] = w.Address().String()
+	}
+
+	// kickoff the network with the prefunded wallet addresses
+	n.gethNetwork = gethnetwork.NewGethNetwork(
+		params.StartPort,
+		params.StartPort+DefaultWsPortOffset,
+		path,
+		params.NumberOfNodes,
+		int(params.AvgBlockDuration.Seconds()),
+		walletAddresses,
+	)
+
+	tmpHostConfig := host.Config{
+		L1NodeHost:          Localhost,
+		L1NodeWebsocketPort: n.gethNetwork.WebSocketPorts[0],
+	}
+	tmpEthClient, err := host.NewEthClient(tmpHostConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+
+	params.MgmtContractAddr = mgmtContractAddr
+	params.StableTokenContractAddr = erc20ContractAddr
+	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
 
 	// Create the obscuro node, each connected to a geth node
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
@@ -52,19 +90,19 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		miner := createEthClientConnection(
 			int64(i),
 			n.gethNetwork.WebSocketPorts[i],
-			params.EthWallets[i],
-			params.MgmtContractAddr,
 		)
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
-			params.TxHandler,
+			params.MgmtContractLib,
+			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
 			params.AvgBlockDuration,
 			params.AvgNetworkLatency,
 			stats,
 			true,
 			n.gethNetwork.GenesisJSON,
+			params.NodeEthWallets[i],
 		)
 		obscuroClient := host.NewInMemObscuroClient(agg)
 
@@ -102,83 +140,50 @@ func (n *networkInMemGeth) TearDown() {
 	}
 }
 
-func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contractAddr common.Address) ethclient.EthClient {
-	localhost := Localhost
+func createEthClientConnection(id int64, port uint) ethclient.EthClient {
 	hostConfig := host.Config{
-		ID:                    common.BigToAddress(big.NewInt(id)),
-		L1NodeHost:            localhost,
-		L1NodeWebsocketPort:   port,
-		RollupContractAddress: contractAddr,
+		ID:                  common.BigToAddress(big.NewInt(id)),
+		L1NodeHost:          Localhost,
+		L1NodeWebsocketPort: port,
 	}
-	ethnode, err := host.NewEthClient(hostConfig, wallet)
+	ethnode, err := host.NewEthClient(hostConfig)
 	if err != nil {
 		panic(err)
 	}
 	return ethnode
 }
 
-func createGethNetwork(params *params.SimParams) (gethnetwork.GethNetwork, common.Address) {
-	// make sure the geth network binaries exist
-	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
-	if err != nil {
-		panic(err)
-	}
-
-	// convert the wallets to strings
-	walletAddresses := make([]string, params.NumberOfObscuroWallets)
-	for i := 0; i < params.NumberOfObscuroWallets; i++ {
-		walletAddresses[i] = params.EthWallets[i].Address().String()
-	}
-
-	// kickoff the network with the prefunded wallet addresses
-	gethNetwork := gethnetwork.NewGethNetwork(
-		params.StartPort,
-		params.StartPort+100,
-		path,
-		params.NumberOfNodes,
-		int(params.AvgBlockDuration.Seconds()),
-		walletAddresses,
-	)
-	// take the first random wallet and deploy the contract in the network
-	contractAddr := deployContract(params.EthWallets[0], uint(params.StartPort+100))
-	return gethNetwork, contractAddr
-}
-
-func deployContract(w wallet.Wallet, port uint) common.Address {
-	localhost := Localhost
-	tmpConfig := host.Config{
-		L1NodeHost:          localhost,
-		L1NodeWebsocketPort: port,
-	}
-	tmpClient, err := host.NewEthClient(tmpConfig, w)
-	if err != nil {
-		panic(err)
-	}
-
+func deployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) *common.Address {
 	deployContractTx := types.LegacyTx{
-		Nonce:    0, // relies on a clean env
+		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(2000000000),
 		Gas:      1025_000_000,
-		Data:     common.Hex2Bytes(contracts.MgmtContractByteCode),
+		Data:     contractBytes,
 	}
 
-	signedTx, err := tmpClient.SubmitTransaction(&deployContractTx)
+	signedTx, err := w.SignTransaction(&deployContractTx)
+	if err != nil {
+		panic(err)
+	}
+
+	err = workerClient.SendTransaction(signedTx)
 	if err != nil {
 		panic(err)
 	}
 
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
-		receipt, err = tmpClient.FetchTxReceipt(signedTx.Hash())
+		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
+			if receipt.Status != types.ReceiptStatusSuccessful {
+				panic("unable to deploy contract")
+			}
 			break
 		}
-		if !errors.Is(err, ethereum.NotFound) {
-			panic(err)
-		}
-		fmt.Printf("Contract deploy tx has not been mined into a block after %s...\n", time.Since(start))
+
+		log.Info("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
 	}
 
-	fmt.Printf("Contract deployed to %s - using port %d\n", receipt.ContractAddress, port)
-	return receipt.ContractAddress
+	log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
+	return &receipt.ContractAddress
 }
