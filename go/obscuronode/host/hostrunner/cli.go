@@ -61,6 +61,7 @@ type HostConfig struct {
 	EthClientHost    string
 	EthClientPort    uint64
 	LogPath          string
+	ChainID          int64
 }
 
 func DefaultHostConfig() HostConfig {
@@ -78,13 +79,13 @@ func DefaultHostConfig() HostConfig {
 		EthClientHost:    "127.0.0.1",
 		EthClientPort:    8546,
 		LogPath:          "host_logs.txt",
+		ChainID:          1337, // TODO add this as a configurable flag
 	}
 }
 
 func ParseCLIArgs() HostConfig {
 	defaultConfig := DefaultHostConfig()
 
-	// TODO - Only provide defaults for certain flags. Some flags cannot be defaulted meaningfully (e.g. privateKeyString).
 	nodeID := flag.String(nodeIDName, defaultConfig.NodeID, nodeIDUsage)
 	isGenesis := flag.Bool(genesisName, defaultConfig.IsGenesis, genesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, defaultConfig.GossipRoundNanos, gossipRoundNanosUsage)

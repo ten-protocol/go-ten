@@ -17,14 +17,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	gethNetwork := gethnetwork.NewGethNetwork(config.startPort, gethBinaryPath, config.numNodes, 1, config.prefundedAddrs)
+	gethNetwork := gethnetwork.NewGethNetwork(config.startPort, config.websocketStartPort, gethBinaryPath, config.numNodes, 1, config.prefundedAddrs)
 	fmt.Println("Geth network started.")
 
 	handleInterrupt(gethNetwork)
 }
 
 // Shuts down the Geth network when an interrupt is received.
-func handleInterrupt(gethNetwork gethnetwork.GethNetwork) {
+func handleInterrupt(gethNetwork *gethnetwork.GethNetwork) {
 	interruptChannel := make(chan os.Signal, 1)
 	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 	<-interruptChannel

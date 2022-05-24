@@ -22,20 +22,26 @@ import (
 const (
 	numNodes        = 3
 	expectedChainID = "1337"
+	genesisChainID  = 1337
 
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
+
+	defaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
 )
 
 var timeout = 15 * time.Second
 
 func TestGethAllNodesJoinSameNetwork(t *testing.T) {
+	t.Parallel()
+
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
@@ -48,12 +54,15 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 }
 
 func TestGethGenesisParamsAreUsed(t *testing.T) {
+	t.Parallel()
+
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	chainID := network.IssueCommand(0, chainIDCmd)
@@ -63,12 +72,15 @@ func TestGethGenesisParamsAreUsed(t *testing.T) {
 }
 
 func TestGethTransactionCanBeSubmitted(t *testing.T) {
+	t.Parallel()
+
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	account := network.addresses[0]
@@ -79,7 +91,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 	// check the transaction has expected values
 	issuedTx := map[string]interface{}{}
 	if err := yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
-		t.Fatal(err)
+		t.Fatalf("unable to unmarshall getTransaction response to YAML. Cause: %s. Response: %s", err, issuedTxStr)
 	}
 
 	if issuedTx["value"].(int) != 1000000000000000 ||
@@ -89,30 +101,38 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 }
 
 func TestGethTransactionIsMintedOverRPC(t *testing.T) {
+	t.Parallel()
+
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// wallet should be prefunded
-	w := datagenerator.RandomWallet()
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, []string{w.Address().String()})
+	w := datagenerator.RandomWallet(genesisChainID)
+	startPort := getStartPort()
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})
+	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0])
 	if err != nil {
 		panic(err)
 	}
 
 	// pick the first address in the network and send some funds to it
 	toAddr := common.HexToAddress(fmt.Sprintf("0x%s", network.addresses[0]))
-	tx, err := ethClient.SubmitTransaction(&types.LegacyTx{
-		Nonce:    0,
+	tx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(20000000000),
 		Gas:      uint64(1024_000_000),
 		To:       &toAddr,
 		Value:    big.NewInt(100),
-	})
+	}
+	signedTx, err := w.SignTransaction(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ethClient.SendTransaction(signedTx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +140,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	// make sure it's mined into a block within an acceptable time
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-		receipt, err = ethClient.FetchTxReceipt(tx.Hash())
+		receipt, err = ethClient.TransactionReceipt(signedTx.Hash())
 		if err == nil {
 			break
 		}

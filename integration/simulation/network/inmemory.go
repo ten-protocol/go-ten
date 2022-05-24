@@ -38,8 +38,20 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		agg := createInMemObscuroNode(int64(i), isGenesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats, false, nil)
-		obscuroClient := host.NewInMemObscuroClient(int64(i), agg)
+		agg := createInMemObscuroNode(
+			int64(i),
+			isGenesis,
+			params.MgmtContractLib,
+			params.ERC20ContractLib,
+			params.AvgGossipPeriod,
+			params.AvgBlockDuration,
+			params.AvgNetworkLatency,
+			stats,
+			false,
+			nil,
+			params.NodeEthWallets[i],
+		)
+		obscuroClient := host.NewInMemObscuroClient(agg)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)
@@ -82,8 +94,10 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
-		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
-		go (*temp).Stop()
+		go func() {
+			defer (*temp).Stop()
+			_ = (*temp).Call(nil, obscuroclient.RPCStopHost)
+		}()
 	}
 
 	for _, node := range n.ethNodes {

@@ -2,7 +2,6 @@ package host
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -14,27 +13,24 @@ import (
 
 // An in-memory implementation of `clientserver.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
-	nodeID     common.Address
 	obscuroAPI ObscuroAPI
 }
 
-func NewInMemObscuroClient(nodeID int64, host *Node) obscuroclient.Client {
+func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 	return &inMemObscuroClient{
-		nodeID:     common.BigToAddress(big.NewInt(nodeID)),
 		obscuroAPI: *NewObscuroAPI(host),
 	}
-}
-
-func (c *inMemObscuroClient) ID() common.Address {
-	return c.nodeID
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
+	case obscuroclient.RPCGetID:
+		*result.(*common.Address) = c.obscuroAPI.GetID()
+
 	case obscuroclient.RPCSendTransactionEncrypted:
 		if len(args) != 1 {
-			return fmt.Errorf(">   Agg%d: expected 1 arg to %s, got %d", c.nodeID, obscuroclient.RPCSendTransactionEncrypted, len(args))
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
 		}
 		tx, ok := args[0].(nodecommon.EncryptedTx)
 		if !ok {

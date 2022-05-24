@@ -1,8 +1,9 @@
 package nodecommon
 
 import (
-	"fmt"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -77,8 +78,7 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 func (h *Header) Hash() obscurocommon.L2RootHash {
 	hash, err := hashing.RLPHash(h)
 	if err != nil {
-		// todo - log / surface these
-		fmt.Printf("err hashing the l2roothash")
+		log.Error("err hashing the l2roothash")
 	}
 	return hash
 }

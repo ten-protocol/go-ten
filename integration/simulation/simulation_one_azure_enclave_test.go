@@ -5,7 +5,10 @@ import (
 	"testing"
 	"time"
 
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+
 	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -27,18 +30,25 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	}
 	setupTestLog("azure-enclave")
 
-	params := params.SimParams{
+	simParams := params.SimParams{
 		NumberOfNodes:             10,
-		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          time.Second,
 		SimulationTime:            30 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
 		StartPort:                 integration.StartPortSimulationAzureEnclave,
-	}
-	params.AvgNetworkLatency = params.AvgBlockDuration / 15
-	params.AvgGossipPeriod = params.AvgBlockDuration / 3
 
-	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIP+":11000"), &params)
+		MgmtContractLib:  ethereum_mock.NewMgmtContractLibMock(),
+		ERC20ContractLib: ethereum_mock.NewERC20ContractLibMock(),
+	}
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
+	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
+
+	for i := 0; i < simParams.NumberOfNodes+1; i++ {
+		simParams.NodeEthWallets = append(simParams.NodeEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
+		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
+	}
+
+	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIP+":11000"), &simParams)
 }

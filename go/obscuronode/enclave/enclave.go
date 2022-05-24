@@ -7,28 +7,22 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
-
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/mempool"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
-	"github.com/ethereum/go-ethereum/core"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-const (
-	msgNoRollup = "could not fetch rollup"
-)
+const msgNoRollup = "could not fetch rollup"
 
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
@@ -52,10 +46,12 @@ type enclaveImpl struct {
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
 
-	txHandler mgmtcontractlib.TxHandler
+	mgmtContractLib  mgmtcontractlib.MgmtContractLib
+	erc20ContractLib erc20contractlib.ERC20ContractLib
 
 	// Toggles the speculative execution background process
 	speculativeExecutionEnabled bool
+	chainID                     int64 // The unique ID for the Obscuro chain. Required for Geth signing.
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -162,7 +158,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.txHandler, e.storage, e.storage, e.nodeShortID)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -209,7 +205,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.txHandler, e.storage, e.storage, e.nodeShortID)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -246,7 +242,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	decryptedTx := obscurocore.DecryptTx(tx)
-	err := verifySignature(&decryptedTx)
+	err := verifySignature(e.chainID, &decryptedTx)
 	if err != nil {
 		return err
 	}
@@ -258,8 +254,8 @@ func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 }
 
 // Checks that the L2Tx has a valid signature.
-func verifySignature(decryptedTx *nodecommon.L2Tx) error {
-	signer := types.NewLondonSigner(obscurocommon.ChainID)
+func verifySignature(chainID int64, decryptedTx *nodecommon.L2Tx) error {
+	signer := types.NewLondonSigner(big.NewInt(chainID))
 	_, err := types.Sender(signer, decryptedTx)
 	return err
 }
@@ -396,6 +392,8 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
+	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib)
+	executeTransactions(depositTxs, newRollupState, newRollupHeader)
 	depositTxs := extractDeposits(proof, b, e.blockResolver, e.txHandler, newRollupState)
 	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage)
 	for _, tx := range depositTxs {
@@ -560,7 +558,16 @@ type processingEnvironment struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(nodeID common.Address, mining bool, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) nodecommon.Enclave {
+func NewEnclave(
+	nodeID common.Address,
+	chainID int64,
+	mining bool,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	validateBlocks bool,
+	genesisJSON []byte,
+	collector StatsCollector,
+) nodecommon.Enclave {
 	backingDB := db.NewInMemoryDB()
 	nodeShortID := obscurocommon.ShortAddress(nodeID)
 	storage := db.NewStorage(backingDB, nodeShortID)
@@ -589,7 +596,9 @@ func NewEnclave(nodeID common.Address, mining bool, txHandler mgmtcontractlib.Tx
 		exitCh:                      make(chan bool),
 		speculativeWorkInCh:         make(chan bool),
 		speculativeWorkOutCh:        make(chan speculativeWork),
-		txHandler:                   txHandler,
+		mgmtContractLib:             mgmtContractLib,
+		erc20ContractLib:            erc20ContractLib,
 		speculativeExecutionEnabled: false, // TODO - reenable
+		chainID:                     chainID,
 	}
 }

@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
 // MockEthNetwork - models a full network including artificial random latencies
@@ -51,7 +52,7 @@ func (n *MockEthNetwork) BroadcastBlock(b obscurocommon.EncodedBlock, p obscuroc
 }
 
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
-func (n *MockEthNetwork) BroadcastTx(tx obscurocommon.EncodedL1Tx) {
+func (n *MockEthNetwork) BroadcastTx(tx *types.Transaction) {
 	for _, m := range n.AllNodes {
 		if m.ID != n.CurrentNode.ID {
 			t := m
@@ -72,12 +73,26 @@ func printBlock(b *types.Block, m Node) string {
 	// This is just for printing
 	var txs []string
 	for _, tx := range b.Transactions() {
-		t := m.txHandler.UnPackTx(tx)
-		if t != nil && t.TxType == obscurocommon.RollupTx {
-			r := nodecommon.DecodeRollupOrPanic(t.Rollup)
+		t := m.erc20ContractLib.DecodeTx(tx)
+		if t == nil {
+			t = m.mgmtContractLib.DecodeTx(tx)
+		}
+
+		if t == nil {
+			continue
+		}
+
+		switch l1Tx := t.(type) {
+		case *obscurocommon.L1RollupTx:
+			r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
 			txs = append(txs, fmt.Sprintf("r_%d", obscurocommon.ShortHash(r.Hash())))
-		} else if t.TxType == obscurocommon.DepositTx {
-			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", obscurocommon.ShortAddress(t.Dest), t.Amount))
+
+		case *obscurocommon.L1DepositTx:
+			var to uint64
+			if l1Tx.To != nil {
+				to = obscurocommon.ShortAddress(*l1Tx.To)
+			}
+			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", to, l1Tx.Amount))
 		}
 	}
 	p, f := m.Resolver.ParentBlock(b)

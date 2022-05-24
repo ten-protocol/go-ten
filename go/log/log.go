@@ -1,79 +1,55 @@
 package log
 
 import (
-	"fmt"
 	"os"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
+// setups some defaults like timestamp precision and logger
+func init() { //nolint:gochecknoinits
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.SetGlobalLevel(TraceLevel)
+	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli}).With().Timestamp().Logger()
+}
+
+// Errors will always show
 const (
-	InfoLevel = iota
-	DebugLevel
-	TraceLevel
+	InfoLevel  = zerolog.InfoLevel
+	DebugLevel = zerolog.DebugLevel
+	TraceLevel = zerolog.TraceLevel
 )
 
+// singleton usage of the logger
 var (
-	logFile   *os.File
-	logStatus = InfoLevel
+	logger = zerolog.Logger{}
 )
 
-func SetLogLevel(level int) {
-	if level < InfoLevel || level > TraceLevel {
-		panic("unrecognized log level")
-	}
-	logStatus = level
+func SetLogLevel(level zerolog.Level) {
+	logger = logger.Level(level)
 }
 
-func SetLog(f *os.File) {
-	logFile = f
-}
-
-func Panic(msg string, args ...interface{}) {
-	write("PANIC: "+msg, args...)
-	logFile.Close()
-	panic(fmt.Sprintf(msg, args...))
+func OutputToFile(f *os.File) {
+	logger = zerolog.New(zerolog.ConsoleWriter{Out: f, TimeFormat: time.StampMilli, NoColor: true}).With().Timestamp().Logger()
 }
 
 func Error(msg string, args ...interface{}) {
-	write("ERROR: "+msg, args...)
+	logger.Error().Msgf(msg, args...)
 }
 
 func Trace(msg string, args ...interface{}) {
-	if logStatus >= TraceLevel {
-		write("TRACE: "+msg, args...)
-	}
+	logger.Trace().Msgf(msg, args...)
 }
 
 func Debug(msg string, args ...interface{}) {
-	if logStatus >= DebugLevel {
-		write("DEBUG: "+msg, args...)
-	}
+	logger.Debug().Msgf(msg, args...)
 }
 
 func Info(msg string, args ...interface{}) {
-	write("INFO: "+msg, args...)
+	logger.Info().Msgf(msg, args...)
 }
 
-func write(msg string, args ...interface{}) {
-	var wMsg string
-	if len(args) == 0 {
-		wMsg = msg
-	} else {
-		wMsg = fmt.Sprintf(msg, args...)
-	}
-	if logFile == nil {
-		// defaults to outputting logs to stdout
-		// things like unit tests don't require a logfile
-		fmt.Println(msg)
-		return
-	}
-
-	_, err := logFile.WriteString(fmt.Sprintf("%d %s\n", makeTimestamp(), wMsg))
-	if err != nil {
-		panic(fmt.Errorf("logger could not write to log file: %w", err))
-	}
-}
-
-func makeTimestamp() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
+func Panic(msg string, args ...interface{}) {
+	logger.Panic().Msgf(msg, args...)
 }

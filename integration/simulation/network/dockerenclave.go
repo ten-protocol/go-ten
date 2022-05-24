@@ -2,10 +2,7 @@ package network
 
 import (
 	"fmt"
-	"math/big"
 	"time"
-
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
@@ -47,11 +44,22 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		isGenesis := i == 0
 
 		// create the in memory l1 and l2 node
-		enclavePort := uint64(params.StartPort + 100 + i)
+		enclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
-		obscuroClient := obscuroclient.NewClient(common.BigToAddress(big.NewInt(int64(i))), obscuroClientAddr)
-		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, fmt.Sprintf("%s:%d", Localhost, enclavePort), obscuroClientAddr)
+		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
+		agg := createSocketObscuroNode(
+			int64(i),
+			isGenesis,
+			params.AvgGossipPeriod,
+			stats,
+			nodeP2pAddrs[i],
+			nodeP2pAddrs,
+			fmt.Sprintf("%s:%d", Localhost, enclavePort),
+			obscuroClientAddr,
+			params.NodeEthWallets[i],
+			params.MgmtContractLib,
+		)
 
 		// and connect them to each other
 		agg.ConnectToEthNode(miner)

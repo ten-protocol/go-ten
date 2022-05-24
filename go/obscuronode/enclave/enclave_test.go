@@ -16,13 +16,15 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+const testChainID = 1234
+
 func TestValidSignatureVerifies(t *testing.T) {
 	tx := obscurocore.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
-	signer := types.NewLondonSigner(obscurocommon.ChainID)
+	signer := types.NewLondonSigner(big.NewInt(testChainID))
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
-	if err := verifySignature(signedTx); err != nil {
+	if err := verifySignature(testChainID, signedTx); err != nil {
 		t.Errorf("validly-signed transaction did not pass verification: %v", err)
 	}
 }
@@ -30,7 +32,7 @@ func TestValidSignatureVerifies(t *testing.T) {
 func TestUnsignedTxDoesNotVerify(t *testing.T) {
 	tx := obscurocore.CreateL2Tx()
 
-	if err := verifySignature(tx); err == nil {
+	if err := verifySignature(testChainID, tx); err == nil {
 		t.Errorf("transaction was not signed but verified anyway: %v", err)
 	}
 }
@@ -39,13 +41,13 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 	txData := obscurocore.CreateL2TxData()
 	tx := types.NewTx(txData)
 	privateKey, _ := crypto.GenerateKey()
-	signer := types.NewLondonSigner(obscurocommon.ChainID)
+	signer := types.NewLondonSigner(big.NewInt(testChainID))
 	_, _ = types.SignTx(tx, signer, privateKey)
 
 	// We create a new transaction around the transaction data, breaking the signature.
 	modifiedTx := types.NewTx(txData)
 
-	if err := verifySignature(modifiedTx); err == nil {
+	if err := verifySignature(testChainID, modifiedTx); err == nil {
 		t.Errorf("transaction was modified after signature but verified anyway: %v", err)
 	}
 }
@@ -53,11 +55,11 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 func TestIncorrectSignerDoesNotVerify(t *testing.T) {
 	tx := obscurocore.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
-	incorrectChainID := int64(obscurocommon.ChainID.Uint64() + 1)
+	incorrectChainID := int64(testChainID + 1)
 	signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
-	if err := verifySignature(signedTx); err == nil {
+	if err := verifySignature(testChainID, signedTx); err == nil {
 		t.Errorf("transaction used incorrect signer but verified anyway: %v", err)
 	}
 }

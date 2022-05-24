@@ -6,20 +6,16 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
 	"google.golang.org/grpc"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
@@ -35,14 +31,23 @@ type server struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 // TODO - Use a genesis JSON hardcoded in a config file bundled in the signed SGX image instead.
-func StartServer(address string, nodeID common.Address, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) (func(), error) {
+func StartServer(
+	address string,
+	chainID int64,
+	nodeID common.Address,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	validateBlocks bool,
+	genesisJSON []byte,
+	collector StatsCollector,
+) (func(), error) {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(nodeID, chainID, true, mgmtContractLib, erc20ContractLib, validateBlocks, genesisJSON, collector),
 		rpcServer:   grpc.NewServer(),
 		nodeShortID: obscurocommon.ShortAddress(nodeID),
 	}
@@ -163,8 +168,8 @@ func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRe
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
+	defer s.rpcServer.GracefulStop()
 	err := s.enclave.Stop()
-	s.rpcServer.GracefulStop()
 	return &generated.StopResponse{}, err
 }
 

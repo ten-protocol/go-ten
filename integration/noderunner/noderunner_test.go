@@ -13,8 +13,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/hostrunner"
@@ -24,7 +22,10 @@ import (
 
 // TODO - Use the HostRunner/EnclaveRunner methods in the socket-based integration tests, and retire this smoketest.
 
-const testLogs = "../.build/noderunner/"
+const (
+	testLogs            = "../.build/noderunner/"
+	defaultWsPortOffset = 100
+)
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
@@ -33,7 +34,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	startPort := integration.StartPortNodeRunnerTest
 	enclaveAddr := fmt.Sprintf("127.0.0.1:%d", startPort)
 	clientServerAddr := fmt.Sprintf("127.0.0.1:%d", startPort+1)
-	ethClientPort := startPort + 2
+	gethPort := startPort + 2
+	gethWebsocketPort := gethPort + defaultWsPortOffset
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -45,7 +47,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveAddr = enclaveAddr
 	hostConfig.ClientServerAddr = clientServerAddr
-	hostConfig.EthClientPort = ethClientPort
+	hostConfig.EthClientPort = gethWebsocketPort
 
 	enclaveConfig := enclaverunner.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
@@ -54,24 +56,30 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	network := gethnetwork.NewGethNetwork(int(ethClientPort)-100, gethBinaryPath, 1, 1, []string{address.String()})
+	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{address.String()})
 	defer network.StopNodes()
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
+	obscuroClient := obscuroclient.NewClient(clientServerAddr)
 
-	// We sleep to give the network time to produce some blocks.
-	time.Sleep(3 * time.Second)
+	counter := 0
+	// We retry 20 times to check if the network has produced any blocks, sleeping half a second between each attempt.
+	for counter < 20 {
+		counter++
+		time.Sleep(500 * time.Millisecond)
 
-	obscuroClient := obscuroclient.NewClient(common.BytesToAddress([]byte(hostConfig.NodeID)), clientServerAddr)
-	var result types.Header
-	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
-	if err != nil {
-		t.Fatal(err)
+		var result types.Header
+		err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if result.Number.Uint64() > 0 {
+			return
+		}
 	}
 
-	if result.Number.Uint64() == 0 {
-		t.Fatal("Zero blocks have been produced. Something is wrong.")
-	}
+	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
 }
 
 func setupTestLog() *os.File {
@@ -85,6 +93,6 @@ func setupTestLog() *os.File {
 	if err != nil {
 		panic(err)
 	}
-	log.SetLog(f)
+	log.OutputToFile(f)
 	return f
 }
