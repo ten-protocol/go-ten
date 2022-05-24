@@ -30,6 +30,8 @@ func RunEnclave(config EnclaveConfig) {
 	} else {
 		genesisJSON = nil
 	}
+	println("jjj enclave addr")
+	println(config.Address)
 	closeHandle, err := enclave.StartServer(config.Address, config.ChainID, nodeAddress, mgmtContractLib, erc20ContractLib, false, genesisJSON, nil)
 	if err != nil {
 		log.Panic("could not start Obscuro enclave service. Cause: %s", err)
