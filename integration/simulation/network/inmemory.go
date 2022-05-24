@@ -38,7 +38,19 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		agg := createInMemObscuroNode(int64(i), isGenesis, params.TxHandler, params.AvgGossipPeriod, params.AvgBlockDuration, params.AvgNetworkLatency, stats, false, nil)
+		agg := createInMemObscuroNode(
+			int64(i),
+			isGenesis,
+			params.MgmtContractLib,
+			params.ERC20ContractLib,
+			params.AvgGossipPeriod,
+			params.AvgBlockDuration,
+			params.AvgNetworkLatency,
+			stats,
+			false,
+			nil,
+			params.NodeEthWallets[i],
+		)
 		obscuroClient := host.NewInMemObscuroClient(agg)
 
 		// and connect them to each other

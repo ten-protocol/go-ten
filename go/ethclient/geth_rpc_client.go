@@ -9,8 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
@@ -19,38 +17,22 @@ import (
 var connectionTimeout = 15 * time.Second
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
-// Beyond connection, EthClient requires transaction transformation to be handled (txhandle),
-// chainID and transaction signage to be done (wallet)
 type gethRPCClient struct {
-	client    *ethclient.Client         // the underlying eth rpc client
-	id        common.Address            // TODO remove the id common.Address
-	wallet    wallet.Wallet             // wallet containing the account information // TODO this does not need to be coupled together
-	chainID   int                       // chainID is used to sign transactions
-	txHandler mgmtcontractlib.TxHandler // converts L1TxData to ethereum transactions
+	client *ethclient.Client // the underlying eth rpc client
+	id     common.Address    // TODO remove the id common.Address
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, websocketPort uint, wallet wallet.Wallet, contractAddress common.Address) (EthClient, error) {
+func NewEthClient(id common.Address, ipaddress string, websocketPort uint) (EthClient, error) {
 	client, err := connect(ipaddress, websocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	// gets the next nonce to use on the account
-	nonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
-	if err != nil {
-		log.Panic("could not create Ethereum client. Cause: %s", err)
-	}
-
-	wallet.SetNonce(nonce)
-
-	log.Info(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
+	log.Trace("Initialized eth node connection - port: %d - id: %s", websocketPort, id.String())
 	return &gethRPCClient{
-		client:    client,
-		id:        id,
-		wallet:    wallet, // TODO this does not need to be coupled together
-		chainID:   1337,   // hardcoded for testnets // TODO this should be configured
-		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddress),
+		client: client,
+		id:     id,
 	}, nil
 }
 
@@ -74,7 +56,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	var err error
 
 	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
-		currentBlk, err = e.FetchBlock(currentBlk.ParentHash())
+		currentBlk, err = e.BlockByHash(currentBlk.ParentHash())
 		if err != nil {
 			log.Panic("could not fetch parent block with hash %s. Cause: %s", currentBlk.ParentHash().String(), err)
 		}
@@ -93,7 +75,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 		return false
 	}
 
-	resolvedBlock, err := e.FetchBlock(maybeAncestor)
+	resolvedBlock, err := e.BlockByHash(maybeAncestor)
 	if err != nil {
 		log.Panic("could not fetch parent block with hash %s. Cause: %s", maybeAncestor.String(), err)
 	}
@@ -103,7 +85,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscur
 		}
 	}
 
-	p, err := e.FetchBlock(block.ParentHash())
+	p, err := e.BlockByHash(block.ParentHash())
 	if err != nil {
 		log.Panic("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err)
 	}
@@ -146,29 +128,12 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 	return availBlocks
 }
 
-func (e *gethRPCClient) SubmitTransaction(tx types.TxData) (*types.Transaction, error) {
-	signedTx, err := e.wallet.SignTransaction(e.chainID, tx)
-	if err != nil {
-		log.Panic("could not sign transaction. Cause: %s", err)
-	}
-
-	return signedTx, e.client.SendTransaction(context.Background(), signedTx)
+func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
+	return e.client.SendTransaction(context.Background(), signedTx)
 }
 
-func (e *gethRPCClient) FetchTxReceipt(hash common.Hash) (*types.Receipt, error) {
+func (e *gethRPCClient) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
 	return e.client.TransactionReceipt(context.Background(), hash)
-}
-
-func (e *gethRPCClient) BroadcastTx(tx *obscurocommon.L1TxData) {
-	formattedTx, err := e.txHandler.PackTx(tx, e.wallet.Address(), e.wallet.GetNonceAndIncrement())
-	if err != nil {
-		log.Error("could not pack transaction. Cause: %s", err)
-	}
-
-	_, err = e.SubmitTransaction(formattedTx)
-	if err != nil {
-		log.Error("could not submit transaction. Cause: %s", err)
-	}
 }
 
 func (e *gethRPCClient) BlockListener() chan *types.Header {
@@ -182,11 +147,11 @@ func (e *gethRPCClient) BlockListener() chan *types.Header {
 	return ch
 }
 
-func (e *gethRPCClient) FetchBlockByNumber(n *big.Int) (*types.Block, error) {
+func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
 	return e.client.BlockByNumber(context.Background(), n)
 }
 
-func (e *gethRPCClient) FetchBlock(hash common.Hash) (*types.Block, error) {
+func (e *gethRPCClient) BlockByHash(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
 }
 

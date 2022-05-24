@@ -16,13 +16,16 @@ type Wallet interface {
 	// Address returns the pubkey Address of the wallet
 	Address() common.Address
 	// SignTransaction returns a signed transaction
-	SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error)
+	SignTransaction(tx types.TxData) (*types.Transaction, error)
 
 	// SetNonce overrides the current nonce
 	// The Nonce is expected to be the next nonce to use in a transaction, not the current account Nonce
 	SetNonce(nonce uint64)
 	// GetNonceAndIncrement atomically increments the nonce by one and returns the previous value
 	GetNonceAndIncrement() uint64
+
+	// PrivateKey returns the wallets private key
+	PrivateKey() *ecdsa.PrivateKey
 }
 
 type inMemoryWallet struct {
@@ -30,28 +33,34 @@ type inMemoryWallet struct {
 	pubKey     *ecdsa.PublicKey
 	pubKeyAddr common.Address
 	nonce      uint64
+	chainID    *big.Int
 }
 
-func NewInMemoryWallet(pk string) Wallet {
-	privateKey, err := crypto.HexToECDSA(pk)
-	if err != nil {
-		log.Panic("could not recover private key from hex. Cause: %s", err)
-	}
-	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
+func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
+	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
 	if !ok {
 		log.Panic("error casting public key to ECDSA")
 	}
 
 	return &inMemoryWallet{
-		prvKey:     privateKey,
+		chainID:    chainID,
+		prvKey:     pk,
 		pubKey:     publicKeyECDSA,
 		pubKeyAddr: crypto.PubkeyToAddress(*publicKeyECDSA),
 	}
 }
 
+func NewInMemoryWalletFromString(chainID *big.Int, pk string) Wallet {
+	privateKey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		log.Panic("could not recover private key from hex. Cause: %s", err)
+	}
+	return NewInMemoryWalletFromPK(chainID, privateKey)
+}
+
 // SignTransaction returns a signed transaction
-func (m *inMemoryWallet) SignTransaction(chainID int, tx types.TxData) (*types.Transaction, error) {
-	return types.SignNewTx(m.prvKey, types.NewEIP155Signer(big.NewInt(int64(chainID))), tx)
+func (m *inMemoryWallet) SignTransaction(tx types.TxData) (*types.Transaction, error) {
+	return types.SignNewTx(m.prvKey, types.NewEIP155Signer(m.chainID), tx)
 }
 
 // Address returns the current wallet address
@@ -65,4 +74,8 @@ func (m *inMemoryWallet) GetNonceAndIncrement() uint64 {
 
 func (m *inMemoryWallet) SetNonce(nonce uint64) {
 	m.nonce = nonce
+}
+
+func (m *inMemoryWallet) PrivateKey() *ecdsa.PrivateKey {
+	return m.prvKey
 }

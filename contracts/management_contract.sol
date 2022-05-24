@@ -2,10 +2,9 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-contract RollupStorage {
+contract ManagementContract {
 
     mapping(uint256 => string[]) public rollups;
-    mapping(address => uint256) public deposits;
     string secret;
 
     function AddRollup(string calldata rollupData) public {
@@ -15,10 +14,6 @@ contract RollupStorage {
 
     function Rollup() public view returns (string[] memory){
         return rollups[block.number];
-    }
-
-    function Deposit(address dest) public payable {
-        deposits[dest] = msg.value;
     }
 
     function StoreSecret(string memory inputSecret) public {
@@ -32,5 +27,4 @@ contract RollupStorage {
     function Withdraw(uint256 withdrawAmount, address payable destination) public {
         destination.transfer(withdrawAmount);
     }
-
 }

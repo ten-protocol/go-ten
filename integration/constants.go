@@ -1,7 +1,6 @@
 package integration
 
-// This file tracks the start ports handed out to different tests, in a bid to minimise conflicts.
-
+// Tracks the start ports handed out to different tests, in a bid to minimise conflicts.
 var (
 	StartPortGethNetworkTest        uint64 = 30000
 	StartPortWalletExtensionTest    uint64 = 31000
@@ -10,5 +9,10 @@ var (
 	StartPortSimulationGethInMem           = 34000
 	StartPortSimulationInMem               = 35000
 	StartPortSimulationAzureEnclave        = 36000
-	StartPortSimulationSocket              = 37000
+	StartPortSimulationFullNetwork         = 37000
+)
+
+const (
+	EthereumChainID = 1337
+	ObscuroChainID  = 777
 )

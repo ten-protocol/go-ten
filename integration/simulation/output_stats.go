@@ -17,6 +17,8 @@ type OutputStats struct {
 	l2RollupTxCountInL1Blocks int // Number of rollup Txs counted while traversing the node block header
 	l1Height                  int // Last known l1 block height
 	l2Height                  int // Last known l2 block height
+
+	canonicalERC20DepositCount int // Number of erc20 deposits on the canonical chain
 }
 
 // NewOutputStats processes the simulation and retrieves the output statistics
@@ -25,7 +27,7 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 		simulation: simulation,
 	}
 
-	outputStats.countRollups()
+	outputStats.countBlockChain()
 	outputStats.populateHeights()
 
 	return outputStats
@@ -37,7 +39,7 @@ func (o *OutputStats) populateHeights() {
 	o.l2Height = int(getCurrentRollupHead(obscuroClient).Number)
 }
 
-func (o *OutputStats) countRollups() {
+func (o *OutputStats) countBlockChain() {
 	l1Node := o.simulation.EthClients[0]
 	l2Client := o.simulation.ObscuroClients[0]
 
@@ -47,15 +49,27 @@ func (o *OutputStats) countRollups() {
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && headBlock.Hash() != obscurocommon.GenesisHash; headBlock, _ = l1Node.FetchBlock(headBlock.ParentHash()) {
+	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && headBlock.Hash() != obscurocommon.GenesisHash; headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
 		for _, tx := range headBlock.Transactions() {
-			txData := o.simulation.Params.TxHandler.UnPackTx(tx)
-			if txData != nil && txData.TxType == obscurocommon.RollupTx {
-				r := nodecommon.DecodeRollupOrPanic(txData.Rollup)
+			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+			if t == nil {
+				t = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+			}
+
+			if t == nil {
+				continue
+			}
+
+			switch l1Tx := t.(type) {
+			case *obscurocommon.L1RollupTx:
+				r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}
+
+			case *obscurocommon.L1DepositTx:
+				o.canonicalERC20DepositCount++
 			}
 		}
 	}
@@ -78,7 +92,8 @@ func (o *OutputStats) String() string {
 		"totalDepositedAmount: %d\n"+
 		"totalWithdrawnAmount: %d\n"+
 		"rollupWithMoreRecentProof: %d\n"+
-		"nrTransferTransactions: %d\n",
+		"nrTransferTransactions: %d\n"+
+		"nrBlockParsedERC20Deposits: %d\n",
 		o.simulation.Stats.NrMiners,
 		o.l1Height,
 		o.l2Height,
@@ -95,5 +110,6 @@ func (o *OutputStats) String() string {
 		o.simulation.Stats.TotalWithdrawalRequestedAmount,
 		o.simulation.Stats.RollupWithMoreRecentProofCount,
 		o.simulation.Stats.NrTransferTransactions,
+		o.canonicalERC20DepositCount,
 	)
 }

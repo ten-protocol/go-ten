@@ -5,6 +5,12 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+
+	"github.com/obscuronet/obscuro-playground/integration"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
@@ -25,18 +31,54 @@ import (
 type networkOfSocketNodes struct {
 	obscuroClients []*obscuroclient.Client
 	gethNetwork    *gethnetwork.GethNetwork
+	wallets        []wallet.Wallet
+	contracts      []string
+	workerWallet   wallet.Wallet
 }
 
-func NewNetworkOfSocketNodes() Network {
-	return &networkOfSocketNodes{}
+func NewNetworkOfSocketNodes(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
+	return &networkOfSocketNodes{
+		wallets:      wallets,
+		contracts:    contracts,
+		workerWallet: workerWallet,
+	}
 }
 
 func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
-	gethNetwork, contractAddr := createGethNetwork(params)
-	n.gethNetwork = &gethNetwork
+	// make sure the geth network binaries exist
+	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	if err != nil {
+		panic(err)
+	}
 
-	params.MgmtContractAddr = contractAddr
-	params.TxHandler = mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
+	// get wallet addresses to prefund them
+	walletAddresses := make([]string, len(n.wallets))
+	for i, w := range n.wallets {
+		walletAddresses[i] = w.Address().String()
+	}
+
+	// kickoff the network with the prefunded wallet addresses
+	n.gethNetwork = gethnetwork.NewGethNetwork(
+		params.StartPort,
+		params.StartPort+DefaultWsPortOffset,
+		path,
+		params.NumberOfNodes,
+		int(params.AvgBlockDuration.Seconds()),
+		walletAddresses,
+	)
+
+	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0])
+	if err != nil {
+		panic(err)
+	}
+
+	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+
+	params.MgmtContractAddr = mgmtContractAddr
+	params.StableTokenContractAddr = erc20ContractAddr
+	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
 
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
@@ -53,8 +95,8 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 
 		// create a remote enclave server
 		nodeID := common.BigToAddress(big.NewInt(int64(i)))
-		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+300+i)
-		_, err := enclave.StartServer(enclaveAddr, nodeID, params.TxHandler, false, nil, stats)
+		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
+		_, err := enclave.StartServer(enclaveAddr, integration.ObscuroChainID, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, nil, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}
@@ -63,12 +105,21 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		l1Client := createEthClientConnection(
 			int64(i),
 			n.gethNetwork.WebSocketPorts[i],
-			params.EthWallets[i],
-			params.MgmtContractAddr,
 		)
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+400+i)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
-		agg := createSocketObscuroNode(int64(i), isGenesis, params.AvgGossipPeriod, stats, nodeP2pAddrs[i], nodeP2pAddrs, enclaveAddr, obscuroClientAddr, params.TxHandler)
+		agg := createSocketObscuroNode(
+			int64(i),
+			isGenesis,
+			params.AvgGossipPeriod,
+			stats,
+			nodeP2pAddrs[i],
+			nodeP2pAddrs,
+			enclaveAddr,
+			obscuroClientAddr,
+			params.NodeEthWallets[i],
+			params.MgmtContractLib,
+		)
 
 		// connect the L1 and L2 nodes
 		agg.ConnectToEthNode(l1Client)
