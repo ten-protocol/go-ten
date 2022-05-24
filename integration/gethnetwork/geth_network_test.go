@@ -101,7 +101,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 
 func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	t.Parallel()
-	
+
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
