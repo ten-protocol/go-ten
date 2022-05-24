@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	Localhost           = "127.0.0.1"
-	DefaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	Localhost            = "127.0.0.1"
+	DefaultWsPortOffset  = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	ClientRPCTimeoutSecs = 5
 )
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
@@ -34,7 +35,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 
 func createInMemObscuroNode(
 	id int64,
-	genesis bool,
+	isGenesis bool,
 	txHandler mgmtcontractlib.TxHandler,
 	avgGossipPeriod time.Duration,
 	avgBlockDuration time.Duration,
@@ -45,34 +46,35 @@ func createInMemObscuroNode(
 ) *host.Node {
 	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
-	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, false, nil)
-
 	nodeID := common.BigToAddress(big.NewInt(id))
+	obscuroNodeCfg := defaultObscuroNodeCfg(nodeID, isGenesis, avgGossipPeriod, false, nil)
 	enclaveClient := enclave.NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, obscuroInMemNetwork, nil, enclaveClient, txHandler)
+	node := host.NewHost(obscuroNodeCfg, stats, obscuroInMemNetwork, nil, enclaveClient, txHandler)
 	obscuroInMemNetwork.CurrentNode = &node
 	return &node
 }
 
-func createSocketObscuroNode(id int64, genesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string, txHandler mgmtcontractlib.TxHandler) *host.Node {
+func createSocketObscuroNode(id int64, isGenesis bool, avgGossipPeriod time.Duration, stats *stats.Stats, p2pAddr string, peerAddrs []string, enclaveAddr string, clientServerAddr string, txHandler mgmtcontractlib.TxHandler) *host.Node {
 	nodeID := common.BigToAddress(big.NewInt(id))
 
 	// create an enclave client
-	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
+	enclaveClient := host.NewEnclaveRPCClient(enclaveAddr, ClientRPCTimeoutSecs*time.Second, nodeID)
 
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(p2pAddr, peerAddrs, nodeID)
-	obscuroNodeCfg := defaultObscuroNodeCfg(avgGossipPeriod, true, &clientServerAddr)
-	node := host.NewObscuroAggregator(nodeID, obscuroNodeCfg, stats, genesis, nodeP2p, nil, enclaveClient, txHandler)
+	obscuroNodeCfg := defaultObscuroNodeCfg(nodeID, isGenesis, avgGossipPeriod, true, &clientServerAddr)
+	node := host.NewHost(obscuroNodeCfg, stats, nodeP2p, nil, enclaveClient, txHandler)
 
 	return &node
 }
 
-func defaultObscuroNodeCfg(gossipPeriod time.Duration, hasRPC bool, rpcAddress *string) host.AggregatorCfg {
-	return host.AggregatorCfg{
-		ClientRPCTimeoutSecs: host.ClientRPCTimeoutSecs,
+func defaultObscuroNodeCfg(nodeID common.Address, isGenesis bool, gossipPeriod time.Duration, hasRPC bool, rpcAddress *string) host.Config {
+	return host.Config{
+		ID:                   nodeID,
+		IsGenesis:            isGenesis,
+		ClientRPCTimeoutSecs: ClientRPCTimeoutSecs,
 		GossipRoundDuration:  gossipPeriod,
 		HasRPC:               hasRPC,
 		RPCAddress:           rpcAddress,

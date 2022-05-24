@@ -16,10 +16,14 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 )
 
+const ClientRPCTimeoutSecs = 5
+
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config HostConfig) {
 	nodeID := common.BytesToAddress([]byte(config.NodeID))
-	hostCfg := host.AggregatorCfg{
+	hostCfg := host.Config{
+		ID:                   nodeID,
+		IsGenesis:            config.IsGenesis,
 		GossipRoundDuration:  time.Duration(config.GossipRoundNanos),
 		ClientRPCTimeoutSecs: config.RPCTimeoutSecs,
 		HasRPC:               true,
@@ -37,9 +41,9 @@ func RunHost(config HostConfig) {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
 
-	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
+	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, ClientRPCTimeoutSecs*time.Second, nodeID)
 	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs, nodeID)
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, txHandler)
+	agg := host.NewHost(hostCfg, nil, aggP2P, l1Client, enclaveClient, txHandler)
 
 	fmt.Println("Starting Obscuro host...")
 	log.Info("Starting Obscuro host...")
