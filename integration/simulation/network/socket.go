@@ -128,7 +128,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		)
 
 		// connect the L1 and L2 nodes
-		agg.ConnectToEthNode(l1Client) // todo - joel - can I just pass this in directly?
+		agg.ConnectToEthNode(l1Client)
 
 		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient

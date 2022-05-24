@@ -38,8 +38,6 @@ type inMemoryWallet struct {
 	chainID    *big.Int
 }
 
-// todo - joel - does this need to be public?
-
 func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
 	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
 	if !ok {
