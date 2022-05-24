@@ -60,20 +60,26 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	defer network.StopNodes()
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
-
-	// We sleep to give the network time to produce some blocks.
-	time.Sleep(3 * time.Second)
-
 	obscuroClient := obscuroclient.NewClient(clientServerAddr)
-	var result types.Header
-	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
-	if err != nil {
-		t.Fatal(err)
+
+	counter := 0
+	// We retry 20 times to check if the network has produced any blocks, sleeping half a second between each attempt.
+	for counter < 20 {
+		counter++
+		time.Sleep(500 * time.Millisecond)
+
+		var result types.Header
+		err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if result.Number.Uint64() > 0 {
+			return
+		}
 	}
 
-	if result.Number.Uint64() == 0 {
-		t.Fatal("Zero blocks have been produced. Something is wrong.")
-	}
+	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
 }
 
 func setupTestLog() *os.File {
