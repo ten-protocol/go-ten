@@ -30,7 +30,6 @@ type EnclaveRPCClient struct {
 }
 
 func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
-	fmt.Printf("jjj connecting to enclave on %s\n", config.EnclaveRPCAddress)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {

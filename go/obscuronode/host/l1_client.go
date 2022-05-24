@@ -28,9 +28,6 @@ type gethRPCClient struct {
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
 func NewEthClient(config config.HostConfig) (ethclient2.EthClient, error) {
-	println("jjj in ethclient")
-	println(config.L1NodeHost)
-	println(config.L1NodeWebsocketPort)
 	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
