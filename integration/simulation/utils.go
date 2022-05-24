@@ -54,6 +54,10 @@ func getCurrentBlockHeadHeight(client *obscuroclient.Client) int64 {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
 
+	if blockHead == nil || blockHead.Number == nil {
+		panic(fmt.Errorf("simulation failed - no current block head found in RPC response from host"))
+	}
+
 	return blockHead.Number.Int64()
 }
 
