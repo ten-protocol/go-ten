@@ -14,8 +14,8 @@ service EnclaveProto {
   // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
   rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
 
-  // FetchSecret - return the shared secret encrypted with the key from the attestation
-  rpc FetchSecret(FetchSecretRequest) returns (FetchSecretResponse) {}
+  // ShareSecret - return the shared secret encrypted with the key from the attestation
+  rpc ShareSecret(FetchSecretRequest) returns (ShareSecretResponse) {}
 
   // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
@@ -58,7 +58,9 @@ service EnclaveProto {
 }
 
 message IsReadyRequest {}
-message IsReadyResponse {}
+message IsReadyResponse {
+  string error = 1;
+}
 
 message AttestationRequest {}
 message AttestationResponse {
@@ -73,14 +75,16 @@ message GenerateSecretResponse {
 message FetchSecretRequest {
   AttestationReportMsg attestationReportMsg = 1;
 }
-message FetchSecretResponse {
+message ShareSecretResponse {
   bytes encryptedSharedEnclaveSecret = 1;
+  string error = 2;
 }
 
 message InitEnclaveRequest {
   bytes encryptedSharedEnclaveSecret = 1;
 }
-message InitEnclaveResponse {}
+message InitEnclaveResponse {
+  string error = 1;}
 
 message IsInitialisedRequest {}
 message IsInitialisedResponse {
@@ -153,7 +157,9 @@ message GetTransactionResponse {
 // Nested message types.
 
 message AttestationReportMsg {
-  bytes owner = 1;
+  bytes Report = 1; // The actual report bytes so it can be shared and verified by other nodes
+  bytes PubKey = 2; // public key to encrypt traffic back to this enclave (PKCS1 encoded)
+  bytes Owner = 3;
 }
 
 message BlockSubmissionResponseMsg {

@@ -47,4 +47,6 @@ type SimParams struct {
 	SimEthWallets []wallet.Wallet
 
 	StartPort int // The port from which to start allocating ports. Must be unique across all simulations.
+
+	WaitForP2PConnections bool // todo: remove this, the network should recover without waiting for peers before sending transactions
 }

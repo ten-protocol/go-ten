@@ -2,10 +2,69 @@ package obscurocommon
 
 import (
 	"math/big"
+	"math/rand"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
+)
+
+// L1TxType - Just two types of relevant L1 transactions: Deposits and Rollups
+// this does not actually exist in the real implementation
+type L1TxType uint8
+
+const (
+	DepositTx L1TxType = iota
+	RollupTx
+	StoreSecretTx
+	RequestSecretTx
+)
+
+// For now all the fields are placeholders for arguments sent to the management contract
+type L1TxData struct {
+	TxType L1TxType
+
+	// if the type is rollup
+	// todo -payload
+	Rollup EncodedRollup
+
+	Secret      EncryptedSharedEnclaveSecret
+	Attestation EncodedAttestationReport
+
+	// if the type is deposit
+	Amount uint64
+	Dest   common.Address
+}
+
+type L1Tx = types.Transaction
+
+func NewL1Tx(data L1TxData) (*L1Tx, error) {
+	enc, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	return types.NewTx(&types.LegacyTx{
+		Nonce:    rand.Uint64(), //nolint:gosec
+		Value:    big.NewInt(1),
+		Gas:      1,
+		GasPrice: big.NewInt(1),
+		Data:     enc,
+	}), nil
+}
+
+func TxData(tx *L1Tx) (*L1TxData, error) {
+	data := L1TxData{}
+	err := rlp.DecodeBytes(tx.Data(), &data)
+	if err != nil {
+		return nil, err
+	}
+	return &data, nil
+}
+
+type (
+	EncodedL1Tx  []byte
+	Transactions types.Transactions
 )
 
 // the encoded version of an ExtBlock
@@ -48,9 +107,15 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transacti
 
 type EncryptedSharedEnclaveSecret []byte
 
+type EncodedAttestationReport []byte
+
+// AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {
-	Owner common.Address
-	// todo public key
-	// hash of code
-	// other stuff
+	Report []byte         // the signed bytes of the report which includes some encrypted identifying data
+	PubKey []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
+	Owner  common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
+}
+
+type AttestationVerification struct {
+	ReportData []byte // the data embedded in the report at the time it was produced (up to 64bytes)
 }

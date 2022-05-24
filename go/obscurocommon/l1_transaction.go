@@ -21,9 +21,9 @@ type L1DepositTx struct {
 
 type L1StoreSecretTx struct {
 	Secret      EncryptedSharedEnclaveSecret
-	Attestation AttestationReport
+	Attestation EncodedAttestationReport
 }
 
 type L1RequestSecretTx struct {
-	Attestation AttestationReport
+	Attestation EncodedAttestationReport
 }

@@ -21,17 +21,20 @@ const (
 	writeToLogsName  = "writeToLogs"
 	writeToLogsUsage = "Whether to redirect the output to the log file."
 
-	contractAddrName  = "contractAddress"
-	contractAddrUsage = "The management contract address on the L1"
-
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the enclave service's log file"
 
 	erc20contractAddrsName  = "erc20contractAddresses"
 	erc20contractAddrsUsage = "The erc20 contract addresses to monitor on the L1"
 
+	contractAddrName  = "contractAddress"
+	contractAddrUsage = "The management contract address on the L1"
+
 	verifyL1BlocksName  = "verifyL1Blocks"
 	verifyL1BlocksUsage = "Whether to verify incoming blocks using the hardcoded L1 genesis.json config"
+
+	disableAttestationName  = "DisableAttestation"
+	disableAttestationUsage = "Whether to disable the attestation process (use a mock attestation)."
 )
 
 type EnclaveConfig struct {
@@ -43,6 +46,7 @@ type EnclaveConfig struct {
 	LogPath            string
 	ERC20ContractAddrs []*common.Address
 	VerifyL1Blocks     bool
+	DisableAttestation bool
 }
 
 func DefaultEnclaveConfig() EnclaveConfig {
@@ -55,6 +59,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		LogPath:            "enclave_logs.txt",
 		ERC20ContractAddrs: []*common.Address{},
 		VerifyL1Blocks:     false,
+		DisableAttestation: true,
 	}
 }
 
@@ -64,11 +69,12 @@ func ParseCLIArgs() EnclaveConfig {
 	nodeID := flag.Int64(nodeIDName, defaultConfig.NodeID, nodeIDUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
 	port := flag.String(addressName, defaultConfig.Address, addressUsage)
-	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	contractAddress := flag.String(contractAddrName, defaultConfig.ContractAddress, contractAddrUsage)
+	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	erc20ContractAddrs := flag.String(erc20contractAddrsName, "", erc20contractAddrsUsage)
 	verifyL1Blocks := flag.Bool(verifyL1BlocksName, defaultConfig.VerifyL1Blocks, verifyL1BlocksUsage)
+	disableAttestation := flag.Bool(disableAttestationName, defaultConfig.DisableAttestation, disableAttestationUsage)
 
 	flag.Parse()
 
@@ -89,5 +95,6 @@ func ParseCLIArgs() EnclaveConfig {
 		LogPath:         *logPath,
 		ChainID:         *chainID,
 		VerifyL1Blocks:  *verifyL1Blocks,
+		DisableAttestation: *disableAttestation,
 	}
 }
