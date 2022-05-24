@@ -9,12 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"gopkg.in/yaml.v3"
 )
@@ -113,7 +114,12 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})
+	localhost := "127.0.0.1"
+	hostConfig := host.Config{
+		L1NodeHost:          &localhost,
+		L1NodeWebsocketPort: network.WebSocketPorts[0],
+	}
+	ethClient, err := host.NewEthClient(hostConfig, w)
 	if err != nil {
 		panic(err)
 	}

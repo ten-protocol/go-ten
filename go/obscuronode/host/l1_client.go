@@ -1,10 +1,12 @@
-package ethclient
+package host
 
 import (
 	"context"
 	"fmt"
 	"math/big"
 	"time"
+
+	ethclient2 "github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -30,8 +32,8 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, websocketPort uint, wallet wallet.Wallet, contractAddress common.Address) (EthClient, error) {
-	client, err := connect(ipaddress, websocketPort)
+func NewEthClient(config Config, wallet wallet.Wallet) (ethclient2.EthClient, error) {
+	client, err := connect(*config.L1NodeHost, config.L1NodeWebsocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
@@ -44,13 +46,13 @@ func NewEthClient(id common.Address, ipaddress string, websocketPort uint, walle
 
 	wallet.SetNonce(nonce)
 
-	log.Info(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", contractAddress))
+	log.Info(fmt.Sprintf("Initialized eth node connection with rollup contract address: %s", config.RollupContractAddress))
 	return &gethRPCClient{
 		client:    client,
-		id:        id,
+		id:        config.ID,
 		wallet:    wallet, // TODO this does not need to be coupled together
 		chainID:   1337,   // hardcoded for testnets // TODO this should be configured
-		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddress),
+		txHandler: mgmtcontractlib.NewEthMgmtContractTxHandler(*config.RollupContractAddress),
 	}, nil
 }
 
@@ -62,8 +64,8 @@ func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 	return blk
 }
 
-func (e *gethRPCClient) Info() Info {
-	return Info{
+func (e *gethRPCClient) Info() ethclient2.Info {
+	return ethclient2.Info{
 		ID: e.id,
 	}
 }

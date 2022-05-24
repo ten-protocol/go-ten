@@ -103,7 +103,14 @@ func (n *networkInMemGeth) TearDown() {
 }
 
 func createEthClientConnection(id int64, port uint, wallet wallet.Wallet, contractAddr common.Address) ethclient.EthClient {
-	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), Localhost, port, wallet, contractAddr)
+	localhost := Localhost
+	hostConfig := host.Config{
+		ID:                    common.BigToAddress(big.NewInt(id)),
+		L1NodeHost:            &localhost,
+		L1NodeWebsocketPort:   port,
+		RollupContractAddress: &contractAddr,
+	}
+	ethnode, err := host.NewEthClient(hostConfig, wallet)
 	if err != nil {
 		panic(err)
 	}
@@ -138,7 +145,12 @@ func createGethNetwork(params *params.SimParams) (gethnetwork.GethNetwork, commo
 }
 
 func deployContract(w wallet.Wallet, port uint) common.Address {
-	tmpClient, err := ethclient.NewEthClient(common.Address{}, Localhost, port, w, common.Address{})
+	localhost := Localhost
+	tmpConfig := host.Config{
+		L1NodeHost:          &localhost,
+		L1NodeWebsocketPort: port,
+	}
+	tmpClient, err := host.NewEthClient(tmpConfig, w)
 	if err != nil {
 		panic(err)
 	}

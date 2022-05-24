@@ -38,10 +38,16 @@ type Config struct {
 	EnclaveRPCAddress *string
 	// Timeout duration in seconds for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
-	// Our network for P2P communication with peer Obscuro nodes.
+	// Our network for P2P communication with peer Obscuro nodes
 	P2PAddress *string
-	// The addresses of all the Obscuro nodes on the network.
+	// The addresses of all the Obscuro nodes on the network
 	AllP2PAddresses []string
+	// The host of the connected L1 node
+	L1NodeHost *string
+	// The websocket port of the connected L1 node
+	L1NodeWebsocketPort uint
+	// The rollup contract address on the L1 network
+	RollupContractAddress *common.Address
 }
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers

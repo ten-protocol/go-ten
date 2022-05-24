@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -20,35 +19,38 @@ const ClientRPCTimeoutSecs = 5
 
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config HostConfig) {
-	nodeID := common.BytesToAddress([]byte(config.NodeID))
+	contractAddr := common.HexToAddress(config.ContractAddress)
+
 	// todo - joel - rebuild this around the host.Config object
-	hostCfg := host.Config{
-		ID:                   nodeID,
-		IsGenesis:            config.IsGenesis,
-		GossipRoundDuration:  time.Duration(config.GossipRoundNanos),
-		ClientRPCTimeoutSecs: config.RPCTimeoutSecs,
-		HasClientRPC:         true,
-		ClientRPCAddress:     &config.ClientServerAddr,
-		EnclaveRPCAddress:    &config.EnclaveAddr,
-		EnclaveRPCTimeout:    ClientRPCTimeoutSecs * time.Second, // todo - joel - pass this via CLI
-		P2PAddress:           &config.OurP2PAddr,
-		AllP2PAddresses:      config.PeerP2PAddrs,
+	hostConfig := host.Config{
+		ID:                    common.BytesToAddress([]byte(config.NodeID)),
+		IsGenesis:             config.IsGenesis,
+		GossipRoundDuration:   time.Duration(config.GossipRoundNanos),
+		ClientRPCTimeoutSecs:  config.RPCTimeoutSecs,
+		HasClientRPC:          true,
+		ClientRPCAddress:      &config.ClientServerAddr,
+		EnclaveRPCAddress:     &config.EnclaveAddr,
+		EnclaveRPCTimeout:     ClientRPCTimeoutSecs * time.Second, // todo - joel - pass this via CLI
+		P2PAddress:            &config.OurP2PAddr,
+		AllP2PAddresses:       config.PeerP2PAddrs,
+		L1NodeHost:            &config.EthClientHost,
+		L1NodeWebsocketPort:   uint(config.EthClientPort),
+		RollupContractAddress: &contractAddr,
 	}
 
 	nodeWallet := wallet.NewInMemoryWallet(config.PrivateKeyString)
-	contractAddr := common.HexToAddress(config.ContractAddress)
 	txHandler := mgmtcontractlib.NewEthMgmtContractTxHandler(contractAddr)
 
 	fmt.Println("Connecting to L1 network...")
 	log.Info("Connecting to L1 network...")
-	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort), nodeWallet, contractAddr)
+	l1Client, err := host.NewEthClient(hostConfig, nodeWallet)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
 
-	enclaveClient := host.NewEnclaveRPCClient(hostCfg)
-	aggP2P := p2p.NewSocketP2PLayer(hostCfg)
-	agg := host.NewHost(hostCfg, nil, aggP2P, l1Client, enclaveClient, txHandler)
+	enclaveClient := host.NewEnclaveRPCClient(hostConfig)
+	aggP2P := p2p.NewSocketP2PLayer(hostConfig)
+	agg := host.NewHost(hostConfig, nil, aggP2P, l1Client, enclaveClient, txHandler)
 
 	fmt.Println("Starting Obscuro host...")
 	log.Info("Starting Obscuro host...")
