@@ -18,8 +18,6 @@ import (
 
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config config.HostConfig) {
-	config = ParseCLIArgs()
-
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
 	ethWallet := wallet.NewInMemoryWalletFromString(config)
 
