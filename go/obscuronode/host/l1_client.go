@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	ethclient2 "github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -25,7 +27,7 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(config Config) (ethclient2.EthClient, error) {
+func NewEthClient(config config.HostConfig) (ethclient2.EthClient, error) {
 	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)

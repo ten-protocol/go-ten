@@ -2,11 +2,13 @@ package hostrunner
 
 import (
 	"flag"
+	"math/big"
 	"strings"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 )
 
 const (
@@ -77,8 +79,8 @@ type DefaultHostConfig struct {
 	ChainID               int64
 }
 
-func GetDefaultConfig() host.Config {
-	return host.Config{
+func GetDefaultConfig() config.HostConfig {
+	return config.HostConfig{
 		ID:                    common.BytesToAddress([]byte("")),
 		IsGenesis:             true,
 		GossipRoundDuration:   8333,
@@ -94,11 +96,11 @@ func GetDefaultConfig() host.Config {
 		RollupContractAddress: common.BytesToAddress([]byte("")),
 		LogPath:               "host_logs.txt",
 		PrivateKeyString:      "0000000000000000000000000000000000000000000000000000000000000001",
-		ChainID:               1337,
+		ChainID:               *big.NewInt(1337),
 	}
 }
 
-func ParseCLIArgs() host.Config {
+func ParseCLIArgs() config.HostConfig {
 	defaultConfig := GetDefaultConfig()
 
 	nodeID := flag.String(nodeIDName, "", nodeIDUsage)
@@ -115,7 +117,7 @@ func ParseCLIArgs() host.Config {
 	ethClientHost := flag.String(ethClientHostName, defaultConfig.L1NodeHost, ethClientHostUsage)
 	ethClientPort := flag.Uint64(ethClientPortName, uint64(defaultConfig.L1NodeWebsocketPort), ethClientPortUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
-	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
+	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
 
 	flag.Parse()
 
@@ -125,7 +127,7 @@ func ParseCLIArgs() host.Config {
 		parsedP2PAddrs = []string{}
 	}
 
-	return host.Config{
+	return config.HostConfig{
 		ID:                    common.BytesToAddress([]byte(*nodeID)),
 		IsGenesis:             *isGenesis,
 		GossipRoundDuration:   time.Duration(*gossipRoundNanos),
@@ -141,6 +143,6 @@ func ParseCLIArgs() host.Config {
 		RollupContractAddress: common.BytesToAddress([]byte(*contractAddress)),
 		PrivateKeyString:      *privateKeyStr,
 		LogPath:               *logPath,
-		ChainID:               *chainID,
+		ChainID:               *big.NewInt(*chainID),
 	}
 }

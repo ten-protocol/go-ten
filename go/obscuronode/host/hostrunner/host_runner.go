@@ -2,10 +2,11 @@ package hostrunner
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 
@@ -16,11 +17,11 @@ import (
 )
 
 // RunHost runs an Obscuro host as a standalone process.
-func RunHost(config host.Config) {
+func RunHost(config config.HostConfig) {
 	config = ParseCLIArgs()
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
-	ethWallet := wallet.NewInMemoryWalletFromString(big.NewInt(config.ChainID), config.PrivateKeyString)
+	ethWallet := wallet.NewInMemoryWalletFromString(config)
 
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := host.NewEthClient(config)

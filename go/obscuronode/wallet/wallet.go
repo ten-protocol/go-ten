@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,6 +38,8 @@ type inMemoryWallet struct {
 	chainID    *big.Int
 }
 
+// todo - joel - does this need to be public?
+
 func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
 	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
 	if !ok {
@@ -50,12 +54,12 @@ func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
 	}
 }
 
-func NewInMemoryWalletFromString(chainID *big.Int, pk string) Wallet {
-	privateKey, err := crypto.HexToECDSA(pk)
+func NewInMemoryWalletFromString(config config.HostConfig) Wallet {
+	privateKey, err := crypto.HexToECDSA(config.PrivateKeyString)
 	if err != nil {
 		log.Panic("could not recover private key from hex. Cause: %s", err)
 	}
-	return NewInMemoryWalletFromPK(chainID, privateKey)
+	return NewInMemoryWalletFromPK(&config.ChainID, privateKey)
 }
 
 // SignTransaction returns a signed transaction

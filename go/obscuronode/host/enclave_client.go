@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
@@ -24,10 +26,10 @@ import (
 type EnclaveRPCClient struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
-	config      Config
+	config      config.HostConfig
 }
 
-func NewEnclaveRPCClient(config Config) *EnclaveRPCClient {
+func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
