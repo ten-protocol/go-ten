@@ -2,7 +2,6 @@
 package simulation
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"testing"
 	"time"
 
@@ -20,8 +19,6 @@ import (
 // TestGethSimulation runs the simulation against a private geth network using Clique (PoA)
 func TestGethSimulation(t *testing.T) {
 	setupTestLog("geth-in-mem")
-
-	log.Info("Starting Geth in-memory simulation.")
 
 	numberOfNodes := 5
 	numberOfSimWallets := 5

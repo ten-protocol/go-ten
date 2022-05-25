@@ -450,7 +450,7 @@ func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) 
 		return err
 	}
 	e.storage.StoreSecret(secret)
-	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeID, secret)
+	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeShortID, secret)
 	return nil
 }
 
