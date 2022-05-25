@@ -12,6 +12,8 @@ type EnclaveConfig struct {
 	Address string
 	// The ID of the L1 chain
 	ChainID int64
+	// Whether to produce a verified attestation report
+	WillAttest bool // todo - joel - add to defaults, add to cli
 	// Whether to validate incoming L1 blocks
 	ValidateL1Blocks bool
 	// When validating incoming blocks, the genesis config for the L1 chain
@@ -34,6 +36,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		HostID:                    common.BytesToAddress([]byte("")),
 		Address:                   "127.0.0.1:11000",
 		ChainID:                   777,
+		WillAttest:                false,
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
 		SpeculativeExecution:      false,

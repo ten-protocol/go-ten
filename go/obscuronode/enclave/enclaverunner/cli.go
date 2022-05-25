@@ -20,6 +20,9 @@ const (
 	chainIDName  = "chainID"
 	chainIDUsage = "A integer representing the unique chain id the enclave will connect to (default 1337)"
 
+	willAttestName  = "willAttest"
+	willAttestUsage = "Whether the enclave will produce a verified attestation report"
+
 	validateL1BlocksName  = "validateL1Blocks"
 	validateL1BlocksUsage = "Whether to validate incoming blocks using the hardcoded L1 genesis.json config"
 
@@ -45,6 +48,7 @@ func ParseCLIArgs() config.EnclaveConfig {
 	hostID := flag.String(HostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
 	address := flag.String(AddressName, defaultConfig.Address, addressUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
+	willAttest := flag.Bool(willAttestName, defaultConfig.WillAttest, willAttestUsage)
 	validateL1Blocks := flag.Bool(validateL1BlocksName, defaultConfig.ValidateL1Blocks, validateL1BlocksUsage)
 	speculativeExecution := flag.Bool(speculativeExecutionName, defaultConfig.SpeculativeExecution, speculativeExecutionUsage)
 	managementContractAddress := flag.String(managementContractAddressName, defaultConfig.ManagementContractAddress.Hex(), managementContractAddressUsage)
@@ -66,6 +70,7 @@ func ParseCLIArgs() config.EnclaveConfig {
 	defaultConfig.HostID = common.HexToAddress(*hostID)
 	defaultConfig.Address = *address
 	defaultConfig.ChainID = *chainID
+	defaultConfig.WillAttest = *willAttest
 	defaultConfig.ValidateL1Blocks = *validateL1Blocks
 	defaultConfig.SpeculativeExecution = *speculativeExecution
 	defaultConfig.ManagementContractAddress = common.HexToAddress(*managementContractAddress)
