@@ -17,20 +17,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
 
-const ClientRPCTimeoutSecs = 5
-
-// todo - this has to be replaced with a proper cfg framework
-type AggregatorCfg struct {
-	// duration of the gossip round
-	GossipRoundDuration time.Duration
-	// timeout duration in seconds for RPC requests to the enclave service
-	ClientRPCTimeoutSecs uint64
-	// Whether to serve client RPC requests
-	HasRPC bool
-	// address on which to serve client RPC requests
-	RPCAddress *string
-}
-
 // Node this will become the Obscuro "Node" type
 type Node struct {
 	config  config.HostConfig
