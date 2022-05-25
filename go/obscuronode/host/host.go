@@ -382,7 +382,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		if block != nil {
 			// todo: implement proper protocol so only one host responds to this secret requests initially
 			// 	for now we just have the genesis host respond until protocol implemented
-			if a.isGenesis {
+			if a.config.IsGenesis {
 				a.checkForSharedSecretRequests(block)
 			}
 
