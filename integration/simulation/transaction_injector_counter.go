@@ -1,11 +1,9 @@
 package simulation
 
 import (
-	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/contracts"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
@@ -63,16 +61,11 @@ func (m *txInjectorCounter) GetL2Transactions() (core.L2Txs, core.L2Txs) {
 func (m *txInjectorCounter) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
 	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, req := range m.withdrawalL2Transactions {
-		// todo - helper
-		method, err := contracts.PedroERC20ContractABIJSON.MethodById(req.Data()[:4])
-		if err != nil || method.Name != "transfer" {
-			panic(err)
+		found, address, amount := erc20contractlib.DecodeTransferTx(req)
+		if !found {
+			panic("Should not happen")
 		}
-		args := map[string]interface{}{}
-		if err := method.Inputs.UnpackIntoMap(args, req.Data()[4:]); err != nil {
-			panic(err)
-		}
-		withdrawals = append(withdrawals, nodecommon.Withdrawal{Amount: args["amount"].(*big.Int).Uint64(), Address: args["to"].(common.Address)})
+		withdrawals = append(withdrawals, nodecommon.Withdrawal{Amount: amount.Uint64(), Address: *address})
 	}
 	return withdrawals
 }

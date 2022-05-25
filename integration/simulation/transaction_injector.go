@@ -1,14 +1,14 @@
 package simulation
 
 import (
-	"fmt"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"golang.org/x/sync/errgroup"
 
@@ -153,7 +153,7 @@ func (m *TransactionInjector) Start() {
 
 func (m *TransactionInjector) deployERC20(w wallet.Wallet) {
 	// deploy the ERC20
-	contractBytes := common.Hex2Bytes(contracts.PedroERC20ContractByteCode)
+	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
 		Nonce:    NextNonce(m.l2Clients[0], w),
 		Gas:      1025_000_000,
@@ -311,26 +311,17 @@ func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
 }
 
 func NewObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client *obscuroclient.Client) types.TxData {
-	data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", dest, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
+	data := erc20contractlib.CreateTransferTxData(dest, amount)
 	return newTx(data, NextNonce(client, from))
 }
 
 func NewObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client *obscuroclient.Client) types.TxData {
-	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
+	transferERC20data := erc20contractlib.CreateTransferTxData(evm.WithdrawalAddress, amount)
 	return newTx(transferERC20data, NextNonce(client, from))
 }
 
 func NewCustomObscuroWithdrawalTx(amount uint64) types.TxData {
-	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
+	transferERC20data := erc20contractlib.CreateTransferTxData(evm.WithdrawalAddress, amount)
 	return newTx(transferERC20data, 1)
 }
 
@@ -361,7 +352,7 @@ func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
 		if result == w.GetNonce() {
 			return w.GetNonceAndIncrement()
 		}
-		fmt.Printf("Retry %d: %d <> %d\n", obscurocommon.ShortAddress(w.Address()), result, w.GetNonce())
+		// fmt.Printf("Retry %d: %d <> %d\n", obscurocommon.ShortAddress(w.Address()), result, w.GetNonce())
 		time.Sleep(time.Millisecond)
 	}
 }

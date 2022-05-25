@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -83,10 +84,7 @@ func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s 
 
 // BalanceOfErc20 - Used in tests to return the balance on the Erc20ContractAddress
 func BalanceOfErc20(address common.Address, s vm.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver) uint64 {
-	balanceData, err := contracts.PedroERC20ContractABIJSON.Pack("balanceOf", address)
-	if err != nil {
-		panic(err)
-	}
+	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
 	result, err := ExecuteOffChainCall(address, Erc20ContractAddress, balanceData, s, header, rollupResolver)
 	if err != nil {

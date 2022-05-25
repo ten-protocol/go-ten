@@ -2,12 +2,10 @@ package enclave
 
 import (
 	"fmt"
-	"math/big"
 	"sort"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -289,22 +287,9 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.St
 	w := make([]nodecommon.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for i, t := range newHeadRollup.Transactions {
-		method, err := contracts.PedroERC20ContractABIJSON.MethodById(t.Data()[:4])
-		if err != nil {
-			// fmt.Printf("%s\n", err)
-			continue
-		}
+		found, address, amount := erc20contractlib.DecodeTransferTx(t)
 
-		if method.Name != "transfer" {
-			continue
-		}
-
-		args := map[string]interface{}{}
-		if err := method.Inputs.UnpackIntoMap(args, t.Data()[4:]); err != nil {
-			panic(err)
-		}
-
-		if *t.To() == evm.Erc20ContractAddress && args["to"].(common.Address) == evm.WithdrawalAddress {
+		if found && *t.To() == evm.Erc20ContractAddress && *address == evm.WithdrawalAddress {
 			receipt := receipts[t.Hash()]
 			if receipt != nil && receipt.Status == 1 {
 				signer := types.NewLondonSigner(obscurocommon.ChainID)
@@ -314,7 +299,7 @@ func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.St
 				}
 				state.Logs()
 				w = append(w, nodecommon.Withdrawal{
-					Amount:  args["amount"].(*big.Int).Uint64(),
+					Amount:  amount.Uint64(),
 					Address: from,
 				})
 			}
@@ -361,10 +346,7 @@ func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
 
 // todo - nonce
 func newDepositTx(address common.Address, amount uint64, rollupState *state.StateDB, i uint64) nodecommon.L2Tx {
-	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", address, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
+	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
 	signer := types.NewLondonSigner(obscurocommon.ChainID)
 
 	nonce := rollupState.GetNonce(evm.Erc20OwnerAddress) + i
