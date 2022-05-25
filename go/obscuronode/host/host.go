@@ -42,9 +42,6 @@ type Node struct {
 	EnclaveClient nodecommon.Enclave  // For communication with the enclave
 	clientServer  ClientServer        // For communication with Obscuro client applications
 
-	isGenesis bool // True if this is the first Obscuro node which has to initialize the network
-	cfg       AggregatorCfg
-
 	stats StatsCollector
 
 	// control the host lifecycle
@@ -535,6 +532,5 @@ func (a *Node) monitorBlocks() {
 			obscurocommon.ShortHash(latestBlkHeader.Hash()),
 			latestBlkHeader.Number.Uint64())
 		a.blockRPCCh <- blockAndParent{obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent)}
-
 	}
 }
