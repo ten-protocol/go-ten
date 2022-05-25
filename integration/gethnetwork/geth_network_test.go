@@ -30,7 +30,8 @@ const (
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 
-	defaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	defaultWsPortOffset        = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	defaultL1ConnectionTimeout = 15 * time.Second
 
 	localhost = "127.0.0.1"
 )
@@ -122,6 +123,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	hostConfig := config.HostConfig{
 		L1NodeHost:          localhost,
 		L1NodeWebsocketPort: network.WebSocketPorts[0],
+		L1ConnectionTimeout: defaultL1ConnectionTimeout,
 	}
 	ethClient, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {

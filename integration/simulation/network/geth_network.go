@@ -66,6 +66,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	tmpHostConfig := config.HostConfig{
 		L1NodeHost:          Localhost,
 		L1NodeWebsocketPort: n.gethNetwork.WebSocketPorts[0],
+		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
 	}
 	tmpEthClient, err := ethclient.NewEthClient(tmpHostConfig)
 	if err != nil {
@@ -147,6 +148,7 @@ func createEthClientConnection(id int64, port uint) ethclient.EthClient {
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		L1NodeHost:          Localhost,
 		L1NodeWebsocketPort: port,
+		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
 	}
 	ethnode, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {

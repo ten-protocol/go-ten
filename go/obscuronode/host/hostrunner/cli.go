@@ -46,6 +46,9 @@ const (
 	l1NodePortName  = "l1NodePort"
 	l1NodePortUsage = "The port on which to connect to the Ethereum client"
 
+	l1ConnectionTimeoutSecsName  = "l1ConnectionTimeoutSecs"
+	l1ConnectionTimeoutSecsUsage = "The timeout for connecting to the Ethereum client"
+
 	rollupContractAddrName  = "rollupContractAddress"
 	rollupContractAddrUsage = "The management contract address on the L1"
 
@@ -57,45 +60,23 @@ const (
 
 	chainIDName  = "chainID"
 	chainIDUsage = "The ID of the L1 chain"
-
-	defaultRPCTimeoutSecs = 3
 )
 
-func DefaultHostConfig() config.HostConfig {
-	return config.HostConfig{
-		ID:                    common.BytesToAddress([]byte("")),
-		IsGenesis:             true,
-		GossipRoundDuration:   8333,
-		HasClientRPC:          true,
-		ClientRPCAddress:      "127.0.0.1:13000",
-		ClientRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
-		EnclaveRPCAddress:     "127.0.0.1:11000",
-		EnclaveRPCTimeout:     time.Duration(defaultRPCTimeoutSecs) * time.Second,
-		P2PAddress:            "",
-		AllP2PAddresses:       []string{},
-		L1NodeHost:            "127.0.0.1",
-		L1NodeWebsocketPort:   8546,
-		RollupContractAddress: common.BytesToAddress([]byte("")),
-		LogPath:               "host_logs.txt",
-		PrivateKeyString:      "0000000000000000000000000000000000000000000000000000000000000001",
-		ChainID:               *big.NewInt(1337),
-	}
-}
-
 func ParseCLIArgs() config.HostConfig {
-	defaultConfig := DefaultHostConfig()
+	defaultConfig := config.DefaultHostConfig()
 
 	nodeID := flag.String(nodeIDName, "", nodeIDUsage)
 	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
 	clientRPCAddress := flag.String(clientRPCAddressName, defaultConfig.ClientRPCAddress, clientRPCAddressUsage)
-	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, defaultRPCTimeoutSecs, clientRPCTimeoutSecsUsage)
+	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, uint64(defaultConfig.ClientRPCTimeout.Seconds()), clientRPCTimeoutSecsUsage)
 	enclaveRPCAddress := flag.String(enclaveRPCAddressName, defaultConfig.EnclaveRPCAddress, enclaveRPCAddressUsage)
-	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, defaultRPCTimeoutSecs, enclaveRPCTimeoutSecsUsage)
+	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(defaultConfig.EnclaveRPCTimeout.Seconds()), enclaveRPCTimeoutSecsUsage)
 	p2pAddress := flag.String(p2pAddressName, defaultConfig.P2PAddress, p2pAddressUsage)
 	allP2PAddresses := flag.String(peerP2PAddressesName, "", peerP2PAddrsUsage)
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.L1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.L1NodeWebsocketPort), l1NodePortUsage)
+	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.L1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
 	rollupContractAddress := flag.String(rollupContractAddrName, "", rollupContractAddrUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
@@ -115,13 +96,14 @@ func ParseCLIArgs() config.HostConfig {
 		GossipRoundDuration:   time.Duration(*gossipRoundNanos),
 		HasClientRPC:          true,
 		ClientRPCAddress:      *clientRPCAddress,
-		ClientRPCTimeout:      time.Second * time.Duration(*enclaveRPCTimeoutSecs),
+		ClientRPCTimeout:      time.Duration(*enclaveRPCTimeoutSecs) * time.Second,
 		EnclaveRPCAddress:     *enclaveRPCAddress,
-		EnclaveRPCTimeout:     time.Second * time.Duration(*clientRPCTimeoutSecs),
+		EnclaveRPCTimeout:     time.Duration(*clientRPCTimeoutSecs) * time.Second,
 		P2PAddress:            *p2pAddress,
 		AllP2PAddresses:       parsedP2PAddrs,
 		L1NodeHost:            *l1NodeHost,
 		L1NodeWebsocketPort:   uint(*l1NodePort),
+		L1ConnectionTimeout:   time.Duration(*l1ConnectionTimeoutSecs) * time.Second,
 		RollupContractAddress: common.BytesToAddress([]byte(*rollupContractAddress)),
 		PrivateKeyString:      *privateKeyStr,
 		LogPath:               *logPath,

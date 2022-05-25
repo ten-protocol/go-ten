@@ -25,10 +25,11 @@ import (
 )
 
 const (
-	Localhost            = "127.0.0.1"
-	DefaultWsPortOffset  = 100 // The default offset between a Geth node's port and websocket ports.
-	DefaultEnclaveOffset = 300 //  The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
-	ClientRPCTimeoutSecs = 5
+	Localhost                  = "127.0.0.1"
+	DefaultWsPortOffset        = 100 // The default offset between a Geth node's port and websocket ports.
+	DefaultEnclaveOffset       = 300 //  The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
+	ClientRPCTimeoutSecs       = 5
+	DefaultL1ConnectionTimeout = 15 * time.Second
 )
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
