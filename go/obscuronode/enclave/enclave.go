@@ -632,6 +632,8 @@ func NewEnclave(
 		mgmtContractLib:      mgmtContractLib,
 		erc20ContractLib:     erc20ContractLib,
 		attestationProvider:  attestationProvider,
+		privateKey:           privKey,
+		publicKeySerialized:  serializedPubKey,
 	}
 }
 
