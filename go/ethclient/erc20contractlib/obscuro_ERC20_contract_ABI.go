@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-// no point starting the node with invalid contracts
 func init() { //nolint:gochecknoinits
 	var err error
 	obscuroERC20ContractABIJSON, err = abi.JSON(strings.NewReader(ERC20ContractABI))

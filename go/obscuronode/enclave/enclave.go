@@ -346,57 +346,58 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	}
 
 	// These variables will be used to create the new rollup
-	var newRollupTxs []nodecommon.L2Tx
+	var newRollupTxs obscurocore.L2Txs
 	var newRollupState *state.StateDB
 	var newRollupHeader *nodecommon.Header
 
-	speculativeExecutionSucceeded := false
+	/*
+			speculativeExecutionSucceeded := false
+		   todo - reenable
+			if e.speculativeExecutionEnabled {
+				// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
+				e.speculativeWorkInCh <- true
+				speculativeRollup := <-e.speculativeWorkOutCh
 
-	if e.speculativeExecutionEnabled {
-		// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
-		e.speculativeWorkInCh <- true
-		speculativeRollup := <-e.speculativeWorkOutCh
+				newRollupTxs = speculativeRollup.txs
+				newRollupState = speculativeRollup.s
+				newRollupHeader = speculativeRollup.h
 
-		// newRollupTxs = speculativeRollup.txs
-		newRollupState = speculativeRollup.s
-		newRollupHeader = speculativeRollup.h
+				// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
+				// or speculative execution is disabled
+				speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
 
-		// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-		// or speculative execution is disabled
-		speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
-
-		if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
-			nodecommon.LogWithID(e.nodeShortID, "Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
-				obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-				speculativeRollup.r.Header.Number,
-				obscurocommon.ShortHash(bs.HeadRollup),
-				headRollup.Header.Number)
-			if e.statsCollector != nil {
-				e.statsCollector.L2Recalc(e.nodeID)
+				if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
+					nodecommon.LogWithID(e.nodeShortID, "Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
+						obscurocommon.ShortHash(speculativeRollup.r.Hash()),
+						speculativeRollup.r.Header.Number,
+						obscurocommon.ShortHash(bs.HeadRollup),
+						headRollup.Header.Number)
+					if e.statsCollector != nil {
+						e.statsCollector.L2Recalc(e.nodeID)
+					}
+				}
 			}
-		}
-	}
+	*/
 
 	successfulTransactions := make([]nodecommon.L2Tx, 0)
-	receipts := map[common.Hash]*types.Receipt{}
-	if !speculativeExecutionSucceeded {
-		// In case the speculative execution thread has not succeeded in producing a valid rollup
-		// we have to create a new one from the mempool transactions
-		newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.nodeID)
-		newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
+	// if !speculativeExecutionSucceeded {
+	// In case the speculative execution thread has not succeeded in producing a valid rollup
+	// we have to create a new one from the mempool transactions
+	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.nodeID)
+	newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 
-		newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
-		receipts = evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.chainID)
-		// todo - only transactions that fail because of the nonce should be excluded
-		for _, tx := range newRollupTxs {
-			_, f := receipts[tx.Hash()]
-			if f {
-				successfulTransactions = append(successfulTransactions, tx)
-			} else {
-				log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.nodeID), obscurocommon.ShortHash(tx.Hash()))
-			}
+	newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
+	receipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.chainID)
+	// todo - only transactions that fail because of the nonce should be excluded
+	for _, tx := range newRollupTxs {
+		_, f := receipts[tx.Hash()]
+		if f {
+			successfulTransactions = append(successfulTransactions, tx)
+		} else {
+			log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.nodeID), obscurocommon.ShortHash(tx.Hash()))
 		}
 	}
+	//}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
@@ -414,8 +415,6 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	if err != nil {
 		return nil
 	}
-	// dump := newRollupState.Dump(&state.DumpConfig{})
-	// log.Info(fmt.Sprintf(">   Agg%d: State:%s", obscurocommon.ShortAddress(e.nodeID), dump))
 	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, obscurocommon.GenerateNonce(), rootHash)
 
 	// Postprocessing - withdrawals

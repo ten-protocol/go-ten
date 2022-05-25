@@ -245,6 +245,7 @@ func (s *storageImpl) GenesisStateDB() *state.StateDB {
 func (s *storageImpl) FetchHeadState() *core.BlockState {
 	h := rawdb.ReadHeadHeaderHash(s.db)
 	if (h == common.Hash{}) {
+		log.Info("could not read head header hash from storage")
 		return nil
 	}
 	return obscurorawdb.ReadBlockState(s.db, h)

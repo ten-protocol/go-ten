@@ -48,9 +48,10 @@ type Enclave interface {
 	SubmitTx(tx EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
-	// todo - replace with generic call
+	// todo - replace with generic off-chain contract call
 	Balance(address common.Address) uint64
 
+	// Nonce returns the nonce of the wallet with the given address.
 	Nonce(address common.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner

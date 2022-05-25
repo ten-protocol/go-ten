@@ -13,8 +13,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// todo - sorting by nonce
-
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
 func findTxsNotIncluded(head *core.Rollup, txs []nodecommon.L2Tx, s db.RollupResolver) []nodecommon.L2Tx {

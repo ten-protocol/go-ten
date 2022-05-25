@@ -10,16 +10,16 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+// Perform the conversion between an Obscuro header and an Ethereum header that the EVM understands
+// in the first stage we just encode the obscuro header in the Extra field
+// todo - find a better way
 func convertToEthHeader(h *nodecommon.Header) *types.Header {
-	// todo
 	obscuroHeader, err := rlp.EncodeToBytes(h)
 	if err != nil {
 		panic(err)
 	}
 	return &types.Header{
-		ParentHash: h.ParentHash,
-		// UncleHash:   common.Hash{},
-		// Coinbase:    common.Address{},
+		ParentHash:  h.ParentHash,
 		Root:        h.State,
 		TxHash:      common.Hash{},
 		ReceiptHash: common.Hash{},

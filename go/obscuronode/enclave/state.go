@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
-	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
@@ -130,14 +129,17 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 	return nil, false
 }
 
-type SortByNonce []nodecommon.L2Tx
+// SortByNonce a very primitive way to implement mempool logic that
+// adds transactions sorted by the nonce in the rollup
+// which is what the EVM expects
+type SortByNonce core.L2Txs
 
 func (c SortByNonce) Len() int           { return len(c) }
 func (c SortByNonce) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c SortByNonce) Less(i, j int) bool { return c[i].Nonce() < c[j].Nonce() }
 
 // Calculate transactions to be included in the current rollup
-func currentTxs(head *core.Rollup, mempool []nodecommon.L2Tx, resolver db.RollupResolver) []nodecommon.L2Tx {
+func currentTxs(head *core.Rollup, mempool core.L2Txs, resolver db.RollupResolver) core.L2Txs {
 	txs := findTxsNotIncluded(head, mempool, resolver)
 	sort.Sort(SortByNonce(txs))
 	return txs
@@ -155,7 +157,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
 		case blockResolver.ProofHeight(r) > blockResolver.ProofHeight(rollups[win]): // newer rollups win
 			win = i
-		case r.Header.Nonce < rollups[win].Header.Nonce: // for rollups with the same proof, base on the nonce
+		case r.Header.Nonce < rollups[win].Header.Nonce: // for rollups with the same proof, the one with the lowest nonce wins
 			win = i
 		}
 	}
@@ -215,8 +217,6 @@ func extractDeposits(
 
 	allDeposits := make([]nodecommon.L2Tx, 0)
 	b := toBlock
-	zero := uint64(0)
-	i := &zero
 	for {
 		if b.Hash() == from {
 			break
@@ -228,9 +228,8 @@ func extractDeposits(
 			}
 
 			if depositTx, ok := t.(*obscurocommon.L1DepositTx); ok {
-				depL2Tx := newDepositTx(*depositTx.Sender, depositTx.Amount, rollupState, atomic.LoadUint64(i), chainID)
+				depL2Tx := newDepositTx(*depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)), chainID)
 				allDeposits = append(allDeposits, depL2Tx)
-				atomic.AddUint64(i, 1)
 			}
 		}
 		if b.NumberU64() < height {
@@ -349,11 +348,11 @@ func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
 	}
 }
 
-// todo - nonce
 func newDepositTx(address common.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64, chainID int64) nodecommon.L2Tx {
 	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
 	signer := types.NewLondonSigner(big.NewInt(chainID))
 
+	// The nonce is adjusted with the number of deposits added to the rollup already.
 	nonce := rollupState.GetNonce(evm.Erc20OwnerAddress) + adjustNonce
 
 	tx := types.NewTx(&types.LegacyTx{
