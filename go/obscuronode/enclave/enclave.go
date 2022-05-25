@@ -612,6 +612,7 @@ func NewEnclave(
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
+	nodecommon.LogWithID(nodeShortID, "Generating public key")
 	privKey := generateKeyPair()
 	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
