@@ -1,6 +1,7 @@
 package host
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -112,6 +113,7 @@ func (a *Node) Start() {
 	a.waitForEnclave()
 
 	if a.config.IsGenesis {
+		nodecommon.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
 		// Create the shared secret and submit it to the management contract for storage
 		attestation := a.EnclaveClient.Attestation()
 		encodedAttestation := nodecommon.EncodeAttestation(attestation)
@@ -120,6 +122,7 @@ func (a *Node) Start() {
 			Attestation: encodedAttestation,
 		}
 		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+		nodecommon.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	}
 
 	if !a.EnclaveClient.IsInitialised() {
@@ -128,6 +131,7 @@ func (a *Node) Start() {
 
 	if a.clientServer != nil {
 		a.clientServer.Start()
+		nodecommon.LogWithID(a.shortID, "Started client server.")
 	}
 
 	// todo create a channel between request secret and start processing
@@ -487,6 +491,14 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 				nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
 				continue
 			}
+
+			jsonAttestation, err := json.Marshal(att)
+			if err == nil {
+				nodecommon.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
+			} else {
+				nodecommon.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
+			}
+
 			secret, err := a.EnclaveClient.ShareSecret(att)
 			if err != nil {
 				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
@@ -554,7 +566,7 @@ func (a *Node) awaitSecret() {
 		case <-a.rollupsP2PCh:
 			// ignore rolllups from peers as we're not part of the network just yet
 
-		case <-time.After(time.Minute):
+		case <-time.After(time.Second * 10):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
 			nodecommon.LogWithID(a.shortID, "Still waiting for secret from the L1...")
 
@@ -573,6 +585,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 		if scrtTx, ok := t.(*obscurocommon.L1StoreSecretTx); ok {
 			ok := a.handleStoreSecretTx(scrtTx)
 			if ok {
+				nodecommon.LogWithID(a.shortID, "Stored enclave secret.")
 				return true
 			}
 		}
