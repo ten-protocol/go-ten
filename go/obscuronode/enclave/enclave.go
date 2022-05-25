@@ -53,8 +53,8 @@ type enclaveImpl struct {
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	erc20ContractLib    erc20contractlib.ERC20ContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
-	publicKeySerialized []byte              // todo - joel - pull into config
-	privateKey          *rsa.PrivateKey     // todo - joel - pull into config
+	publicKeySerialized []byte
+	privateKey          *rsa.PrivateKey
 }
 
 func (e *enclaveImpl) IsReady() error {

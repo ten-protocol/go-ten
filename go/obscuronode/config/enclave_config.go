@@ -13,7 +13,7 @@ type EnclaveConfig struct {
 	// The ID of the L1 chain
 	ChainID int64
 	// Whether to produce a verified attestation report
-	WillAttest bool // todo - joel - add to defaults, add to cli
+	WillAttest bool
 	// Whether to validate incoming L1 blocks
 	ValidateL1Blocks bool
 	// When validating incoming blocks, the genesis config for the L1 chain
