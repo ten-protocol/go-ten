@@ -2,6 +2,7 @@ package host
 
 import (
 	"fmt"
+	"github.com/naoina/toml"
 	"sync/atomic"
 	"time"
 
@@ -127,7 +128,12 @@ func NewHost(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
-	// TODO - Log out node config.
+	tomlConfig, err := toml.Marshal(a.config)
+	if err != nil {
+		panic("could not print host config")
+	}
+	log.Info("Host started with following config:\n%s", tomlConfig)
+
 	a.waitForEnclave()
 
 	if a.config.IsGenesis {
