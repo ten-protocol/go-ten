@@ -127,6 +127,7 @@ func NewHost(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
+	// TODO - Log out node config.
 	a.waitForEnclave()
 
 	if a.config.IsGenesis {
