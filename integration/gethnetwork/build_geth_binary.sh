@@ -48,6 +48,12 @@ fi
 # Make sure .build folder exists
 mkdir -p "${build_path}"
 
+if [ -f "${geth_path}/geth-${geth_version}" ]
+then
+    echo "Skipping geth build - Found binary at ${geth_path}/geth-${geth_version}"
+    exit
+fi
+
 # Clone geth source code if the path is empty
 if [ -d "${geth_repo_path}" ]
 then
@@ -56,15 +62,16 @@ else
     git clone --depth 1 --branch "${geth_version}" https://github.com/ethereum/go-ethereum "${geth_repo_path}"
 fi
 
-# Build geth if it doesn't exist already
-if [ -f "${geth_path}/geth-${geth_version}" ]
-then
-    echo "Skipping geth build - Found binary at ${geth_path}/geth-${geth_version}"
-else
-    cd "${geth_repo_path}"
-    make geth
+# Build geth binary
+cd "${geth_repo_path}"
+make geth
 
-    # Copy binary to the correct path
-    mkdir -p "${geth_path}"
-    cp "${geth_repo_bin_path}" "${geth_path}/geth-${geth_version}"
-fi
+# Copy binary to the correct path
+mkdir -p "${geth_path}"
+cp "${geth_repo_bin_path}" "${geth_path}/geth-${geth_version}"
+
+cd ..
+
+# Delete Geth repo
+echo "Deleting geth repo clone - Found data in ${geth_repo_path}"
+rm -rf "${geth_repo_path}"
