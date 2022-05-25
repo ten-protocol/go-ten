@@ -48,6 +48,7 @@ fi
 # Make sure .build folder exists
 mkdir -p "${build_path}"
 
+# Only download geth code if binary does not exist
 if [ -f "${geth_path}/geth-${geth_version}" ]
 then
     echo "Skipping geth build - Found binary at ${geth_path}/geth-${geth_version}"
