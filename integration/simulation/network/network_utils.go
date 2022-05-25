@@ -4,13 +4,13 @@ import (
 	"math/big"
 	"time"
 
-	config2 "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/integration"
-	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+	simp2p "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 
@@ -25,10 +25,11 @@ import (
 )
 
 const (
-	Localhost            = "127.0.0.1"
-	DefaultWsPortOffset  = 100 // The default offset between a Geth node's port and websocket ports.
-	DefaultEnclaveOffset = 300 //  The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
-	ClientRPCTimeoutSecs = 5
+	Localhost                  = "127.0.0.1"
+	DefaultWsPortOffset        = 100 // The default offset between a Geth node's port and websocket ports.
+	DefaultEnclaveOffset       = 300 //  The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
+	ClientRPCTimeoutSecs       = 5
+	DefaultL1ConnectionTimeout = 15 * time.Second
 )
 
 func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
@@ -53,9 +54,9 @@ func createInMemObscuroNode(
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 ) *host.Node {
-	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
+	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
-	hostConfig := config2.HostConfig{
+	hostConfig := config.HostConfig{
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
 		GossipRoundDuration: avgGossipPeriod,
@@ -96,7 +97,7 @@ func createSocketObscuroNode(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 ) *host.Node {
-	hostConfig := config2.HostConfig{
+	hostConfig := config.HostConfig{
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
 		GossipRoundDuration: avgGossipPeriod,

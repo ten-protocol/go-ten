@@ -7,6 +7,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const (
+	defaultRPCTimeoutSecs          = 3
+	defaultL1ConnectionTimeoutSecs = 15
+)
+
 // HostConfig contains the full configuration for an Obscuro host.
 type HostConfig struct {
 	// The host's identity
@@ -33,6 +38,8 @@ type HostConfig struct {
 	L1NodeHost string
 	// The websocket port of the connected L1 node
 	L1NodeWebsocketPort uint
+	// Timeout duration for connecting to the L1 node
+	L1ConnectionTimeout time.Duration
 	// The rollup contract address on the L1 network
 	RollupContractAddress common.Address
 	// The path that the node's logs are written to
@@ -41,4 +48,27 @@ type HostConfig struct {
 	PrivateKeyString string
 	// The ID of the L1 chain
 	ChainID big.Int
+}
+
+// DefaultHostConfig returns a HostConfig with default values.
+func DefaultHostConfig() HostConfig {
+	return HostConfig{
+		ID:                    common.BytesToAddress([]byte("")),
+		IsGenesis:             true,
+		GossipRoundDuration:   8333,
+		HasClientRPC:          true,
+		ClientRPCAddress:      "127.0.0.1:13000",
+		ClientRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		EnclaveRPCAddress:     "127.0.0.1:11000",
+		EnclaveRPCTimeout:     time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		P2PAddress:            "127.0.0.1:10000",
+		AllP2PAddresses:       []string{},
+		L1NodeHost:            "127.0.0.1",
+		L1NodeWebsocketPort:   8546,
+		L1ConnectionTimeout:   time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
+		RollupContractAddress: common.BytesToAddress([]byte("")),
+		LogPath:               "host_logs.txt",
+		PrivateKeyString:      "0000000000000000000000000000000000000000000000000000000000000001",
+		ChainID:               *big.NewInt(1337),
+	}
 }

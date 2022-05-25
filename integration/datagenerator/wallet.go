@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	config2 "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
@@ -16,11 +16,11 @@ func RandomWallet(chainID int64) wallet.Wallet {
 	if err != nil {
 		panic(err) // this should never panic - world should stop if it does
 	}
-	config := config2.HostConfig{
+	walletConfig := config.HostConfig{
 		PrivateKeyString: pk,
 		ChainID:          *big.NewInt(chainID),
 	}
-	return wallet.NewInMemoryWalletFromString(config)
+	return wallet.NewInMemoryWalletFromString(walletConfig)
 }
 
 func randomHex(n int) (string, error) {
