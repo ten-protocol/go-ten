@@ -2,9 +2,10 @@ package host
 
 import (
 	"fmt"
-	"github.com/naoina/toml"
 	"sync/atomic"
 	"time"
+
+	"github.com/naoina/toml"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
