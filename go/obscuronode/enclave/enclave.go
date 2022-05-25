@@ -435,10 +435,9 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 		log.Panic("could not generate secret. Cause: %s", err)
 	}
 	e.storage.StoreSecret(secret)
-	// todo do we need to worry about this failing?
 	encSec, err := e.encryptSecret(e.publicKeySerialized, secret)
 	if err != nil {
-		panic(err)
+		log.Panic("failed to encrypt secret. Cause: %s", err)
 	}
 	return encSec
 }
