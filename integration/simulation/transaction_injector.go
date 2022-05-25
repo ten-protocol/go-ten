@@ -235,7 +235,7 @@ func (m *TransactionInjector) issueInvalidL2Txs() {
 			toWallet = m.rndObsWallet()
 		}
 		var tx types.TxData
-		switch rand.Intn(1) { //nolint:gosec
+		switch rand.Intn(2) { //nolint:gosec
 		case 0:
 			tx = NewL2Withdrawal(fromWallet.Address(), obscurocommon.RndBtw(1, 100))
 		case 1:
@@ -255,7 +255,7 @@ func (m *TransactionInjector) issueInvalidL2Txs() {
 
 // Uses one of the approaches to create an invalidly-signed transaction.
 func (m *TransactionInjector) createInvalidSignage(tx types.TxData, w wallet.Wallet) *types.Transaction {
-	switch rand.Intn(1) { //nolint:gosec
+	switch rand.Intn(2) { //nolint:gosec
 	case 0: // We sign the transaction with a bad signer.
 		incorrectChainID := int64(integration.EthereumChainID + 1)
 		signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
