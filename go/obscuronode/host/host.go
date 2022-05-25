@@ -112,6 +112,7 @@ func (a *Node) Start() {
 
 	a.waitForEnclave()
 
+	// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
 	if a.config.IsGenesis {
 		nodecommon.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
 		// Create the shared secret and submit it to the management contract for storage
@@ -123,9 +124,7 @@ func (a *Node) Start() {
 		}
 		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		nodecommon.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
-	}
-
-	if !a.EnclaveClient.IsInitialised() {
+	} else {
 		a.requestSecret()
 	}
 
@@ -224,9 +223,9 @@ func (a *Node) IsReady() bool {
 // Waits for enclave to be available, printing a wait message every two seconds.
 func (a *Node) waitForEnclave() {
 	counter := 0
-	for a.EnclaveClient.IsReady() != nil {
+	for err := a.EnclaveClient.IsReady(); err != nil; {
 		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for enclave. Error: %v", a.EnclaveClient.IsReady())
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave. Error: %v", err)
 			counter = 0
 		}
 

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	defaultRPCTimeoutSecs          = 3
+	defaultRPCTimeoutSecs          = 10
 	defaultL1ConnectionTimeoutSecs = 15
 )
 
