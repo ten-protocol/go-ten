@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -44,7 +43,7 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	startPort := getStartPort()
+	startPort := int(integration.StartPortGethNetworkTest)
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
@@ -63,7 +62,7 @@ func TestGethGenesisParamsAreUsed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	startPort := getStartPort()
+	startPort := int(integration.StartPortGethNetworkTest) + numNodes
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
@@ -79,7 +78,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	startPort := getStartPort()
+	startPort := int(integration.StartPortGethNetworkTest) + numNodes*2
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
@@ -108,7 +107,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 
 	// wallet should be prefunded
 	w := datagenerator.RandomWallet(genesisChainID)
-	startPort := getStartPort()
+	startPort := int(integration.StartPortGethNetworkTest) + numNodes*3
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
@@ -163,9 +162,4 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Fatalf("Did not minted/mined the tx correctly - receipt: %+v", receipt)
 	}
-}
-
-// Returns a start port for a single test.
-func getStartPort() int {
-	return int(atomic.AddUint64(&integration.StartPortGethNetworkTest, numNodes))
 }
