@@ -111,11 +111,11 @@ func (s *storageImpl) StoreSecret(secret core.SharedEnclaveSecret) {
 
 func (s *storageImpl) FetchSecret() core.SharedEnclaveSecret {
 	ss := obscurorawdb.ReadSharedSecret(s.db)
-	if ss != nil {
-		return *ss
+	if ss == nil {
+		return nil
 	}
-	// todo - I guess this is fixed by Matt
-	return core.SharedEnclaveSecret{}
+
+	return *ss
 }
 
 func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {

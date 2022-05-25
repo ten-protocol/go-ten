@@ -34,6 +34,8 @@ type Simulation struct {
 func (s *Simulation) Start() {
 	log.Info(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
+	s.WaitForObscuroGenesis()
+
 	timer := time.Now()
 	fmt.Printf("Starting injection\n")
 	go s.TxInjector.Start()
@@ -54,4 +56,28 @@ func (s *Simulation) Start() {
 
 func (s *Simulation) Stop() {
 	// nothing to do for now
+}
+
+func (s *Simulation) WaitForObscuroGenesis() {
+	// grab an L1 client
+	client := s.EthClients[0]
+
+	for {
+		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
+		head := client.FetchHeadBlock()
+		for _, b := range client.BlocksBetween(obscurocommon.GenesisBlock, head) {
+			for _, tx := range b.Transactions() {
+				t := s.Params.MgmtContractLib.DecodeTx(tx)
+				if t == nil {
+					continue
+				}
+				if _, ok := t.(*obscurocommon.L1RollupTx); ok {
+					// exit at the first obscuro rollup we see
+					return
+				}
+			}
+		}
+		time.Sleep(s.Params.AvgBlockDuration)
+		log.Trace("Waiting for the Obscuro genesis rollup...")
+	}
 }

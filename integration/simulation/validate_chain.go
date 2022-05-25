@@ -171,6 +171,7 @@ func checkBlockchainOfObscuroNode(
 	heights []uint64,
 	nodeIdx int,
 ) {
+	defer wg.Done()
 	var nodeID common.Address
 	err := (*nodeClient).Call(&nodeID, obscuroclient.RPCGetID)
 	if err != nil {
@@ -191,7 +192,8 @@ func checkBlockchainOfObscuroNode(
 	h := getCurrentRollupHead(nodeClient)
 
 	if h == nil {
-		panic(fmt.Sprintf("Node %d: No head rollup recorded.\n", nodeAddr))
+		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
+		return
 	}
 	l2Height := h.Number
 	if l2Height < minObscuroHeight {
@@ -276,7 +278,6 @@ func checkBlockchainOfObscuroNode(
 	// (execute deposits and transactions and compare to the state in the rollup)
 
 	heights[nodeIdx] = l2Height
-	wg.Done()
 }
 
 func extractWithdrawals(nodeClient *obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {

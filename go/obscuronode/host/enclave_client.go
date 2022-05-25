@@ -3,6 +3,7 @@ package host
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
@@ -48,11 +49,17 @@ func (c *EnclaveRPCClient) IsReady() error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.IsReady(timeoutCtx, &generated.IsReadyRequest{})
-	return err
+	resp, err := c.protoClient.IsReady(timeoutCtx, &generated.IsReadyRequest{})
+	if err != nil {
+		return err
+	}
+	if resp.GetError() != "" {
+		return errors.New(resp.GetError())
+	}
+	return nil
 }
 
-func (c *EnclaveRPCClient) Attestation() obscurocommon.AttestationReport {
+func (c *EnclaveRPCClient) Attestation() *obscurocommon.AttestationReport {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -74,27 +81,34 @@ func (c *EnclaveRPCClient) GenerateSecret() obscurocommon.EncryptedSharedEnclave
 	return response.EncryptedSharedEnclaveSecret
 }
 
-func (c *EnclaveRPCClient) FetchSecret(report obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
+func (c *EnclaveRPCClient) ShareSecret(report *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	attestationReportMsg := rpc.ToAttestationReportMsg(report)
 	request := generated.FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
-	response, err := c.protoClient.FetchSecret(timeoutCtx, &request)
+	response, err := c.protoClient.ShareSecret(timeoutCtx, &request)
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to fetch secret. Cause: %s", obscurocommon.ShortAddress(c.config.ID), err)
+		return nil, err
 	}
-	return response.EncryptedSharedEnclaveSecret
+	if response.GetError() != "" {
+		return nil, errors.New(response.GetError())
+	}
+	return response.EncryptedSharedEnclaveSecret, nil
 }
 
-func (c *EnclaveRPCClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) {
+func (c *EnclaveRPCClient) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
+	resp, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to initialise enclave. Cause: %s", obscurocommon.ShortAddress(c.config.ID), err)
+		return err
 	}
+	if resp.GetError() != "" {
+		return errors.New(resp.GetError())
+	}
+	return nil
 }
 
 func (c *EnclaveRPCClient) IsInitialised() bool {

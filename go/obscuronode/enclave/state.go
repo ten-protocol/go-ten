@@ -67,7 +67,8 @@ func updateState(
 	}
 
 	if parentState == nil {
-		nodecommon.LogWithID(nodeID, "Something went wrong. There should be parent here. \n Block: %d - Block Parent: %d",
+		nodecommon.LogWithID(nodeID, "Something went wrong. There should be a parent here, blockNum=%d. \n Block: %d, Block Parent: %d ",
+			b.Number(),
 			obscurocommon.ShortHash(b.Hash()),
 			obscurocommon.ShortHash(b.Header().ParentHash),
 		)
