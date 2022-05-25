@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/naoina/toml"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"net"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
@@ -59,6 +61,13 @@ func StartServer(
 	closeHandle := func() {
 		go enclaveServer.Stop(context.Background(), nil) //nolint:errcheck
 	}
+
+	tomlConfig, err := toml.Marshal(enclaveConfig)
+	if err != nil {
+		panic("could not print enclave config")
+	}
+	log.Info("Enclave service started with following config:\n%s", tomlConfig)
+
 	return closeHandle, nil
 }
 

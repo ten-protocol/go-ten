@@ -65,6 +65,9 @@ func ParseCLIArgs() config.EnclaveConfig {
 			hexAddr := common.HexToAddress(addr)
 			erc20contractAddresses[i] = &hexAddr
 		}
+	} else {
+		// We handle the special case of an empty list.
+		erc20contractAddresses = []*common.Address{}
 	}
 
 	defaultConfig.HostID = common.HexToAddress(*hostID)
