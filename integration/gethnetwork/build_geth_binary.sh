@@ -52,7 +52,7 @@ mkdir -p "${build_path}"
 if [ -f "${geth_path}/geth-${geth_version}" ]
 then
     echo "Skipping geth build - Found binary at ${geth_path}/geth-${geth_version}"
-    exit
+    exit 0
 fi
 
 # Clone geth source code if the path is empty
