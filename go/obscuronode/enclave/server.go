@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"net"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -71,7 +70,6 @@ func StartServer(
 
 // IsReady returns a nil error to indicate that the server is ready.
 func (s *server) IsReady(context.Context, *generated.IsReadyRequest) (*generated.IsReadyResponse, error) {
-	log.Info("Received isReady request.")
 	errStr := ""
 	if err := s.enclave.IsReady(); err != nil {
 		errStr = err.Error()
