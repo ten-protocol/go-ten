@@ -11,10 +11,10 @@ import (
 
 const (
 	// Flag names, defaults and usages.
-	hostIDName  = "hostID"
+	HostIDName  = "hostID"
 	hostIDUsage = "The 20 bytes of the address of the Obscuro host this enclave serves"
 
-	addressName  = "address"
+	AddressName  = "address"
 	addressUsage = "The address on which to serve the Obscuro enclave service"
 
 	chainIDName  = "chainID"
@@ -42,8 +42,8 @@ const (
 func ParseCLIArgs() config.EnclaveConfig {
 	defaultConfig := config.DefaultEnclaveConfig()
 
-	hostID := flag.String(hostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
-	address := flag.String(addressName, defaultConfig.Address, addressUsage)
+	hostID := flag.String(HostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
+	address := flag.String(AddressName, defaultConfig.Address, addressUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
 	validateL1Blocks := flag.Bool(validateL1BlocksName, defaultConfig.ValidateL1Blocks, validateL1BlocksUsage)
 	speculativeExecution := flag.Bool(speculativeExecutionName, defaultConfig.SpeculativeExecution, speculativeExecutionUsage)
