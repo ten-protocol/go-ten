@@ -1,4 +1,4 @@
-# Go Obscuro GO GO GO
+# Go Obscuro GO GO GO GO AGAINNNN
 This is the reference implementation of the Obscuro Protocol.
 
 ## Structure
