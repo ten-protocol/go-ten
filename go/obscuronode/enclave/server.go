@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/naoina/toml"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"net"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
