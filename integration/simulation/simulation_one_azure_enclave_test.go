@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"os"
 	"testing"
 	"time"
@@ -29,6 +30,8 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 		t.Skipf("set the variable to run this test: `%s=true`", azureTestEnv)
 	}
 	setupTestLog("azure-enclave")
+
+	log.Info("Starting Azure enclave simulation.")
 
 	simParams := params.SimParams{
 		NumberOfNodes:             10,

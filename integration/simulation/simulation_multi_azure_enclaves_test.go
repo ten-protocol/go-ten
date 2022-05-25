@@ -28,6 +28,8 @@ var vmIPs = []string{"20.254.65.172", "20.254.67.124"}
 func TestMultipleAzureEnclaveNodesVerifyEachOther(t *testing.T) {
 	setupTestLog()
 
+	log.Info("Starting full network simulation.")
+
 	params := params.SimParams{
 		NumberOfNodes:             2,
 		NumberOfObscuroWallets:    5,

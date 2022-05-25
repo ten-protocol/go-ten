@@ -2,6 +2,7 @@
 package simulation
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"testing"
 	"time"
 
@@ -23,6 +24,8 @@ import (
 // All nodes and enclaves live in the same process. The L1 network is a private geth network using Clique (PoA).
 func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 	setupTestLog("socket")
+
+	log.Info("Starting full network simulation.")
 
 	numberOfNodes := 5
 	numberOfSimWallets := 5

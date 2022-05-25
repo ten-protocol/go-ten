@@ -3,6 +3,7 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"os"
 	"strconv"
 	"strings"
@@ -42,6 +43,8 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	setupTestLog("docker")
+
+	log.Info("Starting Docker simulation.")
 
 	simParams := params.SimParams{
 		NumberOfNodes:             10,

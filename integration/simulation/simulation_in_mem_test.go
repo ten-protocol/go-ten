@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"github.com/obscuronet/obscuro-playground/go/log"
 	"testing"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 // the CPU usage will be very high during the simulation which might result in inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupTestLog("in-mem")
+
+	log.Info("Starting in-memory simulation.")
 
 	simParams := params.SimParams{
 		NumberOfNodes:             7,
