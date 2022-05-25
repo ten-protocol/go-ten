@@ -60,8 +60,6 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		log.Info("Waiting for P2P connections to be available.")
 	}
 
-	// wait for obscuro clients to be connectable too
-
 	// execute the simulation
 	simulation.Start()
 
