@@ -384,7 +384,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 			if f {
 				successfulTransactions = append(successfulTransactions, tx)
 			} else {
-				log.Info(">   Agg%d: Excluding transaction %d\n", obscurocommon.ShortAddress(e.nodeID), obscurocommon.ShortHash(tx.Hash()))
+				log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.nodeID), obscurocommon.ShortHash(tx.Hash()))
 			}
 		}
 	}

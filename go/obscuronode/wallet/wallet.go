@@ -74,7 +74,7 @@ func (m *inMemoryWallet) GetNonceAndIncrement() uint64 {
 }
 
 func (m *inMemoryWallet) GetNonce() uint64 {
-	return atomic.LoadUint64(&m.nonce) - 1
+	return atomic.LoadUint64(&m.nonce)
 }
 
 func (m *inMemoryWallet) SetNonce(nonce uint64) {

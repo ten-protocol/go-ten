@@ -1,9 +1,9 @@
 package simulation
 
 import (
+	"fmt"
 	"math/big"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -47,10 +47,6 @@ type TransactionInjector struct {
 	mgmtContractAddr  *common.Address
 	mgmtContractLib   mgmtcontractlib.MgmtContractLib
 	erc20ContractLib  erc20contractlib.ERC20ContractLib
-
-	l2TransactionsLock       sync.RWMutex
-	transferL2Transactions   core.L2Txs
-	withdrawalL2Transactions core.L2Txs
 
 	// controls
 	interruptRun     *int32
@@ -270,7 +266,7 @@ func (m *TransactionInjector) issueInvalidL2Txs() {
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = m.rndObsWallet()
 		}
-		tx := NewObscuroWithdrawalTx(fromWallet, obscurocommon.RndBtw(1, 100), m.l2Clients[0])
+		tx := NewCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
 
 		signedTx := m.createInvalidSignage(tx, fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
@@ -330,6 +326,14 @@ func NewObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client *obscurocl
 	return newTx(transferERC20data, NextNonce(client, from))
 }
 
+func NewCustomObscuroWithdrawalTx(amount uint64) types.TxData {
+	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
+	if err != nil {
+		panic(err)
+	}
+	return newTx(transferERC20data, 1)
+}
+
 func newTx(data []byte, nonce uint64) types.TxData {
 	return &types.LegacyTx{
 		Nonce:    nonce,
@@ -347,9 +351,6 @@ func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
 	if err != nil {
 		panic(err)
 	}
-	if result == 0 {
-		return 0
-	}
 	return result
 }
 
@@ -358,9 +359,9 @@ func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
 	for {
 		result := readNonce(cl, w.Address())
 		if result == w.GetNonce() {
-			w.GetNonceAndIncrement()
-			return result
+			return w.GetNonceAndIncrement()
 		}
+		fmt.Printf("Retry %d: %d <> %d\n", obscurocommon.ShortAddress(w.Address()), result, w.GetNonce())
 		time.Sleep(time.Millisecond)
 	}
 }

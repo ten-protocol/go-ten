@@ -42,13 +42,15 @@ func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodeco
 	receipts := make(map[common.Hash]*types.Receipt, len(txs))
 	for _, t := range txs {
 		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg)
-		if err == nil {
-			receipts[t.Hash()] = r
-			if r.Status != 1 {
-				log.Info("Failed tx %d. Receipt: %+v\n", obscurocommon.ShortHash(t.Hash()), r)
-			}
+		if err != nil {
+			log.Info("Error transaction %d: %s", obscurocommon.ShortHash(t.Hash()), err)
+			continue
+		}
+		receipts[t.Hash()] = r
+		if r.Status != 1 {
+			log.Info("Failed status tx %d.", obscurocommon.ShortHash(t.Hash()))
 		} else {
-			log.Info("Could not process transaction tx %d: %s\n", obscurocommon.ShortHash(t.Hash()), err)
+			log.Info("Successfully executed tx %d", obscurocommon.ShortHash(t.Hash()))
 		}
 	}
 	return receipts
@@ -60,7 +62,6 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 	if err == nil {
 		return receipt, nil
 	}
-	log.Info("Failed to execute transaction tx %d: %s\n", obscurocommon.ShortHash(t.Hash()), err)
 	s.RevertToSnapshot(snap)
 	return nil, err
 }
