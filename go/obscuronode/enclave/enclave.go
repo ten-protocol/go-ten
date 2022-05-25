@@ -31,7 +31,7 @@ type StatsCollector interface {
 }
 
 type enclaveImpl struct {
-	nodeID         common.Address
+	config         config.EnclaveConfig
 	nodeShortID    uint64
 	storage        db.Storage
 	blockResolver  db.BlockResolver
@@ -47,10 +47,6 @@ type enclaveImpl struct {
 
 	mgmtContractLib  mgmtcontractlib.MgmtContractLib
 	erc20ContractLib erc20contractlib.ERC20ContractLib
-
-	// Toggles the speculative execution background process
-	speculativeExecutionEnabled bool
-	chainID                     int64 // The unique ID for the Obscuro chain. Required for Geth signing.
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -62,7 +58,7 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		// start the speculative rollup execution loop on its own go routine
 		go e.start(block)
 	}
@@ -84,7 +80,7 @@ func (e *enclaveImpl) start(block types.Block) {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
 		case winnerRollup := <-e.roundWinnerCh:
 			hash := winnerRollup.Hash()
-			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.nodeID)
+			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.config.HostID)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
 			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculative env  r_%d(%d).",
@@ -241,12 +237,12 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	decryptedTx := obscurocore.DecryptTx(tx)
-	err := verifySignature(e.chainID, &decryptedTx)
+	err := verifySignature(e.config.ChainID, &decryptedTx)
 	if err != nil {
 		return err
 	}
 	e.mempool.AddMempoolTx(decryptedTx)
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		e.txCh <- decryptedTx
 	}
 	return nil
@@ -279,12 +275,12 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	parentState := e.storage.CreateStateDB(head.Hash())
 	// determine the winner of the round
 	winnerRollup, _ := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		go e.notifySpeculative(winnerRollup)
 	}
 
 	// we are the winner
-	if winnerRollup.Header.Agg == e.nodeID {
+	if winnerRollup.Header.Agg == e.config.HostID {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
 		nodecommon.LogWithID(e.nodeShortID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
@@ -324,7 +320,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 
 	speculativeExecutionSucceeded := false
 
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
 		e.speculativeWorkInCh <- true
 		speculativeRollup := <-e.speculativeWorkOutCh
@@ -344,7 +340,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 				obscurocommon.ShortHash(bs.HeadRollup),
 				headRollup.Header.Number)
 			if e.statsCollector != nil {
-				e.statsCollector.L2Recalc(e.nodeID)
+				e.statsCollector.L2Recalc(e.config.HostID)
 			}
 		}
 	}
@@ -352,7 +348,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	if !speculativeExecutionSucceeded {
 		// In case the speculative execution thread has not succeeded in producing a valid rollup
 		// we have to create a new one from the mempool transactions
-		newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.nodeID)
+		newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.config.HostID)
 		newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 
 		newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
@@ -402,7 +398,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 }
 
 func (e *enclaveImpl) Stop() error {
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		e.exitCh <- true
 	}
 	return nil
@@ -410,7 +406,7 @@ func (e *enclaveImpl) Stop() error {
 
 func (e *enclaveImpl) Attestation() obscurocommon.AttestationReport {
 	// Todo
-	return obscurocommon.AttestationReport{Owner: e.nodeID}
+	return obscurocommon.AttestationReport{Owner: e.config.HostID}
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
@@ -538,21 +534,19 @@ func NewEnclave(
 	}
 
 	return &enclaveImpl{
-		nodeID:                      config.HostID,
-		nodeShortID:                 nodeShortID,
-		storage:                     storage,
-		blockResolver:               storage,
-		mempool:                     mempool.New(),
-		statsCollector:              collector,
-		l1Blockchain:                l1Blockchain,
-		txCh:                        make(chan nodecommon.L2Tx),
-		roundWinnerCh:               make(chan *obscurocore.Rollup),
-		exitCh:                      make(chan bool),
-		speculativeWorkInCh:         make(chan bool),
-		speculativeWorkOutCh:        make(chan speculativeWork),
-		mgmtContractLib:             mgmtContractLib,
-		erc20ContractLib:            erc20ContractLib,
-		speculativeExecutionEnabled: false, // TODO - reenable
-		chainID:                     config.ChainID,
+		config:               config,
+		nodeShortID:          nodeShortID,
+		storage:              storage,
+		blockResolver:        storage,
+		mempool:              mempool.New(),
+		statsCollector:       collector,
+		l1Blockchain:         l1Blockchain,
+		txCh:                 make(chan nodecommon.L2Tx),
+		roundWinnerCh:        make(chan *obscurocore.Rollup),
+		exitCh:               make(chan bool),
+		speculativeWorkInCh:  make(chan bool),
+		speculativeWorkOutCh: make(chan speculativeWork),
+		mgmtContractLib:      mgmtContractLib,
+		erc20ContractLib:     erc20ContractLib,
 	}
 }

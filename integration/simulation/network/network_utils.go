@@ -63,7 +63,7 @@ func createInMemObscuroNode(
 		HasClientRPC:        false,
 	}
 
-	enclaveConfig := config2.EnclaveConfig{
+	enclaveConfig := config.EnclaveConfig{
 		HostID:           hostConfig.ID,
 		ChainID:          integration.ObscuroChainID,
 		ValidateL1Blocks: validateBlocks,

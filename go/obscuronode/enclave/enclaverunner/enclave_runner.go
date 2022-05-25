@@ -2,12 +2,12 @@ package enclaverunner
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -19,9 +19,9 @@ const hardcodedGenesisJSON = "TODO - REPLACE ME"
 
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config config.EnclaveConfig) {
-	contractAddr := common.HexToAddress(config.ContractAddress)
+	contractAddr := config.ManagementContractAddress
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
-	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddrs...)
+	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddresses...)
 
 	if config.ValidateL1Blocks {
 		config.GenesisJSON = []byte(hardcodedGenesisJSON)

@@ -65,7 +65,7 @@ const (
 func ParseCLIArgs() config.HostConfig {
 	defaultConfig := config.DefaultHostConfig()
 
-	nodeID := flag.String(nodeIDName, "", nodeIDUsage)
+	nodeID := flag.String(nodeIDName, defaultConfig.ID.Hex(), nodeIDUsage)
 	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
 	clientRPCAddress := flag.String(clientRPCAddressName, defaultConfig.ClientRPCAddress, clientRPCAddressUsage)
@@ -77,7 +77,7 @@ func ParseCLIArgs() config.HostConfig {
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.L1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.L1NodeWebsocketPort), l1NodePortUsage)
 	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.L1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
-	rollupContractAddress := flag.String(rollupContractAddrName, "", rollupContractAddrUsage)
+	rollupContractAddress := flag.String(rollupContractAddrName, defaultConfig.RollupContractAddress.Hex(), rollupContractAddrUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
@@ -90,7 +90,7 @@ func ParseCLIArgs() config.HostConfig {
 		parsedP2PAddrs = []string{}
 	}
 
-	defaultConfig.ID = common.BytesToAddress([]byte(*nodeID))
+	defaultConfig.ID = common.HexToAddress(*nodeID)
 	defaultConfig.IsGenesis = *isGenesis
 	defaultConfig.GossipRoundDuration = time.Duration(*gossipRoundNanos)
 	defaultConfig.HasClientRPC = true
@@ -103,7 +103,7 @@ func ParseCLIArgs() config.HostConfig {
 	defaultConfig.L1NodeHost = *l1NodeHost
 	defaultConfig.L1NodeWebsocketPort = uint(*l1NodePort)
 	defaultConfig.L1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
-	defaultConfig.RollupContractAddress = common.BytesToAddress([]byte(*rollupContractAddress))
+	defaultConfig.RollupContractAddress = common.HexToAddress(*rollupContractAddress)
 	defaultConfig.PrivateKeyString = *privateKeyStr
 	defaultConfig.LogPath = *logPath
 	defaultConfig.ChainID = *big.NewInt(*chainID)

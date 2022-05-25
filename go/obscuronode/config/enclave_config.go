@@ -16,4 +16,30 @@ type EnclaveConfig struct {
 	ValidateL1Blocks bool
 	// When validating incoming blocks, the genesis config for the L1 chain
 	GenesisJSON []byte
+	// Toggles the speculative execution background process
+	SpeculativeExecution bool
+	// The management contract address on the L1 network
+	ManagementContractAddress common.Address
+	// The addresses of ERC20 contracts to monitor on the L1 network
+	ERC20ContractAddresses []*common.Address
+	// Whether to redirect the enclave's output to the log file.
+	WriteToLogs bool
+	// The path that the node's logs are written to
+	LogPath string
+}
+
+// DefaultEnclaveConfig returns an EnclaveConfig with default values.
+func DefaultEnclaveConfig() EnclaveConfig {
+	return EnclaveConfig{
+		HostID:                    common.BytesToAddress([]byte("")),
+		Address:                   "127.0.0.1:11000",
+		ChainID:                   777,
+		ValidateL1Blocks:          false,
+		GenesisJSON:               nil,
+		SpeculativeExecution:      false,
+		ManagementContractAddress: common.BytesToAddress([]byte("")),
+		ERC20ContractAddresses:    []*common.Address{},
+		WriteToLogs:               false,
+		LogPath:                   "enclave_logs.txt",
+	}
 }

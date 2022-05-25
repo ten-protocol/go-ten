@@ -51,7 +51,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.ClientRPCAddress = clientServerAddr
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
-	enclaveConfig := enclaverunner.DefaultEnclaveConfig()
+	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
