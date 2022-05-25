@@ -1,6 +1,7 @@
 package host
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -509,6 +510,13 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 				nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
 				continue
 			}
+
+			jsonAttestation, err := json.Marshal(att) // todo - joel - come back and handle error properly
+			if err != nil {
+				panic(err)
+			}
+			nodecommon.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
+
 			secret, err := a.EnclaveClient.ShareSecret(att)
 			if err != nil {
 				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
