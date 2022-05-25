@@ -208,14 +208,6 @@ func (a *Node) startProcessing() {
 
 	lastBlock := *allBlocks[len(allBlocks)-1]
 
-	// do some asserting to check our sanity before we start the enclave
-	if !blockNumberStrictlyIncreasing(allBlocks) {
-		panic("We expect this list of blocks to be correctly ordered but block numbers were not strictly increasing.")
-	}
-	if _, err := a.ethClient.BlockByHash(lastBlock.ParentHash()); err != nil {
-		panic("Parent not found for enclave start block - this should not happen.")
-	}
-
 	nodecommon.LogWithID(a.shortID, "Start enclave on block b_%d.", obscurocommon.ShortHash(lastBlock.Header().Hash()))
 	a.EnclaveClient.Start(lastBlock)
 
@@ -276,16 +268,6 @@ func (a *Node) startProcessing() {
 			return
 		}
 	}
-}
-
-func blockNumberStrictlyIncreasing(blocks []*types.Block) bool {
-	var latest int64 = -1
-	for _, b := range blocks {
-		if b.Number().Int64() <= latest {
-			return false
-		}
-	}
-	return true
 }
 
 // RPCNewHead receives the notification of new blocks from the ethereumNode Node
