@@ -1,6 +1,7 @@
 package host
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -19,34 +20,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
 
-// P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
-type P2PCallback interface {
-	ReceiveRollup(r obscurocommon.EncodedRollup)
-	ReceiveTx(tx nodecommon.EncryptedTx)
-}
-
-// P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
-type P2P interface {
-	StartListening(callback P2PCallback)
-	StopListening()
-	BroadcastRollup(r obscurocommon.EncodedRollup)
-	BroadcastTx(tx nodecommon.EncryptedTx)
-}
-
-// ClientServer is the layer responsible for handling requests from Obscuro client applications.
-type ClientServer interface {
-	Start()
-	Stop()
-}
-
-type StatsCollector interface {
-	// L2Recalc - called when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id common.Address)
-	NewBlock(block *types.Block)
-	NewRollup(node common.Address, rollup *nodecommon.Rollup)
-	RollupWithMoreRecentProof()
-}
-
 // Node this will become the Obscuro "Node" type
 type Node struct {
 	config  config.HostConfig
@@ -60,9 +33,9 @@ type Node struct {
 
 	stats StatsCollector
 
-	// control the lifecycle
-	exitNodeCh chan bool
-	interrupt  *int32
+	// control the host lifecycle
+	exitNodeCh        chan bool
+	stopNodeInterrupt *int32
 
 	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
@@ -72,6 +45,7 @@ type Node struct {
 	nodeDB       *DB    // Stores the node's publicly-available data
 	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
 
+	// library to handle Management Contract lib operations
 	mgmtContractLib mgmtcontractlib.MgmtContractLib
 
 	// Wallet used to issue ethereum transactions
@@ -86,10 +60,8 @@ func NewHost(
 	enclaveClient nodecommon.Enclave,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-) Node {
-	db := NewDB()
-
-	host := Node{
+) *Node {
+	host := &Node{
 		// config
 		config:  config,
 		ID:      config.ID,
@@ -100,11 +72,12 @@ func NewHost(
 		ethClient:     ethClient,
 		EnclaveClient: enclaveClient,
 
+		// statistics and metrics
 		stats: collector,
 
 		// lifecycle channels
-		exitNodeCh: make(chan bool),
-		interrupt:  new(int32),
+		exitNodeCh:        make(chan bool),
+		stopNodeInterrupt: new(int32),
 
 		// incoming data
 		blockRPCCh:   make(chan blockAndParent),
@@ -113,15 +86,17 @@ func NewHost(
 		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
 		// Initialize the node DB
-		nodeDB:       db,
+		nodeDB:       NewDB(),
 		readyForWork: new(int32),
 
+		// library that provides a handler for Management Contract
 		mgmtContractLib: mgmtContractLib,
-		ethWallet:       ethWallet,
+		// the nodes ethereum wallet
+		ethWallet: ethWallet,
 	}
 
 	if config.HasClientRPC {
-		host.clientServer = NewClientServer(config.ClientRPCAddress, &host)
+		host.clientServer = NewClientServer(config.ClientRPCAddress, host)
 	}
 
 	return host
@@ -138,6 +113,7 @@ func (a *Node) Start() {
 	a.waitForEnclave()
 
 	if a.config.IsGenesis {
+		nodecommon.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
 		// Create the shared secret and submit it to the management contract for storage
 		attestation := a.EnclaveClient.Attestation()
 		encodedAttestation := nodecommon.EncodeAttestation(attestation)
@@ -146,6 +122,7 @@ func (a *Node) Start() {
 			Attestation: encodedAttestation,
 		}
 		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+		nodecommon.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	}
 
 	if !a.EnclaveClient.IsInitialised() {
@@ -154,10 +131,94 @@ func (a *Node) Start() {
 
 	if a.clientServer != nil {
 		a.clientServer.Start()
+		nodecommon.LogWithID(a.shortID, "Started client server.")
 	}
 
 	// todo create a channel between request secret and start processing
 	a.startProcessing()
+}
+
+// MockedNewHead receives the notification of new blocks
+// This endpoint is specific to the ethereum mock node
+func (a *Node) MockedNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
+	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+		return
+	}
+	a.blockRPCCh <- blockAndParent{b, p}
+}
+
+// MockedNewFork receives the notification of a new fork
+// This endpoint is specific to the ethereum mock node
+func (a *Node) MockedNewFork(b []obscurocommon.EncodedBlock) {
+	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+		return
+	}
+	a.forkRPCCh <- b
+}
+
+// ReceiveRollup is called by counterparties when there is a Rollup to broadcast
+// All it does is forward the rollup for processing to the enclave
+func (a *Node) ReceiveRollup(r obscurocommon.EncodedRollup) {
+	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+		return
+	}
+	a.rollupsP2PCh <- r
+}
+
+// ReceiveTx receives a new transaction
+func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
+	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+		return
+	}
+	a.txP2PCh <- tx
+}
+
+// RPCBalance allows to fetch the balance of one address
+func (a *Node) RPCBalance(address common.Address) uint64 {
+	return a.EnclaveClient.Balance(address)
+}
+
+// RPCCurrentBlockHead returns the current head of the blocks (l1)
+func (a *Node) RPCCurrentBlockHead() *types.Header {
+	return a.nodeDB.GetCurrentBlockHead()
+}
+
+// RPCCurrentRollupHead returns the current head of the rollups (l2)
+func (a *Node) RPCCurrentRollupHead() *nodecommon.Header {
+	return a.nodeDB.GetCurrentRollupHead()
+}
+
+// DB returns the DB of the node
+func (a *Node) DB() *DB {
+	return a.nodeDB
+}
+
+// Stop gracefully stops the node execution
+func (a *Node) Stop() {
+	// block all requests
+	atomic.StoreInt32(a.stopNodeInterrupt, 1)
+
+	a.P2p.StopListening()
+	if a.clientServer != nil {
+		a.clientServer.Stop()
+	}
+
+	if err := a.EnclaveClient.Stop(); err != nil {
+		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
+	}
+	time.Sleep(time.Second)
+	a.exitNodeCh <- true
+	a.EnclaveClient.StopClient()
+}
+
+// ConnectToEthNode connects the Aggregator to the ethereum node
+func (a *Node) ConnectToEthNode(node ethclient.EthClient) {
+	a.ethClient = node
+}
+
+// IsReady returns if the Aggregator is ready to work (process blocks, respond to RPC requests, etc..)
+func (a *Node) IsReady() bool {
+	return atomic.LoadInt32(a.readyForWork) == 1
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
@@ -197,6 +258,7 @@ func (a *Node) waitForL1Blocks() []*types.Block {
 	return allBlocks
 }
 
+// starts the block processing and the enclave speculative execution
 func (a *Node) startProcessing() {
 	nodecommon.LogWithID(a.shortID, "Starting processing.")
 	allBlocks := a.waitForL1Blocks()
@@ -230,7 +292,9 @@ func (a *Node) startProcessing() {
 
 	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
 	i := int32(0)
-	interrupt := &i
+	roundInterrupt := &i
+
+	// marks the node as ready to do work ( process blocks, respond to RPC requests, etc... )
 	atomic.StoreInt32(a.readyForWork, 1)
 
 	// Main loop - Listen for notifications From the L1 node and process them
@@ -238,12 +302,12 @@ func (a *Node) startProcessing() {
 	for {
 		select {
 		case b := <-a.blockRPCCh:
-			interrupt = sendInterrupt(interrupt)
-			a.processBlocks([]obscurocommon.EncodedBlock{b.p, b.b}, interrupt)
+			roundInterrupt = triggerInterrupt(roundInterrupt)
+			a.processBlocks([]obscurocommon.EncodedBlock{b.p, b.b}, roundInterrupt)
 
 		case f := <-a.forkRPCCh:
-			interrupt = sendInterrupt(interrupt)
-			a.processBlocks(f, interrupt)
+			roundInterrupt = triggerInterrupt(roundInterrupt)
+			a.processBlocks(f, roundInterrupt)
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := nodecommon.DecodeRollup(r)
@@ -262,13 +326,8 @@ func (a *Node) startProcessing() {
 			})
 
 		case tx := <-a.txP2PCh:
-			// Ignore gossiped transactions while the node is still initialising
-			// TODO Handle this correctly with the Enclave Initialization process
-			// TODO Enabling this without Request/RespondSecret will make non-genesis nodes ignore txs
-			if a.EnclaveClient.IsInitialised() {
-				if err := a.EnclaveClient.SubmitTx(tx); err != nil {
-					log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
-				}
+			if err := a.EnclaveClient.SubmitTx(tx); err != nil {
+				log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
 			}
 
 		case <-a.exitNodeCh:
@@ -277,82 +336,8 @@ func (a *Node) startProcessing() {
 	}
 }
 
-// RPCNewHead receives the notification of new blocks from the ethereumNode Node
-func (a *Node) RPCNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.blockRPCCh <- blockAndParent{b, p}
-}
-
-// RPCNewFork receives the notification of a new fork from the ethereumNode
-func (a *Node) RPCNewFork(b []obscurocommon.EncodedBlock) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.forkRPCCh <- b
-}
-
-// P2PGossipRollup is called by counterparties when there is a Rollup to broadcast
-// All it does is forward the rollup for processing to the enclave
-func (a *Node) ReceiveRollup(r obscurocommon.EncodedRollup) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.rollupsP2PCh <- r
-}
-
-// P2PReceiveTx receives a new transactions from the P2P network
-func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
-	if atomic.LoadInt32(a.interrupt) == 1 {
-		return
-	}
-	a.txP2PCh <- tx
-}
-
-// RPCBalance allows to fetch the balance of one address
-func (a *Node) RPCBalance(address common.Address) uint64 {
-	return a.EnclaveClient.Balance(address)
-}
-
-// RPCCurrentBlockHead returns the current head of the blocks (l1)
-func (a *Node) RPCCurrentBlockHead() *types.Header {
-	return a.nodeDB.GetCurrentBlockHead()
-}
-
-// RPCCurrentRollupHead returns the current head of the rollups (l2)
-func (a *Node) RPCCurrentRollupHead() *nodecommon.Header {
-	return a.nodeDB.GetCurrentRollupHead()
-}
-
-// DB returns the DB of the node
-func (a *Node) DB() *DB {
-	return a.nodeDB
-}
-
-// Stop gracefully stops the node execution
-func (a *Node) Stop() {
-	// block all requests
-	atomic.StoreInt32(a.interrupt, 1)
-
-	a.P2p.StopListening()
-	if a.clientServer != nil {
-		a.clientServer.Stop()
-	}
-
-	if err := a.EnclaveClient.Stop(); err != nil {
-		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
-	}
-	time.Sleep(time.Second)
-	a.exitNodeCh <- true
-	a.EnclaveClient.StopClient()
-}
-
-func (a *Node) ConnectToEthNode(node ethclient.EthClient) {
-	a.ethClient = node
-}
-
-func sendInterrupt(interrupt *int32) *int32 {
+// activates the given interrupt (atomically) and returns a new interrupt
+func triggerInterrupt(interrupt *int32) *int32 {
 	// Notify the previous round to stop work
 	atomic.StoreInt32(interrupt, 1)
 	i := int32(0)
@@ -397,7 +382,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func() {
 	return func() {
-		if atomic.LoadInt32(a.interrupt) == 1 {
+		if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 			return
 		}
 		// Request the round winner for the current head
@@ -506,6 +491,14 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 				nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
 				continue
 			}
+
+			jsonAttestation, err := json.Marshal(att)
+			if err == nil {
+				nodecommon.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
+			} else {
+				nodecommon.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
+			}
+
 			secret, err := a.EnclaveClient.ShareSecret(att)
 			if err != nil {
 				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
@@ -520,36 +513,32 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 	}
 }
 
+// monitors the L1 client for new blocks and injects them into the aggregator
 func (a *Node) monitorBlocks() {
 	listener := a.ethClient.BlockListener()
 	nodecommon.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
 
-	for atomic.LoadInt32(a.interrupt) == 0 {
-		select {
-		case latestBlkHeader := <-listener:
-			block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
-			if err != nil {
-				log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
-			}
-			blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
-			if err != nil {
-				log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
-			}
-
-			nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
-				obscurocommon.ShortHash(latestBlkHeader.Hash()),
-				latestBlkHeader.Number.Uint64())
-			a.RPCNewHead(obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent))
-
-		// this timeout ensures we don't leak the goroutine
-		case <-time.After(1 * time.Second):
-			// break out of select and check for interrupt on the for loop
+	// only process blocks if the node is running
+	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
+		latestBlkHeader := <-listener
+		// don't process blocks if the node is stopping
+		if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+			return
 		}
-	}
-}
+		block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
+		if err != nil {
+			log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
+		}
+		blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
+		if err != nil {
+			log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+		}
 
-func (a *Node) IsReady() bool {
-	return atomic.LoadInt32(a.readyForWork) == 1
+		nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
+			obscurocommon.ShortHash(latestBlkHeader.Hash()),
+			latestBlkHeader.Number.Uint64())
+		a.blockRPCCh <- blockAndParent{obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent)}
+	}
 }
 
 func (a *Node) awaitSecret() {
@@ -577,7 +566,7 @@ func (a *Node) awaitSecret() {
 		case <-a.rollupsP2PCh:
 			// ignore rolllups from peers as we're not part of the network just yet
 
-		case <-time.After(time.Minute):
+		case <-time.After(time.Second * 10):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
 			nodecommon.LogWithID(a.shortID, "Still waiting for secret from the L1...")
 
@@ -596,6 +585,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 		if scrtTx, ok := t.(*obscurocommon.L1StoreSecretTx); ok {
 			ok := a.handleStoreSecretTx(scrtTx)
 			if ok {
+				nodecommon.LogWithID(a.shortID, "Stored enclave secret.")
 				return true
 			}
 		}

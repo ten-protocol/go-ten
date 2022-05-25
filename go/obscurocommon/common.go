@@ -23,6 +23,6 @@ type Nonce = uint64
 type EncodedRollup []byte
 
 type NotifyNewBlock interface {
-	RPCNewHead(b EncodedBlock, p EncodedBlock)
-	RPCNewFork(b []EncodedBlock)
+	MockedNewHead(b EncodedBlock, p EncodedBlock)
+	MockedNewFork(b []EncodedBlock)
 }

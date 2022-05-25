@@ -50,7 +50,7 @@ func SetLogs(logPath string) {
 }
 
 // Shuts down the Obscuro host when an interrupt is received.
-func handleInterrupt(host host.Node) {
+func handleInterrupt(host *host.Node) {
 	interruptChannel := make(chan os.Signal, 1)
 	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 	<-interruptChannel

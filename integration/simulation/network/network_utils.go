@@ -82,8 +82,8 @@ func createInMemObscuroNode(
 		ethWallet,
 		mgmtContractLib,
 	)
-	obscuroInMemNetwork.CurrentNode = &node
-	return &node
+	obscuroInMemNetwork.CurrentNode = node
+	return node
 }
 
 func createSocketObscuroNode(
@@ -127,7 +127,7 @@ func createSocketObscuroNode(
 		mgmtContractLib,
 	)
 
-	return &node
+	return node
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {

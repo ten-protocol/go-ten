@@ -432,8 +432,10 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 		log.Panic("could not generate secret. Cause: %s", err)
 	}
 	e.storage.StoreSecret(secret)
-	// todo do we need to worry about this failing?
-	encSec, _ := e.encryptSecret(e.publicKeySerialized, secret)
+	encSec, err := e.encryptSecret(e.publicKeySerialized, secret)
+	if err != nil {
+		log.Panic("failed to encrypt secret. Cause: %s", err)
+	}
 	return encSec
 }
 
@@ -444,7 +446,7 @@ func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) 
 		return err
 	}
 	e.storage.StoreSecret(secret)
-	log.Trace("Secret decrypted and stored. Secret: %v", secret)
+	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeShortID, secret)
 	return nil
 }
 
@@ -542,6 +544,7 @@ func (e *enclaveImpl) generateKeyPair() {
 	}
 	e.publicKeySerialized = x509.MarshalPKCS1PublicKey(&key.PublicKey)
 	e.privateKey = key
+	nodecommon.LogWithID(e.nodeShortID, "Generated public key %s", common.Bytes2Hex(e.publicKeySerialized))
 }
 
 // Todo - implement with better crypto
@@ -553,15 +556,16 @@ func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveS
 }
 
 // Todo - implement with better crypto
-func (e *enclaveImpl) encryptSecret(pubKeyEncoding []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
-	key, err := x509.ParsePKCS1PublicKey(pubKeyEncoding)
+func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+	nodecommon.LogWithID(e.nodeShortID, "Encrypting secret with public key %s", common.Bytes2Hex(pubKeyEncoded))
+	key, err := x509.ParsePKCS1PublicKey(pubKeyEncoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse public key %w", err)
 	}
 
 	encKey, err := EncryptWithPublicKey(secret, key)
 	if err != nil {
-		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoding, encKey)
+		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoded, encKey)
 	}
 	return encKey, err
 }
