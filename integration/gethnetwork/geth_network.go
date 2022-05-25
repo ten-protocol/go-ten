@@ -258,19 +258,18 @@ func (network *GethNetwork) StopNodes() {
 	var wg sync.WaitGroup
 	for _, process := range network.nodesProcs {
 		if process != nil {
-			tempProcess := process
 			wg.Add(1)
-			go func() {
+			go func(process *os.Process) {
 				defer wg.Done()
-				err := tempProcess.Kill()
+				err := process.Kill()
 				if err != nil {
 					log.Error("geth node could not be killed: %s", err)
 				}
-				_, err = tempProcess.Wait()
+				_, err = process.Wait()
 				if err != nil {
 					log.Error("geth node was killed successfully but did not exit: %s", err)
 				}
-			}()
+			}(process)
 		}
 	}
 	wg.Wait()
