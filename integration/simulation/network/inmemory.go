@@ -3,7 +3,7 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p" //nolint
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 

@@ -18,7 +18,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p" //nolint
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
