@@ -4,8 +4,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
 	"github.com/ethereum/go-ethereum/common"

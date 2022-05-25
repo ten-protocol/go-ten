@@ -17,14 +17,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -205,7 +200,7 @@ func extractDeposits(
 	toBlock *types.Block,
 	blockResolver db.BlockResolver,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
-    rollupState *state.StateDB
+	rollupState *state.StateDB,
 ) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
@@ -232,12 +227,8 @@ func extractDeposits(
 			}
 
 			if depositTx, ok := t.(*obscurocommon.L1DepositTx); ok {
-				depL2TxData := core.L2TxData{
-					Type:   core.DepositTx,
-					To:     *depositTx.Sender,
-					Amount: depositTx.Amount,
-				}
-				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
+				depL2Tx := newDepositTx(*depositTx.Sender, depositTx.Amount, rollupState, atomic.LoadUint64(i))
+				allDeposits = append(allDeposits, depL2Tx)
 				atomic.AddUint64(i, 1)
 			}
 		}

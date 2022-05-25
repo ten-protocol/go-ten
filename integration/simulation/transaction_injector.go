@@ -1,15 +1,13 @@
 package simulation
 
 import (
-	"fmt"
-	"math"
 	"math/big"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/contracts"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"golang.org/x/sync/errgroup"
@@ -17,20 +15,14 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/integration"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	"golang.org/x/sync/errgroup"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
@@ -42,15 +34,13 @@ type TransactionInjector struct {
 
 	// settings
 	avgBlockDuration time.Duration
-	stats            *stats2.Stats
-	issuingWallet    *wallet_mock.Wallet // the wallet which deploys the erc20
-	wallets          []*wallet_mock.Wallet
 
 	// connections
-	ethWallets []wallet.Wallet
-	obsWallets []wallet.Wallet
-	l1Clients  []ethclient.EthClient
-	l2Clients  []*obscuroclient.Client
+	issuingWallet wallet.Wallet // the wallet which deploys the erc20
+	ethWallets    []wallet.Wallet
+	obsWallets    []wallet.Wallet
+	l1Clients     []ethclient.EthClient
+	l2Clients     []*obscuroclient.Client
 
 	// addrs and libs
 	erc20ContractAddr *common.Address
@@ -80,17 +70,8 @@ func NewTransactionInjector(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
-	issuingWallet := wallet_mock.New(evm.Erc20OwnerKey)
+	issuingWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), evm.Erc20OwnerKey)
 
-	// create a bunch of wallets
-	wallets := make([]*wallet_mock.Wallet, numberWallets)
-	for i := 0; i < numberWallets; i++ {
-		key, err := crypto.GenerateKey()
-		if err != nil {
-			panic(fmt.Sprintf("Could not generate keypair for wallet: %v", err))
-		}
-		wallets[i] = wallet_mock.New(key)
-	}
 	interrupt := int32(0)
 
 	obsWallets := make([]wallet.Wallet, len(ethWallets))
@@ -98,7 +79,7 @@ func NewTransactionInjector(
 		obsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), w.PrivateKey())
 	}
 	return &TransactionInjector{
-		issuingWallet:    issuingWallet,
+		issuingWallet:     issuingWallet,
 		avgBlockDuration:  avgBlockDuration,
 		stats:             stats,
 		l1Clients:         l1Nodes,
@@ -151,7 +132,7 @@ func (m *TransactionInjector) Start() {
 	// start transactions issuance
 	var wg errgroup.Group
 	wg.Go(func() error {
-		m.issueRandomL1Deposits()
+		m.issueRandomDeposits()
 		return nil
 	})
 
@@ -174,16 +155,16 @@ func (m *TransactionInjector) Start() {
 	m.fullyStoppedChan <- true
 }
 
-func (m *TransactionInjector) deployERC20(w *wallet_mock.Wallet) {
+func (m *TransactionInjector) deployERC20(w wallet.Wallet) {
 	// deploy the ERC20
 	contractBytes := common.Hex2Bytes(contracts.PedroERC20ContractByteCode)
 	deployContractTx := types.LegacyTx{
-		Nonce:    w.NextNonce(m.l2NodeClients[0]),
+		Nonce:    NextNonce(m.l2Clients[0], w),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
 		Data:     contractBytes,
 	}
-	signedTx, err := types.SignTx(types.NewTx(&deployContractTx), types.NewLondonSigner(obscurocommon.ChainID), w.Key.PrivateKey)
+	signedTx, err := w.SignTransaction(&deployContractTx)
 	if err != nil {
 		panic(err)
 	}
@@ -210,15 +191,12 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = m.rndObsWallet()
 		}
-		tx := NewL2Transfer(fromWallet.Address(), toWallet.Address(), obscurocommon.RndBtw(1, 500))
+		tx := NewObscuroTransferTx(fromWallet, toWallet.Address(), obscurocommon.RndBtw(1, 500), m.l2Clients[0])
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
 
-		tx := NewObscuroTransferTx(fromWallet, to, obscurocommon.RndBtw(1, 500), m.l2NodeClients[0])
-		// fmt.Printf("Injected transfer tx: %d\n", obscurocommon.ShortHash(tx.Hash()))
-		signedTx := wallet_mock.SignTx(tx, fromWallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
 
@@ -228,7 +206,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 			continue
 		}
 
-		go m.counter.trackL2Tx(*signedTx)
+		go m.counter.trackTransferL2Tx(*signedTx)
 	}
 }
 
@@ -264,15 +242,12 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 	for ; atomic.LoadInt32(m.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(m.avgBlockDuration, m.avgBlockDuration*2)) {
 		v := obscurocommon.RndBtw(1, 100)
 		obsWallet := m.rndObsWallet()
-		tx := NewL2Withdrawal(obsWallet.Address(), v)
+		// todo - random client
+		tx := NewObscuroWithdrawalTx(obsWallet, v, m.l2Clients[0])
 		signedTx, err := obsWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
-		wallet := rndWallet(m.wallets)
-		tx := NewObscuroWithdrawalTx(v, wallet, m.l2NodeClients[0])
-		// fmt.Printf("Injected withdrawal tx: %d\n", obscurocommon.ShortHash(tx.Hash()))
-		signedTx := wallet_mock.SignTx(tx, wallet.Key.PrivateKey)
 		encryptedTx := core.EncryptTx(signedTx)
 
 		err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -282,7 +257,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		}
 
 		m.stats.Withdrawal(v)
-		go m.counter.trackL2Tx(*signedTx)
+		go m.counter.trackWithdrawalL2Tx(*signedTx)
 	}
 }
 
@@ -295,18 +270,9 @@ func (m *TransactionInjector) issueInvalidL2Txs() {
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = m.rndObsWallet()
 		}
-		var tx types.TxData
-		switch rand.Intn(1) { //nolint:gosec
-		case 0:
-			tx = NewL2Withdrawal(fromWallet.Address(), obscurocommon.RndBtw(1, 100))
-		case 1:
-			tx = NewL2Transfer(fromWallet.Address(), toWallet.Address(), obscurocommon.RndBtw(1, 500))
-		}
+		tx := NewObscuroWithdrawalTx(fromWallet, obscurocommon.RndBtw(1, 100), m.l2Clients[0])
 
 		signedTx := m.createInvalidSignage(tx, fromWallet)
-		fromWallet := rndWallet(m.wallets)
-		tx := NewCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
-		signedTx := createInvalidSignature(tx, fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -348,72 +314,53 @@ func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
 	return m.l2Clients[rand.Intn(len(m.l2Clients))] //nolint:gosec
 }
 
-// NewL2Transfer creates an enclave.L2Tx of type enclave.TransferTx
-func NewL2Transfer(from common.Address, dest common.Address, amount uint64) types.TxData {
-	txData := core.L2TxData{Type: core.TransferTx, From: from, To: dest, Amount: amount}
-	return NewL2Tx(txData)
-}
-
-// NewL2Withdrawal creates an enclave.L2Tx of type enclave.WithdrawalTx
-func NewL2Withdrawal(from common.Address, amount uint64) types.TxData {
-	txData := core.L2TxData{Type: core.WithdrawalTx, From: from, Amount: amount}
-	return NewL2Tx(txData)
-}
-
-// NewL2Tx creates an enclave.L2Tx.
-//
-// A random nonce is used to avoid hash collisions. The enclave.L2TxData is encoded and stored in the transaction's
-// data field.
-func NewL2Tx(data core.L2TxData) types.TxData {
-	// We should probably use a deterministic nonce instead, as in the L1.
-	nonce := rand.Intn(math.MaxInt) //nolint:gosec
-
-	enc, err := rlp.EncodeToBytes(data)
-	if err != nil {
-		// TODO - Surface this error properly.
-		panic(err)
-	}
-
-	return &types.LegacyTx{
-		Nonce:    uint64(nonce),
-		Value:    big.NewInt(1),
-		Gas:      1,
-		GasPrice: big.NewInt(1),
-		Data:     enc,
-	}
-}
-
-func NewObscuroTransferTx(from *wallet_mock.Wallet, dest common.Address, amount uint64, client *obscuroclient.Client) *nodecommon.L2Tx {
+func NewObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client *obscuroclient.Client) types.TxData {
 	data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", dest, big.NewInt(int64(amount)))
 	if err != nil {
 		panic(err)
 	}
-	return newTx(data, from.NextNonce(client))
+	return newTx(data, NextNonce(client, from))
 }
 
-func NewObscuroWithdrawalTx(amount uint64, wallet *wallet_mock.Wallet, client *obscuroclient.Client) *nodecommon.L2Tx {
+func NewObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client *obscuroclient.Client) types.TxData {
 	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
 	if err != nil {
 		panic(err)
 	}
-	return newTx(transferERC20data, wallet.NextNonce(client))
+	return newTx(transferERC20data, NextNonce(client, from))
 }
 
-func NewCustomObscuroWithdrawalTx(amount uint64) *nodecommon.L2Tx {
-	transferERC20data, err := contracts.PedroERC20ContractABIJSON.Pack("transfer", evm.WithdrawalAddress, big.NewInt(int64(amount)))
-	if err != nil {
-		panic(err)
-	}
-	return newTx(transferERC20data, 1)
-}
-
-func newTx(data []byte, nonce uint64) *nodecommon.L2Tx {
-	return types.NewTx(&types.LegacyTx{
+func newTx(data []byte, nonce uint64) types.TxData {
+	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    common.Big0,
 		Gas:      1_000_000,
 		GasPrice: common.Big0,
 		Data:     data,
 		To:       &evm.Erc20ContractAddress,
-	})
+	}
+}
+
+func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
+	var result uint64
+	err := (*cl).Call(&result, obscuroclient.RPCNonce, a)
+	if err != nil {
+		panic(err)
+	}
+	if result == 0 {
+		return 0
+	}
+	return result
+}
+
+func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
+	// only returns the nonce when the previous transaction was recorded
+	for {
+		result := readNonce(cl, w.Address())
+		if result == w.GetNonce() {
+			w.GetNonceAndIncrement()
+			return result
+		}
+		time.Sleep(time.Millisecond)
+	}
 }
