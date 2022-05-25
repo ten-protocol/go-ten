@@ -255,11 +255,24 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 // StopNodes kills the Geth node processes.
 func (network *GethNetwork) StopNodes() {
+	var wg sync.WaitGroup
 	for _, process := range network.nodesProcs {
 		if process != nil {
-			_ = process.Kill()
+			wg.Add(1)
+			go func(process *os.Process) {
+				defer wg.Done()
+				err := process.Kill()
+				if err != nil {
+					log.Error("geth node could not be killed: %s", err)
+				}
+				_, err = process.Wait()
+				if err != nil {
+					log.Error("geth node was killed successfully but did not exit: %s", err)
+				}
+			}(process)
 		}
 	}
+	wg.Wait()
 }
 
 // Initialises and starts a miner.
