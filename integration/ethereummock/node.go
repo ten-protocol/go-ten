@@ -204,13 +204,13 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	for _, c := range m.clients {
 		t := c
 		if b.NumberU64() == obscurocommon.L1GenesisHeight {
-			go t.RPCNewHead(obscurocommon.EncodeBlock(b), nil)
+			go t.MockedNewHead(obscurocommon.EncodeBlock(b), nil)
 		} else {
 			p, f := m.Resolver.ParentBlock(b)
 			if !f {
 				panic("This should not happen")
 			}
-			go t.RPCNewHead(obscurocommon.EncodeBlock(b), obscurocommon.EncodeBlock(p))
+			go t.MockedNewHead(obscurocommon.EncodeBlock(b), obscurocommon.EncodeBlock(p))
 		}
 	}
 	m.canonicalCh <- b
@@ -231,7 +231,7 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 
 	// notify the clients
 	for _, c := range m.clients {
-		go c.RPCNewFork(fork)
+		go c.MockedNewFork(fork)
 	}
 	m.canonicalCh <- head
 
