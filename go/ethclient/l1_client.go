@@ -6,15 +6,14 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
-
-// TODO move this to a config
-var connectionTimeout = 15 * time.Second
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
@@ -23,16 +22,16 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(id common.Address, ipaddress string, websocketPort uint) (EthClient, error) {
-	client, err := connect(ipaddress, websocketPort)
+func NewEthClient(config config.HostConfig) (EthClient, error) {
+	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1ConnectionTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	log.Trace("Initialized eth node connection - port: %d - id: %s", websocketPort, id.String())
+	log.Trace("Initialized eth node connection - port: %d - id: %s", config.L1NodeWebsocketPort, config.ID)
 	return &gethRPCClient{
 		client: client,
-		id:     id,
+		id:     config.ID,
 	}, nil
 }
 
@@ -159,7 +158,7 @@ func (e *gethRPCClient) Stop() {
 	e.client.Close()
 }
 
-func connect(ipaddress string, port uint) (*ethclient.Client, error) {
+func connect(ipaddress string, port uint, connectionTimeout time.Duration) (*ethclient.Client, error) {
 	var err error
 	var c *ethclient.Client
 	for start := time.Now(); time.Since(start) < connectionTimeout; time.Sleep(time.Second) {

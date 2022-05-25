@@ -9,12 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"gopkg.in/yaml.v3"
 )
@@ -27,7 +30,10 @@ const (
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 
-	defaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	defaultWsPortOffset        = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	defaultL1ConnectionTimeout = 15 * time.Second
+
+	localhost = "127.0.0.1"
 )
 
 var timeout = 15 * time.Second
@@ -90,8 +96,8 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 
 	// check the transaction has expected values
 	issuedTx := map[string]interface{}{}
-	if err := yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
-		t.Fatalf("unable to unmarshall getTransaction response to YAML. Cause: %s. Response: %s", err, issuedTxStr)
+	if err = yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
+		t.Fatalf("unable to unmarshall getTransaction response to YAML. Cause: %s.\nsendTransaction response was: %s\ngetTransaction response was %s", err, txHash, issuedTxStr)
 	}
 
 	if issuedTx["value"].(int) != 1000000000000000 ||
@@ -114,7 +120,12 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0])
+	hostConfig := config.HostConfig{
+		L1NodeHost:          localhost,
+		L1NodeWebsocketPort: network.WebSocketPorts[0],
+		L1ConnectionTimeout: defaultL1ConnectionTimeout,
+	}
+	ethClient, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		panic(err)
 	}
