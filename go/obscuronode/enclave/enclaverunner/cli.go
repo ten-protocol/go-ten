@@ -72,7 +72,7 @@ func ParseCLIArgs() config.EnclaveConfig {
 		}
 	}
 
-	return EnclaveConfig{
+	return config.EnclaveConfig{
 		NodeID:          *nodeID,
 		Address:         *port,
 		ContractAddress: *contractAddress,
