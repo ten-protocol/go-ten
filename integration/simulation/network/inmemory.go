@@ -3,7 +3,7 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p" //nolint
+	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
@@ -66,7 +66,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-		obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = obscuroNodes
+		mockP2P := obscuroNodes[i].P2p.(*p2p.MockP2P)
+		mockP2P.Nodes = obscuroNodes
 	}
 
 	// The sequence of starting the nodes is important to catch various edge cases.
