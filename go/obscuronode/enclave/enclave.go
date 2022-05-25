@@ -621,6 +621,8 @@ func NewEnclave(
 	}
 
 	privKey := generateKeyPair()
+	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
+	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
 
 	return &enclaveImpl{
 		nodeID:                      nodeID,
@@ -642,7 +644,7 @@ func NewEnclave(
 		chainID:                     chainID,
 		attestationProvider:         attestationProvider,
 		privateKey:                  privKey,
-		publicKeySerialized:         x509.MarshalPKCS1PublicKey(&privKey.PublicKey),
+		publicKeySerialized:         serializedPubKey,
 	}
 }
 
