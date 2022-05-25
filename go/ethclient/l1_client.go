@@ -1,4 +1,4 @@
-package host
+package ethclient
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
-	ethclient2 "github.com/obscuronet/obscuro-playground/go/ethclient"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -17,7 +15,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// TODO move this to a config
+// TODO - joel - move this to a config
 var connectionTimeout = 15 * time.Second
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
@@ -27,7 +25,7 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(config config.HostConfig) (ethclient2.EthClient, error) {
+func NewEthClient(config config.HostConfig) (EthClient, error) {
 	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
@@ -48,8 +46,8 @@ func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 	return blk
 }
 
-func (e *gethRPCClient) Info() ethclient2.Info {
-	return ethclient2.Info{
+func (e *gethRPCClient) Info() Info {
+	return Info{
 		ID: e.id,
 	}
 }

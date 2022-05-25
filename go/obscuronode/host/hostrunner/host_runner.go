@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
@@ -22,7 +24,7 @@ func RunHost(config config.HostConfig) {
 	ethWallet := wallet.NewInMemoryWalletFromString(config)
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := host.NewEthClient(config)
+	l1Client, err := ethclient.NewEthClient(config)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}

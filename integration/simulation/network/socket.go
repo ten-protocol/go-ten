@@ -73,7 +73,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		L1NodeHost:          Localhost,
 		L1NodeWebsocketPort: n.gethNetwork.WebSocketPorts[0],
 	}
-	tmpEthClient, err := host.NewEthClient(tmpHostConfig)
+	tmpEthClient, err := ethclient.NewEthClient(tmpHostConfig)
 	if err != nil {
 		panic(err)
 	}
