@@ -63,8 +63,6 @@ func ParseCLIArgs() config.EnclaveConfig {
 		}
 	}
 
-	// todo - joel - add speculative execution flag
-
 	defaultConfig.HostID = common.HexToAddress(*hostID)
 	defaultConfig.Address = *address
 	defaultConfig.ChainID = *chainID
