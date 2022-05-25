@@ -436,7 +436,10 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 	}
 	e.storage.StoreSecret(secret)
 	// todo do we need to worry about this failing?
-	encSec, _ := e.encryptSecret(e.publicKeySerialized, secret)
+	encSec, err := e.encryptSecret(e.publicKeySerialized, secret)
+	if err != nil {
+		panic(err)
+	}
 	return encSec
 }
 
@@ -545,6 +548,7 @@ func (e *enclaveImpl) generateKeyPair() {
 	}
 	e.publicKeySerialized = x509.MarshalPKCS1PublicKey(&key.PublicKey)
 	e.privateKey = key
+	nodecommon.LogWithID(e.nodeShortID, "Generate public key %s", e.publicKeySerialized)
 }
 
 // Todo - implement with better crypto
@@ -557,6 +561,7 @@ func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveS
 
 // Todo - implement with better crypto
 func (e *enclaveImpl) encryptSecret(pubKeyEncoding []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+	nodecommon.LogWithID(e.nodeShortID, "Encrypting secret with public key %s", pubKeyEncoding)
 	key, err := x509.ParsePKCS1PublicKey(pubKeyEncoding)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse public key %w", err)
