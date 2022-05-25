@@ -188,10 +188,10 @@ func checkBlockchainOfObscuroNode(
 	// check that the height of the Rollup chain is higher than a minimum expected value.
 	h := getCurrentRollupHead(nodeClient)
 
-	if h == nil {
+	if h == nil { //nolint:staticcheck
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
 	}
-	l2Height := h.Number
+	l2Height := h.Number //nolint:staticcheck
 	if l2Height < minObscuroHeight {
 		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", l2Height, nodeAddr, minObscuroHeight)
 	}
