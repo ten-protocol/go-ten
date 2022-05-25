@@ -1,10 +1,11 @@
 package obscurocommon
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"math/big"
 )
 
 // the encoded version of an ExtBlock
