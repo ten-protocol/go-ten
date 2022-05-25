@@ -619,6 +619,7 @@ func NewEnclave(
 	if attestation {
 		attestationProvider = &EgoAttestationProvider{}
 	} else {
+		nodecommon.LogWithID(nodeShortID, "WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
