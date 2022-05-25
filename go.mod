@@ -13,6 +13,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/rs/zerolog v1.26.1
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -61,12 +62,12 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
+	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/tsdb v0.7.1 // indirect
-	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect

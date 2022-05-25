@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/naoina/toml"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -127,7 +129,12 @@ func NewHost(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
-	// TODO - Log out node config.
+	tomlConfig, err := toml.Marshal(a.config)
+	if err != nil {
+		panic("could not print host config")
+	}
+	log.Info("Host started with following config:\n%s", tomlConfig)
+
 	a.waitForEnclave()
 
 	if a.config.IsGenesis {
