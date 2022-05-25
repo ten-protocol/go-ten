@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -83,20 +85,10 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 		}
 
 	case StoreSecretMethod:
-		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
-			panic(err)
-		}
-		callData, found := contractCallData["inputSecret"]
-		if !found {
-			panic("call data not found for inputSecret")
-		}
-
-		return &obscurocommon.L1StoreSecretTx{
-			Secret: base64DecodeFromString(callData.(string)),
-		}
+		return unpackStoreSecretTx(tx, method, contractCallData)
 
 	case RequestSecretMethod:
-		return &obscurocommon.L1RequestSecretTx{}
+		return unpackRequestSecretTx(tx, method, contractCallData)
 	}
 
 	return nil
@@ -122,8 +114,8 @@ func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64
 	}
 }
 
-func (c *contractLibImpl) CreateRequestSecret(_ *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
-	data, err := c.contractABI.Pack(RequestSecretMethod)
+func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
+	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
 	}
@@ -138,7 +130,7 @@ func (c *contractLibImpl) CreateRequestSecret(_ *obscurocommon.L1RequestSecretTx
 }
 
 func (c *contractLibImpl) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData {
-	data, err := c.contractABI.Pack(StoreSecretMethod, base64EncodeToString(tx.Secret))
+	data, err := c.contractABI.Pack(StoreSecretMethod, base64EncodeToString(tx.Secret), base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
 	}
@@ -148,6 +140,53 @@ func (c *contractLibImpl) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, n
 		Gas:      defaultGas,
 		To:       c.addr,
 		Data:     data,
+	}
+}
+
+func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RequestSecretTx {
+	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
+	if err != nil {
+		panic(err)
+	}
+	callData, found := contractCallData["requestReport"]
+	if !found {
+		panic("call data not found for requestReport")
+	}
+
+	att := base64DecodeFromString(callData.(string))
+	if err != nil {
+		log.Panic("could not decode attestation request. Cause: %s", err)
+	}
+	return &obscurocommon.L1RequestSecretTx{
+		Attestation: att,
+	}
+}
+
+func unpackStoreSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1StoreSecretTx {
+	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
+	if err != nil {
+		log.Panic("could not unpack transaction. Cause: %s", err)
+	}
+	secretData, found := contractCallData["inputSecret"]
+	if !found {
+		panic("call data not found for inputSecret")
+	}
+	secret := base64DecodeFromString(secretData.(string))
+	if err != nil {
+		log.Panic("could not decode secret data. Cause: %s", err)
+	}
+
+	reportData, found := contractCallData["requestReport"]
+	if !found {
+		log.Panic("call data not found for requestReport")
+	}
+	att := base64DecodeFromString(reportData.(string))
+	if err != nil {
+		log.Panic("could not decode report data. Cause: %s", err)
+	}
+	return &obscurocommon.L1StoreSecretTx{
+		Secret:      secret,
+		Attestation: att,
 	}
 }
 
