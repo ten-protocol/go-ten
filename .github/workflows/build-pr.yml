@@ -2,7 +2,7 @@ name: Build PR
 # Builds and runs tests on each push to a branch PR'ed against main.
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
