@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"math/rand"
-	"net"
 	"runtime"
 	"testing"
 	"time"
@@ -54,12 +53,6 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		Params:           params,
 	}
 
-	// wait for p2p addresses to be connectable (fudge because we don't handle dropped messages)
-	for simulation.Params.WaitForP2PConnections && !allP2PAddressesReady(simulation.ObscuroP2PAddrs) {
-		time.Sleep(simulation.Params.AvgBlockDuration * 10)
-		log.Info("Waiting for P2P connections to be available.")
-	}
-
 	// execute the simulation
 	simulation.Start()
 
@@ -70,16 +63,4 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
-}
-
-func allP2PAddressesReady(addrs []string) bool {
-	for _, a := range addrs {
-		conn, err := net.Dial("tcp", a)
-		if err != nil {
-			return false
-		}
-		// we don't worry about failure while closing, it connected successfully so let test proceed
-		_ = conn.Close()
-	}
-	return true
 }

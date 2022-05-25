@@ -57,7 +57,6 @@ func TestGethSimulation(t *testing.T) {
 		NodeEthWallets:            nodeWallets,
 		SimEthWallets:             simWallets,
 		StartPort:                 integration.StartPortSimulationGethInMem,
-		WaitForP2PConnections:     true,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
