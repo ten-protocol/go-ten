@@ -190,6 +190,7 @@ func checkBlockchainOfObscuroNode(
 
 	if h == nil { //nolint:staticcheck
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
+		return
 	}
 	l2Height := h.Number //nolint:staticcheck
 	if l2Height < minObscuroHeight {
