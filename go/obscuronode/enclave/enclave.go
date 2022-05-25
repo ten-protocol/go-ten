@@ -108,7 +108,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.processedTxsMap = makeMap(env.processedTxs)
 
 			// calculate the State after executing them
-			evm.ExecuteTransactions(env.processedTxs, env.state, env.headRollup.Header, e.storage)
+			evm.ExecuteTransactions(env.processedTxs, env.state, env.headRollup.Header, e.storage, e.chainID)
 
 		case tx := <-e.txCh:
 			// only process transactions if there is already a rollup to use as parent
@@ -117,7 +117,7 @@ func (e *enclaveImpl) start(block types.Block) {
 				if !found {
 					env.processedTxsMap[tx.Hash()] = tx
 					env.processedTxs = append(env.processedTxs, tx)
-					evm.ExecuteTransactions([]nodecommon.L2Tx{tx}, env.state, env.header, e.storage)
+					evm.ExecuteTransactions([]nodecommon.L2Tx{tx}, env.state, env.header, e.storage, e.chainID)
 				}
 			}
 
@@ -167,7 +167,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.chainID)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -214,7 +214,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.chainID)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -326,7 +326,7 @@ func (e *enclaveImpl) Balance(address common.Address) uint64 {
 		panic("not found")
 	}
 	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return evm.BalanceOfErc20(address, s, r.Header, e.storage)
+	return evm.BalanceOfErc20(address, s, r.Header, e.storage, e.chainID)
 }
 
 func (e *enclaveImpl) Nonce(address common.Address) uint64 {
@@ -386,7 +386,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 		newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 
 		newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
-		receipts = evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage)
+		receipts = evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.chainID)
 		// todo - only transactions that fail because of the nonce should be excluded
 		for _, tx := range newRollupTxs {
 			_, f := receipts[tx.Hash()]
@@ -401,8 +401,8 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib, newRollupState)
-	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage)
+	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib, newRollupState, e.chainID)
+	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.chainID)
 	for _, tx := range depositTxs {
 		if depositReceipts[tx.Hash()] == nil {
 			panic("Should not happen")
@@ -419,7 +419,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, obscurocommon.GenerateNonce(), rootHash)
 
 	// Postprocessing - withdrawals
-	r.Header.Withdrawals = rollupPostProcessingWithdrawals(&r, newRollupState, receipts)
+	r.Header.Withdrawals = e.rollupPostProcessingWithdrawals(&r, newRollupState, receipts)
 
 	return &r
 }

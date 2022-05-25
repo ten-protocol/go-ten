@@ -36,8 +36,8 @@ var WithdrawalAddress = common.HexToAddress("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
-func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver) map[common.Hash]*types.Receipt {
-	chain, cc, vmCfg, gp := initParams(rollupResolver)
+func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) map[common.Hash]*types.Receipt {
+	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 	zero := uint64(0)
 	usedGas := &zero
 	receipts := make(map[common.Hash]*types.Receipt, len(txs))
@@ -68,8 +68,8 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s vm.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver) (*core2.ExecutionResult, error) {
-	chain, cc, vmCfg, gp := initParams(rollupResolver)
+func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s vm.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) (*core2.ExecutionResult, error) {
+	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 
 	blockContext := core2.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, s, cc, vmCfg)
@@ -83,10 +83,10 @@ func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s 
 }
 
 // BalanceOfErc20 - Used in tests to return the balance on the Erc20ContractAddress
-func BalanceOfErc20(address common.Address, s vm.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver) uint64 {
+func BalanceOfErc20(address common.Address, s vm.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) uint64 {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
-	result, err := ExecuteOffChainCall(address, Erc20ContractAddress, balanceData, s, header, rollupResolver)
+	result, err := ExecuteOffChainCall(address, Erc20ContractAddress, balanceData, s, header, rollupResolver, chainID)
 	if err != nil {
 		log.Info("Failed to read balance: %s\n", err)
 		return 0
@@ -100,10 +100,10 @@ func BalanceOfErc20(address common.Address, s vm.StateDB, header *nodecommon.Hea
 	return r.Uint64()
 }
 
-func initParams(rollupResolver db.RollupResolver) (*ObscuroChainContext, *params.ChainConfig, vm.Config, *core2.GasPool) {
+func initParams(rollupResolver db.RollupResolver, chainID int64) (*ObscuroChainContext, *params.ChainConfig, vm.Config, *core2.GasPool) {
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
 	cc := &params.ChainConfig{
-		ChainID:     obscurocommon.ChainID,
+		ChainID:     big.NewInt(chainID),
 		LondonBlock: common.Big0,
 	}
 	vmCfg := vm.Config{

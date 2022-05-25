@@ -1,14 +1,8 @@
 package obscurocommon
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 )
-
-// ChainID - the id of the obscuro chain
-// todo - this should be configured  - move away from the constant
-var ChainID = big.NewInt(777) // The unique ID for the Obscuro chain.
 
 const (
 	L2GenesisHeight = uint64(0)
