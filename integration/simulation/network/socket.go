@@ -101,9 +101,16 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		isGenesis := i == 0
 
 		// create a remote enclave server
-		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
-		_, err := enclave.StartServer(enclaveAddr, integration.ObscuroChainID, nodeID, params.MgmtContractLib, params.ERC20ContractLib, false, false, nil, stats)
+		enclaveConfig := config.EnclaveConfig{
+			HostID:           common.BigToAddress(big.NewInt(int64(i))),
+			Address:          enclaveAddr,
+			ChainID:          integration.ObscuroChainID,
+			ValidateL1Blocks: false,
+			WillAttest:       false,
+			GenesisJSON:      nil,
+		}
+		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
 		}
