@@ -70,8 +70,8 @@ func createInMemObscuroNode(
 		ethWallet,
 		mgmtContractLib,
 	)
-	obscuroInMemNetwork.CurrentNode = &node
-	return &node
+	obscuroInMemNetwork.CurrentNode = node
+	return node
 }
 
 func createSocketObscuroNode(
@@ -107,7 +107,7 @@ func createSocketObscuroNode(
 		mgmtContractLib,
 	)
 
-	return &node
+	return node
 }
 
 func defaultObscuroNodeCfg(gossipPeriod time.Duration, hasRPC bool, rpcAddress *string) host.AggregatorCfg {
