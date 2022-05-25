@@ -4,13 +4,13 @@ import (
 	"math/big"
 	"time"
 
-	config2 "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/integration"
-	p2p2 "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+	simp2p "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 
@@ -53,9 +53,9 @@ func createInMemObscuroNode(
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 ) *host.Node {
-	obscuroInMemNetwork := p2p2.NewMockP2P(avgBlockDuration, avgNetworkLatency)
+	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
-	hostConfig := config2.HostConfig{
+	hostConfig := config.HostConfig{
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
 		GossipRoundDuration: avgGossipPeriod,
@@ -90,7 +90,7 @@ func createSocketObscuroNode(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 ) *host.Node {
-	hostConfig := config2.HostConfig{
+	hostConfig := config.HostConfig{
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
 		GossipRoundDuration: avgGossipPeriod,
