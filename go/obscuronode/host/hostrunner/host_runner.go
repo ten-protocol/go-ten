@@ -2,16 +2,16 @@ package hostrunner
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
@@ -19,28 +19,19 @@ import (
 )
 
 // RunHost runs an Obscuro host as a standalone process.
-func RunHost(config HostConfig) {
-	nodeID := common.BytesToAddress([]byte(config.NodeID))
-	hostCfg := host.AggregatorCfg{
-		GossipRoundDuration:  time.Duration(config.GossipRoundNanos),
-		ClientRPCTimeoutSecs: config.RPCTimeoutSecs,
-		HasRPC:               true,
-		RPCAddress:           &config.ClientServerAddr,
-	}
-
-	contractAddr := common.HexToAddress(config.ContractAddress)
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
-	ethWallet := wallet.NewInMemoryWalletFromString(big.NewInt(config.ChainID), config.PrivateKeyString)
+func RunHost(config config.HostConfig) {
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
+	ethWallet := wallet.NewInMemoryWalletFromString(config)
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethclient.NewEthClient(nodeID, config.EthClientHost, uint(config.EthClientPort))
+	l1Client, err := ethclient.NewEthClient(config)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
 
-	enclaveClient := host.NewEnclaveRPCClient(config.EnclaveAddr, host.ClientRPCTimeoutSecs*time.Second, nodeID)
-	aggP2P := p2p.NewSocketP2PLayer(config.OurP2PAddr, config.PeerP2PAddrs, nodeID)
-	agg := host.NewObscuroAggregator(nodeID, hostCfg, nil, config.IsGenesis, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
+	enclaveClient := host.NewEnclaveRPCClient(config)
+	aggP2P := p2p.NewSocketP2PLayer(config)
+	agg := host.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
 
 	fmt.Println("Starting Obscuro host...")
 	log.Info("Starting Obscuro host...")

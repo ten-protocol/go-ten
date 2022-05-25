@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -31,6 +33,7 @@ type AggregatorCfg struct {
 
 // Node this will become the Obscuro "Node" type
 type Node struct {
+	config  config.HostConfig
 	ID      common.Address
 	shortID uint64
 
@@ -53,11 +56,8 @@ type Node struct {
 	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
 
-	// Node nodeDB - stores the node public available data
-	nodeDB *DB
-
-	// A node is ready once it has bootstrapped the existing blocks and has the enclave secret
-	readyForWork *int32
+	nodeDB       *DB    // Stores the node's publicly-available data
+	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
 
 	// library to handle Management Contract lib operations
 	mgmtContractLib mgmtcontractlib.MgmtContractLib
@@ -66,11 +66,9 @@ type Node struct {
 	ethWallet wallet.Wallet
 }
 
-func NewObscuroAggregator(
-	id common.Address,
-	cfg AggregatorCfg,
+func NewHost(
+	config config.HostConfig,
 	collector StatsCollector,
-	isGenesis bool,
 	p2p P2P,
 	ethClient ethclient.EthClient,
 	enclaveClient nodecommon.Enclave,
@@ -79,10 +77,9 @@ func NewObscuroAggregator(
 ) *Node {
 	host := &Node{
 		// config
-		ID:        id,
-		shortID:   obscurocommon.ShortAddress(id),
-		cfg:       cfg,
-		isGenesis: isGenesis,
+		config:  config,
+		ID:      config.ID,
+		shortID: obscurocommon.ShortAddress(config.ID),
 
 		// Communication layers.
 		P2p:           p2p,
@@ -112,8 +109,8 @@ func NewObscuroAggregator(
 		ethWallet: ethWallet,
 	}
 
-	if cfg.HasRPC {
-		host.clientServer = NewClientServer(*cfg.RPCAddress, host)
+	if config.HasClientRPC {
+		host.clientServer = NewClientServer(config.ClientRPCAddress, host)
 	}
 
 	return host
@@ -121,9 +118,10 @@ func NewObscuroAggregator(
 
 // Start initializes the main loop of the node
 func (a *Node) Start() {
+	// TODO - Log out node config.
 	a.waitForEnclave()
 
-	if a.isGenesis {
+	if a.config.IsGenesis {
 		// Create the shared secret and submit it to the management contract for storage
 		l1tx := &obscurocommon.L1StoreSecretTx{
 			Secret:      a.EnclaveClient.GenerateSecret(),
@@ -283,7 +281,7 @@ func (a *Node) startProcessing() {
 	nodecommon.LogWithID(a.shortID, "Start enclave on block b_%d.", obscurocommon.ShortHash(lastBlock.Header().Hash()))
 	a.EnclaveClient.Start(lastBlock)
 
-	if a.isGenesis {
+	if a.config.IsGenesis {
 		a.initialiseProtocol(&lastBlock)
 	}
 
@@ -375,7 +373,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-		obscurocommon.ScheduleInterrupt(a.cfg.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+		obscurocommon.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
 	}
 }
 

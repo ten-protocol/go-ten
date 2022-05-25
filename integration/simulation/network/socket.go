@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
@@ -67,7 +69,12 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		walletAddresses,
 	)
 
-	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0])
+	tmpHostConfig := config.HostConfig{
+		L1NodeHost:          Localhost,
+		L1NodeWebsocketPort: n.gethNetwork.WebSocketPorts[0],
+		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
+	}
+	tmpEthClient, err := ethclient.NewEthClient(tmpHostConfig)
 	if err != nil {
 		panic(err)
 	}

@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -61,7 +63,12 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		walletAddresses,
 	)
 
-	tmpEthClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", n.gethNetwork.WebSocketPorts[0])
+	tmpHostConfig := config.HostConfig{
+		L1NodeHost:          Localhost,
+		L1NodeWebsocketPort: n.gethNetwork.WebSocketPorts[0],
+		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
+	}
+	tmpEthClient, err := ethclient.NewEthClient(tmpHostConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -137,7 +144,13 @@ func (n *networkInMemGeth) TearDown() {
 }
 
 func createEthClientConnection(id int64, port uint) ethclient.EthClient {
-	ethnode, err := ethclient.NewEthClient(common.BigToAddress(big.NewInt(id)), Localhost, port)
+	hostConfig := config.HostConfig{
+		ID:                  common.BigToAddress(big.NewInt(id)),
+		L1NodeHost:          Localhost,
+		L1NodeWebsocketPort: port,
+		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
+	}
+	ethnode, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		panic(err)
 	}

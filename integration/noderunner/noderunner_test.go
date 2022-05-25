@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/integration"
@@ -43,11 +45,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 	address := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	hostConfig := hostrunner.DefaultHostConfig()
+	hostConfig := config.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
-	hostConfig.EnclaveAddr = enclaveAddr
-	hostConfig.ClientServerAddr = clientServerAddr
-	hostConfig.EthClientPort = gethWebsocketPort
+	hostConfig.EnclaveRPCAddress = enclaveAddr
+	hostConfig.ClientRPCAddress = clientServerAddr
+	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
 	enclaveConfig := enclaverunner.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
@@ -70,11 +72,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 		var result types.Header
 		err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if result.Number.Uint64() > 0 {
+		if err == nil && result.Number.Uint64() > 0 {
 			return
 		}
 	}
