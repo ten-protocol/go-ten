@@ -39,8 +39,6 @@ const (
 var timeout = 15 * time.Second
 
 func TestGethAllNodesJoinSameNetwork(t *testing.T) {
-	t.Parallel()
-
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
@@ -60,8 +58,6 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 }
 
 func TestGethGenesisParamsAreUsed(t *testing.T) {
-	t.Parallel()
-
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
@@ -78,8 +74,6 @@ func TestGethGenesisParamsAreUsed(t *testing.T) {
 }
 
 func TestGethTransactionCanBeSubmitted(t *testing.T) {
-	t.Parallel()
-
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
@@ -107,8 +101,6 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 }
 
 func TestGethTransactionIsMintedOverRPC(t *testing.T) {
-	t.Parallel()
-
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
