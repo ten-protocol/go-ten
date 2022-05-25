@@ -90,23 +90,23 @@ func ParseCLIArgs() config.HostConfig {
 		parsedP2PAddrs = []string{}
 	}
 
-	return config.HostConfig{
-		ID:                    common.BytesToAddress([]byte(*nodeID)),
-		IsGenesis:             *isGenesis,
-		GossipRoundDuration:   time.Duration(*gossipRoundNanos),
-		HasClientRPC:          true,
-		ClientRPCAddress:      *clientRPCAddress,
-		ClientRPCTimeout:      time.Duration(*enclaveRPCTimeoutSecs) * time.Second,
-		EnclaveRPCAddress:     *enclaveRPCAddress,
-		EnclaveRPCTimeout:     time.Duration(*clientRPCTimeoutSecs) * time.Second,
-		P2PAddress:            *p2pAddress,
-		AllP2PAddresses:       parsedP2PAddrs,
-		L1NodeHost:            *l1NodeHost,
-		L1NodeWebsocketPort:   uint(*l1NodePort),
-		L1ConnectionTimeout:   time.Duration(*l1ConnectionTimeoutSecs) * time.Second,
-		RollupContractAddress: common.BytesToAddress([]byte(*rollupContractAddress)),
-		PrivateKeyString:      *privateKeyStr,
-		LogPath:               *logPath,
-		ChainID:               *big.NewInt(*chainID),
-	}
+	defaultConfig.ID = common.BytesToAddress([]byte(*nodeID))
+	defaultConfig.IsGenesis = *isGenesis
+	defaultConfig.GossipRoundDuration = time.Duration(*gossipRoundNanos)
+	defaultConfig.HasClientRPC = true
+	defaultConfig.ClientRPCAddress = *clientRPCAddress
+	defaultConfig.ClientRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
+	defaultConfig.EnclaveRPCAddress = *enclaveRPCAddress
+	defaultConfig.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
+	defaultConfig.P2PAddress = *p2pAddress
+	defaultConfig.AllP2PAddresses = parsedP2PAddrs
+	defaultConfig.L1NodeHost = *l1NodeHost
+	defaultConfig.L1NodeWebsocketPort = uint(*l1NodePort)
+	defaultConfig.L1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
+	defaultConfig.RollupContractAddress = common.BytesToAddress([]byte(*rollupContractAddress))
+	defaultConfig.PrivateKeyString = *privateKeyStr
+	defaultConfig.LogPath = *logPath
+	defaultConfig.ChainID = *big.NewInt(*chainID)
+
+	return defaultConfig
 }
