@@ -59,6 +59,7 @@ func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodeco
 
 func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *nodecommon.Header, t nodecommon.L2Tx, usedGas *uint64, vmCfg vm.Config) (*types.Receipt, error) {
 	snap := s.Snapshot()
+	// todo - Author?
 	receipt, err := core2.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), &t, usedGas, vmCfg)
 	if err == nil {
 		return receipt, nil

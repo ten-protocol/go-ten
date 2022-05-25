@@ -385,7 +385,6 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// we have to create a new one from the mempool transactions
 	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.nodeID)
 	newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
-
 	newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
 	receipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.chainID)
 	// todo - only transactions that fail because of the nonce should be excluded
@@ -397,7 +396,6 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 			log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.nodeID), obscurocommon.ShortHash(tx.Hash()))
 		}
 	}
-	//}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
