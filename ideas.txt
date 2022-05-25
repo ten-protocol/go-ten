@@ -1,4 +1,13 @@
-1. How do you prevent multiple "genesis" nodes
+1. How do you prevent multiple "genesis" nodesda
+sd
+as
+d
+asd
+a
+sd
+a
+sd
+asd
  - publish the hash of the shared secret  to the L1, and also added to the haeder of the rollup?
  - hardcode the address of the management smart contract and each enclave can decide what to do when it ingests the blocks
 
