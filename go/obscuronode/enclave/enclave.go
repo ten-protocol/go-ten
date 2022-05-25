@@ -1,7 +1,12 @@
 package enclave
 
 import (
+	"bytes"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha512"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -49,10 +54,14 @@ type enclaveImpl struct {
 
 	// Toggles the speculative execution background process
 	speculativeExecutionEnabled bool
-	chainID                     int64 // The unique ID for the Obscuro chain. Required for Geth signing.
+	chainID                     int64               // The unique ID for the Obscuro chain. Required for Geth signing.
+	attestationProvider         AttestationProvider // interface for producing attestation reports and verifying them
+	publicKeySerialized         []byte
+	privateKey                  *rsa.PrivateKey
 }
 
 func (e *enclaveImpl) IsReady() error {
+	e.generateKeyPair()
 	return nil // The enclave is local so it is always ready
 }
 
@@ -176,7 +185,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 	return result
 }
 
-// SubmitBlock is used to update the enclave with an additional block.
+// SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
 	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
 	if e.isGenesisBlock(&block) {
@@ -407,9 +416,15 @@ func (e *enclaveImpl) Stop() error {
 	return nil
 }
 
-func (e *enclaveImpl) Attestation() obscurocommon.AttestationReport {
-	// Todo
-	return obscurocommon.AttestationReport{Owner: e.nodeID}
+func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
+	if e.publicKeySerialized == nil {
+		panic("public key not initialized, we can't produce the attestation report")
+	}
+	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.nodeID)
+	if err != nil {
+		panic("Failed to produce remote report.")
+	}
+	return report
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
@@ -420,16 +435,49 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 		log.Panic("could not generate secret. Cause: %s", err)
 	}
 	e.storage.StoreSecret(secret)
-	return encryptSecret(secret)
+	// todo do we need to worry about this failing?
+	encSec, _ := e.encryptSecret(e.publicKeySerialized, secret)
+	return encSec
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) {
-	e.storage.StoreSecret(decryptSecret(secret))
+func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) error {
+	secret, err := e.decryptSecret(s)
+	if err != nil {
+		return err
+	}
+	e.storage.StoreSecret(secret)
+	log.Trace("Secret decrypted and stored. Secret: %v", secret)
+	return nil
 }
 
-func (e *enclaveImpl) FetchSecret(obscurocommon.AttestationReport) obscurocommon.EncryptedSharedEnclaveSecret {
-	return encryptSecret(e.storage.FetchSecret())
+// ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
+func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
+	data, err := e.attestationProvider.VerifyReport(att)
+	if err != nil {
+		return nil, err
+	}
+	// Then we verify the public key provided has come from the same enclave as that attestation report
+	if err = verifyIdentity(data, att); err != nil {
+		return nil, err
+	}
+	nodecommon.LogWithID(e.nodeShortID, "Successfully verified attestation and identity. Owner: %s", att.Owner)
+
+	secret := e.storage.FetchSecret()
+	if secret == nil {
+		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
+	}
+	return e.encryptSecret(att.PubKey, secret)
+}
+
+func verifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {
+	expectedIDHash := getIDHash(att.Owner, att.PubKey)
+	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
+	if !bytes.Equal(expectedIDHash, data[:len(expectedIDHash)]) {
+		return fmt.Errorf("failed to verify hash for attestation report with owner: %s", att.Owner)
+	}
+	return nil
 }
 
 func (e *enclaveImpl) IsInitialised() bool {
@@ -485,14 +533,40 @@ func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockSta
 	}
 }
 
-// Todo - implement with crypto
-func decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) obscurocore.SharedEnclaveSecret {
-	return obscurocore.SharedEnclaveSecret(secret)
+func (e *enclaveImpl) generateKeyPair() {
+	if len(e.publicKeySerialized) > 0 {
+		// keys already created
+		return
+	}
+	// todo: This should be generated deterministically based on some enclave attributes if possible
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic("Failed to create RSA key")
+	}
+	e.publicKeySerialized = x509.MarshalPKCS1PublicKey(&key.PublicKey)
+	e.privateKey = key
 }
 
-// Todo - implement with crypto
-func encryptSecret(secret obscurocore.SharedEnclaveSecret) obscurocommon.EncryptedSharedEnclaveSecret {
-	return obscurocommon.EncryptedSharedEnclaveSecret(secret)
+// Todo - implement with better crypto
+func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) ([]byte, error) {
+	if e.privateKey == nil {
+		return nil, errors.New("private key not found - shouldn't happen")
+	}
+	return DecryptWithPrivateKey(secret, e.privateKey)
+}
+
+// Todo - implement with better crypto
+func (e *enclaveImpl) encryptSecret(pubKeyEncoding []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+	key, err := x509.ParsePKCS1PublicKey(pubKeyEncoding)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key %w", err)
+	}
+
+	encKey, err := EncryptWithPublicKey(secret, key)
+	if err != nil {
+		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoding, encKey)
+	}
+	return encKey, err
 }
 
 // internal structure to pass information.
@@ -520,6 +594,7 @@ func NewEnclave(
 	nodeID common.Address,
 	chainID int64,
 	mining bool,
+	attestation bool,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	validateBlocks bool,
@@ -540,6 +615,14 @@ func NewEnclave(
 		nodecommon.LogWithID(obscurocommon.ShortAddress(nodeID), "validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
+	var attestationProvider AttestationProvider
+	if attestation {
+		attestationProvider = &EgoAttestationProvider{}
+	} else {
+		nodecommon.LogWithID(nodeShortID, "WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
+		attestationProvider = &DummyAttestationProvider{}
+	}
+
 	return &enclaveImpl{
 		nodeID:                      nodeID,
 		nodeShortID:                 nodeShortID,
@@ -558,5 +641,26 @@ func NewEnclave(
 		erc20ContractLib:            erc20ContractLib,
 		speculativeExecutionEnabled: false, // TODO - reenable
 		chainID:                     chainID,
+		attestationProvider:         attestationProvider,
 	}
+}
+
+// EncryptWithPublicKey encrypts data with public key
+func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
+	hash := sha512.New()
+	ciphertext, err := rsa.EncryptOAEP(hash, rand.Reader, pub, msg, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt with public key. %w", err)
+	}
+	return ciphertext, nil
+}
+
+// DecryptWithPrivateKey decrypts data with private key
+func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
+	hash := sha512.New()
+	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt with private key. %w", err)
+	}
+	return plaintext, nil
 }

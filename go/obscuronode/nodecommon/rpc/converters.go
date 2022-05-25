@@ -13,12 +13,12 @@ import (
 // Functions to convert classes that need to be sent between the host and the enclave to and from their equivalent
 // Protobuf message classes.
 
-func ToAttestationReportMsg(report obscurocommon.AttestationReport) generated.AttestationReportMsg {
-	return generated.AttestationReportMsg{Owner: report.Owner.Bytes()}
+func ToAttestationReportMsg(report *obscurocommon.AttestationReport) generated.AttestationReportMsg {
+	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, Owner: report.Owner.Bytes()}
 }
 
-func FromAttestationReportMsg(msg *generated.AttestationReportMsg) obscurocommon.AttestationReport {
-	return obscurocommon.AttestationReport{Owner: common.BytesToAddress(msg.Owner)}
+func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *obscurocommon.AttestationReport {
+	return &obscurocommon.AttestationReport{Report: msg.Report, PubKey: msg.PubKey, Owner: common.BytesToAddress(msg.Owner)}
 }
 
 func ToBlockSubmissionResponseMsg(response nodecommon.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {

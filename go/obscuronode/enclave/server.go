@@ -38,6 +38,7 @@ func StartServer(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	validateBlocks bool,
+	attestation bool,
 	genesisJSON []byte,
 	collector StatsCollector,
 ) (func(), error) {
@@ -47,7 +48,7 @@ func StartServer(
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, chainID, true, mgmtContractLib, erc20ContractLib, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(nodeID, chainID, true, attestation, mgmtContractLib, erc20ContractLib, validateBlocks, genesisJSON, collector),
 		rpcServer:   grpc.NewServer(),
 		nodeShortID: obscurocommon.ShortAddress(nodeID),
 	}
@@ -69,12 +70,16 @@ func StartServer(
 
 // IsReady returns a nil error to indicate that the server is ready.
 func (s *server) IsReady(context.Context, *generated.IsReadyRequest) (*generated.IsReadyResponse, error) {
-	return &generated.IsReadyResponse{}, nil
+	errStr := ""
+	if err := s.enclave.IsReady(); err != nil {
+		errStr = err.Error()
+	}
+	return &generated.IsReadyResponse{Error: errStr}, nil
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
 	attestation := s.enclave.Attestation()
-	msg := generated.AttestationReportMsg{Owner: attestation.Owner.Bytes()}
+	msg := generated.AttestationReportMsg{Report: attestation.Report, PubKey: attestation.PubKey, Owner: attestation.Owner.Bytes()}
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
@@ -83,15 +88,18 @@ func (s *server) GenerateSecret(context.Context, *generated.GenerateSecretReques
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
-func (s *server) FetchSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.FetchSecretResponse, error) {
+func (s *server) ShareSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.ShareSecretResponse, error) {
 	attestationReport := rpc.FromAttestationReportMsg(request.AttestationReportMsg)
-	secret := s.enclave.FetchSecret(attestationReport)
-	return &generated.FetchSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
+	secret, err := s.enclave.ShareSecret(attestationReport)
+	return &generated.ShareSecretResponse{EncryptedSharedEnclaveSecret: secret}, err
 }
 
 func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
-	s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret)
-	return &generated.InitEnclaveResponse{}, nil
+	errStr := ""
+	if err := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); err != nil {
+		errStr = err.Error()
+	}
+	return &generated.InitEnclaveResponse{Error: errStr}, nil
 }
 
 func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest) (*generated.IsInitialisedResponse, error) {
