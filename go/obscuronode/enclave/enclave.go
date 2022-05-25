@@ -61,7 +61,6 @@ type enclaveImpl struct {
 }
 
 func (e *enclaveImpl) IsReady() error {
-	e.generateKeyPair()
 	return nil // The enclave is local so it is always ready
 }
 
@@ -537,8 +536,7 @@ func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockSta
 
 func (e *enclaveImpl) generateKeyPair() {
 	if len(e.publicKeySerialized) > 0 {
-		// keys already created
-		return
+		panic("This should only be called once, at initialisation time.")
 	}
 	// todo: This should be generated deterministically based on some enclave attributes if possible
 	key, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -627,7 +625,7 @@ func NewEnclave(
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
-	return &enclaveImpl{
+	enclave := &enclaveImpl{
 		nodeID:                      nodeID,
 		nodeShortID:                 nodeShortID,
 		mining:                      mining,
@@ -647,6 +645,8 @@ func NewEnclave(
 		chainID:                     chainID,
 		attestationProvider:         attestationProvider,
 	}
+	enclave.generateKeyPair()
+	return enclave
 }
 
 // EncryptWithPublicKey encrypts data with public key
