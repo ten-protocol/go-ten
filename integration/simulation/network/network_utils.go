@@ -63,7 +63,6 @@ func createInMemObscuroNode(
 		HasClientRPC:        false,
 	}
 
-
 	enclaveClient := enclave.NewEnclave(hostConfig.ID, integration.ObscuroChainID, true, false, mgmtContractLib, stableTokenContractLib, validateBlocks, genesisJSON, stats)
 
 	// create an in memory obscuro node

@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"io/ioutil"
 	"math/big"
 	"strings"
+
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -88,7 +89,6 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 
 	case RequestSecretMethod:
 		return unpackRequestSecretTx(tx, method, contractCallData)
-
 	}
 
 	return nil

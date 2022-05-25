@@ -88,13 +88,13 @@ func ParseCLIArgs() EnclaveConfig {
 	}
 
 	return EnclaveConfig{
-		NodeID:          *nodeID,
-		Address:         *port,
-		ContractAddress: *contractAddress,
-		WriteToLogs:     *writeToLogs,
-		LogPath:         *logPath,
-		ChainID:         *chainID,
-		VerifyL1Blocks:  *verifyL1Blocks,
+		NodeID:             *nodeID,
+		Address:            *port,
+		ContractAddress:    *contractAddress,
+		WriteToLogs:        *writeToLogs,
+		LogPath:            *logPath,
+		ChainID:            *chainID,
+		VerifyL1Blocks:     *verifyL1Blocks,
 		DisableAttestation: *disableAttestation,
 	}
 }

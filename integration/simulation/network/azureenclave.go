@@ -2,9 +2,10 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 

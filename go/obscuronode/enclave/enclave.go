@@ -54,7 +54,7 @@ type enclaveImpl struct {
 
 	// Toggles the speculative execution background process
 	speculativeExecutionEnabled bool
-	chainID                     int64 // The unique ID for the Obscuro chain. Required for Geth signing.
+	chainID                     int64               // The unique ID for the Obscuro chain. Required for Geth signing.
 	attestationProvider         AttestationProvider // interface for producing attestation reports and verifying them
 	publicKeySerialized         []byte
 	privateKey                  *rsa.PrivateKey
