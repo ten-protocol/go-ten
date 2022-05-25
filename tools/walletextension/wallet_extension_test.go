@@ -39,8 +39,6 @@ const (
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	t.Parallel()
-
 	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
@@ -57,8 +55,6 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	t.Parallel()
-
 	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
@@ -77,8 +73,6 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	t.Parallel()
-
 	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
@@ -103,8 +97,6 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	t.Parallel()
-
 	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
@@ -130,8 +122,6 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	t.Parallel()
-
 	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
@@ -162,8 +152,6 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	t.Parallel()
-
 	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
@@ -195,8 +183,6 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	t.Parallel()
-
 	startPort := getStartPort()
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
