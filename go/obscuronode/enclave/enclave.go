@@ -534,18 +534,13 @@ func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockSta
 	}
 }
 
-func (e *enclaveImpl) generateKeyPair() {
-	if len(e.publicKeySerialized) > 0 {
-		panic("This should only be called once, at initialisation time.")
-	}
+func generateKeyPair() *rsa.PrivateKey {
 	// todo: This should be generated deterministically based on some enclave attributes if possible
 	key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		panic("Failed to create RSA key")
 	}
-	e.publicKeySerialized = x509.MarshalPKCS1PublicKey(&key.PublicKey)
-	e.privateKey = key
-	nodecommon.LogWithID(e.nodeShortID, "Generated public key %s", common.Bytes2Hex(e.publicKeySerialized))
+	return key
 }
 
 // Todo - implement with better crypto
@@ -625,7 +620,9 @@ func NewEnclave(
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
-	enclave := &enclaveImpl{
+	privKey := generateKeyPair()
+
+	return &enclaveImpl{
 		nodeID:                      nodeID,
 		nodeShortID:                 nodeShortID,
 		mining:                      mining,
@@ -644,9 +641,9 @@ func NewEnclave(
 		speculativeExecutionEnabled: false, // TODO - reenable
 		chainID:                     chainID,
 		attestationProvider:         attestationProvider,
+		privateKey:                  privKey,
+		publicKeySerialized:         x509.MarshalPKCS1PublicKey(&privKey.PublicKey),
 	}
-	enclave.generateKeyPair()
-	return enclave
 }
 
 // EncryptWithPublicKey encrypts data with public key
