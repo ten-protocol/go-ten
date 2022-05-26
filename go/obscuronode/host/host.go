@@ -118,7 +118,7 @@ func (a *Node) Start() {
 		// Create the shared secret and submit it to the management contract for storage
 		attestation := a.EnclaveClient.Attestation()
 		if attestation.Owner != a.ID {
-			log.Panic(">   Agg%d: genesis node has ID %d, but its enclave produced an attestation using ID %d", a.ID.Hex(), attestation.Owner.Hex())
+			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
 		}
 		encodedAttestation := nodecommon.EncodeAttestation(attestation)
 		l1tx := &obscurocommon.L1StoreSecretTx{
@@ -458,7 +458,7 @@ func (a *Node) requestSecret() {
 	nodecommon.LogWithID(a.shortID, "Requesting secret.")
 	att := a.EnclaveClient.Attestation()
 	if att.Owner != a.ID {
-		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), att.Owner.Hex())
+		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation := nodecommon.EncodeAttestation(att)
 	l1tx := &obscurocommon.L1RequestSecretTx{
