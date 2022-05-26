@@ -21,10 +21,10 @@ func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
+func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error { //nolint:staticcheck
 	switch method {
 	case obscuroclient.RPCGetID:
-		result = c.obscuroAPI.GetID()
+		result = c.obscuroAPI.GetID() //nolint
 
 	case obscuroclient.RPCSendTransactionEncrypted:
 		if len(args) != 1 {
@@ -38,10 +38,10 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		c.obscuroAPI.SendTransactionEncrypted(tx)
 
 	case obscuroclient.RPCGetCurrentBlockHead:
-		result = c.obscuroAPI.GetCurrentBlockHead()
+		result = c.obscuroAPI.GetCurrentBlockHead() //nolint
 
 	case obscuroclient.RPCGetCurrentRollupHead:
-		result = c.obscuroAPI.GetCurrentRollupHead()
+		result = c.obscuroAPI.GetCurrentRollupHead() //nolint
 
 	case obscuroclient.RPCGetRollupHeader:
 		if len(args) != 1 {
@@ -52,7 +52,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCGetRollupHeader)
 		}
 
-		result = c.obscuroAPI.GetRollupHeader(hash)
+		result = c.obscuroAPI.GetRollupHeader(hash) //nolint
 
 	case obscuroclient.RPCGetTransaction:
 		if len(args) != 1 {
@@ -63,7 +63,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCGetTransaction)
 		}
 
-		result = c.obscuroAPI.GetTransaction(hash)
+		result = c.obscuroAPI.GetTransaction(hash) //nolint
 
 	case obscuroclient.RPCBalance:
 		if len(args) != 1 {
@@ -74,7 +74,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Address", obscuroclient.RPCBalance)
 		}
 
-		result = c.obscuroAPI.Balance(address)
+		result = c.obscuroAPI.Balance(address) //nolint
 
 	case obscuroclient.RPCStopHost:
 		c.obscuroAPI.StopHost()
