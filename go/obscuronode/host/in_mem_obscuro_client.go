@@ -21,7 +21,7 @@ func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error { //nolint:staticcheck
+func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case obscuroclient.RPCGetID:
 		result = c.obscuroAPI.GetID() //nolint
