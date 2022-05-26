@@ -49,7 +49,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
 		agg := createSocketObscuroNode(
-			int64(i),
+			int64(i+1),
 			isGenesis,
 			params.AvgGossipPeriod,
 			stats,
@@ -101,8 +101,10 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
-		go (*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
-		go (*temp).Stop()
+		go func() {
+			defer (*temp).Stop()
+			(*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+		}()
 	}
 
 	for _, node := range n.ethNodes {

@@ -225,7 +225,7 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for err := a.EnclaveClient.IsReady(); err != nil; {
 		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for enclave. Error: %v", err)
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave on %s. Error: %v", a.config.EnclaveRPCAddress, err)
 			counter = 0
 		}
 
