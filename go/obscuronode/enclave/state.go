@@ -84,7 +84,6 @@ func updateState(
 		obscurocommon.ShortHash(bs.HeadRollup),
 	))
 
-	bss.SetBlockState(b.Hash(), bs, head)
 	if bs.FoundNewRollup {
 		// todo - root
 		_, err := stateDB.Commit(true)
@@ -92,6 +91,7 @@ func updateState(
 			log.Panic("could not commit new rollup to state DB. Cause: %s", err)
 		}
 	}
+	bss.SetBlockState(b.Hash(), bs, head)
 
 	return bs
 }
