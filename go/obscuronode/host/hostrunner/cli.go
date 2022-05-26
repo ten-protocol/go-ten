@@ -35,8 +35,8 @@ type HostConfigToml struct {
 	ChainID                 big.Int
 }
 
-// ParseConfig returns a HostConfig based on either the file identified by the `config` flag, or the flags with
-// specific defaults (if the `config` isn't specified.
+// ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
+// specific defaults (if the `config` flag isn't specified).
 func ParseConfig() config.HostConfig {
 	configPath := flag.String(configName, "", configUsage)
 	flag.Parse()
