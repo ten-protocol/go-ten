@@ -107,7 +107,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.processedTxsMap = makeMap(env.processedTxs)
 
 			// calculate the State after executing them
-			evm.ExecuteTransactions(env.processedTxs, env.state, env.headRollup.Header, e.storage, e.chainID)
+			evm.ExecuteTransactions(env.processedTxs, env.state, env.headRollup.Header, e.storage, e.config.ChainID)
 
 		case tx := <-e.txCh:
 			// only process transactions if there is already a rollup to use as parent
@@ -116,7 +116,7 @@ func (e *enclaveImpl) start(block types.Block) {
 				if !found {
 					env.processedTxsMap[tx.Hash()] = tx
 					env.processedTxs = append(env.processedTxs, tx)
-					evm.ExecuteTransactions([]nodecommon.L2Tx{tx}, env.state, env.header, e.storage, e.chainID)
+					evm.ExecuteTransactions([]nodecommon.L2Tx{tx}, env.state, env.header, e.storage, e.config.ChainID)
 				}
 			}
 
@@ -166,7 +166,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.chainID)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ChainID)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -216,7 +216,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.chainID)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ChainID)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -328,7 +328,7 @@ func (e *enclaveImpl) Balance(address common.Address) uint64 {
 		panic("not found")
 	}
 	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return evm.BalanceOfErc20(address, s, r.Header, e.storage, e.chainID)
+	return evm.BalanceOfErc20(address, s, r.Header, e.storage, e.config.ChainID)
 }
 
 func (e *enclaveImpl) Nonce(address common.Address) uint64 {
@@ -385,25 +385,25 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// if !speculativeExecutionSucceeded {
 	// In case the speculative execution thread has not succeeded in producing a valid rollup
 	// we have to create a new one from the mempool transactions
-	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.nodeID)
+	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.config.HostID)
 	newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 	newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
-	receipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.chainID)
+	receipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.config.ChainID)
 	// todo - only transactions that fail because of the nonce should be excluded
 	for _, tx := range newRollupTxs {
 		_, f := receipts[tx.Hash()]
 		if f {
 			successfulTransactions = append(successfulTransactions, tx)
 		} else {
-			log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.nodeID), obscurocommon.ShortHash(tx.Hash()))
+			log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.config.HostID), obscurocommon.ShortHash(tx.Hash()))
 		}
 	}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib, newRollupState, e.chainID)
-	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.chainID)
+	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib, newRollupState, e.config.ChainID)
+	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.config.ChainID)
 	for _, tx := range depositTxs {
 		if depositReceipts[tx.Hash()] == nil {
 			panic("Should not happen")
