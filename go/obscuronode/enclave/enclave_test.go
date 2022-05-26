@@ -1,12 +1,10 @@
 package enclave
 
 import (
-	"crypto/rand"
-	"math"
 	"math/big"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -19,7 +17,7 @@ import (
 const testChainID = 1234
 
 func TestValidSignatureVerifies(t *testing.T) {
-	tx := CreateL2Tx()
+	tx := datagenerator.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
 	signer := types.NewLondonSigner(big.NewInt(testChainID))
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
@@ -30,7 +28,7 @@ func TestValidSignatureVerifies(t *testing.T) {
 }
 
 func TestUnsignedTxDoesNotVerify(t *testing.T) {
-	tx := CreateL2Tx()
+	tx := datagenerator.CreateL2Tx()
 
 	if err := verifySignature(testChainID, tx); err == nil {
 		t.Errorf("transaction was not signed but verified anyway: %v", err)
@@ -38,7 +36,7 @@ func TestUnsignedTxDoesNotVerify(t *testing.T) {
 }
 
 func TestModifiedTxDoesNotVerify(t *testing.T) {
-	txData := CreateL2TxData()
+	txData := datagenerator.CreateL2TxData()
 	tx := types.NewTx(txData)
 	privateKey, _ := crypto.GenerateKey()
 	signer := types.NewLondonSigner(big.NewInt(testChainID))
@@ -53,7 +51,7 @@ func TestModifiedTxDoesNotVerify(t *testing.T) {
 }
 
 func TestIncorrectSignerDoesNotVerify(t *testing.T) {
-	tx := CreateL2Tx()
+	tx := datagenerator.CreateL2Tx()
 	privateKey, _ := crypto.GenerateKey()
 	incorrectChainID := int64(testChainID + 1)
 	signer := types.NewLondonSigner(big.NewInt(incorrectChainID))
@@ -85,19 +83,5 @@ func TestInvalidBlocksAreRejected(t *testing.T) {
 		if ingestionFailedResponse == nil {
 			t.Errorf("expected block with invalid header to be rejected but was accepted")
 		}
-	}
-}
-
-// Creates a dummy L2Tx for testing
-func CreateL2Tx() *nodecommon.L2Tx {
-	return types.NewTx(CreateL2TxData())
-}
-
-// Creates a dummy types.LegacyTx for testing
-func CreateL2TxData() *types.LegacyTx {
-	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
-	encodedTxData := make([]byte, 0)
-	return &types.LegacyTx{
-		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: big.NewInt(1), Data: encodedTxData,
 	}
 }
