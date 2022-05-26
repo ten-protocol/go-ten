@@ -107,7 +107,7 @@ func fileBasedConfig(configPath string) config.HostConfig {
 	return config.HostConfig{
 		ID:                    common.HexToAddress(tomlConfig.ID),
 		IsGenesis:             tomlConfig.IsGenesis,
-		GossipRoundDuration:   time.Duration(tomlConfig.GossipRoundNanos) * time.Second,
+		GossipRoundDuration:   time.Duration(tomlConfig.GossipRoundNanos),
 		HasClientRPC:          true,
 		ClientRPCAddress:      tomlConfig.ClientRPCAddress,
 		ClientRPCTimeout:      time.Duration(tomlConfig.ClientRPCTimeoutSecs) * time.Second,
