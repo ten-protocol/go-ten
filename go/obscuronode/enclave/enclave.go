@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
@@ -55,6 +56,8 @@ type enclaveImpl struct {
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 	publicKeySerialized []byte
 	privateKey          *rsa.PrivateKey
+
+	blockProcessingMutex sync.Mutex
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -183,6 +186,9 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
+	e.blockProcessingMutex.Lock()
+	defer e.blockProcessingMutex.Unlock()
+
 	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
 	if e.isGenesisBlock(&block) {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
