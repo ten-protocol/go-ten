@@ -2,67 +2,87 @@ package hostrunner
 
 import (
 	"flag"
+	"fmt"
 	"math/big"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/naoina/toml"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const (
-	// Flag names, defaults and usages.
-	nodeIDName  = "id"
-	nodeIDUsage = "The 20 bytes of the node's address"
+// HostConfigToml is the structure that a host's .toml config is parsed into.
+type HostConfigToml struct {
+	ID                      string
+	IsGenesis               bool
+	GossipRoundNanos        time.Duration
+	ClientRPCAddress        string
+	ClientRPCTimeoutSecs    time.Duration //nolint:stylecheck
+	EnclaveRPCAddress       string
+	EnclaveRPCTimeoutSecs   time.Duration //nolint:stylecheck
+	P2PAddress              string
+	PeerP2PAddresses        []string
+	L1NodeHost              string
+	L1NodePort              uint
+	L1ConnectionTimeoutSecs time.Duration //nolint:stylecheck
+	RollupContractAddress   string
+	LogPath                 string
+	PrivateKey              string
+	ChainID                 big.Int
+}
 
-	isGenesisName  = "isGenesis"
-	isGenesisUsage = "Whether the node is the first node to join the network"
+// ParseConfig returns a HostConfig based on either the file identified by the `config` flag, or the flags with
+// specific defaults (if the `config` isn't specified.
+func ParseConfig() config.HostConfig {
+	configPath := flag.String(configName, "", configUsage)
+	flag.Parse()
 
-	gossipRoundNanosName  = "gossipRoundNanos"
-	gossipRoundNanosUsage = "The duration of the gossip round"
+	if *configPath != "" {
+		return fileBasedConfig(*configPath)
+	}
+	return flagBasedConfig()
+}
 
-	clientRPCAddressName  = "clientRPCAddress"
-	clientRPCAddressUsage = "The address on which to listen for client application RPC requests"
+// Parses the config from the .toml file at configPath.
+func fileBasedConfig(configPath string) config.HostConfig {
+	bytes, err := os.ReadFile(configPath)
+	if err != nil {
+		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
+	}
 
-	clientRPCTimeoutSecsName  = "clientRPCTimeoutSecs"
-	clientRPCTimeoutSecsUsage = "The timeout for client <-> host RPC communication"
+	var tomlConfig HostConfigToml
+	err = toml.Unmarshal(bytes, &tomlConfig)
+	if err != nil {
+		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
+	}
 
-	enclaveRPCAddressName  = "enclaveRPCAddress"
-	enclaveRPCAddressUsage = "The address to use to connect to the Obscuro enclave service"
+	return config.HostConfig{
+		ID:                    common.HexToAddress(tomlConfig.ID),
+		IsGenesis:             tomlConfig.IsGenesis,
+		GossipRoundDuration:   tomlConfig.GossipRoundNanos,
+		HasClientRPC:          true,
+		ClientRPCAddress:      tomlConfig.ClientRPCAddress,
+		ClientRPCTimeout:      tomlConfig.ClientRPCTimeoutSecs * time.Second, //nolint:durationcheck
+		EnclaveRPCAddress:     tomlConfig.EnclaveRPCAddress,
+		EnclaveRPCTimeout:     tomlConfig.EnclaveRPCTimeoutSecs * time.Second, //nolint:durationcheck
+		P2PAddress:            tomlConfig.P2PAddress,
+		AllP2PAddresses:       tomlConfig.PeerP2PAddresses,
+		L1NodeHost:            tomlConfig.L1NodeHost,
+		L1NodeWebsocketPort:   tomlConfig.L1NodePort,
+		L1ConnectionTimeout:   tomlConfig.L1ConnectionTimeoutSecs * time.Second, //nolint:durationcheck
+		RollupContractAddress: common.HexToAddress(tomlConfig.RollupContractAddress),
+		LogPath:               tomlConfig.LogPath,
+		PrivateKeyString:      tomlConfig.PrivateKey,
+		ChainID:               tomlConfig.ChainID,
+	}
+}
 
-	enclaveRPCTimeoutSecsName  = "enclaveRPCTimeoutSecs"
-	enclaveRPCTimeoutSecsUsage = "The timeout for host <-> enclave RPC communication"
-
-	p2pAddressName  = "p2pAddress"
-	p2pAddressUsage = "The P2P address for our node"
-
-	peerP2PAddressesName = "peerP2PAddresses"
-	peerP2PAddrsUsage    = "The P2P addresses of our peer nodes as a comma-separated list"
-
-	l1NodeHostName  = "l1NodeHost"
-	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
-
-	l1NodePortName  = "l1NodePort"
-	l1NodePortUsage = "The port on which to connect to the Ethereum client"
-
-	l1ConnectionTimeoutSecsName  = "l1ConnectionTimeoutSecs"
-	l1ConnectionTimeoutSecsUsage = "The timeout for connecting to the Ethereum client"
-
-	rollupContractAddrName  = "rollupContractAddress"
-	rollupContractAddrUsage = "The management contract address on the L1"
-
-	logPathName  = "logPath"
-	logPathUsage = "The path to use for the host's log file"
-
-	privateKeyName  = "privateKey"
-	privateKeyUsage = "The private key for the L1 node account"
-
-	chainIDName  = "chainID"
-	chainIDUsage = "The ID of the L1 chain"
-)
-
-func ParseCLIArgs() config.HostConfig {
+// Parses the config from the command line flags with specific defaults.
+func flagBasedConfig() config.HostConfig {
 	defaultConfig := config.DefaultHostConfig()
 
 	nodeID := flag.String(nodeIDName, defaultConfig.ID.Hex(), nodeIDUsage)
