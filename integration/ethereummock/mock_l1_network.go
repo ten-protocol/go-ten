@@ -85,7 +85,7 @@ func printBlock(b *types.Block, m Node) string {
 		switch l1Tx := t.(type) {
 		case *obscurocommon.L1RollupTx:
 			r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
-			txs = append(txs, fmt.Sprintf("r_%d", obscurocommon.ShortHash(r.Hash())))
+			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", obscurocommon.ShortHash(r.Hash()), tx.Nonce()))
 
 		case *obscurocommon.L1DepositTx:
 			var to uint64
