@@ -65,7 +65,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	obscuroClient := obscuroclient.NewClient(clientServerAddr)
 
 	defer network.StopNodes()
-	defer obscuroClient.Call(nil, obscuroclient.RPCStopHost)
+	defer obscuroClient.Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
 
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
