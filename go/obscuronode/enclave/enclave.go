@@ -533,7 +533,7 @@ func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockSta
 
 func generateKeyPair() *rsa.PrivateKey {
 	// todo: This should be generated deterministically based on some enclave attributes if possible
-	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		panic("Failed to create RSA key")
 	}
