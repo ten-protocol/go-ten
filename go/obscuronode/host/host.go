@@ -400,6 +400,8 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
 			}
 
+			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
+			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.DB().WasSubmitted(winnerRollup.Header.Hash()) {
 				a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
 				a.DB().AddSubmittedRollup(winnerRollup.Header.Hash())
