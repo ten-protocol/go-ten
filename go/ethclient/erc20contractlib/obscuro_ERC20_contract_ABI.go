@@ -22,16 +22,21 @@ func init() { //nolint:gochecknoinits
 
 var obscuroERC20ContractABIJSON = abi.ABI{}
 
-const Transfer = "transfer"
+const (
+	TransferFunction  = "transfer"
+	BalanceOfFunction = "balanceOf"
+	AmountField       = "amount"
+	ToField           = "to"
+)
 
 func DecodeTransferTx(t types.Transaction) (bool, *common.Address, *big.Int) {
-	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:4])
+	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:methodBytesLen])
 	if err != nil {
 		log.Info("Could not decode tx %d, Err: %s", obscurocommon.ShortHash(t.Hash()), err)
 		return false, nil, nil
 	}
 
-	if method.Name != Transfer {
+	if method.Name != TransferFunction {
 		return false, nil, nil
 	}
 
@@ -40,13 +45,13 @@ func DecodeTransferTx(t types.Transaction) (bool, *common.Address, *big.Int) {
 		panic(err)
 	}
 
-	address := args["to"].(common.Address)
-	amount := args["amount"].(*big.Int)
+	address := args[ToField].(common.Address)
+	amount := args[AmountField].(*big.Int)
 	return true, &address, amount
 }
 
 func CreateTransferTxData(address common.Address, amount uint64) []byte {
-	transferERC20data, err := obscuroERC20ContractABIJSON.Pack("transfer", address, big.NewInt(int64(amount)))
+	transferERC20data, err := obscuroERC20ContractABIJSON.Pack(TransferFunction, address, big.NewInt(int64(amount)))
 	if err != nil {
 		panic(err)
 	}
@@ -54,7 +59,7 @@ func CreateTransferTxData(address common.Address, amount uint64) []byte {
 }
 
 func CreateBalanceOfData(address common.Address) []byte {
-	balanceData, err := obscuroERC20ContractABIJSON.Pack("balanceOf", address)
+	balanceData, err := obscuroERC20ContractABIJSON.Pack(BalanceOfFunction, address)
 	if err != nil {
 		panic(err)
 	}
