@@ -3,17 +3,21 @@ package enclave
 import (
 	"fmt"
 	"math/big"
+	"sort"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -27,6 +31,7 @@ func updateState(
 	rollupResolver db.RollupResolver,
 	bss db.BlockStateStorage,
 	nodeID uint64,
+	chainID int64,
 ) *core.BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := bss.FetchBlockState(b.Hash())
@@ -59,20 +64,19 @@ func updateState(
 			nodecommon.LogWithID(nodeID, "Could not find block parent. This should not happen.")
 			return nil
 		}
-		parentState = updateState(p, blockResolver, mgmtContractLib, erc20ContractLib, rollupResolver, bss, nodeID)
+		parentState = updateState(p, blockResolver, mgmtContractLib, erc20ContractLib, rollupResolver, bss, nodeID, chainID)
 	}
 
 	if parentState == nil {
-		nodecommon.LogWithID(nodeID, "Something went wrong. There should be a parent here, blockNum=%d. \n Block: %d, Block Parent: %d - Header: %+v",
+		nodecommon.LogWithID(nodeID, "Something went wrong. There should be a parent here, blockNum=%d. \n Block: %d, Block Parent: %d ",
 			b.Number(),
 			obscurocommon.ShortHash(b.Hash()),
 			obscurocommon.ShortHash(b.Header().ParentHash),
-			b.Header(),
 		)
 		return nil
 	}
 
-	bs, stateDB, head := calculateBlockState(b, parentState, blockResolver, rollups, erc20ContractLib, rollupResolver, bss)
+	bs, stateDB, head := calculateBlockState(b, parentState, blockResolver, rollups, erc20ContractLib, rollupResolver, bss, chainID)
 	log.Trace(fmt.Sprintf(">   Agg%d: Calc block state b_%d: Found: %t - r_%d, ",
 		nodeID,
 		obscurocommon.ShortHash(b.Hash()),
@@ -80,7 +84,6 @@ func updateState(
 		obscurocommon.ShortHash(bs.HeadRollup),
 	))
 
-	bss.SetBlockState(b.Hash(), bs, head)
 	if bs.FoundNewRollup {
 		// todo - root
 		_, err := stateDB.Commit(true)
@@ -88,6 +91,7 @@ func updateState(
 			log.Panic("could not commit new rollup to state DB. Cause: %s", err)
 		}
 	}
+	bss.SetBlockState(b.Hash(), bs, head)
 
 	return bs
 }
@@ -125,9 +129,20 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 	return nil, false
 }
 
+// SortByNonce a very primitive way to implement mempool logic that
+// adds transactions sorted by the nonce in the rollup
+// which is what the EVM expects
+type SortByNonce core.L2Txs
+
+func (c SortByNonce) Len() int           { return len(c) }
+func (c SortByNonce) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c SortByNonce) Less(i, j int) bool { return c[i].Nonce() < c[j].Nonce() }
+
 // Calculate transactions to be included in the current rollup
-func currentTxs(head *core.Rollup, mempool []nodecommon.L2Tx, resolver db.RollupResolver) []nodecommon.L2Tx {
-	return findTxsNotIncluded(head, mempool, resolver)
+func currentTxs(head *core.Rollup, mempool core.L2Txs, resolver db.RollupResolver) core.L2Txs {
+	txs := findTxsNotIncluded(head, mempool, resolver)
+	sort.Sort(SortByNonce(txs))
+	return txs
 }
 
 func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) {
@@ -142,7 +157,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
 		case blockResolver.ProofHeight(r) > blockResolver.ProofHeight(rollups[win]): // newer rollups win
 			win = i
-		case r.Header.Nonce < rollups[win].Header.Nonce: // for rollups with the same proof, base on the nonce
+		case r.Header.Nonce < rollups[win].Header.Nonce: // for rollups with the same proof, the one with the lowest nonce wins
 			win = i
 		}
 	}
@@ -159,11 +174,11 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	}
 	// calculate the state to compare with what is in the Rollup
 	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
-	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.erc20ContractLib)
+	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.erc20ContractLib, stateDB, e.config.ChainID)
 	log.Info(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.config.HostID), len(depositTxs)))
 
-	executeTransactions(headRollup.Transactions, stateDB, headRollup.Header)
-	executeTransactions(depositTxs, stateDB, headRollup.Header)
+	evm.ExecuteTransactions(headRollup.Transactions, stateDB, headRollup.Header, e.storage, e.config.ChainID)
+	evm.ExecuteTransactions(depositTxs, stateDB, headRollup.Header, e.storage, e.config.ChainID)
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		log.Panic("could not commit to state DB. Cause: %s", err)
@@ -187,6 +202,8 @@ func extractDeposits(
 	toBlock *types.Block,
 	blockResolver db.BlockResolver,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	rollupState *state.StateDB,
+	chainID int64,
 ) []nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
@@ -211,12 +228,8 @@ func extractDeposits(
 			}
 
 			if depositTx, ok := t.(*obscurocommon.L1DepositTx); ok {
-				depL2TxData := core.L2TxData{
-					Type:   core.DepositTx,
-					To:     *depositTx.Sender,
-					Amount: depositTx.Amount,
-				}
-				allDeposits = append(allDeposits, *newL2Tx(depL2TxData))
+				depL2Tx := newDepositTx(*depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)), chainID)
+				allDeposits = append(allDeposits, depL2Tx)
 			}
 		}
 		if b.NumberU64() < height {
@@ -241,6 +254,7 @@ func calculateBlockState(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	rollupResolver db.RollupResolver,
 	bss db.BlockStateStorage,
+	chainID int64,
 ) (*core.BlockState, *state.StateDB, *core.Rollup) {
 	currentHead, found := rollupResolver.FetchRollup(parentState.HeadRollup)
 	if !found {
@@ -254,11 +268,11 @@ func calculateBlockState(
 		// todo transform into an eth block structure
 		parentRollup := rollupResolver.ParentRollup(newHeadRollup)
 		p := blockResolver.Proof(parentRollup)
-		depositTxs := extractDeposits(p, blockResolver.Proof(newHeadRollup), blockResolver, erc20ContractLib)
+		depositTxs := extractDeposits(p, blockResolver.Proof(newHeadRollup), blockResolver, erc20ContractLib, stateDB, chainID)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		executeTransactions(txsToProcess, stateDB, newHeadRollup.Header)
+		evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID)
 		// todo - handle failure , which means a new winner must be selected
 	} else {
 		newHeadRollup = currentHead
@@ -273,19 +287,29 @@ func calculateBlockState(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state vm.StateDB, header *nodecommon.Header) []nodecommon.Withdrawal {
+func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receipts map[common.Hash]*types.Receipt) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
-	withdrawalTxs := withdrawals(state, header.Hash())
 	// go through each transaction and check if the withdrawal was processed correctly
 	for i, t := range newHeadRollup.Transactions {
-		txData := core.TxData(&newHeadRollup.Transactions[i])
-		if txData.Type == core.WithdrawalTx && contains(withdrawalTxs, t.Hash()) {
-			w = append(w, nodecommon.Withdrawal{
-				Amount:  txData.Amount,
-				Address: txData.From,
-			})
+		found, address, amount := erc20contractlib.DecodeTransferTx(t)
+
+		if found && *t.To() == evm.Erc20ContractAddress && *address == evm.WithdrawalAddress {
+			receipt := receipts[t.Hash()]
+			if receipt != nil && receipt.Status == 1 {
+				signer := types.NewLondonSigner(big.NewInt(e.config.ChainID))
+				from, err := types.Sender(signer, &newHeadRollup.Transactions[i])
+				if err != nil {
+					panic(err)
+				}
+				state.Logs()
+				w = append(w, nodecommon.Withdrawal{
+					Amount:  amount.Uint64(),
+					Address: from,
+				})
+			}
 		}
 	}
+
 	// TODO - fix the withdrawals logic
 	// clearWithdrawals(state, withdrawalTxs)
 	return w
@@ -324,19 +348,25 @@ func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
 	}
 }
 
-func newL2Tx(data core.L2TxData) *nodecommon.L2Tx {
-	// Todo - fix the nonce logic for the synthetic deposit transactions.
-	nonce := big.NewInt(1)
-	enc, err := rlp.EncodeToBytes(data)
+func newDepositTx(address common.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64, chainID int64) nodecommon.L2Tx {
+	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
+	signer := types.NewLondonSigner(big.NewInt(chainID))
+
+	// The nonce is adjusted with the number of deposits added to the rollup already.
+	nonce := rollupState.GetNonce(evm.Erc20OwnerAddress) + adjustNonce
+
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    nonce,
+		Value:    common.Big0,
+		Gas:      1_000_000,
+		GasPrice: common.Big0,
+		Data:     transferERC20data,
+		To:       &evm.Erc20ContractAddress,
+	})
+
+	newTx, err := types.SignTx(tx, signer, evm.Erc20OwnerKey)
 	if err != nil {
 		log.Panic("could not encode L2 transaction data. Cause: %s", err)
 	}
-
-	return types.NewTx(&types.LegacyTx{
-		Nonce:    nonce.Uint64(),
-		Value:    big.NewInt(1),
-		Gas:      1,
-		GasPrice: big.NewInt(1),
-		Data:     enc,
-	})
+	return *newTx
 }

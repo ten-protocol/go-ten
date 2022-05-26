@@ -35,16 +35,60 @@ type HostConfigToml struct {
 	ChainID                 big.Int
 }
 
-// ParseConfig returns a HostConfig based on either the file identified by the `config` flag, or the flags with
-// specific defaults (if the `config` isn't specified.
+// ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
+// specific defaults (if the `config` flag isn't specified).
 func ParseConfig() config.HostConfig {
+	defaultConfig := config.DefaultHostConfig()
+
 	configPath := flag.String(configName, "", configUsage)
+	nodeID := flag.String(nodeIDName, defaultConfig.ID.Hex(), nodeIDUsage)
+	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
+	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
+	clientRPCAddress := flag.String(clientRPCAddressName, defaultConfig.ClientRPCAddress, clientRPCAddressUsage)
+	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, uint64(defaultConfig.ClientRPCTimeout.Seconds()), clientRPCTimeoutSecsUsage)
+	enclaveRPCAddress := flag.String(enclaveRPCAddressName, defaultConfig.EnclaveRPCAddress, enclaveRPCAddressUsage)
+	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(defaultConfig.EnclaveRPCTimeout.Seconds()), enclaveRPCTimeoutSecsUsage)
+	p2pAddress := flag.String(p2pAddressName, defaultConfig.P2PAddress, p2pAddressUsage)
+	allP2PAddresses := flag.String(peerP2PAddressesName, "", peerP2PAddrsUsage)
+	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.L1NodeHost, l1NodeHostUsage)
+	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.L1NodeWebsocketPort), l1NodePortUsage)
+	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.L1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
+	rollupContractAddress := flag.String(rollupContractAddrName, defaultConfig.RollupContractAddress.Hex(), rollupContractAddrUsage)
+	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
+	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
+	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
+
 	flag.Parse()
 
 	if *configPath != "" {
 		return fileBasedConfig(*configPath)
 	}
-	return flagBasedConfig()
+
+	parsedP2PAddrs := strings.Split(*allP2PAddresses, ",")
+	if *allP2PAddresses == "" {
+		// We handle the special case of an empty list.
+		parsedP2PAddrs = []string{}
+	}
+
+	defaultConfig.ID = common.HexToAddress(*nodeID)
+	defaultConfig.IsGenesis = *isGenesis
+	defaultConfig.GossipRoundDuration = time.Duration(*gossipRoundNanos)
+	defaultConfig.HasClientRPC = true
+	defaultConfig.ClientRPCAddress = *clientRPCAddress
+	defaultConfig.ClientRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
+	defaultConfig.EnclaveRPCAddress = *enclaveRPCAddress
+	defaultConfig.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
+	defaultConfig.P2PAddress = *p2pAddress
+	defaultConfig.AllP2PAddresses = parsedP2PAddrs
+	defaultConfig.L1NodeHost = *l1NodeHost
+	defaultConfig.L1NodeWebsocketPort = uint(*l1NodePort)
+	defaultConfig.L1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
+	defaultConfig.RollupContractAddress = common.HexToAddress(*rollupContractAddress)
+	defaultConfig.PrivateKeyString = *privateKeyStr
+	defaultConfig.LogPath = *logPath
+	defaultConfig.ChainID = *big.NewInt(*chainID)
+
+	return defaultConfig
 }
 
 // Parses the config from the .toml file at configPath.
@@ -79,54 +123,4 @@ func fileBasedConfig(configPath string) config.HostConfig {
 		PrivateKeyString:      tomlConfig.PrivateKey,
 		ChainID:               tomlConfig.ChainID,
 	}
-}
-
-// Parses the config from the command line flags with specific defaults.
-func flagBasedConfig() config.HostConfig {
-	defaultConfig := config.DefaultHostConfig()
-
-	nodeID := flag.String(nodeIDName, defaultConfig.ID.Hex(), nodeIDUsage)
-	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
-	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
-	clientRPCAddress := flag.String(clientRPCAddressName, defaultConfig.ClientRPCAddress, clientRPCAddressUsage)
-	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, uint64(defaultConfig.ClientRPCTimeout.Seconds()), clientRPCTimeoutSecsUsage)
-	enclaveRPCAddress := flag.String(enclaveRPCAddressName, defaultConfig.EnclaveRPCAddress, enclaveRPCAddressUsage)
-	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(defaultConfig.EnclaveRPCTimeout.Seconds()), enclaveRPCTimeoutSecsUsage)
-	p2pAddress := flag.String(p2pAddressName, defaultConfig.P2PAddress, p2pAddressUsage)
-	allP2PAddresses := flag.String(peerP2PAddressesName, "", peerP2PAddrsUsage)
-	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.L1NodeHost, l1NodeHostUsage)
-	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.L1NodeWebsocketPort), l1NodePortUsage)
-	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.L1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
-	rollupContractAddress := flag.String(rollupContractAddrName, defaultConfig.RollupContractAddress.Hex(), rollupContractAddrUsage)
-	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
-	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
-	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
-
-	flag.Parse()
-
-	parsedP2PAddrs := strings.Split(*allP2PAddresses, ",")
-	if *allP2PAddresses == "" {
-		// We handle the special case of an empty list.
-		parsedP2PAddrs = []string{}
-	}
-
-	defaultConfig.ID = common.HexToAddress(*nodeID)
-	defaultConfig.IsGenesis = *isGenesis
-	defaultConfig.GossipRoundDuration = time.Duration(*gossipRoundNanos)
-	defaultConfig.HasClientRPC = true
-	defaultConfig.ClientRPCAddress = *clientRPCAddress
-	defaultConfig.ClientRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
-	defaultConfig.EnclaveRPCAddress = *enclaveRPCAddress
-	defaultConfig.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
-	defaultConfig.P2PAddress = *p2pAddress
-	defaultConfig.AllP2PAddresses = parsedP2PAddrs
-	defaultConfig.L1NodeHost = *l1NodeHost
-	defaultConfig.L1NodeWebsocketPort = uint(*l1NodePort)
-	defaultConfig.L1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
-	defaultConfig.RollupContractAddress = common.HexToAddress(*rollupContractAddress)
-	defaultConfig.PrivateKeyString = *privateKeyStr
-	defaultConfig.LogPath = *logPath
-	defaultConfig.ChainID = *big.NewInt(*chainID)
-
-	return defaultConfig
 }

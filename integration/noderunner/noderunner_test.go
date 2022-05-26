@@ -68,7 +68,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	// we wait to ensure the RPC endpoint is up
-	wait := 20 // max wait in seconds
+	wait := 60 // max wait in seconds
 	for !tcpConnectionAvailable(clientServerAddr) {
 		if wait == 0 {
 			t.Fatal("RPC client server never became available")
