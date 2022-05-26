@@ -297,9 +297,9 @@ func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup
 			receipt := receipts[t.Hash()]
 			if receipt != nil && receipt.Status == 1 {
 				signer := types.NewLondonSigner(big.NewInt(e.config.ChainID))
-				from, err1 := types.Sender(signer, &newHeadRollup.Transactions[i])
-				if err1 != nil {
-					panic(err1)
+				from, err := types.Sender(signer, &newHeadRollup.Transactions[i])
+				if err != nil {
+					panic(err)
 				}
 				state.Logs()
 				w = append(w, nodecommon.Withdrawal{

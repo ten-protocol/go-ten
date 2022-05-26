@@ -5,6 +5,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+// L2Txs Todo - is this type useful?
 type L2Txs []nodecommon.L2Tx
 
 // BlockState - Represents the state after an L1 Block was processed.
