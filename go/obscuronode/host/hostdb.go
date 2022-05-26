@@ -19,13 +19,17 @@ type DB struct {
 	rollupLock        sync.RWMutex
 	currentRollupHead common.Hash
 	rollupDB          map[common.Hash]*nodecommon.Header
+
+	submittedLock    sync.RWMutex
+	submittedRollups map[common.Hash]common.Hash
 }
 
 // NewDB returns a new instance of the Node DB
 func NewDB() *DB {
 	return &DB{
-		blockDB:  map[common.Hash]*types.Header{},
-		rollupDB: map[common.Hash]*nodecommon.Header{},
+		blockDB:          map[common.Hash]*types.Header{},
+		rollupDB:         map[common.Hash]*nodecommon.Header{},
+		submittedRollups: map[common.Hash]common.Hash{},
 	}
 }
 
@@ -85,4 +89,17 @@ func (n *DB) AddRollupHeader(header *nodecommon.Header) {
 	if currentRollupHead == nil || currentRollupHead.Number < header.Number {
 		n.currentRollupHead = header.Hash()
 	}
+}
+
+func (n *DB) AddSubmittedRollup(hash common.Hash) {
+	n.submittedLock.Lock()
+	defer n.submittedLock.Unlock()
+	n.submittedRollups[hash] = hash
+}
+
+func (n *DB) WasSubmitted(hash common.Hash) bool {
+	n.submittedLock.RLock()
+	defer n.submittedLock.RUnlock()
+	_, f := n.submittedRollups[hash]
+	return f
 }
