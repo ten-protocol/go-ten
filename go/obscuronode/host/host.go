@@ -400,7 +400,10 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
 			}
 
-			a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+			if !a.DB().WasSubmitted(winnerRollup.Header.Hash()) {
+				a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				a.DB().AddSubmittedRollup(winnerRollup.Header.Hash())
+			}
 		}
 	}
 }
