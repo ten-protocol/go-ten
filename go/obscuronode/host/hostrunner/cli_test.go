@@ -21,7 +21,7 @@ func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
 	}
 }
 
-func TestConfigIsParsedFromCmdLineRagsIfConfigFlagIsNotPresent(t *testing.T) {
+func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
 	expectedGossipRoundNanos := time.Duration(666)
 	os.Args = append(os.Args, "--"+gossipRoundNanosName, strconv.FormatInt(expectedGossipRoundNanos.Nanoseconds(), 10))
 
