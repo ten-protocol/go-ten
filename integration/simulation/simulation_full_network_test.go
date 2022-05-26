@@ -61,7 +61,6 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		NodeEthWallets:            nodeWallets,
 		SimEthWallets:             simWallets,
 		StartPort:                 integration.StartPortSimulationFullNetwork,
-		WaitForP2PConnections:     true,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
