@@ -119,7 +119,8 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 
 	// make sure the aggregators can talk to each other
 	for i := 0; i < params.NumberOfNodes; i++ {
-		obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = obscuroNodes
+		mockP2P := obscuroNodes[i].P2p.(*p2p.MockP2P)
+		mockP2P.Nodes = obscuroNodes
 	}
 
 	// start each obscuro node

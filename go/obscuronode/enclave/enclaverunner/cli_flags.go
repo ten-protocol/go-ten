@@ -2,6 +2,9 @@ package enclaverunner
 
 // Flag names, defaults and usages.
 const (
+	configName  = "config"
+	configUsage = "The path to the node's config file. Overrides all other flags"
+
 	HostIDName  = "hostID"
 	hostIDUsage = "The 20 bytes of the address of the Obscuro host this enclave serves"
 

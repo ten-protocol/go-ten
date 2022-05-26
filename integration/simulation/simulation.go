@@ -36,13 +36,16 @@ func (s *Simulation) Start() {
 
 	s.WaitForObscuroGenesis()
 
+	time.Sleep(3 * time.Second)
 	timer := time.Now()
+	log.Info("Starting injection")
 	go s.TxInjector.Start()
 
 	stoppingDelay := s.Params.AvgBlockDuration * 4
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - stoppingDelay)
+	log.Info("Stopping injection")
 
 	s.TxInjector.Stop()
 

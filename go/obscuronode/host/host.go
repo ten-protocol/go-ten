@@ -225,14 +225,14 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for err := a.EnclaveClient.IsReady(); err != nil; {
 		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for enclave. Error: %v", err)
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave on %s. Error: %v", a.config.EnclaveRPCAddress, err)
 			counter = 0
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
-	nodecommon.LogWithID(a.shortID, "Connected to enclave service...")
+	nodecommon.LogWithID(a.shortID, "Connected to enclave service.")
 }
 
 // Waits for initial blocks from the L1 node, printing a wait message every two seconds.
@@ -400,7 +400,12 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
 			}
 
-			a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
+			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
+			if !a.DB().WasSubmitted(winnerRollup.Header.Hash()) {
+				a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				a.DB().AddSubmittedRollup(winnerRollup.Header.Hash())
+			}
 		}
 	}
 }

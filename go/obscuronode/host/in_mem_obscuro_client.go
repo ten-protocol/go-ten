@@ -78,6 +78,17 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		*result.(*uint64) = c.obscuroAPI.Balance(address)
 
+	case obscuroclient.RPCNonce:
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCNonce, len(args))
+		}
+		address, ok := args[0].(common.Address)
+		if !ok {
+			return fmt.Errorf("arg to %s was not of expected type common.Address", obscuroclient.RPCNonce)
+		}
+
+		*result.(*uint64) = c.obscuroAPI.Nonce(address)
+
 	case obscuroclient.RPCStopHost:
 		c.obscuroAPI.StopHost()
 

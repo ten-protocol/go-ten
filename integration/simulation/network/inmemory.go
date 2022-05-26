@@ -66,7 +66,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-		obscuroNodes[i].P2p.(*p2p.MockP2P).Nodes = obscuroNodes
+		mockP2P := obscuroNodes[i].P2p.(*p2p.MockP2P)
+		mockP2P.Nodes = obscuroNodes
 	}
 
 	// The sequence of starting the nodes is important to catch various edge cases.
@@ -78,10 +79,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	for _, m := range n.ethNodes {
 		t := m
 		go t.Start()
-		time.Sleep(params.AvgBlockDuration / 8)
+		time.Sleep(params.AvgBlockDuration / 20)
 	}
 
-	time.Sleep(params.AvgBlockDuration * 20)
 	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
