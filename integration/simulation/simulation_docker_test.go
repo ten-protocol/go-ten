@@ -115,7 +115,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	containerIDs := make([]string, len(enclavePorts))
 	for idx, port := range enclavePorts {
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
-		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{enclaverunner.HostIDName, nodeID, enclaverunner.AddressName, enclaveAddress}}
+		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{"--" + enclaverunner.HostIDName, nodeID, "--" + enclaverunner.AddressName, enclaveAddress}}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: network.Localhost, HostPort: port}}},
 		}

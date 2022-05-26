@@ -232,7 +232,7 @@ func (a *Node) waitForEnclave() {
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
-	nodecommon.LogWithID(a.shortID, "Connected to enclave service...")
+	nodecommon.LogWithID(a.shortID, "Connected to enclave service.")
 }
 
 // Waits for initial blocks from the L1 node, printing a wait message every two seconds.
