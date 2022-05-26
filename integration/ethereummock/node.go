@@ -203,15 +203,7 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		if b.NumberU64() == obscurocommon.L1GenesisHeight {
-			go t.MockedNewHead(obscurocommon.EncodeBlock(b), nil)
-		} else {
-			p, f := m.Resolver.ParentBlock(b)
-			if !f {
-				panic("This should not happen")
-			}
-			go t.MockedNewHead(obscurocommon.EncodeBlock(b), obscurocommon.EncodeBlock(p))
-		}
+		go t.MockedNewHead(obscurocommon.EncodeBlock(b))
 	}
 	m.canonicalCh <- b
 
