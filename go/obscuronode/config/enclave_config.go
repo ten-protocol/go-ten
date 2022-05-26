@@ -35,7 +35,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
 		HostID:                    common.BytesToAddress([]byte("")),
 		Address:                   "127.0.0.1:11000",
-		ChainID:                   777,
+		ChainID:                   1337,
 		WillAttest:                false,
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
