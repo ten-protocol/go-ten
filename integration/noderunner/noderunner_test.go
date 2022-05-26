@@ -60,9 +60,12 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		t.Fatal(err)
 	}
 	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{address.String()})
-	defer network.StopNodes()
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
+	obscuroClient := obscuroclient.NewClient(clientServerAddr)
+
+	defer network.StopNodes()
+	defer obscuroClient.Call(nil, obscuroclient.RPCStopHost)
 
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
@@ -76,8 +79,6 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(time.Second)
 		wait--
 	}
-
-	obscuroClient := obscuroclient.NewClient(clientServerAddr)
 
 	counter := 0
 	// We retry 20 times to check if the network has produced any blocks, sleeping half a second between each attempt.

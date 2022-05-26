@@ -54,5 +54,5 @@ func (api *ObscuroAPI) Balance(address common.Address) uint64 {
 
 // StopHost gracefully stops the host.
 func (api *ObscuroAPI) StopHost() {
-	api.host.Stop()
+	go api.host.Stop()
 }
