@@ -1,15 +1,12 @@
 package core
 
 import (
-	"math/big"
 	"sync/atomic"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
@@ -29,13 +26,9 @@ func TestSerialiseL2Tx(t *testing.T) {
 }
 
 func TestSerialiseRollup(t *testing.T) {
-	tx := CreateL2Tx()
 	height := atomic.Value{}
 	height.Store(1)
-	rollup := nodecommon.Rollup{
-		Header:       NewRollup(obscurocommon.GenesisBlock.Hash(), nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0))).Header,
-		Transactions: EncryptTransactions(L2Txs{*tx}),
-	}
+	rollup := datagenerator.RandomRollup()
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
 		panic(err)

@@ -3,15 +3,17 @@ package params
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/wallet"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // SimParams are the parameters for setting up the simulation.
 type SimParams struct {
-	NumberOfNodes          int
-	NumberOfObscuroWallets int
+	NumberOfNodes int
 
 	// A critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
 	AvgBlockDuration  time.Duration
@@ -27,12 +29,22 @@ type SimParams struct {
 	L2EfficiencyThreshold     float64 // number of dead obscuro blocks
 	L2ToL1EfficiencyThreshold float64 // number of ethereum blocks that don't include an obscuro node
 
-	// TxHandler defines how the simulation should unpack transactions
-	TxHandler mgmtcontractlib.TxHandler
+	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
+	MgmtContractLib mgmtcontractlib.MgmtContractLib
+	// MgmtContractLib allows parsing ERC20Contract txs to and from the eth txs
+	ERC20ContractLib erc20contractlib.ERC20ContractLib
+
 	// MgmtContractAddr defines the management contract address
-	MgmtContractAddr common.Address
-	// EthWallets contains the wallets to use for the l1 nodes
-	EthWallets []wallet.Wallet
+	MgmtContractAddr *common.Address
+
+	// StableTokenContractAddr defines an erc20 contract address instance that has bee deployed
+	StableTokenContractAddr *common.Address
+
+	// NodeEthWallets are the wallets the obscuro aggregators use to create rollups and other management contract related ethereum txs
+	NodeEthWallets []wallet.Wallet
+
+	// SimEthWallets are the wallets used by the simulation aka fake users to generate traffic
+	SimEthWallets []wallet.Wallet
 
 	StartPort int // The port from which to start allocating ports. Must be unique across all simulations.
 }

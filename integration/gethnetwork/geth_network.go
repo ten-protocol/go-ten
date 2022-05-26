@@ -1,8 +1,10 @@
 package gethnetwork
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -39,6 +41,12 @@ const (
 	mineFlag           = "--mine"
 	passwordFlag       = "--password"
 	portFlag           = "--port"
+	httpEnableFlag     = "--http"
+	httpPortFlag       = "--http.port"
+	httpIPFlag         = "--http.addr"
+	httpEnableApis     = "--http.api"
+	allowedAPIs        = "personal,eth,net,web3,debug"
+	allowCORSDomain    = "--http.corsdomain"
 	rpcFeeCapFlag      = "--rpc.txfeecap=0" // Disables the 1 ETH cap for RPC transactions.
 	unlockFlag         = "--unlock"
 	unlockInsecureFlag = "--allow-insecure-unlock"
@@ -88,8 +96,6 @@ const (
 		  "balance": "1000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
-
-	wsPortOffset = 100
 )
 
 // GethNetwork is a network of Geth nodes, built using the provided Geth binary.
@@ -111,8 +117,8 @@ type GethNetwork struct {
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
-func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) GethNetwork {
-	err := ensurePortsAreAvailable(portStart, numNodes)
+func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) *GethNetwork {
+	err := ensurePortsAreAvailable(portStart, websocketPortStart, numNodes)
 	if err != nil {
 		panic(err)
 	}
@@ -161,7 +167,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 		passwordFilePath: passwordFile.Name(),
 		WebSocketPorts:   make([]uint, numNodes),
 		commStartPort:    portStart,
-		wsStartPort:      portStart + wsPortOffset,
+		wsStartPort:      websocketPortStart,
 	}
 
 	// We create an account for each node.
@@ -228,7 +234,7 @@ func NewGethNetwork(portStart int, gethBinaryPath string, numNodes int, blockTim
 	}
 	wg.Wait()
 
-	return network
+	return &network
 }
 
 // IssueCommand sends the command via RPC to the nodeIdx'th node in the network.
@@ -237,7 +243,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 	args := []string{dataDirFlag, dataDir, attachCmd, path.Join(dataDir, ipcFileName), execFlag, command}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
-	cmd.Stderr = network.logFile
+	cmd.Stderr = network.logNodeID(nodeIdx)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -249,11 +255,24 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 // StopNodes kills the Geth node processes.
 func (network *GethNetwork) StopNodes() {
+	var wg sync.WaitGroup
 	for _, process := range network.nodesProcs {
 		if process != nil {
-			_ = process.Kill()
+			wg.Add(1)
+			go func(process *os.Process) {
+				defer wg.Done()
+				err := process.Kill()
+				if err != nil {
+					log.Error("geth node could not be killed: %s", err)
+				}
+				_, err = process.Wait()
+				if err != nil {
+					log.Error("geth node was killed successfully but did not exit: %s", err)
+				}
+			}(process)
 		}
 	}
+	wg.Wait()
 }
 
 // Initialises and starts a miner.
@@ -318,21 +337,37 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	webSocketPort := network.wsStartPort + idx
 	port := network.commStartPort + idx
+	httpPort := network.commStartPort + 25 + idx
 
 	args := []string{
 		websocketFlag, wsPortFlag, strconv.Itoa(webSocketPort), dataDirFlag, dataDirPath, portFlag,
 		strconv.Itoa(port), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
-		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag, gasLimitFlag,
+		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
+		httpEnableFlag, httpPortFlag, strconv.Itoa(httpPort), httpEnableApis, allowedAPIs, allowCORSDomain, "*",
+		httpIPFlag, "0.0.0.0", gasLimitFlag,
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
-	cmd.Stdout = network.logFile
-	cmd.Stderr = network.logFile
+
+	cmd.Stdout = network.logNodeID(idx)
+	cmd.Stderr = network.logNodeID(idx)
 
 	if err := cmd.Start(); err != nil {
 		panic(fmt.Errorf("could not start Geth node. Cause: %w", err))
 	}
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
+}
+
+// logNodeID prepends the nodeID to the log entries
+func (network *GethNetwork) logNodeID(idx int) io.Writer {
+	r, w, _ := os.Pipe()
+	go func() {
+		sc := bufio.NewScanner(r)
+		for sc.Scan() {
+			_, _ = network.logFile.WriteString(fmt.Sprintf("EthNode-%d: %s\n", idx, sc.Text()))
+		}
+	}()
+	return w
 }
 
 // Waits for a node's IPC file to exist.
@@ -362,7 +397,7 @@ func waitForIPC(dataDir string) {
 	}
 }
 
-func ensurePortsAreAvailable(startPort int, numberNodes int) error {
+func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes int) error {
 	var unavailablePorts []int
 
 	for i := 0; i < numberNodes; i++ {
@@ -370,7 +405,7 @@ func ensurePortsAreAvailable(startPort int, numberNodes int) error {
 		if !isPortAvailable(commsPort) {
 			unavailablePorts = append(unavailablePorts, commsPort)
 		}
-		wsPort := startPort + wsPortOffset + i
+		wsPort := websocketStartPort + i
 		if !isPortAvailable(wsPort) {
 			unavailablePorts = append(unavailablePorts, wsPort)
 		}
@@ -378,7 +413,7 @@ func ensurePortsAreAvailable(startPort int, numberNodes int) error {
 
 	if len(unavailablePorts) > 0 {
 		list, _ := json.Marshal(unavailablePorts)
-		return fmt.Errorf("could not run geth network because test ports are unavalable for use - the following ports were unavailable: %s", list)
+		return fmt.Errorf("could not run geth network because test ports are unavailable for use - the following ports were unavailable: %s", list)
 	}
 	return nil
 }

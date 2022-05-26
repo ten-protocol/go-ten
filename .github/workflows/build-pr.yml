@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
 
@@ -29,5 +29,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: sim-logs
-          path: integration/.build/simulations/sim-log-*.txt
+          path: |
+            integration/.build/simulations/sim-log-*.txt
+            integration/.build/noderunner/noderunner-*.txt
         if: always() # Ensures the artifacts are created even if the tests fail.

@@ -87,7 +87,7 @@ func FindHashDups(list []common.Hash) map[common.Hash]int {
 	for u, i := range elementCount {
 		if i > 1 {
 			dups[u] = i
-			fmt.Printf("Dup: %d\n", u)
+			fmt.Printf("Dup: %s\n", u)
 		}
 	}
 	return dups

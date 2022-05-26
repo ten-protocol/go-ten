@@ -9,26 +9,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration"
-
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
-
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
 
 const (
 	enclaveDockerImg  = "obscuro_enclave"
-	nodeIDFlag        = "--nodeID"
-	addressFlag       = "--address"
 	enclaveAddress    = ":11000"
 	enclaveDockerPort = "11000/tcp"
 	dockerTestEnv     = "DOCKER_TEST_ENABLED"
@@ -47,17 +45,22 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 
 	simParams := params.SimParams{
 		NumberOfNodes:             10,
-		NumberOfObscuroWallets:    5,
 		AvgBlockDuration:          400 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.5,
-		TxHandler:                 ethereum_mock.NewMockTxHandler(),
+		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
+		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
 		StartPort:                 integration.StartPortSimulationDocker,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2
+
+	for i := 0; i < simParams.NumberOfNodes+1; i++ {
+		simParams.NodeEthWallets = append(simParams.NodeEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
+		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
+	}
 
 	// We create a Docker client.
 	ctx := context.Background()
@@ -106,13 +109,13 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+100+i))
+		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+network.DefaultWsPortOffset+i))
 	}
 
 	containerIDs := make([]string, len(enclavePorts))
 	for idx, port := range enclavePorts {
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
-		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID, addressFlag, enclaveAddress}}
+		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{enclaverunner.HostIDName, nodeID, enclaverunner.AddressName, enclaveAddress}}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: network.Localhost, HostPort: port}}},
 		}

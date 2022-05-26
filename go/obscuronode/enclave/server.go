@@ -6,20 +6,21 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/naoina/toml"
+	"github.com/obscuronet/obscuro-playground/go/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
-
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
-	"google.golang.org/grpc"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
+	"google.golang.org/grpc"
 )
 
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
@@ -32,23 +33,26 @@ type server struct {
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-// `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
-// received from the L1 node if `validateBlocks` is set to true.
-func StartServer(address string, nodeID common.Address, txHandler mgmtcontractlib.TxHandler, validateBlocks bool, genesisJSON []byte, collector StatsCollector) (func(), error) {
-	lis, err := net.Listen("tcp", address)
+func StartServer(
+	enclaveConfig config.EnclaveConfig,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	collector StatsCollector,
+) (func(), error) {
+	lis, err := net.Listen("tcp", enclaveConfig.Address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(nodeID, true, txHandler, validateBlocks, genesisJSON, collector),
+		enclave:     NewEnclave(enclaveConfig, mgmtContractLib, erc20ContractLib, collector),
 		rpcServer:   grpc.NewServer(),
-		nodeShortID: obscurocommon.ShortAddress(nodeID),
+		nodeShortID: obscurocommon.ShortAddress(enclaveConfig.HostID),
 	}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {
-		nodecommon.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", address)
+		nodecommon.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", enclaveConfig.Address)
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
 			nodecommon.LogWithID(enclaveServer.nodeShortID, "enclave RPC server could not serve: %s", err)
@@ -58,17 +62,28 @@ func StartServer(address string, nodeID common.Address, txHandler mgmtcontractli
 	closeHandle := func() {
 		go enclaveServer.Stop(context.Background(), nil) //nolint:errcheck
 	}
+
+	tomlConfig, err := toml.Marshal(enclaveConfig)
+	if err != nil {
+		panic("could not print enclave config")
+	}
+	log.Info("Enclave service started with following config:\n%s", tomlConfig)
+
 	return closeHandle, nil
 }
 
 // IsReady returns a nil error to indicate that the server is ready.
 func (s *server) IsReady(context.Context, *generated.IsReadyRequest) (*generated.IsReadyResponse, error) {
-	return &generated.IsReadyResponse{}, nil
+	errStr := ""
+	if err := s.enclave.IsReady(); err != nil {
+		errStr = err.Error()
+	}
+	return &generated.IsReadyResponse{Error: errStr}, nil
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
 	attestation := s.enclave.Attestation()
-	msg := generated.AttestationReportMsg{Owner: attestation.Owner.Bytes()}
+	msg := generated.AttestationReportMsg{Report: attestation.Report, PubKey: attestation.PubKey, Owner: attestation.Owner.Bytes()}
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
@@ -77,15 +92,18 @@ func (s *server) GenerateSecret(context.Context, *generated.GenerateSecretReques
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
-func (s *server) FetchSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.FetchSecretResponse, error) {
+func (s *server) ShareSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.ShareSecretResponse, error) {
 	attestationReport := rpc.FromAttestationReportMsg(request.AttestationReportMsg)
-	secret := s.enclave.FetchSecret(attestationReport)
-	return &generated.FetchSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
+	secret, err := s.enclave.ShareSecret(attestationReport)
+	return &generated.ShareSecretResponse{EncryptedSharedEnclaveSecret: secret}, err
 }
 
 func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
-	s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret)
-	return &generated.InitEnclaveResponse{}, nil
+	errStr := ""
+	if err := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); err != nil {
+		errStr = err.Error()
+	}
+	return &generated.InitEnclaveResponse{Error: errStr}, nil
 }
 
 func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest) (*generated.IsInitialisedResponse, error) {

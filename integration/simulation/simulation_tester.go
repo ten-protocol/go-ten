@@ -30,7 +30,17 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	ethClients, obscuroClients, p2pAddrs := netw.Create(params, stats)
 	defer netw.TearDown()
 
-	txInjector := NewTransactionInjector(params.NumberOfObscuroWallets, params.AvgBlockDuration, stats, ethClients, obscuroClients)
+	txInjector := NewTransactionInjector(
+		params.AvgBlockDuration,
+		stats,
+		ethClients,
+		params.SimEthWallets,
+		params.MgmtContractAddr,
+		params.StableTokenContractAddr,
+		obscuroClients,
+		params.MgmtContractLib,
+		params.ERC20ContractLib,
+	)
 
 	simulation := Simulation{
 		EthClients:       ethClients,

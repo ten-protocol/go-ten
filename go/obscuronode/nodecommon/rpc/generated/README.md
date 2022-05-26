@@ -5,6 +5,7 @@ Install Protobuf and Protoc-gen-go with:
 
     brew install protobuf
 
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 Add this to the environment, because there are some binaries in ``$HOME/go``

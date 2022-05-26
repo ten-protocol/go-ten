@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"gopkg.in/yaml.v3"
 )
@@ -22,9 +24,15 @@ import (
 const (
 	numNodes        = 3
 	expectedChainID = "1337"
+	genesisChainID  = 1337
 
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
+
+	defaultWsPortOffset        = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	defaultL1ConnectionTimeout = 15 * time.Second
+
+	localhost = "127.0.0.1"
 )
 
 var timeout = 15 * time.Second
@@ -35,7 +43,8 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := int(integration.StartPortGethNetworkTest)
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
@@ -53,7 +62,8 @@ func TestGethGenesisParamsAreUsed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := int(integration.StartPortGethNetworkTest) + numNodes
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	chainID := network.IssueCommand(0, chainIDCmd)
@@ -68,7 +78,8 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, nil)
+	startPort := int(integration.StartPortGethNetworkTest) + numNodes*2
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
 	defer network.StopNodes()
 
 	account := network.addresses[0]
@@ -78,8 +89,8 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 
 	// check the transaction has expected values
 	issuedTx := map[string]interface{}{}
-	if err := yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
-		t.Fatal(err)
+	if err = yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
+		t.Fatalf("unable to unmarshall getTransaction response to YAML. Cause: %s.\nsendTransaction response was: %s\ngetTransaction response was %s", err, txHash, issuedTxStr)
 	}
 
 	if issuedTx["value"].(int) != 1000000000000000 ||
@@ -95,24 +106,35 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	}
 
 	// wallet should be prefunded
-	w := datagenerator.RandomWallet()
-	network := NewGethNetwork(getStartPort(), gethBinaryPath, numNodes, 1, []string{w.Address().String()})
+	w := datagenerator.RandomWallet(genesisChainID)
+	startPort := int(integration.StartPortGethNetworkTest) + numNodes*3
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethclient.NewEthClient(common.Address{}, "127.0.0.1", network.WebSocketPorts[0], w, common.Address{})
+	hostConfig := config.HostConfig{
+		L1NodeHost:          localhost,
+		L1NodeWebsocketPort: network.WebSocketPorts[0],
+		L1ConnectionTimeout: defaultL1ConnectionTimeout,
+	}
+	ethClient, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		panic(err)
 	}
 
 	// pick the first address in the network and send some funds to it
 	toAddr := common.HexToAddress(fmt.Sprintf("0x%s", network.addresses[0]))
-	tx, err := ethClient.SubmitTransaction(&types.LegacyTx{
-		Nonce:    0,
+	tx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(20000000000),
 		Gas:      uint64(1024_000_000),
 		To:       &toAddr,
 		Value:    big.NewInt(100),
-	})
+	}
+	signedTx, err := w.SignTransaction(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ethClient.SendTransaction(signedTx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +142,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	// make sure it's mined into a block within an acceptable time
 	var receipt *types.Receipt
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(time.Second) {
-		receipt, err = ethClient.FetchTxReceipt(tx.Hash())
+		receipt, err = ethClient.TransactionReceipt(signedTx.Hash())
 		if err == nil {
 			break
 		}
@@ -140,9 +162,4 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Fatalf("Did not minted/mined the tx correctly - receipt: %+v", receipt)
 	}
-}
-
-// Returns a start port for a single test.
-func getStartPort() int {
-	return int(atomic.AddUint64(&integration.StartPortGethNetworkTest, numNodes))
 }

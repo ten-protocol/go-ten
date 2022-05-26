@@ -3,9 +3,12 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -22,7 +25,10 @@ import (
 
 // TODO - Use the HostRunner/EnclaveRunner methods in the socket-based integration tests, and retire this smoketest.
 
-const testLogs = "../.build/noderunner/"
+const (
+	testLogs            = "../.build/noderunner/"
+	defaultWsPortOffset = 100
+)
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
@@ -31,7 +37,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	startPort := integration.StartPortNodeRunnerTest
 	enclaveAddr := fmt.Sprintf("127.0.0.1:%d", startPort)
 	clientServerAddr := fmt.Sprintf("127.0.0.1:%d", startPort+1)
-	ethClientPort := startPort + 2
+	gethPort := startPort + 2
+	gethWebsocketPort := gethPort + defaultWsPortOffset
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -39,20 +46,20 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 	address := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	hostConfig := hostrunner.DefaultHostConfig()
+	hostConfig := config.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
-	hostConfig.EnclaveAddr = enclaveAddr
-	hostConfig.ClientServerAddr = clientServerAddr
-	hostConfig.EthClientPort = ethClientPort
+	hostConfig.EnclaveRPCAddress = enclaveAddr
+	hostConfig.ClientRPCAddress = clientServerAddr
+	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
-	enclaveConfig := enclaverunner.DefaultEnclaveConfig()
+	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
-	network := gethnetwork.NewGethNetwork(int(ethClientPort)-100, gethBinaryPath, 1, 1, []string{address.String()})
+	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{address.String()})
 	defer network.StopNodes()
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
@@ -60,16 +67,42 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
 
-	obscuroClient := obscuroclient.NewClient(clientServerAddr)
-	var result types.Header
-	err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
-	if err != nil {
-		t.Fatal(err)
+	// we wait to ensure the RPC endpoint is up
+	wait := 20 // max wait in seconds
+	for !tcpConnectionAvailable(clientServerAddr) {
+		if wait == 0 {
+			t.Fatal("RPC client server never became available")
+		}
+		time.Sleep(time.Second)
+		wait--
 	}
 
-	if result.Number.Uint64() == 0 {
-		t.Fatal("Zero blocks have been produced. Something is wrong.")
+	obscuroClient := obscuroclient.NewClient(clientServerAddr)
+
+	counter := 0
+	// We retry 20 times to check if the network has produced any blocks, sleeping half a second between each attempt.
+	for counter < 20 {
+		counter++
+		time.Sleep(500 * time.Millisecond)
+
+		var result types.Header
+		err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
+		if err == nil && result.Number.Uint64() > 0 {
+			return
+		}
 	}
+
+	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
+}
+
+func tcpConnectionAvailable(addr string) bool {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	// we don't worry about failure while closing, it connected successfully so let test proceed
+	return true
 }
 
 func setupTestLog() *os.File {
