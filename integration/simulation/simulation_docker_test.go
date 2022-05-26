@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -25,8 +27,6 @@ import (
 
 const (
 	enclaveDockerImg  = "obscuro_enclave"
-	nodeIDFlag        = "--nodeID"
-	addressFlag       = "--address"
 	enclaveAddress    = ":11000"
 	enclaveDockerPort = "11000/tcp"
 	dockerTestEnv     = "DOCKER_TEST_ENABLED"
@@ -115,7 +115,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 	containerIDs := make([]string, len(enclavePorts))
 	for idx, port := range enclavePorts {
 		nodeID := strconv.FormatInt(int64(idx+1), 10)
-		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{nodeIDFlag, nodeID, addressFlag, enclaveAddress}}
+		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{enclaverunner.HostIDName, nodeID, enclaverunner.AddressName, enclaveAddress}}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: network.Localhost, HostPort: port}}},
 		}

@@ -9,6 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
@@ -36,9 +39,8 @@ type StatsCollector interface {
 }
 
 type enclaveImpl struct {
-	nodeID         common.Address
+	config         config.EnclaveConfig
 	nodeShortID    uint64
-	mining         bool
 	storage        db.Storage
 	blockResolver  db.BlockResolver
 	mempool        mempool.Manager
@@ -51,19 +53,16 @@ type enclaveImpl struct {
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
 
-	mgmtContractLib  mgmtcontractlib.MgmtContractLib
-	erc20ContractLib erc20contractlib.ERC20ContractLib
+	mgmtContractLib     mgmtcontractlib.MgmtContractLib
+	erc20ContractLib    erc20contractlib.ERC20ContractLib
+	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
+	publicKeySerialized []byte
+	privateKey          *rsa.PrivateKey
 
-	// Toggles the speculative execution background process
-	speculativeExecutionEnabled bool
-	chainID                     int64               // The unique ID for the Obscuro chain. Required for Geth signing.
-	attestationProvider         AttestationProvider // interface for producing attestation reports and verifying them
-	publicKeySerialized         []byte
-	privateKey                  *rsa.PrivateKey
+	blockProcessingMutex sync.Mutex
 }
 
 func (e *enclaveImpl) IsReady() error {
-	e.generateKeyPair()
 	return nil // The enclave is local so it is always ready
 }
 
@@ -72,7 +71,7 @@ func (e *enclaveImpl) StopClient() {
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		// start the speculative rollup execution loop on its own go routine
 		go e.start(block)
 	}
@@ -94,7 +93,7 @@ func (e *enclaveImpl) start(block types.Block) {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
 		case winnerRollup := <-e.roundWinnerCh:
 			hash := winnerRollup.Hash()
-			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.nodeID)
+			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.config.HostID)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
 			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculative env  r_%d(%d).",
@@ -189,6 +188,9 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
+	e.blockProcessingMutex.Lock()
+	defer e.blockProcessingMutex.Unlock()
+
 	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
 	if e.isGenesisBlock(&block) {
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
@@ -251,12 +253,12 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	decryptedTx := obscurocore.DecryptTx(tx)
-	err := verifySignature(e.chainID, &decryptedTx)
+	err := verifySignature(e.config.ChainID, &decryptedTx)
 	if err != nil {
 		return err
 	}
 	e.mempool.AddMempoolTx(decryptedTx)
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		e.txCh <- decryptedTx
 	}
 	return nil
@@ -289,12 +291,12 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	parentState := e.storage.CreateStateDB(head.Hash())
 	// determine the winner of the round
 	winnerRollup, _ := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		go e.notifySpeculative(winnerRollup)
 	}
 
 	// we are the winner
-	if winnerRollup.Header.Agg == e.nodeID {
+	if winnerRollup.Header.Agg == e.config.HostID {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
 		nodecommon.LogWithID(e.nodeShortID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
@@ -447,7 +449,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 }
 
 func (e *enclaveImpl) Stop() error {
-	if e.speculativeExecutionEnabled {
+	if e.config.SpeculativeExecution {
 		e.exitCh <- true
 	}
 	return nil
@@ -457,7 +459,7 @@ func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
 	if e.publicKeySerialized == nil {
 		panic("public key not initialized, we can't produce the attestation report")
 	}
-	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.nodeID)
+	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID)
 	if err != nil {
 		panic("Failed to produce remote report.")
 	}
@@ -472,8 +474,10 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 		log.Panic("could not generate secret. Cause: %s", err)
 	}
 	e.storage.StoreSecret(secret)
-	// todo do we need to worry about this failing?
-	encSec, _ := e.encryptSecret(e.publicKeySerialized, secret)
+	encSec, err := e.encryptSecret(e.publicKeySerialized, secret)
+	if err != nil {
+		log.Panic("failed to encrypt secret. Cause: %s", err)
+	}
 	return encSec
 }
 
@@ -484,7 +488,7 @@ func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) 
 		return err
 	}
 	e.storage.StoreSecret(secret)
-	log.Trace("Secret decrypted and stored. Secret: %v", secret)
+	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeShortID, secret)
 	return nil
 }
 
@@ -570,18 +574,13 @@ func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockSta
 	}
 }
 
-func (e *enclaveImpl) generateKeyPair() {
-	if len(e.publicKeySerialized) > 0 {
-		// keys already created
-		return
-	}
+func generateKeyPair() *rsa.PrivateKey {
 	// todo: This should be generated deterministically based on some enclave attributes if possible
-	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		panic("Failed to create RSA key")
 	}
-	e.publicKeySerialized = x509.MarshalPKCS1PublicKey(&key.PublicKey)
-	e.privateKey = key
+	return key
 }
 
 // Todo - implement with better crypto
@@ -593,15 +592,16 @@ func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveS
 }
 
 // Todo - implement with better crypto
-func (e *enclaveImpl) encryptSecret(pubKeyEncoding []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
-	key, err := x509.ParsePKCS1PublicKey(pubKeyEncoding)
+func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+	nodecommon.LogWithID(e.nodeShortID, "Encrypting secret with public key %s", common.Bytes2Hex(pubKeyEncoded))
+	key, err := x509.ParsePKCS1PublicKey(pubKeyEncoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse public key %w", err)
 	}
 
 	encKey, err := EncryptWithPublicKey(secret, key)
 	if err != nil {
-		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoding, encKey)
+		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoded, encKey)
 	}
 	return encKey, err
 }
@@ -628,57 +628,56 @@ type processingEnvironment struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(
-	nodeID common.Address,
-	chainID int64,
-	mining bool,
-	attestation bool,
+	config config.EnclaveConfig,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	validateBlocks bool,
-	genesisJSON []byte,
 	collector StatsCollector,
 ) nodecommon.Enclave {
 	backingDB := db.NewInMemoryDB()
-	nodeShortID := obscurocommon.ShortAddress(nodeID)
+	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 	storage := db.NewStorage(backingDB, nodeShortID)
 
 	var l1Blockchain *core.BlockChain
-	if validateBlocks {
-		if genesisJSON == nil {
+	if config.ValidateL1Blocks {
+		if config.GenesisJSON == nil {
 			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
 		}
-		l1Blockchain = NewL1Blockchain(genesisJSON)
+		l1Blockchain = NewL1Blockchain(config.GenesisJSON)
 	} else {
-		nodecommon.LogWithID(obscurocommon.ShortAddress(nodeID), "validateBlocks is set to false. L1 blocks will not be validated.")
+		nodecommon.LogWithID(obscurocommon.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
 	var attestationProvider AttestationProvider
-	if attestation {
+	if config.WillAttest {
 		attestationProvider = &EgoAttestationProvider{}
 	} else {
 		nodecommon.LogWithID(nodeShortID, "WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
+	nodecommon.LogWithID(nodeShortID, "Generating public key")
+	privKey := generateKeyPair()
+	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
+	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
+
 	return &enclaveImpl{
-		nodeID:                      nodeID,
-		nodeShortID:                 nodeShortID,
-		mining:                      mining,
-		storage:                     storage,
-		blockResolver:               storage,
-		mempool:                     mempool.New(),
-		statsCollector:              collector,
-		l1Blockchain:                l1Blockchain,
-		txCh:                        make(chan nodecommon.L2Tx),
-		roundWinnerCh:               make(chan *obscurocore.Rollup),
-		exitCh:                      make(chan bool),
-		speculativeWorkInCh:         make(chan bool),
-		speculativeWorkOutCh:        make(chan speculativeWork),
-		mgmtContractLib:             mgmtContractLib,
-		erc20ContractLib:            erc20ContractLib,
-		speculativeExecutionEnabled: false, // TODO - reenable
-		chainID:                     chainID,
-		attestationProvider:         attestationProvider,
+		config:               config,
+		nodeShortID:          nodeShortID,
+		storage:              storage,
+		blockResolver:        storage,
+		mempool:              mempool.New(),
+		statsCollector:       collector,
+		l1Blockchain:         l1Blockchain,
+		txCh:                 make(chan nodecommon.L2Tx),
+		roundWinnerCh:        make(chan *obscurocore.Rollup),
+		exitCh:               make(chan bool),
+		speculativeWorkInCh:  make(chan bool),
+		speculativeWorkOutCh: make(chan speculativeWork),
+		mgmtContractLib:      mgmtContractLib,
+		erc20ContractLib:     erc20ContractLib,
+		attestationProvider:  attestationProvider,
+		privateKey:           privKey,
+		publicKeySerialized:  serializedPubKey,
 	}
 }
 

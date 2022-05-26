@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -79,18 +81,20 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 	// set up nodes with mock enclaves
 	for i := len(n.enclaveAddresses); i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
-		nodeID := common.BigToAddress(big.NewInt(int64(i)))
 		enclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
 		enclaveAddress := fmt.Sprintf("%s:%d", Localhost, enclavePort)
+		enclaveConfig := config.EnclaveConfig{
+			HostID:           common.BigToAddress(big.NewInt(int64(i))),
+			Address:          fmt.Sprintf("%s:%d", Localhost, enclavePort),
+			ChainID:          integration.ObscuroChainID,
+			WillAttest:       false,
+			ValidateL1Blocks: false,
+			GenesisJSON:      nil,
+		}
 		_, err := enclave.StartServer(
-			enclaveAddress,
-			integration.ObscuroChainID,
-			nodeID,
+			enclaveConfig,
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			false,
-			false,
-			nil,
 			stats,
 		)
 		if err != nil {
