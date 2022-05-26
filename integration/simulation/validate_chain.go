@@ -24,8 +24,11 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.counter.l1Transactions) == 0 {
 		t.Error("Simulation did not issue any L1 transactions.")
 	}
-	if len(s.TxInjector.counter.l2Transactions) == 0 {
-		t.Error("Simulation did not issue any L2 transactions.")
+	if len(s.TxInjector.counter.transferL2Transactions) == 0 {
+		t.Error("Simulation did not issue any transfer L2 transactions.")
+	}
+	if len(s.TxInjector.counter.withdrawalL2Transactions) == 0 {
+		t.Error("Simulation did not issue any withdrawal L2 transactions.")
 	}
 
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)

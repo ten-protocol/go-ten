@@ -10,7 +10,7 @@ import (
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
-	tx := CreateL2Tx()
+	tx := datagenerator.CreateL2Tx()
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		panic(err)

@@ -51,6 +51,8 @@ type EnclaveProtoClient interface {
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
 	// Balance - returns the balance of an address with a block delay
 	Balance(ctx context.Context, in *BalanceRequest, opts ...grpc.CallOption) (*BalanceResponse, error)
+	// Balance - returns the balance of an address with a block delay
+	Nonce(ctx context.Context, in *NonceRequest, opts ...grpc.CallOption) (*NonceResponse, error)
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error)
 	// Stop gracefully stops the enclave
@@ -184,6 +186,15 @@ func (c *enclaveProtoClient) Balance(ctx context.Context, in *BalanceRequest, op
 	return out, nil
 }
 
+func (c *enclaveProtoClient) Nonce(ctx context.Context, in *NonceRequest, opts ...grpc.CallOption) (*NonceResponse, error) {
+	out := new(NonceResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Nonce", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *enclaveProtoClient) RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error) {
 	out := new(RoundWinnerResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/RoundWinner", in, out, opts...)
@@ -244,6 +255,8 @@ type EnclaveProtoServer interface {
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
 	// Balance - returns the balance of an address with a block delay
 	Balance(context.Context, *BalanceRequest) (*BalanceResponse, error)
+	// Balance - returns the balance of an address with a block delay
+	Nonce(context.Context, *NonceRequest) (*NonceResponse, error)
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(context.Context, *RoundWinnerRequest) (*RoundWinnerResponse, error)
 	// Stop gracefully stops the enclave
@@ -295,6 +308,9 @@ func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxReques
 }
 func (UnimplementedEnclaveProtoServer) Balance(context.Context, *BalanceRequest) (*BalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Balance not implemented")
+}
+func (UnimplementedEnclaveProtoServer) Nonce(context.Context, *NonceRequest) (*NonceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Nonce not implemented")
 }
 func (UnimplementedEnclaveProtoServer) RoundWinner(context.Context, *RoundWinnerRequest) (*RoundWinnerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RoundWinner not implemented")
@@ -552,6 +568,24 @@ func _EnclaveProto_Balance_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_Nonce_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NonceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).Nonce(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/Nonce",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).Nonce(ctx, req.(*NonceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _EnclaveProto_RoundWinner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RoundWinnerRequest)
 	if err := dec(in); err != nil {
@@ -664,6 +698,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Balance",
 			Handler:    _EnclaveProto_Balance_Handler,
+		},
+		{
+			MethodName: "Nonce",
+			Handler:    _EnclaveProto_Nonce_Handler,
 		},
 		{
 			MethodName: "RoundWinner",

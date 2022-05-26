@@ -52,6 +52,11 @@ func (api *ObscuroAPI) Balance(address common.Address) uint64 {
 	return api.host.EnclaveClient.Balance(address)
 }
 
+// Nonce returns the nonce of the wallet with the given address.
+func (api *ObscuroAPI) Nonce(address common.Address) uint64 {
+	return api.host.EnclaveClient.Nonce(address)
+}
+
 // StopHost gracefully stops the host.
 func (api *ObscuroAPI) StopHost() {
 	api.host.Stop()

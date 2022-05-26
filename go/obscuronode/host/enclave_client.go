@@ -213,6 +213,17 @@ func (c *EnclaveRPCClient) Balance(address common.Address) uint64 {
 	return response.Balance
 }
 
+func (c *EnclaveRPCClient) Nonce(address common.Address) uint64 {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.Nonce(timeoutCtx, &generated.NonceRequest{Address: address.Bytes()})
+	if err != nil {
+		panic(fmt.Errorf(">   Agg%d: Failed to retrieve nonce: %w", obscurocommon.ShortAddress(c.config.ID), err))
+	}
+	return response.Nonce
+}
+
 func (c *EnclaveRPCClient) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

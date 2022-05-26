@@ -47,6 +47,9 @@ service EnclaveProto {
   // Balance - returns the balance of an address with a block delay
   rpc Balance(BalanceRequest) returns (BalanceResponse) {}
 
+  // Nonce - returns the nonce of the wallet with the given address.
+  rpc Nonce(NonceRequest) returns (NonceResponse) {}
+
   // RoundWinner - calculates and returns the winner for a round
   rpc RoundWinner(RoundWinnerRequest) returns (RoundWinnerResponse) {}
 
@@ -133,6 +136,13 @@ message BalanceRequest {
 }
 message BalanceResponse {
   uint64 balance = 1;
+}
+
+message NonceRequest {
+  bytes address = 1;
+}
+message NonceResponse {
+  uint64 nonce = 1;
 }
 
 message RoundWinnerRequest {
