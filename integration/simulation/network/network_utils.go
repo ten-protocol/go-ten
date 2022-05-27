@@ -69,6 +69,7 @@ func createInMemObscuroNode(
 		WillAttest:       false,
 		ValidateL1Blocks: validateBlocks,
 		GenesisJSON:      genesisJSON,
+		UseInMemoryDB:    true,
 	}
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
 
