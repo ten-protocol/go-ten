@@ -35,6 +35,7 @@ func (s *Simulation) Start() {
 	log.Info(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
 
 	s.WaitForObscuroGenesis()
+	log.Trace("Found A rollup in the blocks, Ready to start the TxInjector")
 
 	time.Sleep(3 * time.Second)
 	timer := time.Now()

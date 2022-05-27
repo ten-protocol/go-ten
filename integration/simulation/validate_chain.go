@@ -238,7 +238,7 @@ func checkBlockchainOfObscuroNode(
 		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in the enclave", nodeAddr, notFoundWithdrawals, len(withdrawals))
 	}
 
-	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(nodeClient, nodeAddr)
+	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.counter.GetL2WithdrawalRequests()) {
@@ -280,7 +280,7 @@ func checkBlockchainOfObscuroNode(
 	heights[nodeIdx] = l2Height
 }
 
-func extractWithdrawals(nodeClient *obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, nodeClient *obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {
@@ -293,7 +293,8 @@ func extractWithdrawals(nodeClient *obscuroclient.Client, nodeAddr uint64) (tota
 			return
 		}
 		if r == nil {
-			panic(fmt.Sprintf("Node %d: Reached a missing rollup", nodeAddr))
+			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeAddr))
+			return
 		}
 		for _, w := range r.Withdrawals {
 			totalSuccessfullyWithdrawn += w.Amount
