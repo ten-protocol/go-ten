@@ -46,6 +46,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		ERC20ContractAddresses:    []*common.Address{},
 		WriteToLogs:               false,
 		LogPath:                   "enclave_logs.txt",
-		UseInMemoryDB:             false,
+		UseInMemoryDB:             true,
 	}
 }
