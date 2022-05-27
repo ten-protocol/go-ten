@@ -578,12 +578,6 @@ func (a *Node) awaitSecret() {
 				return
 			}
 
-		case <-a.forkRPCCh:
-			// todo
-
-		case <-a.rollupsP2PCh:
-			// ignore rolllups from peers as we're not part of the network just yet
-
 		case <-time.After(time.Second * 10):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
 			nodecommon.LogWithID(a.shortID, "Still waiting for secret from the L1...")
