@@ -3,11 +3,13 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
 
@@ -114,7 +116,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 
 	containerIDs := make([]string, len(enclavePorts))
 	for idx, port := range enclavePorts {
-		nodeID := strconv.FormatInt(int64(idx+1), 10)
+		nodeID := common.BigToAddress(big.NewInt(int64(idx + 1))).Hex()
 		containerConfig := &container.Config{Image: enclaveDockerImg, Cmd: []string{"--" + enclaverunner.HostIDName, nodeID, "--" + enclaverunner.AddressName, enclaveAddress}}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: network.Localhost, HostPort: port}}},

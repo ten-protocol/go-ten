@@ -117,6 +117,9 @@ func (a *Node) Start() {
 		nodecommon.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
 		// Create the shared secret and submit it to the management contract for storage
 		attestation := a.EnclaveClient.Attestation()
+		if attestation.Owner != a.ID {
+			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
+		}
 		encodedAttestation := nodecommon.EncodeAttestation(attestation)
 		l1tx := &obscurocommon.L1StoreSecretTx{
 			Secret:      a.EnclaveClient.GenerateSecret(),
@@ -197,17 +200,25 @@ func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
 
-	a.P2p.StopListening()
-	if a.clientServer != nil {
-		a.clientServer.Stop()
+	if err := a.P2p.StopListening(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "failed to close transaction P2P listener cleanly: %s", err)
+	}
+	if err := a.EnclaveClient.Stop(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "could not stop enclave server. Cause: %s", err)
 	}
 
-	if err := a.EnclaveClient.Stop(); err != nil {
-		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
+	if err := a.EnclaveClient.StopClient(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
+
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
-	a.EnclaveClient.StopClient()
+
+	if a.clientServer != nil {
+		if err := a.clientServer.Stop(); err != nil {
+			nodecommon.ErrorWithID(a.shortID, "could not stop client RPC server. Cause: %s", err)
+		}
+	}
 }
 
 // ConnectToEthNode connects the Aggregator to the ethereum node
@@ -225,7 +236,7 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for err := a.EnclaveClient.IsReady(); err != nil; {
 		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for enclave. Error: %v", err)
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave on %s. Error: %v", a.config.EnclaveRPCAddress, err)
 			counter = 0
 		}
 
@@ -449,6 +460,9 @@ func (a *Node) broadcastTx(tx types.TxData) {
 func (a *Node) requestSecret() {
 	nodecommon.LogWithID(a.shortID, "Requesting secret.")
 	att := a.EnclaveClient.Attestation()
+	if att.Owner != a.ID {
+		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
+	}
 	encodedAttestation := nodecommon.EncodeAttestation(att)
 	l1tx := &obscurocommon.L1RequestSecretTx{
 		Attestation: encodedAttestation,

@@ -37,8 +37,9 @@ func (netw *MockP2P) StartListening(host.P2PCallback) {
 	// nothing to do here, since communication is direct through the in memory objects
 }
 
-func (netw *MockP2P) StopListening() {
+func (netw *MockP2P) StopListening() error {
 	atomic.StoreInt32(netw.listenerInterrupt, 1)
+	return nil
 }
 
 // BroadcastRollup Broadcasts the rollup to all L2 peers
