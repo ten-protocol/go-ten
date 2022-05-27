@@ -35,9 +35,9 @@ type Node struct {
 	stats StatsCollector
 
 	// control the host lifecycle
-	exitNodeCh          chan bool
-	stopNodeInterrupt   *int32
-	ignoreBootstrapping *int32
+	exitNodeCh            chan bool
+	stopNodeInterrupt     *int32
+	bootstrappingComplete *int32 // Marks when the node is done bootstrapping
 
 	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
@@ -78,9 +78,9 @@ func NewHost(
 		stats: collector,
 
 		// lifecycle channels
-		exitNodeCh:          make(chan bool),
-		stopNodeInterrupt:   new(int32),
-		ignoreBootstrapping: new(int32),
+		exitNodeCh:            make(chan bool),
+		stopNodeInterrupt:     new(int32),
+		bootstrappingComplete: new(int32),
 
 		// incoming data
 		blockRPCCh:   make(chan blockAndParent),
@@ -474,7 +474,7 @@ func (a *Node) monitorBlocks() {
 		}
 
 		// ignore blocks if bootstrapping is happening
-		if atomic.LoadInt32(a.ignoreBootstrapping) == 0 {
+		if atomic.LoadInt32(a.bootstrappingComplete) == 0 {
 			log.Trace("Node in bootstrap - ignoring block %s", blkHeader.Hash())
 			continue
 		}
@@ -538,7 +538,7 @@ func (a *Node) bootstrapNode() types.Block {
 			nodecommon.LogWithID(a.shortID, "Bootstrapping node at block... %d", currentBlock.NumberU64())
 		}
 	}
-	atomic.StoreInt32(a.ignoreBootstrapping, 1)
+	atomic.StoreInt32(a.bootstrappingComplete, 1)
 	nodecommon.LogWithID(a.shortID, "Finished bootstrap process with block %d", currentBlock.NumberU64())
 	return *currentBlock
 }
@@ -592,7 +592,7 @@ func (a *Node) waitForNetworkSecret() {
 
 		case <-time.After(time.Second * 10):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
-			nodecommon.LogWithID(a.shortID, "Waiting for secret from the L1 after %s...", startTime)
+			nodecommon.LogWithID(a.shortID, "Waiting for secret from the L1 after %s...", time.Since(startTime))
 
 		case <-a.exitNodeCh:
 			return
