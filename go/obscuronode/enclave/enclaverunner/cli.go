@@ -15,7 +15,8 @@ import (
 type EnclaveConfigToml struct {
 	HostID                    string
 	Address                   string
-	ChainID                   int64
+	L1ChainID                 int64
+	ObscuroChainID            int64
 	WillAttest                bool
 	ValidateL1Blocks          bool
 	SpeculativeExecution      bool
@@ -34,7 +35,8 @@ func ParseConfig() config.EnclaveConfig {
 	configPath := flag.String(configName, "", configUsage)
 	hostID := flag.String(HostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
 	address := flag.String(AddressName, defaultConfig.Address, addressUsage)
-	chainID := flag.Int64(chainIDName, defaultConfig.ChainID, chainIDUsage)
+	l1ChainID := flag.Int64(l1ChainIDName, defaultConfig.L1ChainID, l1ChainIDUsage)
+	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.ObscuroChainID, obscuroChainIDUsage)
 	willAttest := flag.Bool(willAttestName, defaultConfig.WillAttest, willAttestUsage)
 	validateL1Blocks := flag.Bool(validateL1BlocksName, defaultConfig.ValidateL1Blocks, validateL1BlocksUsage)
 	speculativeExecution := flag.Bool(speculativeExecutionName, defaultConfig.SpeculativeExecution, speculativeExecutionUsage)
@@ -64,7 +66,8 @@ func ParseConfig() config.EnclaveConfig {
 
 	defaultConfig.HostID = common.HexToAddress(*hostID)
 	defaultConfig.Address = *address
-	defaultConfig.ChainID = *chainID
+	defaultConfig.L1ChainID = *l1ChainID
+	defaultConfig.ObscuroChainID = *obscuroChainID
 	defaultConfig.WillAttest = *willAttest
 	defaultConfig.ValidateL1Blocks = *validateL1Blocks
 	defaultConfig.SpeculativeExecution = *speculativeExecution
@@ -99,7 +102,8 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 	return config.EnclaveConfig{
 		HostID:                    common.HexToAddress(tomlConfig.HostID),
 		Address:                   tomlConfig.Address,
-		ChainID:                   tomlConfig.ChainID,
+		L1ChainID:                 tomlConfig.L1ChainID,
+		ObscuroChainID:            tomlConfig.ObscuroChainID,
 		WillAttest:                tomlConfig.WillAttest,
 		ValidateL1Blocks:          tomlConfig.ValidateL1Blocks,
 		SpeculativeExecution:      tomlConfig.SpeculativeExecution,

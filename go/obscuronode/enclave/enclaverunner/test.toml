@@ -1,6 +1,7 @@
 hostID = "0x0000000000000000000000000000000000000000"
 address = "127.0.0.1:11000"
-chainID = 777
+l1ChainID = 1377
+obscuroChainID = 777
 willAttest = false
 validateL1Blocks = false
 speculativeExecution = false

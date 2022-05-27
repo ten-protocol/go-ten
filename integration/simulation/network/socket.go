@@ -105,7 +105,8 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		enclaveConfig := config.EnclaveConfig{
 			HostID:           common.BigToAddress(big.NewInt(int64(i))),
 			Address:          enclaveAddr,
-			ChainID:          integration.ObscuroChainID,
+			L1ChainID:        integration.EthereumChainID,
+			ObscuroChainID:   integration.ObscuroChainID,
 			ValidateL1Blocks: false,
 			WillAttest:       false,
 			GenesisJSON:      nil,

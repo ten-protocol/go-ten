@@ -65,7 +65,8 @@ func createInMemObscuroNode(
 
 	enclaveConfig := config.EnclaveConfig{
 		HostID:           hostConfig.ID,
-		ChainID:          integration.ObscuroChainID,
+		L1ChainID:        integration.EthereumChainID,
+		ObscuroChainID:   integration.ObscuroChainID,
 		WillAttest:       false,
 		ValidateL1Blocks: validateBlocks,
 		GenesisJSON:      genesisJSON,
