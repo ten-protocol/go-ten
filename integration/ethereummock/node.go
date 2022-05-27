@@ -42,10 +42,15 @@ type StatsCollector interface {
 	L1Reorg(id common.Address)
 }
 
+type NotifyNewBlock interface {
+	MockedNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock)
+	MockedNewFork(b []obscurocommon.EncodedBlock)
+}
+
 type Node struct {
 	ID       common.Address
 	cfg      MiningConfig
-	clients  []obscurocommon.NotifyNewBlock
+	clients  []NotifyNewBlock
 	Network  L1Network
 	mining   bool
 	stats    StatsCollector
@@ -318,7 +323,7 @@ func (m *Node) Stop() {
 	m.exitCh <- true
 }
 
-func (m *Node) AddClient(client obscurocommon.NotifyNewBlock) {
+func (m *Node) AddClient(client NotifyNewBlock) {
 	m.clients = append(m.clients, client)
 }
 

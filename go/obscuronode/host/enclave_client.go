@@ -5,6 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
+	"google.golang.org/grpc/connectivity"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
@@ -36,16 +39,36 @@ func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	if err != nil {
 		log.Panic(">   Agg%d: Failed to connect to enclave RPC service. Cause: %s", obscurocommon.ShortAddress(config.ID), err)
 	}
+
+	// We wait for the RPC connection to be ready.
+	currentTime := time.Now()
+	deadline := currentTime.Add(30 * time.Second)
+	currentState := connection.GetState()
+	for currentState == connectivity.Idle || currentState == connectivity.Connecting || currentState == connectivity.TransientFailure {
+		connection.Connect()
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+		currentState = connection.GetState()
+	}
+
+	if currentState != connectivity.Ready {
+		log.Panic(">   Agg%d: RPC connection failed to establish. Current state is %s", obscurocommon.ShortAddress(config.ID), currentState)
+	}
+
 	return &EnclaveRPCClient{generated.NewEnclaveProtoClient(connection), connection, config}
 }
 
-func (c *EnclaveRPCClient) StopClient() {
-	if err := c.connection.Close(); err != nil {
-		log.Panic(">   Agg%d: Failed to stop enclave RPC service. Cause: %s", obscurocommon.ShortAddress(c.config.ID), err)
-	}
+func (c *EnclaveRPCClient) StopClient() error {
+	return c.connection.Close()
 }
 
 func (c *EnclaveRPCClient) IsReady() error {
+	if c.connection.GetState() != connectivity.Ready {
+		return errors.New("RPC connection is not ready")
+	}
+
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

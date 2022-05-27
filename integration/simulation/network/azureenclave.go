@@ -90,6 +90,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			WillAttest:       false,
 			ValidateL1Blocks: false,
 			GenesisJSON:      nil,
+			UseInMemoryDB:    true,
 		}
 		_, err := enclave.StartServer(
 			enclaveConfig,

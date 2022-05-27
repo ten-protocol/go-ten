@@ -22,10 +22,9 @@ type storageImpl struct {
 	nodeID  uint64
 }
 
-func NewStorage(db *InMemoryDB, nodeID uint64) Storage {
-	backingDB := rawdb.NewMemoryDatabase()
+func NewStorage(tempDB *InMemoryDB, backingDB ethdb.Database, nodeID uint64) Storage {
 	return &storageImpl{
-		tempDB:  db,
+		tempDB:  tempDB,
 		db:      backingDB,
 		stateDB: state.NewDatabase(backingDB),
 		nodeID:  nodeID,

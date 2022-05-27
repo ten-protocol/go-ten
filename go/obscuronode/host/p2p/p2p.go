@@ -74,14 +74,13 @@ func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 	go p.handleConnections(callback)
 }
 
-func (p *p2pImpl) StopListening() {
+func (p *p2pImpl) StopListening() error {
 	atomic.StoreInt32(p.listenerInterrupt, 1)
 
 	if p.listener != nil {
-		if err := p.listener.Close(); err != nil {
-			nodecommon.LogWithID(p.nodeID, "failed to close transaction P2P listener cleanly: %v", err)
-		}
+		return p.listener.Close()
 	}
+	return nil
 }
 
 func (p *p2pImpl) BroadcastTx(tx nodecommon.EncryptedTx) {

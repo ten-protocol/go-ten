@@ -19,16 +19,16 @@ import (
 type HostConfigToml struct {
 	ID                      string
 	IsGenesis               bool
-	GossipRoundNanos        time.Duration
+	GossipRoundNanos        int
 	ClientRPCAddress        string
-	ClientRPCTimeoutSecs    time.Duration //nolint:stylecheck
+	ClientRPCTimeoutSecs    int
 	EnclaveRPCAddress       string
-	EnclaveRPCTimeoutSecs   time.Duration //nolint:stylecheck
+	EnclaveRPCTimeoutSecs   int
 	P2PAddress              string
 	PeerP2PAddresses        []string
 	L1NodeHost              string
 	L1NodePort              uint
-	L1ConnectionTimeoutSecs time.Duration //nolint:stylecheck
+	L1ConnectionTimeoutSecs int
 	RollupContractAddress   string
 	LogPath                 string
 	PrivateKey              string
@@ -107,17 +107,17 @@ func fileBasedConfig(configPath string) config.HostConfig {
 	return config.HostConfig{
 		ID:                    common.HexToAddress(tomlConfig.ID),
 		IsGenesis:             tomlConfig.IsGenesis,
-		GossipRoundDuration:   tomlConfig.GossipRoundNanos,
+		GossipRoundDuration:   time.Duration(tomlConfig.GossipRoundNanos),
 		HasClientRPC:          true,
 		ClientRPCAddress:      tomlConfig.ClientRPCAddress,
-		ClientRPCTimeout:      tomlConfig.ClientRPCTimeoutSecs * time.Second, //nolint:durationcheck
+		ClientRPCTimeout:      time.Duration(tomlConfig.ClientRPCTimeoutSecs) * time.Second,
 		EnclaveRPCAddress:     tomlConfig.EnclaveRPCAddress,
-		EnclaveRPCTimeout:     tomlConfig.EnclaveRPCTimeoutSecs * time.Second, //nolint:durationcheck
+		EnclaveRPCTimeout:     time.Duration(tomlConfig.EnclaveRPCTimeoutSecs) * time.Second,
 		P2PAddress:            tomlConfig.P2PAddress,
 		AllP2PAddresses:       tomlConfig.PeerP2PAddresses,
 		L1NodeHost:            tomlConfig.L1NodeHost,
 		L1NodeWebsocketPort:   tomlConfig.L1NodePort,
-		L1ConnectionTimeout:   tomlConfig.L1ConnectionTimeoutSecs * time.Second, //nolint:durationcheck
+		L1ConnectionTimeout:   time.Duration(tomlConfig.L1ConnectionTimeoutSecs) * time.Second,
 		RollupContractAddress: common.HexToAddress(tomlConfig.RollupContractAddress),
 		LogPath:               tomlConfig.LogPath,
 		PrivateKeyString:      tomlConfig.PrivateKey,

@@ -11,6 +11,9 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/ethdb"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
@@ -66,8 +69,8 @@ func (e *enclaveImpl) IsReady() error {
 	return nil // The enclave is local so it is always ready
 }
 
-func (e *enclaveImpl) StopClient() {
-	// The enclave is local so there is no client to stop
+func (e *enclaveImpl) StopClient() error {
+	return nil // The enclave is local so there is no client to stop
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
@@ -629,9 +632,15 @@ func NewEnclave(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	collector StatsCollector,
 ) nodecommon.Enclave {
-	backingDB := db.NewInMemoryDB()
+	tempDB := db.NewInMemoryDB()
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
-	storage := db.NewStorage(backingDB, nodeShortID)
+
+	connect := getDBConnector(config)
+	backingDB, err := connect()
+	if err != nil {
+		log.Panic("Failed to connect to backing database - %s", err)
+	}
+	storage := db.NewStorage(tempDB, backingDB, nodeShortID)
 
 	var l1Blockchain *core.BlockChain
 	if config.ValidateL1Blocks {
@@ -695,4 +704,22 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 		return nil, fmt.Errorf("failed to decrypt with private key. %w", err)
 	}
 	return plaintext, nil
+}
+
+// getDBConnector creates an appropriate EthDBConnector function based on your config
+func getDBConnector(cfg config.EnclaveConfig) db.EthDBConnector {
+	if cfg.UseInMemoryDB {
+		// not persistent
+		return func() (ethdb.Database, error) {
+			return rawdb.NewMemoryDatabase(), nil
+		}
+	}
+
+	if !cfg.WillAttest {
+		// persistent but not secure in an enclave, we'll connect to a sqlite DB and test out persistence/sql implementations
+		panic("Haven't implemented sql ethdb interface yet")
+	}
+
+	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
+	panic("Haven't implemented edgeless DB enclave connection yet")
 }

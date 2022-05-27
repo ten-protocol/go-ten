@@ -2,6 +2,7 @@ package host
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync/atomic"
@@ -110,7 +111,7 @@ func (a *Node) Start() {
 	if err != nil {
 		panic("could not print host config")
 	}
-	log.Info("Host started with following config:\n%s", tomlConfig)
+	nodecommon.LogWithID(a.shortID, "Host started with following config:\n%s", tomlConfig)
 
 	// wait for the Enclave to be available
 	a.waitForEnclave()
@@ -202,17 +203,25 @@ func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
 
-	a.P2p.StopListening()
-	if a.clientServer != nil {
-		a.clientServer.Stop()
+	if err := a.P2p.StopListening(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "failed to close transaction P2P listener cleanly: %s", err)
+	}
+	if err := a.EnclaveClient.Stop(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "could not stop enclave server. Cause: %s", err)
 	}
 
-	if err := a.EnclaveClient.Stop(); err != nil {
-		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
+	if err := a.EnclaveClient.StopClient(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
+
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
-	a.EnclaveClient.StopClient()
+
+	if a.clientServer != nil {
+		if err := a.clientServer.Stop(); err != nil {
+			nodecommon.ErrorWithID(a.shortID, "could not stop client RPC server. Cause: %s", err)
+		}
+	}
 }
 
 // ConnectToEthNode connects the Aggregator to the ethereum node
@@ -230,7 +239,7 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for err := a.EnclaveClient.IsReady(); err != nil; {
 		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for enclave on %s. Error: %v", a.config.EnclaveRPCAddress, err)
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave on %s. Latest connection attempt failed with: %v", a.config.EnclaveRPCAddress, err)
 			counter = 0
 		}
 
@@ -238,28 +247,6 @@ func (a *Node) waitForEnclave() {
 		counter++
 	}
 	nodecommon.LogWithID(a.shortID, "Connected to enclave service.")
-}
-
-// Waits for initial blocks from the L1 node, printing a wait message every two seconds.
-func (a *Node) waitForL1Blocks() []*types.Block {
-	// It feeds the entire L1 blockchain into the enclave when it starts
-	// todo - what happens with the blocks received while processing ?
-	allBlocks := a.ethClient.RPCBlockchainFeed()
-	counter := 0
-
-	for len(allBlocks) == 0 {
-		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for blocks from L1 node...")
-			counter = 0
-		}
-
-		time.Sleep(100 * time.Millisecond)
-		allBlocks = a.ethClient.RPCBlockchainFeed()
-		counter++
-	}
-	nodecommon.LogWithID(a.shortID, "Received %d initial blocks from L1 node.", len(allBlocks))
-
-	return allBlocks
 }
 
 // starts the host main processing loop
@@ -525,7 +512,7 @@ func (a *Node) bootstrapNode() types.Block {
 
 	nodecommon.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
 
-	for {
+	for startTime := time.Now(); ; {
 		// TODO ingest one block at a time or batch the blocks
 		result := a.EnclaveClient.IngestBlocks([]*types.Block{currentBlock})
 		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
@@ -540,12 +527,16 @@ func (a *Node) bootstrapNode() types.Block {
 
 		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(currentBlock.Number().Int64() + 1))
 		if err != nil {
-			if err == ethereum.NotFound {
+			if errors.Is(err, ethereum.NotFound) {
 				break
 			}
 			panic(err)
 		}
 		currentBlock = nextBlk
+
+		if time.Since(startTime)%(10*time.Second) == 0 {
+			nodecommon.LogWithID(a.shortID, "Bootstrapping node at block... %d", currentBlock.NumberU64())
+		}
 	}
 	atomic.StoreInt32(a.ignoreBootstrapping, 1)
 	nodecommon.LogWithID(a.shortID, "Finished bootstrap process with block %d", currentBlock.NumberU64())
@@ -567,43 +558,46 @@ func (a *Node) waitForNetworkSecret() {
 
 		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		nodecommon.LogWithID(a.shortID, "Node is genesis node. Network secret was broadcast")
-	} else {
-		// Request the network secret
-		att := a.EnclaveClient.Attestation()
-		encodedAttestation := nodecommon.EncodeAttestation(att)
-		l1tx := &obscurocommon.L1RequestSecretTx{
-			Attestation: encodedAttestation,
-		}
-		a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
-		nodecommon.LogWithID(a.shortID, "Node requested Network secret")
+		return
+	}
 
-		for startTime := time.Now(); ; {
-			select {
-			// todo: find a way to get rid of this case and only listen for blocks on the expected channels
-			case header := <-a.ethClient.BlockListener():
-				block, err := a.ethClient.BlockByHash(header.Hash())
-				if err != nil {
-					log.Panic("failed to retrieve block. Cause: %s:", err)
-				}
-				if a.checkBlockForSecretResponse(block) {
-					return
-				}
+	// Request the network secret
+	att := a.EnclaveClient.Attestation()
+	encodedAttestation := nodecommon.EncodeAttestation(att)
+	if att.Owner != a.ID {
+		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
+	}
+	l1tx := &obscurocommon.L1RequestSecretTx{
+		Attestation: encodedAttestation,
+	}
+	a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	nodecommon.LogWithID(a.shortID, "Node requested Network secret")
 
-			case b := <-a.blockRPCCh:
-				if a.checkBlockForSecretResponse(b.b.DecodeBlock()) {
-					return
-				}
-
-			case <-time.After(time.Second * 10):
-				// This will provide useful feedback if things are stuck
-				nodecommon.LogWithID(a.shortID, "Waiting for secret from the L1 after %s...", startTime)
-
-			case <-a.exitNodeCh:
+	for startTime := time.Now(); ; {
+		select {
+		// todo: find a way to get rid of this case and only listen for blocks on the expected channels
+		case header := <-a.ethClient.BlockListener():
+			block, err := a.ethClient.BlockByHash(header.Hash())
+			if err != nil {
+				log.Panic("failed to retrieve block. Cause: %s:", err)
+			}
+			if a.checkBlockForSecretResponse(block) {
 				return
 			}
+
+		case b := <-a.blockRPCCh:
+			if a.checkBlockForSecretResponse(b.b.DecodeBlock()) {
+				return
+			}
+
+		case <-time.After(time.Second * 10):
+			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
+			nodecommon.LogWithID(a.shortID, "Waiting for secret from the L1 after %s...", startTime)
+
+		case <-a.exitNodeCh:
+			return
 		}
 	}
-	return
 }
 
 func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
