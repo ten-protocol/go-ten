@@ -23,6 +23,7 @@ type EnclaveConfigToml struct {
 	ERC20ContractAddresses    []string
 	WriteToLogs               bool
 	LogPath                   string
+	UseInMemoryDb             bool
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -41,6 +42,7 @@ func ParseConfig() config.EnclaveConfig {
 	erc20ContractAddrs := flag.String(erc20contractAddrsName, "", erc20contractAddrsUsage)
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
+	useInMemoryDB := flag.Bool(useInMemoryDBName, defaultConfig.UseInMemoryDb, useInMemoryDBUsage)
 
 	flag.Parse()
 
@@ -70,6 +72,7 @@ func ParseConfig() config.EnclaveConfig {
 	defaultConfig.ERC20ContractAddresses = erc20contractAddresses
 	defaultConfig.WriteToLogs = *writeToLogs
 	defaultConfig.LogPath = *logPath
+	defaultConfig.UseInMemoryDb = *useInMemoryDB
 
 	return defaultConfig
 }

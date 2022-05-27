@@ -34,4 +34,7 @@ const (
 
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the enclave service's log file"
+
+	useInMemoryDBName  = "useInMemoryDB"
+	useInMemoryDBUsage = "Whether the enclave will use an in-memory DB rather than persist data"
 )
