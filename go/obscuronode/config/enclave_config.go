@@ -11,7 +11,9 @@ type EnclaveConfig struct {
 	// The address on which to serve requests
 	Address string
 	// The ID of the L1 chain
-	ChainID int64
+	L1ChainID int64
+	// The ID of the Obscuro chain
+	ObscuroChainID int64
 	// Whether to produce a verified attestation report
 	WillAttest bool
 	// Whether to validate incoming L1 blocks
@@ -37,7 +39,8 @@ func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
 		HostID:                    common.BytesToAddress([]byte("")),
 		Address:                   "127.0.0.1:11000",
-		ChainID:                   1337,
+		L1ChainID:                 1337,
+		ObscuroChainID:            777,
 		WillAttest:                false,
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
