@@ -10,7 +10,7 @@ import (
 const testToml = "/test.toml"
 
 func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
-	expectedChainID := int64(777) //nolint:ifshort
+	expectedChainID := int64(1377) //nolint:ifshort
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -22,7 +22,7 @@ func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
 }
 
 func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
-	expectedChainID := int64(777)
+	expectedChainID := int64(1377)
 	os.Args = append(os.Args, "--"+l1ChainIDName, strconv.FormatInt(expectedChainID, 10))
 
 	if config := ParseConfig(); config.L1ChainID != expectedChainID {
