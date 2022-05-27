@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"google.golang.org/grpc/connectivity"
 
@@ -38,6 +39,23 @@ func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	if err != nil {
 		log.Panic(">   Agg%d: Failed to connect to enclave RPC service. Cause: %s", obscurocommon.ShortAddress(config.ID), err)
 	}
+
+	// We wait for the RPC connection to be ready.
+	currentTime := time.Now()
+	deadline := currentTime.Add(config.EnclaveRPCTimeout)
+	currentState := connection.GetState()
+	for currentState == connectivity.Idle || currentState == connectivity.Connecting || currentState == connectivity.TransientFailure {
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+		currentState = connection.GetState()
+	}
+
+	if currentState != connectivity.Ready {
+		log.Panic(">   Agg%d: RPC connection failed to establish. Current state is %s", obscurocommon.ShortAddress(config.ID), currentState)
+	}
+
 	return &EnclaveRPCClient{generated.NewEnclaveProtoClient(connection), connection, config}
 }
 
