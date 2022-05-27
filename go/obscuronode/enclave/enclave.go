@@ -66,8 +66,8 @@ func (e *enclaveImpl) IsReady() error {
 	return nil // The enclave is local so it is always ready
 }
 
-func (e *enclaveImpl) StopClient() {
-	// The enclave is local so there is no client to stop
+func (e *enclaveImpl) StopClient() error {
+	return nil // The enclave is local so there is no client to stop
 }
 
 func (e *enclaveImpl) Start(block types.Block) {

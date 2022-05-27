@@ -100,13 +100,13 @@ func teardown(obscuroClient obscuroclient.Client, clientServerAddr string) {
 	obscuroClient.Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
 
 	// We wait for the client server port to be closed.
-	wait := 20 // max wait in seconds
+	wait := 0
 	for tcpConnectionAvailable(clientServerAddr) {
-		if wait == 0 {
+		if wait == 20 { // max wait in seconds
 			panic(fmt.Sprintf("RPC client server had not shut down after %d seconds", wait))
 		}
 		time.Sleep(time.Second)
-		wait--
+		wait++
 	}
 }
 

@@ -61,8 +61,6 @@ func (s clientServerImpl) Start() {
 	}
 }
 
-func (s clientServerImpl) Stop() {
-	if err := s.node.Close(); err != nil {
-		return
-	}
+func (s clientServerImpl) Stop() error {
+	return s.node.Close()
 }

@@ -16,7 +16,7 @@ type P2PCallback interface {
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
 type P2P interface {
 	StartListening(callback P2PCallback)
-	StopListening()
+	StopListening() error
 	BroadcastRollup(r obscurocommon.EncodedRollup)
 	BroadcastTx(tx nodecommon.EncryptedTx)
 }
@@ -24,7 +24,7 @@ type P2P interface {
 // ClientServer is the layer responsible for handling requests from Obscuro client applications.
 type ClientServer interface {
 	Start()
-	Stop()
+	Stop() error
 }
 
 type StatsCollector interface {
