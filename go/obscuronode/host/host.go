@@ -108,7 +108,7 @@ func (a *Node) Start() {
 	if err != nil {
 		panic("could not print host config")
 	}
-	log.Info("Host started with following config:\n%s", tomlConfig)
+	nodecommon.LogWithID(a.shortID, "Host started with following config:\n%s", tomlConfig)
 
 	a.waitForEnclave()
 
@@ -236,7 +236,7 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for err := a.EnclaveClient.IsReady(); err != nil; {
 		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for enclave on %s. Error: %v", a.config.EnclaveRPCAddress, err)
+			nodecommon.LogWithID(a.shortID, "Waiting for enclave on %s. Latest connection attempt failed with: %v", a.config.EnclaveRPCAddress, err)
 			counter = 0
 		}
 
