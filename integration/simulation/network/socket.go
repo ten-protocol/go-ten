@@ -109,7 +109,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 			ValidateL1Blocks: false,
 			WillAttest:       false,
 			GenesisJSON:      nil,
-			UseInMemoryDb:    true,
+			UseInMemoryDB:    true,
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {

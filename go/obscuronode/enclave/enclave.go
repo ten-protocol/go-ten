@@ -8,10 +8,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"math/big"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/ethdb"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
@@ -711,7 +712,7 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 
 // getDBConnector creates an appropriate EthDBConnector function based on your config
 func getDBConnector(cfg config.EnclaveConfig) db.EthDBConnector {
-	if cfg.UseInMemoryDb {
+	if cfg.UseInMemoryDB {
 		// not persistent
 		return func() (ethdb.Database, error) {
 			return rawdb.NewMemoryDatabase(), nil

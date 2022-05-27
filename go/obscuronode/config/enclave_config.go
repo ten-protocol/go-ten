@@ -29,7 +29,7 @@ type EnclaveConfig struct {
 	// The path that the node's logs are written to
 	LogPath string
 	// Whether enclave should use in-memory or persistent storage
-	UseInMemoryDb bool
+	UseInMemoryDB bool
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -46,6 +46,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		ERC20ContractAddresses:    []*common.Address{},
 		WriteToLogs:               false,
 		LogPath:                   "enclave_logs.txt",
-		UseInMemoryDb:             false,
+		UseInMemoryDB:             false,
 	}
 }
