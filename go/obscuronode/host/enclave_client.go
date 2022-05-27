@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"google.golang.org/grpc/connectivity"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -44,6 +46,10 @@ func (c *EnclaveRPCClient) StopClient() error {
 }
 
 func (c *EnclaveRPCClient) IsReady() error {
+	if c.connection.GetState() != connectivity.Ready {
+		return errors.New("RPC connection is not ready")
+	}
+
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
