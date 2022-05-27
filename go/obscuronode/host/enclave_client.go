@@ -42,9 +42,10 @@ func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 
 	// We wait for the RPC connection to be ready.
 	currentTime := time.Now()
-	deadline := currentTime.Add(config.EnclaveRPCTimeout)
+	deadline := currentTime.Add(30 * time.Second)
 	currentState := connection.GetState()
 	for currentState == connectivity.Idle || currentState == connectivity.Connecting || currentState == connectivity.TransientFailure {
+		connection.Connect()
 		if time.Now().After(deadline) {
 			break
 		}
