@@ -37,7 +37,7 @@ type Node struct {
 	exitNodeCh        chan bool
 	stopNodeInterrupt *int32
 
-	blockRPCCh   chan obscurocommon.EncodedBlock   // The channel that new blocks from the L1 node are sent to
+	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
 	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
@@ -80,7 +80,7 @@ func NewHost(
 		stopNodeInterrupt: new(int32),
 
 		// incoming data
-		blockRPCCh:   make(chan obscurocommon.EncodedBlock),
+		blockRPCCh:   make(chan blockAndParent),
 		forkRPCCh:    make(chan []obscurocommon.EncodedBlock),
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
 		txP2PCh:      make(chan nodecommon.EncryptedTx),
@@ -142,11 +142,11 @@ func (a *Node) Start() {
 
 // MockedNewHead receives the notification of new blocks
 // This endpoint is specific to the ethereum mock node
-func (a *Node) MockedNewHead(b obscurocommon.EncodedBlock) {
+func (a *Node) MockedNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
-	a.blockRPCCh <- b
+	a.blockRPCCh <- blockAndParent{b, p}
 }
 
 // MockedNewFork receives the notification of a new fork
@@ -313,7 +313,7 @@ func (a *Node) startProcessing() {
 		select {
 		case b := <-a.blockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			a.processBlocks([]obscurocommon.EncodedBlock{b}, roundInterrupt)
+			a.processBlocks([]obscurocommon.EncodedBlock{b.p, b.b}, roundInterrupt)
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
@@ -352,6 +352,11 @@ func triggerInterrupt(interrupt *int32) *int32 {
 	atomic.StoreInt32(interrupt, 1)
 	i := int32(0)
 	return &i
+}
+
+type blockAndParent struct {
+	b obscurocommon.EncodedBlock
+	p obscurocommon.EncodedBlock
 }
 
 func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int32) {
@@ -542,11 +547,15 @@ func (a *Node) monitorBlocks() {
 		if err != nil {
 			log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
 		}
+		blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
+		if err != nil {
+			log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+		}
 
 		nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
 			obscurocommon.ShortHash(latestBlkHeader.Hash()),
 			latestBlkHeader.Number.Uint64())
-		a.blockRPCCh <- obscurocommon.EncodeBlock(block)
+		a.blockRPCCh <- blockAndParent{obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent)}
 	}
 }
 
@@ -565,7 +574,7 @@ func (a *Node) awaitSecret() {
 			}
 
 		case b := <-a.blockRPCCh:
-			if a.checkBlockForSecretResponse(b.DecodeBlock()) {
+			if a.checkBlockForSecretResponse(b.b.DecodeBlock()) {
 				return
 			}
 

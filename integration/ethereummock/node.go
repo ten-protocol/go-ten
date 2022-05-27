@@ -42,10 +42,15 @@ type StatsCollector interface {
 	L1Reorg(id common.Address)
 }
 
+type NotifyNewBlock interface {
+	MockedNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock)
+	MockedNewFork(b []obscurocommon.EncodedBlock)
+}
+
 type Node struct {
 	ID       common.Address
 	cfg      MiningConfig
-	clients  []obscurocommon.NotifyNewBlock
+	clients  []NotifyNewBlock
 	Network  L1Network
 	mining   bool
 	stats    StatsCollector
@@ -203,7 +208,15 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
-		go t.MockedNewHead(obscurocommon.EncodeBlock(b))
+		if b.NumberU64() == obscurocommon.L1GenesisHeight {
+			go t.MockedNewHead(obscurocommon.EncodeBlock(b), nil)
+		} else {
+			p, f := m.Resolver.ParentBlock(b)
+			if !f {
+				panic("This should not happen")
+			}
+			go t.MockedNewHead(obscurocommon.EncodeBlock(b), obscurocommon.EncodeBlock(p))
+		}
 	}
 	m.canonicalCh <- b
 
@@ -310,7 +323,7 @@ func (m *Node) Stop() {
 	m.exitCh <- true
 }
 
-func (m *Node) AddClient(client obscurocommon.NotifyNewBlock) {
+func (m *Node) AddClient(client NotifyNewBlock) {
 	m.clients = append(m.clients, client)
 }
 
