@@ -346,13 +346,14 @@ func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
 	return result
 }
 
+// NextNonce waits for the previous transaction to be recorded - returns a value if a timeout has passed
 func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
-	// only returns the nonce when the previous transaction was recorded
-	for {
+	for startTime := time.Now(); time.Since(startTime) < 2*time.Second; time.Sleep(time.Millisecond) {
 		result := readNonce(cl, w.Address())
 		if result == w.GetNonce() {
 			return w.GetNonceAndIncrement()
 		}
-		time.Sleep(time.Millisecond)
 	}
+	log.Error("Unable get the correct nonce for %s. Expected: %d , got: %d", w.Address(), w.GetNonce(), readNonce(cl, w.Address()))
+	return readNonce(cl, w.Address())
 }
