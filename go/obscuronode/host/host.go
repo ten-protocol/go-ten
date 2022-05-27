@@ -198,9 +198,6 @@ func (a *Node) Stop() {
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
 
 	a.P2p.StopListening()
-	if a.clientServer != nil {
-		a.clientServer.Stop()
-	}
 
 	if err := a.EnclaveClient.Stop(); err != nil {
 		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
@@ -208,6 +205,10 @@ func (a *Node) Stop() {
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
 	a.EnclaveClient.StopClient()
+
+	if a.clientServer != nil {
+		a.clientServer.Stop()
+	}
 }
 
 // ConnectToEthNode connects the Aggregator to the ethereum node

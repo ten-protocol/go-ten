@@ -65,7 +65,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
 	obscuroClient := obscuroclient.NewClient(clientServerAddr)
-	defer obscuroClient.Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+	defer teardown(obscuroClient, clientServerAddr)
 
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
@@ -94,6 +94,20 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
+}
+
+func teardown(obscuroClient obscuroclient.Client, clientServerAddr string) {
+	obscuroClient.Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+
+	// We wait for the client server port to be closed.
+	wait := 20 // max wait in seconds
+	for tcpConnectionAvailable(clientServerAddr) {
+		if wait == 0 {
+			panic(fmt.Sprintf("RPC client server had not shut down after %d seconds", wait))
+		}
+		time.Sleep(time.Second)
+		wait--
+	}
 }
 
 func tcpConnectionAvailable(addr string) bool {
