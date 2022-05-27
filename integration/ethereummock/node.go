@@ -2,24 +2,20 @@ package ethereummock
 
 import (
 	"fmt"
+
 	"math/big"
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 )
 
 type L1Network interface {
@@ -98,7 +94,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	// TODO this should be a method in the resolver
 	var f bool
 	for blk := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash; {
-		if blk.Number() == n {
+		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
 
@@ -107,7 +103,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 			return nil, fmt.Errorf("block in the chain without a parent")
 		}
 	}
-	return nil, nil // nolint:nilnil
+	return nil, ethereum.NotFound
 }
 
 func (m *Node) BlockByHash(id common.Hash) (*types.Block, error) {
