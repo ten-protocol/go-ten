@@ -26,10 +26,10 @@ const (
 	speculativeExecutionName  = "speculativeExecution"
 	speculativeExecutionUsage = "Whether to enable speculative execution"
 
-	managementContractAddressName  = "managementContractAddress"
+	ManagementContractAddressName  = "managementContractAddress"
 	managementContractAddressUsage = "The management contract address on the L1"
 
-	erc20contractAddrsName  = "erc20ContractAddresses"
+	Erc20contractAddrsName  = "erc20ContractAddresses"
 	erc20contractAddrsUsage = "The ERC20 contract addresses to monitor on the L1"
 
 	writeToLogsName  = "writeToLogs"

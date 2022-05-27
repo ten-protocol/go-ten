@@ -219,6 +219,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
+	nodecommon.LogWithID(e.nodeShortID, "Update state: %d", obscurocommon.ShortHash(block.Hash()))
 	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
