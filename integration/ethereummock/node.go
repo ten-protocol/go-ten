@@ -2,7 +2,6 @@ package ethereummock
 
 import (
 	"fmt"
-
 	"math/big"
 	"sync/atomic"
 	"time"
