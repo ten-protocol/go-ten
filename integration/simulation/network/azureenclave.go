@@ -86,7 +86,8 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		enclaveConfig := config.EnclaveConfig{
 			HostID:           common.BigToAddress(big.NewInt(int64(i))),
 			Address:          fmt.Sprintf("%s:%d", Localhost, enclavePort),
-			ChainID:          integration.ObscuroChainID,
+			L1ChainID:        integration.EthereumChainID,
+			ObscuroChainID:   integration.ObscuroChainID,
 			WillAttest:       false,
 			ValidateL1Blocks: false,
 			GenesisJSON:      nil,

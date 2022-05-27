@@ -174,11 +174,11 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	}
 	// calculate the state to compare with what is in the Rollup
 	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
-	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.erc20ContractLib, stateDB, e.config.ChainID)
+	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.erc20ContractLib, stateDB, e.config.ObscuroChainID)
 	log.Info(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.config.HostID), len(depositTxs)))
 
-	evm.ExecuteTransactions(headRollup.Transactions, stateDB, headRollup.Header, e.storage, e.config.ChainID)
-	evm.ExecuteTransactions(depositTxs, stateDB, headRollup.Header, e.storage, e.config.ChainID)
+	evm.ExecuteTransactions(headRollup.Transactions, stateDB, headRollup.Header, e.storage, e.config.ObscuroChainID)
+	evm.ExecuteTransactions(depositTxs, stateDB, headRollup.Header, e.storage, e.config.ObscuroChainID)
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		log.Panic("could not commit to state DB. Cause: %s", err)
@@ -296,7 +296,7 @@ func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup
 		if found && *t.To() == evm.Erc20ContractAddress && *address == evm.WithdrawalAddress {
 			receipt := receipts[t.Hash()]
 			if receipt != nil && receipt.Status == 1 {
-				signer := types.NewLondonSigner(big.NewInt(e.config.ChainID))
+				signer := types.NewLondonSigner(big.NewInt(e.config.ObscuroChainID))
 				from, err := types.Sender(signer, &newHeadRollup.Transactions[i])
 				if err != nil {
 					panic(err)

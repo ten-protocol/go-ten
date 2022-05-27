@@ -353,6 +353,6 @@ func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
 		if result == w.GetNonce() {
 			return w.GetNonceAndIncrement()
 		}
-		time.Sleep(time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 	}
 }

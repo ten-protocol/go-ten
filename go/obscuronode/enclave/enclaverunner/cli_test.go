@@ -16,16 +16,16 @@ func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
 		panic(err)
 	}
 
-	if config := fileBasedConfig(path.Join(wd, testToml)); config.ChainID != expectedChainID {
-		t.Fatalf("config file was not parsed from TOML. Expected ChainID of %d, got %d", expectedChainID, config.ChainID)
+	if config := fileBasedConfig(path.Join(wd, testToml)); config.L1ChainID != expectedChainID {
+		t.Fatalf("config file was not parsed from TOML. Expected L1ChainID of %d, got %d", expectedChainID, config.L1ChainID)
 	}
 }
 
 func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
 	expectedChainID := int64(777)
-	os.Args = append(os.Args, "--"+chainIDName, strconv.FormatInt(expectedChainID, 10))
+	os.Args = append(os.Args, "--"+l1ChainIDName, strconv.FormatInt(expectedChainID, 10))
 
-	if config := ParseConfig(); config.ChainID != expectedChainID {
-		t.Fatalf("config file was not parsed from flags. Expected ChainID of %d, got %d", expectedChainID, config.ChainID)
+	if config := ParseConfig(); config.L1ChainID != expectedChainID {
+		t.Fatalf("config file was not parsed from flags. Expected L1ChainID of %d, got %d", expectedChainID, config.L1ChainID)
 	}
 }
