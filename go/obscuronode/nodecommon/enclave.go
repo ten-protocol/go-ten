@@ -64,7 +64,7 @@ type Enclave interface {
 	GetTransaction(txHash common.Hash) *L2Tx
 
 	// StopClient stops the enclave client if one exists
-	StopClient()
+	StopClient() error
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

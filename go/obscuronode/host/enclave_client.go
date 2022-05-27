@@ -39,10 +39,8 @@ func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	return &EnclaveRPCClient{generated.NewEnclaveProtoClient(connection), connection, config}
 }
 
-func (c *EnclaveRPCClient) StopClient() {
-	if err := c.connection.Close(); err != nil {
-		log.Panic(">   Agg%d: Failed to stop enclave RPC service. Cause: %s", obscurocommon.ShortAddress(c.config.ID), err)
-	}
+func (c *EnclaveRPCClient) StopClient() error {
+	return c.connection.Close()
 }
 
 func (c *EnclaveRPCClient) IsReady() error {

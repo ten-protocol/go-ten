@@ -200,17 +200,25 @@ func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
 
-	a.P2p.StopListening()
-	if a.clientServer != nil {
-		a.clientServer.Stop()
+	if err := a.P2p.StopListening(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "failed to close transaction P2P listener cleanly: %s", err)
+	}
+	if err := a.EnclaveClient.Stop(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "could not stop enclave server. Cause: %s", err)
 	}
 
-	if err := a.EnclaveClient.Stop(); err != nil {
-		nodecommon.LogWithID(a.shortID, "Could not stop enclave server. Cause: %v", err.Error())
+	if err := a.EnclaveClient.StopClient(); err != nil {
+		nodecommon.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
+
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
-	a.EnclaveClient.StopClient()
+
+	if a.clientServer != nil {
+		if err := a.clientServer.Stop(); err != nil {
+			nodecommon.ErrorWithID(a.shortID, "could not stop client RPC server. Cause: %s", err)
+		}
+	}
 }
 
 // ConnectToEthNode connects the Aggregator to the ethereum node
