@@ -8,7 +8,7 @@ Testnet high level goals
 4. Deploy smart contracts and process user transactions on Obscuro.
     a. Deploy the management contract to L1
     b. Create a wallet fork ( depending on decision on encryption)
-    c. Create a block explorer for Obscuro
+    c. Create a block explorer for Obscuro.   dasdas
 
 Non-goals:
 - Performance
