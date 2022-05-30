@@ -10,17 +10,26 @@
 
 <body>
 
-<h2>Decrypt rollup transactions retrieved from the L1</h2>
-
-<p>These could be transactions retrieved via <a href="https://etherscan.io/">Etherscan</a>, for example.</p>
+<h2>Decrypt rollup transactions retrieved from the L1 (e.g. via Etherscan)</h2>
 
 <p>
-    Note that decrypting rollups is only possible for testnet, as the key used to encrypt rollups is long-lived and
-    well-known. Beyond testnet, enclaves will use rotating keys that are not known to anyone - or any thing - other
+    Note that decrypting rollups is only possible on testnet, as the key used to encrypt rollups is long-lived and
+    well-known. On mainnet, enclaves will use rotating keys that are not known to anyone - or any thing - other
     than the Obscuro enclaves.
 </p>
 
-TODO - JOEL
+<hr>
+
+<form>
+    <p>
+        <label>Enclave private key:</label>
+        <textarea rows="5" cols="80"></textarea>
+    </p>
+    <p>
+        <label>Rollup to decrypt:</label>
+        <textarea rows="10" cols="80"></textarea>
+    </p>
+</form>
 
 </body>
 </html>
