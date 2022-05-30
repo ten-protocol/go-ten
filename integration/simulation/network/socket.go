@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
@@ -46,7 +48,7 @@ func NewNetworkOfSocketNodes(wallets []wallet.Wallet, workerWallet wallet.Wallet
 	}
 }
 
-func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
+func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -154,7 +156,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroClients, nodeP2pAddrs
+	return l1Clients, n.obscuroClients, nodeP2pAddrs, nil
 }
 
 func (n *networkOfSocketNodes) TearDown() {
@@ -164,7 +166,10 @@ func (n *networkOfSocketNodes) TearDown() {
 		temp := client
 		go func() {
 			defer (*temp).Stop()
-			(*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+			err := (*temp).Call(nil, obscuroclient.RPCStopHost)
+			if err != nil {
+				log.Error("Failed to stop client %s", err)
+			}
 		}()
 	}
 }

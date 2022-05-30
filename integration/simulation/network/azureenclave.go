@@ -39,7 +39,7 @@ func NewNetworkWithAzureEnclaves(enclaveAddresses []string) Network {
 	return &networkWithAzureEnclaves{enclaveAddresses: enclaveAddresses}
 }
 
-func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
+func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
 	if len(n.enclaveAddresses) == 0 {
 		panic("Cannot create azure enclaves network without at least one enclave address.")
 	}
@@ -149,7 +149,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroClients, nodeP2pAddrs
+	return l1Clients, n.obscuroClients, nodeP2pAddrs, nil
 }
 
 func (n *networkWithAzureEnclaves) TearDown() {

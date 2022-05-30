@@ -27,6 +27,8 @@ import (
 const (
 	Localhost                  = "127.0.0.1"
 	DefaultWsPortOffset        = 100 // The default offset between a Geth node's port and websocket ports.
+	DefaultHostP2pOffset       = 200 //  The default offset for the host P2p
+	DefaultHostRPCOffset       = 400 //  The default offset for the host RPC
 	DefaultEnclaveOffset       = 300 //  The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
 	ClientRPCTimeoutSecs       = 5
 	DefaultL1ConnectionTimeout = 15 * time.Second

@@ -1,3 +1,5 @@
+"use strict";
+
 const eventDomLoaded = "DOMContentLoaded";
 const idBlockHead = "headBlock";
 const idHeadRollup = "headRollup";

@@ -74,8 +74,8 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 		if !found {
 			panic("call data not found for rollupData")
 		}
-		zipped := base64DecodeFromString(callData.(string))
-		rollup, err := decompress(zipped)
+		zipped := Base64DecodeFromString(callData.(string))
+		rollup, err := Decompress(zipped)
 		if err != nil {
 			panic(err)
 		}
@@ -153,7 +153,7 @@ func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 		panic("call data not found for requestReport")
 	}
 
-	att := base64DecodeFromString(callData.(string))
+	att := Base64DecodeFromString(callData.(string))
 	if err != nil {
 		log.Panic("could not decode attestation request. Cause: %s", err)
 	}
@@ -171,7 +171,7 @@ func unpackStoreSecretTx(tx *types.Transaction, method *abi.Method, contractCall
 	if !found {
 		panic("call data not found for inputSecret")
 	}
-	secret := base64DecodeFromString(secretData.(string))
+	secret := Base64DecodeFromString(secretData.(string))
 	if err != nil {
 		log.Panic("could not decode secret data. Cause: %s", err)
 	}
@@ -180,7 +180,7 @@ func unpackStoreSecretTx(tx *types.Transaction, method *abi.Method, contractCall
 	if !found {
 		log.Panic("call data not found for requestReport")
 	}
-	att := base64DecodeFromString(reportData.(string))
+	att := Base64DecodeFromString(reportData.(string))
 	if err != nil {
 		log.Panic("could not decode report data. Cause: %s", err)
 	}
@@ -208,8 +208,8 @@ func compress(in []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// base64DecodeFromString decodes a string to a byte array
-func base64DecodeFromString(in string) []byte {
+// Base64DecodeFromString decodes a string to a byte array
+func Base64DecodeFromString(in string) []byte {
 	bytesStr, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		panic(err)
@@ -217,8 +217,8 @@ func base64DecodeFromString(in string) []byte {
 	return bytesStr
 }
 
-// decompress the byte array using gzip
-func decompress(in []byte) ([]byte, error) {
+// Decompress the byte array using gzip
+func Decompress(in []byte) ([]byte, error) {
 	reader := bytes.NewReader(in)
 	gz, err := gzip.NewReader(reader)
 	if err != nil {

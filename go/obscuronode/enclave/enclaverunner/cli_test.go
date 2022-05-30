@@ -10,7 +10,7 @@ import (
 const testToml = "/test.toml"
 
 func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
-	expectedChainID := int64(1377) //nolint:ifshort
+	expectedChainID := int64(1377) //nolint
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
