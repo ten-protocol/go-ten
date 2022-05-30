@@ -560,7 +560,8 @@ func (a *Node) bootstrapNode() types.Block {
 
 	nodecommon.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
 
-	for startTime := time.Now(); ; {
+	startTime, logTime := time.Now(), time.Now()
+	for {
 		// TODO ingest one block at a time or batch the blocks
 		result := a.EnclaveClient.IngestBlocks([]*types.Block{currentBlock})
 		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
@@ -582,12 +583,18 @@ func (a *Node) bootstrapNode() types.Block {
 		}
 		currentBlock = nextBlk
 
-		if time.Since(startTime)%(10*time.Second) == 0 {
+		if time.Since(logTime) > 30*time.Second {
 			nodecommon.LogWithID(a.shortID, "Bootstrapping node at block... %d", currentBlock.NumberU64())
+			logTime = time.Now()
 		}
 	}
 	atomic.StoreInt32(a.bootstrappingComplete, 1)
-	nodecommon.LogWithID(a.shortID, "Finished bootstrap process with block %d", currentBlock.NumberU64())
+	nodecommon.LogWithID(
+		a.shortID,
+		"Finished bootstrap process with block %d after %s",
+		currentBlock.NumberU64(),
+		time.Since(startTime),
+	)
 	return *currentBlock
 }
 
