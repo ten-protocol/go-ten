@@ -2,7 +2,6 @@ package network
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -74,7 +73,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	if !dockerImagesAvailable(n.ctx, cli) {
 		// We don't cause the test to fail here, because we want users to be able to run all the tests in the repo
 		// without having to build the Docker images.
-		return nil, nil, nil, errors.New(fmt.Sprintf("This test requires the `%s` Docker image to be built using `dockerfiles/enclave.Dockerfile`. Terminating.", enclaveDockerImg))
+		return nil, nil, nil, fmt.Errorf("this test requires the `%s` Docker image to be built using `dockerfiles/enclave.Dockerfile`. Terminating", enclaveDockerImg)
 	}
 
 	// make sure the geth network binaries exist
