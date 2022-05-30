@@ -1,6 +1,7 @@
 # Obscuroscan
 
-A webapp that connects to a running Obscuro network and displays network statistics.
+A webapp that connects to a running Obscuro network, displays network statistics, and decodes encrypted rollups on 
+testnet.
 
 ## Usage
 
@@ -12,4 +13,4 @@ A webapp that connects to a running Obscuro network and displays network statist
 
   This will create an Obscuroscan instance listening on `http://localhost:3000/`
 
-* Visit `http://localhost:3000/` to retrieve the current block head height
+* Visit `http://localhost:3000/`
