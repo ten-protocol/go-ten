@@ -113,8 +113,8 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		panic(err)
 	}
 
-	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
-	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	mgmtContractBlkHash, mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	_, erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
 
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
 	containerIDs := createDockerContainers(n.ctx, cli, params.NumberOfNodes, params.StartPort, mgmtContractAddr.Hex(), erc20ContractAddr.Hex())
@@ -146,6 +146,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	}
 
 	params.MgmtContractAddr = mgmtContractAddr
+	params.MgmtContractBlkHash = &mgmtContractBlkHash
 	params.StableTokenContractAddr = erc20ContractAddr
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
