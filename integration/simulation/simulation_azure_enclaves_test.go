@@ -1,30 +1,35 @@
 package simulation
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
 	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 )
 
-const (
-	vmIP         = "20.90.208.251" // Todo: replace with the IP of the vm
-	azureTestEnv = "AZURE_TEST_ENABLED"
-)
+const azureTestEnv = "AZURE_TEST_ENABLED"
 
-// This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
-// The genesis node is connected to a remote enclave service running in Azure, while all other enclave services are local.
+// TODO: we really need tests to demonstrate the unhappy-cases in the attestation scenario:
+//	 - if someone puts a dodgy public key on a request with a genuine attestation report they shouldn't get secret
+//	 - if owner doesn't match - they shouldn't get secret
+
+// Todo: replace with the IPs of the VMs you are testing, see the azuredeployer README for more info.
+var vmIPs = []string{"20.254.65.172", "20.254.67.124"}
+
+// This test creates a network of L2 nodes consisting of just the Azure nodes configured above.
+//
+// It then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
-func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
+func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	if os.Getenv(azureTestEnv) == "" {
 		t.Skipf("set the variable to run this test: `%s=true`", azureTestEnv)
 	}
@@ -45,10 +50,14 @@ func TestOneAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
 
+	if len(vmIPs) > simParams.NumberOfNodes {
+		panic(fmt.Sprintf("have %d VMs but only %d nodes", len(vmIPs), simParams.NumberOfNodes))
+	}
+
 	for i := 0; i < simParams.NumberOfNodes+1; i++ {
 		simParams.NodeEthWallets = append(simParams.NodeEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
 		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
 	}
 
-	testSimulation(t, network.NewNetworkWithOneAzureEnclave(vmIP+":11000"), &simParams)
+	testSimulation(t, network.NewNetworkWithAzureEnclaves(vmIPs), &simParams)
 }

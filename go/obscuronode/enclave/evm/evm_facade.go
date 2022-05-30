@@ -54,6 +54,7 @@ func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodeco
 			log.Info("Successfully executed tx %d", obscurocommon.ShortHash(t.Hash()))
 		}
 	}
+	s.Finalise(true)
 	return receipts
 }
 
@@ -69,7 +70,7 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s vm.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) (*core2.ExecutionResult, error) {
+func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) (*core2.ExecutionResult, error) {
 	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 
 	blockContext := core2.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
@@ -80,11 +81,12 @@ func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s 
 	if err != nil {
 		return nil, err
 	}
+	s.Finalise(true)
 	return result, nil
 }
 
 // BalanceOfErc20 - Used in tests to return the balance on the Erc20ContractAddress
-func BalanceOfErc20(address common.Address, s vm.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) uint64 {
+func BalanceOfErc20(address common.Address, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) uint64 {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
 	result, err := ExecuteOffChainCall(address, Erc20ContractAddress, balanceData, s, header, rollupResolver, chainID)

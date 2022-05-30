@@ -40,7 +40,7 @@ func NewNetworkInMemoryGeth(wallets []wallet.Wallet, workerWallet wallet.Wallet,
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
+func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -130,7 +130,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		time.Sleep(params.AvgBlockDuration / 10)
 	}
 
-	return l1Clients, n.obscuroClients, nil
+	return l1Clients, n.obscuroClients, nil, nil
 }
 
 func (n *networkInMemGeth) TearDown() {
