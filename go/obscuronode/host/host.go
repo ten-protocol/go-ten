@@ -291,7 +291,18 @@ func (a *Node) startProcessing() {
 	a.EnclaveClient.Start(lastBlock)
 
 	if a.config.IsGenesis {
-		a.initialiseProtocol(&lastBlock)
+		// if the ContractMgmtBlkHash is not specified (like in the ethereum_mock)
+		// the genesis rollup will use the latest block
+		if a.config.ContractMgmtBlkHash.Hex() == (common.Hash{}).Hex() {
+			a.initialiseProtocol(lastBlock.Hash())
+		} else {
+			// the block should be available in the l1
+			blk, err := a.ethClient.BlockByHash(*a.config.ContractMgmtBlkHash)
+			if err != nil {
+				panic(err)
+			}
+			a.initialiseProtocol(blk.Hash())
+		}
 	}
 
 	// Start monitoring L1 blocks
@@ -435,17 +446,15 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
+func (a *Node) initialiseProtocol(blockHash common.Hash) {
 	// Create the genesis rollup and submit it to the MC
-	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
+	genesisResponse := a.EnclaveClient.ProduceGenesis(blockHash)
 	nodecommon.LogWithID(a.shortID, "Initialising network. Genesis rollup r_%d.", obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash()))
 	l1tx := &obscurocommon.L1RollupTx{
 		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
 	}
 
 	a.broadcastTx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
-
-	return genesisResponse.ProducedRollup.Header.ParentHash
 }
 
 func (a *Node) broadcastTx(tx types.TxData) {

@@ -59,6 +59,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 			obscuroClientAddr,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
+			params.MgmtContractBlkHash,
 		)
 
 		// and connect them to each other

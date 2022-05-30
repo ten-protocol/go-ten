@@ -73,10 +73,11 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		panic(err)
 	}
 
-	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
-	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	mgmtContractBlkHash, mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	_, erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
 
 	params.MgmtContractAddr = mgmtContractAddr
+	params.MgmtContractBlkHash = &mgmtContractBlkHash
 	params.StableTokenContractAddr = erc20ContractAddr
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
@@ -106,6 +107,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 			true,
 			n.gethNetwork.GenesisJSON,
 			params.NodeEthWallets[i],
+			params.MgmtContractBlkHash,
 		)
 		obscuroClient := host.NewInMemObscuroClient(agg)
 
@@ -158,7 +160,7 @@ func createEthClientConnection(id int64, port uint) ethclient.EthClient {
 	return ethnode
 }
 
-func deployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) *common.Address {
+func deployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) (common.Hash, *common.Address) {
 	deployContractTx := types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(2000000000),
@@ -190,5 +192,5 @@ func deployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractB
 	}
 
 	log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
-	return &receipt.ContractAddress
+	return receipt.BlockHash, &receipt.ContractAddress
 }

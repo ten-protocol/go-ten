@@ -3,6 +3,8 @@ package network
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -50,6 +52,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			false,
 			nil,
 			params.NodeEthWallets[i],
+			&common.Hash{},
 		)
 		obscuroClient := host.NewInMemObscuroClient(agg)
 

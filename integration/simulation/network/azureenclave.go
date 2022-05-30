@@ -72,6 +72,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			obscuroClientAddr,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
+			params.MgmtContractBlkHash,
 		)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
 
@@ -117,6 +118,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			obscuroClientAddr,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
+			params.MgmtContractBlkHash,
 		)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
 
