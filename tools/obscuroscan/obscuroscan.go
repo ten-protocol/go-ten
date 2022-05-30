@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"net/http"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -70,7 +71,7 @@ func (o *Obscuroscan) Shutdown() {
 	if o.server != nil {
 		err := o.server.Shutdown(context.Background())
 		if err != nil {
-			fmt.Printf("could not shut down Obscuroscan: %s", err)
+			fmt.Printf("could not shut down Obscuroscan. Cause: %s", err)
 		}
 	}
 }
@@ -80,18 +81,18 @@ func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
 	var headBlock *types.Header
 	err := (*o.client).Call(&headBlock, obscuroclient.RPCGetCurrentBlockHead)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block. Cause: %s", err))
 		return
 	}
 
 	jsonBlock, err := json.Marshal(headBlock)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head block to client: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return head block to client. Cause: %s", err))
 		return
 	}
 	_, err = resp.Write(jsonBlock)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head block to client: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return head block to client. Cause: %s", err))
 		return
 	}
 }
@@ -102,18 +103,18 @@ func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 	var headRollup *nodecommon.Header
 	err := (*o.client).Call(&headRollup, obscuroclient.RPCGetCurrentRollupHead)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return
 	}
 
 	jsonRollup, err := json.Marshal(headRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client. Cause: %s", err))
 		return
 	}
 	_, err = resp.Write(jsonRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client. Cause: %s", err))
 		return
 	}
 }
@@ -129,51 +130,56 @@ func (o *Obscuroscan) decryptRollup(resp http.ResponseWriter, req *http.Request)
 		logAndSendErr(resp, fmt.Sprintf("could not read request body: %s", err))
 		return
 	}
-	encryptedRollupHex := buffer.Bytes()
-	encryptedRollupBytes := common.Hex2Bytes(string(encryptedRollupHex))
 
-	method, err := o.contractABI.MethodById(encryptedRollupBytes[:methodBytesLen])
+	jsonRollup, err := decryptRollup(buffer.Bytes(), o.contractABI)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read ABI method for encrypted rollup. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not decrypt rollup. Cause: %s", err))
 		return
 	}
-	if method.Name != mgmtcontractlib.AddRollupMethod {
-		logAndSendErr(resp, fmt.Sprintf("encrypted rollup did not have correct ABI method name. Expected %s, got %s", mgmtcontractlib.AddRollupMethod, method.Name))
+
+	_, err = resp.Write(jsonRollup)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not decrypt rollup. Cause: %s", err))
 		return
+	}
+}
+
+// Decrypts the rollup and returns it as JSON.
+func decryptRollup(encryptedRollupHex []byte, contractABI abi.ABI) ([]byte, error) {
+	encryptedRollupBytes := common.Hex2Bytes(string(encryptedRollupHex))
+
+	method, err := contractABI.MethodById(encryptedRollupBytes[:methodBytesLen])
+	if err != nil {
+		return nil, fmt.Errorf("could not read ABI method for encrypted rollup. Cause: %w", err)
+	}
+	if method.Name != mgmtcontractlib.AddRollupMethod {
+		return nil, fmt.Errorf("encrypted rollup did not have correct ABI method name. Expected %s, got %s", mgmtcontractlib.AddRollupMethod, method.Name)
 	}
 
 	contractCallData := map[string]interface{}{}
 	if err = method.Inputs.UnpackIntoMap(contractCallData, encryptedRollupBytes[4:]); err != nil {
-		logAndSendErr(resp, fmt.Sprintf("encrypted rollup could not be unpacked using ABI. Cause: %s", err))
-		return
+		return nil, fmt.Errorf("encrypted rollup could not be unpacked using ABI. Cause: %w", err)
 	}
 	callData, found := contractCallData["rollupData"]
 	if !found {
-		logAndSendErr(resp, "encrypted rollup did not contain call data for rollupData")
-		return
+		return nil, fmt.Errorf("encrypted rollup did not contain call data for rollupData")
 	}
 	zippedRollup := mgmtcontractlib.Base64DecodeFromString(callData.(string))
 	encodedRollup, err := mgmtcontractlib.Decompress(zippedRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("decrypted rollup could not be decompressed. Cause: %s", err))
-		return
+		return nil, fmt.Errorf("decrypted rollup could not be decompressed. Cause: %w", err)
 	}
 	cleartextRollup, err := nodecommon.DecodeRollup(encodedRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not decode decompressed rollup. Cause: %s", err))
-		return
+		return nil, fmt.Errorf("could not decode decompressed rollup. Cause: %w", err)
 	}
 
 	jsonRollup, err := json.Marshal(cleartextRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not decrypt rollup: %s", err))
-		return
+		return nil, fmt.Errorf("could not decrypt rollup: %w", err)
 	}
-	_, err = resp.Write(jsonRollup)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not decrypt rollup: %s", err))
-		return
-	}
+
+	return jsonRollup, nil
 }
 
 // Logs the error message and sends it as an HTTP error.
