@@ -54,6 +54,9 @@ func historicTxs(r *core.Rollup, s db.Storage) map[common.Hash]common.Hash {
 	i := obscurocommon.HeightCommittedBlocks
 	c := r
 	for {
+		if c == nil || c.Header == nil {
+			fmt.Println("er")
+		}
 		if i == 0 || c.Header.Number == obscurocommon.L2GenesisHeight {
 			return toMap(c.Transactions)
 		}

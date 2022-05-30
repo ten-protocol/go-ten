@@ -556,10 +556,15 @@ func (a *Node) bootstrapNode() types.Block {
 	// build up from the genesis block
 	// todo update to bootstrap from the last block in storage
 	// todo the genesis block should be the block where the contract was deployed
-	currentBlock, err := a.ethClient.BlockByNumber(big.NewInt(0))
+	currentBlock, err := a.ethClient.BlockByHash(*a.config.ContractMgmtBlkHash)
 	if err != nil {
 		panic(err)
 	}
+
+	obscurocommon.GenesisBlock = currentBlock
+	obscurocommon.GenesisHash = currentBlock.Hash()
+
+	fmt.Println(obscurocommon.GenesisHash)
 
 	nodecommon.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
 

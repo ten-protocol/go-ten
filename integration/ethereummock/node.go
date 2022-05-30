@@ -93,7 +93,9 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	for blk := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash; {
+	for blk := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash && blk.Hash().Hex() != obscurocommon.GenesisHash.Hex(); {
+		fmt.Printf("Blk Hash is %s\n", blk.Hash().Hex())
+		fmt.Printf("Genesis Hash is %s\n", obscurocommon.GenesisHash.Hex())
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
