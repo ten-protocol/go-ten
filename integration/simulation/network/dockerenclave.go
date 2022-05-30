@@ -250,11 +250,14 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 				"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
 				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addr,
 			},
-			// AttachStdout: true,
-			// AttachStderr: true,
+		}
+		r := container.Resources{
+			Memory:     2 * 1024 * 1024 * 1024, // 2GB
+			MemorySwap: -1,
 		}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: Localhost, HostPort: port}}},
+			Resources:    r,
 		}
 
 		resp, err := client.ContainerCreate(ctx, containerConfig, hostConfig, nil, "")
