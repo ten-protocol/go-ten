@@ -5,7 +5,7 @@
     <title>Obscuroscan</title>
     <link rel="icon" type="favicon-32x32" sizes="32x32" href="favicon-32x32.png">
     <link rel="stylesheet" href="style.css">
-    <script type="text/javascript" src="javascript.js"></script>
+    <script type="text/javascript" src="block_decoder.js"></script>
 </head>
 
 <body>
@@ -20,7 +20,7 @@
 
 <hr>
 
-<form>
+<form id="form-decrypt-rollup">
     <p>
         <label>Enclave private key:</label>
         <textarea rows="5" cols="80"></textarea>
@@ -28,6 +28,10 @@
     <p>
         <label>Rollup to decrypt:</label>
         <textarea rows="10" cols="80"></textarea>
+    </p>
+
+    <p>
+        <button type="submit">Submit</button>
     </p>
 </form>
 

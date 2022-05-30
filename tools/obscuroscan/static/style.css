@@ -21,6 +21,13 @@ textarea {
     border-radius: 3px;
 }
 
+button {
+    color: white;
+    background-color: black;
+    border: solid 1px white;
+    border-radius: 3px;
+}
+
 /*Formats the block-decoder form.*/
 form  { display: table;      }
 label { display: table-cell; }
