@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 const eventDomLoaded = "DOMContentLoaded";
 const idBlockHead = "headBlock";

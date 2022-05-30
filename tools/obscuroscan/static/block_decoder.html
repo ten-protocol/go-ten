@@ -13,8 +13,8 @@
 <h2>Decrypt rollup transactions retrieved from the L1 (e.g. via Etherscan)</h2>
 
 <p>
-    Note that decrypting rollups is only possible on testnet, as the key used to encrypt rollups is long-lived and
-    well-known. On mainnet, enclaves will use rotating keys that are not known to anyone - or any thing - other
+    Note that decrypting rollups is only possible on testnet, for which the rollup encryption key is long-lived and
+    well-known. On mainnet, enclaves will use rotating keys that are not known to anyone - or anything - other
     than the Obscuro enclaves.
 </p>
 
@@ -26,14 +26,19 @@
         <textarea rows="5" cols="80"></textarea>
     </p>
     <p>
-        <label>Rollup to decrypt:</label>
-        <textarea rows="10" cols="80"></textarea>
+        <label>Rollup to decrypt (encoded in hexadecimal):</label>
+        <textarea rows="10" cols="80" id="encryptedRollup"></textarea>
     </p>
 
     <p>
         <button type="submit">Submit</button>
     </p>
 </form>
+
+<p>
+<div>Decrypted rollup:</div>
+<pre id="decryptedRollup">N/A</pre>
+</p>
 
 </body>
 </html>
