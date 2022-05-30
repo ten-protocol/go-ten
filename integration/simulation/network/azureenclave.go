@@ -60,7 +60,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		isGenesis := i == 0
 		// create the in memory l1 and l2 node
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.MgmtContractBlkHash)
 		agg := createSocketObscuroNode(
 			int64(i),
 			isGenesis,
@@ -106,7 +106,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 
 		// create the in memory l1 and l2 node
 		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.MgmtContractBlkHash)
 		agg := createSocketObscuroNode(
 			int64(i),
 			false,

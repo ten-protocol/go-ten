@@ -291,18 +291,12 @@ func (a *Node) startProcessing() {
 	a.EnclaveClient.Start(lastBlock)
 
 	if a.config.IsGenesis {
-		// if the ContractMgmtBlkHash is not specified (like in the ethereum_mock)
-		// the genesis rollup will use the latest block
-		if a.config.ContractMgmtBlkHash.Hex() == (common.Hash{}).Hex() {
-			a.initialiseProtocol(lastBlock.Hash())
-		} else {
-			// the block should be available in the l1
-			blk, err := a.ethClient.BlockByHash(*a.config.ContractMgmtBlkHash)
-			if err != nil {
-				panic(err)
-			}
-			a.initialiseProtocol(blk.Hash())
+		// the block where the protocol will be initialized upon should be available in the l1
+		blk, err := a.ethClient.BlockByHash(*a.config.ContractMgmtBlkHash)
+		if err != nil {
+			log.Panic("Unable to get Contract Management Block from the l1 node: %s ", err)
 		}
+		a.initialiseProtocol(blk.Hash())
 	}
 
 	// Start monitoring L1 blocks

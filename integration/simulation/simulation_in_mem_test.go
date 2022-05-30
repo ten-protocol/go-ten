@@ -20,6 +20,7 @@ import (
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupTestLog("in-mem")
 
+	fakeMgmtContractBlkHash := datagenerator.RandomHash()
 	simParams := params.SimParams{
 		NumberOfNodes:             7,
 		AvgBlockDuration:          50 * time.Millisecond,
@@ -30,6 +31,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
 		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
 		StartPort:                 integration.StartPortSimulationInMem,
+		MgmtContractBlkHash:       &fakeMgmtContractBlkHash,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

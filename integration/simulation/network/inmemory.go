@@ -3,8 +3,6 @@ package network
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -39,7 +37,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		isGenesis := i == 0
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.MgmtContractBlkHash)
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
@@ -52,7 +50,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			false,
 			nil,
 			params.NodeEthWallets[i],
-			&common.Hash{},
+			params.MgmtContractBlkHash,
 		)
 		obscuroClient := host.NewInMemObscuroClient(agg)
 

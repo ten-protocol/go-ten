@@ -48,7 +48,7 @@ type HostConfig struct {
 	PrivateKeyString string
 	// The ID of the L1 chain
 	ChainID big.Int
-	// The block hash of the contract deployment
+	// The block hash where the management contract was deployed
 	ContractMgmtBlkHash *common.Hash
 }
 
