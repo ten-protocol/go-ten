@@ -2,20 +2,21 @@ package host
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
 	"sync/atomic"
 	"time"
 
-	"github.com/naoina/toml"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/naoina/toml"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
@@ -34,8 +35,9 @@ type Node struct {
 	stats StatsCollector
 
 	// control the host lifecycle
-	exitNodeCh        chan bool
-	stopNodeInterrupt *int32
+	exitNodeCh            chan bool
+	stopNodeInterrupt     *int32
+	bootstrappingComplete *int32 // Marks when the node is done bootstrapping
 
 	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
@@ -76,8 +78,9 @@ func NewHost(
 		stats: collector,
 
 		// lifecycle channels
-		exitNodeCh:        make(chan bool),
-		stopNodeInterrupt: new(int32),
+		exitNodeCh:            make(chan bool),
+		stopNodeInterrupt:     new(int32),
+		bootstrappingComplete: new(int32),
 
 		// incoming data
 		blockRPCCh:   make(chan blockAndParent),
@@ -110,6 +113,7 @@ func (a *Node) Start() {
 	}
 	nodecommon.LogWithID(a.shortID, "Host started with following config:\n%s", tomlConfig)
 
+	// wait for the Enclave to be available
 	a.waitForEnclave()
 
 	// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
@@ -131,12 +135,30 @@ func (a *Node) Start() {
 		a.requestSecret()
 	}
 
+	// attach the l1 monitor
+	go a.monitorBlocks()
+
+	// bootstrap the node
+	latestBlock := a.bootstrapNode()
+
+	// start the enclave speculative work from last block
+	a.EnclaveClient.Start(latestBlock)
+
+	if a.config.IsGenesis {
+		// the block where the protocol will be initialized upon should be available in the l1
+		blk, err := a.ethClient.BlockByHash(*a.config.ContractMgmtBlkHash)
+		if err != nil {
+			log.Panic("Unable to get Contract Management Block from the l1 node: %s ", err)
+		}
+		a.initialiseProtocol(blk.Hash())
+	}
+	// start the obscuro RPC endpoints
 	if a.clientServer != nil {
 		a.clientServer.Start()
 		nodecommon.LogWithID(a.shortID, "Started client server.")
 	}
 
-	// todo create a channel between request secret and start processing
+	// start the node main processing loop
 	a.startProcessing()
 }
 
@@ -246,74 +268,24 @@ func (a *Node) waitForEnclave() {
 	nodecommon.LogWithID(a.shortID, "Connected to enclave service.")
 }
 
-// Waits for initial blocks from the L1 node, printing a wait message every two seconds.
-func (a *Node) waitForL1Blocks() []*types.Block {
-	// It feeds the entire L1 blockchain into the enclave when it starts
-	// todo - what happens with the blocks received while processing ?
-	allBlocks := a.ethClient.RPCBlockchainFeed()
-	counter := 0
-
-	for len(allBlocks) == 0 {
-		if counter >= 20 {
-			nodecommon.LogWithID(a.shortID, "Waiting for blocks from L1 node...")
-			counter = 0
-		}
-
-		time.Sleep(100 * time.Millisecond)
-		allBlocks = a.ethClient.RPCBlockchainFeed()
-		counter++
-	}
-	nodecommon.LogWithID(a.shortID, "Received %d initial blocks from L1 node.", len(allBlocks))
-
-	return allBlocks
-}
-
-// starts the block processing and the enclave speculative execution
+// starts the host main processing loop
 func (a *Node) startProcessing() {
-	nodecommon.LogWithID(a.shortID, "Starting processing.")
-	allBlocks := a.waitForL1Blocks()
-
-	// Todo: This is a naive implementation.
-	results := a.EnclaveClient.IngestBlocks(allBlocks)
-	for _, result := range results {
-		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
-			nodecommon.LogWithID(a.shortID, "Failed to ingest block b_%d. Cause: %s",
-				obscurocommon.ShortHash(result.BlockHeader.Hash()),
-				result.BlockNotIngestedCause,
-			)
-		}
-		a.storeBlockProcessingResult(result)
-	}
-
-	lastBlock := *allBlocks[len(allBlocks)-1]
-
-	nodecommon.LogWithID(a.shortID, "Start enclave on block b_%d.", obscurocommon.ShortHash(lastBlock.Header().Hash()))
-	a.EnclaveClient.Start(lastBlock)
-
-	if a.config.IsGenesis {
-		// the block where the protocol will be initialized upon should be available in the l1
-		blk, err := a.ethClient.BlockByHash(*a.config.ContractMgmtBlkHash)
-		if err != nil {
-			log.Panic("Unable to get Contract Management Block from the l1 node: %s ", err)
-		}
-		a.initialiseProtocol(blk.Hash())
-	}
-
-	// Start monitoring L1 blocks
-	go a.monitorBlocks()
-
 	// Only open the p2p connection when the node is fully initialised
 	a.P2p.StartListening(a)
 
-	// used as a signaling mechanism to stop processing the old block if a new L1 block arrives earlier
+	// use the roundInterrupt as a signaling mechanism for interrupting block processing
+	// stops processing the current round if a new block arrives
 	i := int32(0)
 	roundInterrupt := &i
 
 	// marks the node as ready to do work ( process blocks, respond to RPC requests, etc... )
 	atomic.StoreInt32(a.readyForWork, 1)
+	nodecommon.LogWithID(a.shortID, "Node is ready for work...")
 
-	// Main loop - Listen for notifications From the L1 node and process them
-	// Note that during processing, more recent notifications can be received.
+	// Main Processing Loop -
+	// - Process new blocks from the L1 node
+	// - Process new Rollups gossiped from L2 Peers
+	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
 		case b := <-a.blockRPCCh:
@@ -443,7 +415,11 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 func (a *Node) initialiseProtocol(blockHash common.Hash) {
 	// Create the genesis rollup and submit it to the MC
 	genesisResponse := a.EnclaveClient.ProduceGenesis(blockHash)
-	nodecommon.LogWithID(a.shortID, "Initialising network. Genesis rollup r_%d.", obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash()))
+	nodecommon.LogWithID(
+		a.shortID,
+		"Initialising network. Genesis rollup r_%d.",
+		obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
+	)
 	l1tx := &obscurocommon.L1RollupTx{
 		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
 	}
@@ -541,25 +517,88 @@ func (a *Node) monitorBlocks() {
 
 	// only process blocks if the node is running
 	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
-		latestBlkHeader := <-listener
+		blkHeader := <-listener
+
 		// don't process blocks if the node is stopping
 		if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 			return
 		}
-		block, err := a.ethClient.BlockByHash(latestBlkHeader.Hash())
+
+		// ignore blocks if bootstrapping is happening
+		if atomic.LoadInt32(a.bootstrappingComplete) == 0 {
+			log.Trace("Node in bootstrap - ignoring block %s", blkHeader.Hash())
+			continue
+		}
+
+		block, err := a.ethClient.BlockByHash(blkHeader.Hash())
 		if err != nil {
-			log.Panic("could not fetch block for hash %s. Cause: %s", latestBlkHeader.Hash().String(), err)
+			log.Panic("could not fetch block for hash %s. Cause: %s", blkHeader.Hash().String(), err)
 		}
 		blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
 		if err != nil {
 			log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
 		}
 
-		nodecommon.LogWithID(a.shortID, "Received a new block b_%d(%d)",
-			obscurocommon.ShortHash(latestBlkHeader.Hash()),
-			latestBlkHeader.Number.Uint64())
+		nodecommon.LogWithID(
+			a.shortID,
+			"Received a new block b_%d(%d)",
+			obscurocommon.ShortHash(blkHeader.Hash()),
+			blkHeader.Number.Uint64(),
+		)
 		a.blockRPCCh <- blockAndParent{obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent)}
 	}
+}
+
+func (a *Node) bootstrapNode() types.Block {
+	var err error
+	var nextBlk *types.Block
+
+	// build up from the genesis block
+	// todo update to bootstrap from the last block in storage
+	// todo the genesis block should be the block where the contract was deployed
+	currentBlock, err := a.ethClient.BlockByNumber(big.NewInt(0))
+	if err != nil {
+		panic(err)
+	}
+
+	nodecommon.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
+
+	startTime, logTime := time.Now(), time.Now()
+	for {
+		// TODO ingest one block at a time or batch the blocks
+		result := a.EnclaveClient.IngestBlocks([]*types.Block{currentBlock})
+		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
+			nodecommon.LogWithID(
+				a.shortID,
+				"Failed to ingest block b_%d. Cause: %s",
+				obscurocommon.ShortHash(result[0].BlockHeader.Hash()),
+				result[0].BlockNotIngestedCause,
+			)
+		}
+		a.storeBlockProcessingResult(result[0])
+
+		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(currentBlock.Number().Int64() + 1))
+		if err != nil {
+			if errors.Is(err, ethereum.NotFound) {
+				break
+			}
+			panic(err)
+		}
+		currentBlock = nextBlk
+
+		if time.Since(logTime) > 30*time.Second {
+			nodecommon.LogWithID(a.shortID, "Bootstrapping node at block... %d", currentBlock.NumberU64())
+			logTime = time.Now()
+		}
+	}
+	atomic.StoreInt32(a.bootstrappingComplete, 1)
+	nodecommon.LogWithID(
+		a.shortID,
+		"Finished bootstrap process with block %d after %s",
+		currentBlock.NumberU64(),
+		time.Since(startTime),
+	)
+	return *currentBlock
 }
 
 func (a *Node) awaitSecret() {

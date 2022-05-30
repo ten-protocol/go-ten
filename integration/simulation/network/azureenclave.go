@@ -23,6 +23,8 @@ import (
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
+const enclavePort = ":11000"
+
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkWithAzureEnclaves struct {
 	ethNodes         []*ethereum_mock.Node
@@ -31,19 +33,14 @@ type networkWithAzureEnclaves struct {
 	enclaveAddresses []string
 }
 
-func NewNetworkWithOneAzureEnclave(enclaveAddress string) Network {
-	return &networkWithAzureEnclaves{enclaveAddresses: []string{enclaveAddress}}
-}
-
 func NewNetworkWithAzureEnclaves(enclaveAddresses []string) Network {
+	if len(enclaveAddresses) == 0 {
+		panic("Cannot create azure enclaves network without at least one enclave address.")
+	}
 	return &networkWithAzureEnclaves{enclaveAddresses: enclaveAddresses}
 }
 
 func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
-	if len(n.enclaveAddresses) == 0 {
-		panic("Cannot create azure enclaves network without at least one enclave address.")
-	}
-
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
@@ -68,7 +65,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			stats,
 			nodeP2pAddrs[i],
 			nodeP2pAddrs,
-			n.enclaveAddresses[i],
+			n.enclaveAddresses[i]+enclavePort,
 			obscuroClientAddr,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
@@ -82,11 +79,11 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 	// set up nodes with mock enclaves
 	for i := len(n.enclaveAddresses); i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
-		enclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
-		enclaveAddress := fmt.Sprintf("%s:%d", Localhost, enclavePort)
+		nonAzureEnclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
+		nonAzureEnclaveAddress := fmt.Sprintf("%s:%d", Localhost, nonAzureEnclavePort)
 		enclaveConfig := config.EnclaveConfig{
 			HostID:           common.BigToAddress(big.NewInt(int64(i))),
-			Address:          fmt.Sprintf("%s:%d", Localhost, enclavePort),
+			Address:          fmt.Sprintf("%s:%d", Localhost, nonAzureEnclavePort),
 			L1ChainID:        integration.EthereumChainID,
 			ObscuroChainID:   integration.ObscuroChainID,
 			WillAttest:       false,
@@ -114,7 +111,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			stats,
 			nodeP2pAddrs[i],
 			nodeP2pAddrs,
-			enclaveAddress,
+			nonAzureEnclaveAddress,
 			obscuroClientAddr,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
