@@ -58,7 +58,7 @@ func ParseConfig() config.HostConfig {
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKeyString, privateKeyUsage)
-	contractMgmtBlkHash := flag.String(contractMgmtBlkHashName, common.Hash{}.Hex(), contractMgmtBlkHashUsage)
+	contractMgmtBlkHash := flag.String(contractMgmtBlkHashName, defaultConfig.ContractMgmtBlkHash.Hex(), contractMgmtBlkHashUsage)
 
 	flag.Parse()
 
