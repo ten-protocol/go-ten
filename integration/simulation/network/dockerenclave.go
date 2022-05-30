@@ -132,9 +132,12 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 			Stream: true,
 		})
 
-		go stdcopy.StdCopy(os.Stdout, os.Stderr, waiter.Reader)
-		// go io.Copy(os.Stdout, waiter.Reader)
-		// go io.Copy(os.Stderr, waiter.Reader)
+		go func() {
+			_, err := stdcopy.StdCopy(os.Stdout, os.Stderr, waiter.Reader)
+			if err != nil {
+				log.Error("Could not copy output from the docker container")
+			}
+		}()
 
 		if err != nil {
 			panic(err)
