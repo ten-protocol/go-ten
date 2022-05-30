@@ -15,7 +15,8 @@ import (
 // TODO Decompose the network so we can pick and choose different types of l1 and obscuro nodes
 type Network interface {
 	// Create - returns the started Ethereum nodes, the started Obscuro node clients, and the Obscuro nodes' P2P addresses.
-	// todo - return interfaces to RPC handles to the nodes
-	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string)
+	// Responsible with spinning up all resources required for the test
+	// Return an error in case it cannot start for an expected reason. Otherwise it panics.
+	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error)
 	TearDown()
 }
