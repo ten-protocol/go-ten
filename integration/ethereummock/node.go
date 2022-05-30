@@ -303,12 +303,6 @@ func (m *Node) BroadcastTx(tx types.TxData) {
 	m.Network.BroadcastTx(types.NewTx(tx))
 }
 
-func (m *Node) RPCBlockchainFeed() []*types.Block {
-	m.headInCh <- true
-	h := <-m.headOutCh
-	return m.BlocksBetween(obscurocommon.GenesisBlock, h)
-}
-
 func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
