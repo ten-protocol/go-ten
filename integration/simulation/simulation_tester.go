@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
 	"testing"
@@ -28,10 +29,10 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	stats := stats2.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
 	defer netw.TearDown()
-	ethClients, obscuroClients, p2pAddrs := netw.Create(params, stats)
-
+	ethClients, obscuroClients, p2pAddrs, err := netw.Create(params, stats)
 	// Return early if the network was not created
-	if ethClients == nil {
+	if err != nil {
+		fmt.Printf("Could not run test: %s\n", err)
 		return
 	}
 

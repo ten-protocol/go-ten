@@ -2,10 +2,13 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -59,7 +62,7 @@ func NewBasicNetworkOfNodesWithDockerEnclave(wallets []wallet.Wallet, workerWall
 
 // Create initializes Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string) {
+func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
 	// We create a Docker client.
 	n.ctx = context.Background()
 	cli, err := client.NewClientWithOpts()
@@ -71,8 +74,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	if !dockerImagesAvailable(n.ctx, cli) {
 		// We don't cause the test to fail here, because we want users to be able to run all the tests in the repo
 		// without having to build the Docker images.
-		println(fmt.Sprintf("This test requires the `%s` Docker image to be built using `dockerfiles/enclave.Dockerfile`. Terminating.", enclaveDockerImg))
-		return nil, nil, nil
+		return nil, nil, nil, errors.New(fmt.Sprintf("This test requires the `%s` Docker image to be built using `dockerfiles/enclave.Dockerfile`. Terminating.", enclaveDockerImg))
 	}
 
 	// make sure the geth network binaries exist
@@ -176,16 +178,19 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroClients, nodeP2pAddrs
+	return l1Clients, n.obscuroClients, nodeP2pAddrs, nil
 }
 
 func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
 	n.gethNetwork.StopNodes()
-	for _, client := range n.obscuroClients {
-		temp := client
+	for _, c := range n.obscuroClients {
+		temp := c
 		go func() {
 			defer (*temp).Stop()
-			(*temp).Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+			err := (*temp).Call(nil, obscuroclient.RPCStopHost)
+			if err != nil {
+				log.Error("Failed to stop node: %s", err)
+			}
 		}()
 	}
 	terminateDockerContainers(n.ctx, n.client, n.containerIDs)
