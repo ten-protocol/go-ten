@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/docker/docker/pkg/stdcopy"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -41,21 +44,23 @@ const (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfNodesWithDockerEnclave struct {
-	obscuroClients []*obscuroclient.Client
-	gethNetwork    *gethnetwork.GethNetwork
-	wallets        []wallet.Wallet
-	contracts      []string
-	workerWallet   wallet.Wallet
-	ctx            context.Context
-	client         *client.Client
-	containerIDs   map[string]string
+	obscuroClients   []*obscuroclient.Client
+	gethNetwork      *gethnetwork.GethNetwork
+	wallets          []wallet.Wallet
+	contracts        []string
+	workerWallet     wallet.Wallet
+	ctx              context.Context
+	client           *client.Client
+	containerIDs     map[string]string
+	containerStreams map[string]*types.HijackedResponse
 }
 
 func NewBasicNetworkOfNodesWithDockerEnclave(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
 	return &basicNetworkOfNodesWithDockerEnclave{
-		wallets:      wallets,
-		contracts:    contracts,
-		workerWallet: workerWallet,
+		wallets:          wallets,
+		contracts:        contracts,
+		workerWallet:     workerWallet,
+		containerStreams: map[string]*types.HijackedResponse{},
 	}
 }
 
@@ -120,6 +125,21 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		if err = cli.ContainerStart(n.ctx, id, types.ContainerStartOptions{}); err != nil {
 			panic(err)
 		}
+		waiter, err := cli.ContainerAttach(n.ctx, id, types.ContainerAttachOptions{
+			Stderr: true,
+			Stdout: true,
+			Stdin:  false,
+			Stream: true,
+		})
+
+		go stdcopy.StdCopy(os.Stdout, os.Stderr, waiter.Reader)
+		// go io.Copy(os.Stdout, waiter.Reader)
+		// go io.Copy(os.Stderr, waiter.Reader)
+
+		if err != nil {
+			panic(err)
+		}
+		n.containerStreams[id] = &waiter
 	}
 
 	params.MgmtContractAddr = mgmtContractAddr
@@ -192,7 +212,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
 			}
 		}()
 	}
-	terminateDockerContainers(n.ctx, n.client, n.containerIDs)
+	terminateDockerContainers(n.ctx, n.client, n.containerIDs, n.containerStreams)
 }
 
 // Checks the required Docker images exist.
@@ -227,6 +247,8 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 				"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
 				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addr,
 			},
+			// AttachStdout: true,
+			// AttachStderr: true,
 		}
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: Localhost, HostPort: port}}},
@@ -243,8 +265,9 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 }
 
 // Stops and removes the test Docker containers.
-func terminateDockerContainers(ctx context.Context, cli *client.Client, containerIDs map[string]string) {
+func terminateDockerContainers(ctx context.Context, cli *client.Client, containerIDs map[string]string, containerStreams map[string]*types.HijackedResponse) {
 	for id := range containerIDs {
+		containerStreams[id].Close()
 		// timeout := -time.Nanosecond // A negative timeout means forceful termination.
 		err1 := cli.ContainerStop(ctx, id, nil)
 		if err1 != nil {
