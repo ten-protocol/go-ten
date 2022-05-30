@@ -221,7 +221,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 				"--" + enclaverunner.HostIDName, nodeID,
 				"--" + enclaverunner.AddressName, enclaveAddress,
 				"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
-				"--" + enclaverunner.Erc20contractAddrsName, erc20Addr,
+				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addr,
 			},
 		}
 		hostConfig := &container.HostConfig{
@@ -262,6 +262,6 @@ func terminateDockerContainers(ctx context.Context, cli *client.Client, containe
 	}
 
 	if err := cli.Close(); err != nil {
-		panic(err)
+		fmt.Printf("Could not close cli: %s\n", err)
 	}
 }

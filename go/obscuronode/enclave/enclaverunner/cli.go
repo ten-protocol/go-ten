@@ -41,7 +41,7 @@ func ParseConfig() config.EnclaveConfig {
 	validateL1Blocks := flag.Bool(validateL1BlocksName, defaultConfig.ValidateL1Blocks, validateL1BlocksUsage)
 	speculativeExecution := flag.Bool(speculativeExecutionName, defaultConfig.SpeculativeExecution, speculativeExecutionUsage)
 	managementContractAddress := flag.String(ManagementContractAddressName, defaultConfig.ManagementContractAddress.Hex(), managementContractAddressUsage)
-	erc20ContractAddrs := flag.String(Erc20contractAddrsName, "", erc20contractAddrsUsage)
+	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, "", erc20ContractAddrsUsage)
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	useInMemoryDB := flag.Bool(useInMemoryDBName, defaultConfig.UseInMemoryDB, useInMemoryDBUsage)

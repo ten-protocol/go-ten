@@ -29,8 +29,8 @@ const (
 	ManagementContractAddressName  = "managementContractAddress"
 	managementContractAddressUsage = "The management contract address on the L1"
 
-	Erc20contractAddrsName  = "erc20ContractAddresses"
-	erc20contractAddrsUsage = "The ERC20 contract addresses to monitor on the L1"
+	Erc20ContractAddrsName  = "erc20ContractAddresses"
+	erc20ContractAddrsUsage = "The ERC20 contract addresses to monitor on the L1"
 
 	writeToLogsName  = "writeToLogs"
 	writeToLogsUsage = "Whether to redirect the output to the log file."
