@@ -10,6 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Clean-up
+        run: sudo pkill -f geth; sudo pkill -f obscuro; sudo docker stop $(sudo docker ps -a -q); sudo docker rm $(sudo docker ps -a -q)
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
