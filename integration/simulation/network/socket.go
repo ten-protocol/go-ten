@@ -81,8 +81,14 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		panic(err)
 	}
 
-	mgmtContractAddr := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
-	erc20ContractAddr := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	mgmtContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode), n.workerWallet.GetNonceAndIncrement())
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
+	}
+	erc20ContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode), n.workerWallet.GetNonceAndIncrement())
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+	}
 
 	params.MgmtContractAddr = mgmtContractAddr
 	params.StableTokenContractAddr = erc20ContractAddr

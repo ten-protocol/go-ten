@@ -39,7 +39,15 @@ func main() {
 	}
 	l1Wallet := wallet.NewInMemoryWalletFromString(hostConfig)
 
-	mgmtContractAddress := network.DeployContract(l1Client, l1Wallet, contractBytes)
-	println(mgmtContractAddress.Hex())
+	var contractAddress *common.Address
+	nonce := l1Wallet.GetNonceAndIncrement()
+	contractAddress, err = network.DeployContract(l1Client, l1Wallet, contractBytes, nonce)
+	for err != nil {
+		// TODO - Smarter approach to finding correct nonce.
+		// We loop until we have reached the required nonce.
+		nonce++
+		contractAddress, err = network.DeployContract(l1Client, l1Wallet, contractBytes, nonce)
+	}
+	println(contractAddress.Hex())
 	os.Exit(0)
 }
