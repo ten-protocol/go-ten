@@ -12,8 +12,8 @@ PRIV_KEY_TWO="0000000000000000000000000000000000000000000000000000000000000002"
 PUB_KEY_TWO="0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF"
 
 go-obscuro/integration/gethnetwork/main/geth --numNodes=2 --startPort=12000 --websocketStartPort=12100 --prefundedAddrs=$PUB_KEY_ONE,$PUB_KEY_TWO > ./run_logs.txt 2>&1 &
-MGMT_CONTRACT_ADDR=$(go-obscuro/tools/contractdeployer/main/contractdeployer --l1NodePort=12100 --privateKey=$PRIV_KEY_ONE management)
-ERC20_CONTRACT_ADDR=$(go-obscuro/tools/contractdeployer/main/contractdeployer --l1NodePort=12100 --privateKey=$PRIV_KEY_ONE erc20)
+MGMT_CONTRACT_ADDR=$(go-obscuro/tools/networkmanager/main/networkmanager --l1NodePort=12100 --privateKey=$PRIV_KEY_ONE deployMgmtContract)
+ERC20_CONTRACT_ADDR=$(go-obscuro/tools/networkmanager/main/networkmanager --l1NodePort=12100 --privateKey=$PRIV_KEY_ONE deployERC20Contract)
 
 sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.1:11000:11000/tcp obscuro_enclave --hostID 1 --address :11000 > ./run_logs.txt 2>&1 &
 sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.1:11001:11000/tcp obscuro_enclave --hostID 2 --address :11000 > ./run_logs.txt 2>&1 &

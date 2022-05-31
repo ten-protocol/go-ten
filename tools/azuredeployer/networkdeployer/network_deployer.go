@@ -32,7 +32,7 @@ const (
 		go build -o ./go/obscuronode/enclave/main/enclave ./go/obscuronode/enclave/main/main.go
 		go build -o ./integration/gethnetwork/main/geth ./integration/gethnetwork/main/*.go
 		go build -o ./tools/obscuroscan/main/obscuroscan ./tools/obscuroscan/main/*.go
-		go build -o ./tools/contractdeployer/main/contractdeployer ./tools/contractdeployer/main/*.go
+		go build -o ./tools/networkmanager/main/networkmanager ./tools/networkmanager/main/*.go
 		`
 )
 
