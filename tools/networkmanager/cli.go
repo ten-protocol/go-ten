@@ -1,4 +1,4 @@
-package main
+package networkmanager
 
 import (
 	"flag"
@@ -7,16 +7,16 @@ import (
 	"time"
 )
 
-// ContractType indicates the type of contract to deploy.
-type ContractType uint8
+// Command indicates the command for the tool to run.
+type Command uint8
 
 const (
 	defaultL1ConnectionTimeoutSecs = 15
 
-	management ContractType = iota
-	erc20
-	managementName = "management"
-	erc20Name      = "erc20"
+	DeployMgmtContract Command = iota
+	DeployERC20Contract
+	deployMgmtContractName  = "deployMgmtContract"
+	deployERC20ContractName = "deployERC20Contract"
 
 	// Flag names, defaults and usages.
 	l1NodeHostName  = "l1NodeHost"
@@ -35,17 +35,17 @@ const (
 	chainIDUsage = "The ID of the L1 chain"
 )
 
-type contractDeployerConfig struct {
+type Config struct {
+	Command             Command
 	l1NodeHost          string
 	l1NodeWebsocketPort uint
 	l1ConnectionTimeout time.Duration
 	privateKeyString    string
 	chainID             big.Int
-	contractType        ContractType
 }
 
-func defaultContractDeployerConfig() contractDeployerConfig {
-	return contractDeployerConfig{
+func defaultNetworkManagerConfig() Config {
+	return Config{
 		l1NodeHost:          "127.0.0.1",
 		l1NodeWebsocketPort: 8546,
 		l1ConnectionTimeout: time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
@@ -54,8 +54,8 @@ func defaultContractDeployerConfig() contractDeployerConfig {
 	}
 }
 
-func parseCLIArgs() contractDeployerConfig {
-	defaultConfig := defaultContractDeployerConfig()
+func ParseCLIArgs() Config {
+	defaultConfig := defaultNetworkManagerConfig()
 
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodePortUsage)
@@ -71,14 +71,14 @@ func parseCLIArgs() contractDeployerConfig {
 	defaultConfig.privateKeyString = *privateKeyStr
 	defaultConfig.chainID = *big.NewInt(*chainID)
 
-	contractType := flag.Arg(0)
-	switch contractType {
-	case managementName:
-		defaultConfig.contractType = management
-	case erc20Name:
-		defaultConfig.contractType = erc20
+	command := flag.Arg(0)
+	switch command {
+	case deployMgmtContractName:
+		defaultConfig.Command = DeployMgmtContract
+	case deployERC20ContractName:
+		defaultConfig.Command = DeployERC20Contract
 	default:
-		panic(fmt.Sprintf("unrecognised contract type %s. Expected either %s or %s", contractType, managementName, erc20Name))
+		panic(fmt.Sprintf("unrecognised command %s", command))
 	}
 
 	return defaultConfig
