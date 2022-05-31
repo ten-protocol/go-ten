@@ -1,4 +1,4 @@
-package main
+package contractdeployer
 
 import (
 	"flag"
@@ -7,16 +7,18 @@ import (
 	"time"
 )
 
-// ContractType indicates the type of contract to deploy.
-type ContractType uint8
+// Command indicates the command for the tool to run.
+type Command uint8
 
 const (
 	defaultL1ConnectionTimeoutSecs = 15
 
-	management ContractType = iota
-	erc20
-	managementName = "management"
-	erc20Name      = "erc20"
+	DeployMgmtContract Command = iota
+	DeployERC20Contract
+	InjectTxs
+	deployMgmtContractName  = "deployMgmtContract"
+	deployERC20ContractName = "deployERC20Contract"
+	injectTxsName           = "injectTransactions"
 
 	// Flag names, defaults and usages.
 	l1NodeHostName  = "l1NodeHost"
@@ -36,12 +38,12 @@ const (
 )
 
 type contractDeployerConfig struct {
+	Command             Command
 	l1NodeHost          string
 	l1NodeWebsocketPort uint
 	l1ConnectionTimeout time.Duration
 	privateKeyString    string
 	chainID             big.Int
-	contractType        ContractType
 }
 
 func defaultContractDeployerConfig() contractDeployerConfig {
@@ -54,7 +56,7 @@ func defaultContractDeployerConfig() contractDeployerConfig {
 	}
 }
 
-func parseCLIArgs() contractDeployerConfig {
+func ParseCLIArgs() contractDeployerConfig {
 	defaultConfig := defaultContractDeployerConfig()
 
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
@@ -71,14 +73,16 @@ func parseCLIArgs() contractDeployerConfig {
 	defaultConfig.privateKeyString = *privateKeyStr
 	defaultConfig.chainID = *big.NewInt(*chainID)
 
-	contractType := flag.Arg(0)
-	switch contractType {
-	case managementName:
-		defaultConfig.contractType = management
-	case erc20Name:
-		defaultConfig.contractType = erc20
+	command := flag.Arg(0)
+	switch command {
+	case deployMgmtContractName:
+		defaultConfig.Command = DeployMgmtContract
+	case deployERC20ContractName:
+		defaultConfig.Command = DeployERC20Contract
+	case injectTxsName:
+		defaultConfig.Command = InjectTxs
 	default:
-		panic(fmt.Sprintf("unrecognised contract type %s. Expected either %s or %s", contractType, managementName, erc20Name))
+		panic(fmt.Sprintf("unrecognised command %s", command))
 	}
 
 	return defaultConfig
