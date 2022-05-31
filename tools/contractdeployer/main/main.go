@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/core"
 	"os"
+
+	"github.com/ethereum/go-ethereum/core"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -46,7 +47,7 @@ func main() {
 	for err != nil {
 		// If the error isn't a nonce-too-low error, we report it as a legitimate error.
 		if err.Error() != core.ErrNonceTooLow.Error() {
-			panic(fmt.Errorf("contract deployment failed. Cause: %s", err))
+			panic(fmt.Errorf("contract deployment failed. Cause: %w", err))
 		}
 		// TODO - Smarter approach to finding correct nonce.
 		// We loop until we have reached the required nonce.
