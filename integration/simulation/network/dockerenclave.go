@@ -276,7 +276,6 @@ func terminateDockerContainers(ctx context.Context, cli *client.Client, containe
 		if containerStreams[id] != nil {
 			containerStreams[id].Close()
 		}
-		// timeout := -time.Nanosecond // A negative timeout means forceful termination.
 		err1 := cli.ContainerStop(ctx, id, nil)
 		if err1 != nil {
 			fmt.Printf("Could not stop the container %v : %s\n", id, err1)
