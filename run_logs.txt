@@ -1,2 +1,0 @@
-Geth nodes created in: /var/folders/gm/ktn909c96ggf_yljbfg8787r0000gp/T/165399708118432270384
-Geth network started.
