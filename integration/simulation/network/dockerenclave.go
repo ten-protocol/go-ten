@@ -113,8 +113,14 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		panic(err)
 	}
 
-	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
-	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	mgmtContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode), n.workerWallet.GetNonceAndIncrement())
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
+	}
+	erc20ContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode), n.workerWallet.GetNonceAndIncrement())
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+	}
 
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
 	containerIDs := createDockerContainers(n.ctx, cli, params.NumberOfNodes, params.StartPort, mgmtContractAddr.Hex(), erc20ContractAddr.Hex())
