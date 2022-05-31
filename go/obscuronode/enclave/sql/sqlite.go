@@ -12,6 +12,7 @@ import (
 
 const (
 	tempDirName = "temp-obscuro-persistence"
+	createQry   = `create table if not exists kv (key text primary key, value blob); delete from kv;`
 )
 
 func CreateTemporarySQLiteDB(nodeID uint64) (ethdb.Database, error) {
@@ -22,6 +23,10 @@ func CreateTemporarySQLiteDB(nodeID uint64) (ethdb.Database, error) {
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create temp sqlite db - %w", err)
+	}
+
+	if _, err := db.Exec(createQry); err != nil {
+		return nil, fmt.Errorf("failed to create sqlite db table - %w", err)
 	}
 	return CreateSQLEthDatabase(db)
 }

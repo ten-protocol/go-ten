@@ -58,5 +58,7 @@ func (it *iterator) Value() []byte {
 func (it *iterator) Release() {
 	if it.rows != nil {
 		_ = it.rows.Close()
+		it.currKey = ""
+		it.currVal = []byte{}
 	}
 }

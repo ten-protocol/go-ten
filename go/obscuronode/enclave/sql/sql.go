@@ -5,9 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/ethereum/go-ethereum/ethdb"
+)
+
+const (
+	getQry    = `select kv.value from kv where kv.key = ?;`
+	putQry    = `insert or replace into kv values(?, ?);`
+	delQry    = `delete from kv where kv.key = ?;`
+	searchQry = `select * from kv where kv.key like ? and kv.key > ?`
 )
 
 // sqlEthDatabase implements ethdb.Database
@@ -16,30 +21,11 @@ type sqlEthDatabase struct {
 }
 
 func CreateSQLEthDatabase(db *sql.DB) (ethdb.Database, error) {
-	s := &sqlEthDatabase{db: db}
-	if err := s.Initialise(); err != nil {
-		return nil, err
-	}
-	return s, nil
-}
-
-func (m *sqlEthDatabase) Initialise() error {
-	stmt := `create table if not exists kv (key text primary key, value blob); delete from kv;`
-	if _, err := m.db.Exec(stmt); err != nil {
-		return fmt.Errorf("failed to initialise sql eth db - %w", err)
-	}
-
-	return nil
+	return &sqlEthDatabase{db: db}, nil
 }
 
 func (m *sqlEthDatabase) Has(key []byte) (bool, error) {
-	pFind, err := m.getFindPrepStmt()
-	if err != nil {
-		return false, err
-	}
-	defer pFind.Close()
-
-	err = pFind.QueryRow(key).Scan()
+	err := m.db.QueryRow(getQry, key).Scan()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -51,13 +37,8 @@ func (m *sqlEthDatabase) Has(key []byte) (bool, error) {
 
 func (m *sqlEthDatabase) Get(key []byte) ([]byte, error) {
 	var res []byte
-	pFind, err := m.getFindPrepStmt()
-	if err != nil {
-		return []byte{}, err
-	}
-	defer pFind.Close()
 
-	err = pFind.QueryRow(key).Scan(&res)
+	err := m.db.QueryRow(getQry, key).Scan(&res)
 	if err != nil {
 		return nil, err
 	}
@@ -65,24 +46,12 @@ func (m *sqlEthDatabase) Get(key []byte) ([]byte, error) {
 }
 
 func (m *sqlEthDatabase) Put(key []byte, value []byte) error {
-	pIns, err := m.getInsertPrepStmt()
-	if err != nil {
-		return err
-	}
-	defer pIns.Close()
-
-	_, err = pIns.Exec(key, value)
+	_, err := m.db.Exec(putQry, key, value)
 	return err
 }
 
 func (m *sqlEthDatabase) Delete(key []byte) error {
-	pDel, err := m.getDeletePrepStmt()
-	if err != nil {
-		return err
-	}
-	defer pDel.Close()
-
-	_, err = pDel.Exec(key)
+	_, err := m.db.Exec(delQry, key)
 	return err
 }
 
@@ -94,31 +63,22 @@ func (m *sqlEthDatabase) Close() error {
 }
 
 func (m *sqlEthDatabase) NewBatch() ethdb.Batch {
-	log.Trace("SQL :: New batch")
 	return &sqlBatch{
 		db: m,
 	}
 }
 
 func (m *sqlEthDatabase) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
-	pFindLike, err := m.getIteratorPrepStmt()
-	defer func() { _ = pFindLike.Close() }()
-	if err != nil {
-		return &iterator{
-			err: fmt.Errorf("failed to get prepared SQL stmt, iter will be empty, %w", err),
-		}
-	}
-	// todo: make sure we're stringifying that prefix correctly
 	pr := string(prefix)
 	st := string(append(prefix, start...))
-	rows, err := pFindLike.Query(pr+"%", st) //nolint:sqlclosecheck
-	defer func() { _ = pFindLike.Close() }()
+	// iterator clean-up handles closing this rows iterator
+	rows, err := m.db.Query(searchQry, pr+"%", st) //nolint:sqlclosecheck
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
 		}
 	}
-	if err = rows.Err(); rows.Err() != nil {
+	if err = rows.Err(); err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
 		}
@@ -136,30 +96,6 @@ func (m *sqlEthDatabase) Stat(property string) (string, error) {
 func (m *sqlEthDatabase) Compact(start []byte, limit []byte) error {
 	// TODO implement me
 	panic("implement me")
-}
-
-func (m *sqlEthDatabase) getPrepStmt(query string) (*sql.Stmt, error) {
-	prep, err := m.db.Prepare(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare statement `%s` - %w", query, err)
-	}
-	return prep, nil
-}
-
-func (m *sqlEthDatabase) getFindPrepStmt() (*sql.Stmt, error) {
-	return m.getPrepStmt(`select kv.value from kv where kv.key = ?;`)
-}
-
-func (m *sqlEthDatabase) getInsertPrepStmt() (*sql.Stmt, error) {
-	return m.getPrepStmt(`insert or replace into kv values(?, ?);`)
-}
-
-func (m *sqlEthDatabase) getDeletePrepStmt() (*sql.Stmt, error) {
-	return m.getPrepStmt(`delete from kv where kv.key = ?;`)
-}
-
-func (m *sqlEthDatabase) getIteratorPrepStmt() (*sql.Stmt, error) {
-	return m.getPrepStmt(`select * from kv where kv.key like ? and kv.key > ?`)
 }
 
 // no-freeze! Copied from the geth in-memory db implementation these ancient method implementations disable the 'freezer'
