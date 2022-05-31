@@ -1,4 +1,4 @@
-package contractdeployer
+package networkmanager
 
 import (
 	"flag"
@@ -15,10 +15,8 @@ const (
 
 	DeployMgmtContract Command = iota
 	DeployERC20Contract
-	InjectTxs
 	deployMgmtContractName  = "deployMgmtContract"
 	deployERC20ContractName = "deployERC20Contract"
-	injectTxsName           = "injectTransactions"
 
 	// Flag names, defaults and usages.
 	l1NodeHostName  = "l1NodeHost"
@@ -37,7 +35,7 @@ const (
 	chainIDUsage = "The ID of the L1 chain"
 )
 
-type contractDeployerConfig struct {
+type Config struct {
 	Command             Command
 	l1NodeHost          string
 	l1NodeWebsocketPort uint
@@ -46,8 +44,8 @@ type contractDeployerConfig struct {
 	chainID             big.Int
 }
 
-func defaultContractDeployerConfig() contractDeployerConfig {
-	return contractDeployerConfig{
+func defaultNetworkManagerConfig() Config {
+	return Config{
 		l1NodeHost:          "127.0.0.1",
 		l1NodeWebsocketPort: 8546,
 		l1ConnectionTimeout: time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
@@ -56,8 +54,8 @@ func defaultContractDeployerConfig() contractDeployerConfig {
 	}
 }
 
-func ParseCLIArgs() contractDeployerConfig {
-	defaultConfig := defaultContractDeployerConfig()
+func ParseCLIArgs() Config {
+	defaultConfig := defaultNetworkManagerConfig()
 
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodePortUsage)
@@ -79,8 +77,6 @@ func ParseCLIArgs() contractDeployerConfig {
 		defaultConfig.Command = DeployMgmtContract
 	case deployERC20ContractName:
 		defaultConfig.Command = DeployERC20Contract
-	case injectTxsName:
-		defaultConfig.Command = InjectTxs
 	default:
 		panic(fmt.Sprintf("unrecognised command %s", command))
 	}

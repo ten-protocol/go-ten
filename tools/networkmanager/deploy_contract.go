@@ -1,7 +1,9 @@
-package contractdeployer
+package networkmanager
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -10,14 +12,15 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
-	"os"
 )
 
-var mgmtContractBytes = common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode)
-var erc20ContractBytes = common.Hex2Bytes(erc20contract.ContractByteCode)
+var (
+	mgmtContractBytes  = common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode)
+	erc20ContractBytes = common.Hex2Bytes(erc20contract.ContractByteCode)
+)
 
 // DeployContract deploys a management contract or ERC20 contract to the L1 network, and prints its address.
-func DeployContract(config contractDeployerConfig) {
+func DeployContract(config Config) {
 	var contractBytes []byte
 	switch config.Command {
 	case DeployMgmtContract:
