@@ -73,8 +73,8 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		panic(err)
 	}
 
-	mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
-	erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	mgmtContractAddr := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	erc20ContractAddr := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
 
 	params.MgmtContractAddr = mgmtContractAddr
 	params.StableTokenContractAddr = erc20ContractAddr
@@ -158,7 +158,7 @@ func createEthClientConnection(id int64, port uint) ethclient.EthClient {
 	return ethnode
 }
 
-func deployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) *common.Address {
+func DeployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) *common.Address {
 	deployContractTx := types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(2000000000),
