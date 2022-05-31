@@ -273,7 +273,9 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 // Stops and removes the test Docker containers.
 func terminateDockerContainers(ctx context.Context, cli *client.Client, containerIDs map[string]string, containerStreams map[string]*types.HijackedResponse) {
 	for id := range containerIDs {
-		containerStreams[id].Close()
+		if containerStreams[id] != nil {
+			containerStreams[id].Close()
+		}
 		// timeout := -time.Nanosecond // A negative timeout means forceful termination.
 		err1 := cli.ContainerStop(ctx, id, nil)
 		if err1 != nil {
