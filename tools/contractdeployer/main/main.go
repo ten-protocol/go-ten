@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/core"
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -43,6 +44,10 @@ func main() {
 	nonce := l1Wallet.GetNonceAndIncrement()
 	contractAddress, err = network.DeployContract(l1Client, l1Wallet, contractBytes, nonce)
 	for err != nil {
+		// If the error isn't a nonce-too-low error, we report it as a legitimate error.
+		if err.Error() != core.ErrNonceTooLow.Error() {
+			panic(fmt.Errorf("contract deployment failed. Cause: %s", err))
+		}
 		// TODO - Smarter approach to finding correct nonce.
 		// We loop until we have reached the required nonce.
 		nonce++
