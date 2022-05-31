@@ -12,6 +12,8 @@ func main() {
 	switch config.Command {
 	case networkmanager.DeployMgmtContract, networkmanager.DeployERC20Contract:
 		networkmanager.DeployContract(config)
+	case networkmanager.InjectTxs:
+		networkmanager.InjectTransactions(config)
 	default:
 		panic("unrecognised command type")
 	}

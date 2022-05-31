@@ -22,7 +22,7 @@ var (
 // DeployContract deploys a management contract or ERC20 contract to the L1 network, and prints its address.
 func DeployContract(config Config) {
 	var contractBytes []byte
-	switch config.Command {
+	switch config.Command { //nolint:exhaustive
 	case DeployMgmtContract:
 		contractBytes = mgmtContractBytes
 	case DeployERC20Contract:
