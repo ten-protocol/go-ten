@@ -75,11 +75,11 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		panic(err)
 	}
 
-	mgmtContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode), n.workerWallet.GetNonceAndIncrement())
+	mgmtContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
-	erc20ContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode), n.workerWallet.GetNonceAndIncrement())
+	erc20ContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
 	}
@@ -166,9 +166,9 @@ func createEthClientConnection(id int64, port uint) ethclient.EthClient {
 	return ethnode
 }
 
-func DeployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte, nonce uint64) (*common.Address, error) {
+func DeployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) (*common.Address, error) {
 	deployContractTx := types.LegacyTx{
-		Nonce:    nonce,
+		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(2000000000),
 		Gas:      1025_000_000,
 		Data:     contractBytes,

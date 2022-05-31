@@ -30,12 +30,20 @@ func InjectTransactions(nmConfig Config) {
 	}
 	l2Client := obscuroclient.NewClient(nmConfig.obscuroClientAddress)
 
+	l1Wallet := wallet.NewInMemoryWalletFromString(hostConfig)
+	nonce, err := l1Client.Nonce(l1Wallet.Address())
+	if err != nil {
+		panic(err)
+	}
+	l1Wallet.SetNonce(nonce)
+	println(fmt.Sprintf("jjj set nonce to %d", nonce))
+
 	// TODO - Consider expanding this tool to support multiple L1 clients and L2 clients.
 	txInjector := simulation.NewTransactionInjector(
 		1*time.Second,
 		nil,
 		[]ethclient.EthClient{l1Client},
-		[]wallet.Wallet{wallet.NewInMemoryWalletFromString(hostConfig)},
+		[]wallet.Wallet{l1Wallet},
 		&nmConfig.mgmtContractAddress,
 		&nmConfig.erc20ContractAddress,
 		[]*obscuroclient.Client{&l2Client},

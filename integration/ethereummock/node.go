@@ -81,6 +81,10 @@ func (m *Node) TransactionReceipt(_ common.Hash) (*types.Receipt, error) {
 	}, nil
 }
 
+func (m *Node) Nonce(common.Address) (uint64, error) {
+	return 0, nil
+}
+
 // BlockListener is not used in the mock
 func (m *Node) BlockListener() chan *types.Header {
 	return make(chan *types.Header)

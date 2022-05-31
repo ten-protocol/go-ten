@@ -21,13 +21,19 @@ import (
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config config.HostConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
-	ethWallet := wallet.NewInMemoryWalletFromString(config)
 
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethclient.NewEthClient(config)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
+
+	ethWallet := wallet.NewInMemoryWalletFromString(config)
+	nonce, err := l1Client.Nonce(ethWallet.Address())
+	if err != nil {
+		log.Panic("could not retrieve Ethereum account nonce. Cause: %s", err)
+	}
+	ethWallet.SetNonce(nonce)
 
 	enclaveClient := host.NewEnclaveRPCClient(config)
 	aggP2P := p2p.NewSocketP2PLayer(config)

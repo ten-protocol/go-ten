@@ -135,6 +135,10 @@ func (e *gethRPCClient) TransactionReceipt(hash common.Hash) (*types.Receipt, er
 	return e.client.TransactionReceipt(context.Background(), hash)
 }
 
+func (e *gethRPCClient) Nonce(account common.Address) (uint64, error) {
+	return e.client.PendingNonceAt(context.Background(), account)
+}
+
 func (e *gethRPCClient) BlockListener() chan *types.Header {
 	ch := make(chan *types.Header, 1)
 	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown

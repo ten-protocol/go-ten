@@ -1,11 +1,9 @@
 package networkmanager
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	obscuroconfig "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
@@ -38,25 +36,25 @@ func DeployContract(config Config) {
 		PrivateKeyString:    config.privateKeyString,
 		ChainID:             config.chainID,
 	}
+
 	l1Client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		panic(err)
 	}
+
 	l1Wallet := wallet.NewInMemoryWalletFromString(hostConfig)
+	nonce, err := l1Client.Nonce(l1Wallet.Address())
+	if err != nil {
+		panic(err)
+	}
+	l1Wallet.SetNonce(nonce)
 
 	var contractAddress *common.Address
-	nonce := l1Wallet.GetNonceAndIncrement()
-	contractAddress, err = network.DeployContract(l1Client, l1Wallet, contractBytes, nonce)
-	for err != nil {
-		// If the error isn't a nonce-too-low error, we report it as a legitimate error.
-		if err.Error() != core.ErrNonceTooLow.Error() {
-			panic(fmt.Errorf("contract deployment failed. Cause: %w", err))
-		}
-		// TODO - Smarter approach to finding correct nonce.
-		// We loop until we have reached the required nonce.
-		nonce++
-		contractAddress, err = network.DeployContract(l1Client, l1Wallet, contractBytes, nonce)
+	contractAddress, err = network.DeployContract(l1Client, l1Wallet, contractBytes)
+	if err != nil {
+		panic(err)
 	}
+
 	println(contractAddress.Hex())
 	os.Exit(0)
 }
