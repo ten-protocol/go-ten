@@ -33,6 +33,8 @@ at the top of the script, e.g. you could add a number
     resourceGroupName     = "ObscuroEnclaveService2"
 
 Note the IP logged out at the end of each run to SSH to the box (and to configure them into simulation_multi_azure_enclaves_test.go).
-Don't forget to increment the hostID parameter when you call the `docker run` command above.
 
 Each of these resource groups will need to be deleted separately through the Azure dashboard webapp when you are finished with them.
+
+If you want to properly test the enclave attestation you should pass the `-willAttest` flag to the docker run commands on the VMs (add it to the commands output by the test).
+This will only work if there are no local test enclaves basically only if len(vmIPs) == numberOfNodes).
