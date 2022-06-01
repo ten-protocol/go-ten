@@ -113,8 +113,14 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 		panic(err)
 	}
 
-	mgmtContractBlkHash, mgmtContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
-	_, erc20ContractAddr := deployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	mgmtContractBlkHash, mgmtContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
+	}
+	_, erc20ContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+	}
 
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
 	containerIDs := createDockerContainers(n.ctx, cli, params.NumberOfNodes, params.StartPort, mgmtContractAddr.Hex(), erc20ContractAddr.Hex())
@@ -146,7 +152,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	}
 
 	params.MgmtContractAddr = mgmtContractAddr
-	params.MgmtContractBlkHash = &mgmtContractBlkHash
+	params.MgmtContractBlkHash = mgmtContractBlkHash
 	params.StableTokenContractAddr = erc20ContractAddr
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
@@ -275,8 +281,9 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 // Stops and removes the test Docker containers.
 func terminateDockerContainers(ctx context.Context, cli *client.Client, containerIDs map[string]string, containerStreams map[string]*types.HijackedResponse) {
 	for id := range containerIDs {
-		containerStreams[id].Close()
-		// timeout := -time.Nanosecond // A negative timeout means forceful termination.
+		if containerStreams[id] != nil {
+			containerStreams[id].Close()
+		}
 		err1 := cli.ContainerStop(ctx, id, nil)
 		if err1 != nil {
 			fmt.Printf("Could not stop the container %v : %s\n", id, err1)
