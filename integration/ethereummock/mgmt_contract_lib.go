@@ -38,7 +38,7 @@ func (m *mockContractLib) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 	return encodeTx(tx, nonce, requestSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData {
+func (m *mockContractLib) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, storeSecretTxAddr)
 }
 
@@ -59,7 +59,7 @@ func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	case rollupTxAddr.Hex():
 		t = &obscurocommon.L1RollupTx{}
 	case storeSecretTxAddr.Hex():
-		t = &obscurocommon.L1StoreSecretTx{}
+		t = &obscurocommon.L1RespondSecretTx{}
 	case depositTxAddr.Hex():
 		t = &obscurocommon.L1DepositTx{}
 	case requestSecretTxAddr.Hex():

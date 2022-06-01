@@ -125,11 +125,13 @@ func (a *Node) Start() {
 			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
 		}
 		encodedAttestation := nodecommon.EncodeAttestation(attestation)
-		l1tx := &obscurocommon.L1StoreSecretTx{
-			Secret:      a.EnclaveClient.GenerateSecret(),
-			Attestation: encodedAttestation,
+		l1tx := &obscurocommon.L1RespondSecretTx{
+			Secret:          a.EnclaveClient.GenerateSecret(),
+			Attestation:     encodedAttestation,
+			RequesterID:     a.ID,
+			RequesterPubKey: attestation.PubKey,
 		}
-		a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+		a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		nodecommon.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	} else {
 		a.requestSecret()
@@ -453,7 +455,7 @@ func (a *Node) requestSecret() {
 	a.awaitSecret()
 }
 
-func (a *Node) handleStoreSecretTx(t *obscurocommon.L1StoreSecretTx) bool {
+func (a *Node) handleStoreSecretTx(t *obscurocommon.L1RespondSecretTx) bool {
 	att, err := nodecommon.DecodeAttestation(t.Attestation)
 	if err != nil {
 		nodecommon.LogWithID(a.shortID, "Failed to decode attestation report %s", err)
@@ -498,11 +500,13 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
 				continue
 			}
-			l1tx := &obscurocommon.L1StoreSecretTx{
-				Secret:      secret,
-				Attestation: scrtReqTx.Attestation,
+			l1tx := &obscurocommon.L1RespondSecretTx{
+				Secret:          secret,
+				Attestation:     scrtReqTx.Attestation,
+				RequesterPubKey: att.PubKey,
+				RequesterID:     att.Owner,
 			}
-			a.broadcastTx(a.mgmtContractLib.CreateStoreSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+			a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		}
 	}
 }
@@ -633,7 +637,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 		if t == nil {
 			continue
 		}
-		if scrtTx, ok := t.(*obscurocommon.L1StoreSecretTx); ok {
+		if scrtTx, ok := t.(*obscurocommon.L1RespondSecretTx); ok {
 			ok := a.handleStoreSecretTx(scrtTx)
 			if ok {
 				nodecommon.LogWithID(a.shortID, "Stored enclave secret.")

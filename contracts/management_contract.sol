@@ -6,27 +6,26 @@ contract ManagementContract {
 
     mapping(uint256 => string[]) public rollups;
     mapping(address => string) public attestationRequests;
-    string secret;
+
+    mapping(string => string) public attestations;
+    mapping(string => string) public attested;
+
+    string networkSecret;
 
     function AddRollup(string calldata rollupData) public {
         rollups[block.number].push(rollupData);
     }
 
 
-    function Rollup() public view returns (string[] memory){
-        return rollups[block.number];
-    }
-
-    function StoreSecret(string memory inputSecret, string calldata requestReport) public {
-        secret = inputSecret;
-    }
-
-    function RequestSecret(string calldata requestReport) public {
-        // we probably don't need to persist this in state (at least not in its entirety)
+    // Aggregators can request the Network Secret given an attestation request report
+    function RequestNetworkSecret(string calldata requestReport) public {
+        // Attestations should only be allowed to produce once ?
         attestationRequests[msg.sender] = requestReport;
     }
 
-    function Withdraw(uint256 withdrawAmount, address payable destination) public {
-        destination.transfer(withdrawAmount);
+    // Genesis node ( for now ) will pickup on Network Secret Request
+    // and if valid will respond with the Network Secret
+    function RespondNetworkSecret(string memory requester, string memory pubKey, string memory inputSecret, string calldata requestReport) public {
+        attested[requester] = pubKey;
     }
 }

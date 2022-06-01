@@ -32,7 +32,7 @@ var (
 type MgmtContractLib interface {
 	CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData
 	CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData
-	CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData
+	CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData
 
 	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
@@ -84,7 +84,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 			Rollup: rollup,
 		}
 
-	case StoreSecretMethod:
+	case RespondSecretMethod:
 		return unpackStoreSecretTx(tx, method, contractCallData)
 
 	case RequestSecretMethod:
@@ -129,8 +129,8 @@ func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 	}
 }
 
-func (c *contractLibImpl) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData {
-	data, err := c.contractABI.Pack(StoreSecretMethod, base64EncodeToString(tx.Secret), base64EncodeToString(tx.Attestation))
+func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData {
+	data, err := c.contractABI.Pack(RespondSecretMethod, tx.RequesterID.Hex(), base64EncodeToString(tx.RequesterPubKey), base64EncodeToString(tx.Secret), base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
 	}
@@ -162,7 +162,7 @@ func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	}
 }
 
-func unpackStoreSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1StoreSecretTx {
+func unpackStoreSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RespondSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		log.Panic("could not unpack transaction. Cause: %s", err)
@@ -184,7 +184,7 @@ func unpackStoreSecretTx(tx *types.Transaction, method *abi.Method, contractCall
 	if err != nil {
 		log.Panic("could not decode report data. Cause: %s", err)
 	}
-	return &obscurocommon.L1StoreSecretTx{
+	return &obscurocommon.L1RespondSecretTx{
 		Secret:      secret,
 		Attestation: att,
 	}

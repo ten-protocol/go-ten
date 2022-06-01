@@ -19,9 +19,11 @@ type L1DepositTx struct {
 	TokenContract *common.Address // Address of the ERC20 Contract address that was executed
 }
 
-type L1StoreSecretTx struct {
-	Secret      EncryptedSharedEnclaveSecret
-	Attestation EncodedAttestationReport
+type L1RespondSecretTx struct {
+	Secret          EncryptedSharedEnclaveSecret
+	Attestation     EncodedAttestationReport
+	RequesterPubKey []byte
+	RequesterID     common.Address
 }
 
 type L1RequestSecretTx struct {
