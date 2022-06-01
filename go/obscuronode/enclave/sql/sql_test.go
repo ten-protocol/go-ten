@@ -2,9 +2,10 @@ package sql
 
 import (
 	"database/sql"
-	"github.com/status-im/keycard-go/hexutils"
 	"path/filepath"
 	"testing"
+
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	_ "github.com/mattn/go-sqlite3"

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
