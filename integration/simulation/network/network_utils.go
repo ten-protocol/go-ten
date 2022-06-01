@@ -34,11 +34,11 @@ const (
 	DefaultL1ConnectionTimeout = 15 * time.Second
 )
 
-func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats, mgmtContractBlkHash *common.Hash) *ethereum_mock.Node {
+func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
 	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
-	miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats, mgmtContractBlkHash)
+	miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
 	mockEthNetwork.CurrentNode = miner
 	return miner
 }
