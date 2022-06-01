@@ -164,16 +164,15 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 }
 
 func (n *networkOfSocketNodes) TearDown() {
-	defer n.gethNetwork.StopNodes()
-
 	for _, client := range n.obscuroClients {
 		temp := client
 		go func() {
-			defer (*temp).Stop()
 			err := (*temp).Call(nil, obscuroclient.RPCStopHost)
+			(*temp).Stop()
 			if err != nil {
 				log.Error("Failed to stop client %s", err)
 			}
 		}()
 	}
+	n.gethNetwork.StopNodes()
 }

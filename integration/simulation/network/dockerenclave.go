@@ -210,17 +210,17 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 }
 
 func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
-	n.gethNetwork.StopNodes()
 	for _, c := range n.obscuroClients {
 		temp := c
 		go func() {
-			defer (*temp).Stop()
 			err := (*temp).Call(nil, obscuroclient.RPCStopHost)
 			if err != nil {
 				log.Error("Failed to stop node: %s", err)
 			}
+			(*temp).Stop()
 		}()
 	}
+	n.gethNetwork.StopNodes()
 	terminateDockerContainers(n.ctx, n.client, n.containerIDs, n.containerStreams)
 }
 
