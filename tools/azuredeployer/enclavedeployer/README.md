@@ -13,19 +13,10 @@ of simulation mode.
   * `vm_password` will be the Azure VM's SSH password. It must meet the requirements set out [here](https://docs.microsoft.com/en-us/azure/virtual-machines/windows/faq#what-are-the-password-requirements-when-creating-a-vm-)
   * `email_recipient` will be the email used for notifications
 * Create the VM using the `main` method in `enclave_deployer.go`
-* SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`)
-* Start the enclave service outside of simulation mode using the following command, replacing `$1` with an integer 
-  representing the 20 bytes of the node's address:
-
-      sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 11000:11000/tcp obscuro_enclave --hostID $1 --address :11000
-
-The enclave service is now running and exposed on port 11000.
-
-## Testing
-
-The Obscuro enclave service can be tested by running the `TestOnAzureEnclaveNodesMonteCarloSimulation` test.
-
-For this test, the value of `$1` in the enclave service start command must be set to `0`.
+* SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`), and the ip that was output by the enclave_deployer
+* Repeat the previous steps until enough machines were created
+* In the `TestOnAzureEnclaveNodesMonteCarloSimulation`, set the ips of the machines created
+* Running it will output a docker command that has to run on each server 
 
 ## Testing changes
 

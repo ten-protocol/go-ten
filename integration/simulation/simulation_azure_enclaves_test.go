@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
-
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -22,7 +24,7 @@ const azureTestEnv = "AZURE_TEST_ENABLED"
 //	 - if owner doesn't match - they shouldn't get secret
 
 // Todo: replace with the IPs of the VMs you are testing, see the azuredeployer README for more info.
-var vmIPs = []string{"20.254.65.172", "20.254.67.124"}
+var vmIPs = []string{"20.90.162.69"}
 
 // This test creates a network of L2 nodes consisting of just the Azure nodes configured above.
 //
@@ -35,17 +37,39 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	}
 	setupTestLog("azure-enclave")
 
+	numberOfNodes := 5
+	numberOfSimWallets := 5
+
+	// create the ethereum wallets to be used by the nodes and prefund them
+	nodeWallets := make([]wallet.Wallet, numberOfNodes)
+	for i := 0; i < numberOfNodes; i++ {
+		nodeWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
+	}
+	// create the ethereum wallets to be used by the simulation and prefund them
+	simWallets := make([]wallet.Wallet, numberOfSimWallets)
+	for i := 0; i < numberOfSimWallets; i++ {
+		simWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
+	}
+	// create one extra wallet as the worker wallet ( to deploy contracts )
+	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
+
+	// define contracts to be deployed
+	contractsBytes := []string{
+		mgmtcontractlib.MgmtContractByteCode,
+		erc20contract.ContractByteCode,
+	}
+
 	simParams := params.SimParams{
-		NumberOfNodes:             10,
+		NumberOfNodes:             numberOfNodes,
 		AvgBlockDuration:          time.Second,
-		SimulationTime:            30 * time.Second,
+		SimulationTime:            60 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
 		StartPort:                 integration.StartPortSimulationAzureEnclave,
 
-		MgmtContractLib:  ethereum_mock.NewMgmtContractLibMock(),
-		ERC20ContractLib: ethereum_mock.NewERC20ContractLibMock(),
+		NodeEthWallets: nodeWallets,
+		SimEthWallets:  simWallets,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
@@ -54,10 +78,9 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 		panic(fmt.Sprintf("have %d VMs but only %d nodes", len(vmIPs), simParams.NumberOfNodes))
 	}
 
-	for i := 0; i < simParams.NumberOfNodes+1; i++ {
-		simParams.NodeEthWallets = append(simParams.NodeEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
-		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
-	}
+	// define the network to use
+	prefundedWallets := append(append(nodeWallets, simWallets...), workerWallet) //nolint:makezero
+	netw := network.NewNetworkWithAzureEnclaves(vmIPs, prefundedWallets, workerWallet, contractsBytes)
 
-	testSimulation(t, network.NewNetworkWithAzureEnclaves(vmIPs), &simParams)
+	testSimulation(t, netw, &simParams)
 }
