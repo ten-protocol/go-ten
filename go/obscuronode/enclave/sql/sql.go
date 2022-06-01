@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
@@ -12,7 +11,7 @@ const (
 	getQry    = `select kv.value from kv where kv.key = ?;`
 	putQry    = `insert or replace into kv values(?, ?);`
 	delQry    = `delete from kv where kv.key = ?;`
-	searchQry = `select * from kv where kv.key like ? and kv.key > ?`
+	searchQry = `select * from kv where substring(kv.key, 1, ?) = ? and kv.key >= ? order by kv.key asc`
 )
 
 // sqlEthDatabase implements ethdb.Database
@@ -69,10 +68,10 @@ func (m *sqlEthDatabase) NewBatch() ethdb.Batch {
 }
 
 func (m *sqlEthDatabase) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
-	pr := string(prefix)
-	st := string(append(prefix, start...))
+	pr := prefix
+	st := append(prefix, start...)
 	// iterator clean-up handles closing this rows iterator
-	rows, err := m.db.Query(searchQry, pr+"%", st) //nolint:sqlclosecheck
+	rows, err := m.db.Query(searchQry, len(pr), pr, st) //nolint:sqlclosecheck
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),

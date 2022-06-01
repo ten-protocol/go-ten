@@ -2,6 +2,7 @@ package sql
 
 import (
 	"database/sql"
+	"github.com/status-im/keycard-go/hexutils"
 	"path/filepath"
 	"testing"
 
@@ -10,20 +11,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var (
+	key1 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000001")
+	key2 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000002")
+	// this key has a different prefix to the others, so we can filter it out of iterator
+	diffKey3 = hexutils.HexToBytes("1100000000000000000000000000000000000000000000000000000000000003")
+	key4     = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000004")
+)
+
 func TestPutAndGetAndDelHappyPath(t *testing.T) {
 	db := createDB(t)
 	defer cleanUp(db)
 
-	putData(t, db, "key1", "val1")
+	putData(t, db, key1, []byte("val1"))
 
-	found, err := db.Get([]byte("key1"))
+	found, err := db.Get(key1)
 	failIfError(t, err, "failed to retrieve value")
 	assert.Equal(t, found, []byte("val1"))
 
-	err = db.Delete([]byte("key1"))
+	err = db.Delete(key1)
 	failIfError(t, err, "failed to delete entry")
 
-	_, err = db.Get([]byte("key1"))
+	_, err = db.Get(key1)
 	if err == nil {
 		t.Fatal("expected get to fail fetch after deletion")
 	}
@@ -33,23 +42,42 @@ func TestIteratorHappyPath(t *testing.T) {
 	db := createDB(t)
 	defer cleanUp(db)
 
-	putData(t, db, "key1", "val1")
-	putData(t, db, "key2", "val2")
-	putData(t, db, "diffKey3", "val3")
+	// inserting out of order, we will verify the iterator is ordered by key ascending
+	putData(t, db, key4, []byte("val4"))
+	putData(t, db, key1, []byte("val1"))
+	putData(t, db, key2, []byte("val2"))
+	// this doesn't match the key prefix of the others
+	putData(t, db, diffKey3, []byte("val3"))
 
-	iter := db.NewIterator([]byte("key"), nil)
+	iter := db.NewIterator(hexutils.HexToBytes("0000"), nil)
 	assert.Nil(t, iter.Error())
 
 	assert.True(t, iter.Next())
-	assert.Equal(t, []byte("key1"), iter.Key())
+	assert.Equal(t, key1, iter.Key())
 	assert.Equal(t, []byte("val1"), iter.Value())
 
 	assert.True(t, iter.Next())
-	assert.Equal(t, []byte("key2"), iter.Key())
+	assert.Equal(t, key2, iter.Key())
 	assert.Equal(t, []byte("val2"), iter.Value())
 
-	// we expect the other entry to be filtered by the iterator prefix
+	assert.True(t, iter.Next())
+	assert.Equal(t, key4, iter.Key())
+	assert.Equal(t, []byte("val4"), iter.Value())
+
+	//// we expect the diffKey3 entry to have been filtered out by the iterator prefix
 	assert.False(t, iter.Next())
+
+	//// create a second iterator that starts from key2 (it should omit key1)
+	iterWithFilter := db.NewIterator(hexutils.HexToBytes("000000"), hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000002"))
+	assert.Nil(t, iterWithFilter.Error())
+
+	assert.True(t, iterWithFilter.Next())
+	assert.Equal(t, key2, iterWithFilter.Key())
+	assert.Equal(t, []byte("val2"), iterWithFilter.Value())
+
+	assert.True(t, iterWithFilter.Next())
+	assert.Equal(t, key4, iterWithFilter.Key())
+	assert.Equal(t, []byte("val4"), iterWithFilter.Value())
 }
 
 func TestBatchUpdateHappyPath(t *testing.T) {
@@ -57,13 +85,13 @@ func TestBatchUpdateHappyPath(t *testing.T) {
 	defer cleanUp(db)
 
 	batch := db.NewBatch()
-	err := batch.Put([]byte("key1"), []byte("value1"))
+	err := batch.Put(key1, []byte("value1"))
 	failIfError(t, err, "failed to insert in batch")
-	err = batch.Put([]byte("key2"), []byte("value2"))
+	err = batch.Put(key2, []byte("value2"))
 	failIfError(t, err, "failed to insert in batch")
-	err = batch.Put([]byte("key3"), []byte("value3"))
+	err = batch.Put(diffKey3, []byte("value3"))
 	failIfError(t, err, "failed to insert in batch")
-	err = batch.Delete([]byte("key2"))
+	err = batch.Delete(key2)
 	failIfError(t, err, "failed to delete from batch")
 
 	err = batch.Write()
@@ -71,11 +99,11 @@ func TestBatchUpdateHappyPath(t *testing.T) {
 
 	batch.Reset()
 
-	found, err := db.Get([]byte("key3"))
+	found, err := db.Get(diffKey3)
 	failIfError(t, err, "expected key3 to be in the db")
 	assert.Equal(t, found, []byte("value3"))
 
-	_, err = db.Get([]byte("key2"))
+	_, err = db.Get(key2)
 	if err == nil {
 		t.Fatal("expected get to fail fetch after deletion")
 	}
@@ -95,8 +123,8 @@ func cleanUp(db ethdb.Database) {
 	_ = db.Close()
 }
 
-func putData(t *testing.T, db ethdb.Database, key string, val string) {
-	err := db.Put([]byte(key), []byte(val))
+func putData(t *testing.T, db ethdb.Database, key []byte, val []byte) {
+	err := db.Put(key, val)
 	failIfError(t, err, "failed to insert into db")
 }
 

@@ -12,7 +12,7 @@ import (
 
 const (
 	tempDirName = "temp-obscuro-persistence"
-	createQry   = `create table if not exists kv (key text primary key, value blob); delete from kv;`
+	createQry   = `create table if not exists kv (key binary(32) primary key, value blob); delete from kv;`
 )
 
 func CreateTemporarySQLiteDB(nodeID uint64) (ethdb.Database, error) {

@@ -45,27 +45,17 @@ func (b *sqlBatch) ValueSize() int {
 func (b *sqlBatch) Write() error {
 	tx, err := b.db.db.Begin()
 	if err != nil {
-		return fmt.Errorf("failed to prepare batch transaction - %w", err)
-	}
-	pIns, err := tx.Prepare(`insert or replace into kv values(?, ?);`)
-	defer func() { _ = pIns.Close() }()
-	if err != nil {
-		return fmt.Errorf("failed to create batch prepared stmt - %w", err)
-	}
-	pDel, err := tx.Prepare(`delete from kv where kv.key = ?;`)
-	defer func() { _ = pDel.Close() }()
-	if err != nil {
-		return fmt.Errorf("failed to create batch prepared stmt - %w", err)
+		return fmt.Errorf("failed to create batch transaction - %w", err)
 	}
 
 	for _, keyvalue := range b.writes {
 		if keyvalue.delete {
-			_, err = pDel.Exec(keyvalue.key)
+			_, err = tx.Exec(delQry, keyvalue.key)
 			if err != nil {
 				return err
 			}
 		} else {
-			_, err = pIns.Exec(keyvalue.key, keyvalue.value)
+			_, err = tx.Exec(putQry, keyvalue.key, keyvalue.value)
 		}
 
 		if err != nil {

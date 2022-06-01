@@ -13,9 +13,10 @@ require (
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/mattn/go-sqlite3 v1.14.13
+	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/rs/zerolog v1.26.1
+	github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4
 	github.com/stretchr/testify v1.7.1
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
