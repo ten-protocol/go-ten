@@ -46,6 +46,7 @@ func DeployToAzure(templateFile string, paramsFile string, setupScript string) {
 	createResourceGroup(ctx, groupsClient)
 	createDeployment(ctx, deploymentsClient, templateFile, paramsFile)
 	vmIP := getIPAddress(ctx, addressClient)
+
 	runSetupScript(vmIP, paramsFile, setupScript)
 }
 
@@ -122,9 +123,19 @@ func createDeployment(ctx context.Context, client resources.DeploymentsClient, t
 
 // Get the IP address of the deployment.
 func getIPAddress(ctx context.Context, client network.PublicIPAddressesClient) string {
+
 	ipAddress, err := client.Get(ctx, resourceGroupName, deploymentIPName, "")
+	for retries := 1; err != nil && retries <= 3; retries++ {
+		log.Printf("ERR could not retrieve deployment's IP address - %s", err)
+
+		// retry after sleep to see if the service just needed time to catch up if we hit it too fast
+		time.Sleep(time.Second)
+		log.Printf("Attempting to fetch IP again - retry %d", retries)
+
+		ipAddress, err = client.Get(ctx, resourceGroupName, deploymentIPName, "")
+	}
 	if err != nil {
-		log.Fatalf("could not retrieve deployment's IP address")
+		log.Fatalf("Could not retrieve deployment IP address - exiting...")
 	}
 
 	return *ipAddress.PublicIPAddressPropertiesFormat.IPAddress
