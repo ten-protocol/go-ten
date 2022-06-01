@@ -561,11 +561,6 @@ func (a *Node) bootstrapNode() types.Block {
 		panic(err)
 	}
 
-	obscurocommon.GenesisBlock = currentBlock
-	obscurocommon.GenesisHash = currentBlock.Hash()
-
-	fmt.Println(obscurocommon.GenesisHash)
-
 	nodecommon.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
 
 	startTime, logTime := time.Now(), time.Now()
