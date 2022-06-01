@@ -18,12 +18,12 @@ const (
 		sudo systemctl enable --now docker
 		export PATH=$PATH:/usr/local/go/bin
 	
-		if ! [ -d "obscuro-playground" ]; then git clone https://github.com/obscuronet/obscuro-playground; else :; fi
-		sudo docker build -t obscuro_enclave - < obscuro-playground/dockerfiles/enclave.Dockerfile
+		if ! [ -d "go-obscuro" ]; then git clone https://github.com/obscuronet/go-obscuro; else :; fi
+		sudo docker build -t obscuro_enclave - < go-obscuro/dockerfiles/enclave.Dockerfile
 
 		# This step happens automatically when first running a Geth network, but it is too slow and the Obscuro hosts 
 		# time out when starting up.
-		cd obscuro-playground/integration/gethnetwork
+		cd go-obscuro/integration/gethnetwork
 		source build_geth_binary.sh --version=v1.10.17
 
 		cd ../../..
@@ -32,6 +32,7 @@ const (
 		go build -o ./go/obscuronode/enclave/main/enclave ./go/obscuronode/enclave/main/main.go
 		go build -o ./integration/gethnetwork/main/geth ./integration/gethnetwork/main/*.go
 		go build -o ./tools/obscuroscan/main/obscuroscan ./tools/obscuroscan/main/*.go
+		go build -o ./tools/networkmanager/main/networkmanager ./tools/networkmanager/main/*.go
 		`
 )
 

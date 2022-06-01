@@ -15,7 +15,7 @@ network.
 * Create the VM using the `main` method in `network_deployer.go`
 * SSH into the VM using the `obscuro` user (e.g. `ssh obscuro@XX.XX.XXX.XXX`)
 * Start the components (two Geth nodes, two Obscuro hosts, and two Obscuro enclave containers in Docker) by running
-  `sh obscuro-playground/tools/azuredeployer/networkdeployer/run.sh`
+  `sh go-obscuro/tools/azuredeployer/networkdeployer/run.sh`
   * After running the script, if you run `ps`, you should see two `geth-v1.10.17` processes and two host processes
   * If you run `docker container ls`, you should see two Docker containers built from the `obscuro_enclave` image
 
@@ -24,7 +24,7 @@ network.
 * Each component type will produce logs:
   * The host logs are found under `~/host_logs.txt`
   * The enclave logs can be viewed using `docker logs <container-id>`
-  * The Geth network logs are found under `~/obscuro-playground/integration/.build/geth/<run-id>/node_logs.txt`
+  * The Geth network logs are found under `~/go-obscuro/integration/.build/geth/<run-id>/node_logs.txt`
 
 * The first Obscuro host can be connected to remotely on port `13000`
   * This repo contains a tool under `tools/obscuroclient/` that can be used to connect remotely to the running 
