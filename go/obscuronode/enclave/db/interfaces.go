@@ -81,4 +81,4 @@ type Storage interface {
 // EthDBConnector is an abstraction for constructing/validating/connecting-to an eth-compatible key-value store.
 // The DB might be a simple in-memory map, a SQL DB for testing or a trusted enclave-based EdgelessDB instance.
 // Implementation should handle validation/attestation in the case of a secure DB
-type EthDBConnector func() (ethdb.Database, error)
+type EthDBConnector func(nodeID uint64) (ethdb.Database, error)

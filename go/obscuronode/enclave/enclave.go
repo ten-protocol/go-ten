@@ -11,6 +11,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/sql"
+
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
 
@@ -287,6 +289,10 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	var usefulRollups []*obscurocore.Rollup
 	for _, rol := range rollupsReceivedFromPeers {
 		p := e.storage.ParentRollup(rol)
+		if p == nil {
+			nodecommon.LogWithID(e.nodeShortID, "Received rollup from peer but don't have parent rollup - discarding...")
+			continue
+		}
 		if p.Hash() == head.Hash() {
 			usefulRollups = append(usefulRollups, rol)
 		}
@@ -641,7 +647,7 @@ func NewEnclave(
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 
 	connect := getDBConnector(config)
-	backingDB, err := connect()
+	backingDB, err := connect(nodeShortID)
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
@@ -715,14 +721,15 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 func getDBConnector(cfg config.EnclaveConfig) db.EthDBConnector {
 	if cfg.UseInMemoryDB {
 		// not persistent
-		return func() (ethdb.Database, error) {
+		return func(nodeID uint64) (ethdb.Database, error) {
+			nodecommon.LogWithID(nodeID, "created in-memory database")
 			return rawdb.NewMemoryDatabase(), nil
 		}
 	}
 
 	if !cfg.WillAttest {
-		// persistent but not secure in an enclave, we'll connect to a sqlite DB and test out persistence/sql implementations
-		panic("Haven't implemented sql ethdb interface yet")
+		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
+		return sql.CreateTemporarySQLiteDB
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
