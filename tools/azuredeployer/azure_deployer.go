@@ -123,7 +123,6 @@ func createDeployment(ctx context.Context, client resources.DeploymentsClient, t
 
 // Get the IP address of the deployment.
 func getIPAddress(ctx context.Context, client network.PublicIPAddressesClient) string {
-
 	ipAddress, err := client.Get(ctx, resourceGroupName, deploymentIPName, "")
 	for retries := 1; err != nil && retries <= 3; retries++ {
 		log.Printf("ERR could not retrieve deployment's IP address - %s", err)
