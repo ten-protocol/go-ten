@@ -197,7 +197,6 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		obscuroNodes[i] = agg
 		n.obscuroClients[i] = &obscuroClient
 		l1Clients[i] = l1Client
-
 	}
 
 	for _, m := range obscuroNodes {
