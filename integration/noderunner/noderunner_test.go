@@ -71,6 +71,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	defer network.StopNodes()
 
 	// for this test use the first block as the ContractMgmtBlkHash
+	// (don't actually deploy the contract)
 	client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		t.Error(err)

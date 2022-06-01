@@ -37,7 +37,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		isGenesis := i == 0
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.MgmtContractBlkHash)
+		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,

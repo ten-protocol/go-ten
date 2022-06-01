@@ -63,11 +63,10 @@ type Node struct {
 	mempoolCh   chan *types.Transaction // where l1 transactions to be published in the next block are added
 
 	// internal
-	headInCh            chan bool
-	headOutCh           chan *types.Block
-	erc20ContractLib    erc20contractlib.ERC20ContractLib
-	mgmtContractLib     mgmtcontractlib.MgmtContractLib
-	mgmtContractBlkHash *common.Hash
+	headInCh         chan bool
+	headOutCh        chan *types.Block
+	erc20ContractLib erc20contractlib.ERC20ContractLib
+	mgmtContractLib  mgmtcontractlib.MgmtContractLib
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
@@ -113,12 +112,6 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 }
 
 func (m *Node) BlockByHash(id common.Hash) (*types.Block, error) {
-	// when the mgmtContractBlkHash is requested from the genesis node to initialize the node protocol
-	// the ethereum_mock return the latest block
-	if id.Hex() == m.mgmtContractBlkHash.Hex() {
-		return m.Resolver.FetchHeadBlock(), nil
-	}
-
 	blk, f := m.Resolver.FetchBlock(id)
 	if !f {
 		return nil, fmt.Errorf("blk not found")
@@ -365,27 +358,25 @@ func NewMiner(
 	cfg MiningConfig,
 	network L1Network,
 	statsCollector StatsCollector,
-	mgmtContractBlkHash *common.Hash,
 ) *Node {
 	return &Node{
-		ID:                  id,
-		mining:              true,
-		cfg:                 cfg,
-		stats:               statsCollector,
-		Resolver:            NewResolver(),
-		db:                  NewTxDB(),
-		Network:             network,
-		exitCh:              make(chan bool),
-		exitMiningCh:        make(chan bool),
-		interrupt:           new(int32),
-		p2pCh:               make(chan *types.Block),
-		miningCh:            make(chan *types.Block),
-		canonicalCh:         make(chan *types.Block),
-		mempoolCh:           make(chan *types.Transaction),
-		headInCh:            make(chan bool),
-		headOutCh:           make(chan *types.Block),
-		erc20ContractLib:    NewERC20ContractLibMock(),
-		mgmtContractLib:     NewMgmtContractLibMock(),
-		mgmtContractBlkHash: mgmtContractBlkHash,
+		ID:               id,
+		mining:           true,
+		cfg:              cfg,
+		stats:            statsCollector,
+		Resolver:         NewResolver(),
+		db:               NewTxDB(),
+		Network:          network,
+		exitCh:           make(chan bool),
+		exitMiningCh:     make(chan bool),
+		interrupt:        new(int32),
+		p2pCh:            make(chan *types.Block),
+		miningCh:         make(chan *types.Block),
+		canonicalCh:      make(chan *types.Block),
+		mempoolCh:        make(chan *types.Transaction),
+		headInCh:         make(chan bool),
+		headOutCh:        make(chan *types.Block),
+		erc20ContractLib: NewERC20ContractLibMock(),
+		mgmtContractLib:  NewMgmtContractLibMock(),
 	}
 }

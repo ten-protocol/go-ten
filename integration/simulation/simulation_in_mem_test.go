@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+
 	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -20,7 +22,9 @@ import (
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupTestLog("in-mem")
 
-	fakeMgmtContractBlkHash := datagenerator.RandomHash()
+	// state the contract was deployed at the genesis block
+	// the l2 now considers the l1 genesis block as the starting point for bootstrapping blocks
+	fakeMgmtContractBlkHash := obscurocommon.GenesisHash
 	simParams := params.SimParams{
 		NumberOfNodes:             7,
 		AvgBlockDuration:          50 * time.Millisecond,
