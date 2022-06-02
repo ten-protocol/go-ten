@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/log"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
 )
 
 const initialBalance = 5000

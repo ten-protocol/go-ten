@@ -2,7 +2,7 @@ package mempool
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 type Manager interface {

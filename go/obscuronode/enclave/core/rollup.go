@@ -4,8 +4,8 @@ import (
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 // Rollup Data structure only for the internal use of the enclave since transactions are in clear

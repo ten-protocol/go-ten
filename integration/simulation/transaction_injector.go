@@ -6,24 +6,24 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/evm"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/log"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/wallet"
+	stats2 "github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions

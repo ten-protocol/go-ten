@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
 // Spins up a new Geth network.

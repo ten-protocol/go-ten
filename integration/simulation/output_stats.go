@@ -3,8 +3,8 @@ package simulation
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 // OutputStats decouples the processing of data and the collection of statistics

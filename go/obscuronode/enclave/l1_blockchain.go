@@ -4,7 +4,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
 	"github.com/ethereum/go-ethereum/consensus/clique"
 
@@ -130,7 +130,7 @@ func createEngine(dataDir string, chainConfig *params.ChainConfig, db ethdb.Data
 			DatasetsOnDisk:   ethconfig.Defaults.Ethash.DatasetsOnDisk,   // Default.
 			DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
 			NotifyFull:       false,                                      // Default.
-		}, nil, false) // Defaults.
+		}, nil, false)                                      // Defaults.
 		interface{}(engine).(*ethash.Ethash).SetThreads(-1) // Disables CPU mining.
 	}
 	return beacon.New(engine)

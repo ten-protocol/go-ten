@@ -6,7 +6,7 @@ import (
 
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
 )
 
 type IDData struct {

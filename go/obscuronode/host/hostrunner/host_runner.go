@@ -6,16 +6,16 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/wallet"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/log"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host/p2p"
 )
 
 // RunHost runs an Obscuro host as a standalone process.

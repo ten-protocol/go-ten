@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"

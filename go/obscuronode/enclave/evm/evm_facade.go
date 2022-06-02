@@ -4,9 +4,9 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethclient/erc20contractlib"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	core2 "github.com/ethereum/go-ethereum/core"
@@ -15,9 +15,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 // These are hardcoded values necessary as an intermediary step.

@@ -10,10 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 const expectedNonce = 777

@@ -7,19 +7,19 @@ import (
 	"net"
 
 	"github.com/naoina/toml"
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon/rpc"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon/rpc/generated"
 	"google.golang.org/grpc"
 )
 

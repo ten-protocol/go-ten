@@ -10,7 +10,7 @@ import (
 
 	"github.com/naoina/toml"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/common"
 )

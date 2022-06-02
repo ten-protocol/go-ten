@@ -6,23 +6,23 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/wallet"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/log"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 type networkInMemGeth struct {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
 )
 
 // An in-memory implementation of `clientserver.Client` that speaks directly to the node.

@@ -5,9 +5,9 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"

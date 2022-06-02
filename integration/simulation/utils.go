@@ -8,10 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 )
 
 const testLogs = "../.build/simulations/"

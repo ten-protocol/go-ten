@@ -2,7 +2,7 @@ package obscuroclient
 
 import (
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 )
 
 type RPCMethod uint8

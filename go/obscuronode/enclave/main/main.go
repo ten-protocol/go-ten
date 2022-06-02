@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/enclaverunner"
 )
 
 // Runs an Obscuro enclave as a standalone process.

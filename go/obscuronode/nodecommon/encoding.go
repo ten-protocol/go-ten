@@ -2,8 +2,8 @@ package nodecommon
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/log"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
 )
 
 func EncodeRollup(r *Rollup) obscurocommon.EncodedRollup {

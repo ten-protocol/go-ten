@@ -6,19 +6,19 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/evm"
 
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/db"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/log"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 // Determine the new canonical L2 head and calculate the State

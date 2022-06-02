@@ -8,19 +8,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/go-obscuro/integration"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/hostrunner"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/enclaverunner"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host/hostrunner"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
 // TODO - Use the HostRunner/EnclaveRunner methods in the socket-based integration tests, and retire this smoketest.

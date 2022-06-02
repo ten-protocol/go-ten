@@ -3,18 +3,18 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host"
+	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
 type basicNetworkOfInMemoryNodes struct {

@@ -2,8 +2,8 @@ package ethereummock
 
 import (
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/db"
 )
 
 // LCA - returns the least common ancestor of the 2 blocks

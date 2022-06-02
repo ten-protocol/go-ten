@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 
 	"github.com/gorilla/websocket"
 )

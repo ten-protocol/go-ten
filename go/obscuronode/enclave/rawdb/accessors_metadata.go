@@ -4,8 +4,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/log"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/core"
 )
 
 func ReadSharedSecret(db ethdb.KeyValueReader) *core.SharedEnclaveSecret {

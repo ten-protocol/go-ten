@@ -3,14 +3,14 @@ package enclave
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/db"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
 )
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block

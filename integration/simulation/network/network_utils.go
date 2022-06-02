@@ -4,24 +4,24 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"github.com/obscuronet/obscuro-playground/integration"
-	simp2p "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+	"github.com/obscuronet/go-obscuro/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave"
+	"github.com/obscuronet/go-obscuro/integration"
+	simp2p "github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/wallet"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host/p2p"
+	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
 const (

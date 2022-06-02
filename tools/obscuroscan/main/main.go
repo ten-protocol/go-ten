@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/tools/obscuroscan"
+	"github.com/obscuronet/go-obscuro/tools/obscuroscan"
 )
 
 func main() {

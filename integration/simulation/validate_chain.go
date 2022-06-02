@@ -5,15 +5,15 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.

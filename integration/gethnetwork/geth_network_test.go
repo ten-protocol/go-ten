@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
-	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"gopkg.in/yaml.v3"
 )
 

@@ -4,12 +4,12 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	obscuroconfig "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
+	obscuroconfig "github.com/obscuronet/go-obscuro/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/wallet"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 )
 
 var (

@@ -3,12 +3,12 @@ package ethereummock
 import (
 	"sync"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/enclave/db"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
 )
 
 // Received blocks ar stored here

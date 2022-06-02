@@ -3,7 +3,7 @@ package nodecommon
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 )
 
 // LogWithID logs a message at INFO level with the aggregator's identity prepended.

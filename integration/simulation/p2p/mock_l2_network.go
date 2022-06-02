@@ -4,10 +4,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 // MockP2P - models a full network of in memory nodes including artificial random latencies

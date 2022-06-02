@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/wallet"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
-	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 )
 
 const azureTestEnv = "AZURE_TEST_ENABLED"

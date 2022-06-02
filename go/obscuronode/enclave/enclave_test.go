@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"

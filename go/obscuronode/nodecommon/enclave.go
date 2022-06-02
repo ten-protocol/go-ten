@@ -3,7 +3,7 @@ package nodecommon
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
 )
 
 // Enclave is the interface for interacting with the node's enclave

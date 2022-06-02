@@ -4,7 +4,7 @@ import (
 	"flag"
 	"strings"
 
-	"github.com/obscuronet/obscuro-playground/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
 
 const (

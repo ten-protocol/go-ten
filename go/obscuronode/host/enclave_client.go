@@ -9,18 +9,18 @@ import (
 
 	"google.golang.org/grpc/connectivity"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon/rpc"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon/rpc/generated"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

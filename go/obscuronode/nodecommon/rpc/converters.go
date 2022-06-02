@@ -5,9 +5,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon/rpc/generated"
 )
 
 // Functions to convert classes that need to be sent between the host and the enclave to and from their equivalent

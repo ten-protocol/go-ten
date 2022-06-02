@@ -1,10 +1,10 @@
 package network
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/go/ethclient"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 // Network is responsible with knowing how to manage the lifecycle of networks of Ethereum or Obscuro nodes.

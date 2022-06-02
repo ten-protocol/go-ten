@@ -3,7 +3,7 @@ package obscurocommon
 import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 )
 
 func EncodeBlock(b *types.Block) EncodedBlock {

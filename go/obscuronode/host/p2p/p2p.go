@@ -5,16 +5,16 @@ import (
 	"net"
 	"sync/atomic"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/config"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/go-obscuro/go/log"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/host"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/go-obscuro/go/obscurocommon"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/go-obscuro/go/obscuronode/nodecommon"
 )
 
 // TODO - Provide configurable timeouts on P2P connections.

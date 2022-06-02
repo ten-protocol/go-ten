@@ -1,9 +1,9 @@
 FROM golang:1.17-alpine
 
 # build the enclave from the current branch
-RUN mkdir /home/obscuro-playground
-COPY . /home/obscuro-playground
-WORKDIR /home/obscuro-playground/go/obscuronode/enclave/main
+RUN mkdir /home/go-obscuro
+COPY . /home/go-obscuro
+WORKDIR /home/go-obscuro/go/obscuronode/enclave/main
 RUN apk add build-base
 ENV CGO_ENABLED=1
 # Download all the dependencies

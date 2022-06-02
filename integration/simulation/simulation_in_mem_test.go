@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
 // This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
