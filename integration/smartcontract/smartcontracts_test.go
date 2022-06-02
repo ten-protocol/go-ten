@@ -60,7 +60,6 @@ func runNetwork(t *testing.T) *simInfo {
 		wallets:     []wallet.Wallet{workerWallet},
 		gethNetwork: gethNetwork,
 	}
-
 }
 
 func TestManagementContract(t *testing.T) {

@@ -9,6 +9,6 @@ const (
 )
 
 var (
-	MgmtContractByteCode = generatedManagementContract.GeneratedManagementContractBin[2:]
+	MgmtContractByteCode = generatedManagementContract.GeneratedManagementContractMetaData.Bin[2:]
 	MgmtContractABI      = generatedManagementContract.GeneratedManagementContractMetaData.ABI
 )

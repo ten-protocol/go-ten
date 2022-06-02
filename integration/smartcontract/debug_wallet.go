@@ -1,6 +1,7 @@
 package smartcontract
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -28,7 +29,6 @@ func (w *debugWallet) AwaitedSignAndSendTransaction(client ethclient.EthClient, 
 		return nil, nil, err
 	}
 	return signedTx, receipt, nil
-
 }
 
 func (w *debugWallet) SignAndSendTransaction(client ethclient.EthClient, txData types.TxData) (*types.Transaction, error) {
@@ -52,7 +52,7 @@ func waitTxResult(client ethclient.EthClient, tx *types.Transaction) (*types.Rec
 		receipt, err = client.TransactionReceipt(tx.Hash())
 
 		if err != nil {
-			if err == ethereum.NotFound {
+			if errors.Is(err, ethereum.NotFound) {
 				continue
 			}
 			return nil, err
