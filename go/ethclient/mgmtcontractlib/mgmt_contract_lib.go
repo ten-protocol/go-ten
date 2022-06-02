@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -95,12 +97,25 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 }
 
 func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData {
+	decodedRollup, err := nodecommon.DecodeRollup(t.Rollup)
+	if err != nil {
+		panic(err)
+	}
+
 	zipped, err := compress(t.Rollup)
 	if err != nil {
 		panic(err)
 	}
 	encRollupData := base64EncodeToString(zipped)
-	data, err := c.contractABI.Pack(AddRollupMethod, encRollupData)
+
+	data, err := c.contractABI.Pack(
+		AddRollupMethod,
+		decodedRollup.Header.ParentHash,
+		decodedRollup.Header.Agg,
+		decodedRollup.Header.L1Proof,
+		big.NewInt(int64(decodedRollup.Header.Number)),
+		encRollupData,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -130,7 +145,13 @@ func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 }
 
 func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData {
-	data, err := c.contractABI.Pack(RespondSecretMethod, tx.RequesterID.Hex(), base64EncodeToString(tx.RequesterPubKey), base64EncodeToString(tx.Secret), base64EncodeToString(tx.Attestation))
+	data, err := c.contractABI.Pack(
+		RespondSecretMethod,
+		tx.RequesterID,
+		base64EncodeToString(tx.RequesterPubKey),
+		base64EncodeToString(tx.Secret),
+		base64EncodeToString(tx.Attestation),
+	)
 	if err != nil {
 		panic(err)
 	}

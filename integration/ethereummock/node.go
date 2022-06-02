@@ -15,6 +15,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+
+	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
 )
 
 type L1Network interface {
@@ -349,6 +351,10 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 		result[n-i-1] = block
 	}
 	return result
+}
+
+func (m *Node) EthClient() *ethclient_ethereum.Client {
+	return nil
 }
 
 func NewMiner(

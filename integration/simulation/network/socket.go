@@ -172,7 +172,7 @@ func (n *networkOfSocketNodes) TearDown() {
 			defer (*temp).Stop()
 			err := (*temp).Call(nil, obscuroclient.RPCStopHost)
 			if err != nil {
-				log.Error("Failed to stop client %s", err)
+				log.Error("Failed to stop client %s", err, nil)
 			}
 		}()
 	}

@@ -158,6 +158,10 @@ func (e *gethRPCClient) BlockByHash(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
 }
 
+func (e *gethRPCClient) EthClient() *ethclient.Client {
+	return e.client
+}
+
 func (e *gethRPCClient) Stop() {
 	e.client.Close()
 }
