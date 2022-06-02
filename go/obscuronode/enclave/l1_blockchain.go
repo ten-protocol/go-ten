@@ -130,7 +130,7 @@ func createEngine(dataDir string, chainConfig *params.ChainConfig, db ethdb.Data
 			DatasetsOnDisk:   ethconfig.Defaults.Ethash.DatasetsOnDisk,   // Default.
 			DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
 			NotifyFull:       false,                                      // Default.
-		}, nil, false)                                      // Defaults.
+		}, nil, false) // Defaults.
 		interface{}(engine).(*ethash.Ethash).SetThreads(-1) // Disables CPU mining.
 	}
 	return beacon.New(engine)
