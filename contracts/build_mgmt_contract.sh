@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# This script builds the management contract to a go generate package
+# This script builds the management contract from solidity to a go generated package
 #
 
 # Ensure any fail is loud and explicit

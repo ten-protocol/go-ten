@@ -20,13 +20,15 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 )
 
-type simInfo struct {
+// netInfo is a bag holder struct for output data from the execution/run of a network
+type netInfo struct {
 	ethClients  []ethclient.EthClient
 	wallets     []wallet.Wallet
 	gethNetwork *gethnetwork.GethNetwork
 }
 
-func runNetwork(t *testing.T) *simInfo {
+// runGethNetwork runs a geth network with one prefunded wallet
+func runGethNetwork(t *testing.T) *netInfo {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -36,6 +38,7 @@ func runNetwork(t *testing.T) *simInfo {
 	// prefund one wallet as the worker wallet
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
+	// define + run the network
 	gethNetwork := gethnetwork.NewGethNetwork(
 		integration.StartPortSmartContractTests,
 		integration.StartPortSmartContractTests+100,
@@ -45,6 +48,7 @@ func runNetwork(t *testing.T) *simInfo {
 		[]string{workerWallet.Address().String()},
 	)
 
+	// create a client that is connected to node 0 of the network
 	client, err := ethclient.NewEthClient(config.HostConfig{
 		ID:                  common.Address{1},
 		L1NodeHost:          "127.0.0.1",
@@ -55,7 +59,7 @@ func runNetwork(t *testing.T) *simInfo {
 		return nil
 	}
 
-	return &simInfo{
+	return &netInfo{
 		ethClients:  []ethclient.EthClient{client},
 		wallets:     []wallet.Wallet{workerWallet},
 		gethNetwork: gethNetwork,
@@ -63,31 +67,36 @@ func runNetwork(t *testing.T) *simInfo {
 }
 
 func TestManagementContract(t *testing.T) {
-	sim := runNetwork(t)
+	// run tests on one network
+	sim := runGethNetwork(t)
 	defer sim.gethNetwork.StopNodes()
+
+	// setup the client and the (debug) wallet
+	client := sim.ethClients[0]
+	w := newDebugWallet(sim.wallets[0])
 
 	for name, test := range map[string]func(*testing.T, *debugMgmtContractLib, *debugWallet, ethclient.EthClient){
 		"nonAttestedNodesCannotCreateRollup": nonAttestedNodesCannotCreateRollup,
 		"attestedNodesCreateRollup":          attestedNodesCreateRollup,
 	} {
 		t.Run(name, func(t *testing.T) {
-			client := sim.ethClients[0]
-			w := sim.wallets[0]
-
+			// deploy the same contract to a new address
 			contractAddr, err := network.DeployContract(client, w, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
 			if err != nil {
 				t.Error(err)
 			}
 
+			// run the test using the new contract, but same wallet
 			test(t,
 				newDebugMgmtContractLib(*contractAddr, client.EthClient(), mgmtcontractlib.NewMgmtContractLib(contractAddr)),
-				newDebugWallet(w),
+				w,
 				client,
 			)
 		})
 	}
 }
 
+// nonAttestedNodesCannotCreateRollup issues a rollup from a node that did not receive the secret network key
 func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethclient.EthClient) {
 	rollup := datagenerator.RandomRollup()
 	txData := mgmtContractLib.CreateRollup(
@@ -105,10 +114,13 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 	}
 }
 
+// attestedNodesCreateRollup attests a node by issuing a CreateRespondSecret, issues a rollups from the same node and verifies the rollup was stored
 func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethclient.EthClient) {
 	rollup := datagenerator.RandomRollup()
 	requesterID := rollup.Header.Agg
 	requesterPubKey := common.HexToHash("0x1337")
+
+	// mark the aggregator as attested
 	txData := mgmtContractLib.CreateRespondSecret(
 		&obscurocommon.L1RespondSecretTx{
 			RequesterPubKey: requesterPubKey.Bytes(),
@@ -126,8 +138,8 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 		t.Errorf("transaction should have sucessed, expected %d got %d", 1, receipt.Status)
 	}
 
+	// issue a rollup from the attested node
 	txData = mgmtContractLib.CreateRollup(&obscurocommon.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)}, w.GetNonceAndIncrement())
-
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
 		t.Error(err)
@@ -137,6 +149,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 		t.Errorf("transaction should have sucessed, expected %d got %d", 1, receipt.Status)
 	}
 
+	// make sure the rollup was stored in the contract
 	storedRollup, err := mgmtContractLib.genContract.Rollups(nil, receipt.BlockNumber, big.NewInt(0))
 	if err != nil {
 		t.Error(err)
