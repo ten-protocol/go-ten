@@ -3,12 +3,13 @@ package gethnetwork
 import (
 	"errors"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"math/big"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -61,7 +62,7 @@ func TestGethNetwork(t *testing.T) {
 	}
 }
 
-func testGethAllNodesJoinSameNetwork(t *testing.T, network *GethNetwork, w wallet.Wallet) {
+func testGethAllNodesJoinSameNetwork(t *testing.T, network *GethNetwork, _ wallet.Wallet) {
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
 
@@ -71,14 +72,14 @@ func testGethAllNodesJoinSameNetwork(t *testing.T, network *GethNetwork, w walle
 	}
 }
 
-func testGethGenesisParamsAreUsed(t *testing.T, network *GethNetwork, w wallet.Wallet) {
+func testGethGenesisParamsAreUsed(t *testing.T, network *GethNetwork, _ wallet.Wallet) {
 	chainID := network.IssueCommand(0, chainIDCmd)
 	if chainID != expectedChainID {
 		t.Fatalf("Network not using chain ID specified in the genesis file. Found %s, expected %s.", chainID, expectedChainID)
 	}
 }
 
-func testGethTransactionCanBeSubmitted(t *testing.T, network *GethNetwork, w wallet.Wallet) {
+func testGethTransactionCanBeSubmitted(t *testing.T, network *GethNetwork, _ wallet.Wallet) {
 	account := network.addresses[0]
 	tx := fmt.Sprintf("{from: \"%s\", to: \"%s\", value: web3.toWei(0.001, \"ether\")}", account, account)
 	txHash := network.IssueCommand(0, fmt.Sprintf("personal.sendTransaction(%s, \"%s\")", tx, password))
