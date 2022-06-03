@@ -3,6 +3,8 @@ package gethnetwork
 import (
 	"errors"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"math/big"
 	"strconv"
 	"testing"
@@ -17,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,16 +38,30 @@ const (
 
 var timeout = 15 * time.Second
 
-func TestGethAllNodesJoinSameNetwork(t *testing.T) {
+func TestGethNetwork(t *testing.T) {
 	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	w := datagenerator.RandomWallet(genesisChainID)
 	startPort := int(integration.StartPortGethNetworkTest)
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
+	for name, test := range map[string]func(t *testing.T, network *GethNetwork, w wallet.Wallet){
+		"testGethAllNodesJoinSameNetwork":    testGethAllNodesJoinSameNetwork,
+		"testGethGenesisParamsAreUsed":       testGethGenesisParamsAreUsed,
+		"testGethTransactionCanBeSubmitted":  testGethTransactionCanBeSubmitted,
+		"testGethTransactionIsMintedOverRPC": testGethTransactionIsMintedOverRPC,
+	} {
+		t.Run(name, func(t *testing.T) {
+			test(t, network, w)
+		})
+	}
+}
+
+func testGethAllNodesJoinSameNetwork(t *testing.T, network *GethNetwork, w wallet.Wallet) {
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
 
@@ -56,32 +71,14 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 	}
 }
 
-func TestGethGenesisParamsAreUsed(t *testing.T) {
-	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	startPort := int(integration.StartPortGethNetworkTest) + numNodes
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
-	defer network.StopNodes()
-
+func testGethGenesisParamsAreUsed(t *testing.T, network *GethNetwork, w wallet.Wallet) {
 	chainID := network.IssueCommand(0, chainIDCmd)
 	if chainID != expectedChainID {
 		t.Fatalf("Network not using chain ID specified in the genesis file. Found %s, expected %s.", chainID, expectedChainID)
 	}
 }
 
-func TestGethTransactionCanBeSubmitted(t *testing.T) {
-	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	startPort := int(integration.StartPortGethNetworkTest) + numNodes*2
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
-	defer network.StopNodes()
-
+func testGethTransactionCanBeSubmitted(t *testing.T, network *GethNetwork, w wallet.Wallet) {
 	account := network.addresses[0]
 	tx := fmt.Sprintf("{from: \"%s\", to: \"%s\", value: web3.toWei(0.001, \"ether\")}", account, account)
 	txHash := network.IssueCommand(0, fmt.Sprintf("personal.sendTransaction(%s, \"%s\")", tx, password))
@@ -89,7 +86,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 
 	// check the transaction has expected values
 	issuedTx := map[string]interface{}{}
-	if err = yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
+	if err := yaml.Unmarshal([]byte(issuedTxStr), issuedTx); err != nil {
 		t.Fatalf("unable to unmarshall getTransaction response to YAML. Cause: %s.\nsendTransaction response was: %s\ngetTransaction response was %s", err, txHash, issuedTxStr)
 	}
 
@@ -99,18 +96,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 	}
 }
 
-func TestGethTransactionIsMintedOverRPC(t *testing.T) {
-	gethBinaryPath, err := EnsureBinariesExist(LatestVersion)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// wallet should be prefunded
-	w := datagenerator.RandomWallet(genesisChainID)
-	startPort := int(integration.StartPortGethNetworkTest) + numNodes*3
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
-	defer network.StopNodes()
-
+func testGethTransactionIsMintedOverRPC(t *testing.T, network *GethNetwork, w wallet.Wallet) {
 	hostConfig := config.HostConfig{
 		L1NodeHost:          localhost,
 		L1NodeWebsocketPort: network.WebSocketPorts[0],
