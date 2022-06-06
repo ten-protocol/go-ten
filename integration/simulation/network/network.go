@@ -17,6 +17,6 @@ type Network interface {
 	// Create - returns the started Ethereum nodes, the started Obscuro node clients, and the Obscuro nodes' P2P addresses.
 	// Responsible with spinning up all resources required for the test
 	// Return an error in case it cannot start for an expected reason. Otherwise it panics.
-	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error)
+	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error)
 	TearDown()
 }

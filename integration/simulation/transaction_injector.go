@@ -42,7 +42,7 @@ type TransactionInjector struct {
 	ethWallets    []wallet.Wallet
 	obsWallets    []wallet.Wallet
 	l1Clients     []ethclient.EthClient
-	l2Clients     []*obscuroclient.Client
+	l2Clients     []obscuroclient.Client
 
 	// addrs and libs
 	erc20ContractAddr *common.Address
@@ -64,7 +64,7 @@ func NewTransactionInjector(
 	ethWallets []wallet.Wallet,
 	mgmtContractAddr *common.Address,
 	erc20ContractAddr *common.Address,
-	l2NodeClients []*obscuroclient.Client,
+	l2NodeClients []obscuroclient.Client,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
@@ -168,7 +168,7 @@ func (m *TransactionInjector) deploySingleObscuroERC20(w wallet.Wallet) {
 		panic(err)
 	}
 	encryptedTx := core.EncryptTx(signedTx)
-	err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+	err = m.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
 		panic(err)
 	}
@@ -199,7 +199,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 		encryptedTx := core.EncryptTx(signedTx)
 		m.stats.Transfer()
 
-		err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = m.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -249,7 +249,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		}
 		encryptedTx := core.EncryptTx(signedTx)
 
-		err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = m.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -274,7 +274,7 @@ func (m *TransactionInjector) issueInvalidL2Txs() {
 		signedTx := m.createInvalidSignage(tx, fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
 
-		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err := m.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -309,16 +309,16 @@ func (m *TransactionInjector) rndL1NodeClient() ethclient.EthClient {
 	return m.l1Clients[rand.Intn(len(m.l1Clients))] //nolint:gosec
 }
 
-func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
+func (m *TransactionInjector) rndL2NodeClient() obscuroclient.Client {
 	return m.l2Clients[rand.Intn(len(m.l2Clients))] //nolint:gosec
 }
 
-func newObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client *obscuroclient.Client) types.TxData {
+func newObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client obscuroclient.Client) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
 	return newTx(data, NextNonce(client, from))
 }
 
-func newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client *obscuroclient.Client) types.TxData {
+func newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client obscuroclient.Client) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(evm.WithdrawalAddress, amount)
 	return newTx(transferERC20data, NextNonce(client, from))
 }
@@ -339,16 +339,16 @@ func newTx(data []byte, nonce uint64) types.TxData {
 	}
 }
 
-func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
+func readNonce(cl obscuroclient.Client, a common.Address) uint64 {
 	var result uint64
-	err := (*cl).Call(&result, obscuroclient.RPCNonce, a)
+	err := cl.Call(&result, obscuroclient.RPCNonce, a)
 	if err != nil {
 		panic(err)
 	}
 	return result
 }
 
-func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
+func NextNonce(cl obscuroclient.Client, w wallet.Wallet) uint64 {
 	counter := 0
 
 	// only returns the nonce when the previous transaction was recorded

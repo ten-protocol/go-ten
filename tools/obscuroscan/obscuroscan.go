@@ -32,7 +32,7 @@ const (
 // Obscuroscan is a server that allows the monitoring of a running Obscuro network.
 type Obscuroscan struct {
 	server      *http.Server
-	client      *obscuroclient.Client
+	client      obscuroclient.Client
 	contractABI abi.ABI
 }
 
@@ -43,7 +43,7 @@ func NewObscuroscan(address string) *Obscuroscan {
 		panic("could not parse management contract ABI to decrypt rollups")
 	}
 	return &Obscuroscan{
-		client:      &client,
+		client:      client,
 		contractABI: contractABI,
 	}
 }
@@ -79,7 +79,7 @@ func (o *Obscuroscan) Shutdown() {
 // Retrieves the current block header for the Obscuro network.
 func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
 	var headBlock *types.Header
-	err := (*o.client).Call(&headBlock, obscuroclient.RPCGetCurrentBlockHead)
+	err := o.client.Call(&headBlock, obscuroclient.RPCGetCurrentBlockHead)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block. Cause: %s", err))
 		return
@@ -101,7 +101,7 @@ func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
 func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 	// TODO - Update logic here once rollups are encrypted.
 	var headRollup *nodecommon.Header
-	err := (*o.client).Call(&headRollup, obscuroclient.RPCGetCurrentRollupHead)
+	err := o.client.Call(&headRollup, obscuroclient.RPCGetCurrentRollupHead)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return

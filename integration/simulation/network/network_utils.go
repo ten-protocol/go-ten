@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
@@ -55,6 +57,7 @@ func createInMemObscuroNode(
 	validateBlocks bool,
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
+	ethClient ethclient.EthClient,
 ) *host.Node {
 	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
@@ -87,6 +90,7 @@ func createInMemObscuroNode(
 		mgmtContractLib,
 	)
 	obscuroInMemNetwork.CurrentNode = node
+	node.ConnectToEthNode(ethClient)
 	return node
 }
 
@@ -101,6 +105,7 @@ func createSocketObscuroNode(
 	clientServerAddr string,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	ethClient ethclient.EthClient,
 ) *host.Node {
 	hostConfig := config.HostConfig{
 		ID:                  common.BigToAddress(big.NewInt(id)),
@@ -131,6 +136,7 @@ func createSocketObscuroNode(
 		mgmtContractLib,
 	)
 
+	node.ConnectToEthNode(ethClient)
 	return node
 }
 
