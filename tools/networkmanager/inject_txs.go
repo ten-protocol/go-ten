@@ -25,8 +25,6 @@ func InjectTransactions(nmConfig Config) {
 		ChainID:             nmConfig.chainID,
 	}
 
-	// todo - joel - consider setting up logs
-
 	// TODO - Consider extending this command to support multiple L1 clients and L2 clients.
 	l1Client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
@@ -40,8 +38,6 @@ func InjectTransactions(nmConfig Config) {
 		panic(err)
 	}
 	l1Wallet.SetNonce(nonce)
-
-	// todo - joel - better tx injector logging (optional)
 
 	txInjector := simulation.NewTransactionInjector(
 		1*time.Second,
