@@ -2,8 +2,9 @@ package networkmanager
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
