@@ -26,7 +26,7 @@ import (
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-const maxRetries = 13 // The number of times to retry waiting for an updated nonce for a wallet.
+const timeoutMillis = 10000 // The timeout in millis to wait for an updated nonce for a wallet.
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
@@ -349,7 +349,7 @@ func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
 }
 
 func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
-	retries := 0
+	counter := 0
 
 	// only returns the nonce when the previous transaction was recorded
 	for {
@@ -357,11 +357,12 @@ func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
 		if result == w.GetNonce() {
 			return w.GetNonceAndIncrement()
 		}
-		time.Sleep(time.Duration(2^retries) * time.Millisecond) // For 13 retries, this is around 17 seconds.
-		retries++
+		counter++
 
-		if retries > maxRetries {
+		if counter > 10000 {
 			panic("Transaction injector failed to retrieve nonce after ten seconds...")
 		}
+
+		time.Sleep(time.Millisecond)
 	}
 }
