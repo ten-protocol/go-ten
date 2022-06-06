@@ -79,8 +79,9 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.StableTokenContractAddr)
 
 	// Start the enclave docker containers with the right addresses.
-	n.startDockerEnclaves(params, err)
+	n.startDockerEnclaves(params)
 
+	n.enclaveAddresses = make([]string, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
@@ -100,13 +101,29 @@ func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
 	terminateDockerContainers(n.ctx, n.client, n.containerIDs, n.containerStreams)
 }
 
-func (n *basicNetworkOfNodesWithDockerEnclave) startDockerEnclaves(params *params.SimParams, err error) {
+func (n *basicNetworkOfNodesWithDockerEnclave) setupAndCheckDocker() error {
+	n.ctx = context.Background()
+	cli, err := client.NewClientWithOpts()
+	if err != nil {
+		panic(err)
+	}
+	n.client = cli
+	// We check the required Docker images are available.
+	if !dockerImagesAvailable(n.ctx, cli) {
+		// We don't cause the test to fail here, because we want users to be able to run all the tests in the repo
+		// without having to build the Docker images.
+		return fmt.Errorf("this test requires the `%s` Docker image to be built using `dockerfiles/enclave.Dockerfile`. Terminating", enclaveDockerImg)
+	}
+	return nil
+}
+
+func (n *basicNetworkOfNodesWithDockerEnclave) startDockerEnclaves(params *params.SimParams) {
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
 	n.containerIDs = createDockerContainers(n.ctx, n.client, params.NumberOfNodes, params.StartPort, params.MgmtContractAddr.Hex(), params.StableTokenContractAddr.Hex())
 
 	// We start the Docker containers.
 	for id := range n.containerIDs {
-		if err = n.client.ContainerStart(n.ctx, id, types.ContainerStartOptions{}); err != nil {
+		if err := n.client.ContainerStart(n.ctx, id, types.ContainerStartOptions{}); err != nil {
 			panic(err)
 		}
 		waiter, err := n.client.ContainerAttach(n.ctx, id, types.ContainerAttachOptions{
@@ -128,20 +145,4 @@ func (n *basicNetworkOfNodesWithDockerEnclave) startDockerEnclaves(params *param
 		}
 		n.containerStreams[id] = &waiter
 	}
-}
-
-func (n *basicNetworkOfNodesWithDockerEnclave) setupAndCheckDocker() error {
-	n.ctx = context.Background()
-	cli, err := client.NewClientWithOpts()
-	if err != nil {
-		panic(err)
-	}
-	n.client = cli
-	// We check the required Docker images are available.
-	if !dockerImagesAvailable(n.ctx, cli) {
-		// We don't cause the test to fail here, because we want users to be able to run all the tests in the repo
-		// without having to build the Docker images.
-		return fmt.Errorf("this test requires the `%s` Docker image to be built using `dockerfiles/enclave.Dockerfile`. Terminating", enclaveDockerImg)
-	}
-	return nil
 }

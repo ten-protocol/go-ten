@@ -18,7 +18,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-const enclavePort = ":11000"
+const enclavePort = 11000
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkWithAzureEnclaves struct {

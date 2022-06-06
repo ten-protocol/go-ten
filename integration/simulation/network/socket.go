@@ -54,6 +54,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	// Start the enclaves
 	startRemoteEnclaveServers(0, params, stats)
 
+	n.enclaveAddresses = make([]string, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
