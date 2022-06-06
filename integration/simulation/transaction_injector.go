@@ -26,7 +26,7 @@ import (
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-const timeoutMillis = 10000 // The timeout in millis to wait for an updated nonce for a wallet.
+const maxRetries = 12 // The number of times to retry waiting for an updated nonce for a wallet.
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
@@ -298,30 +298,18 @@ func (m *TransactionInjector) createInvalidSignage(tx types.TxData, w wallet.Wal
 }
 
 func (m *TransactionInjector) rndObsWallet() wallet.Wallet {
-	if len(m.obsWallets) == 1 {
-		return m.obsWallets[0]
-	}
-	return m.obsWallets[rand.Intn(len(m.obsWallets)-1)] //nolint:gosec
+	return m.obsWallets[rand.Intn(len(m.obsWallets))] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndEthWallet() wallet.Wallet {
-	if len(m.ethWallets) == 1 {
-		return m.ethWallets[0]
-	}
-	return m.ethWallets[rand.Intn(len(m.ethWallets)-1)] //nolint:gosec
+	return m.ethWallets[rand.Intn(len(m.ethWallets))] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL1NodeClient() ethclient.EthClient {
-	if len(m.l1Clients) == 1 {
-		return m.l1Clients[0]
-	}
 	return m.l1Clients[rand.Intn(len(m.l1Clients))] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
-	if len(m.l2Clients) == 1 {
-		return m.l2Clients[0]
-	}
 	return m.l2Clients[rand.Intn(len(m.l2Clients))] //nolint:gosec
 }
 
@@ -361,7 +349,7 @@ func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
 }
 
 func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
-	counter := 0
+	retries := 0
 
 	// only returns the nonce when the previous transaction was recorded
 	for {
@@ -369,10 +357,10 @@ func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
 		if result == w.GetNonce() {
 			return w.GetNonceAndIncrement()
 		}
-		time.Sleep(time.Millisecond)
-		counter++
+		time.Sleep(time.Duration(2^retries) * time.Millisecond) // For 12 retries, this is around 10 seconds.
+		retries++
 
-		if counter > timeoutMillis {
+		if retries > maxRetries {
 			panic("Transaction injector failed to retrieve nonce after ten seconds...")
 		}
 	}
