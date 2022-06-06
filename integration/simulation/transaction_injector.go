@@ -26,6 +26,8 @@ import (
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
+const timeoutMillis = 10000 // The timeout in millis to wait for an updated nonce for a wallet.
+
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
 	// counters
@@ -296,11 +298,11 @@ func (m *TransactionInjector) createInvalidSignage(tx types.TxData, w wallet.Wal
 }
 
 func (m *TransactionInjector) rndObsWallet() wallet.Wallet {
-	return m.obsWallets[rand.Intn(len(m.obsWallets)-1)] //nolint:gosec
+	return m.obsWallets[rand.Intn(len(m.obsWallets))] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndEthWallet() wallet.Wallet {
-	return m.ethWallets[rand.Intn(len(m.ethWallets)-1)] //nolint:gosec
+	return m.ethWallets[rand.Intn(len(m.ethWallets))] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL1NodeClient() ethclient.EthClient {
@@ -347,12 +349,20 @@ func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
 }
 
 func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
+	counter := 0
+
 	// only returns the nonce when the previous transaction was recorded
 	for {
 		result := readNonce(cl, w.Address())
 		if result == w.GetNonce() {
 			return w.GetNonceAndIncrement()
 		}
+		counter++
+
+		if counter > timeoutMillis {
+			panic("Transaction injector failed to retrieve nonce after ten seconds...")
+		}
+
 		time.Sleep(time.Millisecond)
 	}
 }

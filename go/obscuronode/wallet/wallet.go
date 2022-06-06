@@ -53,7 +53,7 @@ func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
 	}
 }
 
-func NewInMemoryWalletFromString(config config.HostConfig) Wallet {
+func NewInMemoryWalletFromConfig(config config.HostConfig) Wallet {
 	privateKey, err := crypto.HexToECDSA(config.PrivateKeyString)
 	if err != nil {
 		log.Panic("could not recover private key from hex. Cause: %s", err)
