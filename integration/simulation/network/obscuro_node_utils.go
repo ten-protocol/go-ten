@@ -132,15 +132,14 @@ func StopObscuroNodes(clients []obscuroclient.Client) {
 	var wg sync.WaitGroup
 	for _, client := range clients {
 		wg.Add(1)
-		temp := client
-		go func() {
+		go func(c obscuroclient.Client) {
 			defer wg.Done()
-			err := temp.Call(nil, obscuroclient.RPCStopHost)
+			err := c.Call(nil, obscuroclient.RPCStopHost)
 			if err != nil {
 				log.Error("Failed to stop client %s", err)
 			}
-			temp.Stop()
-		}()
+			c.Stop()
+		}(client)
 	}
 	if waitTimeout(&wg, 2*time.Second) {
 		log.Error("Timed out waiting for the obscuro nodes to stop")

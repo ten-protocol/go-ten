@@ -72,19 +72,19 @@ func terminateDockerContainers(ctx context.Context, cli *client.Client, containe
 		if containerStreams[id] != nil {
 			containerStreams[id].Close()
 		}
-		err1 := cli.ContainerStop(ctx, id, nil)
-		if err1 != nil {
-			fmt.Printf("Could not stop the container %v : %s\n", id, err1)
+		err := cli.ContainerStop(ctx, id, nil)
+		if err != nil {
+			fmt.Printf("Could not stop the container %v : %s\n", id, err)
 			continue
 		}
 
-		err2 := cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{
+		err = cli.ContainerRemove(ctx, id, types.ContainerRemoveOptions{
 			RemoveVolumes: true,
 			RemoveLinks:   false,
 			Force:         true,
 		})
-		if err2 != nil {
-			fmt.Printf("Could not remove the container %v : %s\n", id, err2)
+		if err != nil {
+			fmt.Printf("Could not remove the container %v : %s\n", id, err)
 			continue
 		}
 
