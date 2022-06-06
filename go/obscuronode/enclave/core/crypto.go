@@ -37,7 +37,8 @@ func DecryptTransactions(encryptedTxs nodecommon.EncryptedTransactions, rollupCi
 	return txs
 }
 
-func DecodeTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
+// TODO - Perform real decryption here, and not just RLP decoding.
+func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	t := nodecommon.L2Tx{}
 	if err := rlp.DecodeBytes(tx, &t); err != nil {
 		log.Panic("could not decrypt encrypted L2 transaction. Cause: %s", err)
@@ -46,7 +47,8 @@ func DecodeTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	return t
 }
 
-func EncodeTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
+// TODO - Perform real encryption here, and not just RLP encoding.
+func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		log.Panic("could not encrypt L2 transaction. Cause: %s", err)

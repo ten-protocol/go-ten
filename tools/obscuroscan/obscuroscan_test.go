@@ -4,10 +4,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/json"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"

@@ -1,8 +1,9 @@
 package nodecommon
 
 import (
-	"github.com/ethereum/go-ethereum/core/types"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/log"
 
