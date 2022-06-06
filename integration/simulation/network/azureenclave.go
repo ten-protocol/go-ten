@@ -5,6 +5,13 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/integration"
@@ -20,44 +27,104 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 const enclavePort = ":11000"
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkWithAzureEnclaves struct {
-	ethNodes         []*ethereum_mock.Node
-	obscuroNodes     []*host.Node
-	obscuroClients   []obscuroclient.Client
+	gethNetwork  *gethnetwork.GethNetwork
+	wallets      []wallet.Wallet
+	contracts    []string
+	workerWallet wallet.Wallet
+
+	obscuroClients   []*obscuroclient.Client
 	enclaveAddresses []string
 }
 
-func NewNetworkWithAzureEnclaves(enclaveAddresses []string) Network {
+func NewNetworkWithAzureEnclaves(enclaveAddresses []string, wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
 	if len(enclaveAddresses) == 0 {
 		panic("Cannot create azure enclaves network without at least one enclave address.")
 	}
-	return &networkWithAzureEnclaves{enclaveAddresses: enclaveAddresses}
+	return &networkWithAzureEnclaves{
+		enclaveAddresses: enclaveAddresses,
+		wallets:          wallets,
+		contracts:        contracts,
+		workerWallet:     workerWallet,
+	}
 }
 
-func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
+func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
+	// make sure the geth network binaries exist
+	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	if err != nil {
+		panic(err)
+	}
+
+	// get wallet addresses to prefund them
+	walletAddresses := make([]string, len(n.wallets))
+	for i, w := range n.wallets {
+		walletAddresses[i] = w.Address().String()
+	}
+
+	// kickoff the network with the prefunded wallet addresses
+	n.gethNetwork = gethnetwork.NewGethNetwork(
+		params.StartPort,
+		params.StartPort+DefaultWsPortOffset,
+		path,
+		params.NumberOfNodes,
+		int(params.AvgBlockDuration.Seconds()),
+		walletAddresses,
+	)
+
+	tmpHostConfig := config.HostConfig{
+		L1NodeHost:          Localhost,
+		L1NodeWebsocketPort: n.gethNetwork.WebSocketPorts[0],
+		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
+	}
+	tmpEthClient, err := ethclient.NewEthClient(tmpHostConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	mgmtContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
+	}
+	erc20ContractAddr, err := DeployContract(tmpEthClient, n.workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+	}
+	fmt.Printf("Please start the docker image on the azure server with with:\n")
+	for i := 0; i < len(n.enclaveAddresses); i++ {
+		fmt.Printf("sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 11000:11000/tcp obscuro_enclave --hostID %d --address :11000 --managementContractAddress %s  --erc20ContractAddresses %s\n", i, mgmtContractAddr.Hex(), erc20ContractAddr.Hex())
+	}
+	time.Sleep(10 * time.Second)
+
+	params.MgmtContractAddr = mgmtContractAddr
+	params.StableTokenContractAddr = erc20ContractAddr
+	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(mgmtContractAddr)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(mgmtContractAddr, erc20ContractAddr)
+
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
-	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
-	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
-	n.obscuroClients = make([]obscuroclient.Client, params.NumberOfNodes)
+	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
+	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
 	nodeP2pAddrs := make([]string, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// We assign a P2P address to each node on the network.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+i)
+		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
 	}
 
 	// set up nodes with azure enclave
 	for i := 0; i < len(n.enclaveAddresses); i++ {
 		isGenesis := i == 0
-		// create the in memory l1 and l2 node
-		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		// create the L1 client, the Obscuro host and enclave service, and the L2 client
+		l1Client := createEthClientConnection(
+			int64(i),
+			n.gethNetwork.WebSocketPorts[i],
+		)
+		rpcAddress := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostRPCOffset+i)
 		agg := createSocketObscuroNode(
 			int64(i),
 			isGenesis,
@@ -66,24 +133,33 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			nodeP2pAddrs[i],
 			nodeP2pAddrs,
 			n.enclaveAddresses[i]+enclavePort,
-			obscuroClientAddr,
+			rpcAddress,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
 			miner,
 		)
-		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
+		obscuroClient := obscuroclient.NewClient(rpcAddress)
 
-		n.wireUpNode(i, l1Clients, miner, agg, obscuroClient)
+		// connect the L1 and L2 nodes
+		agg.ConnectToEthNode(l1Client)
+
+		obscuroNodes[i] = agg
+		n.obscuroClients[i] = &obscuroClient
+		l1Clients[i] = l1Client
 	}
 
 	// set up nodes with mock enclaves
 	for i := len(n.enclaveAddresses); i < params.NumberOfNodes; i++ {
+		l1Client := createEthClientConnection(
+			int64(i),
+			n.gethNetwork.WebSocketPorts[i],
+		)
+
 		// create a remote enclave server
-		nonAzureEnclavePort := uint64(params.StartPort + DefaultWsPortOffset + i)
-		nonAzureEnclaveAddress := fmt.Sprintf("%s:%d", Localhost, nonAzureEnclavePort)
+		nonAzureEnclaveAddress := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		enclaveConfig := config.EnclaveConfig{
 			HostID:           common.BigToAddress(big.NewInt(int64(i))),
-			Address:          fmt.Sprintf("%s:%d", Localhost, nonAzureEnclavePort),
+			Address:          nonAzureEnclaveAddress,
 			L1ChainID:        integration.EthereumChainID,
 			ObscuroChainID:   integration.ObscuroChainID,
 			WillAttest:       false,
@@ -102,8 +178,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		}
 
 		// create the in memory l1 and l2 node
-		obscuroClientAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+200+i)
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		rpcAddress := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostRPCOffset+i)
 		agg := createSocketObscuroNode(
 			int64(i),
 			false,
@@ -112,35 +187,21 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			nodeP2pAddrs[i],
 			nodeP2pAddrs,
 			nonAzureEnclaveAddress,
-			obscuroClientAddr,
+			rpcAddress,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
 			miner,
 		)
-		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
+		obscuroClient := obscuroclient.NewClient(rpcAddress)
+		// connect the L1 and L2 nodes
+		agg.ConnectToEthNode(l1Client)
 
-		n.wireUpNode(i, l1Clients, miner, agg, obscuroClient)
+		obscuroNodes[i] = agg
+		n.obscuroClients[i] = &obscuroClient
+		l1Clients[i] = l1Client
 	}
 
-	// populate the nodes field of the L1 network
-	for i := 0; i < params.NumberOfNodes; i++ {
-		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-	}
-
-	// The sequence of starting the nodes is important to catch various edge cases.
-	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
-	// The reason is to make sure that they catch up correctly.
-	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
-	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
-	// Note: Other simulations might test variations of this pattern.
-	for _, m := range n.ethNodes {
-		t := m
-		go t.Start()
-		time.Sleep(params.AvgBlockDuration / 8)
-	}
-
-	time.Sleep(params.AvgBlockDuration * 20)
-	for _, m := range n.obscuroNodes {
+	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
 		time.Sleep(params.AvgBlockDuration / 3)
@@ -150,22 +211,15 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 }
 
 func (n *networkWithAzureEnclaves) TearDown() {
-	for _, client := range n.obscuroClients {
-		temp := client
-		go temp.Stop()
+	n.gethNetwork.StopNodes()
+	for _, c := range n.obscuroClients {
+		temp := c
+		go func() {
+			defer (*temp).Stop()
+			err := (*temp).Call(nil, obscuroclient.RPCStopHost)
+			if err != nil {
+				log.Error("Failed to stop node: %s", err)
+			}
+		}()
 	}
-
-	for _, node := range n.ethNodes {
-		temp := node
-		go temp.Stop()
-	}
-}
-
-func (n *networkWithAzureEnclaves) wireUpNode(idx int, l1Clients []ethclient.EthClient, miner *ethereum_mock.Node, agg *host.Node, obscuroClient obscuroclient.Client) {
-	miner.AddClient(agg)
-
-	n.ethNodes[idx] = miner
-	n.obscuroNodes[idx] = agg
-	n.obscuroClients[idx] = obscuroClient
-	l1Clients[idx] = miner
 }

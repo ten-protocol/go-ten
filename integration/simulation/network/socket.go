@@ -79,7 +79,7 @@ func startRemoteEnclaveServers(params *params.SimParams, stats *stats.Stats) {
 			ValidateL1Blocks: false,
 			WillAttest:       false,
 			GenesisJSON:      nil,
-			UseInMemoryDB:    true,
+			UseInMemoryDB:    false,
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {

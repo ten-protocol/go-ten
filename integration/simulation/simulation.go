@@ -36,7 +36,9 @@ func (s *Simulation) Start() {
 
 	s.WaitForObscuroGenesis()
 
-	time.Sleep(3 * time.Second)
+	// arbitrary sleep to wait for RPC clients to get up and running
+	time.Sleep(5 * time.Second)
+
 	timer := time.Now()
 	log.Info("Starting injection")
 	go s.TxInjector.Start()

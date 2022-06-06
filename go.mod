@@ -13,8 +13,11 @@ require (
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/rs/zerolog v1.26.1
+	github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4
+	github.com/stretchr/testify v1.7.1
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.45.0
@@ -37,6 +40,7 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
@@ -67,6 +71,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/tsdb v0.7.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
