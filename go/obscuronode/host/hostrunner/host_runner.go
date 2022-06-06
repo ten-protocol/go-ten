@@ -28,7 +28,7 @@ func RunHost(config config.HostConfig) {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}
 
-	ethWallet := wallet.NewInMemoryWalletFromString(config)
+	ethWallet := wallet.NewInMemoryWalletFromConfig(config)
 	nonce, err := l1Client.Nonce(ethWallet.Address())
 	if err != nil {
 		log.Panic("could not retrieve Ethereum account nonce. Cause: %s", err)
