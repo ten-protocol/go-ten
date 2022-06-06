@@ -1,11 +1,10 @@
 package nodecommon
 
 import (
+	"github.com/ethereum/go-ethereum/core/types"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/log"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -15,9 +14,9 @@ import (
 
 type (
 	StateRoot             = common.Hash
-	EncodedTx             []byte
 	L2Tx                  = types.Transaction
-	EncodedTransactions   []EncodedTx
+	EncryptedTx           []byte
+	EncodedTransactions   []EncryptedTx
 	EncryptedTransactions []byte
 )
 

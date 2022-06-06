@@ -45,7 +45,7 @@ type Enclave interface {
 	SubmitRollup(rollup ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx EncodedTx) error
+	SubmitTx(tx EncryptedTx) error
 
 	// Balance - returns the balance of an address with a block delay
 	// todo - replace with generic off-chain contract call

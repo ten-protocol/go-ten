@@ -83,7 +83,7 @@ func (p *p2pImpl) StopListening() error {
 	return nil
 }
 
-func (p *p2pImpl) BroadcastTx(tx nodecommon.EncodedTx) {
+func (p *p2pImpl) BroadcastTx(tx nodecommon.EncryptedTx) {
 	p.broadcast(Tx, tx)
 }
 

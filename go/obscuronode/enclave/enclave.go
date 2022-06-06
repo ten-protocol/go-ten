@@ -265,7 +265,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	}
 }
 
-func (e *enclaveImpl) SubmitTx(tx nodecommon.EncodedTx) error {
+func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	decodedTx := obscurocore.DecodeTx(tx)
 	err := verifySignature(e.config.ObscuroChainID, &decodedTx)
 	if err != nil {

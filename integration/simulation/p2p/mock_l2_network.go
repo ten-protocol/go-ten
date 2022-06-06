@@ -56,7 +56,7 @@ func (netw *MockP2P) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	}
 }
 
-func (netw *MockP2P) BroadcastTx(tx nodecommon.EncodedTx) {
+func (netw *MockP2P) BroadcastTx(tx nodecommon.EncryptedTx) {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return
 	}

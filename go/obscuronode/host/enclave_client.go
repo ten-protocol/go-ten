@@ -217,7 +217,7 @@ func (c *EnclaveRPCClient) SubmitRollup(rollup nodecommon.ExtRollup) {
 	}
 }
 
-func (c *EnclaveRPCClient) SubmitTx(tx nodecommon.EncodedTx) error {
+func (c *EnclaveRPCClient) SubmitTx(tx nodecommon.EncryptedTx) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
