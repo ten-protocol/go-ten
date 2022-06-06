@@ -38,9 +38,9 @@ import (
 )
 
 const (
-	// AES key used to encrypt and decrypt the transaction blob in rollups.
+	// RollupEncryptionKeyHex is the AES key used to encrypt and decrypt the transaction blob in rollups.
 	// TODO - Replace this fixed key with derived, rotating keys.
-	rollupEncryptionKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c"
+	RollupEncryptionKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c"
 	msgNoRollup            = "could not fetch rollup"
 )
 
@@ -684,7 +684,7 @@ func NewEnclave(
 	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
 
-	key := common.Hex2Bytes(rollupEncryptionKeyHex)
+	key := common.Hex2Bytes(RollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(fmt.Sprintf("could not initialise AES cipher for enclave rollup key. Cause: %s", err))
