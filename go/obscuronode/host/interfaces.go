@@ -10,7 +10,7 @@ import (
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
 type P2PCallback interface {
 	ReceiveRollup(r obscurocommon.EncodedRollup)
-	ReceiveTx(tx nodecommon.EncryptedTx)
+	ReceiveTx(tx nodecommon.EncodedTx)
 }
 
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
@@ -18,7 +18,7 @@ type P2P interface {
 	StartListening(callback P2PCallback)
 	StopListening() error
 	BroadcastRollup(r obscurocommon.EncodedRollup)
-	BroadcastTx(tx nodecommon.EncryptedTx)
+	BroadcastTx(tx nodecommon.EncodedTx)
 }
 
 // ClientServer is the layer responsible for handling requests from Obscuro client applications.

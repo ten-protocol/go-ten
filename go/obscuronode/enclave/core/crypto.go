@@ -9,15 +9,15 @@ import (
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
 
-func DecryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
+func DecodeTransactions(txs nodecommon.EncodedTransactions) L2Txs {
 	t := make([]nodecommon.L2Tx, 0)
 	for _, tx := range txs {
-		t = append(t, DecryptTx(tx))
+		t = append(t, DecodeTx(tx))
 	}
 	return t
 }
 
-func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
+func DecodeTx(tx nodecommon.EncodedTx) nodecommon.L2Tx {
 	t := nodecommon.L2Tx{}
 	if err := rlp.DecodeBytes(tx, &t); err != nil {
 		log.Panic("could not decrypt encrypted L2 transaction. Cause: %s", err)
@@ -26,7 +26,7 @@ func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	return t
 }
 
-func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
+func EncodeTx(tx *nodecommon.L2Tx) nodecommon.EncodedTx {
 	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		log.Panic("could not encrypt L2 transaction. Cause: %s", err)

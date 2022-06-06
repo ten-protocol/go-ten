@@ -52,12 +52,12 @@ func randomWithdrawals(length int) []nodecommon.Withdrawal {
 	return withdrawals
 }
 
-func randomEncryptedTransaction() nodecommon.EncryptedTx {
+func randomEncryptedTransaction() nodecommon.EncodedTx {
 	return randomBytes(100)
 }
 
-func randomEncryptedTransactions(length int) nodecommon.EncryptedTransactions {
-	encTransactions := make([]nodecommon.EncryptedTx, length)
+func randomEncryptedTransactions(length int) nodecommon.EncodedTransactions {
+	encTransactions := make([]nodecommon.EncodedTx, length)
 	for i := 0; i < length; i++ {
 		encTransactions[i] = randomEncryptedTransaction()
 	}

@@ -87,10 +87,10 @@ func (r *Rollup) ToExtRollup() nodecommon.ExtRollup {
 	}
 }
 
-func EncryptTransactions(transactions L2Txs) nodecommon.EncryptedTransactions {
-	result := make([]nodecommon.EncryptedTx, 0)
+func EncryptTransactions(transactions L2Txs) nodecommon.EncodedTransactions {
+	result := make([]nodecommon.EncodedTx, 0)
 	for i := range transactions {
-		result = append(result, EncryptTx(&transactions[i]))
+		result = append(result, EncodeTx(&transactions[i]))
 	}
 	return result
 }

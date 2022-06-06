@@ -32,7 +32,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCSendTransactionEncrypted, len(args))
 		}
-		tx, ok := args[0].(nodecommon.EncryptedTx)
+		tx, ok := args[0].(nodecommon.EncodedTx)
 		if !ok {
 			return fmt.Errorf("arg to %s was not of expected type nodecommon.EncryptedTx", obscuroclient.RPCSendTransactionEncrypted)
 		}

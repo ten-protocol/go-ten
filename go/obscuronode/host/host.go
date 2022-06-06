@@ -42,7 +42,7 @@ type Node struct {
 	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
 	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
-	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
+	txP2PCh      chan nodecommon.EncodedTx         // The channel that new transactions from peers are sent to
 
 	nodeDB       *DB    // Stores the node's publicly-available data
 	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
@@ -86,7 +86,7 @@ func NewHost(
 		blockRPCCh:   make(chan blockAndParent),
 		forkRPCCh:    make(chan []obscurocommon.EncodedBlock),
 		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
-		txP2PCh:      make(chan nodecommon.EncryptedTx),
+		txP2PCh:      make(chan nodecommon.EncodedTx),
 
 		// Initialize the node DB
 		nodeDB:       NewDB(),
@@ -185,7 +185,7 @@ func (a *Node) ReceiveRollup(r obscurocommon.EncodedRollup) {
 }
 
 // ReceiveTx receives a new transaction
-func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
+func (a *Node) ReceiveTx(tx nodecommon.EncodedTx) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}

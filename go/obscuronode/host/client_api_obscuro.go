@@ -23,7 +23,7 @@ func (api *ObscuroAPI) GetID() common.Address {
 }
 
 // SendTransactionEncrypted sends the encrypted Obscuro transaction to all peer Obscuro nodes.
-func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.EncryptedTx) {
+func (api *ObscuroAPI) SendTransactionEncrypted(encryptedTx nodecommon.EncodedTx) {
 	api.host.P2p.BroadcastTx(encryptedTx)
 }
 

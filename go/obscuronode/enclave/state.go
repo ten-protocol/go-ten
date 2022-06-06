@@ -344,7 +344,7 @@ func extractRollups(b *types.Block, blockResolver db.BlockResolver, mgmtContract
 func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
 	return &core.Rollup{
 		Header:       r.Header,
-		Transactions: core.DecryptTransactions(r.Transactions),
+		Transactions: core.DecodeTransactions(r.Transactions),
 	}
 }
 

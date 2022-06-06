@@ -89,7 +89,7 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
 		}
 	}
 
-	txs := make([]nodecommon.EncryptedTx, 0)
+	txs := make([]nodecommon.EncodedTx, 0)
 	for _, tx := range msg.Txs {
 		txs = append(txs, tx)
 	}

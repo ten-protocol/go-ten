@@ -167,7 +167,7 @@ func (m *TransactionInjector) deploySingleObscuroERC20(w wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	encryptedTx := core.EncryptTx(signedTx)
+	encryptedTx := core.EncodeTx(signedTx)
 	err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
 		panic(err)
@@ -196,7 +196,7 @@ func (m *TransactionInjector) issueRandomTransfers() {
 			panic(err)
 		}
 
-		encryptedTx := core.EncryptTx(signedTx)
+		encryptedTx := core.EncodeTx(signedTx)
 		m.stats.Transfer()
 
 		err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -247,7 +247,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 		if err != nil {
 			panic(err)
 		}
-		encryptedTx := core.EncryptTx(signedTx)
+		encryptedTx := core.EncodeTx(signedTx)
 
 		err = (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
@@ -272,7 +272,7 @@ func (m *TransactionInjector) issueInvalidL2Txs() {
 		tx := newCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
 
 		signedTx := m.createInvalidSignage(tx, fromWallet)
-		encryptedTx := core.EncryptTx(signedTx)
+		encryptedTx := core.EncodeTx(signedTx)
 
 		err := (*m.rndL2NodeClient()).Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
