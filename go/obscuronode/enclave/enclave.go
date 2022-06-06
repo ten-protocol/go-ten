@@ -643,7 +643,6 @@ func NewEnclave(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	collector StatsCollector,
 ) nodecommon.Enclave {
-	tempDB := db.NewInMemoryDB()
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 
 	connect := getDBConnector(config)
@@ -651,7 +650,7 @@ func NewEnclave(
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
-	storage := db.NewStorage(tempDB, backingDB, nodeShortID)
+	storage := db.NewStorage(backingDB, nodeShortID)
 
 	var l1Blockchain *core.BlockChain
 	if config.ValidateL1Blocks {
