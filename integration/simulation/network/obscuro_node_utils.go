@@ -2,8 +2,14 @@ package network
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -56,7 +62,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	return obscuroClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient) ([]obscuroclient.Client, []string) {
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient, enclaveAddresses []string) ([]obscuroclient.Client, []string) {
 	// handle to the obscuro clients
 	obscuroClients := make([]obscuroclient.Client, params.NumberOfNodes)
 
@@ -71,9 +77,8 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		// We use the convention to determine the rpc ports of the node and the enclave
+		// We use the convention to determine the rpc ports of the node
 		nodeRpcAddress := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostRPCOffset+i)
-		enclaveAddress := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 
 		// create a remote enclave server
 		obscuroNodes[i] = createSocketObscuroNode(
@@ -83,7 +88,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			stats,
 			nodeP2pAddrs[i],
 			nodeP2pAddrs,
-			enclaveAddress,
+			enclaveAddresses[i],
 			nodeRpcAddress,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
@@ -100,6 +105,27 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	}
 
 	return obscuroClients, nodeP2pAddrs
+}
+
+func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {
+	for i := startAt; i < params.NumberOfNodes; i++ {
+		// create a remote enclave server
+		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
+		enclaveConfig := config.EnclaveConfig{
+			HostID:           common.BigToAddress(big.NewInt(int64(i))),
+			Address:          enclaveAddr,
+			L1ChainID:        integration.EthereumChainID,
+			ObscuroChainID:   integration.ObscuroChainID,
+			ValidateL1Blocks: false,
+			WillAttest:       false,
+			GenesisJSON:      nil,
+			UseInMemoryDB:    false,
+		}
+		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create enclave server: %v", err))
+		}
+	}
 }
 
 func StopObscuroNodes(clients []obscuroclient.Client) {

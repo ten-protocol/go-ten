@@ -33,8 +33,8 @@ const (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfNodesWithDockerEnclave struct {
-	obscuroClients []obscuroclient.Client
-
+	obscuroClients   []obscuroclient.Client
+	enclaveAddresses []string
 	// Geth
 	gethNetwork  *gethnetwork.GethNetwork
 	gethClients  []ethclient.EthClient
@@ -81,8 +81,12 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	// Start the enclave docker containers with the right addresses.
 	n.startDockerEnclaves(params, err)
 
+	for i := 0; i < params.NumberOfNodes; i++ {
+		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
+	}
+
 	// Start the standalone obscuro nodes connected to the enclaves and to the geth nodes
-	obscuroClients, nodeP2pAddrs := startStandaloneObscuroNodes(params, stats, n.gethClients)
+	obscuroClients, nodeP2pAddrs := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 
 	return n.gethClients, obscuroClients, nodeP2pAddrs, nil

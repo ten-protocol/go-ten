@@ -2,15 +2,10 @@ package network
 
 import (
 	"fmt"
-	"math/big"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	"github.com/obscuronet/obscuro-playground/integration"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -20,14 +15,12 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 )
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
-	obscuroClients []obscuroclient.Client
+	obscuroClients   []obscuroclient.Client
+	enclaveAddresses []string
 
 	// geth
 	gethNetwork  *gethnetwork.GethNetwork
@@ -59,33 +52,16 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.StableTokenContractAddr)
 
 	// Start the enclaves
-	startRemoteEnclaveServers(params, stats)
+	startRemoteEnclaveServers(0, params, stats)
 
-	obscuroClients, nodeP2pAddrs := startStandaloneObscuroNodes(params, stats, n.gethClients)
+	for i := 0; i < params.NumberOfNodes; i++ {
+		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
+	}
+
+	obscuroClients, nodeP2pAddrs := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 
 	return n.gethClients, n.obscuroClients, nodeP2pAddrs, nil
-}
-
-func startRemoteEnclaveServers(params *params.SimParams, stats *stats.Stats) {
-	for i := 0; i < params.NumberOfNodes; i++ {
-		// create a remote enclave server
-		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
-		enclaveConfig := config.EnclaveConfig{
-			HostID:           common.BigToAddress(big.NewInt(int64(i))),
-			Address:          enclaveAddr,
-			L1ChainID:        integration.EthereumChainID,
-			ObscuroChainID:   integration.ObscuroChainID,
-			ValidateL1Blocks: false,
-			WillAttest:       false,
-			GenesisJSON:      nil,
-			UseInMemoryDB:    false,
-		}
-		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
-		if err != nil {
-			panic(fmt.Sprintf("failed to create enclave server: %v", err))
-		}
-	}
 }
 
 func (n *networkOfSocketNodes) TearDown() {
@@ -94,4 +70,5 @@ func (n *networkOfSocketNodes) TearDown() {
 	StopGethNetwork(n.gethClients, n.gethNetwork)
 
 	// stop the enclaves
+	// todo
 }
