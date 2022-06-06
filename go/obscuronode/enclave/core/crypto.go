@@ -1,6 +1,8 @@
 package core
 
 import (
+	"crypto/cipher"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -9,12 +11,18 @@ import (
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
 
-func DecodeTransactions(txs nodecommon.EncodedTransactions) L2Txs {
-	t := make([]nodecommon.L2Tx, 0)
-	for _, tx := range txs {
-		t = append(t, DecodeTx(tx))
+func DecryptTransactions(encryptedTxs nodecommon.EncryptedTransactions, rollupCipher cipher.AEAD) L2Txs {
+	encodedTxs, err := rollupCipher.Open(nil, nil, encryptedTxs, nil)
+	if err != nil {
+		log.Panic("could not decrypt encrypted L2 transactions. Cause: %s", err)
 	}
-	return t
+
+	txs := L2Txs{}
+	if err := rlp.DecodeBytes(encodedTxs, txs); err != nil {
+		log.Panic("could not decode encoded L2 transactions. Cause: %s", err)
+	}
+
+	return txs
 }
 
 func DecodeTx(tx nodecommon.EncodedTx) nodecommon.L2Tx {

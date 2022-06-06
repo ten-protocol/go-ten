@@ -1,7 +1,11 @@
 package core
 
 import (
+	"crypto/cipher"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -80,17 +84,18 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 	return r
 }
 
-func (r *Rollup) ToExtRollup() nodecommon.ExtRollup {
+func (r *Rollup) ToExtRollup(rollupCipher cipher.AEAD) nodecommon.ExtRollup {
 	return nodecommon.ExtRollup{
 		Header: r.Header,
-		Txs:    EncryptTransactions(r.Transactions),
+		Txs:    EncryptTransactions(r.Transactions, rollupCipher),
 	}
 }
 
-func EncryptTransactions(transactions L2Txs) nodecommon.EncodedTransactions {
-	result := make([]nodecommon.EncodedTx, 0)
-	for i := range transactions {
-		result = append(result, EncodeTx(&transactions[i]))
+func EncryptTransactions(transactions L2Txs, rollupCipher cipher.AEAD) nodecommon.EncryptedTransactions {
+	encodedTxs, err := rlp.EncodeToBytes(transactions)
+	if err != nil {
+		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
 	}
-	return result
+
+	return rollupCipher.Seal(nil, nil, encodedTxs, nil)
 }

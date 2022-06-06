@@ -2,6 +2,8 @@ package enclave
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
@@ -37,7 +39,8 @@ import (
 
 const (
 	// TODO - Replace this fixed key with derived, rotating keys.
-	enclaveRollupKeyHex = "3082025d02010002818100ccac4f4a8d1cad7b2777ebc647f28efade0ad2954112f57459d419a252514e315ea212982bfad85c1e9d98a89544a45495615c55d0ce5b7f01e4af91644b36729a4705083caf5be1105ebaf4ab321ac1999732b04342b92682a58352de0340a66fbeb3b7c8d04625fe29c1b30095b0006db61d3b1ae59e4dfd8b33477fb75bfb02030100010281810096eaa73ccd784be2f7635192cf1267a34b7ea7702e9f9025cee6ba501a6aa1417e09fbb40119e1d76b2bc198ed17c4242a51b4080303662bec75778fb9684c283a27e54eac13be07c388aa8259bde732cce0022da9c018a88ef68b33105ba250d34ddb28cd36b55635c19299baaaf865b2df4770f923188232f175621115eae1024100d2b6ec7c7b30be5ad4ea3114403a96a81eefcfd530e8fd7bb1891a2768a30b0653ae7c32a1a57c4d6e2f87f05515d8a5142aa953ed768bf96ee02178153a249f024100f8a8ff50dc5474e7b8745bb54b5411fc6d4494afbce6e3dc9db544244c6bff9108e4a2f64938f8f2763610ad176af94769e09546c38bab773a3f76a8491d4f250241008e6ba51bde07ec21689781e4b624e37f6ea99847f86f022580b1b243c0adb2ddebe19b807d5164dad106bf52e9af8266d162a4605db82a93c525287a099eeaf102401a4a3bdc3fbf4a30e9a69bbf9a3c443e8d0af03178666cf6f9519de7bc90ba8f8a022a5ca1b73d52dd3eb01aacdc2988ec5fcb48950a2251d3bdbbfce4e60d65024027a943a70fe8736d87503a8e052fce510b72be0feb345e5585c3103a8f4da6694f7d48f38051306b1b9099b8a35f1b7d8d111ec40e745fed4320feeb766e2732"
+	// AES secret key used to encrypt and decrypt transactions in rollups.
+	enclaveRollupKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c19860f40ebbebe29327d4753d449235552f4e0577bb34f8326b825d598ec6d44"
 	msgNoRollup         = "could not fetch rollup"
 )
 
@@ -67,7 +70,7 @@ type enclaveImpl struct {
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 	publicKeySerialized []byte
 	privateKey          *rsa.PrivateKey
-	rollupKey           *rsa.PrivateKey // The key used to encrypt rollups.
+	rollupCipher        cipher.AEAD // The key used to encrypt rollups.
 
 	blockProcessingMutex sync.Mutex
 }
@@ -158,7 +161,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 		log.Panic("Could not find the block used as proof for the genesis rollup.")
 	}
 	return nodecommon.BlockSubmissionResponse{
-		ProducedRollup: rolGenesis.ToExtRollup(),
+		ProducedRollup: rolGenesis.ToExtRollup(e.rollupCipher),
 		BlockHeader:    b.Header(),
 		IngestedBlock:  true,
 	}
@@ -176,7 +179,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.rollupCipher)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -187,7 +190,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 					log.Panic(msgNoRollup)
 				}
 
-				rollup = hr.ToExtRollup()
+				rollup = hr.ToExtRollup(e.rollupCipher)
 			}
 			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
@@ -227,7 +230,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	nodecommon.LogWithID(e.nodeShortID, "Update state: %d", obscurocommon.ShortHash(block.Hash()))
-	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.rollupCipher)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -244,13 +247,13 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	nodecommon.LogWithID(e.nodeShortID, "Processed block: b_%d(%d)", obscurocommon.ShortHash(block.Hash()), block.NumberU64())
 
-	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
+	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup(e.rollupCipher))
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	r := obscurocore.Rollup{
 		Header:       rollup.Header,
-		Transactions: obscurocore.DecodeTransactions(rollup.Txs),
+		Transactions: obscurocore.DecryptTransactions(rollup.Txs, e.rollupCipher),
 	}
 
 	// only store if the parent exists
@@ -323,7 +326,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State,
 		)
-		return winnerRollup.ToExtRollup(), true, nil
+		return winnerRollup.ToExtRollup(e.rollupCipher), true, nil
 	}
 	return nodecommon.ExtRollup{}, false, nil
 }
@@ -681,9 +684,14 @@ func NewEnclave(
 	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
 
-	rollupKey, err := x509.ParsePKCS1PrivateKey(common.Hex2Bytes(enclaveRollupKeyHex))
+	key := common.Hex2Bytes(enclaveRollupKeyHex)
+	block, err := aes.NewCipher(key)
 	if err != nil {
-		panic(err)
+		panic("could not initialise AES cipher for enclave rollup key")
+	}
+	rollupCipher, err := cipher.NewGCM(block)
+	if err != nil {
+		panic("could not initialise wrapper for AES cipher for enclave rollup key")
 	}
 
 	return &enclaveImpl{
@@ -704,7 +712,7 @@ func NewEnclave(
 		attestationProvider:  attestationProvider,
 		privateKey:           privKey,
 		publicKeySerialized:  serializedPubKey,
-		rollupKey:            rollupKey,
+		rollupCipher:         rollupCipher,
 	}
 }
 

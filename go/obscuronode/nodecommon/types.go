@@ -14,10 +14,11 @@ import (
 )
 
 type (
-	StateRoot           = common.Hash
-	EncodedTx           []byte
-	L2Tx                = types.Transaction
-	EncodedTransactions []EncodedTx
+	StateRoot             = common.Hash
+	EncodedTx             []byte
+	L2Tx                  = types.Transaction
+	EncodedTransactions   []EncodedTx
+	EncryptedTransactions []byte
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup
@@ -40,7 +41,7 @@ type Withdrawal struct {
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
 	Header *Header
-	Txs    EncodedTransactions
+	Txs    EncryptedTransactions
 }
 
 // Rollup extends ExtRollup with additional fields.
@@ -51,7 +52,7 @@ type Rollup struct {
 	hash atomic.Value
 	size atomic.Value //nolint
 
-	Transactions EncodedTransactions
+	Transactions EncryptedTransactions
 }
 
 func (er ExtRollup) ToRollup() *Rollup {

@@ -47,12 +47,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) n
 
 func ToExtRollupMsg(rollup *nodecommon.ExtRollup) generated.ExtRollupMsg {
 	if rollup.Header != nil {
-		txs := make([][]byte, 0)
-		for _, tx := range rollup.Txs {
-			txs = append(txs, tx)
-		}
-
-		return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Txs: txs}
+		return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Txs: rollup.Txs}
 	}
 
 	return generated.ExtRollupMsg{Header: nil}
@@ -89,14 +84,9 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) nodecommon.ExtRollup {
 		}
 	}
 
-	txs := make([]nodecommon.EncodedTx, 0)
-	for _, tx := range msg.Txs {
-		txs = append(txs, tx)
-	}
-
 	return nodecommon.ExtRollup{
 		Header: FromRollupHeaderMsg(msg.Header),
-		Txs:    txs,
+		Txs:    msg.Txs,
 	}
 }
 

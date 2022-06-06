@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"crypto/cipher"
 	"fmt"
 	"math/big"
 	"sort"
@@ -32,6 +33,7 @@ func updateState(
 	bss db.BlockStateStorage,
 	nodeID uint64,
 	chainID int64,
+	rollupCipher cipher.AEAD,
 ) *core.BlockState {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := bss.FetchBlockState(b.Hash())
@@ -39,7 +41,7 @@ func updateState(
 		return val
 	}
 
-	rollups := extractRollups(b, blockResolver, mgmtContractLib, nodeID)
+	rollups := extractRollups(b, blockResolver, mgmtContractLib, nodeID, rollupCipher)
 	genesisRollup := rollupResolver.FetchGenesisRollup()
 
 	// processing blocks before genesis, so there is nothing to do
@@ -64,7 +66,7 @@ func updateState(
 			nodecommon.LogWithID(nodeID, "Could not find block parent. This should not happen.")
 			return nil
 		}
-		parentState = updateState(p, blockResolver, mgmtContractLib, erc20ContractLib, rollupResolver, bss, nodeID, chainID)
+		parentState = updateState(p, blockResolver, mgmtContractLib, erc20ContractLib, rollupResolver, bss, nodeID, chainID, rollupCipher)
 	}
 
 	if parentState == nil {
@@ -315,7 +317,7 @@ func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup
 	return w
 }
 
-func extractRollups(b *types.Block, blockResolver db.BlockResolver, mgmtContractLib mgmtcontractlib.MgmtContractLib, nodeID uint64) []*core.Rollup {
+func extractRollups(b *types.Block, blockResolver db.BlockResolver, mgmtContractLib mgmtcontractlib.MgmtContractLib, nodeID uint64, rollupCipher cipher.AEAD) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
@@ -330,7 +332,7 @@ func extractRollups(b *types.Block, blockResolver db.BlockResolver, mgmtContract
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, toEnclaveRollup(r))
+				rollups = append(rollups, toEnclaveRollup(r, rollupCipher))
 				nodecommon.LogWithID(nodeID, "Extracted Rollup r_%d from block b_%d",
 					obscurocommon.ShortHash(r.Hash()),
 					obscurocommon.ShortHash(b.Hash()),
@@ -341,10 +343,10 @@ func extractRollups(b *types.Block, blockResolver db.BlockResolver, mgmtContract
 	return rollups
 }
 
-func toEnclaveRollup(r *nodecommon.Rollup) *core.Rollup {
+func toEnclaveRollup(r *nodecommon.Rollup, rollupCipher cipher.AEAD) *core.Rollup {
 	return &core.Rollup{
 		Header:       r.Header,
-		Transactions: core.DecodeTransactions(r.Transactions),
+		Transactions: core.DecryptTransactions(r.Transactions, rollupCipher),
 	}
 }
 
