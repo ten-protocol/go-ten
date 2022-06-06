@@ -38,10 +38,10 @@ import (
 )
 
 const (
+	// AES key used to encrypt and decrypt the transaction blob in rollups.
 	// TODO - Replace this fixed key with derived, rotating keys.
-	// AES secret key used to encrypt and decrypt transactions in rollups.
-	enclaveRollupKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c19860f40ebbebe29327d4753d449235552f4e0577bb34f8326b825d598ec6d44"
-	msgNoRollup         = "could not fetch rollup"
+	rollupEncryptionKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c"
+	msgNoRollup            = "could not fetch rollup"
 )
 
 type StatsCollector interface {
@@ -684,14 +684,14 @@ func NewEnclave(
 	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
 
-	key := common.Hex2Bytes(enclaveRollupKeyHex)
+	key := common.Hex2Bytes(rollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		panic("could not initialise AES cipher for enclave rollup key")
+		panic(fmt.Sprintf("could not initialise AES cipher for enclave rollup key. Cause: %s", err))
 	}
 	rollupCipher, err := cipher.NewGCM(block)
 	if err != nil {
-		panic("could not initialise wrapper for AES cipher for enclave rollup key")
+		panic(fmt.Sprintf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %s", err))
 	}
 
 	return &enclaveImpl{

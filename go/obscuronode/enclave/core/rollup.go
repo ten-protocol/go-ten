@@ -4,9 +4,6 @@ import (
 	"crypto/cipher"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -89,13 +86,4 @@ func (r *Rollup) ToExtRollup(rollupCipher cipher.AEAD) nodecommon.ExtRollup {
 		Header: r.Header,
 		Txs:    EncryptTransactions(r.Transactions, rollupCipher),
 	}
-}
-
-func EncryptTransactions(transactions L2Txs, rollupCipher cipher.AEAD) nodecommon.EncryptedTransactions {
-	encodedTxs, err := rlp.EncodeToBytes(transactions)
-	if err != nil {
-		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
-	}
-
-	return rollupCipher.Seal(nil, nil, encodedTxs, nil)
 }
