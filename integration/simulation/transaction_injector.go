@@ -63,7 +63,6 @@ func NewTransactionInjector(
 	mgmtContractAddr *common.Address,
 	erc20ContractAddr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
-	obsWallets []wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
@@ -71,6 +70,10 @@ func NewTransactionInjector(
 
 	interrupt := int32(0)
 
+	obsWallets := make([]wallet.Wallet, len(ethWallets))
+	for i, w := range ethWallets {
+		obsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), w.PrivateKey())
+	}
 	return &TransactionInjector{
 		issuingWallet:     issuingWallet,
 		avgBlockDuration:  avgBlockDuration,
@@ -252,6 +255,7 @@ func (m *TransactionInjector) issueRandomWithdrawals() {
 
 		m.stats.Withdrawal(v)
 		go m.counter.trackWithdrawalL2Tx(*signedTx)
+		println("jjj issued withdrawal")
 	}
 }
 

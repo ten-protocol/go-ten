@@ -2,10 +2,7 @@ package networkmanager
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -46,11 +43,6 @@ func InjectTransactions(nmConfig Config) {
 
 	// todo - joel - better tx injector logging (optional)
 
-	// todo - joel - work out if this can be reverted
-	key, _ := crypto.HexToECDSA("0000000000000000000000000000000000000000000000000000000000000001")
-	obsWallets := make([]wallet.Wallet, 1)
-	obsWallets[0] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), key)
-
 	txInjector := simulation.NewTransactionInjector(
 		1*time.Second,
 		stats.NewStats(1),
@@ -59,7 +51,6 @@ func InjectTransactions(nmConfig Config) {
 		&nmConfig.mgmtContractAddress,
 		&nmConfig.erc20ContractAddress,
 		[]*obscuroclient.Client{&l2Client},
-		obsWallets,
 		mgmtcontractlib.NewMgmtContractLib(&nmConfig.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&nmConfig.mgmtContractAddress, &nmConfig.erc20ContractAddress),
 	)
