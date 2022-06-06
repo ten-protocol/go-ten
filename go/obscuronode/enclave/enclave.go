@@ -266,14 +266,14 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 }
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncodedTx) error {
-	decryptedTx := obscurocore.DecodeTx(tx)
-	err := verifySignature(e.config.ObscuroChainID, &decryptedTx)
+	decodedTx := obscurocore.DecodeTx(tx)
+	err := verifySignature(e.config.ObscuroChainID, &decodedTx)
 	if err != nil {
 		return err
 	}
-	e.mempool.AddMempoolTx(decryptedTx)
+	e.mempool.AddMempoolTx(decodedTx)
 	if e.config.SpeculativeExecution {
-		e.txCh <- decryptedTx
+		e.txCh <- decodedTx
 	}
 	return nil
 }
