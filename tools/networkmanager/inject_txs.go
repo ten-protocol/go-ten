@@ -2,6 +2,10 @@ package networkmanager
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,33 +28,42 @@ func InjectTransactions(nmConfig Config) {
 		ChainID:             nmConfig.chainID,
 	}
 
+	// todo - joel - consider setting up logs
+
+	// TODO - Consider extending this command to support multiple L1 clients and L2 clients.
 	l1Client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
 	l2Client := obscuroclient.NewClient(nmConfig.obscuroClientAddress)
 
-	l1Wallet := wallet.NewInMemoryWalletFromString(hostConfig)
+	l1Wallet := wallet.NewInMemoryWalletFromConfig(hostConfig)
 	nonce, err := l1Client.Nonce(l1Wallet.Address())
 	if err != nil {
 		panic(err)
 	}
 	l1Wallet.SetNonce(nonce)
-	println(fmt.Sprintf("jjj set nonce to %d", nonce))
 
-	// TODO - Consider expanding this tool to support multiple L1 clients and L2 clients.
+	// todo - joel - better tx injector logging (optional)
+
+	// todo - joel - work out if this can be reverted
+	key, _ := crypto.HexToECDSA("0000000000000000000000000000000000000000000000000000000000000001")
+	obsWallets := make([]wallet.Wallet, 1)
+	obsWallets[0] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), key)
+
 	txInjector := simulation.NewTransactionInjector(
 		1*time.Second,
-		nil,
+		stats.NewStats(1),
 		[]ethclient.EthClient{l1Client},
 		[]wallet.Wallet{l1Wallet},
 		&nmConfig.mgmtContractAddress,
 		&nmConfig.erc20ContractAddress,
 		[]*obscuroclient.Client{&l2Client},
+		obsWallets,
 		mgmtcontractlib.NewMgmtContractLib(&nmConfig.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&nmConfig.mgmtContractAddress, &nmConfig.erc20ContractAddress),
 	)
 
-	// todo - joel - work out whether I need to print anything here to show it's started
+	println("Injecting transactions into network...")
 	txInjector.Start()
 }

@@ -2,6 +2,9 @@ package simulation
 
 import (
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/integration"
+	"math/big"
 	"math/rand"
 	"runtime"
 	"testing"
@@ -36,6 +39,11 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		return
 	}
 
+	obsWallets := make([]wallet.Wallet, len(params.SimEthWallets))
+	for i, w := range params.SimEthWallets {
+		obsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), w.PrivateKey())
+	}
+
 	txInjector := NewTransactionInjector(
 		params.AvgBlockDuration,
 		stats,
@@ -44,6 +52,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		params.MgmtContractAddr,
 		params.StableTokenContractAddr,
 		obscuroClients,
+		obsWallets,
 		params.MgmtContractLib,
 		params.ERC20ContractLib,
 	)

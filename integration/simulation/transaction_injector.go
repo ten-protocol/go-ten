@@ -63,6 +63,7 @@ func NewTransactionInjector(
 	mgmtContractAddr *common.Address,
 	erc20ContractAddr *common.Address,
 	l2NodeClients []*obscuroclient.Client,
+	obsWallets []wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
@@ -70,10 +71,6 @@ func NewTransactionInjector(
 
 	interrupt := int32(0)
 
-	obsWallets := make([]wallet.Wallet, len(ethWallets))
-	for i, w := range ethWallets {
-		obsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), w.PrivateKey())
-	}
 	return &TransactionInjector{
 		issuingWallet:     issuingWallet,
 		avgBlockDuration:  avgBlockDuration,
@@ -296,18 +293,30 @@ func (m *TransactionInjector) createInvalidSignage(tx types.TxData, w wallet.Wal
 }
 
 func (m *TransactionInjector) rndObsWallet() wallet.Wallet {
+	if len(m.obsWallets) == 1 {
+		return m.obsWallets[0]
+	}
 	return m.obsWallets[rand.Intn(len(m.obsWallets)-1)] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndEthWallet() wallet.Wallet {
+	if len(m.ethWallets) == 1 {
+		return m.ethWallets[0]
+	}
 	return m.ethWallets[rand.Intn(len(m.ethWallets)-1)] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL1NodeClient() ethclient.EthClient {
+	if len(m.l1Clients) == 1 {
+		return m.l1Clients[0]
+	}
 	return m.l1Clients[rand.Intn(len(m.l1Clients))] //nolint:gosec
 }
 
 func (m *TransactionInjector) rndL2NodeClient() *obscuroclient.Client {
+	if len(m.l2Clients) == 1 {
+		return m.l2Clients[0]
+	}
 	return m.l2Clients[rand.Intn(len(m.l2Clients))] //nolint:gosec
 }
 
@@ -347,6 +356,8 @@ func readNonce(cl *obscuroclient.Client, a common.Address) uint64 {
 }
 
 func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
+	counter := 0
+
 	// only returns the nonce when the previous transaction was recorded
 	for {
 		result := readNonce(cl, w.Address())
@@ -354,5 +365,11 @@ func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
 			return w.GetNonceAndIncrement()
 		}
 		time.Sleep(time.Millisecond)
+		counter++
+
+		if counter > 10000 {
+			counter = 0
+			log.Info("Transaction injector failed to retrieve nonce after ten seconds...")
+		}
 	}
 }
