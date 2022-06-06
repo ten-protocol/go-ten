@@ -147,6 +147,8 @@ func StopObscuroNodes(clients []obscuroclient.Client) {
 	} else {
 		log.Info("Obscuro nodes stopped")
 	}
+	// Wait a bit for the nodes to shut down.
+	time.Sleep(2 * time.Second)
 }
 
 // waitTimeout waits for the waitgroup for the specified max timeout.
