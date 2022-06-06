@@ -22,7 +22,7 @@ jobs:
         uses: docker/setup-buildx-action@v1
 
       - name: Clean-up
-        run: sudo pkill -f geth; sudo pkill -f obscuronode; sudo docker stop $(sudo docker ps -a -q); sudo docker rm $(sudo docker ps -a -q);sudo lsof -ti:30000-39999|xargs kill
+        run: sudo lsof -ti:30000-39999|xargs -r kill -9
 
       - name: Build Docker images
         run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
