@@ -17,7 +17,6 @@ type (
 	StateRoot             = common.Hash
 	L2Tx                  = types.Transaction
 	EncryptedTx           []byte
-	EncodedTransactions   []EncryptedTx
 	EncryptedTransactions []byte
 )
 
