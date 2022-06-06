@@ -62,8 +62,7 @@ func NewBasicNetworkOfNodesWithDockerEnclave(wallets []wallet.Wallet, workerWall
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
 func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
 	// We create Docker client, and finish early if docker or the enclave image are not available.
-	err := n.setupAndCheckDocker()
-	if err != nil {
+	if err := n.setupAndCheckDocker(); err != nil {
 		return nil, nil, nil, err
 	}
 
