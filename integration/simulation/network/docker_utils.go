@@ -37,7 +37,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 
 	containerIDs := map[string]string{}
 	for idx, port := range enclavePorts {
-		nodeID := common.BigToAddress(big.NewInt(int64(idx + 1))).Hex()
+		nodeID := common.BigToAddress(big.NewInt(int64(idx))).Hex()
 		containerConfig := &container.Config{
 			Image: enclaveDockerImg,
 			Cmd: []string{

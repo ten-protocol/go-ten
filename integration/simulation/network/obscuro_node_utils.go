@@ -82,7 +82,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 
 		// create a remote enclave server
 		obscuroNodes[i] = createSocketObscuroNode(
-			int64(i+1),
+			int64(i),
 			isGenesis,
 			params.AvgGossipPeriod,
 			stats,
