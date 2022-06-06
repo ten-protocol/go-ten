@@ -359,7 +359,7 @@ func NextNonce(cl *obscuroclient.Client, w wallet.Wallet) uint64 {
 		}
 		counter++
 
-		if counter > 10000 {
+		if counter > timeoutMillis {
 			panic("Transaction injector failed to retrieve nonce after ten seconds...")
 		}
 
