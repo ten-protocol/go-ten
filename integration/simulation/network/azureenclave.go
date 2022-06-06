@@ -29,7 +29,7 @@ const enclavePort = ":11000"
 type networkWithAzureEnclaves struct {
 	ethNodes         []*ethereum_mock.Node
 	obscuroNodes     []*host.Node
-	obscuroClients   []*obscuroclient.Client
+	obscuroClients   []obscuroclient.Client
 	enclaveAddresses []string
 }
 
@@ -40,11 +40,11 @@ func NewNetworkWithAzureEnclaves(enclaveAddresses []string) Network {
 	return &networkWithAzureEnclaves{enclaveAddresses: enclaveAddresses}
 }
 
-func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
+func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	n.obscuroNodes = make([]*host.Node, params.NumberOfNodes)
-	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
+	n.obscuroClients = make([]obscuroclient.Client, params.NumberOfNodes)
 	nodeP2pAddrs := make([]string, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -69,10 +69,11 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			obscuroClientAddr,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
+			miner,
 		)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
 
-		n.wireUpNode(i, l1Clients, miner, agg, &obscuroClient)
+		n.wireUpNode(i, l1Clients, miner, agg, obscuroClient)
 	}
 
 	// set up nodes with mock enclaves
@@ -114,10 +115,11 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 			obscuroClientAddr,
 			params.NodeEthWallets[i],
 			params.MgmtContractLib,
+			miner,
 		)
 		obscuroClient := obscuroclient.NewClient(obscuroClientAddr)
 
-		n.wireUpNode(i, l1Clients, miner, agg, &obscuroClient)
+		n.wireUpNode(i, l1Clients, miner, agg, obscuroClient)
 	}
 
 	// populate the nodes field of the L1 network
@@ -150,7 +152,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 func (n *networkWithAzureEnclaves) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
-		go (*temp).Stop()
+		go temp.Stop()
 	}
 
 	for _, node := range n.ethNodes {
@@ -159,9 +161,7 @@ func (n *networkWithAzureEnclaves) TearDown() {
 	}
 }
 
-func (n *networkWithAzureEnclaves) wireUpNode(idx int, l1Clients []ethclient.EthClient, miner *ethereum_mock.Node, agg *host.Node, obscuroClient *obscuroclient.Client) {
-	// and connect them to each other
-	agg.ConnectToEthNode(miner)
+func (n *networkWithAzureEnclaves) wireUpNode(idx int, l1Clients []ethclient.EthClient, miner *ethereum_mock.Node, agg *host.Node, obscuroClient obscuroclient.Client) {
 	miner.AddClient(agg)
 
 	n.ethNodes[idx] = miner

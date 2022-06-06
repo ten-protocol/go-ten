@@ -19,7 +19,7 @@ import (
 
 type basicNetworkOfInMemoryNodes struct {
 	ethNodes       []*ethereum_mock.Node
-	obscuroClients []*obscuroclient.Client
+	obscuroClients []obscuroclient.Client
 }
 
 func NewBasicNetworkOfInMemoryNodes() Network {
@@ -27,11 +27,11 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []*obscuroclient.Client, []string, error) {
+func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
-	n.obscuroClients = make([]*obscuroclient.Client, params.NumberOfNodes)
+	n.obscuroClients = make([]obscuroclient.Client, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -50,16 +50,16 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			false,
 			nil,
 			params.NodeEthWallets[i],
+			miner,
 		)
 		obscuroClient := host.NewInMemObscuroClient(agg)
 
 		// and connect them to each other
-		agg.ConnectToEthNode(miner)
 		miner.AddClient(agg)
 
 		n.ethNodes[i] = miner
 		obscuroNodes[i] = agg
-		n.obscuroClients[i] = &obscuroClient
+		n.obscuroClients[i] = obscuroClient
 		l1Clients[i] = miner
 	}
 
@@ -95,8 +95,8 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
 		go func() {
-			_ = (*temp).Call(nil, obscuroclient.RPCStopHost)
-			(*temp).Stop()
+			_ = temp.Call(nil, obscuroclient.RPCStopHost)
+			temp.Stop()
 		}()
 	}
 

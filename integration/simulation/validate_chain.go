@@ -163,7 +163,7 @@ const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(
 	t *testing.T,
-	nodeClient *obscuroclient.Client,
+	nodeClient obscuroclient.Client,
 	minObscuroHeight uint64,
 	maxEthereumHeight uint64,
 	s *Simulation,
@@ -173,7 +173,7 @@ func checkBlockchainOfObscuroNode(
 ) {
 	defer wg.Done()
 	var nodeID common.Address
-	err := (*nodeClient).Call(&nodeID, obscuroclient.RPCGetID)
+	err := nodeClient.Call(&nodeID, obscuroclient.RPCGetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
@@ -280,7 +280,7 @@ func checkBlockchainOfObscuroNode(
 	heights[nodeIdx] = l2Height
 }
 
-func extractWithdrawals(t *testing.T, nodeClient *obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {
