@@ -353,16 +353,19 @@ func NextNonce(cl obscuroclient.Client, w wallet.Wallet) uint64 {
 
 	// only returns the nonce when the previous transaction was recorded
 	for {
-		result := readNonce(cl, w.Address())
-		if result == w.GetNonce() {
+		remoteNonce := readNonce(cl, w.Address())
+		localNonce := w.GetNonce()
+		if remoteNonce == localNonce {
 			return w.GetNonceAndIncrement()
 		}
-		counter++
-
-		if counter > timeoutMillis {
-			panic("Transaction injector failed to retrieve nonce after ten seconds...")
+		if remoteNonce > localNonce {
+			panic("remote nonce exceeds local nonce")
 		}
 
+		counter++
+		if counter > timeoutMillis {
+			panic("transaction injector failed to retrieve nonce after thirty seconds")
+		}
 		time.Sleep(time.Millisecond)
 	}
 }
