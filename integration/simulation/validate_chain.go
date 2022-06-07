@@ -16,18 +16,23 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+// The threshold number of transactions below which we consider the simulation to have failed. We generally expect far
+// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
+// type, for example.
+const txThreshold = 5
+
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
 	// ensure L1 and L2 txs were issued
-	if len(s.TxInjector.counter.l1Transactions) == 0 {
+	if len(s.TxInjector.counter.l1Transactions) < txThreshold {
 		t.Error("Simulation did not issue any L1 transactions.")
 	}
-	if len(s.TxInjector.counter.transferL2Transactions) == 0 {
+	if len(s.TxInjector.counter.transferL2Transactions) < txThreshold {
 		t.Error("Simulation did not issue any transfer L2 transactions.")
 	}
-	if len(s.TxInjector.counter.withdrawalL2Transactions) == 0 {
+	if len(s.TxInjector.counter.withdrawalL2Transactions) < txThreshold {
 		t.Error("Simulation did not issue any withdrawal L2 transactions.")
 	}
 
