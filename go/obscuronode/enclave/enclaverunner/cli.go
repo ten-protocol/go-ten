@@ -49,6 +49,7 @@ func ParseConfig() config.EnclaveConfig {
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	useInMemoryDB := flag.Bool(useInMemoryDBName, defaultConfig.UseInMemoryDB, useInMemoryDBUsage)
 	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, defaultConfig.ViewingKeysEnabled, ViewingKeysEnabledUsage)
+	edgelessDBHost := flag.String(edgelessDBHostName, defaultConfig.EdgelessDBHost, edgelessDBHostUsage)
 
 	flag.Parse()
 
@@ -82,6 +83,7 @@ func ParseConfig() config.EnclaveConfig {
 	defaultConfig.LogPath = *logPath
 	defaultConfig.UseInMemoryDB = *useInMemoryDB
 	defaultConfig.ViewingKeysEnabled = *viewingKeysEnabled
+	defaultConfig.EdgelessDBHost = *edgelessDBHost
 
 	return defaultConfig
 }

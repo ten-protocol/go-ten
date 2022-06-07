@@ -32,7 +32,7 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	}
 	setupTestLog("azure-enclave")
 
-	numberOfNodes := 5
+	numberOfNodes := 1
 	numberOfSimWallets := 5
 
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)

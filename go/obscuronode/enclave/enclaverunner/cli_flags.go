@@ -46,4 +46,7 @@ const (
 
 	ViewingKeysEnabledName  = "viewingKeysEnabled"
 	ViewingKeysEnabledUsage = "Whether the enclave should encrypt responses to sensitive requests with viewing keys"
+
+	edgelessDBHostName  = "edgelessDBHost"
+	edgelessDBHostUsage = "Whether the enclave will use an in-memory DB rather than persist data"
 )

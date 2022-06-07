@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -234,10 +235,12 @@ func (e *enclaveImpl) start(block types.Block) {
 }
 
 func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
+	time.Sleep(2 * time.Second) // Allow time to avoid race condition todo: make this more robust
 	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []*nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
+	nodecommon.LogWithID(e.nodeShortID, "Fetching blockHash = %x", blkHash)
 	b, f := e.storage.FetchBlock(blkHash)
 	if !f {
-		log.Panic("Could not find the block used as proof for the genesis rollup.")
+		log.Panic("Could not find the block used as proof for the genesis rollup. expectedHash=%s", blkHash)
 	}
 	return nodecommon.BlockSubmissionResponse{
 		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
@@ -274,7 +277,6 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
 	}
-
 	return result
 }
 
@@ -976,9 +978,18 @@ func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
-	panic("Haven't implemented edgeless DB enclave connection yet")
+	nodecommon.LogWithID(nodeID, "Preparing Edgeless DB connection...")
+	return getEdgelessDB(cfg)
 }
 
 func getInMemDB() (ethdb.Database, error) {
 	return rawdb.NewMemoryDatabase(), nil
+}
+
+func getEdgelessDB(cfg config.EnclaveConfig) (ethdb.Database, error) {
+	if cfg.EdgelessDBHost == "" {
+		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
+	}
+	dbConfig := sql.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
+	return sql.EdgelessDBConnector(dbConfig)
 }
