@@ -26,7 +26,7 @@ import (
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-const timeoutMillis = 10000 // The timeout in millis to wait for an updated nonce for a wallet.
+const timeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
