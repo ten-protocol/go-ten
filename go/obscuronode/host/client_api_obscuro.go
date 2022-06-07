@@ -52,9 +52,9 @@ func (api *ObscuroAPI) GetTransaction(hash common.Hash) *nodecommon.L2Tx {
 	return api.host.EnclaveClient.GetTransaction(hash)
 }
 
-// Balance returns the balance of the wallet with the given address.
-func (api *ObscuroAPI) Balance(address common.Address) uint64 {
-	return api.host.EnclaveClient.Balance(address)
+// ExecContract returns the result of executing the smart contract as a user.
+func (api *ObscuroAPI) ExecContract(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResult, error) {
+	return api.host.EnclaveClient.ExecuteOffChainTransaction(from, contractAddress, data)
 }
 
 // Nonce returns the nonce of the wallet with the given address.

@@ -78,16 +78,23 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		*result.(**nodecommon.L2Tx) = c.obscuroAPI.GetTransaction(hash)
 
-	case obscuroclient.RPCBalance:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCBalance, len(args))
+	case obscuroclient.RPCExecContract:
+		if len(args) != 3 {
+			return fmt.Errorf("expected 3 arg to %s, got %d", obscuroclient.RPCExecContract, len(args))
 		}
-		address, ok := args[0].(common.Address)
+		fromAddress, ok := args[0].(common.Address)
+		contractAddress, ok := args[1].(common.Address)
+		data, ok := args[2].([]byte)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Address", obscuroclient.RPCBalance)
+			return fmt.Errorf("arg to %s was not of expected type common.Address", obscuroclient.RPCExecContract)
 		}
 
-		*result.(*uint64) = c.obscuroAPI.Balance(address)
+		r, err := c.obscuroAPI.ExecContract(fromAddress, contractAddress, data)
+		// todo
+		if err != nil {
+			panic(err)
+		}
+		*result.(*nodecommon.EncryptedResult) = r
 
 	case obscuroclient.RPCNonce:
 		if len(args) != 1 {

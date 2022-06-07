@@ -192,9 +192,9 @@ func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// RPCBalance allows to fetch the balance of one address
-func (a *Node) RPCBalance(address common.Address) uint64 {
-	return a.EnclaveClient.Balance(address)
+// RPCExecuteOffChainTransaction allows to fetch the execute off chain transactions
+func (a *Node) RPCExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResult, error) {
+	return a.EnclaveClient.ExecuteOffChainTransaction(from, contractAddress, data)
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
