@@ -237,12 +237,9 @@ func (c *EnclaveRPCClient) ExecuteOffChainTransaction(from common.Address, contr
 	if err != nil {
 		return nil, err
 	}
-
-	// todo
-	//if response.Error != nil {
-	//	return nil, response.Error
-	//}
-
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
 	return response.Result, nil
 }
 
