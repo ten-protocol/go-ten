@@ -28,7 +28,7 @@ jobs:
         run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
 
       - name: Test
-        run: go test -v -tags docker ./...
+        run: go test --failfast -v -tags docker ./...
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
