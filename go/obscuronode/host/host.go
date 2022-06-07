@@ -227,15 +227,15 @@ func (a *Node) Stop() {
 	if err := a.EnclaveClient.StopClient(); err != nil {
 		nodecommon.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
-
-	time.Sleep(time.Second)
-	a.exitNodeCh <- true
-
 	if a.clientServer != nil {
 		if err := a.clientServer.Stop(); err != nil {
 			nodecommon.ErrorWithID(a.shortID, "could not stop client RPC server. Cause: %s", err)
 		}
 	}
+
+	// Leave some time for all processing to finish before exiting the main loop.
+	time.Sleep(time.Second)
+	a.exitNodeCh <- true
 }
 
 // ConnectToEthNode connects the Aggregator to the ethereum node
