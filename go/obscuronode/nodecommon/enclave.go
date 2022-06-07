@@ -63,6 +63,9 @@ type Enclave interface {
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
 	GetTransaction(txHash common.Hash) *L2Tx
 
+	// GetRollup returns the rollup with the given hash
+	GetRollup(rollupHash obscurocommon.L2RootHash) *ExtRollup
+
 	// StopClient stops the enclave client if one exists
 	StopClient() error
 }

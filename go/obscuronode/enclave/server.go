@@ -198,6 +198,16 @@ func (s *server) GetTransaction(_ context.Context, request *generated.GetTransac
 	return &generated.GetTransactionResponse{Known: true, EncodedTransaction: buffer.Bytes()}, nil
 }
 
+func (s *server) GetRollup(_ context.Context, request *generated.GetRollupRequest) (*generated.GetRollupResponse, error) {
+	extRollup := s.enclave.GetRollup(common.BytesToHash(request.RollupHash))
+	if extRollup == nil {
+		return &generated.GetRollupResponse{Known: false, ExtRollup: nil}, nil
+	}
+
+	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
+	return &generated.GetRollupResponse{Known: true, ExtRollup: &extRollupMsg}, nil
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

@@ -100,8 +100,16 @@ func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
 // Retrieves the head rollup for the Obscuro network.
 func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 	// TODO - Update logic here once rollups are encrypted.
-	var headRollup *nodecommon.Header
-	err := o.client.Call(&headRollup, obscuroclient.RPCGetCurrentRollupHead)
+	// TODO - If required, consolidate the two calls below into a single RPCGetHeadRollup call to minimise round trips.
+	var headRollupHeader *nodecommon.Header
+	err := o.client.Call(&headRollupHeader, obscuroclient.RPCGetCurrentRollupHead)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup header. Cause: %s", err))
+		return
+	}
+
+	var headRollup *nodecommon.ExtRollup
+	err = o.client.Call(&headRollup, obscuroclient.RPCGetRollup, headRollupHeader.Hash())
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return
@@ -121,7 +129,7 @@ func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 
 // Decrypts the provided rollup using the provided key.
 func (o *Obscuroscan) decryptRollup(resp http.ResponseWriter, req *http.Request) {
-	// TODO - Update logic here once rollups are encrypted.
+	// TODO - Update logic here once rollups are encrypted. Currently, we just unpack the Ethereum transaction.
 	body := req.Body
 	defer body.Close()
 	buffer := new(bytes.Buffer)

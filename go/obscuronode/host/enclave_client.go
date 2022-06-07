@@ -294,3 +294,20 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 
 	return &l2Tx
 }
+
+func (c *EnclaveRPCClient) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetRollup(timeoutCtx, &generated.GetRollupRequest{RollupHash: rollupHash.Bytes()})
+	if err != nil {
+		log.Panic(">   Agg%d: Failed to retrieve rollup. Cause: %s", obscurocommon.ShortAddress(c.config.ID), err)
+	}
+
+	if !response.Known {
+		return nil
+	}
+
+	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
+	return &extRollup
+}

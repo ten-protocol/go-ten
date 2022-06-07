@@ -56,6 +56,17 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		*result.(**nodecommon.Header) = c.obscuroAPI.GetRollupHeader(hash)
 
+	case obscuroclient.RPCGetRollup:
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCGetRollup, len(args))
+		}
+		hash, ok := args[0].(common.Hash)
+		if !ok {
+			return fmt.Errorf("arg to %s was not of expected type common.Hash", obscuroclient.RPCGetRollup)
+		}
+
+		*result.(**nodecommon.ExtRollup) = c.obscuroAPI.GetRollup(hash)
+
 	case obscuroclient.RPCGetTransaction:
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCGetTransaction, len(args))

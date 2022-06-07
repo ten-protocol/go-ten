@@ -248,7 +248,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	r := obscurocore.Rollup{
 		Header:       rollup.Header,
-		Transactions: e.transactionBlobCrypto.Decrypt(rollup.Txs),
+		Transactions: e.transactionBlobCrypto.Decrypt(rollup.EncryptedTxBlob),
 	}
 
 	// only store if the parent exists
@@ -459,6 +459,15 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 			return nil
 		}
 	}
+}
+
+func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
+	rollup, found := e.storage.FetchRollup(rollupHash)
+	if found {
+		extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
+		return &extRollup
+	}
+	return nil
 }
 
 func (e *enclaveImpl) Stop() error {

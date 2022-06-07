@@ -303,8 +303,8 @@ func (a *Node) startProcessing() {
 			}
 
 			go a.EnclaveClient.SubmitRollup(nodecommon.ExtRollup{
-				Header: rol.Header,
-				Txs:    rol.Transactions,
+				Header:          rol.Header,
+				EncryptedTxBlob: rol.Transactions,
 			})
 
 		case tx := <-a.txP2PCh:

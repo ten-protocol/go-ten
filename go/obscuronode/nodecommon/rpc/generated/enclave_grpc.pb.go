@@ -55,6 +55,8 @@ type EnclaveProtoClient interface {
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
 	GetTransaction(ctx context.Context, in *GetTransactionRequest, opts ...grpc.CallOption) (*GetTransactionResponse, error)
+	// GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+	GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -218,6 +220,15 @@ func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransact
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error) {
+	out := new(GetRollupResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetRollup", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -259,6 +270,8 @@ type EnclaveProtoServer interface {
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
 	GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error)
+	// GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+	GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -316,6 +329,9 @@ func (UnimplementedEnclaveProtoServer) Stop(context.Context, *StopRequest) (*Sto
 }
 func (UnimplementedEnclaveProtoServer) GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransaction not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRollup not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -636,6 +652,24 @@ func _EnclaveProto_GetTransaction_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRollupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetRollup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetRollup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetRollup(ctx, req.(*GetRollupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -710,6 +744,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTransaction",
 			Handler:    _EnclaveProto_GetTransaction_Handler,
+		},
+		{
+			MethodName: "GetRollup",
+			Handler:    _EnclaveProto_GetRollup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

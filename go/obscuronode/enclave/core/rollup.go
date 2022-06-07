@@ -82,7 +82,7 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 
 func (r *Rollup) ToExtRollup(transactionBlobCrypto TransactionBlobCrypto) nodecommon.ExtRollup {
 	return nodecommon.ExtRollup{
-		Header: r.Header,
-		Txs:    transactionBlobCrypto.Encrypt(r.Transactions),
+		Header:          r.Header,
+		EncryptedTxBlob: transactionBlobCrypto.Encrypt(r.Transactions),
 	}
 }
