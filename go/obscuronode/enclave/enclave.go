@@ -461,6 +461,15 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	}
 }
 
+func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
+	rollup, found := e.storage.FetchRollup(rollupHash)
+	if found {
+		extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
+		return &extRollup
+	}
+	return nil
+}
+
 func (e *enclaveImpl) Stop() error {
 	if e.config.SpeculativeExecution {
 		e.exitCh <- true

@@ -58,6 +58,9 @@ service EnclaveProto {
 
   // GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
   rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse) {}
+
+  // GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+  rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
 }
 
 message IsReadyRequest {}
@@ -162,6 +165,14 @@ message GetTransactionRequest {
 message GetTransactionResponse {
   bool known = 1;
   bytes encodedTransaction = 2;
+}
+
+message GetRollupRequest {
+  bytes rollupHash = 1;
+}
+message GetRollupResponse {
+  bool known = 1;
+  ExtRollupMsg extRollup = 2;
 }
 
 // Nested message types.

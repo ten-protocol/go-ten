@@ -42,6 +42,11 @@ func (api *ObscuroAPI) GetRollupHeader(hash common.Hash) *nodecommon.Header {
 	return api.host.nodeDB.GetRollupHeader(hash)
 }
 
+// GetRollup returns the rollup with the given hash.
+func (api *ObscuroAPI) GetRollup(hash common.Hash) *nodecommon.ExtRollup {
+	return api.host.EnclaveClient.GetRollup(hash)
+}
+
 // GetTransaction returns the transaction with the given hash.
 func (api *ObscuroAPI) GetTransaction(hash common.Hash) *nodecommon.L2Tx {
 	return api.host.EnclaveClient.GetTransaction(hash)
