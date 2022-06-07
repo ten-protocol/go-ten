@@ -66,7 +66,7 @@ func generateEncryptedRollupHex() []byte {
 		common.BigToHash(big.NewInt(0)),
 	)
 	rollupTx := &obscurocommon.L1RollupTx{
-		Rollup: nodecommon.EncodeRollup(rollup.ToExtRollup().ToRollup()),
+		Rollup: nodecommon.EncodeRollup(rollup.ToExtRollup(core.NewTransactionBlobCryptoImpl()).ToRollup()),
 	}
 
 	mgmtContractAddress := common.BigToAddress(big.NewInt(0))
