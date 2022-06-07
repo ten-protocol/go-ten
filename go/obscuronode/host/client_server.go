@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	apiNamespaceObscuro = "obscuro"
-	apiVersion1         = "1.0"
+	apiNamespaceObscuro  = "obscuro"
+	apiNamespaceEthereum = "eth"
+	apiVersion1          = "1.0"
 )
 
 // An implementation of `host.ClientServer` that reuses the Geth `node` package for client communication.
@@ -47,6 +48,12 @@ func NewClientServer(address string, host *Node) ClientServer {
 			Namespace: apiNamespaceObscuro,
 			Version:   apiVersion1,
 			Service:   NewObscuroAPI(host),
+			Public:    true,
+		},
+		{
+			Namespace: apiNamespaceEthereum,
+			Version:   apiVersion1,
+			Service:   NewEthereumAPI(host),
 			Public:    true,
 		},
 	}
