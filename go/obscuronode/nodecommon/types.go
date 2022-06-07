@@ -39,8 +39,8 @@ type Withdrawal struct {
 
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
-	Header *Header
-	Txs    EncryptedTransactions
+	Header          *Header
+	EncryptedTxBlob EncryptedTransactions
 }
 
 // Rollup extends ExtRollup with additional fields.
@@ -57,7 +57,7 @@ type Rollup struct {
 func (er ExtRollup) ToRollup() *Rollup {
 	return &Rollup{
 		Header:       er.Header,
-		Transactions: er.Txs,
+		Transactions: er.EncryptedTxBlob,
 	}
 }
 

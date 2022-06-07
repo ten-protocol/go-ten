@@ -129,7 +129,7 @@ func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 
 // Decrypts the provided rollup using the provided key.
 func (o *Obscuroscan) decryptRollup(resp http.ResponseWriter, req *http.Request) {
-	// TODO - Update logic here once rollups are encrypted.
+	// TODO - Update logic here once rollups are encrypted. Currently, we just unpack the Ethereum transaction.
 	body := req.Body
 	defer body.Close()
 	buffer := new(bytes.Buffer)

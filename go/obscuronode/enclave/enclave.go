@@ -248,7 +248,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	r := obscurocore.Rollup{
 		Header:       rollup.Header,
-		Transactions: e.transactionBlobCrypto.Decrypt(rollup.Txs),
+		Transactions: e.transactionBlobCrypto.Decrypt(rollup.EncryptedTxBlob),
 	}
 
 	// only store if the parent exists
