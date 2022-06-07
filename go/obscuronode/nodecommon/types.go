@@ -3,9 +3,9 @@ package nodecommon
 import (
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -15,9 +15,9 @@ import (
 
 type (
 	StateRoot             = common.Hash
-	EncryptedTx           []byte
 	L2Tx                  = types.Transaction
-	EncryptedTransactions []EncryptedTx
+	EncryptedTx           []byte // A single transaction encrypted using the enclave's public key
+	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup

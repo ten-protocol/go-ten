@@ -184,7 +184,7 @@ message BlockSubmissionResponseMsg {
 
 message ExtRollupMsg {
   HeaderMsg header = 1;
-  repeated bytes txs = 2;
+  bytes txs = 2;
 }
 
 message HeaderMsg {
