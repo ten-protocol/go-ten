@@ -16,8 +16,8 @@ import (
 type (
 	StateRoot             = common.Hash
 	L2Tx                  = types.Transaction
-	EncryptedTx           []byte
-	EncryptedTransactions []byte
+	EncryptedTx           []byte // A single transaction encrypted using the enclave's public key
+	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup

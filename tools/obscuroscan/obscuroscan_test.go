@@ -1,14 +1,10 @@
 package obscuroscan
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"encoding/json"
 	"math/big"
 	"strings"
 	"testing"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -28,7 +24,7 @@ func TestCanDecryptRollup(t *testing.T) {
 		panic(err)
 	}
 
-	rollupJSON, err := decryptRollup(generateEncryptedRollupHex(t), contractABI)
+	rollupJSON, err := decryptRollup(generateEncryptedRollupHex(), contractABI)
 	if err != nil {
 		t.Fatalf("rollup decryption failed. Cause: %s", err)
 	}
@@ -58,17 +54,7 @@ func TestThrowsIfEncryptedRollupIsInvalid(t *testing.T) {
 }
 
 // Generates an encrypted rollup in hex encoding.
-func generateEncryptedRollupHex(t *testing.T) []byte {
-	key := common.Hex2Bytes(enclave.RollupEncryptionKeyHex)
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		t.Fatalf("could not initialise AES cipher for enclave rollup key. Cause: %s", err)
-	}
-	rollupCipher, err := cipher.NewGCM(block)
-	if err != nil {
-		t.Fatalf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %s", err)
-	}
-
+func generateEncryptedRollupHex() []byte {
 	rollup := core.NewRollup(
 		common.BigToHash(big.NewInt(0)),
 		nil,
@@ -80,7 +66,7 @@ func generateEncryptedRollupHex(t *testing.T) []byte {
 		common.BigToHash(big.NewInt(0)),
 	)
 	rollupTx := &obscurocommon.L1RollupTx{
-		Rollup: nodecommon.EncodeRollup(rollup.ToExtRollup(rollupCipher).ToRollup()),
+		Rollup: nodecommon.EncodeRollup(rollup.ToExtRollup(core.NewTransactionBlobCryptoImpl()).ToRollup()),
 	}
 
 	mgmtContractAddress := common.BigToAddress(big.NewInt(0))

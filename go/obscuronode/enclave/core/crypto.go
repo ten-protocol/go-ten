@@ -1,42 +1,25 @@
 package core
 
 import (
-	"crypto/cipher"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-// TODO - This fixed nonce is insecure, and should be removed alongside the fixed rollup encryption key.
-const rollupCipherNonce = "000000000000"
-
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
 
-func EncryptTransactions(transactions L2Txs, rollupCipher cipher.AEAD) nodecommon.EncryptedTransactions {
-	encodedTxs, err := rlp.EncodeToBytes(transactions)
+// EncryptTx encrypts a single transaction using the enclave's public key to send it privately to the enclave.
+// TODO - Perform real encryption here, and not just RLP encoding.
+func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
+	bytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
 	}
-
-	return rollupCipher.Seal(nil, []byte(rollupCipherNonce), encodedTxs, nil)
+	return bytes
 }
 
-func DecryptTransactions(encryptedTxs nodecommon.EncryptedTransactions, rollupCipher cipher.AEAD) L2Txs {
-	encodedTxs, err := rollupCipher.Open(nil, []byte(rollupCipherNonce), encryptedTxs, nil)
-	if err != nil {
-		log.Panic("could not decrypt encrypted L2 transactions. Cause: %s", err)
-	}
-
-	txs := L2Txs{}
-	if err := rlp.DecodeBytes(encodedTxs, &txs); err != nil {
-		log.Panic("could not decode encoded L2 transactions. Cause: %s", err)
-	}
-
-	return txs
-}
-
+// DecryptTx reverses the encryption performed by EncryptTx.
 // TODO - Perform real decryption here, and not just RLP decoding.
 func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	t := nodecommon.L2Tx{}
@@ -45,13 +28,4 @@ func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	}
 
 	return t
-}
-
-// TODO - Perform real encryption here, and not just RLP encoding.
-func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
-	bytes, err := rlp.EncodeToBytes(tx)
-	if err != nil {
-		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
-	}
-	return bytes
 }

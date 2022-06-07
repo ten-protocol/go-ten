@@ -2,8 +2,6 @@ package enclave
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
@@ -38,10 +36,7 @@ import (
 )
 
 const (
-	// RollupEncryptionKeyHex is the AES key used to encrypt and decrypt the transaction blob in rollups.
-	// TODO - Replace this fixed key with derived, rotating keys.
-	RollupEncryptionKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c"
-	msgNoRollup            = "could not fetch rollup"
+	msgNoRollup = "could not fetch rollup"
 )
 
 type StatsCollector interface {
@@ -65,12 +60,12 @@ type enclaveImpl struct {
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
 
-	mgmtContractLib     mgmtcontractlib.MgmtContractLib
-	erc20ContractLib    erc20contractlib.ERC20ContractLib
-	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
-	publicKeySerialized []byte
-	privateKey          *rsa.PrivateKey
-	rollupCipher        cipher.AEAD // The key used to encrypt rollups.
+	mgmtContractLib       mgmtcontractlib.MgmtContractLib
+	erc20ContractLib      erc20contractlib.ERC20ContractLib
+	attestationProvider   AttestationProvider // interface for producing attestation reports and verifying them
+	publicKeySerialized   []byte
+	privateKey            *rsa.PrivateKey
+	transactionBlobCrypto obscurocore.TransactionBlobCrypto
 
 	blockProcessingMutex sync.Mutex
 }
@@ -161,7 +156,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 		log.Panic("Could not find the block used as proof for the genesis rollup.")
 	}
 	return nodecommon.BlockSubmissionResponse{
-		ProducedRollup: rolGenesis.ToExtRollup(e.rollupCipher),
+		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
 		IngestedBlock:  true,
 	}
@@ -179,7 +174,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.rollupCipher)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -190,7 +185,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 					log.Panic(msgNoRollup)
 				}
 
-				rollup = hr.ToExtRollup(e.rollupCipher)
+				rollup = hr.ToExtRollup(e.transactionBlobCrypto)
 			}
 			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
@@ -230,7 +225,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	nodecommon.LogWithID(e.nodeShortID, "Update state: %d", obscurocommon.ShortHash(block.Hash()))
-	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.rollupCipher)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -247,13 +242,13 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	nodecommon.LogWithID(e.nodeShortID, "Processed block: b_%d(%d)", obscurocommon.ShortHash(block.Hash()), block.NumberU64())
 
-	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup(e.rollupCipher))
+	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup(e.transactionBlobCrypto))
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	r := obscurocore.Rollup{
 		Header:       rollup.Header,
-		Transactions: obscurocore.DecryptTransactions(rollup.Txs, e.rollupCipher),
+		Transactions: e.transactionBlobCrypto.Decrypt(rollup.Txs),
 	}
 
 	// only store if the parent exists
@@ -326,7 +321,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State,
 		)
-		return winnerRollup.ToExtRollup(e.rollupCipher), true, nil
+		return winnerRollup.ToExtRollup(e.transactionBlobCrypto), true, nil
 	}
 	return nodecommon.ExtRollup{}, false, nil
 }
@@ -683,35 +678,25 @@ func NewEnclave(
 	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
 
-	key := common.Hex2Bytes(RollupEncryptionKeyHex)
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		panic(fmt.Sprintf("could not initialise AES cipher for enclave rollup key. Cause: %s", err))
-	}
-	rollupCipher, err := cipher.NewGCM(block)
-	if err != nil {
-		panic(fmt.Sprintf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %s", err))
-	}
-
 	return &enclaveImpl{
-		config:               config,
-		nodeShortID:          nodeShortID,
-		storage:              storage,
-		blockResolver:        storage,
-		mempool:              mempool.New(),
-		statsCollector:       collector,
-		l1Blockchain:         l1Blockchain,
-		txCh:                 make(chan nodecommon.L2Tx),
-		roundWinnerCh:        make(chan *obscurocore.Rollup),
-		exitCh:               make(chan bool),
-		speculativeWorkInCh:  make(chan bool),
-		speculativeWorkOutCh: make(chan speculativeWork),
-		mgmtContractLib:      mgmtContractLib,
-		erc20ContractLib:     erc20ContractLib,
-		attestationProvider:  attestationProvider,
-		privateKey:           privKey,
-		publicKeySerialized:  serializedPubKey,
-		rollupCipher:         rollupCipher,
+		config:                config,
+		nodeShortID:           nodeShortID,
+		storage:               storage,
+		blockResolver:         storage,
+		mempool:               mempool.New(),
+		statsCollector:        collector,
+		l1Blockchain:          l1Blockchain,
+		txCh:                  make(chan nodecommon.L2Tx),
+		roundWinnerCh:         make(chan *obscurocore.Rollup),
+		exitCh:                make(chan bool),
+		speculativeWorkInCh:   make(chan bool),
+		speculativeWorkOutCh:  make(chan speculativeWork),
+		mgmtContractLib:       mgmtContractLib,
+		erc20ContractLib:      erc20ContractLib,
+		attestationProvider:   attestationProvider,
+		privateKey:            privKey,
+		publicKeySerialized:   serializedPubKey,
+		transactionBlobCrypto: obscurocore.NewTransactionBlobCryptoImpl(),
 	}
 }
 

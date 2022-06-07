@@ -1,7 +1,6 @@
 package core
 
 import (
-	"crypto/cipher"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -81,9 +80,9 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 	return r
 }
 
-func (r *Rollup) ToExtRollup(rollupCipher cipher.AEAD) nodecommon.ExtRollup {
+func (r *Rollup) ToExtRollup(transactionBlobCrypto TransactionBlobCrypto) nodecommon.ExtRollup {
 	return nodecommon.ExtRollup{
 		Header: r.Header,
-		Txs:    EncryptTransactions(r.Transactions, rollupCipher),
+		Txs:    transactionBlobCrypto.Encrypt(r.Transactions),
 	}
 }
