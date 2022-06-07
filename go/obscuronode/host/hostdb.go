@@ -18,7 +18,7 @@ type DB struct {
 
 	rollupLock        sync.RWMutex
 	currentRollupHead common.Hash
-	rollupDB          map[common.Hash]*nodecommon.Header
+	rollupDB          map[common.Hash]*nodecommon.ExtRollup
 
 	submittedLock    sync.RWMutex
 	submittedRollups map[common.Hash]common.Hash
@@ -28,7 +28,7 @@ type DB struct {
 func NewDB() *DB {
 	return &DB{
 		blockDB:          map[common.Hash]*types.Header{},
-		rollupDB:         map[common.Hash]*nodecommon.Header{},
+		rollupDB:         map[common.Hash]*nodecommon.ExtRollup{},
 		submittedRollups: map[common.Hash]common.Hash{},
 	}
 }
@@ -74,20 +74,20 @@ func (n *DB) GetCurrentRollupHead() *nodecommon.Header {
 func (n *DB) GetRollupHeader(hash common.Hash) *nodecommon.Header {
 	n.rollupLock.RLock()
 	defer n.rollupLock.RUnlock()
-	return n.rollupDB[hash]
+	return n.rollupDB[hash].Header
 }
 
-// AddRollupHeader adds a RollupHeader to the known headers
-func (n *DB) AddRollupHeader(header *nodecommon.Header) {
+// AddRollup adds an ExtRollup to the known rollups.
+func (n *DB) AddRollup(rollup *nodecommon.ExtRollup) {
 	n.rollupLock.Lock()
 	defer n.rollupLock.Unlock()
 
-	n.rollupDB[header.Hash()] = header
+	n.rollupDB[rollup.Header.Hash()] = rollup
 
 	// update the head if the new height is greater than the existing one
-	currentRollupHead := n.rollupDB[n.currentRollupHead]
-	if currentRollupHead == nil || currentRollupHead.Number < header.Number {
-		n.currentRollupHead = header.Hash()
+	currentHeadRollup := n.rollupDB[n.currentRollupHead]
+	if currentHeadRollup == nil || currentHeadRollup.Header.Number < rollup.Header.Number {
+		n.currentRollupHead = rollup.Header.Hash()
 	}
 }
 
