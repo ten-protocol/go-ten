@@ -124,14 +124,12 @@ func (a *Node) Start() {
 		if attestation.Owner != a.ID {
 			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
 		}
-		encodedAttestation := nodecommon.EncodeAttestation(attestation)
-		l1tx := &obscurocommon.L1RespondSecretTx{
-			Secret:          a.EnclaveClient.GenerateSecret(),
-			Attestation:     encodedAttestation,
-			RequesterID:     a.ID,
-			RequesterPubKey: attestation.PubKey,
+
+		l1tx := &obscurocommon.L1InitializeSecretTx{
+			AggregatorID:  &a.ID,
+			InitialSecret: a.EnclaveClient.GenerateSecret(),
 		}
-		a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+		a.broadcastTx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		nodecommon.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	} else {
 		a.requestSecret()
@@ -456,17 +454,13 @@ func (a *Node) requestSecret() {
 }
 
 func (a *Node) handleStoreSecretTx(t *obscurocommon.L1RespondSecretTx) bool {
-	att, err := nodecommon.DecodeAttestation(t.Attestation)
-	if err != nil {
-		nodecommon.LogWithID(a.shortID, "Failed to decode attestation report %s", err)
+	if t.RequesterID.Hex() != a.ID.Hex() {
+		// this secret is for somebody else
 		return false
 	}
-	if att.Owner != a.ID {
-		// this secret is encrypted for somebody else
-		return false
-	}
+
 	// someone has replied for us
-	err = a.EnclaveClient.InitEnclave(t.Secret)
+	err := a.EnclaveClient.InitEnclave(t.Secret)
 	if err != nil {
 		nodecommon.LogWithID(a.shortID, "Failed to initialise enclave with received secret. Err: %s", err)
 		return false
@@ -500,12 +494,13 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
 				continue
 			}
+
 			l1tx := &obscurocommon.L1RespondSecretTx{
-				Secret:          secret,
-				Attestation:     scrtReqTx.Attestation,
-				RequesterPubKey: att.PubKey,
-				RequesterID:     att.Owner,
+				Secret:      secret,
+				RequesterID: att.Owner,
+				AttesterID:  a.ID,
 			}
+			// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 			a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		}
 	}

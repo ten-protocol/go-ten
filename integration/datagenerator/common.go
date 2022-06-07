@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func randomBytes(length int) []byte {
+func RandomBytes(length int) []byte {
 	byteArr := make([]byte, length)
 	if _, err := rand.Read(byteArr); err != nil {
 		panic(err)
@@ -22,11 +22,11 @@ func randomBytes(length int) []byte {
 }
 
 func randomHash() common.Hash {
-	return common.BytesToHash(randomBytes(32))
+	return common.BytesToHash(RandomBytes(32))
 }
 
-func randomAddress() common.Address {
-	return common.BytesToAddress(randomBytes(20))
+func RandomAddress() common.Address {
+	return common.BytesToAddress(RandomBytes(20))
 }
 
 func randomUInt64() uint64 {
@@ -40,7 +40,7 @@ func randomUInt64() uint64 {
 func randomWithdrawal() nodecommon.Withdrawal {
 	return nodecommon.Withdrawal{
 		Amount:  randomUInt64(),
-		Address: randomAddress(),
+		Address: RandomAddress(),
 	}
 }
 
@@ -53,7 +53,7 @@ func randomWithdrawals(length int) []nodecommon.Withdrawal {
 }
 
 func randomEncryptedTransaction() nodecommon.EncryptedTx {
-	return randomBytes(100)
+	return RandomBytes(100)
 }
 
 func randomEncryptedTransactions(length int) nodecommon.EncryptedTransactions {
