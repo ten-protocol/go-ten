@@ -225,15 +225,22 @@ func (c *EnclaveRPCClient) SubmitTx(tx nodecommon.EncryptedTx) error {
 	return err
 }
 
-func (c *EnclaveRPCClient) Balance(address common.Address) uint64 {
+func (c *EnclaveRPCClient) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.Balance(timeoutCtx, &generated.BalanceRequest{Address: address.Bytes()})
+	response, err := c.protoClient.ExecuteOffChainTransaction(timeoutCtx, &generated.OffChainRequest{
+		From:            from.Bytes(),
+		ContractAddress: contractAddress.Bytes(),
+		Data:            data,
+	})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to retrieve balance. Cause: %s", obscurocommon.ShortAddress(c.config.ID), err)
+		return nil, err
 	}
-	return response.Balance
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+	return response.Result, nil
 }
 
 func (c *EnclaveRPCClient) Nonce(address common.Address) uint64 {
