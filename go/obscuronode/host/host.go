@@ -30,7 +30,7 @@ type Node struct {
 	P2p           P2P                 // For communication with other Obscuro nodes
 	ethClient     ethclient.EthClient // For communication with the L1 node
 	EnclaveClient nodecommon.Enclave  // For communication with the enclave
-	clientServer  ClientServer        // For communication with Obscuro client applications
+	rpcServer     RPCServer           // For communication with Obscuro client applications
 
 	stats StatsCollector
 
@@ -99,7 +99,7 @@ func NewHost(
 	}
 
 	if config.HasClientRPC {
-		host.clientServer = NewClientServer(config.ClientRPCAddress, host)
+		host.rpcServer = NewRPCServer(config.ClientRPCAddress, host)
 	}
 
 	return host
@@ -148,8 +148,8 @@ func (a *Node) Start() {
 		a.initialiseProtocol(&latestBlock)
 	}
 	// start the obscuro RPC endpoints
-	if a.clientServer != nil {
-		a.clientServer.Start()
+	if a.rpcServer != nil {
+		a.rpcServer.Start()
 		nodecommon.LogWithID(a.shortID, "Started client server.")
 	}
 
@@ -227,8 +227,8 @@ func (a *Node) Stop() {
 	if err := a.EnclaveClient.StopClient(); err != nil {
 		nodecommon.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
-	if a.clientServer != nil {
-		if err := a.clientServer.Stop(); err != nil {
+	if a.rpcServer != nil {
+		if err := a.rpcServer.Stop(); err != nil {
 			nodecommon.ErrorWithID(a.shortID, "could not stop client RPC server. Cause: %s", err)
 		}
 	}

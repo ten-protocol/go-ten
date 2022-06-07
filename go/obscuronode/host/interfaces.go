@@ -21,8 +21,8 @@ type P2P interface {
 	BroadcastTx(tx nodecommon.EncryptedTx)
 }
 
-// ClientServer is the layer responsible for handling requests from Obscuro client applications.
-type ClientServer interface {
+// RPCServer is the layer responsible for handling RPC requests from Obscuro client applications.
+type RPCServer interface {
 	Start()
 	Stop() error
 }

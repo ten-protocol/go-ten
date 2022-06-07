@@ -36,7 +36,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	startPort := integration.StartPortNodeRunnerTest
 	enclaveAddr := fmt.Sprintf("127.0.0.1:%d", startPort)
-	clientServerAddr := fmt.Sprintf("127.0.0.1:%d", startPort+1)
+	rpcServerAddr := fmt.Sprintf("127.0.0.1:%d", startPort+1)
 	gethPort := startPort + 2
 	gethWebsocketPort := gethPort + defaultWsPortOffset
 
@@ -49,7 +49,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig := config.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
-	hostConfig.ClientRPCAddress = clientServerAddr
+	hostConfig.ClientRPCAddress = rpcServerAddr
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
 	enclaveConfig := config.DefaultEnclaveConfig()
@@ -64,15 +64,15 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
-	obscuroClient := obscuroclient.NewClient(clientServerAddr)
-	defer teardown(obscuroClient, clientServerAddr)
+	obscuroClient := obscuroclient.NewClient(rpcServerAddr)
+	defer teardown(obscuroClient, rpcServerAddr)
 
 	// We sleep to give the network time to produce some blocks.
 	time.Sleep(3 * time.Second)
 
 	// we wait to ensure the RPC endpoint is up
 	wait := 60 // max wait in seconds
-	for !tcpConnectionAvailable(clientServerAddr) {
+	for !tcpConnectionAvailable(rpcServerAddr) {
 		if wait == 0 {
 			t.Fatal("RPC client server never became available")
 		}
@@ -96,12 +96,12 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
 }
 
-func teardown(obscuroClient obscuroclient.Client, clientServerAddr string) {
+func teardown(obscuroClient obscuroclient.Client, rpcServerAddr string) {
 	obscuroClient.Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
 
 	// We wait for the client server port to be closed.
 	wait := 0
-	for tcpConnectionAvailable(clientServerAddr) {
+	for tcpConnectionAvailable(rpcServerAddr) {
 		if wait == 20 { // max wait in seconds
 			panic(fmt.Sprintf("RPC client server had not shut down after %d seconds", wait))
 		}

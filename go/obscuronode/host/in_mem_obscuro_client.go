@@ -11,7 +11,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 )
 
-// An in-memory implementation of `clientserver.Client` that speaks directly to the node.
+// An in-memory implementation of `obscuroclient.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
 	obscuroAPI ObscuroAPI
 }
