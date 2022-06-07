@@ -51,7 +51,6 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
-		time.Sleep(params.AvgBlockDuration / 10)
 	}
 
 	// Create a handle to each node
@@ -59,6 +58,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	for i, node := range obscuroNodes {
 		obscuroClients[i] = host.NewInMemObscuroClient(node)
 	}
+	time.Sleep(100 * time.Millisecond)
 	return obscuroClients
 }
 
@@ -102,6 +102,19 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		t := m
 		go t.Start()
 		time.Sleep(params.AvgBlockDuration / 3)
+	}
+
+	// wait for the clients to be connected
+	for i, client := range obscuroClients {
+		started := false
+		for !started {
+			err := client.Call(nil, obscuroclient.RPCGetID)
+			started = err == nil
+			if !started {
+				fmt.Printf("Could not connect to client %d. Err %s. Retrying..\n", i, err)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
 	}
 
 	return obscuroClients, nodeP2pAddrs

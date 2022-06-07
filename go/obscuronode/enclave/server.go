@@ -160,9 +160,12 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 	return &generated.SubmitTxResponse{}, err
 }
 
-func (s *server) Balance(_ context.Context, request *generated.BalanceRequest) (*generated.BalanceResponse, error) {
-	balance := s.enclave.Balance(common.BytesToAddress(request.Address))
-	return &generated.BalanceResponse{Balance: balance}, nil
+func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
+	result, err := s.enclave.ExecuteOffChainTransaction(common.BytesToAddress(request.From), common.BytesToAddress(request.ContractAddress), request.Data)
+	if err != nil {
+		return nil, err
+	}
+	return &generated.OffChainResponse{Result: result}, nil
 }
 
 func (s *server) Nonce(_ context.Context, request *generated.NonceRequest) (*generated.NonceResponse, error) {

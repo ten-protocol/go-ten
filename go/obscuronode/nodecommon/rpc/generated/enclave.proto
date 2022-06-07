@@ -45,7 +45,7 @@ service EnclaveProto {
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
 
   // Balance - returns the balance of an address with a block delay
-  rpc Balance(BalanceRequest) returns (BalanceResponse) {}
+  rpc ExecuteOffChainTransaction(OffChainRequest) returns (OffChainResponse) {}
 
   // Nonce - returns the nonce of the wallet with the given address.
   rpc Nonce(NonceRequest) returns (NonceResponse) {}
@@ -134,11 +134,14 @@ message SubmitTxRequest {
 }
 message SubmitTxResponse {}
 
-message BalanceRequest {
-  bytes address = 1;
+message OffChainRequest {
+  bytes from = 1;
+  bytes contractAddress = 2;
+  bytes data = 3;
 }
-message BalanceResponse {
-  uint64 balance = 1;
+message OffChainResponse {
+  bytes result = 1;
+  string error = 2;
 }
 
 message NonceRequest {
@@ -221,13 +224,13 @@ message BlockHeaderMsg {
   bytes TxHash = 5;
   bytes ReceiptHash = 6;
   bytes Bloom = 7;
-  uint64  Difficulty = 8;
-  uint64  Number = 9;
+  uint64 Difficulty = 8;
+  uint64 Number = 9;
   uint64 GasLimit = 10;
   uint64 GasUsed = 11;
   uint64 Time = 12;
   bytes Extra = 13;
   bytes MixDigest = 14;
   uint64 Nonce = 15;
-  uint64  BaseFee = 16;
+  uint64 BaseFee = 16;
 }
