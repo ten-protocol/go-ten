@@ -53,7 +53,7 @@ func NewClientServer(address string, host *Node) ClientServer {
 		{
 			Namespace: apiNamespaceEthereum,
 			Version:   apiVersion1,
-			Service:   NewEthereumAPI(host),
+			Service:   NewEthereumAPI(),
 			Public:    true,
 		},
 	}
