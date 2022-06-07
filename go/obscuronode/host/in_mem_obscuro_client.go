@@ -83,10 +83,16 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("expected 3 arg to %s, got %d", obscuroclient.RPCExecContract, len(args))
 		}
 		fromAddress, ok := args[0].(common.Address)
+		if !ok {
+			return fmt.Errorf("arg 0 to %s was not of expected type common.Address", obscuroclient.RPCExecContract)
+		}
 		contractAddress, ok := args[1].(common.Address)
+		if !ok {
+			return fmt.Errorf("arg 1 to %s was not of expected type common.Address", obscuroclient.RPCExecContract)
+		}
 		data, ok := args[2].([]byte)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Address", obscuroclient.RPCExecContract)
+			return fmt.Errorf("arg 2 to %s was not of expected type []byte", obscuroclient.RPCExecContract)
 		}
 
 		r, err := c.obscuroAPI.ExecContract(fromAddress, contractAddress, data)
