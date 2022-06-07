@@ -104,6 +104,19 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
+	// wait for the clients to be connected
+	for i, client := range obscuroClients {
+		started := false
+		for !started {
+			err := client.Call(nil, obscuroclient.RPCGetID)
+			started = err == nil
+			if !started {
+				fmt.Printf("Could not connect to client %d. Err %s. Retrying..\n", i, err)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+
 	return obscuroClients, nodeP2pAddrs
 }
 
