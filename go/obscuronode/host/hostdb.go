@@ -90,8 +90,8 @@ func (n *DB) AddRollup(rollup *nodecommon.ExtRollup) {
 	n.rollupDB[rollup.Header.Hash()] = rollup
 
 	// update the head if the new height is greater than the existing one
-	currentHeadRollup := n.rollupDB[n.currentRollupHead]
-	if currentHeadRollup == nil || currentHeadRollup.Header.Number < rollup.Header.Number {
+	currentRollupHead := n.rollupDB[n.currentRollupHead]
+	if currentRollupHead == nil || currentRollupHead.Header.Number < rollup.Header.Number {
 		n.currentRollupHead = rollup.Header.Hash()
 	}
 }
