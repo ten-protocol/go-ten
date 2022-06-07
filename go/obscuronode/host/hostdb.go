@@ -74,7 +74,12 @@ func (n *DB) GetCurrentRollupHead() *nodecommon.Header {
 func (n *DB) GetRollupHeader(hash common.Hash) *nodecommon.Header {
 	n.rollupLock.RLock()
 	defer n.rollupLock.RUnlock()
-	return n.rollupDB[hash].Header
+
+	rollup := n.rollupDB[hash]
+	if rollup != nil {
+		return rollup.Header
+	}
+	return nil
 }
 
 // AddRollup adds an ExtRollup to the known rollups.
