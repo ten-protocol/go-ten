@@ -27,13 +27,13 @@ const txThreshold = 5
 func checkNetworkValidity(t *testing.T, s *Simulation) {
 	// ensure L1 and L2 txs were issued
 	if len(s.TxInjector.counter.l1Transactions) < txThreshold {
-		t.Error("Simulation did not issue any L1 transactions.")
+		t.Errorf("Simulation only issued %d L1 transactions. At least %d expected", len(s.TxInjector.counter.l1Transactions), txThreshold)
 	}
 	if len(s.TxInjector.counter.transferL2Transactions) < txThreshold {
-		t.Error("Simulation did not issue any transfer L2 transactions.")
+		t.Errorf("Simulation only issued %d transfer L2 transactions. At least %d expected", len(s.TxInjector.counter.transferL2Transactions), txThreshold)
 	}
 	if len(s.TxInjector.counter.withdrawalL2Transactions) < txThreshold {
-		t.Error("Simulation did not issue any withdrawal L2 transactions.")
+		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.counter.withdrawalL2Transactions), txThreshold)
 	}
 
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
