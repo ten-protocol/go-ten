@@ -23,7 +23,7 @@ func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
+func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error { //nolint:gocognit
 	switch method {
 	case obscuroclient.RPCGetID:
 		*result.(*common.Address) = c.obscuroAPI.GetID()
