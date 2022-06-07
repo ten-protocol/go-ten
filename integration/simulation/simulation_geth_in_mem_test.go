@@ -49,7 +49,7 @@ func TestGethSimulation(t *testing.T) {
 	simParams := &params.SimParams{
 		NumberOfNodes:         numberOfNodes,
 		AvgBlockDuration:      1 * time.Second,
-		SimulationTime:        30 * time.Second,
+		SimulationTime:        35 * time.Second,
 		L1EfficiencyThreshold: 0.2,
 		// Very hard to have precision here as blocks are continually produced and not dependent on the simulation execution thread
 		L2EfficiencyThreshold:     0.6, // nodes might produce rollups because they receive a new block

@@ -51,7 +51,6 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	for _, m := range obscuroNodes {
 		t := m
 		go t.Start()
-		time.Sleep(params.AvgBlockDuration / 10)
 	}
 
 	// Create a handle to each node
@@ -59,6 +58,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	for i, node := range obscuroNodes {
 		obscuroClients[i] = host.NewInMemObscuroClient(node)
 	}
+	time.Sleep(100 * time.Millisecond)
 	return obscuroClients
 }
 
