@@ -330,7 +330,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResult, error) {
+func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
 	hs := e.storage.FetchHeadState()
 	if hs == nil {
 		panic("Not initialised")
@@ -346,7 +346,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAd
 		return nil, err
 	}
 	if result.Failed() {
-		log.Info("Failed to read balance: %s\n", result.Err)
+		log.Info("Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
 		return nil, result.Err
 	}
 

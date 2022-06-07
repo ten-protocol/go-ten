@@ -225,7 +225,7 @@ func (c *EnclaveRPCClient) SubmitTx(tx nodecommon.EncryptedTx) error {
 	return err
 }
 
-func (c *EnclaveRPCClient) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResult, error) {
+func (c *EnclaveRPCClient) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

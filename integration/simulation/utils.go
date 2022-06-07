@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
@@ -110,12 +112,15 @@ func balance(client obscuroclient.Client, address common.Address) uint64 {
 	method := obscuroclient.RPCExecContract
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
-	var result nodecommon.EncryptedResult
+	var result host.OffChainResponse
 	err := client.Call(&result, method, address, evm.Erc20ContractAddress, balanceData)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
+	if result.Error != nil {
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, result.Error))
+	}
 	r := new(big.Int)
-	r = r.SetBytes(core.DecryptResponse(result))
+	r = r.SetBytes(core.DecryptResponse(result.Response))
 	return r.Uint64()
 }

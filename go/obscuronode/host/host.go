@@ -192,8 +192,8 @@ func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// RPCExecuteOffChainTransaction allows to fetch the execute off chain transactions
-func (a *Node) RPCExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResult, error) {
+// RPCExecuteOffChainTransaction allows execution of off chain transactions
+func (a *Node) RPCExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
 	return a.EnclaveClient.ExecuteOffChainTransaction(from, contractAddress, data)
 }
 

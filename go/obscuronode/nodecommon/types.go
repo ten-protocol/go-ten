@@ -18,7 +18,7 @@ type (
 	L2Tx                  = types.Transaction
 	EncryptedTx           []byte // A single transaction encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
-	EncryptedResult       []byte // The response of a off-chain call. Encrypted with the viewing key of the user.
+	EncryptedResponse     []byte // The response of a off-chain call. Encrypted with the viewing key of the user.
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup

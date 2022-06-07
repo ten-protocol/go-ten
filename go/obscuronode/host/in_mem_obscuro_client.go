@@ -95,12 +95,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg 2 to %s was not of expected type []byte", obscuroclient.RPCExecContract)
 		}
 
-		r, err := c.obscuroAPI.ExecContract(fromAddress, contractAddress, data)
-		// todo
-		if err != nil {
-			panic(err)
-		}
-		*result.(*nodecommon.EncryptedResult) = r
+		*result.(*OffChainResponse) = c.obscuroAPI.ExecContract(fromAddress, contractAddress, data)
 
 	case obscuroclient.RPCNonce:
 		if len(args) != 1 {
