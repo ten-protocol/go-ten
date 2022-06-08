@@ -9,14 +9,18 @@ import (
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
 
-func DecryptTransactions(txs nodecommon.EncryptedTransactions) L2Txs {
-	t := make([]nodecommon.L2Tx, 0)
-	for _, tx := range txs {
-		t = append(t, DecryptTx(tx))
+// EncryptTx encrypts a single transaction using the enclave's public key to send it privately to the enclave.
+// TODO - Perform real encryption here, and not just RLP encoding.
+func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
+	bytes, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
 	}
-	return t
+	return bytes
 }
 
+// DecryptTx reverses the encryption performed by EncryptTx.
+// TODO - Perform real decryption here, and not just RLP decoding.
 func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	t := nodecommon.L2Tx{}
 	if err := rlp.DecodeBytes(tx, &t); err != nil {
@@ -26,10 +30,14 @@ func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	return t
 }
 
-func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
-	bytes, err := rlp.EncodeToBytes(tx)
-	if err != nil {
-		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
-	}
-	return bytes
+// EncryptResponse - encrypts the response from the evm with the viewing key of the sender
+func EncryptResponse(resp []byte) nodecommon.EncryptedResponse {
+	// TODO
+	return resp
+}
+
+// DecryptResponse - the reverse of EncryptResponse
+func DecryptResponse(r nodecommon.EncryptedResponse) []byte {
+	// TODO
+	return r
 }

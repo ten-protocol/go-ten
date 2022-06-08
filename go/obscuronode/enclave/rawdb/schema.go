@@ -13,6 +13,7 @@ var (
 	rollupBodyPrefix         = []byte("or")  // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
 	rollupHeaderNumberPrefix = []byte("oH")  // headerNumberPrefix + hash -> num (uint64 big endian)
 	blockStatePrefix         = []byte("obs") // headerNumberPrefix + hash -> num (uint64 big endian)
+
 )
 
 // encodeRollupNumber encodes a rollup number as big endian uint64

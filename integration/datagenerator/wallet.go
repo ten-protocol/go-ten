@@ -20,7 +20,7 @@ func RandomWallet(chainID int64) wallet.Wallet {
 		PrivateKeyString: pk,
 		ChainID:          *big.NewInt(chainID),
 	}
-	return wallet.NewInMemoryWalletFromString(walletConfig)
+	return wallet.NewInMemoryWalletFromConfig(walletConfig)
 }
 
 func randomHex(n int) (string, error) {

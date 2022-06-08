@@ -15,15 +15,13 @@ import (
 )
 
 type storageImpl struct {
-	tempDB  *InMemoryDB // todo - has to be replaced completely by the ethdb.Database
 	db      ethdb.Database
 	stateDB state.Database
 	nodeID  uint64
 }
 
-func NewStorage(tempDB *InMemoryDB, backingDB ethdb.Database, nodeID uint64) Storage {
+func NewStorage(backingDB ethdb.Database, nodeID uint64) Storage {
 	return &storageImpl{
-		tempDB:  tempDB,
 		db:      backingDB,
 		stateDB: state.NewDatabase(backingDB),
 		nodeID:  nodeID,
@@ -91,16 +89,6 @@ func (s *storageImpl) FetchHeadBlock() *types.Block {
 	s.assertSecretAvailable()
 	b, _ := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
 	return b
-}
-
-func (s *storageImpl) FetchRollupTxs(r *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool) {
-	s.assertSecretAvailable()
-	return s.tempDB.FetchRollupTxs(r)
-}
-
-func (s *storageImpl) StoreRollupTxs(r *core.Rollup, newTxs map[common.Hash]nodecommon.L2Tx) {
-	s.assertSecretAvailable()
-	s.tempDB.StoreRollupTxs(r, newTxs)
 }
 
 func (s *storageImpl) StoreSecret(secret core.SharedEnclaveSecret) {

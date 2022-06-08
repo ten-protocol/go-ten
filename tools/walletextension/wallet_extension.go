@@ -25,7 +25,7 @@ const (
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	enclavePrivateKey *ecdsa.PrivateKey
-	obscuroFacadeAddr string
+	nodeAddr          string // The address on which the node (or facade) can be reached.
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
 	viewingKeyPrivate      *ecdsa.PrivateKey
@@ -37,12 +37,12 @@ type WalletExtension struct {
 
 func NewWalletExtension(
 	enclavePrivateKey *ecdsa.PrivateKey,
-	obscuroFacadeAddr string,
+	nodeAddr string,
 	viewingKeyChannel chan<- ViewingKey,
 ) *WalletExtension {
 	return &WalletExtension{
 		enclavePrivateKey: enclavePrivateKey,
-		obscuroFacadeAddr: obscuroFacadeAddr,
+		nodeAddr:          nodeAddr,
 		viewingKeyChannel: viewingKeyChannel,
 	}
 }
@@ -101,9 +101,9 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 
 	// We forward the request on to the Geth node.
-	gethResp, err := forwardMsgOverWebsocket("ws://"+we.obscuroFacadeAddr, encryptedBody)
+	gethResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, encryptedBody)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.nodeAddr, err))
 		return
 	}
 
