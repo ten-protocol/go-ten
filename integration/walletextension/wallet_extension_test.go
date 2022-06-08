@@ -344,7 +344,7 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 	// We retry for three seconds to handle node start-up time.
 	timeout := time.Now().Add(3 * time.Second)
 	for i := time.Now(); i.Before(timeout); i = time.Now() {
-		resp, err = http.Post(walletExtensionAddr, "text/html", reqBody) //nolint:gosec,noctx
+		resp, err = http.Post(httpProtocol+walletExtensionAddr, "text/html", reqBody) //nolint:gosec,noctx
 		if err == nil {
 			break
 		}
@@ -353,6 +353,9 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 		}
 	}
 
+	if err != nil {
+		t.Fatalf("received error response from wallet extension: %s", err)
+	}
 	if resp == nil {
 		t.Fatal("did not receive a response from the wallet extension")
 	}
@@ -397,7 +400,7 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 		t.Fatal(err)
 	}
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
-	resp, err := http.Post(walletExtensionAddr+pathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
+	resp, err := http.Post(httpProtocol+walletExtensionAddr+pathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,7 +409,7 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 
 // Generates a viewing key.
 func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
-	resp, err := http.Get(walletExtensionAddr + pathGenerateViewingKey) //nolint:noctx
+	resp, err := http.Get(httpProtocol + walletExtensionAddr + pathGenerateViewingKey) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
