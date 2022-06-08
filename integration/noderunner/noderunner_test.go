@@ -28,6 +28,7 @@ import (
 const (
 	testLogs            = "../.build/noderunner/"
 	defaultWsPortOffset = 100
+	localhost           = "127.0.0.1"
 )
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
@@ -35,8 +36,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	setupTestLog()
 
 	startPort := integration.StartPortNodeRunnerTest
-	enclaveAddr := fmt.Sprintf("127.0.0.1:%d", startPort)
-	rpcServerAddr := fmt.Sprintf("127.0.0.1:%d", startPort+1)
+	enclaveAddr := fmt.Sprintf("%s:%d", localhost, startPort)
+	rpcServerAddr := fmt.Sprintf("%s:%d", localhost, startPort+1)
 	gethPort := startPort + 2
 	gethWebsocketPort := gethPort + defaultWsPortOffset
 
@@ -49,7 +50,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig := config.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
-	hostConfig.ClientRPCAddress = rpcServerAddr
+	hostConfig.ClientRPCPortHTTP = startPort + 1
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
 	enclaveConfig := config.DefaultEnclaveConfig()

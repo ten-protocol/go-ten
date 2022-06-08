@@ -65,7 +65,7 @@ func createInMemObscuroNode(
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
 		GossipRoundDuration: avgGossipPeriod,
-		HasClientRPC:        false,
+		HasClientRPCHTTP:    false,
 	}
 
 	enclaveConfig := config.EnclaveConfig{
@@ -102,22 +102,25 @@ func createSocketObscuroNode(
 	p2pAddr string,
 	peerAddrs []string,
 	enclaveAddr string,
-	rpcServerAddr string,
+	clientRPCHost string,
+	clientRPCPortHTTP uint64,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethclient.EthClient,
 ) *host.Node {
 	hostConfig := config.HostConfig{
-		ID:                  common.BigToAddress(big.NewInt(id)),
-		IsGenesis:           isGenesis,
-		GossipRoundDuration: avgGossipPeriod,
-		HasClientRPC:        true,
-		ClientRPCAddress:    rpcServerAddr,
-		ClientRPCTimeout:    ClientRPCTimeoutSecs * time.Second,
-		EnclaveRPCTimeout:   ClientRPCTimeoutSecs * time.Second,
-		EnclaveRPCAddress:   enclaveAddr,
-		P2PAddress:          p2pAddr,
-		AllP2PAddresses:     peerAddrs,
+		ID:                     common.BigToAddress(big.NewInt(id)),
+		IsGenesis:              isGenesis,
+		GossipRoundDuration:    avgGossipPeriod,
+		HasClientRPCHTTP:       true,
+		ClientRPCPortHTTP:      clientRPCPortHTTP,
+		HasClientRPCWebsockets: false,
+		ClientRPCHost:          clientRPCHost,
+		ClientRPCTimeout:       ClientRPCTimeoutSecs * time.Second,
+		EnclaveRPCTimeout:      ClientRPCTimeoutSecs * time.Second,
+		EnclaveRPCAddress:      enclaveAddr,
+		P2PAddress:             p2pAddr,
+		AllP2PAddresses:        peerAddrs,
 	}
 
 	// create an enclave client

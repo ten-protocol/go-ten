@@ -20,7 +20,9 @@ type HostConfigToml struct {
 	ID                      string
 	IsGenesis               bool
 	GossipRoundNanos        int
-	ClientRPCAddress        string
+	ClientRPCPortHTTP       uint
+	ClientRPCPortWS         uint
+	ClientRPCHost           string
 	ClientRPCTimeoutSecs    int
 	EnclaveRPCAddress       string
 	EnclaveRPCTimeoutSecs   int
@@ -44,7 +46,9 @@ func ParseConfig() config.HostConfig {
 	nodeID := flag.String(nodeIDName, defaultConfig.ID.Hex(), nodeIDUsage)
 	isGenesis := flag.Bool(isGenesisName, defaultConfig.IsGenesis, isGenesisUsage)
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(defaultConfig.GossipRoundDuration), gossipRoundNanosUsage)
-	clientRPCAddress := flag.String(clientRPCAddressName, defaultConfig.ClientRPCAddress, clientRPCAddressUsage)
+	clientRPCPortHTTP := flag.Uint64(clientRPCPortHTTPName, defaultConfig.ClientRPCPortHTTP, clientRPCPortHTTPUsage)
+	clientRPCPortWS := flag.Uint64(clientRPCPortWSName, defaultConfig.ClientRPCPortWS, clientRPCPortWSUsage)
+	clientRPCHost := flag.String(clientRPCHostName, defaultConfig.ClientRPCHost, clientRPCHostUsage)
 	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, uint64(defaultConfig.ClientRPCTimeout.Seconds()), clientRPCTimeoutSecsUsage)
 	enclaveRPCAddress := flag.String(enclaveRPCAddressName, defaultConfig.EnclaveRPCAddress, enclaveRPCAddressUsage)
 	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(defaultConfig.EnclaveRPCTimeout.Seconds()), enclaveRPCTimeoutSecsUsage)
@@ -73,8 +77,11 @@ func ParseConfig() config.HostConfig {
 	defaultConfig.ID = common.HexToAddress(*nodeID)
 	defaultConfig.IsGenesis = *isGenesis
 	defaultConfig.GossipRoundDuration = time.Duration(*gossipRoundNanos)
-	defaultConfig.HasClientRPC = true
-	defaultConfig.ClientRPCAddress = *clientRPCAddress
+	defaultConfig.HasClientRPCHTTP = true
+	defaultConfig.ClientRPCPortHTTP = *clientRPCPortHTTP
+	defaultConfig.HasClientRPCWebsockets = true
+	defaultConfig.ClientRPCPortWS = *clientRPCPortWS
+	defaultConfig.ClientRPCHost = *clientRPCHost
 	defaultConfig.ClientRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
 	defaultConfig.EnclaveRPCAddress = *enclaveRPCAddress
 	defaultConfig.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
@@ -105,22 +112,25 @@ func fileBasedConfig(configPath string) config.HostConfig {
 	}
 
 	return config.HostConfig{
-		ID:                    common.HexToAddress(tomlConfig.ID),
-		IsGenesis:             tomlConfig.IsGenesis,
-		GossipRoundDuration:   time.Duration(tomlConfig.GossipRoundNanos),
-		HasClientRPC:          true,
-		ClientRPCAddress:      tomlConfig.ClientRPCAddress,
-		ClientRPCTimeout:      time.Duration(tomlConfig.ClientRPCTimeoutSecs) * time.Second,
-		EnclaveRPCAddress:     tomlConfig.EnclaveRPCAddress,
-		EnclaveRPCTimeout:     time.Duration(tomlConfig.EnclaveRPCTimeoutSecs) * time.Second,
-		P2PAddress:            tomlConfig.P2PAddress,
-		AllP2PAddresses:       tomlConfig.PeerP2PAddresses,
-		L1NodeHost:            tomlConfig.L1NodeHost,
-		L1NodeWebsocketPort:   tomlConfig.L1NodePort,
-		L1ConnectionTimeout:   time.Duration(tomlConfig.L1ConnectionTimeoutSecs) * time.Second,
-		RollupContractAddress: common.HexToAddress(tomlConfig.RollupContractAddress),
-		LogPath:               tomlConfig.LogPath,
-		PrivateKeyString:      tomlConfig.PrivateKey,
-		ChainID:               tomlConfig.ChainID,
+		ID:                     common.HexToAddress(tomlConfig.ID),
+		IsGenesis:              tomlConfig.IsGenesis,
+		GossipRoundDuration:    time.Duration(tomlConfig.GossipRoundNanos),
+		HasClientRPCHTTP:       true,
+		ClientRPCPortHTTP:      uint64(tomlConfig.ClientRPCPortHTTP),
+		HasClientRPCWebsockets: true,
+		ClientRPCPortWS:        uint64(tomlConfig.ClientRPCPortWS),
+		ClientRPCHost:          tomlConfig.ClientRPCHost,
+		ClientRPCTimeout:       time.Duration(tomlConfig.ClientRPCTimeoutSecs) * time.Second,
+		EnclaveRPCAddress:      tomlConfig.EnclaveRPCAddress,
+		EnclaveRPCTimeout:      time.Duration(tomlConfig.EnclaveRPCTimeoutSecs) * time.Second,
+		P2PAddress:             tomlConfig.P2PAddress,
+		AllP2PAddresses:        tomlConfig.PeerP2PAddresses,
+		L1NodeHost:             tomlConfig.L1NodeHost,
+		L1NodeWebsocketPort:    tomlConfig.L1NodePort,
+		L1ConnectionTimeout:    time.Duration(tomlConfig.L1ConnectionTimeoutSecs) * time.Second,
+		RollupContractAddress:  common.HexToAddress(tomlConfig.RollupContractAddress),
+		LogPath:                tomlConfig.LogPath,
+		PrivateKeyString:       tomlConfig.PrivateKey,
+		ChainID:                tomlConfig.ChainID,
 	}
 }
