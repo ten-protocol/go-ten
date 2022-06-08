@@ -24,8 +24,8 @@ const (
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePrivateKey *ecdsa.PrivateKey
-	nodeAddr          string // The address on which the node (or facade) can be reached.
+	enclavePublicKey *ecdsa.PublicKey
+	nodeAddr         string // The address on which the node (or facade) can be reached.
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
 	viewingKeyPrivate      *ecdsa.PrivateKey
@@ -36,12 +36,12 @@ type WalletExtension struct {
 }
 
 func NewWalletExtension(
-	enclavePrivateKey *ecdsa.PrivateKey,
+	enclavePublicKey *ecdsa.PublicKey,
 	nodeAddr string,
 	viewingKeyChannel chan<- ViewingKey,
 ) *WalletExtension {
 	return &WalletExtension{
-		enclavePrivateKey: enclavePrivateKey,
+		enclavePublicKey:  enclavePublicKey,
 		nodeAddr:          nodeAddr,
 		viewingKeyChannel: viewingKeyChannel,
 	}
@@ -93,7 +93,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	// We encrypt the JSON with the enclave's public key.
 	fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
-	eciesPublicKey := ecies.ImportECDSAPublic(&we.enclavePrivateKey.PublicKey)
+	eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
 	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))

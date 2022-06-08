@@ -103,7 +103,7 @@ func StartWalletExtension(config RunConfig) func() {
 	}
 
 	walletExtensionAddr := localhost + strconv.Itoa(config.StartPort)
-	walletExtension := NewWalletExtension(enclavePrivateKey, walletExtensionForwardAddr, viewingKeyChannel)
+	walletExtension := NewWalletExtension(&enclavePrivateKey.PublicKey, walletExtensionForwardAddr, viewingKeyChannel)
 
 	var obscuroFacade *ObscuroFacade
 	if config.UseFacade {
