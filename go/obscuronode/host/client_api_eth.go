@@ -2,10 +2,11 @@ package host
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
-	"math/big"
 )
 
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations.
@@ -37,7 +38,7 @@ func (api *EthereumAPI) GetBalance(context.Context, common.Address, rpc.BlockNum
 
 // GetBlockByNumber is a placeholder for an RPC method required by MetaMask.
 func (api *EthereumAPI) GetBlockByNumber(context.Context, rpc.BlockNumber, bool) (map[string]interface{}, error) {
-	return nil, nil
+	return nil, nil //nolint:nilnil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask.
