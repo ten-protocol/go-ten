@@ -74,7 +74,7 @@ func (of *ObscuroFacade) Serve(hostAndPort string) {
 
 	err := of.server.ListenAndServe()
 	if err != http.ErrServerClosed {
-		panic(err)
+		panic(fmt.Sprintf("could not serve the Obscuro facade: %s", err))
 	}
 }
 
