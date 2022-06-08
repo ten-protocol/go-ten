@@ -53,18 +53,16 @@ const (
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	t.Skip() // Skipping while support for viewing keys is being implemented.
-
 	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort: startPort,
-		NodeRPCAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
+		WalletExtensionPort:     startPort,
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
 	}
 	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
@@ -80,6 +78,8 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	}
 }
 
+// TODO - Renable these tests once Obscuro node functionality is implemented.
+
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
@@ -91,8 +91,8 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 
 	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort: startPort,
-		NodeRPCAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
+		WalletExtensionPort:     startPort,
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
 	}
 	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
@@ -121,8 +121,8 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort: startPort,
-		NodeRPCAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
+		WalletExtensionPort:     startPort,
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
 	}
 	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
@@ -157,8 +157,8 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort: startPort,
-		NodeRPCAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
+		WalletExtensionPort:     startPort,
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
 	}
 	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
@@ -194,8 +194,8 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 
 	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort: startPort,
-		NodeRPCAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
+		WalletExtensionPort:     startPort,
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
 	}
 	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
@@ -236,8 +236,8 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 
 	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort: startPort,
-		NodeRPCAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
+		WalletExtensionPort:     startPort,
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
 	}
 	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
@@ -279,8 +279,8 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 
 	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort: startPort,
-		NodeRPCAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
+		WalletExtensionPort:     startPort,
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
 	}
 	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
