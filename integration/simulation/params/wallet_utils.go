@@ -62,5 +62,5 @@ func NewSimWallets(nrSimWallets int, nNodes int, nrErc20s int) *SimWallets {
 }
 
 func (w *SimWallets) AllEthWallets() []wallet.Wallet {
-	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.MCOwnerWallet), w.Erc20EthOwnerWallets...) //nolint:makezero
+	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.MCOwnerWallet), w.Erc20EthOwnerWallets...)
 }
