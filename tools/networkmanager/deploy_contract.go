@@ -42,7 +42,7 @@ func DeployContract(config Config) {
 		panic(err)
 	}
 
-	l1Wallet := wallet.NewInMemoryWalletFromString(hostConfig)
+	l1Wallet := wallet.NewInMemoryWalletFromConfig(hostConfig)
 	nonce, err := l1Client.Nonce(l1Wallet.Address())
 	if err != nil {
 		panic(err)

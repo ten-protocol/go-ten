@@ -1,13 +1,11 @@
 package db
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // BlockResolver stores new blocks and returns information on existing blocks
@@ -40,10 +38,6 @@ type RollupResolver interface {
 	StoreRollup(rollup *core.Rollup)
 	// ParentRollup returns the rollup's parent rollup
 	ParentRollup(rollup *core.Rollup) *core.Rollup
-	// FetchRollupTxs returns all transactions in a given rollup keyed by hash and true, or (nil, false) if the rollup is unknown
-	FetchRollupTxs(rollup *core.Rollup) (map[common.Hash]nodecommon.L2Tx, bool)
-	// StoreRollupTxs overwrites the transactions associated with a given rollup
-	StoreRollupTxs(rollup *core.Rollup, newTxs map[common.Hash]nodecommon.L2Tx)
 	// StoreGenesisRollup stores the rollup genesis
 	StoreGenesisRollup(rol *core.Rollup)
 	// FetchGenesisRollup returns the rollup genesis

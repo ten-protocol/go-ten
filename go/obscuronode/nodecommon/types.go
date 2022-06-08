@@ -3,9 +3,9 @@ package nodecommon
 import (
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -15,9 +15,10 @@ import (
 
 type (
 	StateRoot             = common.Hash
-	EncryptedTx           []byte
 	L2Tx                  = types.Transaction
-	EncryptedTransactions []EncryptedTx
+	EncryptedTx           []byte // A single transaction encrypted using the enclave's public key
+	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
+	EncryptedResponse     []byte // The response of a off-chain call. Encrypted with the viewing key of the user.
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup
@@ -39,8 +40,8 @@ type Withdrawal struct {
 
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
-	Header *Header
-	Txs    EncryptedTransactions
+	Header          *Header
+	EncryptedTxBlob EncryptedTransactions
 }
 
 // Rollup extends ExtRollup with additional fields.
@@ -57,7 +58,7 @@ type Rollup struct {
 func (er ExtRollup) ToRollup() *Rollup {
 	return &Rollup{
 		Header:       er.Header,
-		Transactions: er.Txs,
+		Transactions: er.EncryptedTxBlob,
 	}
 }
 

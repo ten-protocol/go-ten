@@ -41,7 +41,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	startPort := int(integration.StartPortWalletExtensionTest)
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
-	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
+	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort, UseFacade: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 	waitForWalletExtension(t, walletExtensionAddr)
@@ -57,7 +57,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	startPort := int(integration.StartPortWalletExtensionTest) + 3
 	walletExtensionAddr := walletExtensionHost + strconv.Itoa(startPort)
 
-	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort}
+	runConfig := RunConfig{LocalNetwork: true, StartPort: startPort, UseFacade: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 	waitForWalletExtension(t, walletExtensionAddr)
@@ -81,7 +81,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
 
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort, UseFacade: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 	waitForWalletExtension(t, walletExtensionAddr)
@@ -104,7 +104,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{dummyAccountAddr}, StartPort: startPort}
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{dummyAccountAddr}, StartPort: startPort, UseFacade: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 	waitForWalletExtension(t, walletExtensionAddr)
@@ -130,7 +130,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
 
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort, UseFacade: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 	waitForWalletExtension(t, walletExtensionAddr)
@@ -160,7 +160,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
 
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort, UseFacade: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 	waitForWalletExtension(t, walletExtensionAddr)
@@ -191,7 +191,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
 
-	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort}
+	runConfig := RunConfig{LocalNetwork: true, PrefundedAccounts: []string{accountAddr}, StartPort: startPort, UseFacade: true}
 	stopNodesFunc := StartWalletExtension(runConfig)
 	defer stopNodesFunc()
 	waitForWalletExtension(t, walletExtensionAddr)
