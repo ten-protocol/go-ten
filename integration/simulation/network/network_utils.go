@@ -1,6 +1,7 @@
 package network
 
 import (
+	"math"
 	"math/big"
 	"time"
 
@@ -154,7 +155,8 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum
 			// Which means on average, every round, the winner (miner who gets the lowest nonce) will pick a number around "avgDuration"
 			// while everyone else will have higher values.
 			// Over a large number of rounds, the actual average block duration will be around the desired value, while the number of miners who get very close numbers will be limited.
-			return obscurocommon.RndBtwTime(avgBlockDuration/time.Duration(nrNodes), avgBlockDuration*time.Duration(nrNodes))
+			span := math.Max(2, float64(nrNodes)) // We handle the special cases of zero or one nodes.
+			return obscurocommon.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
 		},
 	}
 }

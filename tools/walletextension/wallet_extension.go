@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
@@ -20,12 +22,25 @@ const (
 	pathGenerateViewingKey = "/generateviewingkey/"
 	pathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "./tools/walletextension/static"
+
+	reqJSONKeyMethod        = "method"
+	reqJSONMethodGetBalance = "eth_getBalance"
+	reqJSONMethodCall       = "eth_call"
+	respJSONKeyErr          = "error"
+	respJSONKeyMsg          = "message"
+	pathRoot                = "/"
+	httpCodeErr             = 500
+
+	Localhost         = "127.0.0.1"
+	websocketProtocol = "ws://"
 )
+
+// TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePrivateKey *ecdsa.PrivateKey
-	nodeAddr          string // The address on which the node (or facade) can be reached.
+	enclavePublicKey *ecdsa.PublicKey
+	nodeAddr         string // The address on which the node can be reached.
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
 	viewingKeyPrivate      *ecdsa.PrivateKey
@@ -35,14 +50,16 @@ type WalletExtension struct {
 	server            *http.Server
 }
 
-func NewWalletExtension(
-	enclavePrivateKey *ecdsa.PrivateKey,
-	nodeAddr string,
-	viewingKeyChannel chan<- ViewingKey,
-) *WalletExtension {
+func NewWalletExtension(config Config) *WalletExtension {
+	enclavePrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	viewingKeyChannel := make(chan ViewingKey)
+
 	return &WalletExtension{
-		enclavePrivateKey: enclavePrivateKey,
-		nodeAddr:          nodeAddr,
+		enclavePublicKey:  &enclavePrivateKey.PublicKey,
+		nodeAddr:          config.NodeRPCAddress,
 		viewingKeyChannel: viewingKeyChannel,
 	}
 }
@@ -73,7 +90,7 @@ func (we *WalletExtension) Shutdown() {
 	}
 }
 
-// Encrypts Ethereum JSON-RPC request, forwards it to the Geth node over a websocket, and decrypts the response if needed.
+// Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -93,15 +110,15 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	// We encrypt the JSON with the enclave's public key.
 	fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
-	eciesPublicKey := ecies.ImportECDSAPublic(&we.enclavePrivateKey.PublicKey)
+	eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
 	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
 		return
 	}
 
-	// We forward the request on to the Geth node.
-	gethResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, encryptedBody)
+	// We forward the request on to the Obscuro node.
+	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, encryptedBody)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.nodeAddr, err))
 		return
@@ -110,7 +127,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// This is just a temporary unmarshalling. We need to unmarshall once to check if we got an error response, then
 	// unmarshall again once we've decrypted the response if needed, below.
 	var respJSONMapTemp map[string]interface{}
-	err = json.Unmarshal(gethResp, &respJSONMapTemp)
+	err = json.Unmarshal(nodeResp, &respJSONMapTemp)
 	// A nil error indicates that this was valid JSON, and not an encrypted payload.
 	if err == nil && respJSONMapTemp[respJSONKeyErr] != nil {
 		logAndSendErr(resp, respJSONMapTemp[respJSONKeyErr].(map[string]interface{})[respJSONKeyMsg].(string))
@@ -119,8 +136,8 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	// We decrypt the response if it's encrypted.
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
-		fmt.Printf("🔐 Decrypting %s response from Geth node with viewing key.\n", method)
-		gethResp, err = we.viewingKeyPrivateEcies.Decrypt(gethResp, nil, nil)
+		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
+		nodeResp, err = we.viewingKeyPrivateEcies.Decrypt(nodeResp, nil, nil)
 		if err != nil {
 			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
 			return
@@ -129,15 +146,15 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	// We unmarshall the JSON response.
 	var respJSONMap map[string]interface{}
-	err = json.Unmarshal(gethResp, &respJSONMap)
+	err = json.Unmarshal(nodeResp, &respJSONMap)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not unmarshall enclave response to JSON: %s", err))
 		return
 	}
-	fmt.Printf("Received response from Geth node: %s\n", strings.TrimSpace(string(gethResp)))
+	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(nodeResp)))
 
 	// We write the response to the client.
-	_, err = resp.Write(gethResp)
+	_, err = resp.Write(nodeResp)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
 		return
@@ -195,4 +212,36 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
+}
+
+// ViewingKey is the packet of data sent to the enclave when storing a new viewing key.
+type ViewingKey struct {
+	publicKey *ecdsa.PublicKey
+	signature []byte
+}
+
+// Config contains the configuration required by the WalletExtension.
+type Config struct {
+	WalletExtensionPort int
+	NodeRPCAddress      string
+}
+
+func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
+	connection, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer connection.Close()
+	defer resp.Body.Close()
+
+	err = connection.WriteMessage(websocket.TextMessage, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	_, message, err := connection.ReadMessage()
+	if err != nil {
+		return nil, err
+	}
+	return message, nil
 }
