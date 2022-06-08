@@ -477,7 +477,7 @@ func createObscuroNetwork(startPort int) (func(), error) {
 		AvgGossipPeriod:  1 * time.Second / 3,
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
-		Wallets:          params.NewSimWallets(1, 1, 1),
+		Wallets:          wallets,
 		StartPort:        startPort,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
