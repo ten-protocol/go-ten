@@ -15,30 +15,17 @@ supported.
 The wallet extension should ideally be run locally, such that no sensitive data leaves the client's machine 
 unencrypted. If the data is not particularly sensitive, it can also be run in another trusted location.
 
-## Obscuro facade
-
-The Obscuro facade is an additional tool that sits between the wallet extension and a regular Ethereum node. It 
-decrypts requests using the enclave public key, and encrypts sensitive responses using the viewing key. It uses the 
-viewing key associated with the `from` field in an `eth_call` request, or the address field in an `eth_getBalance` 
-request. In this way, it allows a regular Ethereum node to behave like an Obscuro node, in terms of secure messaging.
-
 ## Usage
 
 * Install MetaMask in your browser
 
-* Run `walletextension/main/main()` with the following flags to start the wallet extension and Obscuro facade:
+* Run `walletextension/main/main()` with the following flags to start the wallet extension:
 
-  ```--useFacade --localNetwork --prefundedAccounts=<account_1_address>,<account_2_address>,<...>```
+  ```--nodeRPCAddress=<Obscuro node RPC address>```
 
-  Where each account address is a 42-character hexadecimal address (e.g. `0x41F534DB02c6953FB6d9Bd9Eff8B55C364819700`).
+  The wallet extension is now listening on `http://localhost:3000/`
 
-  This will create a new local network and connect the wallet extension and Obscuro facade to it. The wallet extension 
-  is listening on `http://localhost:3000/`
-
-  * If you want to use an existing network instead of a new local network, remove the `--localNetwork` and 
-    `--prefundedAccounts` flags, and ensure that a node on your existing network can be reached on `ws://localhost:8546`
-
-* In MetaMask, configure a new custom network, using `http://localhost:3000/` as the "New RPC URL". Requests and 
+* In MetaMask, configure a new custom network, using `http://127.0.0.1:3000/` as the "New RPC URL". Requests and 
   responses for the network will now pass through the wallet extension, with requests encrypted with the enclave 
   public key
 

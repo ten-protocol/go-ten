@@ -12,7 +12,7 @@ const (
 	walletExtensionPortDefault = 3000
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension"
 
-	nodeRPCAddressName    = "nodeRPCPort"
+	nodeRPCAddressName    = "nodeRPCAddress"
 	nodeRPCAddressDefault = "127.0.0.1:13000"
 	nodeRPCAddressUsage   = "The address on which to connect to the node via RPC"
 )
