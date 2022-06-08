@@ -2,11 +2,12 @@ package smartcontract
 
 import (
 	"bytes"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -135,7 +136,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// was the pubkey stored ?
@@ -185,7 +186,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// issue a rollup from the attested node
@@ -196,7 +197,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// make sure the rollup was stored in the contract
@@ -234,7 +235,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		t.Error(err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// agg b requests the secret
@@ -256,7 +257,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		t.Error(err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// agg c responds to the secret
@@ -302,7 +303,6 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	if receipt.Status != types.ReceiptStatusFailed {
 		t.Errorf("transaction should have failed, expected %d got %d", 0, receipt.Status)
 	}
-
 }
 
 // newlyAttestedNodesCanAttest agg A initializes the network, agg B requests the secret, agg C requests the secret, agg C is attested by agg A and agg B is attested by agg C
@@ -329,7 +329,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		t.Error(err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 	attested, err := mgmtContractLib.genContract.Attested(nil, aggAID)
 	if err != nil {
@@ -357,7 +357,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		t.Error(err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// agg C requests the secret
@@ -379,7 +379,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		t.Error(err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// Agg A responds to Agg C request
@@ -396,7 +396,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		t.Error(err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// test if aggregator is attested
@@ -422,7 +422,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		t.Error(err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have suceeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
 	// test if aggregator is attested

@@ -6,7 +6,7 @@ const (
 	AddRollupMethod        = "AddRollup"
 	RespondSecretMethod    = "RespondNetworkSecret"
 	RequestSecretMethod    = "RequestNetworkSecret"
-	InitializeSecretMethod = "InitializeNetworkSecret"
+	InitializeSecretMethod = "InitializeNetworkSecret" //#nosec
 )
 
 var (
