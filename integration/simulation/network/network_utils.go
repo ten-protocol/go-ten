@@ -29,9 +29,10 @@ import (
 const (
 	Localhost                  = "127.0.0.1"
 	DefaultWsPortOffset        = 100 // The default offset between a Geth node's port and websocket ports.
-	DefaultHostP2pOffset       = 200 //  The default offset for the host P2p
-	DefaultHostRPCOffset       = 400 //  The default offset for the host RPC
-	DefaultEnclaveOffset       = 300 //  The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
+	DefaultHostP2pOffset       = 200 // The default offset for the host P2p
+	DefaultEnclaveOffset       = 300 // The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
+	DefaultHostRPCHTTPOffset   = 400 // The default offset for the host's RPC HTTP port
+	DefaultHostRPCWSOffset     = 500 // The default offset for the host's RPC websocket port
 	ClientRPCTimeoutSecs       = 5
 	DefaultL1ConnectionTimeout = 15 * time.Second
 )
@@ -104,6 +105,7 @@ func createSocketObscuroNode(
 	enclaveAddr string,
 	clientRPCHost string,
 	clientRPCPortHTTP uint64,
+	clientRPCPortWS uint64,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethclient.EthClient,
@@ -114,7 +116,8 @@ func createSocketObscuroNode(
 		GossipRoundDuration:    avgGossipPeriod,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      clientRPCPortHTTP,
-		HasClientRPCWebsockets: false,
+		HasClientRPCWebsockets: true,
+		ClientRPCPortWS:        clientRPCPortWS,
 		ClientRPCHost:          clientRPCHost,
 		ClientRPCTimeout:       ClientRPCTimeoutSecs * time.Second,
 		EnclaveRPCTimeout:      ClientRPCTimeoutSecs * time.Second,
