@@ -13,6 +13,7 @@ import (
 const (
 	apiNamespaceObscuro  = "obscuro"
 	apiNamespaceEthereum = "eth"
+	apiNamespaceNetwork  = "net"
 	apiVersion1          = "1.0"
 )
 
@@ -33,12 +34,13 @@ func NewRPCServer(address string, host *Node) RPCServer {
 
 	nodeConfig := node.Config{
 		// We do not listen over websockets and IPC for now.
-		HTTPHost: hostAndPort[0],
-		HTTPPort: port,
-		WSHost:   hostAndPort[0],
-		WSPort:   3102, // todo - joel - parameterise
-		// todo - joel - add origins policy if needed
+		HTTPHost:  hostAndPort[0],
+		HTTPPort:  port,
+		WSHost:    "127.0.0.1", // todo - joel - parameterise
+		WSPort:    3102,        // todo - joel - parameterise
+		WSOrigins: []string{"*"},
 	}
+	log.Info("jjj node config ws port: %s %d", nodeConfig.WSHost, nodeConfig.WSPort)
 	rpcServerNode, err := node.New(&nodeConfig)
 	if err != nil {
 		log.Panic("could not create new client server. Cause: %s", err)
@@ -54,7 +56,13 @@ func NewRPCServer(address string, host *Node) RPCServer {
 		{
 			Namespace: apiNamespaceEthereum,
 			Version:   apiVersion1,
-			Service:   NewEthereumAPI(),
+			Service:   NewEthereumAPI(host),
+			Public:    true,
+		},
+		{
+			Namespace: apiNamespaceNetwork,
+			Version:   apiVersion1,
+			Service:   NewNetworkAPI(),
 			Public:    true,
 		},
 	}
