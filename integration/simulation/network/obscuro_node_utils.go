@@ -78,7 +78,8 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		isGenesis := i == 0
 
 		// We use the convention to determine the rpc ports of the node
-		nodeRPCPortHTTP := params.StartPort + DefaultHostRPCOffset + i
+		nodeRPCPortHTTP := params.StartPort + DefaultHostRPCHTTPOffset + i
+		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
 
 		// create a remote enclave server
 		obscuroNodes[i] = createSocketObscuroNode(
@@ -91,6 +92,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			enclaveAddresses[i],
 			Localhost,
 			uint64(nodeRPCPortHTTP),
+			uint64(nodeRPCPortWS),
 			params.Wallets.NodeWallets[i],
 			params.MgmtContractLib,
 			gethClients[i],
