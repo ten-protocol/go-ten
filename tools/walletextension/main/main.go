@@ -1,10 +1,13 @@
 package main
 
-import "github.com/obscuronet/obscuro-playground/tools/walletextension"
+import (
+	"fmt"
+	"github.com/obscuronet/obscuro-playground/tools/walletextension"
+)
 
 func main() {
 	config := parseCLIArgs()
-	stopHandle := walletextension.StartWalletExtension(config)
-	defer stopHandle()
-	select {}
+	walletExtension := walletextension.NewWalletExtension(config)
+	defer walletExtension.Shutdown()
+	walletExtension.Serve(fmt.Sprintf("%s:%d", walletextension.Localhost, config.StartPort))
 }

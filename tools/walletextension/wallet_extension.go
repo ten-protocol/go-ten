@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
@@ -20,12 +22,29 @@ const (
 	pathGenerateViewingKey = "/generateviewingkey/"
 	pathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "./tools/walletextension/static"
+
+	reqJSONKeyMethod        = "method"
+	reqJSONMethodGetBalance = "eth_getBalance"
+	reqJSONMethodCall       = "eth_call"
+	respJSONKeyErr          = "error"
+	respJSONKeyMsg          = "message"
+	pathRoot                = "/"
+	httpCodeErr             = 500
+
+	Localhost         = "127.0.0.1"
+	websocketProtocol = "ws://"
+
+	defaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
 )
+
+// TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
+// TODO - Make node address configurable.
+// todo - joel - update readme
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	enclavePublicKey *ecdsa.PublicKey
-	nodeAddr         string // The address on which the node (or facade) can be reached.
+	nodeAddr         string // The address on which the node can be reached.
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
 	viewingKeyPrivate      *ecdsa.PrivateKey
@@ -35,13 +54,17 @@ type WalletExtension struct {
 	server            *http.Server
 }
 
-func NewWalletExtension(
-	enclavePublicKey *ecdsa.PublicKey,
-	nodeAddr string,
-	viewingKeyChannel chan<- ViewingKey,
-) *WalletExtension {
+func NewWalletExtension(config RunConfig) *WalletExtension {
+	nodeAddr := fmt.Sprintf("%s:%d", Localhost, config.StartPort+defaultWsPortOffset+2)
+
+	enclavePrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	viewingKeyChannel := make(chan ViewingKey)
+
 	return &WalletExtension{
-		enclavePublicKey:  enclavePublicKey,
+		enclavePublicKey:  &enclavePrivateKey.PublicKey,
 		nodeAddr:          nodeAddr,
 		viewingKeyChannel: viewingKeyChannel,
 	}
@@ -195,4 +218,35 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
+}
+
+// ViewingKey is the packet of data sent to the enclave when storing a new viewing key.
+type ViewingKey struct {
+	publicKey *ecdsa.PublicKey
+	signature []byte
+}
+
+// RunConfig contains the configuration required by StartWalletExtension.
+type RunConfig struct {
+	StartPort int
+}
+
+func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
+	connection, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer connection.Close()
+	defer resp.Body.Close()
+
+	err = connection.WriteMessage(websocket.TextMessage, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	_, message, err := connection.ReadMessage()
+	if err != nil {
+		return nil, err
+	}
+	return message, nil
 }
