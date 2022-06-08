@@ -90,7 +90,7 @@ func (we *WalletExtension) Shutdown() {
 	}
 }
 
-// Encrypts Ethereum JSON-RPC request, forwards it to the Geth node over a websocket, and decrypts the response if needed.
+// Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -117,8 +117,8 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	// We forward the request on to the Geth node.
-	gethResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, encryptedBody)
+	// We forward the request on to the Obscuro node.
+	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, encryptedBody)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.nodeAddr, err))
 		return
@@ -127,7 +127,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// This is just a temporary unmarshalling. We need to unmarshall once to check if we got an error response, then
 	// unmarshall again once we've decrypted the response if needed, below.
 	var respJSONMapTemp map[string]interface{}
-	err = json.Unmarshal(gethResp, &respJSONMapTemp)
+	err = json.Unmarshal(nodeResp, &respJSONMapTemp)
 	// A nil error indicates that this was valid JSON, and not an encrypted payload.
 	if err == nil && respJSONMapTemp[respJSONKeyErr] != nil {
 		logAndSendErr(resp, respJSONMapTemp[respJSONKeyErr].(map[string]interface{})[respJSONKeyMsg].(string))
@@ -136,8 +136,8 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	// We decrypt the response if it's encrypted.
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
-		fmt.Printf("🔐 Decrypting %s response from Geth node with viewing key.\n", method)
-		gethResp, err = we.viewingKeyPrivateEcies.Decrypt(gethResp, nil, nil)
+		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
+		nodeResp, err = we.viewingKeyPrivateEcies.Decrypt(nodeResp, nil, nil)
 		if err != nil {
 			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
 			return
@@ -146,15 +146,15 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	// We unmarshall the JSON response.
 	var respJSONMap map[string]interface{}
-	err = json.Unmarshal(gethResp, &respJSONMap)
+	err = json.Unmarshal(nodeResp, &respJSONMap)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not unmarshall enclave response to JSON: %s", err))
 		return
 	}
-	fmt.Printf("Received response from Geth node: %s\n", strings.TrimSpace(string(gethResp)))
+	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(nodeResp)))
 
 	// We write the response to the client.
-	_, err = resp.Write(gethResp)
+	_, err = resp.Write(nodeResp)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
 		return
