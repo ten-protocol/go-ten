@@ -3,7 +3,6 @@ package walletextension
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -59,7 +58,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 	return &WalletExtension{
 		enclavePublicKey:  &enclavePrivateKey.PublicKey,
-		nodeAddr:          config.NodeRPCAddress,
+		nodeAddr:          config.NodeRPCWebsocketAddress,
 		viewingKeyChannel: viewingKeyChannel,
 	}
 }
@@ -108,17 +107,18 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	method := reqJSONMap[reqJSONKeyMethod]
 	fmt.Printf("Received request from wallet: %s\n", body)
 
-	// We encrypt the JSON with the enclave's public key.
-	fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
-	eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
-	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
-		return
-	}
+	// TODO - Reenable encryption of requests.
+	//// We encrypt the JSON with the enclave's public key.
+	//fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
+	//eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
+	//encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
+	//if err != nil {
+	//	logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
+	//	return
+	//}
 
 	// We forward the request on to the Obscuro node.
-	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, encryptedBody)
+	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, body)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.nodeAddr, err))
 		return
@@ -222,8 +222,8 @@ type ViewingKey struct {
 
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
-	WalletExtensionPort int
-	NodeRPCAddress      string
+	WalletExtensionPort     int
+	NodeRPCWebsocketAddress string
 }
 
 func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {

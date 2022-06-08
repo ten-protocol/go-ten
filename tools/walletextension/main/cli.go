@@ -12,18 +12,18 @@ const (
 	walletExtensionPortDefault = 3000
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension"
 
-	nodeRPCAddressName    = "nodeRPCAddress"
-	nodeRPCAddressDefault = "127.0.0.1:13000"
-	nodeRPCAddressUsage   = "The address on which to connect to the node via RPC"
+	nodeRPCWebsocketAddressName    = "nodeRPCWebsocketAddress"
+	nodeRPCWebsocketAddressDefault = "127.0.0.1:13000"
+	nodeRPCWebsocketAddressUsage   = "The address on which to connect to the node via RPC using websockets"
 )
 
 func parseCLIArgs() walletextension.Config {
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
-	nodeRPCAddress := flag.String(nodeRPCAddressName, nodeRPCAddressDefault, nodeRPCAddressUsage)
+	nodeRPCAddress := flag.String(nodeRPCWebsocketAddressName, nodeRPCWebsocketAddressDefault, nodeRPCWebsocketAddressUsage)
 	flag.Parse()
 
 	return walletextension.Config{
-		WalletExtensionPort: *walletExtensionPort,
-		NodeRPCAddress:      *nodeRPCAddress,
+		WalletExtensionPort:     *walletExtensionPort,
+		NodeRPCWebsocketAddress: *nodeRPCAddress,
 	}
 }

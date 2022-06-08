@@ -125,6 +125,7 @@ func createSocketObscuroNode(
 		EnclaveRPCAddress:      enclaveAddr,
 		P2PAddress:             p2pAddr,
 		AllP2PAddresses:        peerAddrs,
+		ChainID:                config.DefaultHostConfig().ChainID,
 	}
 
 	// create an enclave client
