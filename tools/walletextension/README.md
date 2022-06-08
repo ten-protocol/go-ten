@@ -28,7 +28,7 @@ request. In this way, it allows a regular Ethereum node to behave like an Obscur
 
 * Run `walletextension/main/main()` with the following flags to start the wallet extension and Obscuro facade:
 
-  ```--localNetwork --prefundedAccounts=<account_1_address>,<account_2_address>,<...>```
+  ```--useFacade --localNetwork --prefundedAccounts=<account_1_address>,<account_2_address>,<...>```
 
   Where each account address is a 42-character hexadecimal address (e.g. `0x41F534DB02c6953FB6d9Bd9Eff8B55C364819700`).
 
