@@ -27,10 +27,7 @@ re-run the docker build from inside the obscuro-playground dir on the VM:
 
 ## Multiple nodes
 
-You can run the azure_deployer tool multiple times to run more than one node by modifying the resource group name param
-at the top of the script, e.g. you could add a number
-
-    resourceGroupName     = "ObscuroEnclaveService2"
+You can run the azure_deployer tool multiple times to run more than one node.
 
 Note the IP logged out at the end of each run to SSH to the box (and to configure them into simulation_multi_azure_enclaves_test.go).
 
