@@ -11,7 +11,7 @@
       "type": "String"
     },
     "publicIPAddresses_enclave_service_sgx_ip_name": {
-      "defaultValue": "enclave-service-sgx-ip",
+      "defaultValue": "obscuro-network-ip",
       "type": "String"
     },
     "networkInterfaces_enclave_service_s168_z1_name": {
