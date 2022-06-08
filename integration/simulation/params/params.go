@@ -3,8 +3,6 @@ package params
 import (
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 
@@ -37,14 +35,11 @@ type SimParams struct {
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddr *common.Address
 
-	// StableTokenContractAddr defines an erc20 contract address instance that has bee deployed
-	StableTokenContractAddr *common.Address
+	// Erc20Address defines an erc20 contract address instance that has bee deployed
+	Erc20Address *common.Address
 
-	// NodeEthWallets are the wallets the obscuro aggregators use to create rollups and other management contract related ethereum txs
-	NodeEthWallets []wallet.Wallet
-
-	// SimEthWallets are the wallets used by the simulation aka fake users to generate traffic
-	SimEthWallets []wallet.Wallet
+	// Contains all the wallets required by the simulation
+	Wallets *SimWallets
 
 	StartPort int // The port from which to start allocating ports. Must be unique across all simulations.
 }
