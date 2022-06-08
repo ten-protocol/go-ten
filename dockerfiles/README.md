@@ -15,7 +15,7 @@ local machine, and `YYY` is the address of the node that this enclave service is
 By default, the image runs the Obscuro enclave service in SGX simulation mode. To run the enclave service in 
 non-simulation mode instead, run:
 
-    docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p XXX:11000/tcp obscuro_enclave --hostID YYY --address :11000
+    docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p XXX:11000/tcp obscuro_enclave --hostID YYY --address :11000 --willAttest=true
 
 Stop and remove all Obscuro docker containers:
 

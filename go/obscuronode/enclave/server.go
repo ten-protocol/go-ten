@@ -160,9 +160,12 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 	return &generated.SubmitTxResponse{}, err
 }
 
-func (s *server) Balance(_ context.Context, request *generated.BalanceRequest) (*generated.BalanceResponse, error) {
-	balance := s.enclave.Balance(common.BytesToAddress(request.Address))
-	return &generated.BalanceResponse{Balance: balance}, nil
+func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
+	result, err := s.enclave.ExecuteOffChainTransaction(common.BytesToAddress(request.From), common.BytesToAddress(request.ContractAddress), request.Data)
+	if err != nil {
+		return nil, err
+	}
+	return &generated.OffChainResponse{Result: result}, nil
 }
 
 func (s *server) Nonce(_ context.Context, request *generated.NonceRequest) (*generated.NonceResponse, error) {
@@ -196,6 +199,16 @@ func (s *server) GetTransaction(_ context.Context, request *generated.GetTransac
 		nodecommon.LogWithID(s.nodeShortID, "failed to decode transaction sent to enclave: %v", err)
 	}
 	return &generated.GetTransactionResponse{Known: true, EncodedTransaction: buffer.Bytes()}, nil
+}
+
+func (s *server) GetRollup(_ context.Context, request *generated.GetRollupRequest) (*generated.GetRollupResponse, error) {
+	extRollup := s.enclave.GetRollup(common.BytesToHash(request.RollupHash))
+	if extRollup == nil {
+		return &generated.GetRollupResponse{Known: false, ExtRollup: nil}, nil
+	}
+
+	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
+	return &generated.GetRollupResponse{Known: true, ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {

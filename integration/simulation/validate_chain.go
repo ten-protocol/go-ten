@@ -16,19 +16,24 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+// The threshold number of transactions below which we consider the simulation to have failed. We generally expect far
+// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
+// type, for example.
+const txThreshold = 5
+
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
 	// ensure L1 and L2 txs were issued
-	if len(s.TxInjector.counter.l1Transactions) == 0 {
-		t.Error("Simulation did not issue any L1 transactions.")
+	if len(s.TxInjector.counter.l1Transactions) < txThreshold {
+		t.Errorf("Simulation only issued %d L1 transactions. At least %d expected", len(s.TxInjector.counter.l1Transactions), txThreshold)
 	}
-	if len(s.TxInjector.counter.transferL2Transactions) == 0 {
-		t.Error("Simulation did not issue any transfer L2 transactions.")
+	if len(s.TxInjector.counter.transferL2Transactions) < txThreshold {
+		t.Errorf("Simulation only issued %d transfer L2 transactions. At least %d expected", len(s.TxInjector.counter.transferL2Transactions), txThreshold)
 	}
-	if len(s.TxInjector.counter.withdrawalL2Transactions) == 0 {
-		t.Error("Simulation did not issue any withdrawal L2 transactions.")
+	if len(s.TxInjector.counter.withdrawalL2Transactions) < txThreshold {
+		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.counter.withdrawalL2Transactions), txThreshold)
 	}
 
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
@@ -163,7 +168,7 @@ const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(
 	t *testing.T,
-	nodeClient *obscuroclient.Client,
+	nodeClient obscuroclient.Client,
 	minObscuroHeight uint64,
 	maxEthereumHeight uint64,
 	s *Simulation,
@@ -173,7 +178,7 @@ func checkBlockchainOfObscuroNode(
 ) {
 	defer wg.Done()
 	var nodeID common.Address
-	err := (*nodeClient).Call(&nodeID, obscuroclient.RPCGetID)
+	err := nodeClient.Call(&nodeID, obscuroclient.RPCGetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
@@ -280,7 +285,7 @@ func checkBlockchainOfObscuroNode(
 	heights[nodeIdx] = l2Height
 }
 
-func extractWithdrawals(t *testing.T, nodeClient *obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {

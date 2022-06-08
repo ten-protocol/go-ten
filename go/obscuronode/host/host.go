@@ -30,7 +30,7 @@ type Node struct {
 	P2p           P2P                 // For communication with other Obscuro nodes
 	ethClient     ethclient.EthClient // For communication with the L1 node
 	EnclaveClient nodecommon.Enclave  // For communication with the enclave
-	clientServer  ClientServer        // For communication with Obscuro client applications
+	rpcServer     RPCServer           // For communication with Obscuro client applications
 
 	stats StatsCollector
 
@@ -99,7 +99,7 @@ func NewHost(
 	}
 
 	if config.HasClientRPC {
-		host.clientServer = NewClientServer(config.ClientRPCAddress, host)
+		host.rpcServer = NewRPCServer(config.ClientRPCAddress, host)
 	}
 
 	return host
@@ -148,8 +148,8 @@ func (a *Node) Start() {
 		a.initialiseProtocol(&latestBlock)
 	}
 	// start the obscuro RPC endpoints
-	if a.clientServer != nil {
-		a.clientServer.Start()
+	if a.rpcServer != nil {
+		a.rpcServer.Start()
 		nodecommon.LogWithID(a.shortID, "Started client server.")
 	}
 
@@ -192,9 +192,9 @@ func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// RPCBalance allows to fetch the balance of one address
-func (a *Node) RPCBalance(address common.Address) uint64 {
-	return a.EnclaveClient.Balance(address)
+// RPCExecuteOffChainTransaction allows execution of off chain transactions
+func (a *Node) RPCExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
+	return a.EnclaveClient.ExecuteOffChainTransaction(from, contractAddress, data)
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)
@@ -227,15 +227,15 @@ func (a *Node) Stop() {
 	if err := a.EnclaveClient.StopClient(); err != nil {
 		nodecommon.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
-
-	time.Sleep(time.Second)
-	a.exitNodeCh <- true
-
-	if a.clientServer != nil {
-		if err := a.clientServer.Stop(); err != nil {
+	if a.rpcServer != nil {
+		if err := a.rpcServer.Stop(); err != nil {
 			nodecommon.ErrorWithID(a.shortID, "could not stop client RPC server. Cause: %s", err)
 		}
 	}
+
+	// Leave some time for all processing to finish before exiting the main loop.
+	time.Sleep(time.Second)
+	a.exitNodeCh <- true
 }
 
 // ConnectToEthNode connects the Aggregator to the ethereum node
@@ -303,8 +303,8 @@ func (a *Node) startProcessing() {
 			}
 
 			go a.EnclaveClient.SubmitRollup(nodecommon.ExtRollup{
-				Header: rol.Header,
-				Txs:    rol.Transactions,
+				Header:          rol.Header,
+				EncryptedTxBlob: rol.Transactions,
 			})
 
 		case tx := <-a.txP2PCh:

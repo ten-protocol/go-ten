@@ -52,18 +52,6 @@ func randomWithdrawals(length int) []nodecommon.Withdrawal {
 	return withdrawals
 }
 
-func randomEncryptedTransaction() nodecommon.EncryptedTx {
-	return RandomBytes(100)
-}
-
-func randomEncryptedTransactions(length int) nodecommon.EncryptedTransactions {
-	encTransactions := make([]nodecommon.EncryptedTx, length)
-	for i := 0; i < length; i++ {
-		encTransactions[i] = randomEncryptedTransaction()
-	}
-	return encTransactions
-}
-
 // Creates a dummy L2Tx for testing
 func CreateL2Tx() *nodecommon.L2Tx {
 	return types.NewTx(CreateL2TxData())

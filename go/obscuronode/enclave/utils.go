@@ -20,22 +20,17 @@ func findTxsNotIncluded(head *core.Rollup, txs []nodecommon.L2Tx, s db.RollupRes
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *core.Rollup, s db.RollupResolver) map[common.Hash]nodecommon.L2Tx {
-	val, found := s.FetchRollupTxs(b)
-	if found {
-		return val
-	}
-	if b.Header.Number == obscurocommon.L2GenesisHeight {
-		return makeMap(b.Transactions)
+func allIncludedTransactions(r *core.Rollup, s db.RollupResolver) map[common.Hash]nodecommon.L2Tx {
+	if r.Header.Number == obscurocommon.L2GenesisHeight {
+		return makeMap(r.Transactions)
 	}
 	newMap := make(map[common.Hash]nodecommon.L2Tx)
-	for k, v := range allIncludedTransactions(s.ParentRollup(b), s) {
+	for k, v := range allIncludedTransactions(s.ParentRollup(r), s) {
 		newMap[k] = v
 	}
-	for _, tx := range b.Transactions {
+	for _, tx := range r.Transactions {
 		newMap[tx.Hash()] = tx
 	}
-	s.StoreRollupTxs(b, newMap)
 	return newMap
 }
 

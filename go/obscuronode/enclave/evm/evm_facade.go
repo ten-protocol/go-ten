@@ -4,8 +4,6 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -49,7 +47,7 @@ func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodeco
 		}
 		receipts[t.Hash()] = r
 		if r.Status != 1 {
-			log.Info("Failed status tx %d.", obscurocommon.ShortHash(t.Hash()))
+			log.Info("Unsuccessful (status != 1) tx %d.", obscurocommon.ShortHash(t.Hash()))
 		} else {
 			log.Info("Successfully executed tx %d", obscurocommon.ShortHash(t.Hash()))
 		}
@@ -83,24 +81,6 @@ func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s 
 	}
 	s.Finalise(true)
 	return result, nil
-}
-
-// BalanceOfErc20 - Used in tests to return the balance on the Erc20ContractAddress
-func BalanceOfErc20(address common.Address, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) uint64 {
-	balanceData := erc20contractlib.CreateBalanceOfData(address)
-
-	result, err := ExecuteOffChainCall(address, Erc20ContractAddress, balanceData, s, header, rollupResolver, chainID)
-	if err != nil {
-		log.Info("Failed to read balance: %s\n", err)
-		return 0
-	}
-	if result.Failed() {
-		log.Info("Failed to read balance: %s\n", result.Err)
-		return 0
-	}
-	r := new(big.Int)
-	r = r.SetBytes(result.ReturnData)
-	return r.Uint64()
 }
 
 func initParams(rollupResolver db.RollupResolver, chainID int64) (*ObscuroChainContext, *params.ChainConfig, vm.Config, *core2.GasPool) {

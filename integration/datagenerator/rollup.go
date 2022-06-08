@@ -15,6 +15,6 @@ func RandomRollup() nodecommon.Rollup {
 			Number:      randomUInt64(),
 			Withdrawals: randomWithdrawals(10),
 		},
-		Transactions: randomEncryptedTransactions(10),
+		Transactions: RandomBytes(10),
 	}
 }

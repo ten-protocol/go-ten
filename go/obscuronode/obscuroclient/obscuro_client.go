@@ -15,8 +15,9 @@ const (
 	RPCGetCurrentBlockHead      = "obscuro_getCurrentBlockHead"
 	RPCGetCurrentRollupHead     = "obscuro_getCurrentRollupHead"
 	RPCGetRollupHeader          = "obscuro_getRollupHeader"
+	RPCGetRollup                = "obscuro_getRollup"
 	RPCGetTransaction           = "obscuro_getTransaction"
-	RPCBalance                  = "obscuro_balance"
+	RPCExecContract             = "obscuro_execContract"
 	RPCNonce                    = "obscuro_nonce"
 	RPCStopHost                 = "obscuro_stopHost"
 )

@@ -50,8 +50,8 @@ type EnclaveProtoClient interface {
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
 	// Balance - returns the balance of an address with a block delay
-	Balance(ctx context.Context, in *BalanceRequest, opts ...grpc.CallOption) (*BalanceResponse, error)
-	// Balance - returns the balance of an address with a block delay
+	ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error)
+	// Nonce - returns the nonce of the wallet with the given address.
 	Nonce(ctx context.Context, in *NonceRequest, opts ...grpc.CallOption) (*NonceResponse, error)
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error)
@@ -59,6 +59,8 @@ type EnclaveProtoClient interface {
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
 	GetTransaction(ctx context.Context, in *GetTransactionRequest, opts ...grpc.CallOption) (*GetTransactionResponse, error)
+	// GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+	GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -177,9 +179,9 @@ func (c *enclaveProtoClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, 
 	return out, nil
 }
 
-func (c *enclaveProtoClient) Balance(ctx context.Context, in *BalanceRequest, opts ...grpc.CallOption) (*BalanceResponse, error) {
-	out := new(BalanceResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Balance", in, out, opts...)
+func (c *enclaveProtoClient) ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error) {
+	out := new(OffChainResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ExecuteOffChainTransaction", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -222,6 +224,15 @@ func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransact
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error) {
+	out := new(GetRollupResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetRollup", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -254,8 +265,8 @@ type EnclaveProtoServer interface {
 	// SubmitTx - user transactions
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
 	// Balance - returns the balance of an address with a block delay
-	Balance(context.Context, *BalanceRequest) (*BalanceResponse, error)
-	// Balance - returns the balance of an address with a block delay
+	ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error)
+	// Nonce - returns the nonce of the wallet with the given address.
 	Nonce(context.Context, *NonceRequest) (*NonceResponse, error)
 	// RoundWinner - calculates and returns the winner for a round
 	RoundWinner(context.Context, *RoundWinnerRequest) (*RoundWinnerResponse, error)
@@ -263,6 +274,8 @@ type EnclaveProtoServer interface {
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
 	GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error)
+	// GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+	GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -306,8 +319,8 @@ func (UnimplementedEnclaveProtoServer) SubmitRollup(context.Context, *SubmitRoll
 func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitTx not implemented")
 }
-func (UnimplementedEnclaveProtoServer) Balance(context.Context, *BalanceRequest) (*BalanceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Balance not implemented")
+func (UnimplementedEnclaveProtoServer) ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExecuteOffChainTransaction not implemented")
 }
 func (UnimplementedEnclaveProtoServer) Nonce(context.Context, *NonceRequest) (*NonceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Nonce not implemented")
@@ -320,6 +333,9 @@ func (UnimplementedEnclaveProtoServer) Stop(context.Context, *StopRequest) (*Sto
 }
 func (UnimplementedEnclaveProtoServer) GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransaction not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRollup not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -550,20 +566,20 @@ func _EnclaveProto_SubmitTx_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_Balance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BalanceRequest)
+func _EnclaveProto_ExecuteOffChainTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OffChainRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveProtoServer).Balance(ctx, in)
+		return srv.(EnclaveProtoServer).ExecuteOffChainTransaction(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/Balance",
+		FullMethod: "/generated.EnclaveProto/ExecuteOffChainTransaction",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).Balance(ctx, req.(*BalanceRequest))
+		return srv.(EnclaveProtoServer).ExecuteOffChainTransaction(ctx, req.(*OffChainRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -640,6 +656,24 @@ func _EnclaveProto_GetTransaction_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRollupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetRollup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetRollup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetRollup(ctx, req.(*GetRollupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -696,8 +730,8 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_SubmitTx_Handler,
 		},
 		{
-			MethodName: "Balance",
-			Handler:    _EnclaveProto_Balance_Handler,
+			MethodName: "ExecuteOffChainTransaction",
+			Handler:    _EnclaveProto_ExecuteOffChainTransaction_Handler,
 		},
 		{
 			MethodName: "Nonce",
@@ -714,6 +748,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTransaction",
 			Handler:    _EnclaveProto_GetTransaction_Handler,
+		},
+		{
+			MethodName: "GetRollup",
+			Handler:    _EnclaveProto_GetRollup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

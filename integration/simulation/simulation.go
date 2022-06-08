@@ -20,9 +20,9 @@ const initialBalance = 5000
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethclient.EthClient   // the list of mock ethereum clients
-	ObscuroClients   []*obscuroclient.Client // the list of Obscuro host clients
-	ObscuroP2PAddrs  []string                // the P2P addresses of the Obscuro nodes
+	EthClients       []ethclient.EthClient  // the list of mock ethereum clients
+	ObscuroClients   []obscuroclient.Client // the list of Obscuro host clients
+	ObscuroP2PAddrs  []string               // the P2P addresses of the Obscuro nodes
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -37,7 +37,7 @@ func (s *Simulation) Start() {
 	s.WaitForObscuroGenesis()
 
 	// arbitrary sleep to wait for RPC clients to get up and running
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	timer := time.Now()
 	log.Info("Starting injection")

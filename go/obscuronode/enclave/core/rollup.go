@@ -80,17 +80,9 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 	return r
 }
 
-func (r *Rollup) ToExtRollup() nodecommon.ExtRollup {
+func (r *Rollup) ToExtRollup(transactionBlobCrypto TransactionBlobCrypto) nodecommon.ExtRollup {
 	return nodecommon.ExtRollup{
-		Header: r.Header,
-		Txs:    EncryptTransactions(r.Transactions),
+		Header:          r.Header,
+		EncryptedTxBlob: transactionBlobCrypto.Encrypt(r.Transactions),
 	}
-}
-
-func EncryptTransactions(transactions L2Txs) nodecommon.EncryptedTransactions {
-	result := make([]nodecommon.EncryptedTx, 0)
-	for i := range transactions {
-		result = append(result, EncryptTx(&transactions[i]))
-	}
-	return result
 }

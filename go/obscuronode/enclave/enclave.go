@@ -35,7 +35,9 @@ import (
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
 
-const msgNoRollup = "could not fetch rollup"
+const (
+	msgNoRollup = "could not fetch rollup"
+)
 
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
@@ -58,11 +60,12 @@ type enclaveImpl struct {
 	speculativeWorkInCh  chan bool
 	speculativeWorkOutCh chan speculativeWork
 
-	mgmtContractLib     mgmtcontractlib.MgmtContractLib
-	erc20ContractLib    erc20contractlib.ERC20ContractLib
-	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
-	publicKeySerialized []byte
-	privateKey          *rsa.PrivateKey
+	mgmtContractLib       mgmtcontractlib.MgmtContractLib
+	erc20ContractLib      erc20contractlib.ERC20ContractLib
+	attestationProvider   AttestationProvider // interface for producing attestation reports and verifying them
+	publicKeySerialized   []byte
+	privateKey            *rsa.PrivateKey
+	transactionBlobCrypto obscurocore.TransactionBlobCrypto
 
 	blockProcessingMutex sync.Mutex
 }
@@ -153,7 +156,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 		log.Panic("Could not find the block used as proof for the genesis rollup.")
 	}
 	return nodecommon.BlockSubmissionResponse{
-		ProducedRollup: rolGenesis.ToExtRollup(),
+		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
 		IngestedBlock:  true,
 	}
@@ -171,7 +174,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -182,7 +185,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 					log.Panic(msgNoRollup)
 				}
 
-				rollup = hr.ToExtRollup()
+				rollup = hr.ToExtRollup(e.transactionBlobCrypto)
 			}
 			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
@@ -222,7 +225,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	nodecommon.LogWithID(e.nodeShortID, "Update state: %d", obscurocommon.ShortHash(block.Hash()))
-	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -239,13 +242,13 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 
 	nodecommon.LogWithID(e.nodeShortID, "Processed block: b_%d(%d)", obscurocommon.ShortHash(block.Hash()), block.NumberU64())
 
-	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup())
+	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup(e.transactionBlobCrypto))
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	r := obscurocore.Rollup{
 		Header:       rollup.Header,
-		Transactions: obscurocore.DecryptTransactions(rollup.Txs),
+		Transactions: e.transactionBlobCrypto.Decrypt(rollup.EncryptedTxBlob),
 	}
 
 	// only store if the parent exists
@@ -318,7 +321,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			printTxs(winnerRollup.Transactions),
 			winnerRollup.Header.State,
 		)
-		return winnerRollup.ToExtRollup(), true, nil
+		return winnerRollup.ToExtRollup(e.transactionBlobCrypto), true, nil
 	}
 	return nodecommon.ExtRollup{}, false, nil
 }
@@ -327,18 +330,28 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) Balance(address common.Address) uint64 {
-	// todo user encryption
+func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
 	hs := e.storage.FetchHeadState()
 	if hs == nil {
 		panic("Not initialised")
 	}
+	// todo - get the parent
 	r, f := e.storage.FetchRollup(hs.HeadRollup)
 	if !f {
 		panic("not found")
 	}
 	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return evm.BalanceOfErc20(address, s, r.Header, e.storage, e.config.ObscuroChainID)
+	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, e.storage, e.config.ObscuroChainID)
+	if err != nil {
+		return nil, err
+	}
+	if result.Failed() {
+		log.Info("Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
+		return nil, result.Err
+	}
+
+	// todo user encryption
+	return obscurocore.EncryptResponse(result.ReturnData), nil
 }
 
 func (e *enclaveImpl) Nonce(address common.Address) uint64 {
@@ -456,6 +469,15 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 			return nil
 		}
 	}
+}
+
+func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
+	rollup, found := e.storage.FetchRollup(rollupHash)
+	if found {
+		extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
+		return &extRollup
+	}
+	return nil
 }
 
 func (e *enclaveImpl) Stop() error {
@@ -643,7 +665,6 @@ func NewEnclave(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	collector StatsCollector,
 ) nodecommon.Enclave {
-	tempDB := db.NewInMemoryDB()
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 
 	connect := getDBConnector(config)
@@ -651,7 +672,7 @@ func NewEnclave(
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
-	storage := db.NewStorage(tempDB, backingDB, nodeShortID)
+	storage := db.NewStorage(backingDB, nodeShortID)
 
 	var l1Blockchain *core.BlockChain
 	if config.ValidateL1Blocks {
@@ -677,23 +698,24 @@ func NewEnclave(
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
 
 	return &enclaveImpl{
-		config:               config,
-		nodeShortID:          nodeShortID,
-		storage:              storage,
-		blockResolver:        storage,
-		mempool:              mempool.New(),
-		statsCollector:       collector,
-		l1Blockchain:         l1Blockchain,
-		txCh:                 make(chan nodecommon.L2Tx),
-		roundWinnerCh:        make(chan *obscurocore.Rollup),
-		exitCh:               make(chan bool),
-		speculativeWorkInCh:  make(chan bool),
-		speculativeWorkOutCh: make(chan speculativeWork),
-		mgmtContractLib:      mgmtContractLib,
-		erc20ContractLib:     erc20ContractLib,
-		attestationProvider:  attestationProvider,
-		privateKey:           privKey,
-		publicKeySerialized:  serializedPubKey,
+		config:                config,
+		nodeShortID:           nodeShortID,
+		storage:               storage,
+		blockResolver:         storage,
+		mempool:               mempool.New(),
+		statsCollector:        collector,
+		l1Blockchain:          l1Blockchain,
+		txCh:                  make(chan nodecommon.L2Tx),
+		roundWinnerCh:         make(chan *obscurocore.Rollup),
+		exitCh:                make(chan bool),
+		speculativeWorkInCh:   make(chan bool),
+		speculativeWorkOutCh:  make(chan speculativeWork),
+		mgmtContractLib:       mgmtContractLib,
+		erc20ContractLib:      erc20ContractLib,
+		attestationProvider:   attestationProvider,
+		privateKey:            privKey,
+		publicKeySerialized:   serializedPubKey,
+		transactionBlobCrypto: obscurocore.NewTransactionBlobCryptoImpl(),
 	}
 }
 
