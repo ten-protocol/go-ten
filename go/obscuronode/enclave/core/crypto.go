@@ -6,6 +6,10 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+// EnclavePrivateKeyHex is the ECDSA key used to securely communicate with the enclave.
+// TODO - Replace this fixed key with a secret private key that unique per enclave.
+const EnclavePrivateKeyHex = "2239e6a112b725625f355dcf7dd7a8d8a24a20f6448000a666b734f6957086a9"
+
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
 
