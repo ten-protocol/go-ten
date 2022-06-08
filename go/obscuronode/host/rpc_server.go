@@ -35,6 +35,9 @@ func NewRPCServer(address string, host *Node) RPCServer {
 		// We do not listen over websockets and IPC for now.
 		HTTPHost: hostAndPort[0],
 		HTTPPort: port,
+		WSHost:   hostAndPort[0],
+		WSPort:   3102, // todo - joel - parameterise
+		// todo - joel - add origins policy if needed
 	}
 	rpcServerNode, err := node.New(&nodeConfig)
 	if err != nil {
