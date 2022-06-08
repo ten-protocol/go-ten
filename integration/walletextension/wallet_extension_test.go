@@ -21,11 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -473,45 +469,20 @@ func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *e
 
 // Creates a single-node Obscuro network for testing.
 func createObscuroNetwork(startPort int) (func(), error) {
-	numberOfNodes := 1
-	numberOfSimWallets := 1
-
-	// todo - joel - clean this up once Tudor's PR goes in
-	// create the ethereum obsWallets to be used by the nodes and prefund them
-	nodeWallets := make([]wallet.Wallet, numberOfNodes)
-	for i := 0; i < numberOfNodes; i++ {
-		nodeWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
-	}
-	// create the ethereum obsWallets to be used by the simulation and prefund them
-	simWallets := make([]wallet.Wallet, numberOfSimWallets)
-	for i := 0; i < numberOfSimWallets; i++ {
-		simWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
-	}
-	// create one extra wallet as the worker wallet ( to deploy contracts )
-	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
-
-	// define contracts to be deployed
-	contractsBytes := []string{
-		mgmtcontractlib.MgmtContractByteCode,
-		erc20contract.ContractByteCode,
-	}
-
-	// define the network to use
-	prefundedWallets := append(append(nodeWallets, simWallets...), workerWallet) //nolint:makezero
-	obscuroNetwork := network.NewNetworkOfSocketNodes(prefundedWallets, workerWallet, contractsBytes)
+	wallets := params.NewSimWallets(1, 1, 1)
 
 	simParams := params.SimParams{
-		NumberOfNodes:    numberOfNodes,
+		NumberOfNodes:    1,
 		AvgBlockDuration: 1 * time.Second,
 		AvgGossipPeriod:  1 * time.Second / 3,
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
-		NodeEthWallets:   nodeWallets,
-		SimEthWallets:    simWallets,
+		Wallets:          params.NewSimWallets(1, 1, 1),
 		StartPort:        startPort,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 
+	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
 	_, _, _, err := obscuroNetwork.Create(&simParams, simStats) //nolint:dogsled
 	if err != nil {
 		return obscuroNetwork.TearDown, err
