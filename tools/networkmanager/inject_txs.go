@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -44,7 +46,9 @@ func InjectTransactions(nmConfig Config) {
 		1*time.Second,
 		stats.NewStats(1),
 		[]ethclient.EthClient{l1Client},
-		[]wallet.Wallet{l1Wallet},
+		&params.SimWallets{
+			// todo
+		},
 		&nmConfig.mgmtContractAddress,
 		&nmConfig.erc20ContractAddress,
 		[]obscuroclient.Client{l2Client},

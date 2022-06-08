@@ -37,7 +37,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			stats,
 			true,
 			genesisJSON,
-			params.NodeEthWallets[i],
+			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 		)
 	}
@@ -91,7 +91,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			enclaveAddresses[i],
 			Localhost,
 			uint64(nodeRPCPortHTTP),
-			params.NodeEthWallets[i],
+			params.Wallets.NodeWallets[i],
 			params.MgmtContractLib,
 			gethClients[i],
 		)

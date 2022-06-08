@@ -5,7 +5,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -23,33 +22,28 @@ type networkOfSocketNodes struct {
 	enclaveAddresses []string
 
 	// geth
-	gethNetwork  *gethnetwork.GethNetwork
-	gethClients  []ethclient.EthClient
-	wallets      []wallet.Wallet
-	contracts    []string
-	workerWallet wallet.Wallet
+	gethNetwork *gethnetwork.GethNetwork
+	gethClients []ethclient.EthClient
+	wallets     *params.SimWallets
 }
 
-func NewNetworkOfSocketNodes(wallets []wallet.Wallet, workerWallet wallet.Wallet, contracts []string) Network {
+func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 	return &networkOfSocketNodes{
-		wallets:      wallets,
-		contracts:    contracts,
-		workerWallet: workerWallet,
+		wallets: wallets,
 	}
 }
 
 func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
 	// kickoff the network with the prefunded wallet addresses
-	params.MgmtContractAddr, params.StableTokenContractAddr, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	params.MgmtContractAddr, params.Erc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
-		n.workerWallet,
 		params.StartPort,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
 	)
 
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr)
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.StableTokenContractAddr)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.Erc20Address)
 
 	// Start the enclaves
 	startRemoteEnclaveServers(0, params, stats)
