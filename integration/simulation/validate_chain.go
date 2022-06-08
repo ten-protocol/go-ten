@@ -272,7 +272,7 @@ func checkBlockchainOfObscuroNode(
 	// check that the sum of all balances matches the total amount of money that must be in the system
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
-	for _, wallet := range s.TxInjector.ethWallets {
+	for _, wallet := range s.Params.Wallets.SimObsWallets {
 		total += balance(nodeClient, wallet.Address())
 	}
 

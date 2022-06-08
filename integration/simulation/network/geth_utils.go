@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -17,15 +19,16 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 )
 
-func SetUpGethNetwork(wallets []wallet.Wallet, workerWallet wallet.Wallet, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, []ethclient.EthClient, *gethnetwork.GethNetwork) {
+func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, []ethclient.EthClient, *gethnetwork.GethNetwork) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
 		panic(err)
 	}
-	// get wallet addresses to prefund them
-	walletAddresses := make([]string, len(wallets))
-	for i, w := range wallets {
+
+	// get the node wallet addresses to prefund them with Eth, so they can submit rollups, deploy contracts, deposit to the bridge, etc
+	walletAddresses := make([]string, len(wallets.AllEthWallets()))
+	for i, w := range wallets.AllEthWallets() {
 		walletAddresses[i] = w.Address().String()
 	}
 
@@ -50,11 +53,12 @@ func SetUpGethNetwork(wallets []wallet.Wallet, workerWallet wallet.Wallet, Start
 		panic(err)
 	}
 
-	mgmtContractAddr, err := DeployContract(tmpEthClient, workerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	mgmtContractAddr, err := DeployContract(tmpEthClient, wallets.MCOwnerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
-	erc20ContractAddr, err := DeployContract(tmpEthClient, workerWallet, common.Hex2Bytes(erc20contract.ContractByteCode))
+	// todo deploy multiple erc20s here and store the mappings, etc
+	erc20ContractAddr, err := DeployContract(tmpEthClient, wallets.Erc20EthOwnerWallets[0], common.Hex2Bytes(erc20contract.ContractByteCode))
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
 	}

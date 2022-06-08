@@ -6,12 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-
 	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -40,24 +35,7 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	numberOfNodes := 5
 	numberOfSimWallets := 5
 
-	// create the ethereum wallets to be used by the nodes and prefund them
-	nodeWallets := make([]wallet.Wallet, numberOfNodes)
-	for i := 0; i < numberOfNodes; i++ {
-		nodeWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
-	}
-	// create the ethereum wallets to be used by the simulation and prefund them
-	simWallets := make([]wallet.Wallet, numberOfSimWallets)
-	for i := 0; i < numberOfSimWallets; i++ {
-		simWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
-	}
-	// create one extra wallet as the worker wallet ( to deploy contracts )
-	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
-
-	// define contracts to be deployed
-	contractsBytes := []string{
-		mgmtcontractlib.MgmtContractByteCode,
-		erc20contract.ContractByteCode,
-	}
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1)
 
 	simParams := params.SimParams{
 		NumberOfNodes:             numberOfNodes,
@@ -66,10 +44,8 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.3,
 		L2ToL1EfficiencyThreshold: 0.4,
+		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationAzureEnclave,
-
-		NodeEthWallets: nodeWallets,
-		SimEthWallets:  simWallets,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
@@ -79,8 +55,7 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	}
 
 	// define the network to use
-	prefundedWallets := append(append(nodeWallets, simWallets...), workerWallet) //nolint:makezero
-	netw := network.NewNetworkWithAzureEnclaves(vmIPs, prefundedWallets, workerWallet, contractsBytes)
+	netw := network.NewNetworkWithAzureEnclaves(vmIPs, wallets)
 
 	testSimulation(t, netw, &simParams)
 }

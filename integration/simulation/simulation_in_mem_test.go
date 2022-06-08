@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -20,8 +19,12 @@ import (
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupTestLog("in-mem")
 
+	numberOfNodes := 7
+	numberOfSimWallets := 10
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1)
+
 	simParams := params.SimParams{
-		NumberOfNodes:             7,
+		NumberOfNodes:             numberOfNodes,
 		AvgBlockDuration:          50 * time.Millisecond,
 		SimulationTime:            25 * time.Second,
 		L1EfficiencyThreshold:     0.2,
@@ -29,16 +32,12 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold: 0.5,
 		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
 		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
+		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationInMem,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration * 2 / 7
-
-	for i := 0; i < simParams.NumberOfNodes+1; i++ {
-		simParams.NodeEthWallets = append(simParams.NodeEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
-		simParams.SimEthWallets = append(simParams.SimEthWallets, datagenerator.RandomWallet(integration.EthereumChainID))
-	}
 
 	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), &simParams)
 }
