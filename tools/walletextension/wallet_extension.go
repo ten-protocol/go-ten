@@ -33,12 +33,9 @@ const (
 
 	Localhost         = "127.0.0.1"
 	websocketProtocol = "ws://"
-
-	defaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
 )
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
-// TODO - Make node address configurable.
 // todo - joel - update readme
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
@@ -54,9 +51,7 @@ type WalletExtension struct {
 	server            *http.Server
 }
 
-func NewWalletExtension(config RunConfig) *WalletExtension {
-	nodeAddr := fmt.Sprintf("%s:%d", Localhost, config.StartPort+defaultWsPortOffset+2)
-
+func NewWalletExtension(config Config) *WalletExtension {
 	enclavePrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		panic(err)
@@ -65,7 +60,7 @@ func NewWalletExtension(config RunConfig) *WalletExtension {
 
 	return &WalletExtension{
 		enclavePublicKey:  &enclavePrivateKey.PublicKey,
-		nodeAddr:          nodeAddr,
+		nodeAddr:          config.NodeRPCAddress,
 		viewingKeyChannel: viewingKeyChannel,
 	}
 }
@@ -226,9 +221,10 @@ type ViewingKey struct {
 	signature []byte
 }
 
-// RunConfig contains the configuration required by StartWalletExtension.
-type RunConfig struct {
-	StartPort int
+// Config contains the configuration required by the WalletExtension.
+type Config struct {
+	WalletExtensionPort int
+	NodeRPCAddress      string
 }
 
 func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {

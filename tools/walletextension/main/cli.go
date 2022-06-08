@@ -8,16 +8,22 @@ import (
 
 const (
 	// Flag names, defaults and usages.
-	startPortName    = "startPort"
-	startPortDefault = 3000
-	startPortUsage   = "The first port to allocate. Ports will be allocated incrementally from this port as needed"
+	walletExtensionPortName    = "port"
+	walletExtensionPortDefault = 3000
+	walletExtensionPortUsage   = "The port on which to serve the wallet extension"
+
+	nodeRPCAddressName    = "nodeRPCPort"
+	nodeRPCAddressDefault = "127.0.0.1:13000"
+	nodeRPCAddressUsage   = "The address on which to connect to the node via RPC"
 )
 
-func parseCLIArgs() walletextension.RunConfig {
-	startPort := flag.Int(startPortName, startPortDefault, startPortUsage)
+func parseCLIArgs() walletextension.Config {
+	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
+	nodeRPCAddress := flag.String(nodeRPCAddressName, nodeRPCAddressDefault, nodeRPCAddressUsage)
 	flag.Parse()
 
-	return walletextension.RunConfig{
-		StartPort: *startPort,
+	return walletextension.Config{
+		WalletExtensionPort: *walletExtensionPort,
+		NodeRPCAddress:      *nodeRPCAddress,
 	}
 }
