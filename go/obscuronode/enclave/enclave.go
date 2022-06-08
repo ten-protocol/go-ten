@@ -330,18 +330,28 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) Balance(address common.Address) uint64 {
-	// todo user encryption
+func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
 	hs := e.storage.FetchHeadState()
 	if hs == nil {
 		panic("Not initialised")
 	}
+	// todo - get the parent
 	r, f := e.storage.FetchRollup(hs.HeadRollup)
 	if !f {
 		panic("not found")
 	}
 	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return evm.BalanceOfErc20(address, s, r.Header, e.storage, e.config.ObscuroChainID)
+	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, e.storage, e.config.ObscuroChainID)
+	if err != nil {
+		return nil, err
+	}
+	if result.Failed() {
+		log.Info("Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
+		return nil, result.Err
+	}
+
+	// todo user encryption
+	return obscurocore.EncryptResponse(result.ReturnData), nil
 }
 
 func (e *enclaveImpl) Nonce(address common.Address) uint64 {

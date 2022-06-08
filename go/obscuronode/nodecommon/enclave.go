@@ -47,9 +47,10 @@ type Enclave interface {
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) error
 
-	// Balance - returns the balance of an address with a block delay
-	// todo - replace with generic off-chain contract call
-	Balance(address common.Address) uint64
+	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
+	// Todo - return the result with a block delay. To prevent frontrunning.
+	// Todo - add encryption
+	ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (EncryptedResponse, error)
 
 	// Nonce returns the nonce of the wallet with the given address.
 	Nonce(address common.Address) uint64
