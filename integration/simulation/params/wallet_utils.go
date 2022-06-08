@@ -10,12 +10,14 @@ import (
 )
 
 type SimWallets struct {
-	MCOwnerWallet        wallet.Wallet
-	NodeWallets          []wallet.Wallet
-	SimEthWallets        []wallet.Wallet
-	SimObsWallets        []wallet.Wallet
-	Erc20EthOwnerWallets []wallet.Wallet
-	Erc20ObsOwnerWallets []wallet.Wallet
+	MCOwnerWallet wallet.Wallet   // owner of the management contract deployed on Ethereum
+	NodeWallets   []wallet.Wallet // the keys used by the obscuro nodes to submit rollups to Eth
+
+	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
+	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
+
+	Erc20EthOwnerWallets []wallet.Wallet // the owners of the supported ethereum erc20 contracts
+	Erc20ObsOwnerWallets []wallet.Wallet // and the owners of the respective wrapped versions on Obscuro
 }
 
 func NewSimWallets(nrSimWallets int, nNodes int, nrErc20s int) *SimWallets {
