@@ -20,10 +20,16 @@ type HostConfig struct {
 	IsGenesis bool
 	// Duration of the gossip round
 	GossipRoundDuration time.Duration
-	// Whether to serve client RPC requests
-	HasClientRPC bool
-	// Address on which to serve client RPC requests
-	ClientRPCAddress string
+	// Whether to serve client RPC requests over HTTP
+	HasClientRPCHTTP bool
+	// Port on which to handle HTTP client RPC requests
+	ClientRPCPortHTTP uint64
+	// Whether to serve client RPC requests over websockets
+	HasClientRPCWebsockets bool
+	// Port on which to handle websocket client RPC requests
+	ClientRPCPortWS uint64
+	// Host on which to handle client RPC requests
+	ClientRPCHost string
 	// Timeout duration for RPC requests from client applications
 	ClientRPCTimeout time.Duration
 	// Address on which to connect to the enclave
@@ -53,22 +59,25 @@ type HostConfig struct {
 // DefaultHostConfig returns a HostConfig with default values.
 func DefaultHostConfig() HostConfig {
 	return HostConfig{
-		ID:                    common.BytesToAddress([]byte("")),
-		IsGenesis:             true,
-		GossipRoundDuration:   8333,
-		HasClientRPC:          true,
-		ClientRPCAddress:      "127.0.0.1:13000",
-		ClientRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
-		EnclaveRPCAddress:     "127.0.0.1:11000",
-		EnclaveRPCTimeout:     time.Duration(defaultRPCTimeoutSecs) * time.Second,
-		P2PAddress:            "127.0.0.1:10000",
-		AllP2PAddresses:       []string{},
-		L1NodeHost:            "127.0.0.1",
-		L1NodeWebsocketPort:   8546,
-		L1ConnectionTimeout:   time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
-		RollupContractAddress: common.BytesToAddress([]byte("")),
-		LogPath:               "host_logs.txt",
-		PrivateKeyString:      "0000000000000000000000000000000000000000000000000000000000000001",
-		ChainID:               *big.NewInt(1337),
+		ID:                     common.BytesToAddress([]byte("")),
+		IsGenesis:              true,
+		GossipRoundDuration:    8333,
+		HasClientRPCHTTP:       true,
+		ClientRPCPortHTTP:      13000,
+		HasClientRPCWebsockets: false,
+		ClientRPCPortWS:        13001,
+		ClientRPCHost:          "127.0.0.1",
+		ClientRPCTimeout:       time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		EnclaveRPCAddress:      "127.0.0.1:11000",
+		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		P2PAddress:             "127.0.0.1:10000",
+		AllP2PAddresses:        []string{},
+		L1NodeHost:             "127.0.0.1",
+		L1NodeWebsocketPort:    8546,
+		L1ConnectionTimeout:    time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
+		RollupContractAddress:  common.BytesToAddress([]byte("")),
+		LogPath:                "host_logs.txt",
+		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
+		ChainID:                *big.NewInt(1337),
 	}
 }

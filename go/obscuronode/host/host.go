@@ -98,8 +98,8 @@ func NewHost(
 		ethWallet: ethWallet,
 	}
 
-	if config.HasClientRPC {
-		host.rpcServer = NewRPCServer(config.ClientRPCAddress, host)
+	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
+		host.rpcServer = NewRPCServer(config, host)
 	}
 
 	return host

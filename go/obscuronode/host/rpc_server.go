@@ -1,18 +1,19 @@
 package host
 
 import (
-	"strconv"
-	"strings"
-
 	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
+	allOrigins = "*"
+
 	apiNamespaceObscuro  = "obscuro"
 	apiNamespaceEthereum = "eth"
+	apiNamespaceNetwork  = "net"
 	apiVersion1          = "1.0"
 )
 
@@ -21,22 +22,19 @@ type rpcServerImpl struct {
 	node *node.Node
 }
 
-func NewRPCServer(address string, host *Node) RPCServer {
-	hostAndPort := strings.Split(address, ":")
-	if len(hostAndPort) != 2 {
-		log.Panic("client server expected address in the form <host>:<port>, but received %s", address)
+func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
+	rpcConfig := node.Config{}
+	if config.HasClientRPCHTTP {
+		rpcConfig.HTTPHost = config.ClientRPCHost
+		rpcConfig.HTTPPort = int(config.ClientRPCPortHTTP)
 	}
-	port, err := strconv.Atoi(hostAndPort[1])
-	if err != nil {
-		log.Panic("client server port %s could not be converted to an integer", hostAndPort[1])
+	if config.HasClientRPCWebsockets {
+		rpcConfig.WSHost = config.ClientRPCHost
+		rpcConfig.WSPort = int(config.ClientRPCPortWS)
+		rpcConfig.WSOrigins = []string{allOrigins}
 	}
 
-	nodeConfig := node.Config{
-		// We do not listen over websockets and IPC for now.
-		HTTPHost: hostAndPort[0],
-		HTTPPort: port,
-	}
-	rpcServerNode, err := node.New(&nodeConfig)
+	rpcServerNode, err := node.New(&rpcConfig)
 	if err != nil {
 		log.Panic("could not create new client server. Cause: %s", err)
 	}
@@ -51,7 +49,13 @@ func NewRPCServer(address string, host *Node) RPCServer {
 		{
 			Namespace: apiNamespaceEthereum,
 			Version:   apiVersion1,
-			Service:   NewEthereumAPI(),
+			Service:   NewEthereumAPI(host),
+			Public:    true,
+		},
+		{
+			Namespace: apiNamespaceNetwork,
+			Version:   apiVersion1,
+			Service:   NewNetworkAPI(),
 			Public:    true,
 		},
 	}
