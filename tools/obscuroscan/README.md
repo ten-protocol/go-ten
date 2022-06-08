@@ -9,7 +9,7 @@ testnet.
 
 * Run `obscuroscan/main/main()` with the following flags to start Obscuroscan:
 
-  ```--clientServerAddress=<client server address>```
+  ```--rpcServerAddress=<client server address>```
 
   This will create an Obscuroscan instance listening on `http://localhost:3000/`
 
