@@ -14,8 +14,14 @@ const (
 	gossipRoundNanosName  = "gossipRoundNanos"
 	gossipRoundNanosUsage = "The duration of the gossip round"
 
-	clientRPCAddressName  = "clientRPCAddress"
-	clientRPCAddressUsage = "The address on which to listen for client application RPC requests"
+	clientRPCPortHTTPName  = "clientRPCPortHttp"
+	clientRPCPortHTTPUsage = "The port on which to listen for client application RPC requests over HTTP"
+
+	clientRPCPortWSName  = "clientRPCPortWs"
+	clientRPCPortWSUsage = "The port on which to listen for client application RPC requests over websockets"
+
+	clientRPCHostName  = "clientRPCHost"
+	clientRPCHostUsage = "The host on which to handle client application RPC requests"
 
 	clientRPCTimeoutSecsName  = "clientRPCTimeoutSecs"
 	clientRPCTimeoutSecsUsage = "The timeout for client <-> host RPC communication"
