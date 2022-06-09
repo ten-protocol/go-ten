@@ -97,7 +97,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodGetBalance)
 
 	if !strings.Contains(trimmedRespBody, expectedErr) {
-		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
+		t.Fatalf("Expected error message to contain \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
 }
 
@@ -128,11 +128,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-// TODO - Renable these tests once Obscuro node functionality is implemented.
-
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	t.Skip() // Skipping while support for viewing keys is being implemented.
-
 	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
@@ -155,10 +151,12 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	trimmedRespBody := strings.TrimSpace(string(respBody))
 	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodGetBalance)
-	if trimmedRespBody != expectedErr {
-		t.Fatalf("Expected error message\"%s\", got \"%s\"", expectedErr, trimmedRespBody)
+	if !strings.Contains(trimmedRespBody, expectedErr) {
+		t.Fatalf("Expected error message to contain \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
 }
+
+// TODO - Renable these tests once Obscuro node functionality is implemented.
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
