@@ -90,8 +90,7 @@ func NewEnclave(
 ) nodecommon.Enclave {
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 
-	connect := getDBConnector(config)
-	backingDB, err := connect(nodeShortID)
+	backingDB, err := getDB(nodeShortID, config)
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
@@ -773,20 +772,22 @@ func decryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 }
 
 // getDBConnector creates an appropriate EthDBConnector function based on your config
-func getDBConnector(cfg config.EnclaveConfig) db.EthDBConnector {
+func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 	if cfg.UseInMemoryDB {
-		// not persistent
-		return func(nodeID uint64) (ethdb.Database, error) {
-			nodecommon.LogWithID(nodeID, "created in-memory database")
-			return rawdb.NewMemoryDatabase(), nil
-		}
+		nodecommon.LogWithID(nodeID, "UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
+		return getInMemDB()
 	}
 
 	if !cfg.WillAttest {
 		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
-		return sql.CreateTemporarySQLiteDB
+		nodecommon.LogWithID(nodeID, "Attestation is disabled, using a basic sqlite DB for persistence")
+		return sql.CreateTemporarySQLiteDB(nodeID)
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
 	panic("Haven't implemented edgeless DB enclave connection yet")
+}
+
+func getInMemDB() (ethdb.Database, error) {
+	return rawdb.NewMemoryDatabase(), nil
 }

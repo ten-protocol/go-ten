@@ -3,7 +3,6 @@ package db
 import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
@@ -71,8 +70,3 @@ type Storage interface {
 	SharedSecretStorage
 	BlockStateStorage
 }
-
-// EthDBConnector is an abstraction for constructing/validating/connecting-to an eth-compatible key-value store.
-// The DB might be a simple in-memory map, a SQL DB for testing or a trusted enclave-based EdgelessDB instance.
-// Implementation should handle validation/attestation in the case of a secure DB
-type EthDBConnector func(nodeID uint64) (ethdb.Database, error)
