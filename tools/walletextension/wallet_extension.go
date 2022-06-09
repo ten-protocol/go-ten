@@ -22,13 +22,12 @@ const (
 	pathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "./tools/walletextension/static"
 
-	reqJSONKeyMethod        = "method"
-	reqJSONMethodGetBalance = "eth_getBalance"
-	reqJSONMethodCall       = "eth_call"
-	respJSONKeyErr          = "error"
-	respJSONKeyMsg          = "message"
-	pathRoot                = "/"
-	httpCodeErr             = 500
+	reqJSONKeyMethod  = "method"
+	reqJSONMethodCall = "eth_call"
+	respJSONKeyErr    = "error"
+	respJSONKeyMsg    = "message"
+	pathRoot          = "/"
+	httpCodeErr       = 500
 
 	Localhost         = "127.0.0.1"
 	websocketProtocol = "ws://"
@@ -135,7 +134,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 
 	// We decrypt the response if it's encrypted.
-	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
+	if method == reqJSONMethodCall {
 		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
 		nodeResp, err = we.viewingKeyPrivateEcies.Decrypt(nodeResp, nil, nil)
 		if err != nil {

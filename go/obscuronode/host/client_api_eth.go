@@ -32,6 +32,7 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 
 // GetBalance returns the address's balance on the Obscuro network.
 // TODO - Establish what value we should return here (balance in a specific ERC-20 contract?).
+// TODO - Encrypt the response with a viewing key on the enclave side once we're returning a non-dummy value.
 func (api *EthereumAPI) GetBalance(context.Context, common.Address, rpc.BlockNumberOrHash) (*hexutil.Big, error) {
 	return (*hexutil.Big)(big.NewInt(0)), nil
 }
