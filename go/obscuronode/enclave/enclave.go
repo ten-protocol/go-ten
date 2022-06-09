@@ -6,10 +6,15 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/sql"
 
@@ -36,7 +41,8 @@ import (
 )
 
 const (
-	msgNoRollup = "could not fetch rollup"
+	msgNoRollup               = "could not fetch rollup"
+	ViewingKeySignedMsgPrefix = "vk"
 )
 
 type StatsCollector interface {
@@ -53,6 +59,7 @@ type enclaveImpl struct {
 	mempool        mempool.Manager
 	statsCollector StatsCollector
 	l1Blockchain   *core.BlockChain
+	viewingKeys    map[common.Address]*ecies.PublicKey // TODO - Replace with persistent storage.
 
 	txCh                 chan nodecommon.L2Tx
 	roundWinnerCh        chan *obscurocore.Rollup
@@ -68,6 +75,70 @@ type enclaveImpl struct {
 	transactionBlobCrypto obscurocore.TransactionBlobCrypto
 
 	blockProcessingMutex sync.Mutex
+}
+
+// NewEnclave creates a new enclave.
+// `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
+// received from the L1 node if `validateBlocks` is set to true.
+func NewEnclave(
+	config config.EnclaveConfig,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	collector StatsCollector,
+) nodecommon.Enclave {
+	nodeShortID := obscurocommon.ShortAddress(config.HostID)
+
+	connect := getDBConnector(config)
+	backingDB, err := connect(nodeShortID)
+	if err != nil {
+		log.Panic("Failed to connect to backing database - %s", err)
+	}
+	storage := db.NewStorage(backingDB, nodeShortID)
+
+	var l1Blockchain *core.BlockChain
+	if config.ValidateL1Blocks {
+		if config.GenesisJSON == nil {
+			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
+		}
+		l1Blockchain = NewL1Blockchain(config.GenesisJSON)
+	} else {
+		nodecommon.LogWithID(obscurocommon.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
+	}
+
+	var attestationProvider AttestationProvider
+	if config.WillAttest {
+		attestationProvider = &EgoAttestationProvider{}
+	} else {
+		nodecommon.LogWithID(nodeShortID, "WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
+		attestationProvider = &DummyAttestationProvider{}
+	}
+
+	nodecommon.LogWithID(nodeShortID, "Generating public key")
+	privKey := generateKeyPair()
+	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
+	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
+
+	return &enclaveImpl{
+		config:                config,
+		nodeShortID:           nodeShortID,
+		storage:               storage,
+		blockResolver:         storage,
+		mempool:               mempool.New(),
+		statsCollector:        collector,
+		l1Blockchain:          l1Blockchain,
+		viewingKeys:           make(map[common.Address]*ecies.PublicKey),
+		txCh:                  make(chan nodecommon.L2Tx),
+		roundWinnerCh:         make(chan *obscurocore.Rollup),
+		exitCh:                make(chan bool),
+		speculativeWorkInCh:   make(chan bool),
+		speculativeWorkOutCh:  make(chan speculativeWork),
+		mgmtContractLib:       mgmtContractLib,
+		erc20ContractLib:      erc20ContractLib,
+		attestationProvider:   attestationProvider,
+		privateKey:            privKey,
+		publicKeySerialized:   serializedPubKey,
+		transactionBlobCrypto: obscurocore.NewTransactionBlobCryptoImpl(),
+	}
 }
 
 func (e *enclaveImpl) IsReady() error {
@@ -544,6 +615,29 @@ func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscuro
 	return e.encryptSecret(att.PubKey, secret)
 }
 
+func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+	// We recalculate the message signed by MetaMask.
+	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
+
+	// We recover the key based on the signed message and the signature.
+	recoveredPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
+	if err != nil {
+		return errors.New(fmt.Sprintf("received viewing key but could not validate its signature. Cause: %s", err))
+	}
+	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
+
+	// We decompress the viewing key and create the corresponding ECIES key.
+	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
+	if err != nil {
+		return errors.New(fmt.Sprintf("recieved viewing key bytes but could not decompress them. Cause: %s", err))
+	}
+	eciesPublicKey := ecies.ImportECDSAPublic(viewingKey)
+
+	e.viewingKeys[recoveredAddress] = eciesPublicKey
+
+	return nil
+}
+
 func verifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {
 	expectedIDHash := getIDHash(att.Owner, att.PubKey)
 	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
@@ -620,7 +714,7 @@ func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveS
 	if e.privateKey == nil {
 		return nil, errors.New("private key not found - shouldn't happen")
 	}
-	return DecryptWithPrivateKey(secret, e.privateKey)
+	return decryptWithPrivateKey(secret, e.privateKey)
 }
 
 // Todo - implement with better crypto
@@ -631,7 +725,7 @@ func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.Sha
 		return nil, fmt.Errorf("failed to parse public key %w", err)
 	}
 
-	encKey, err := EncryptWithPublicKey(secret, key)
+	encKey, err := encryptWithPublicKey(secret, key)
 	if err != nil {
 		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoded, encKey)
 	}
@@ -656,71 +750,8 @@ type processingEnvironment struct {
 	state           *state.StateDB                  // the state as calculated from the previous rollup and the processed transactions
 }
 
-// NewEnclave creates a new enclave.
-// `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
-// received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(
-	config config.EnclaveConfig,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	collector StatsCollector,
-) nodecommon.Enclave {
-	nodeShortID := obscurocommon.ShortAddress(config.HostID)
-
-	connect := getDBConnector(config)
-	backingDB, err := connect(nodeShortID)
-	if err != nil {
-		log.Panic("Failed to connect to backing database - %s", err)
-	}
-	storage := db.NewStorage(backingDB, nodeShortID)
-
-	var l1Blockchain *core.BlockChain
-	if config.ValidateL1Blocks {
-		if config.GenesisJSON == nil {
-			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
-		}
-		l1Blockchain = NewL1Blockchain(config.GenesisJSON)
-	} else {
-		nodecommon.LogWithID(obscurocommon.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
-	}
-
-	var attestationProvider AttestationProvider
-	if config.WillAttest {
-		attestationProvider = &EgoAttestationProvider{}
-	} else {
-		nodecommon.LogWithID(nodeShortID, "WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
-		attestationProvider = &DummyAttestationProvider{}
-	}
-
-	nodecommon.LogWithID(nodeShortID, "Generating public key")
-	privKey := generateKeyPair()
-	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
-	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
-
-	return &enclaveImpl{
-		config:                config,
-		nodeShortID:           nodeShortID,
-		storage:               storage,
-		blockResolver:         storage,
-		mempool:               mempool.New(),
-		statsCollector:        collector,
-		l1Blockchain:          l1Blockchain,
-		txCh:                  make(chan nodecommon.L2Tx),
-		roundWinnerCh:         make(chan *obscurocore.Rollup),
-		exitCh:                make(chan bool),
-		speculativeWorkInCh:   make(chan bool),
-		speculativeWorkOutCh:  make(chan speculativeWork),
-		mgmtContractLib:       mgmtContractLib,
-		erc20ContractLib:      erc20ContractLib,
-		attestationProvider:   attestationProvider,
-		privateKey:            privKey,
-		publicKeySerialized:   serializedPubKey,
-		transactionBlobCrypto: obscurocore.NewTransactionBlobCryptoImpl(),
-	}
-}
-
-// EncryptWithPublicKey encrypts data with public key
-func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
+// encryptWithPublicKey encrypts data with public key
+func encryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
 	hash := sha512.New()
 	ciphertext, err := rsa.EncryptOAEP(hash, rand.Reader, pub, msg, nil)
 	if err != nil {
@@ -729,8 +760,8 @@ func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
 	return ciphertext, nil
 }
 
-// DecryptWithPrivateKey decrypts data with private key
-func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
+// decryptWithPrivateKey decrypts data with private key
+func decryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	hash := sha512.New()
 	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
 	if err != nil {

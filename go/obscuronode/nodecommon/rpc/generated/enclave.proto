@@ -61,6 +61,9 @@ service EnclaveProto {
 
   // GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
   rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
+
+  // AddViewingKey adds a viewing key to the enclave
+  rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
 }
 
 message IsReadyRequest {}
@@ -177,6 +180,12 @@ message GetRollupResponse {
   bool known = 1;
   ExtRollupMsg extRollup = 2;
 }
+
+message AddViewingKeyRequest {
+  bytes viewingKey = 1;
+  bytes signature = 2;
+}
+message AddViewingKeyResponse {}
 
 // Nested message types.
 

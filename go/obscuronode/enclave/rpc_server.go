@@ -211,6 +211,14 @@ func (s *server) GetRollup(_ context.Context, request *generated.GetRollupReques
 	return &generated.GetRollupResponse{Known: true, ExtRollup: &extRollupMsg}, nil
 }
 
+func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
+	err := s.enclave.AddViewingKey(request.ViewingKey, request.Signature)
+	if err != nil {
+		return nil, err
+	}
+	return &generated.AddViewingKeyResponse{}, nil
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

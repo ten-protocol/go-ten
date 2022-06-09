@@ -318,3 +318,18 @@ func (c *EnclaveRPCClient) GetRollup(rollupHash obscurocommon.L2RootHash) *nodec
 	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
 	return &extRollup
 }
+
+func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	_, err := c.protoClient.AddViewingKey(timeoutCtx, &generated.AddViewingKeyRequest{
+		ViewingKey: viewingKeyBytes,
+		Signature:  signature,
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -67,6 +67,11 @@ func (api *ObscuroAPI) Nonce(address common.Address) uint64 {
 	return api.host.EnclaveClient.Nonce(address)
 }
 
+// AddViewingKey stores the viewing key on the enclave.
+func (api *ObscuroAPI) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+	return api.host.EnclaveClient.AddViewingKey(viewingKeyBytes, signature)
+}
+
 // StopHost gracefully stops the host.
 func (api *ObscuroAPI) StopHost() {
 	go api.host.Stop()

@@ -19,6 +19,7 @@ const (
 	RPCGetTransaction           = "obscuro_getTransaction"
 	RPCExecContract             = "obscuro_execContract"
 	RPCNonce                    = "obscuro_nonce"
+	RPCAddViewingKey            = "obscuro_addViewingKey"
 	RPCStopHost                 = "obscuro_stopHost"
 )
 
