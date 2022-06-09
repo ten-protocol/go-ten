@@ -1,4 +1,3 @@
-//nolint:unused // TODO - Remove once tests are unskipped.
 package walletextension
 
 import (
@@ -391,7 +390,7 @@ func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byt
 }
 
 // Deploys an ERC20 contract and returns the contract's address and the block number it was deployed in.
-func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *ecdsa.PrivateKey) string {
+func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *ecdsa.PrivateKey) string { //nolint:unused // TODO - Remove once all tests are unskipped.
 	tx := types.LegacyTx{
 		Nonce:    0, // relies on a clean env
 		GasPrice: big.NewInt(2000000000),
