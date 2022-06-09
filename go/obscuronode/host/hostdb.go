@@ -29,7 +29,7 @@ func NewInMemoryDB() *DB {
 	}
 }
 
-func NewLevelDbBackedDB() *DB {
+func NewLevelDBBackedDB() *DB {
 	// todo, all these should be configs
 	f, err := os.MkdirTemp("", "leveldb_*")
 	if err != nil {
