@@ -35,6 +35,7 @@ type MgmtContractLib interface {
 	CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData
 	CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData
 	CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData
+	CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData
 
 	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
@@ -87,7 +88,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 		}
 
 	case RespondSecretMethod:
-		return unpackStoreSecretTx(tx, method, contractCallData)
+		return unpackRespondSecretTx(tx, method, contractCallData)
 
 	case RequestSecretMethod:
 		return unpackRequestSecretTx(tx, method, contractCallData)
@@ -147,10 +148,28 @@ func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
+		tx.AttesterID,
 		tx.RequesterID,
-		base64EncodeToString(tx.RequesterPubKey),
-		base64EncodeToString(tx.Secret),
-		base64EncodeToString(tx.Attestation),
+		tx.AttesterSig,
+		tx.Secret,
+	)
+	if err != nil {
+		panic(err)
+	}
+	return &types.LegacyTx{
+		Nonce:    nonce,
+		GasPrice: defaultGasPrice,
+		Gas:      defaultGas,
+		To:       c.addr,
+		Data:     data,
+	}
+}
+
+func (c *contractLibImpl) CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData {
+	data, err := c.contractABI.Pack(
+		InitializeSecretMethod,
+		tx.AggregatorID,
+		tx.InitialSecret,
 	)
 	if err != nil {
 		panic(err)
@@ -183,31 +202,44 @@ func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	}
 }
 
-func unpackStoreSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RespondSecretTx {
+func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RespondSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		log.Panic("could not unpack transaction. Cause: %s", err)
 	}
-	secretData, found := contractCallData["inputSecret"]
+	requesterData, found := contractCallData["requesterID"]
 	if !found {
-		panic("call data not found for inputSecret")
-	}
-	secret := Base64DecodeFromString(secretData.(string))
-	if err != nil {
-		log.Panic("could not decode secret data. Cause: %s", err)
+		log.Panic("call data not found for requesterID")
 	}
 
-	reportData, found := contractCallData["requestReport"]
+	requesterAddr, ok := requesterData.(common.Address)
+	if !ok {
+		log.Panic("could not decode requester data")
+	}
+
+	attesterData, found := contractCallData["attesterID"]
 	if !found {
-		log.Panic("call data not found for requestReport")
+		log.Panic("call data not found for attesterID")
 	}
-	att := Base64DecodeFromString(reportData.(string))
-	if err != nil {
-		log.Panic("could not decode report data. Cause: %s", err)
+
+	attesterAddr, ok := attesterData.(common.Address)
+	if !ok {
+		log.Panic("could not decode attester data")
 	}
+
+	responseSecretData, found := contractCallData["responseSecret"]
+	if !found {
+		log.Panic("call data not found for inputSecret")
+	}
+	responseSecretBytes, ok := responseSecretData.([]uint8)
+	if !ok {
+		log.Panic("could not decode requester responseSecret data")
+	}
+
 	return &obscurocommon.L1RespondSecretTx{
-		Secret:      secret,
-		Attestation: att,
+		AttesterID:  attesterAddr,
+		RequesterID: requesterAddr,
+		Secret:      responseSecretBytes[:],
 	}
 }
 
