@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	depositTxAddr       = common.HexToAddress("0x01")
-	rollupTxAddr        = common.HexToAddress("0x02")
-	storeSecretTxAddr   = common.HexToAddress("0x03")
-	requestSecretTxAddr = common.HexToAddress("0x04")
+	depositTxAddr          = common.HexToAddress("0x01")
+	rollupTxAddr           = common.HexToAddress("0x02")
+	storeSecretTxAddr      = common.HexToAddress("0x03")
+	requestSecretTxAddr    = common.HexToAddress("0x04")
+	initializeSecretTxAddr = common.HexToAddress("0x05")
 )
 
 // mockContractLib is an implementation of the mgmtcontractlib.MgmtContractLib
@@ -38,8 +39,12 @@ func (m *mockContractLib) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 	return encodeTx(tx, nonce, requestSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateStoreSecret(tx *obscurocommon.L1StoreSecretTx, nonce uint64) types.TxData {
+func (m *mockContractLib) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, storeSecretTxAddr)
+}
+
+func (m *mockContractLib) CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData {
+	return encodeTx(tx, nonce, initializeSecretTxAddr)
 }
 
 func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
@@ -59,11 +64,13 @@ func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
 	case rollupTxAddr.Hex():
 		t = &obscurocommon.L1RollupTx{}
 	case storeSecretTxAddr.Hex():
-		t = &obscurocommon.L1StoreSecretTx{}
+		t = &obscurocommon.L1RespondSecretTx{}
 	case depositTxAddr.Hex():
 		t = &obscurocommon.L1DepositTx{}
 	case requestSecretTxAddr.Hex():
 		t = &obscurocommon.L1RequestSecretTx{}
+	case initializeSecretTxAddr.Hex():
+		t = &obscurocommon.L1InitializeSecretTx{}
 	default:
 		panic("unexpected type")
 	}

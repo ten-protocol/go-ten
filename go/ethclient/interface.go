@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
@@ -25,6 +26,8 @@ type EthClient interface {
 	BlockListener() chan *types.Header                                       // subscribes to new blocks and returns a listener with the blocks heads
 
 	Stop() // tries to cleanly stop the client and release any resources
+
+	EthClient() *ethclient.Client // returns the underlying eth client
 }
 
 // Info forces the RPC EthClient to return the data in the same format (independently of it's implementation)
