@@ -21,7 +21,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 
 	numberOfNodes := 7
 	numberOfSimWallets := 10
-	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1)
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
 		NumberOfNodes:             numberOfNodes,
