@@ -42,8 +42,12 @@ import (
 
 const (
 	msgNoRollup = "could not fetch rollup"
-	// ViewingKeySignedMsgPrefix is the prefixed added when signing the viewing key in MetaMask using personal_sign.
-	// Without a recognisable prefix, personal_sign transforms the data to avoid various attacks.
+	// ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
+	// API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
+	// a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
+	// from asking a visitor to their website to personal_sign something that is actually a malicious transaction (e.g.
+	// theft of funds). By adding a prefix, the viewing key bytes no longer looks like a transaction hash, and thus get
+	// signed as-is.
 	ViewingKeySignedMsgPrefix = "vk"
 )
 
@@ -61,7 +65,9 @@ type enclaveImpl struct {
 	mempool        mempool.Manager
 	statsCollector StatsCollector
 	l1Blockchain   *core.BlockChain
-	viewingKeys    map[common.Address]*ecies.PublicKey // TODO - Replace with persistent storage.
+	// TODO - Replace with persistent storage.
+	// TODO - Handle multiple viewing keys per address.
+	viewingKeys map[common.Address]*ecies.PublicKey
 
 	txCh                 chan nodecommon.L2Tx
 	roundWinnerCh        chan *obscurocore.Rollup
@@ -638,6 +644,22 @@ func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) er
 	e.viewingKeys[recoveredAddress] = eciesPublicKey
 
 	return nil
+}
+
+func (e *enclaveImpl) GetBalance(address common.Address) ([]byte, error) {
+	balance := big.NewInt(0) // TODO - Calculate balance correctly, rather than returning this dummy value.
+
+	viewingKey := e.viewingKeys[address]
+	if viewingKey == nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because	it does not have a viewing key for account %s", address.String())
+	}
+
+	encryptedBalance, err := ecies.Encrypt(rand.Reader, viewingKey, balance.Bytes(), nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because	it could not encrypt the response using a viewing key for account %s", address.String())
+	}
+
+	return encryptedBalance, nil
 }
 
 func verifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {

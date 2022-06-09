@@ -67,8 +67,20 @@ type Enclave interface {
 	// GetRollup returns the rollup with the given hash
 	GetRollup(rollupHash obscurocommon.L2RootHash) *ExtRollup
 
-	// AddViewingKey stores the viewing key in the enclave
+	// AddViewingKey - Verifies and saves viewing keys.
+	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.
+	// MetaMask) in which the user holds the signing keys.
+	// The keys are then are sent to the enclave via RPC and processed using this method.
+	// The first step is to check the validity of the signature over the viewing key.
+	// Then, we need to find the account which has empowered this viewing key. We can do that by retrieving the signing
+	// public key from the signature. By hashing the public key, we can then determine the address of the account.
+	// At the end, we save the viewing key (which is a public key) against the account, and use it to encrypt any
+	// "eth_call" and "eth_getBalance" requests that have that address as a "from" field.
 	AddViewingKey(viewingKeyBytes []byte, signature []byte) error
+
+	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the address.
+	// TODO - Handle multiple viewing keys, and thus multiple return values.
+	GetBalance(address common.Address) ([]byte, error)
 
 	// StopClient stops the enclave client if one exists
 	StopClient() error
