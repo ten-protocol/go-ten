@@ -49,21 +49,27 @@ const (
 	reqJSONKeyFrom          = "from"
 	emptyResult             = "0x"
 	errInsecure             = "enclave could not respond securely to %s request because it does not have a viewing key for account"
+
+	networkStartPort = integration.StartPortWalletExtensionTest + 1
+	nodeRPCHTTPPort  = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCWSPort    = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
+)
+
+var (
+	walletExtensionAddr   = fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
+	walletExtensionConfig = walletextension.Config{
+		WalletExtensionPort:     startPort,
+		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCHTTPPort),
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
+	}
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
+	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
-
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
-	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort:     startPort,
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
-	}
-	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -78,18 +84,11 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
+	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
-
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
-	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort:     startPort,
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
-	}
-	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -106,23 +105,12 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-// TODO - Renable these tests once Obscuro node functionality is implemented.
-
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	t.Skip() // Skipping while support for viewing keys is being implemented.
-
-	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
+	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
-
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
-	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort:     startPort,
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
-	}
-	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -144,21 +132,16 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
+// TODO - Renable these tests once Obscuro node functionality is implemented.
+
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
-	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
+	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
-
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
-	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort:     startPort,
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
-	}
-	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -184,18 +167,11 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
-	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
+	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
-
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
-	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort:     startPort,
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
-	}
-	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -226,18 +202,11 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
-	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
+	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
-
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
-	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort:     startPort,
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
-	}
-	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -269,18 +238,11 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
-	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
+	stopHandle, err := createObscuroNetwork(int(networkStartPort))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
-
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
-	walletExtensionConfig := walletextension.Config{
-		WalletExtensionPort:     startPort,
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
-	}
-	walletExtensionAddr := fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()

@@ -60,7 +60,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	return &WalletExtension{
 		enclavePublicKey: &enclavePrivateKey.PublicKey,
 		hostAddr:         config.NodeRPCWebsocketAddress,
-		hostClient:       obscuroclient.NewClient(config.NodeRPCWebsocketAddress),
+		hostClient:       obscuroclient.NewClient(config.NodeRPCHTTPAddress),
 	}
 }
 
@@ -226,6 +226,7 @@ func logAndSendErr(resp http.ResponseWriter, msg string) {
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionPort     int
+	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 }
 
