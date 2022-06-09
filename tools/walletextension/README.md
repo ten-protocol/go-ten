@@ -21,7 +21,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 * Run `walletextension/main/main()` with the following flags to start the wallet extension:
 
-  ```--nodeRPCAddress=<Obscuro node RPC address>```
+  ```--nodeRPCHTTPAddress=<Obscuro node RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro node RPC websocket address>```
 
   The wallet extension is now listening on `http://localhost:3000/`
 

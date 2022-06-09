@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/gorilla/websocket"
@@ -27,10 +29,11 @@ const (
 	staticDir              = "./tools/walletextension/static"
 
 	reqJSONKeyMethod        = "method"
-	reqJSONMethodGetBalance = "eth_getBalance"
-	reqJSONMethodCall       = "eth_call"
+	ReqJSONMethodGetBalance = "eth_getBalance"
+	ReqJSONMethodCall       = "eth_call"
 	respJSONKeyErr          = "error"
 	respJSONKeyMsg          = "message"
+	RespJSONKeyResult       = "result"
 	httpCodeErr             = 500
 
 	Localhost         = "127.0.0.1"
@@ -60,7 +63,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	return &WalletExtension{
 		enclavePublicKey: &enclavePrivateKey.PublicKey,
 		hostAddr:         config.NodeRPCWebsocketAddress,
-		hostClient:       obscuroclient.NewClient(config.NodeRPCWebsocketAddress),
+		hostClient:       obscuroclient.NewClient(config.NodeRPCHTTPAddress),
 	}
 }
 
@@ -129,26 +132,6 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	// This is just a temporary unmarshalling. We need to unmarshall once to check if we got an error response, then
-	// unmarshall again once we've decrypted the response if needed, below.
-	var respJSONMapTemp map[string]interface{}
-	err = json.Unmarshal(nodeResp, &respJSONMapTemp)
-	// A nil error indicates that this was valid JSON, and not an encrypted payload.
-	if err == nil && respJSONMapTemp[respJSONKeyErr] != nil {
-		logAndSendErr(resp, respJSONMapTemp[respJSONKeyErr].(map[string]interface{})[respJSONKeyMsg].(string))
-		return
-	}
-
-	// We decrypt the response if it's encrypted.
-	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
-		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
-		nodeResp, err = we.viewingPrivateKeyEcies.Decrypt(nodeResp, nil, nil)
-		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
-			return
-		}
-	}
-
 	// We unmarshall the JSON response.
 	var respJSONMap map[string]interface{}
 	err = json.Unmarshal(nodeResp, &respJSONMap)
@@ -156,10 +139,36 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not unmarshall enclave response to JSON: %s", err))
 		return
 	}
-	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(nodeResp)))
+
+	// We report any errors from the request.
+	if respJSONMap[respJSONKeyErr] != nil {
+		logAndSendErr(resp, respJSONMap[respJSONKeyErr].(map[string]interface{})[respJSONKeyMsg].(string))
+		return
+	}
+
+	// We decrypt the result field if it's encrypted.
+	if method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall {
+		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
+
+		encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
+		decryptedResult, err := we.viewingPrivateKeyEcies.Decrypt(encryptedResult, nil, nil)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
+			return
+		}
+
+		respJSONMap[RespJSONKeyResult] = string(decryptedResult)
+	}
+
+	clientResponse, err := json.Marshal(respJSONMap)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
+		return
+	}
+	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(clientResponse)))
 
 	// We write the response to the client.
-	_, err = resp.Write(nodeResp)
+	_, err = resp.Write(clientResponse)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
 		return
@@ -226,6 +235,7 @@ func logAndSendErr(resp http.ResponseWriter, msg string) {
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionPort     int
+	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 }
 

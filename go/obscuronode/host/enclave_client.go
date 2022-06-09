@@ -332,3 +332,16 @@ func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byt
 	}
 	return nil
 }
+
+func (c *EnclaveRPCClient) GetBalance(address common.Address) ([]byte, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.GetBalance(timeoutCtx, &generated.GetBalanceRequest{
+		Address: address.Bytes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.EncryptedBalance, nil
+}
