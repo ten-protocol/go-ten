@@ -327,7 +327,6 @@ func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byt
 		ViewingKey: viewingKeyBytes,
 		Signature:  signature,
 	})
-
 	if err != nil {
 		return err
 	}

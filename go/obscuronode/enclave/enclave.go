@@ -622,14 +622,14 @@ func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) er
 	// We recover the key based on the signed message and the signature.
 	recoveredPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
 	if err != nil {
-		return errors.New(fmt.Sprintf("received viewing key but could not validate its signature. Cause: %s", err))
+		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
 	}
 	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
 
 	// We decompress the viewing key and create the corresponding ECIES key.
 	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
 	if err != nil {
-		return errors.New(fmt.Sprintf("recieved viewing key bytes but could not decompress them. Cause: %s", err))
+		return fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err)
 	}
 	eciesPublicKey := ecies.ImportECDSAPublic(viewingKey)
 

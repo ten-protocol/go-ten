@@ -46,8 +46,8 @@ type WalletExtension struct {
 	hostClient       obscuroclient.Client
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
-	viewingKeyPrivate      *ecdsa.PrivateKey
-	viewingKeyPrivateEcies *ecies.PrivateKey
+	viewingPublicKeyBytes  []byte
+	viewingPrivateKeyEcies *ecies.PrivateKey
 	server                 *http.Server
 }
 
@@ -91,9 +91,8 @@ func (we *WalletExtension) Shutdown() {
 	}
 }
 
-func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {
-	return
-}
+// Used to check whether the server is ready.
+func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
 
 // Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
@@ -143,7 +142,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// We decrypt the response if it's encrypted.
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
 		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
-		nodeResp, err = we.viewingKeyPrivateEcies.Decrypt(nodeResp, nil, nil)
+		nodeResp, err = we.viewingPrivateKeyEcies.Decrypt(nodeResp, nil, nil)
 		if err != nil {
 			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
 			return
@@ -174,8 +173,8 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 		logAndSendErr(resp, fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
-	we.viewingKeyPrivate = viewingKeyPrivate
-	we.viewingKeyPrivateEcies = ecies.ImportECDSA(viewingKeyPrivate)
+	we.viewingPublicKeyBytes = crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
+	we.viewingPrivateKeyEcies = ecies.ImportECDSA(viewingKeyPrivate)
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
@@ -210,9 +209,8 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 	signature[64] -= 27
 
-	viewingKeyBytes := crypto.CompressPubkey(&we.viewingKeyPrivate.PublicKey) // todo - joel - can I just hold the compressed form?
 	var rpcErr error
-	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, viewingKeyBytes, signature)
+	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, we.viewingPublicKeyBytes, signature)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not add viewing key: %s", err))
 		return
