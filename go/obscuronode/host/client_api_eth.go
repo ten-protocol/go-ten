@@ -31,12 +31,12 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 }
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key for the address.
-func (api *EthereumAPI) GetBalance(_ context.Context, address common.Address, _ rpc.BlockNumberOrHash) ([]byte, error) {
+func (api *EthereumAPI) GetBalance(_ context.Context, address common.Address, _ rpc.BlockNumberOrHash) (string, error) {
 	encryptedBalance, err := api.host.EnclaveClient.GetBalance(address)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return encryptedBalance, nil
+	return common.Bytes2Hex(encryptedBalance), nil
 }
 
 // GetBlockByNumber is a placeholder for an RPC method required by MetaMask.

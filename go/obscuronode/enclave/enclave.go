@@ -41,7 +41,8 @@ import (
 )
 
 const (
-	msgNoRollup = "could not fetch rollup"
+	msgNoRollup  = "could not fetch rollup"
+	DummyBalance = "0x0"
 	// ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
 	// API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
 	// a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
@@ -647,14 +648,15 @@ func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) er
 }
 
 func (e *enclaveImpl) GetBalance(address common.Address) ([]byte, error) {
-	balance := big.NewInt(0) // TODO - Calculate balance correctly, rather than returning this dummy value.
+	// TODO - Calculate balance correctly, rather than returning this dummy value.
+	balance := "0x0" // The Ethereum API is to return the balance in hex.
 
 	viewingKey := e.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because it does not have a viewing key for account %s", address.String())
 	}
 
-	encryptedBalance, err := ecies.Encrypt(rand.Reader, viewingKey, balance.Bytes(), nil, nil)
+	encryptedBalance, err := ecies.Encrypt(rand.Reader, viewingKey, []byte(balance), nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because	it could not encrypt the response using a viewing key for account %s", address.String())
 	}
