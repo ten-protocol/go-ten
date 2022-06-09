@@ -771,7 +771,7 @@ func decryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 	return plaintext, nil
 }
 
-// getDBConnector creates an appropriate EthDBConnector function based on your config
+// getDB creates an appropriate ethdb.Database instance based on your config
 func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 	if cfg.UseInMemoryDB {
 		nodecommon.LogWithID(nodeID, "UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
