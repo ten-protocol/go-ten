@@ -219,6 +219,14 @@ func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingK
 	return &generated.AddViewingKeyResponse{}, nil
 }
 
+func (s *server) GetBalance(_ context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
+	encryptedBalance, err := s.enclave.GetBalance(common.BytesToAddress(request.Address))
+	if err != nil {
+		return nil, err
+	}
+	return &generated.GetBalanceResponse{EncryptedBalance: encryptedBalance}, nil
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

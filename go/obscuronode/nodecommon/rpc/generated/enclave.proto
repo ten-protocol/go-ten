@@ -64,6 +64,9 @@ service EnclaveProto {
 
   // AddViewingKey adds a viewing key to the enclave
   rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
+
+  // GetBalance returns the address's balance on the Obscuro network.
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {}
 }
 
 message IsReadyRequest {}
@@ -186,6 +189,13 @@ message AddViewingKeyRequest {
   bytes signature = 2;
 }
 message AddViewingKeyResponse {}
+
+message GetBalanceRequest {
+  bytes address = 1;
+}
+message GetBalanceResponse {
+  bytes encryptedBalance = 1;
+}
 
 // Nested message types.
 

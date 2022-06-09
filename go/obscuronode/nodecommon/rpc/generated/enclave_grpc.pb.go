@@ -59,6 +59,8 @@ type EnclaveProtoClient interface {
 	GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(ctx context.Context, in *AddViewingKeyRequest, opts ...grpc.CallOption) (*AddViewingKeyResponse, error)
+	// GetBalance returns the address's balance on the Obscuro network.
+	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -240,6 +242,15 @@ func (c *enclaveProtoClient) AddViewingKey(ctx context.Context, in *AddViewingKe
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceResponse, error) {
+	out := new(GetBalanceResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetBalance", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -285,6 +296,8 @@ type EnclaveProtoServer interface {
 	GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(context.Context, *AddViewingKeyRequest) (*AddViewingKeyResponse, error)
+	// GetBalance returns the address's balance on the Obscuro network.
+	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -348,6 +361,9 @@ func (UnimplementedEnclaveProtoServer) GetRollup(context.Context, *GetRollupRequ
 }
 func (UnimplementedEnclaveProtoServer) AddViewingKey(context.Context, *AddViewingKeyRequest) (*AddViewingKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddViewingKey not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBalance not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -704,6 +720,24 @@ func _EnclaveProto_AddViewingKey_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetBalance",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetBalance(ctx, req.(*GetBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -786,6 +820,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddViewingKey",
 			Handler:    _EnclaveProto_AddViewingKey_Handler,
+		},
+		{
+			MethodName: "GetBalance",
+			Handler:    _EnclaveProto_GetBalance_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -41,9 +41,14 @@ import (
 )
 
 const (
-	msgNoRollup = "could not fetch rollup"
-	// ViewingKeySignedMsgPrefix is the prefixed added when signing the viewing key in MetaMask using personal_sign.
-	// Without a recognisable prefix, personal_sign transforms the data to avoid various attacks.
+	msgNoRollup  = "could not fetch rollup"
+	DummyBalance = "0x0"
+	// ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
+	// API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
+	// a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
+	// from asking a visitor to their website to personal_sign something that is actually a malicious transaction (e.g.
+	// theft of funds). By adding a prefix, the viewing key bytes no longer looks like a transaction hash, and thus get
+	// signed as-is.
 	ViewingKeySignedMsgPrefix = "vk"
 )
 
@@ -61,7 +66,9 @@ type enclaveImpl struct {
 	mempool        mempool.Manager
 	statsCollector StatsCollector
 	l1Blockchain   *core.BlockChain
-	viewingKeys    map[common.Address]*ecies.PublicKey // TODO - Replace with persistent storage.
+	// TODO - Replace with persistent storage.
+	// TODO - Handle multiple viewing keys per address.
+	viewingKeys map[common.Address]*ecies.PublicKey
 
 	txCh                 chan nodecommon.L2Tx
 	roundWinnerCh        chan *obscurocore.Rollup
@@ -90,8 +97,7 @@ func NewEnclave(
 ) nodecommon.Enclave {
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 
-	connect := getDBConnector(config)
-	backingDB, err := connect(nodeShortID)
+	backingDB, err := getDB(nodeShortID, config)
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
@@ -640,6 +646,23 @@ func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) er
 	return nil
 }
 
+func (e *enclaveImpl) GetBalance(address common.Address) ([]byte, error) {
+	// TODO - Calculate balance correctly, rather than returning this dummy value.
+	balance := DummyBalance // The Ethereum API is to return the balance in hex.
+
+	viewingKey := e.viewingKeys[address]
+	if viewingKey == nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because it does not have a viewing key for account %s", address.String())
+	}
+
+	encryptedBalance, err := ecies.Encrypt(rand.Reader, viewingKey, []byte(balance), nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because	it could not encrypt the response using a viewing key for account %s", address.String())
+	}
+
+	return encryptedBalance, nil
+}
+
 func verifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {
 	expectedIDHash := getIDHash(att.Owner, att.PubKey)
 	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
@@ -772,21 +795,23 @@ func decryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, err
 	return plaintext, nil
 }
 
-// getDBConnector creates an appropriate EthDBConnector function based on your config
-func getDBConnector(cfg config.EnclaveConfig) db.EthDBConnector {
+// getDB creates an appropriate ethdb.Database instance based on your config
+func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 	if cfg.UseInMemoryDB {
-		// not persistent
-		return func(nodeID uint64) (ethdb.Database, error) {
-			nodecommon.LogWithID(nodeID, "created in-memory database")
-			return rawdb.NewMemoryDatabase(), nil
-		}
+		nodecommon.LogWithID(nodeID, "UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
+		return getInMemDB()
 	}
 
 	if !cfg.WillAttest {
 		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
-		return sql.CreateTemporarySQLiteDB
+		nodecommon.LogWithID(nodeID, "Attestation is disabled, using a basic sqlite DB for persistence")
+		return sql.CreateTemporarySQLiteDB(nodeID)
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
 	panic("Haven't implemented edgeless DB enclave connection yet")
+}
+
+func getInMemDB() (ethdb.Database, error) {
+	return rawdb.NewMemoryDatabase(), nil
 }

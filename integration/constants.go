@@ -1,7 +1,7 @@
 package integration
 
 // Tracks the start ports handed out to different tests, in a bid to minimise conflicts.
-var (
+const (
 	StartPortGethNetworkTest        uint64 = 30000
 	StartPortWalletExtensionTest    uint64 = 31000
 	StartPortNodeRunnerTest         uint64 = 32000
