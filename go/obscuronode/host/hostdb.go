@@ -70,8 +70,8 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 	if currentBlockHead == nil || currentBlockHead.Number.Int64() <= header.Number.Int64() {
 		writeHeadBlock(b, header.Hash())
 	}
-	err := b.Write()
-	if err != nil {
+
+	if err := b.Write(); err != nil {
 		log.Panic("Could not write rollup . Cause %s", err)
 	}
 }
@@ -100,8 +100,8 @@ func (db *DB) AddRollupHeader(header *nodecommon.Header) {
 	if currentRollupHead == nil || currentRollupHead.Number <= header.Number {
 		writeHeadRollup(b, header.Hash())
 	}
-	err := b.Write()
-	if err != nil {
+
+	if err := b.Write(); err != nil {
 		log.Panic("Could not write rollup . Cause %s", err)
 	}
 }
