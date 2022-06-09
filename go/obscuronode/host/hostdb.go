@@ -1,9 +1,16 @@
 package host
 
 import (
-	"sync"
+	"bytes"
+	"os"
+
+	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
@@ -12,94 +19,246 @@ import (
 
 // DB allows to access the nodes public nodeDB
 type DB struct {
-	blockLock        sync.RWMutex
-	currentBlockHead common.Hash
-	blockDB          map[common.Hash]*types.Header
-
-	rollupLock        sync.RWMutex
-	currentRollupHead common.Hash
-	rollupDB          map[common.Hash]*nodecommon.Header
-
-	submittedLock    sync.RWMutex
-	submittedRollups map[common.Hash]common.Hash
+	kvStore ethdb.KeyValueStore
 }
 
-// NewDB returns a new instance of the Node DB
-func NewDB() *DB {
+// NewInMemoryDB returns a new instance of the Node DB
+func NewInMemoryDB() *DB {
 	return &DB{
-		blockDB:          map[common.Hash]*types.Header{},
-		rollupDB:         map[common.Hash]*nodecommon.Header{},
-		submittedRollups: map[common.Hash]common.Hash{},
+		kvStore: memorydb.New(),
+	}
+}
+
+func NewLevelDBBackedDB() *DB {
+	// todo, all these should be configs
+	f, err := os.MkdirTemp("", "leveldb_*")
+	if err != nil {
+		log.Panic("Could not creat temp leveldb directory. Cause %s", err)
+	}
+	cache := 128
+	handles := 128
+	db, err := leveldb.New(f, cache, handles, "obscuro_host", false)
+	if err != nil {
+		log.Panic("Could not create leveldb. Cause: %s", err)
+	}
+	return &DB{
+		kvStore: db,
 	}
 }
 
 // GetCurrentBlockHead returns the current block header (head) of the Node
-func (n *DB) GetCurrentBlockHead() *types.Header {
-	n.blockLock.RLock()
-	defer n.blockLock.RUnlock()
-
-	return n.GetBlockHeader(n.currentBlockHead)
+func (db *DB) GetCurrentBlockHead() *types.Header {
+	head := readHeadBlock(db.kvStore)
+	if head == nil {
+		return nil
+	}
+	return readBlockHeader(db.kvStore, *head)
 }
 
 // GetBlockHeader returns the block header given the Hash
-func (n *DB) GetBlockHeader(hash common.Hash) *types.Header {
-	n.blockLock.RLock()
-	defer n.blockLock.RUnlock()
-	return n.blockDB[hash]
+func (db *DB) GetBlockHeader(hash common.Hash) *types.Header {
+	return readBlockHeader(db.kvStore, hash)
 }
 
 // AddBlockHeader adds a types.Header to the known headers
-func (n *DB) AddBlockHeader(header *types.Header) {
-	n.blockLock.Lock()
-	defer n.blockLock.Unlock()
-
-	n.blockDB[header.Hash()] = header
+func (db *DB) AddBlockHeader(header *types.Header) {
+	b := db.kvStore.NewBatch()
+	writeBlockHeader(b, header)
 
 	// update the head if the new height is greater than the existing one
-	currentBlockHead := n.blockDB[n.currentBlockHead]
+	currentBlockHead := db.GetCurrentBlockHead()
 	if currentBlockHead == nil || currentBlockHead.Number.Int64() <= header.Number.Int64() {
-		n.currentBlockHead = header.Hash()
+		writeHeadBlock(b, header.Hash())
+	}
+
+	if err := b.Write(); err != nil {
+		log.Panic("Could not write rollup . Cause %s", err)
 	}
 }
 
 // GetCurrentRollupHead returns the current rollup header (head) of the Node
-func (n *DB) GetCurrentRollupHead() *nodecommon.Header {
-	n.rollupLock.RLock()
-	defer n.rollupLock.RUnlock()
-
-	return n.GetRollupHeader(n.currentRollupHead)
+func (db *DB) GetCurrentRollupHead() *nodecommon.Header {
+	head := readHeadRollup(db.kvStore)
+	if head == nil {
+		return nil
+	}
+	return readRollupHeader(db.kvStore, *head)
 }
 
 // GetRollupHeader returns the rollup header given the Hash
-func (n *DB) GetRollupHeader(hash common.Hash) *nodecommon.Header {
-	n.rollupLock.RLock()
-	defer n.rollupLock.RUnlock()
-	return n.rollupDB[hash]
+func (db *DB) GetRollupHeader(hash common.Hash) *nodecommon.Header {
+	return readRollupHeader(db.kvStore, hash)
 }
 
 // AddRollupHeader adds a RollupHeader to the known headers
-func (n *DB) AddRollupHeader(header *nodecommon.Header) {
-	n.rollupLock.Lock()
-	defer n.rollupLock.Unlock()
-
-	n.rollupDB[header.Hash()] = header
+func (db *DB) AddRollupHeader(header *nodecommon.Header) {
+	b := db.kvStore.NewBatch()
+	writeRollupHeader(b, header)
 
 	// update the head if the new height is greater than the existing one
-	currentRollupHead := n.rollupDB[n.currentRollupHead]
-	if currentRollupHead == nil || currentRollupHead.Number < header.Number {
-		n.currentRollupHead = header.Hash()
+	currentRollupHead := db.GetCurrentRollupHead()
+	if currentRollupHead == nil || currentRollupHead.Number <= header.Number {
+		writeHeadRollup(b, header.Hash())
+	}
+
+	if err := b.Write(); err != nil {
+		log.Panic("Could not write rollup . Cause %s", err)
 	}
 }
 
-func (n *DB) AddSubmittedRollup(hash common.Hash) {
-	n.submittedLock.Lock()
-	defer n.submittedLock.Unlock()
-	n.submittedRollups[hash] = hash
+func (db *DB) AddSubmittedRollup(hash common.Hash) {
+	err := db.kvStore.Put(submittedRollupHeaderKey(hash), []byte{})
+	if err != nil {
+		log.Panic("Could not save submitted rollup. Cause: %s", err)
+	}
 }
 
-func (n *DB) WasSubmitted(hash common.Hash) bool {
-	n.submittedLock.RLock()
-	defer n.submittedLock.RUnlock()
-	_, f := n.submittedRollups[hash]
+func (db *DB) WasSubmitted(hash common.Hash) bool {
+	f, err := db.kvStore.Has(submittedRollupHeaderKey(hash))
+	if err != nil {
+		log.Panic("Could not retrieve submitted rollup. Cause: %s", err)
+	}
 	return f
+}
+
+// schema
+var (
+	blockHeaderPrefix     = []byte("b")
+	rollupHeaderPrefix    = []byte("r")
+	headBlock             = []byte("hb")
+	headRollup            = []byte("hr")
+	submittedRollupPrefix = []byte("s")
+)
+
+// headerKey = rollupHeaderPrefix  + hash
+func rollupHeaderKey(hash common.Hash) []byte {
+	return append(rollupHeaderPrefix, hash.Bytes()...)
+}
+
+// headerKey = rollupHeaderPrefix  + hash
+func blockHeaderKey(hash common.Hash) []byte {
+	return append(blockHeaderPrefix, hash.Bytes()...)
+}
+
+// headerKey = rollupHeaderPrefix  + hash
+func submittedRollupHeaderKey(hash common.Hash) []byte {
+	return append(submittedRollupPrefix, hash.Bytes()...)
+}
+
+// WriteBlockHeader stores a block header into the database
+func writeBlockHeader(db ethdb.KeyValueWriter, header *types.Header) {
+	// Write the encoded header
+	data, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		log.Panic("could not encode block header. Cause: %s", err)
+	}
+	key := blockHeaderKey(header.Hash())
+	if err := db.Put(key, data); err != nil {
+		log.Panic("could not put header in DB. Cause: %s", err)
+	}
+}
+
+// ReadBlockHeader retrieves the rollup header corresponding to the hash.
+func readBlockHeader(db ethdb.KeyValueReader, hash common.Hash) *types.Header {
+	f, err := db.Has(blockHeaderKey(hash))
+	if err != nil {
+		log.Panic("could not retrieve block header. Cause: %s", err)
+	}
+	if !f {
+		return nil
+	}
+	data, err := db.Get(blockHeaderKey(hash))
+	if err != nil {
+		log.Panic("could not retrieve block header. Cause: %s", err)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	header := new(types.Header)
+	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
+		log.Panic("could not decode block header. Cause: %s", err)
+	}
+	return header
+}
+
+// WriteRollupHeader stores a rollup header into the database
+func writeRollupHeader(db ethdb.KeyValueWriter, header *nodecommon.Header) {
+	// Write the encoded header
+	data, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		log.Panic("could not encode rollup header. Cause: %s", err)
+	}
+	key := rollupHeaderKey(header.Hash())
+	if err := db.Put(key, data); err != nil {
+		log.Panic("could not put header in DB. Cause: %s", err)
+	}
+}
+
+// ReadRollupHeader retrieves the rollup header corresponding to the hash.
+func readRollupHeader(db ethdb.KeyValueReader, hash common.Hash) *nodecommon.Header {
+	f, err := db.Has(rollupHeaderKey(hash))
+	if err != nil {
+		log.Panic("could not retrieve rollup header. Cause: %s", err)
+	}
+	if !f {
+		return nil
+	}
+	data, err := db.Get(rollupHeaderKey(hash))
+	if err != nil {
+		log.Panic("could not retrieve rollup header. Cause: %s", err)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	header := new(nodecommon.Header)
+	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
+		log.Panic("could not decode rollup header. Cause: %s", err)
+	}
+	return header
+}
+
+func readHeadBlock(db ethdb.KeyValueReader) *common.Hash {
+	f, err := db.Has(headBlock)
+	if err != nil {
+		log.Panic("could not retrieve head block. Cause: %s", err)
+	}
+	if !f {
+		return nil
+	}
+	value, err := db.Get(headBlock)
+	if err != nil {
+		log.Panic("could not retrieve head block. Cause: %s", err)
+	}
+	h := common.BytesToHash(value)
+	return &h
+}
+
+func writeHeadBlock(db ethdb.KeyValueWriter, val common.Hash) {
+	err := db.Put(headBlock, val.Bytes())
+	if err != nil {
+		log.Panic("could not write head block. Cause: %s", err)
+	}
+}
+
+func readHeadRollup(db ethdb.KeyValueReader) *common.Hash {
+	f, err := db.Has(headRollup)
+	if err != nil {
+		log.Panic("could not retrieve head rollup. Cause: %s", err)
+	}
+	if !f {
+		return nil
+	}
+	value, err := db.Get(headRollup)
+	if err != nil {
+		log.Panic("could not retrieve head rollup. Cause: %s", err)
+	}
+	h := common.BytesToHash(value)
+	return &h
+}
+
+func writeHeadRollup(db ethdb.KeyValueWriter, val common.Hash) {
+	err := db.Put(headRollup, val.Bytes())
+	if err != nil {
+		log.Panic("could not write head rollup. Cause: %s", err)
+	}
 }

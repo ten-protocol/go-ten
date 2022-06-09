@@ -89,7 +89,8 @@ func NewHost(
 		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
 		// Initialize the node DB
-		nodeDB:       NewDB(),
+		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
+		nodeDB:       NewInMemoryDB(),
 		readyForWork: new(int32),
 
 		// library that provides a handler for Management Contract
