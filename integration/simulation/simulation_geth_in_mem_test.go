@@ -17,7 +17,7 @@ func TestGethSimulation(t *testing.T) {
 	numberOfNodes := 5
 	numberOfSimWallets := 5
 
-	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1)
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := &params.SimParams{
 		NumberOfNodes:         numberOfNodes,

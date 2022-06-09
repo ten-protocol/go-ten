@@ -5,7 +5,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
-	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
 
@@ -20,11 +19,11 @@ type SimWallets struct {
 	Erc20ObsOwnerWallets []wallet.Wallet // and the owners of the respective wrapped versions on Obscuro
 }
 
-func NewSimWallets(nrSimWallets int, nNodes int, nrErc20s int) *SimWallets {
+func NewSimWallets(nrSimWallets int, nNodes int, nrErc20s int, ethereumChainID int64, obscuroChainID int64) *SimWallets {
 	// create the ethereum wallets to be used by the nodes
 	nodeWallets := make([]wallet.Wallet, nNodes)
 	for i := 0; i < nNodes; i++ {
-		nodeWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
+		nodeWallets[i] = datagenerator.RandomWallet(ethereumChainID)
 	}
 
 	// create the wallets to be used by the simulated users
@@ -32,12 +31,12 @@ func NewSimWallets(nrSimWallets int, nNodes int, nrErc20s int) *SimWallets {
 	simEthWallets := make([]wallet.Wallet, nrSimWallets)
 	simObsWallets := make([]wallet.Wallet, nrSimWallets)
 	for i := 0; i < nrSimWallets; i++ {
-		simEthWallets[i] = datagenerator.RandomWallet(integration.EthereumChainID)
-		simObsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), simEthWallets[i].PrivateKey())
+		simEthWallets[i] = datagenerator.RandomWallet(ethereumChainID)
+		simObsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), simEthWallets[i].PrivateKey())
 	}
 
 	// create the wallet to deploy the Management contract
-	mcOwnerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
+	mcOwnerWallet := datagenerator.RandomWallet(ethereumChainID)
 
 	// create the ethereum wallets to be used to deploy ERC20 contracts
 	// and their counterparts in the Obscuro world for the wrapped versions
@@ -46,12 +45,12 @@ func NewSimWallets(nrSimWallets int, nNodes int, nrErc20s int) *SimWallets {
 	}
 	erc20EthWallets := make([]wallet.Wallet, nrErc20s)
 	erc20ObsWallets := make([]wallet.Wallet, nrErc20s)
-	erc20EthWallets[0] = datagenerator.RandomWallet(integration.EthereumChainID)
+	erc20EthWallets[0] = datagenerator.RandomWallet(ethereumChainID)
 
 	// this cannot be random for now, because there is hardcoded logic in the obscuro core
 	// to generate synthetic "transfer" transactions on the wrapped erc20 for each erc20 deposit on ethereum
 	// and these transactions need to be signed
-	erc20ObsWallets[0] = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), evm.Erc20OwnerKey)
+	erc20ObsWallets[0] = wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), evm.Erc20OwnerKey)
 
 	return &SimWallets{
 		MCOwnerWallet:        mcOwnerWallet,

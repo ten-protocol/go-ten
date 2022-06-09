@@ -471,7 +471,7 @@ func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *e
 
 // Creates a single-node Obscuro network for testing.
 func createObscuroNetwork(startPort int) (func(), error) {
-	wallets := params.NewSimWallets(1, 1, 1)
+	wallets := params.NewSimWallets(1, 1, 1, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
 		NumberOfNodes:    1,
