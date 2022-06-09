@@ -48,7 +48,7 @@ const (
 	reqJSONKeyTo            = "to"
 	reqJSONKeyFrom          = "from"
 	emptyResult             = "0x"
-	errInsecure             = "enclave could not respond securely to %s request because there is no viewing key for the account"
+	errInsecure             = "enclave could not respond securely to %s request because it does not have a viewing key for account"
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
@@ -77,18 +77,14 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-// TODO - Renable these tests once Obscuro node functionality is implemented.
-
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	t.Skip() // Skipping while support for viewing keys is being implemented.
-
 	stopHandle, err := createObscuroNetwork(int(integration.StartPortWalletExtensionTest + 1))
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	walletExtensionConfig := walletextension.Config{
 		WalletExtensionPort:     startPort,
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
@@ -104,10 +100,13 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 
 	trimmedRespBody := strings.TrimSpace(string(respBody))
 	expectedErr := fmt.Sprintf(errInsecure, reqJSONMethodGetBalance)
-	if trimmedRespBody != expectedErr {
+
+	if !strings.Contains(trimmedRespBody, expectedErr) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
 }
+
+// TODO - Renable these tests once Obscuro node functionality is implemented.
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
@@ -118,7 +117,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	walletExtensionConfig := walletextension.Config{
 		WalletExtensionPort:     startPort,
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
@@ -154,7 +153,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	walletExtensionConfig := walletextension.Config{
 		WalletExtensionPort:     startPort,
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
@@ -191,7 +190,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	walletExtensionConfig := walletextension.Config{
 		WalletExtensionPort:     startPort,
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
@@ -233,7 +232,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	walletExtensionConfig := walletextension.Config{
 		WalletExtensionPort:     startPort,
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),
@@ -276,7 +275,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
+	nodeRPCPort := integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	walletExtensionConfig := walletextension.Config{
 		WalletExtensionPort:     startPort,
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCPort),

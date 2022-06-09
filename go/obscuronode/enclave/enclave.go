@@ -651,7 +651,7 @@ func (e *enclaveImpl) GetBalance(address common.Address) ([]byte, error) {
 
 	viewingKey := e.viewingKeys[address]
 	if viewingKey == nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because	it does not have a viewing key for account %s", address.String())
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because it does not have a viewing key for account %s", address.String())
 	}
 
 	encryptedBalance, err := ecies.Encrypt(rand.Reader, viewingKey, balance.Bytes(), nil, nil)
