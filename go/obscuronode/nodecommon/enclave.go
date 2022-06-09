@@ -67,6 +67,9 @@ type Enclave interface {
 	// GetRollup returns the rollup with the given hash
 	GetRollup(rollupHash obscurocommon.L2RootHash) *ExtRollup
 
+	// AddViewingKey stores the viewing key in the enclave
+	AddViewingKey(viewingKeyBytes []byte, signature []byte) error
+
 	// StopClient stops the enclave client if one exists
 	StopClient() error
 }

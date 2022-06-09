@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+
 	"github.com/gorilla/websocket"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -17,9 +19,11 @@ import (
 )
 
 const (
+	pathRoot               = "/"
+	PathReady              = "/ready/"
 	pathViewingKeys        = "/viewingkeys/"
-	pathGenerateViewingKey = "/generateviewingkey/"
-	pathSubmitViewingKey   = "/submitviewingkey/"
+	PathGenerateViewingKey = "/generateviewingkey/"
+	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "./tools/walletextension/static"
 
 	reqJSONKeyMethod        = "method"
@@ -27,7 +31,6 @@ const (
 	reqJSONMethodCall       = "eth_call"
 	respJSONKeyErr          = "error"
 	respJSONKeyMsg          = "message"
-	pathRoot                = "/"
 	httpCodeErr             = 500
 
 	Localhost         = "127.0.0.1"
@@ -38,15 +41,14 @@ const (
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecdsa.PublicKey
-	nodeAddr         string // The address on which the node can be reached.
+	enclavePublicKey *ecdsa.PublicKey // The public key used to encrypt requests for the enclave.
+	hostAddr         string           // The address on which the Obscuro host can be reached.
+	hostClient       obscuroclient.Client
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
-	viewingKeyPrivate      *ecdsa.PrivateKey
-	viewingKeyPrivateEcies *ecies.PrivateKey
-	// TODO - Replace this channel with port-based communication with the enclave.
-	viewingKeyChannel chan<- ViewingKey
-	server            *http.Server
+	viewingPublicKeyBytes  []byte
+	viewingPrivateKeyEcies *ecies.PrivateKey
+	server                 *http.Server
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
@@ -54,12 +56,11 @@ func NewWalletExtension(config Config) *WalletExtension {
 	if err != nil {
 		panic(err)
 	}
-	viewingKeyChannel := make(chan ViewingKey)
 
 	return &WalletExtension{
-		enclavePublicKey:  &enclavePrivateKey.PublicKey,
-		nodeAddr:          config.NodeRPCWebsocketAddress,
-		viewingKeyChannel: viewingKeyChannel,
+		enclavePublicKey: &enclavePrivateKey.PublicKey,
+		hostAddr:         config.NodeRPCWebsocketAddress,
+		hostClient:       obscuroclient.NewClient(config.NodeRPCWebsocketAddress),
 	}
 }
 
@@ -68,10 +69,11 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 	// Handles Ethereum JSON-RPC requests received over HTTP.
 	serveMux.HandleFunc(pathRoot, we.handleHTTPEthJSON)
+	serveMux.HandleFunc(PathReady, we.handleReady)
 	// Handles the management of viewing keys.
 	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(staticDir))))
-	serveMux.HandleFunc(pathGenerateViewingKey, we.handleGenerateViewingKey)
-	serveMux.HandleFunc(pathSubmitViewingKey, we.handleSubmitViewingKey)
+	serveMux.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
+	serveMux.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
 	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
 	err := we.server.ListenAndServe()
@@ -88,6 +90,9 @@ func (we *WalletExtension) Shutdown() {
 		}
 	}
 }
+
+// Used to check whether the server is ready.
+func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
 
 // Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
@@ -118,9 +123,9 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	//}
 
 	// We forward the request on to the Obscuro node.
-	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.nodeAddr, body)
+	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.hostAddr, body)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.nodeAddr, err))
+		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.hostAddr, err))
 		return
 	}
 
@@ -137,7 +142,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// We decrypt the response if it's encrypted.
 	if method == reqJSONMethodGetBalance || method == reqJSONMethodCall {
 		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
-		nodeResp, err = we.viewingKeyPrivateEcies.Decrypt(nodeResp, nil, nil)
+		nodeResp, err = we.viewingPrivateKeyEcies.Decrypt(nodeResp, nil, nil)
 		if err != nil {
 			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
 			return
@@ -168,8 +173,8 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 		logAndSendErr(resp, fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
-	we.viewingKeyPrivate = viewingKeyPrivate
-	we.viewingKeyPrivateEcies = ecies.ImportECDSA(viewingKeyPrivate)
+	we.viewingPublicKeyBytes = crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
+	we.viewingPrivateKeyEcies = ecies.ImportECDSA(viewingKeyPrivate)
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
@@ -204,20 +209,18 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 	signature[64] -= 27
 
-	viewingKey := ViewingKey{publicKey: &we.viewingKeyPrivate.PublicKey, signature: signature}
-	we.viewingKeyChannel <- viewingKey
+	var rpcErr error
+	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, we.viewingPublicKeyBytes, signature)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not add viewing key: %s", err))
+		return
+	}
 }
 
 // Logs the error message and sends it as an HTTP error.
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
-}
-
-// ViewingKey is the packet of data sent to the enclave when storing a new viewing key.
-type ViewingKey struct {
-	publicKey *ecdsa.PublicKey
-	signature []byte
 }
 
 // Config contains the configuration required by the WalletExtension.
