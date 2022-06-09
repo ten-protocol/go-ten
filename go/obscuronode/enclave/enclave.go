@@ -649,7 +649,7 @@ func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) er
 
 func (e *enclaveImpl) GetBalance(address common.Address) ([]byte, error) {
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
-	balance := "0x0" // The Ethereum API is to return the balance in hex.
+	balance := DummyBalance // The Ethereum API is to return the balance in hex.
 
 	viewingKey := e.viewingKeys[address]
 	if viewingKey == nil {
