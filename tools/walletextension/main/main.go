@@ -10,5 +10,12 @@ func main() {
 	config := parseCLIArgs()
 	walletExtension := walletextension.NewWalletExtension(config)
 	defer walletExtension.Shutdown()
-	walletExtension.Serve(fmt.Sprintf("%s:%d", walletextension.Localhost, config.WalletExtensionPort))
+
+	walletExtensionAddr := fmt.Sprintf("%s:%d", walletextension.Localhost, config.WalletExtensionPort)
+	go walletExtension.Serve(walletExtensionAddr)
+	fmt.Printf("Wallet extension started.\n💡 Visit %s/viewingkeys/ to generate an ephemeral viewing key. "+
+		"Without a viewing key, you will not be able to decrypt the enclave's secure responses to your "+
+		"eth_getBalance and eth_call requests.\n", walletExtensionAddr)
+
+	select {}
 }
