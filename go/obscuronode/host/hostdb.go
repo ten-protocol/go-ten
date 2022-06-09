@@ -33,7 +33,7 @@ func NewLevelDBBackedDB() *DB {
 	// todo, all these should be configs
 	f, err := os.MkdirTemp("", "leveldb_*")
 	if err != nil {
-		log.Panic("Coulnd not creat tempf file. Cause %s", err)
+		log.Panic("Could not creat temp leveldb directory. Cause %s", err)
 	}
 	cache := 128
 	handles := 128
