@@ -61,7 +61,7 @@ var (
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork(int(networkStartPort))
+	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -80,7 +80,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork(int(networkStartPort))
+	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -102,7 +102,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork(int(networkStartPort))
+	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -129,7 +129,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork(int(networkStartPort))
+	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -161,7 +161,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
-	stopHandle, err := createObscuroNetwork(int(networkStartPort))
+	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -196,7 +196,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
-	stopHandle, err := createObscuroNetwork(int(networkStartPort))
+	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -232,7 +232,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
 
-	stopHandle, err := createObscuroNetwork(int(networkStartPort))
+	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -425,7 +425,7 @@ func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *e
 }
 
 // Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(startPort int) (func(), error) {
+func createObscuroNetwork() (func(), error) {
 	wallets := params.NewSimWallets(1, 1, 1)
 
 	simParams := params.SimParams{
@@ -435,7 +435,7 @@ func createObscuroNetwork(startPort int) (func(), error) {
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
-		StartPort:        startPort,
+		StartPort:        int(networkStartPort),
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 
