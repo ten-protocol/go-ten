@@ -41,7 +41,9 @@ import (
 )
 
 const (
-	msgNoRollup               = "could not fetch rollup"
+	msgNoRollup = "could not fetch rollup"
+	// ViewingKeySignedMsgPrefix is the prefixed added when signing the viewing key in MetaMask using personal_sign.
+	// Without a recognisable prefix, personal_sign transforms the data to avoid various attacks.
 	ViewingKeySignedMsgPrefix = "vk"
 )
 
