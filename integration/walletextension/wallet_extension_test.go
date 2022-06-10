@@ -398,6 +398,7 @@ func createObscuroNetwork() (func(), error) {
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
 		StartPort:        int(networkStartPort),
+		UseViewingKeys:   true,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 

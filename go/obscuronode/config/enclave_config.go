@@ -30,8 +30,11 @@ type EnclaveConfig struct {
 	WriteToLogs bool
 	// The path that the node's logs are written to
 	LogPath string
-	// Whether enclave should use in-memory or persistent storage
+	// Whether the enclave should use in-memory or persistent storage
 	UseInMemoryDB bool
+	// Whether the enclave should encrypt responses to sensitive requests with viewing keys
+	// TODO - Consider removing this option and forcing the simulations to generate viewing keys.
+	UseViewingKeys bool
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -50,5 +53,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		WriteToLogs:               false,
 		LogPath:                   "enclave_logs.txt",
 		UseInMemoryDB:             true,
+		UseViewingKeys:            true,
 	}
 }

@@ -821,6 +821,10 @@ func getInMemDB() (ethdb.Database, error) {
 
 // Encrypts the bytes with a viewing key for the address.
 func (e *enclaveImpl) encryptWithViewingKey(address common.Address, bytes []byte) (nodecommon.EncryptedResponse, error) {
+	if !e.config.UseViewingKeys {
+		return bytes, nil
+	}
+
 	viewingKey := e.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())

@@ -39,6 +39,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
+			params.UseViewingKeys,
 		)
 	}
 	// make sure the aggregators can talk to each other
@@ -138,6 +139,7 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 			WillAttest:       false,
 			GenesisJSON:      nil,
 			UseInMemoryDB:    false,
+			UseViewingKeys:   params.UseViewingKeys,
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {

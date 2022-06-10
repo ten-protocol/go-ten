@@ -46,6 +46,7 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold: 0.4,
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationAzureEnclave,
+		UseViewingKeys:            false,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
