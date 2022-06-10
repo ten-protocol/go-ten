@@ -30,15 +30,17 @@ func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
 	}
 	// determine if a db file already exists, we don't want to overwrite it
 	_, err := os.Stat(dbPath)
-	existingDB := err == nil // err is nil if it exists
+	newOrExisting := "new"
+	if err == nil {
+		// err is nil if it exists
+		newOrExisting = "existing"
+	}
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
-	newOrExisting := "existing"
-	if !existingDB {
-		newOrExisting = "new"
+	if newOrExisting == "new" {
 		// db wasn't there already so we should set it up (create kv store table)
 		if _, err := db.Exec(createQry); err != nil {
 			return nil, fmt.Errorf("failed to create sqlite db table - %w", err)
