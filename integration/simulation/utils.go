@@ -12,7 +12,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -123,6 +122,6 @@ func balance(client obscuroclient.Client, address common.Address) uint64 {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
 	r := new(big.Int)
-	r = r.SetBytes(core.DecryptResponse(common.Hex2Bytes(encryptedResponse)))
+	r = r.SetBytes(common.Hex2Bytes(encryptedResponse))
 	return r.Uint64()
 }

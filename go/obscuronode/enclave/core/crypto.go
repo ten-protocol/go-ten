@@ -29,9 +29,3 @@ func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 
 	return t
 }
-
-// DecryptResponse - the reverse of EncryptResponse
-func DecryptResponse(r nodecommon.EncryptedResponse) []byte {
-	// TODO
-	return r
-}
