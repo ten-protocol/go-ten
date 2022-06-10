@@ -217,11 +217,10 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
-	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, "latest"})
+	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, "latest"})
 
-	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodCall)
-	if !strings.Contains(string(respBody), expectedErr) {
-		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
+	if callJSON[walletextension.RespJSONKeyResult] != string(enclave.PlaceholderResult) {
+		t.Fatalf("Expected call result of %s, got %s", enclave.PlaceholderResult, callJSON[walletextension.RespJSONKeyResult])
 	}
 }
 

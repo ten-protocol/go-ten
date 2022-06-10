@@ -52,6 +52,10 @@ const (
 	ViewingKeySignedMsgPrefix = "vk"
 )
 
+// PlaceholderResult is used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil
+// using ECIES throws an exception.
+var PlaceholderResult = []byte("<nil result>")
+
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -820,6 +824,10 @@ func (e *enclaveImpl) encryptWithViewingKey(address common.Address, bytes []byte
 	viewingKey := e.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
+	}
+
+	if bytes == nil {
+		bytes = PlaceholderResult
 	}
 
 	encryptedBytes, err := ecies.Encrypt(rand.Reader, viewingKey, bytes, nil, nil)
