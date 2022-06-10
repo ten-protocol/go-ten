@@ -16,8 +16,8 @@ import (
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog("docker")
 
-	numberOfNodes := 1
-	numberOfSimWallets := 1
+	numberOfNodes := 5
+	numberOfSimWallets := 5
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
