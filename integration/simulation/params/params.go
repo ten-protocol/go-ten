@@ -43,5 +43,5 @@ type SimParams struct {
 
 	StartPort int // The port from which to start allocating ports. Must be unique across all simulations.
 
-	UseViewingKeys bool // Whether the enclave should encrypt responses to sensitive requests with viewing keys
+	ViewingKeysEnabled bool // Whether the enclave should encrypt responses to sensitive requests with viewing keys
 }

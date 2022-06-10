@@ -34,7 +34,7 @@ type EnclaveConfig struct {
 	UseInMemoryDB bool
 	// Whether the enclave should encrypt responses to sensitive requests with viewing keys
 	// TODO - Consider removing this option and forcing the simulations to generate viewing keys.
-	UseViewingKeys bool
+	ViewingKeysEnabled bool
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -53,6 +53,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		WriteToLogs:               false,
 		LogPath:                   "enclave_logs.txt",
 		UseInMemoryDB:             true,
-		UseViewingKeys:            true,
+		ViewingKeysEnabled:        true,
 	}
 }

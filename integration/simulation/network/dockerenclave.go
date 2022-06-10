@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	enclaveDockerImg  = "obscuro_enclave"
+	enclaveDockerImg  = "obscuro_enclavez"
 	enclaveAddress    = ":11000"
 	enclaveDockerPort = "11000/tcp"
 )

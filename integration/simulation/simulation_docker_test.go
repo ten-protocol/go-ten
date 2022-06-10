@@ -16,8 +16,8 @@ import (
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 	setupTestLog("docker")
 
-	numberOfNodes := 5
-	numberOfSimWallets := 5
+	numberOfNodes := 1
+	numberOfSimWallets := 1
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
@@ -30,7 +30,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold: 0.7, // nodes might stop producing rollups but the geth network is still going
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationDocker,
-		UseViewingKeys:            false,
+		ViewingKeysEnabled:        false,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2

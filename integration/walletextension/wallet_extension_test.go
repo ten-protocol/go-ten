@@ -165,7 +165,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -200,7 +200,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -236,7 +236,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -391,14 +391,14 @@ func createObscuroNetwork() (func(), error) {
 	wallets := params.NewSimWallets(1, 1, 1, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
-		NumberOfNodes:    1,
-		AvgBlockDuration: 1 * time.Second,
-		AvgGossipPeriod:  1 * time.Second / 3,
-		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
-		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
-		Wallets:          wallets,
-		StartPort:        int(networkStartPort),
-		UseViewingKeys:   true,
+		NumberOfNodes:      1,
+		AvgBlockDuration:   1 * time.Second,
+		AvgGossipPeriod:    1 * time.Second / 3,
+		MgmtContractLib:    ethereummock.NewMgmtContractLibMock(),
+		ERC20ContractLib:   ethereummock.NewERC20ContractLibMock(),
+		Wallets:            wallets,
+		StartPort:          int(networkStartPort),
+		ViewingKeysEnabled: true,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 
