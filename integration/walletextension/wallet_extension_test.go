@@ -182,10 +182,12 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	}
 	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
+	// By transferring an amount of zero, we avoid the need to deposit any funds in the ERC20 contract.
+	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
 		reqJSONKeyTo:   evm.Erc20ContractAddress,
 		reqJSONKeyFrom: accountAddress.String(),
-		reqJSONKeyData: "0x" + common.Bytes2Hex(erc20contractlib.CreateTransferTxData(accountAddress, 300)),
+		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
 	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, "latest"})
 
