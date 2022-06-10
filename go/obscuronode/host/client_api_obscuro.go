@@ -52,16 +52,6 @@ func (api *ObscuroAPI) GetTransaction(hash common.Hash) *nodecommon.L2Tx {
 	return api.host.EnclaveClient.GetTransaction(hash)
 }
 
-// ExecContract returns the result of executing the smart contract as a user.
-// `data` is generally generated from the ABI of a smart contract.
-func (api *ObscuroAPI) ExecContract(from common.Address, contractAddress common.Address, data []byte) OffChainResponse {
-	r, err := api.host.EnclaveClient.ExecuteOffChainTransaction(from, contractAddress, data)
-	return OffChainResponse{
-		Response: r,
-		Error:    err,
-	}
-}
-
 // Nonce returns the nonce of the wallet with the given address.
 func (api *ObscuroAPI) Nonce(address common.Address) uint64 {
 	return api.host.EnclaveClient.Nonce(address)
@@ -75,9 +65,4 @@ func (api *ObscuroAPI) AddViewingKey(viewingKeyBytes []byte, signature []byte) e
 // StopHost gracefully stops the host.
 func (api *ObscuroAPI) StopHost() {
 	go api.host.Stop()
-}
-
-type OffChainResponse struct {
-	Response nodecommon.EncryptedResponse
-	Error    error
 }
