@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -29,7 +28,7 @@ func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
+func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error { //nolint:gocognit
 	switch method {
 	case obscuroclient.RPCGetID:
 		*result.(*common.Address) = c.obscuroAPI.GetID()
@@ -85,26 +84,27 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		*result.(**nodecommon.L2Tx) = c.obscuroAPI.GetTransaction(hash)
 
 	case obscuroclient.RPCCall:
-		if len(args) != 3 {
-			return fmt.Errorf("expected 3 arg to %s, got %d", obscuroclient.RPCCall, len(args))
+		if len(args) != 4 {
+			return fmt.Errorf("expected 4 args to %s, got %d", obscuroclient.RPCCall, len(args))
 		}
-		fromAddress, ok := args[0].(common.Address)
+		callContext, ok := args[0].(context.Context)
 		if !ok {
-			return fmt.Errorf("arg 0 to %s was not of expected type common.Address", obscuroclient.RPCCall)
+			return fmt.Errorf("arg 0 to %s was not of expected type context.Context", obscuroclient.RPCCall)
 		}
-		contractAddress, ok := args[1].(common.Address)
+		txArgs, ok := args[1].(TransactionArgs)
 		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type common.Address", obscuroclient.RPCCall)
+			return fmt.Errorf("arg 1 to %s was not of expected type host.TransactionArgs", obscuroclient.RPCCall)
 		}
-		data, ok := args[2].([]byte)
+		blockNumberOrHash, ok := args[2].(rpc.BlockNumberOrHash)
 		if !ok {
-			return fmt.Errorf("arg 2 to %s was not of expected type []byte", obscuroclient.RPCCall)
+			return fmt.Errorf("arg 2 to %s was not of expected type rpc.BlockNumberOrHash", obscuroclient.RPCCall)
+		}
+		stateOverride, ok := args[3].(*StateOverride)
+		if !ok {
+			return fmt.Errorf("arg 3 to %s was not of expected type host.StateOverride", obscuroclient.RPCCall)
 		}
 
-		convertedData := (hexutil.Bytes)(data)
-		txArgs := TransactionArgs{From: &fromAddress, To: &contractAddress, Data: &convertedData}
-		encryptedResponse, err := c.ethAPI.Call(context.Background(), txArgs, rpc.BlockNumberOrHash{}, nil)
-
+		encryptedResponse, err := c.ethAPI.Call(callContext, txArgs, blockNumberOrHash, stateOverride)
 		*result.(*OffChainResponse) = OffChainResponse{
 			Response: common.Hex2Bytes(encryptedResponse),
 			Error:    err,

@@ -1,10 +1,14 @@
 package simulation
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
@@ -111,9 +115,11 @@ func getTransaction(client obscuroclient.Client, hash common.Hash) *nodecommon.L
 func balance(client obscuroclient.Client, address common.Address) uint64 {
 	method := obscuroclient.RPCCall
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
+	convertedData := (hexutil.Bytes)(balanceData)
+	txArgs := host.TransactionArgs{From: &address, To: &evm.Erc20ContractAddress, Data: &convertedData}
 
 	var result host.OffChainResponse
-	err := client.Call(&result, method, address, evm.Erc20ContractAddress, balanceData)
+	err := client.Call(&result, method, context.Background(), txArgs, rpc.BlockNumberOrHash{}, nil)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
