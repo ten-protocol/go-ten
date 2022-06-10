@@ -50,7 +50,7 @@ const (
 	reqJSONKeyFrom       = "from"
 	reqJSONKeyData       = "data"
 	emptyResult          = "0x"
-	errInsecure          = "enclave could not respond securely to %s request because it does not have a viewing key for account"
+	errInsecure          = "enclave could not respond securely to %s request"
 
 	networkStartPort = integration.StartPortWalletExtensionTest + 1
 	nodeRPCHTTPPort  = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
@@ -174,7 +174,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
-	time.Sleep(5 * time.Second) // todo - joel - review this sleep
+	time.Sleep(2 * time.Second)
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -193,7 +193,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 
 	trimmedRespBody := strings.TrimSpace(string(respBody))
 	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodCall)
-	if trimmedRespBody != expectedErr {
+	if !strings.Contains(trimmedRespBody, expectedErr) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
 }

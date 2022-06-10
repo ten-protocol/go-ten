@@ -30,12 +30,6 @@ func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
 	return t
 }
 
-// EncryptResponse - encrypts the response from the evm with the viewing key of the sender
-func EncryptResponse(resp []byte) nodecommon.EncryptedResponse {
-	// TODO
-	return resp
-}
-
 // DecryptResponse - the reverse of EncryptResponse
 func DecryptResponse(r nodecommon.EncryptedResponse) []byte {
 	// TODO
