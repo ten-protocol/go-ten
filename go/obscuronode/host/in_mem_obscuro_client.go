@@ -101,7 +101,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		}
 		stateOverride, ok := args[3].(*StateOverride)
 		if !ok {
-			return fmt.Errorf("arg 3 to %s was not of expected type host.StateOverride", obscuroclient.RPCCall)
+			return fmt.Errorf("arg 3 to %s was not of expected type *host.StateOverride", obscuroclient.RPCCall)
 		}
 
 		encryptedResponse, err := c.ethAPI.Call(callContext, txArgs, blockNumberOrHash, stateOverride)

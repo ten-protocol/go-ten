@@ -119,7 +119,7 @@ func balance(client obscuroclient.Client, address common.Address) uint64 {
 	txArgs := host.TransactionArgs{From: &address, To: &evm.Erc20ContractAddress, Data: &convertedData}
 
 	var result host.OffChainResponse
-	err := client.Call(&result, method, context.Background(), txArgs, rpc.BlockNumberOrHash{}, nil)
+	err := client.Call(&result, method, context.Background(), txArgs, rpc.BlockNumberOrHash{}, &host.StateOverride{})
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
