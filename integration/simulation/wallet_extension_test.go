@@ -1,4 +1,4 @@
-package walletextension
+package simulation
 
 import (
 	"bytes"
@@ -17,7 +17,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
@@ -59,6 +58,9 @@ var (
 	}
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 )
+
+// TODO - Move to separate package once DB conflicts have been resolved. Currently, starting multiple simulation
+//  networks at once causes DB issues.
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	stopHandle, err := createObscuroNetwork()
@@ -412,7 +414,7 @@ func createObscuroNetwork() (func(), error) {
 	wallet := wallets.Erc20ObsOwnerWallets[0]
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
-		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
+		Nonce:    NextNonce(l2Clients[0], wallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
 		Data:     contractBytes,
