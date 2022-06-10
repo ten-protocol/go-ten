@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/ethereum/go-ethereum/ethdb"
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
 )
@@ -28,19 +30,22 @@ func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
 	}
 	// determine if a db file already exists, we don't want to overwrite it
 	_, err := os.Stat(dbPath)
-	dbExists := err != nil
+	existingDB := err == nil // err is nil if it exists
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
-
-	if !dbExists {
+	newOrExisting := "existing"
+	if !existingDB {
+		newOrExisting = "new"
 		// db wasn't there already so we should set it up (create kv store table)
 		if _, err := db.Exec(createQry); err != nil {
 			return nil, fmt.Errorf("failed to create sqlite db table - %w", err)
 		}
 	}
+
+	log.Info("Opened %s sqlite db file at %s", newOrExisting, dbPath)
 	return CreateSQLEthDatabase(db)
 }
 
