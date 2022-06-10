@@ -66,8 +66,3 @@ func (api *ObscuroAPI) AddViewingKey(viewingKeyBytes []byte, signature []byte) e
 func (api *ObscuroAPI) StopHost() {
 	go api.host.Stop()
 }
-
-type OffChainResponse struct {
-	Response nodecommon.EncryptedResponse
-	Error    error
-}
