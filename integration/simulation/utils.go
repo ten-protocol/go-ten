@@ -109,7 +109,7 @@ func getTransaction(client obscuroclient.Client, hash common.Hash) *nodecommon.L
 
 // Uses the client to retrieve the balance of the wallet with the given address.
 func balance(client obscuroclient.Client, address common.Address) uint64 {
-	method := obscuroclient.RPCExecContract
+	method := obscuroclient.RPCCall
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
 	var result host.OffChainResponse

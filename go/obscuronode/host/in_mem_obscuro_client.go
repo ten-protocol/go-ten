@@ -84,21 +84,21 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		*result.(**nodecommon.L2Tx) = c.obscuroAPI.GetTransaction(hash)
 
-	case obscuroclient.RPCExecContract:
+	case obscuroclient.RPCCall:
 		if len(args) != 3 {
-			return fmt.Errorf("expected 3 arg to %s, got %d", obscuroclient.RPCExecContract, len(args))
+			return fmt.Errorf("expected 3 arg to %s, got %d", obscuroclient.RPCCall, len(args))
 		}
 		fromAddress, ok := args[0].(common.Address)
 		if !ok {
-			return fmt.Errorf("arg 0 to %s was not of expected type common.Address", obscuroclient.RPCExecContract)
+			return fmt.Errorf("arg 0 to %s was not of expected type common.Address", obscuroclient.RPCCall)
 		}
 		contractAddress, ok := args[1].(common.Address)
 		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type common.Address", obscuroclient.RPCExecContract)
+			return fmt.Errorf("arg 1 to %s was not of expected type common.Address", obscuroclient.RPCCall)
 		}
 		data, ok := args[2].([]byte)
 		if !ok {
-			return fmt.Errorf("arg 2 to %s was not of expected type []byte", obscuroclient.RPCExecContract)
+			return fmt.Errorf("arg 2 to %s was not of expected type []byte", obscuroclient.RPCCall)
 		}
 
 		convertedData := (hexutil.Bytes)(data)
