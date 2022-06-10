@@ -84,11 +84,11 @@ func (p *p2pImpl) StopListening() error {
 }
 
 func (p *p2pImpl) BroadcastTx(tx nodecommon.EncryptedTx) {
-	p.broadcast(Tx, tx)
+	p.broadcast(Tx, tx, append(p.PeerAddresses, p.OurAddress))
 }
 
 func (p *p2pImpl) BroadcastRollup(r obscurocommon.EncodedRollup) {
-	p.broadcast(Rollup, r)
+	p.broadcast(Rollup, r, p.PeerAddresses)
 }
 
 // Listens for connections and handles them in a separate goroutine.
@@ -149,14 +149,14 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 }
 
 // Creates a P2P message and broadcasts it to all peers.
-func (p *p2pImpl) broadcast(msgType Type, bytes []byte) {
+func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) {
 	msg := Message{Type: msgType, MsgContents: bytes}
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		log.Panic("could not encode message. Cause: %s", err)
 	}
 
-	for _, address := range p.PeerAddresses {
+	for _, address := range toAddresses {
 		p.sendBytes(address, msgEncoded)
 	}
 }

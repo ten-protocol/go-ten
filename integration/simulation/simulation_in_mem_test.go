@@ -34,6 +34,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationInMem,
+		ViewingKeysEnabled:        false,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

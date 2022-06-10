@@ -25,6 +25,7 @@ type EnclaveConfigToml struct {
 	WriteToLogs               bool
 	LogPath                   string
 	UseInMemoryDB             bool
+	ViewingKeysEnabled        bool
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -45,6 +46,7 @@ func ParseConfig() config.EnclaveConfig {
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	useInMemoryDB := flag.Bool(useInMemoryDBName, defaultConfig.UseInMemoryDB, useInMemoryDBUsage)
+	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, defaultConfig.ViewingKeysEnabled, ViewingKeysEnabledUsage)
 
 	flag.Parse()
 
@@ -76,6 +78,7 @@ func ParseConfig() config.EnclaveConfig {
 	defaultConfig.WriteToLogs = *writeToLogs
 	defaultConfig.LogPath = *logPath
 	defaultConfig.UseInMemoryDB = *useInMemoryDB
+	defaultConfig.ViewingKeysEnabled = *viewingKeysEnabled
 
 	return defaultConfig
 }
@@ -112,5 +115,6 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		WriteToLogs:               tomlConfig.WriteToLogs,
 		LogPath:                   tomlConfig.LogPath,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
+		ViewingKeysEnabled:        tomlConfig.ViewingKeysEnabled,
 	}
 }

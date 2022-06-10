@@ -10,3 +10,4 @@ erc20ContractAddresses = []
 writeToLogs = false
 logPath = "enclave_logs.txt"
 useInMemoryDb = true
+viewingKeysEnabled = false

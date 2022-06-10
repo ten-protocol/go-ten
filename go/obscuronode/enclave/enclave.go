@@ -52,6 +52,10 @@ const (
 	ViewingKeySignedMsgPrefix = "vk"
 )
 
+// PlaceholderResult is used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil
+// using ECIES throws an exception.
+var PlaceholderResult = []byte("<nil result>")
+
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -429,8 +433,12 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAd
 		return nil, result.Err
 	}
 
-	// todo user encryption
-	return obscurocore.EncryptResponse(result.ReturnData), nil
+	encryptedResult, err := e.encryptWithViewingKey(from, result.ReturnData)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
+	}
+
+	return encryptedResult, nil
 }
 
 func (e *enclaveImpl) Nonce(address common.Address) uint64 {
@@ -650,14 +658,9 @@ func (e *enclaveImpl) GetBalance(address common.Address) (nodecommon.EncryptedRe
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
 	balance := DummyBalance // The Ethereum API is to return the balance in hex.
 
-	viewingKey := e.viewingKeys[address]
-	if viewingKey == nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because it does not have a viewing key for account %s", address.String())
-	}
-
-	encryptedBalance, err := ecies.Encrypt(rand.Reader, viewingKey, []byte(balance), nil, nil)
+	encryptedBalance, err := e.encryptWithViewingKey(address, []byte(balance))
 	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request because	it could not encrypt the response using a viewing key for account %s", address.String())
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
 
 	return encryptedBalance, nil
@@ -814,4 +817,27 @@ func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 
 func getInMemDB() (ethdb.Database, error) {
 	return rawdb.NewMemoryDatabase(), nil
+}
+
+// Encrypts the bytes with a viewing key for the address.
+func (e *enclaveImpl) encryptWithViewingKey(address common.Address, bytes []byte) (nodecommon.EncryptedResponse, error) {
+	if !e.config.ViewingKeysEnabled {
+		return bytes, nil
+	}
+
+	viewingKey := e.viewingKeys[address]
+	if viewingKey == nil {
+		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
+	}
+
+	if bytes == nil {
+		bytes = PlaceholderResult
+	}
+
+	encryptedBytes, err := ecies.Encrypt(rand.Reader, viewingKey, bytes, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt bytes becauseit could not encrypt the response using a viewing key for account %s", address.String())
+	}
+
+	return encryptedBytes, nil
 }

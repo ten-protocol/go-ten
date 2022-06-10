@@ -45,6 +45,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 				"--" + enclaverunner.AddressName, enclaveAddress,
 				"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
 				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addr,
+				"--" + enclaverunner.ViewingKeysEnabledName + "=false",
 			},
 		}
 		r := container.Resources{
