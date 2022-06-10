@@ -80,7 +80,7 @@ type Enclave interface {
 
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the address.
 	// TODO - Handle multiple viewing keys, and thus multiple return values.
-	GetBalance(address common.Address) ([]byte, error)
+	GetBalance(address common.Address) (EncryptedResponse, error)
 
 	// StopClient stops the enclave client if one exists
 	StopClient() error

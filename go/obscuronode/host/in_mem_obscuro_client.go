@@ -1,7 +1,11 @@
 package host
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -14,11 +18,13 @@ import (
 // An in-memory implementation of `obscuroclient.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
 	obscuroAPI ObscuroAPI
+	ethAPI     EthereumAPI
 }
 
 func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 	return &inMemObscuroClient{
 		obscuroAPI: *NewObscuroAPI(host),
+		ethAPI:     *NewEthereumAPI(host),
 	}
 }
 
@@ -95,7 +101,14 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg 2 to %s was not of expected type []byte", obscuroclient.RPCExecContract)
 		}
 
-		*result.(*OffChainResponse) = c.obscuroAPI.ExecContract(fromAddress, contractAddress, data)
+		convertedData := (hexutil.Bytes)(data)
+		txArgs := TransactionArgs{From: &fromAddress, To: &contractAddress, Data: &convertedData}
+		encryptedResponse, err := c.ethAPI.Call(context.Background(), txArgs, rpc.BlockNumberOrHash{}, nil)
+
+		*result.(*OffChainResponse) = OffChainResponse{
+			Response: common.Hex2Bytes(encryptedResponse),
+			Error:    err,
+		}
 
 	case obscuroclient.RPCNonce:
 		if len(args) != 1 {
