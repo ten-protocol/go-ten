@@ -6,6 +6,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+	"github.com/obscuronet/obscuro-playground/integration/simulation"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -42,6 +48,7 @@ const (
 	reqJSONMethodChainID = "eth_chainId"
 	reqJSONKeyTo         = "to"
 	reqJSONKeyFrom       = "from"
+	reqJSONKeyData       = "data"
 	emptyResult          = "0x"
 	errInsecure          = "enclave could not respond securely to %s request because it does not have a viewing key for account"
 
@@ -155,11 +162,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-// TODO - Renable these tests once Obscuro node functionality is implemented.
-
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	t.Skip() // Skipping while support for viewing keys is being implemented.
-
 	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -171,17 +174,18 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
+	time.Sleep(5 * time.Second) // todo - joel - review this sleep
+
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
-
-	contractAddr := deployERC20Contract(t, walletExtensionAddr, privateKey)
+	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   contractAddr,
-		reqJSONKeyFrom: accountAddr,
+		reqJSONKeyTo:   evm.Erc20ContractAddress,
+		reqJSONKeyFrom: accountAddress.String(),
+		reqJSONKeyData: "0x" + common.Bytes2Hex(erc20contractlib.CreateTransferTxData(accountAddress, 300)),
 	}
 	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, "latest"})
 
@@ -191,6 +195,8 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, trimmedRespBody)
 	}
 }
+
+// TODO - Renable these tests once Obscuro node functionality is implemented.
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	t.Skip() // Skipping while support for viewing keys is being implemented.
@@ -423,7 +429,7 @@ func deployERC20Contract(t *testing.T, walletExtensionAddr string, signingKey *e
 	return txInfo["contractAddress"].(string)
 }
 
-// Creates a single-node Obscuro network for testing.
+// Creates a single-node Obscuro network for testing, and deploys an ERC20 contract to it.
 func createObscuroNetwork() (func(), error) {
 	wallets := params.NewSimWallets(1, 1, 1, integration.EthereumChainID, integration.ObscuroChainID)
 
@@ -439,9 +445,29 @@ func createObscuroNetwork() (func(), error) {
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	_, _, _, err := obscuroNetwork.Create(&simParams, simStats) //nolint:dogsled
+	_, l2Clients, _, err := obscuroNetwork.Create(&simParams, simStats) //nolint:dogsled
 	if err != nil {
 		return obscuroNetwork.TearDown, err
 	}
+
+	// Deploy an ERC20 contract to the Obscuro network.
+	wallet := wallets.Erc20ObsOwnerWallets[0]
+	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
+	deployContractTx := types.LegacyTx{
+		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
+		Gas:      1025_000_000,
+		GasPrice: common.Big0,
+		Data:     contractBytes,
+	}
+	signedTx, err := wallet.SignTransaction(&deployContractTx)
+	if err != nil {
+		return obscuroNetwork.TearDown, err
+	}
+	encryptedTx := core.EncryptTx(signedTx)
+	err = l2Clients[0].Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+	if err != nil {
+		return obscuroNetwork.TearDown, err
+	}
+
 	return obscuroNetwork.TearDown, nil
 }

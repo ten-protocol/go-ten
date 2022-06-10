@@ -34,7 +34,7 @@ func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodeco
 		if r.Status != 1 {
 			log.Info("Unsuccessful (status != 1) tx %d.", obscurocommon.ShortHash(t.Hash()))
 		} else {
-			log.Info("Successfully executed tx %d", obscurocommon.ShortHash(t.Hash()))
+			log.Info("Successfully executed tx %d at address %s", obscurocommon.ShortHash(t.Hash()), r.ContractAddress.Hex())
 		}
 	}
 	s.Finalise(true)
