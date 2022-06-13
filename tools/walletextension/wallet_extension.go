@@ -2,7 +2,7 @@ package walletextension
 
 import (
 	"context"
-	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -41,14 +41,14 @@ const (
 
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e" //nolint // TODO - Remove linter suppression.
+	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecdsa.PublicKey // The public key used to encrypt requests for the enclave.
+	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
 	hostClient       obscuroclient.Client
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
@@ -59,13 +59,13 @@ type WalletExtension struct {
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
-	enclavePrivateKey, err := crypto.GenerateKey()
+	enclavePublicKey, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
 		panic(err)
 	}
 
 	return &WalletExtension{
-		enclavePublicKey: &enclavePrivateKey.PublicKey,
+		enclavePublicKey: ecies.ImportECDSAPublic(enclavePublicKey),
 		hostAddr:         config.NodeRPCWebsocketAddress,
 		hostClient:       obscuroclient.NewClient(config.NodeRPCHTTPAddress),
 	}
@@ -119,7 +119,6 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	method := reqJSONMap[reqJSONKeyMethod]
 	fmt.Printf("Received request from wallet: %s\n", body)
 
-	// TODO - Reenable encryption of requests.
 	//// We encrypt the JSON with the enclave's public key.
 	//fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
 	//eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
@@ -222,8 +221,15 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 	signature[64] -= 27
 
+	// We encrypt the viewing key bytes.
+	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, we.viewingPublicKeyBytes, nil, nil)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not encrypt viewing key with enclave public key: %s", err))
+		return
+	}
+
 	var rpcErr error
-	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, we.viewingPublicKeyBytes, signature)
+	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, encryptedViewingKeyBytes, signature)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not add viewing key: %s", err))
 		return

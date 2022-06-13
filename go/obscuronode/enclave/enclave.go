@@ -618,7 +618,11 @@ func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscuro
 	return e.encryptSecret(att.PubKey, secret)
 }
 
-func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+	viewingKeyBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
+	if err != nil {
+		return fmt.Errorf("could not decrypt viewing key. Cause: %w", err)
+	}
 	return e.viewingKeyManager.AddViewingKey(viewingKeyBytes, signature)
 }
 
