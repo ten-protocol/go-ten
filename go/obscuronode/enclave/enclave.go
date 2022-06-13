@@ -11,7 +11,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/viewingkeymanager"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/sql"
