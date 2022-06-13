@@ -10,9 +10,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
-
-// TODO - This fixed nonce is insecure, and should be removed alongside the fixed rollup encryption key.
+§
 const (
+	// TODO - This fixed nonce is insecure, and should be removed alongside the fixed rollup encryption key.
 	rollupCipherNonce = "000000000000"
 	// RollupEncryptionKeyHex is the AES key used to encrypt and decrypt the transaction blob in rollups.
 	// TODO - Replace this fixed key with derived, rotating keys.
