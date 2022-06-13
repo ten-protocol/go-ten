@@ -6,15 +6,12 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/viewingkeymanager"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/sql"
 
@@ -43,18 +40,7 @@ import (
 const (
 	msgNoRollup  = "could not fetch rollup"
 	DummyBalance = "0x0"
-	// ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
-	// API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
-	// a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
-	// from asking a visitor to their website to personal_sign something that is actually a malicious transaction (e.g.
-	// theft of funds). By adding a prefix, the viewing key bytes no longer looks like a transaction hash, and thus get
-	// signed as-is.
-	ViewingKeySignedMsgPrefix = "vk"
 )
-
-// PlaceholderResult is used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil
-// using ECIES throws an exception.
-var PlaceholderResult = []byte("<nil result>")
 
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
@@ -63,16 +49,14 @@ type StatsCollector interface {
 }
 
 type enclaveImpl struct {
-	config         config.EnclaveConfig
-	nodeShortID    uint64
-	storage        db.Storage
-	blockResolver  db.BlockResolver
-	mempool        mempool.Manager
-	statsCollector StatsCollector
-	l1Blockchain   *core.BlockChain
-	// TODO - Replace with persistent storage.
-	// TODO - Handle multiple viewing keys per address.
-	viewingKeys map[common.Address]*ecies.PublicKey
+	config            config.EnclaveConfig
+	nodeShortID       uint64
+	storage           db.Storage
+	blockResolver     db.BlockResolver
+	mempool           mempool.Manager
+	statsCollector    StatsCollector
+	l1Blockchain      *core.BlockChain
+	viewingKeyManager viewingkeymanager.ViewingKeyManager
 
 	txCh                 chan nodecommon.L2Tx
 	roundWinnerCh        chan *obscurocore.Rollup
@@ -138,7 +122,7 @@ func NewEnclave(
 		mempool:               mempool.New(),
 		statsCollector:        collector,
 		l1Blockchain:          l1Blockchain,
-		viewingKeys:           make(map[common.Address]*ecies.PublicKey),
+		viewingKeyManager:     viewingkeymanager.NewViewingKeyManager(config.ViewingKeysEnabled),
 		txCh:                  make(chan nodecommon.L2Tx),
 		roundWinnerCh:         make(chan *obscurocore.Rollup),
 		exitCh:                make(chan bool),
@@ -433,7 +417,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAd
 		return nil, result.Err
 	}
 
-	encryptedResult, err := e.encryptWithViewingKey(from, result.ReturnData)
+	encryptedResult, err := e.viewingKeyManager.EncryptWithViewingKey(from, result.ReturnData)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}
@@ -632,33 +616,14 @@ func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscuro
 }
 
 func (e *enclaveImpl) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
-	// We recalculate the message signed by MetaMask.
-	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
-
-	// We recover the key based on the signed message and the signature.
-	recoveredPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
-	if err != nil {
-		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
-	}
-	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
-
-	// We decompress the viewing key and create the corresponding ECIES key.
-	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
-	if err != nil {
-		return fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err)
-	}
-	eciesPublicKey := ecies.ImportECDSAPublic(viewingKey)
-
-	e.viewingKeys[recoveredAddress] = eciesPublicKey
-
-	return nil
+	return e.viewingKeyManager.AddViewingKey(viewingKeyBytes, signature)
 }
 
 func (e *enclaveImpl) GetBalance(address common.Address) (nodecommon.EncryptedResponse, error) {
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
 	balance := DummyBalance // The Ethereum API is to return the balance in hex.
 
-	encryptedBalance, err := e.encryptWithViewingKey(address, []byte(balance))
+	encryptedBalance, err := e.viewingKeyManager.EncryptWithViewingKey(address, []byte(balance))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
@@ -817,27 +782,4 @@ func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 
 func getInMemDB() (ethdb.Database, error) {
 	return rawdb.NewMemoryDatabase(), nil
-}
-
-// Encrypts the bytes with a viewing key for the address.
-func (e *enclaveImpl) encryptWithViewingKey(address common.Address, bytes []byte) (nodecommon.EncryptedResponse, error) {
-	if !e.config.ViewingKeysEnabled {
-		return bytes, nil
-	}
-
-	viewingKey := e.viewingKeys[address]
-	if viewingKey == nil {
-		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
-	}
-
-	if bytes == nil {
-		bytes = PlaceholderResult
-	}
-
-	encryptedBytes, err := ecies.Encrypt(rand.Reader, viewingKey, bytes, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not encrypt bytes becauseit could not encrypt the response using a viewing key for account %s", address.String())
-	}
-
-	return encryptedBytes, nil
 }
