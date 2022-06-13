@@ -223,6 +223,10 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 	// We encrypt the viewing key bytes.
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, we.viewingPublicKeyBytes, nil, nil)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not encrypt viewing key with enclave public key: %s", err))
+		return
+	}
 
 	var rpcErr error
 	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, encryptedViewingKeyBytes, signature)
