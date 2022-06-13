@@ -31,7 +31,7 @@ func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
 	}
 	// determine if a db file already exists, we don't want to overwrite it
 	_, err := os.Stat(dbPath)
-	existingDB := err == nil
+	existingDB := err == nil //nolint:ifshort
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
