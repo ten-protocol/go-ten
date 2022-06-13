@@ -19,7 +19,8 @@ const (
 	createQry   = `create table if not exists kv (key binary(32) primary key, value blob); delete from kv;`
 )
 
-// CreateTemporarySQLiteDB takes a filepath which can be empty but allows for tests that care about persistence between restarts
+// CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
+// 	otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
 func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
 	if dbPath == "" {
 		tempPath, err := getTempDBFile()
@@ -30,24 +31,21 @@ func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
 	}
 	// determine if a db file already exists, we don't want to overwrite it
 	_, err := os.Stat(dbPath)
-	newOrExisting := "new"
-	if err == nil {
-		// err is nil if it exists
-		newOrExisting = "existing"
-	}
+	existingDB := err == nil
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
-	if newOrExisting == "new" {
+	desc := "existing"
+	if !existingDB {
 		// db wasn't there already so we should set it up (create kv store table)
 		if _, err := db.Exec(createQry); err != nil {
 			return nil, fmt.Errorf("failed to create sqlite db table - %w", err)
 		}
+		desc = "new"
 	}
-
-	log.Info("Opened %s sqlite db file at %s", newOrExisting, dbPath)
+	log.Info("Opened %s sqlite db file at %s", desc, dbPath)
 	return CreateSQLEthDatabase(db)
 }
 
@@ -57,7 +55,6 @@ func getTempDBFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create sqlite temp dir - %w", err)
 	}
-	// by using nodeIDs we ensure we overwrite old DBs when starting new tests
 	tempFile := filepath.Join(tempDir, "enclave.db")
 	return tempFile, nil
 }

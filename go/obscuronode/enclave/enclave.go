@@ -805,7 +805,8 @@ func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 	if !cfg.WillAttest {
 		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
 		nodecommon.LogWithID(nodeID, "Attestation is disabled, using a basic sqlite DB for persistence")
-		// todo: for now we pass in an empty dbPath, when we want to test persistence after node restart we should change this to be config driven
+		// todo: for now we pass in an empty dbPath which will provide a throwaway temp file,
+		// 		when we want to test persistence after node restart we should change this path to be config driven
 		return sql.CreateTemporarySQLiteDB("")
 	}
 
