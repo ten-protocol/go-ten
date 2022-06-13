@@ -2,14 +2,15 @@ package enclave
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha512"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"math/big"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/viewingkeymanager"
 
@@ -40,6 +41,9 @@ import (
 const (
 	msgNoRollup  = "could not fetch rollup"
 	DummyBalance = "0x0"
+	// EnclavePrivateKeyHex is the private key used for sensitive communication with the enclave.
+	// TODO - Replace this fixed key with a derived key.
+	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 )
 
 type StatsCollector interface {
@@ -68,7 +72,7 @@ type enclaveImpl struct {
 	erc20ContractLib      erc20contractlib.ERC20ContractLib
 	attestationProvider   AttestationProvider // interface for producing attestation reports and verifying them
 	publicKeySerialized   []byte
-	privateKey            *rsa.PrivateKey
+	privateKey            *ecdsa.PrivateKey
 	transactionBlobCrypto obscurocore.TransactionBlobCrypto
 
 	blockProcessingMutex sync.Mutex
@@ -111,7 +115,7 @@ func NewEnclave(
 
 	nodecommon.LogWithID(nodeShortID, "Generating public key")
 	privKey := generateKeyPair()
-	serializedPubKey := x509.MarshalPKCS1PublicKey(&privKey.PublicKey)
+	serializedPubKey := crypto.CompressPubkey(&privKey.PublicKey)
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
 
 	return &enclaveImpl{
@@ -693,11 +697,11 @@ func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockSta
 	}
 }
 
-func generateKeyPair() *rsa.PrivateKey {
+func generateKeyPair() *ecdsa.PrivateKey {
 	// todo: This should be generated deterministically based on some enclave attributes if possible
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	key, err := crypto.HexToECDSA(enclavePrivateKeyHex)
 	if err != nil {
-		panic("Failed to create RSA key")
+		panic("Failed to create enclave private key")
 	}
 	return key
 }
@@ -713,7 +717,7 @@ func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveS
 // Todo - implement with better crypto
 func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
 	nodecommon.LogWithID(e.nodeShortID, "Encrypting secret with public key %s", common.Bytes2Hex(pubKeyEncoded))
-	key, err := x509.ParsePKCS1PublicKey(pubKeyEncoded)
+	key, err := crypto.DecompressPubkey(pubKeyEncoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse public key %w", err)
 	}
@@ -744,9 +748,8 @@ type processingEnvironment struct {
 }
 
 // encryptWithPublicKey encrypts data with public key
-func encryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
-	hash := sha512.New()
-	ciphertext, err := rsa.EncryptOAEP(hash, rand.Reader, pub, msg, nil)
+func encryptWithPublicKey(msg []byte, pub *ecdsa.PublicKey) ([]byte, error) {
+	ciphertext, err := ecies.Encrypt(rand.Reader, ecies.ImportECDSAPublic(pub), msg, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt with public key. %w", err)
 	}
@@ -754,9 +757,8 @@ func encryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
 }
 
 // decryptWithPrivateKey decrypts data with private key
-func decryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
-	hash := sha512.New()
-	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
+func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, error) {
+	plaintext, err := ecies.ImportECDSA(priv).Decrypt(ciphertext, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt with private key. %w", err)
 	}

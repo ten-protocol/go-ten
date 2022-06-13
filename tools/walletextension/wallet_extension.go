@@ -41,7 +41,7 @@ const (
 
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
-	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e" //nolint // TODO - Remove linter suppression.
 )
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).

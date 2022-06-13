@@ -6,12 +6,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-const (
-	// EnclavePrivateKeyHex is the private key of the enclave.
-	// TODO - Replace this fixed key with a derived key.
-	EnclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
-)
-
 // todo - this should become an elaborate data structure
 type SharedEnclaveSecret []byte
 
