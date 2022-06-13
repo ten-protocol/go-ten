@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/viewingkeymanager"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
@@ -221,8 +223,8 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	}
 	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, "latest"})
 
-	if callJSON[walletextension.RespJSONKeyResult] != string(enclave.PlaceholderResult) {
-		t.Fatalf("Expected call result of %s, got %s", enclave.PlaceholderResult, callJSON[walletextension.RespJSONKeyResult])
+	if callJSON[walletextension.RespJSONKeyResult] != string(viewingkeymanager.PlaceholderResult) {
+		t.Fatalf("Expected call result of %s, got %s", viewingkeymanager.PlaceholderResult, callJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -375,7 +377,7 @@ func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
 
 // Signs a viewing key.
 func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
-	msgToSign := enclave.ViewingKeySignedMsgPrefix + string(viewingKey)
+	msgToSign := viewingkeymanager.ViewingKeySignedMsgPrefix + string(viewingKey)
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), privateKey)
 	if err != nil {
 		t.Fatal(err)
