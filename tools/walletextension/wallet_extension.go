@@ -2,7 +2,6 @@ package walletextension
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -49,7 +48,7 @@ const (
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecdsa.PublicKey // The public key used to encrypt requests for the enclave.
+	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
 	hostClient       obscuroclient.Client
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
@@ -66,7 +65,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	}
 
 	return &WalletExtension{
-		enclavePublicKey: enclavePublicKey,
+		enclavePublicKey: ecies.ImportECDSAPublic(enclavePublicKey),
 		hostAddr:         config.NodeRPCWebsocketAddress,
 		hostClient:       obscuroclient.NewClient(config.NodeRPCHTTPAddress),
 	}
@@ -121,16 +120,16 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	fmt.Printf("Received request from wallet: %s\n", body)
 
 	// We encrypt the JSON with the enclave's public key.
-	fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
-	eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
-	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
-		return
-	}
+	//fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
+	//eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
+	//encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
+	//if err != nil {
+	//	logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
+	//	return
+	//}
 
 	// We forward the request on to the Obscuro node.
-	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.hostAddr, encryptedBody)
+	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.hostAddr, body)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.hostAddr, err))
 		return
@@ -222,8 +221,11 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 	signature[64] -= 27
 
+	// We encrypt the viewing key bytes.
+	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, we.viewingPublicKeyBytes, nil, nil)
+
 	var rpcErr error
-	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, we.viewingPublicKeyBytes, signature)
+	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, encryptedViewingKeyBytes, signature)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not add viewing key: %s", err))
 		return
