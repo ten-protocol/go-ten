@@ -10,7 +10,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
-§
+
 const (
 	// TODO - This fixed nonce is insecure, and should be removed alongside the fixed rollup encryption key.
 	rollupCipherNonce = "000000000000"
