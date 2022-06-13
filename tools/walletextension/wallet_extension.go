@@ -119,7 +119,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	method := reqJSONMap[reqJSONKeyMethod]
 	fmt.Printf("Received request from wallet: %s\n", body)
 
-	// We encrypt the JSON with the enclave's public key.
+	//// We encrypt the JSON with the enclave's public key.
 	//fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
 	//eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
 	//encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
