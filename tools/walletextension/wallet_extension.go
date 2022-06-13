@@ -3,6 +3,7 @@ package walletextension
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -41,7 +42,7 @@ const (
 
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e" //nolint // TODO - Remove linter suppression.
+	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
@@ -59,13 +60,13 @@ type WalletExtension struct {
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
-	enclavePrivateKey, err := crypto.GenerateKey()
+	enclavePublicKey, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
 		panic(err)
 	}
 
 	return &WalletExtension{
-		enclavePublicKey: &enclavePrivateKey.PublicKey,
+		enclavePublicKey: enclavePublicKey,
 		hostAddr:         config.NodeRPCWebsocketAddress,
 		hostClient:       obscuroclient.NewClient(config.NodeRPCHTTPAddress),
 	}
@@ -119,18 +120,17 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	method := reqJSONMap[reqJSONKeyMethod]
 	fmt.Printf("Received request from wallet: %s\n", body)
 
-	// TODO - Reenable encryption of requests.
-	//// We encrypt the JSON with the enclave's public key.
-	//fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
-	//eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
-	//encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
-	//if err != nil {
-	//	logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
-	//	return
-	//}
+	// We encrypt the JSON with the enclave's public key.
+	fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
+	eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
+	encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
+		return
+	}
 
 	// We forward the request on to the Obscuro node.
-	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.hostAddr, body)
+	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.hostAddr, encryptedBody)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.hostAddr, err))
 		return
