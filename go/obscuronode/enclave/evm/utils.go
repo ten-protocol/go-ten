@@ -1,7 +1,6 @@
 package evm
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,12 +19,12 @@ func convertToEthHeader(h *nodecommon.Header) *types.Header {
 	}
 	return &types.Header{
 		ParentHash:  h.ParentHash,
-		Root:        h.State,
-		TxHash:      common.Hash{},
-		ReceiptHash: common.Hash{},
-		Bloom:       types.Bloom{},
+		Root:        h.Root,
+		TxHash:      h.TxHash,
+		ReceiptHash: h.ReceiptHash,
+		Bloom:       h.Bloom,
 		Difficulty:  common.Big0,
-		Number:      big.NewInt(int64(h.Number)),
+		Number:      h.Number,
 		GasLimit:    1_000_000_000,
 		GasUsed:     0,
 		Time:        uint64(time.Now().Unix()),

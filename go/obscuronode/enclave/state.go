@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
@@ -59,7 +61,7 @@ func updateState(
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
 	parentState, parentFound := bss.FetchBlockState(b.ParentHash())
 	if !parentFound {
-		// go back and calculate the State of the Parent
+		// go back and calculate the Root of the Parent
 		p, f := blockResolver.FetchBlock(b.ParentHash())
 		if !f {
 			nodecommon.LogWithID(nodeID, "Could not find block parent. This should not happen.")
@@ -152,7 +154,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 	for i, r := range rollups {
 		switch {
 		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
-		case r.Header.Number <= parent.Header.Number: // ignore rollups that are older than the parent
+		case r.Header.Number.Int64() <= parent.Header.Number.Int64(): // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
 		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
@@ -178,22 +180,70 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	depositTxs := extractDeposits(p, blockResolver.Proof(headRollup), blockResolver, e.erc20ContractLib, stateDB, e.config.ObscuroChainID)
 	log.Info(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.config.HostID), len(depositTxs)))
 
-	evm.ExecuteTransactions(headRollup.Transactions, stateDB, headRollup.Header, e.storage, e.config.ObscuroChainID)
-	evm.ExecuteTransactions(depositTxs, stateDB, headRollup.Header, e.storage, e.config.ObscuroChainID)
+	rootHash, txReceipts, depositReceipts := e.process(headRollup, stateDB, depositTxs)
+
+	e.validateRollup(headRollup, rootHash, txReceipts, depositReceipts, stateDB)
+
+	return headRollup, stateDB
+}
+
+func (e *enclaveImpl) process(rollup *core.Rollup, stateDB *state.StateDB, depositTxs []nodecommon.L2Tx) (common.Hash, []*types.Receipt, []*types.Receipt) {
+	txReceipts := evm.ExecuteTransactions(rollup.Transactions, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, 0)
+	depositReceipts := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, len(rollup.Transactions))
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		log.Panic("could not commit to state DB. Cause: %s", err)
 	}
+	return rootHash, txReceipts, depositReceipts
+}
 
-	if rootHash != headRollup.Header.State {
+func (e *enclaveImpl) validateRollup(rollup *core.Rollup, rootHash common.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) {
+	h := rollup.Header
+	if rootHash != h.Root {
 		// dump := stateDB.Dump(&state.DumpConfig{})
 		dump := ""
 		log.Panic("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s",
-			rootHash, headRollup.Header.State, headRollup.Header.Number, printTxs(headRollup.Transactions), dump)
+			rootHash, h.Root, h.Number, printTxs(rollup.Transactions), dump)
 	}
-	// todo - check that the withdrawals in the header match the withdrawals as calculated
 
-	return headRollup, stateDB
+	//  check that the withdrawals in the header match the withdrawals as calculated
+	withdrawals := e.rollupPostProcessingWithdrawals(rollup, stateDB, txReceipts)
+	for i, w := range withdrawals {
+		hw := h.Withdrawals[i]
+		if hw.Amount != w.Amount || hw.Address != w.Address {
+			log.Panic("Withdrawals don't match")
+		}
+	}
+
+	rec := getReceipts(txReceipts, depositReceipts)
+	rbloom := types.CreateBloom(rec)
+	if rbloom != h.Bloom {
+		log.Panic("invalid bloom (remote: %x  local: %x)", h.Bloom, rbloom)
+	}
+
+	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
+	if receiptSha != h.ReceiptHash {
+		log.Panic("invalid receipt root hash (remote: %x local: %x)", h.ReceiptHash, receiptSha)
+	}
+}
+
+func toReceiptMap(txReceipts []*types.Receipt) map[common.Hash]*types.Receipt {
+	result := make(map[common.Hash]*types.Receipt, 0)
+	for _, r := range txReceipts {
+		result[r.TxHash] = r
+	}
+	return result
+}
+
+func getReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
+	receipts := make([]*types.Receipt, 0)
+	for _, r := range txReceipts {
+		receipts = append(receipts, r)
+	}
+	for _, r := range depositReceipts {
+		receipts = append(receipts, r)
+	}
+	return receipts
 }
 
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
@@ -273,7 +323,7 @@ func calculateBlockState(
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID)
+		evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID, 0)
 		// todo - handle failure , which means a new winner must be selected
 	} else {
 		newHeadRollup = currentHead
@@ -288,15 +338,16 @@ func calculateBlockState(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receipts map[common.Hash]*types.Receipt) []nodecommon.Withdrawal {
+func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receipts []*types.Receipt) []nodecommon.Withdrawal {
+	receiptsMap := toReceiptMap(receipts)
 	w := make([]nodecommon.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for i, t := range newHeadRollup.Transactions {
 		found, address, amount := erc20contractlib.DecodeTransferTx(t)
 
 		if found && *t.To() == evm.Erc20ContractAddress && *address == evm.WithdrawalAddress {
-			receipt := receipts[t.Hash()]
-			if receipt != nil && receipt.Status == 1 {
+			receipt := receiptsMap[t.Hash()]
+			if receipt != nil && receipt.Status == types.ReceiptStatusSuccessful {
 				signer := types.NewLondonSigner(big.NewInt(e.config.ObscuroChainID))
 				from, err := types.Sender(signer, &newHeadRollup.Transactions[i])
 				if err != nil {

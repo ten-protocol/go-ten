@@ -221,13 +221,17 @@ message ExtRollupMsg {
 }
 
 message HeaderMsg {
-  bytes parentHash = 1;
-  bytes agg = 2;
-  uint64 nonce = 3;
-  bytes l1Proof = 4;
-  bytes stateRoot = 5;
-  uint64 height = 6;
-  repeated WithdrawalMsg withdrawals = 7;
+  bytes ParentHash = 1;
+  bytes Node = 2;
+  uint64 Nonce = 3;
+  bytes Proof = 4;
+  bytes Root = 5;
+  bytes TxHash = 6;
+  uint64 Number = 7;
+  bytes Bloom = 8;
+  bytes ReceiptHash = 9;
+  bytes Extra = 10;
+  repeated WithdrawalMsg Withdrawals = 11;
 }
 
 message WithdrawalMsg {

@@ -36,7 +36,7 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 func (o *OutputStats) populateHeights() {
 	obscuroClient := o.simulation.ObscuroClients[0]
 	o.l1Height = int(getCurrentBlockHeadHeight(obscuroClient))
-	o.l2Height = int(getCurrentRollupHead(obscuroClient).Number)
+	o.l2Height = int(getCurrentRollupHead(obscuroClient).Number.Uint64())
 }
 
 func (o *OutputStats) countBlockChain() {

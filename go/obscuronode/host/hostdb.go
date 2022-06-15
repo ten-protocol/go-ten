@@ -97,7 +97,7 @@ func (db *DB) AddRollupHeader(header *nodecommon.Header) {
 
 	// update the head if the new height is greater than the existing one
 	currentRollupHead := db.GetCurrentRollupHead()
-	if currentRollupHead == nil || currentRollupHead.Number <= header.Number {
+	if currentRollupHead == nil || currentRollupHead.Number.Int64() <= header.Number.Int64() {
 		writeHeadRollup(b, header.Hash())
 	}
 

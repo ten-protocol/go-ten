@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/viewingkeymanager"
@@ -171,7 +173,7 @@ func (e *enclaveImpl) start(block types.Block) {
 		// A new winner was found after gossiping. Start speculatively executing incoming transactions to already have a rollup ready when the next round starts.
 		case winnerRollup := <-e.roundWinnerCh:
 			hash := winnerRollup.Hash()
-			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number+1, e.config.HostID)
+			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number.Uint64()+1, e.config.HostID)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
 			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculative env  r_%d(%d).",
@@ -185,7 +187,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.processedTxsMap = makeMap(env.processedTxs)
 
 			// calculate the State after executing them
-			evm.ExecuteTransactions(env.processedTxs, env.state, env.headRollup.Header, e.storage, e.config.ObscuroChainID)
+			evm.ExecuteTransactions(env.processedTxs, env.state, env.headRollup.Header, e.storage, e.config.ObscuroChainID, 0)
 
 		case tx := <-e.txCh:
 			// only process transactions if there is already a rollup to use as parent
@@ -194,7 +196,7 @@ func (e *enclaveImpl) start(block types.Block) {
 				if !found {
 					env.processedTxsMap[tx.Hash()] = tx
 					env.processedTxs = append(env.processedTxs, tx)
-					evm.ExecuteTransactions([]nodecommon.L2Tx{tx}, env.state, env.header, e.storage, e.config.ObscuroChainID)
+					evm.ExecuteTransactions([]nodecommon.L2Tx{tx}, env.state, env.header, e.storage, e.config.ObscuroChainID, 0)
 				}
 			}
 
@@ -357,7 +359,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	}
 
 	nodecommon.LogWithID(e.nodeShortID, "Round winner height: %d", head.Header.Number)
-	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number + 1)
+	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number.Uint64() + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
 	for _, rol := range rollupsReceivedFromPeers {
@@ -382,14 +384,14 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	if winnerRollup.Header.Agg == e.config.HostID {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
-		nodecommon.LogWithID(e.nodeShortID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  State=%v. ",
+		nodecommon.LogWithID(e.nodeShortID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
 			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			obscurocommon.ShortHash(w.Hash()),
 			obscurocommon.ShortHash(v.Hash()),
 			v.NumberU64(),
 			len(winnerRollup.Transactions),
 			printTxs(winnerRollup.Transactions),
-			winnerRollup.Header.State,
+			winnerRollup.Header.Root,
 		)
 		return winnerRollup.ToExtRollup(e.transactionBlobCrypto), true, nil
 	}
@@ -478,19 +480,20 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 			}
 	*/
 
-	successfulTransactions := make([]nodecommon.L2Tx, 0)
+	successfulTransactions := make([]*nodecommon.L2Tx, 0)
 	// if !speculativeExecutionSucceeded {
 	// In case the speculative execution thread has not succeeded in producing a valid rollup
 	// we have to create a new one from the mempool transactions
-	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number+1, e.config.HostID)
+	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number.Uint64()+1, e.config.HostID)
 	newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 	newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
-	receipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID)
+	txReceipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, 0)
+	txReceiptsMap := toReceiptMap(txReceipts)
 	// todo - only transactions that fail because of the nonce should be excluded
-	for _, tx := range newRollupTxs {
-		_, f := receipts[tx.Hash()]
+	for i, tx := range newRollupTxs {
+		_, f := txReceiptsMap[tx.Hash()]
 		if f {
-			successfulTransactions = append(successfulTransactions, tx)
+			successfulTransactions = append(successfulTransactions, &newRollupTxs[i])
 		} else {
 			log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.config.HostID), obscurocommon.ShortHash(tx.Hash()))
 		}
@@ -500,9 +503,10 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
 	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib, newRollupState, e.config.ObscuroChainID)
-	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID)
+	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, len(newRollupTxs))
+	depositReceiptsMap := toReceiptMap(depositReceipts)
 	for _, tx := range depositTxs {
-		if depositReceipts[tx.Hash()] == nil {
+		if depositReceiptsMap[tx.Hash()] == nil {
 			panic("Should not happen")
 		}
 	}
@@ -515,7 +519,15 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, obscurocommon.GenerateNonce(), rootHash)
 
 	// Postprocessing - withdrawals
-	r.Header.Withdrawals = e.rollupPostProcessingWithdrawals(&r, newRollupState, receipts)
+	r.Header.Withdrawals = e.rollupPostProcessingWithdrawals(&r, newRollupState, txReceipts)
+	receipts := getReceipts(txReceipts, depositReceipts)
+
+	if len(receipts) == 0 {
+		r.Header.ReceiptHash = types.EmptyRootHash
+	} else {
+		r.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
+		r.Header.Bloom = types.CreateBloom(receipts)
+	}
 
 	return &r
 }
@@ -539,7 +551,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 			}
 		}
 		rollup = e.storage.ParentRollup(rollup)
-		if rollup == nil || rollup.Header.Number == obscurocommon.L2GenesisHeight {
+		if rollup == nil || rollup.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
 			return nil
 		}
 	}

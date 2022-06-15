@@ -66,12 +66,16 @@ func ToRollupHeaderMsg(header *nodecommon.Header) *generated.HeaderMsg {
 
 	headerMsg = generated.HeaderMsg{
 		ParentHash:  header.ParentHash.Bytes(),
-		Agg:         header.Agg.Bytes(),
+		Node:        header.Agg.Bytes(),
 		Nonce:       header.Nonce,
-		L1Proof:     header.L1Proof.Bytes(),
-		StateRoot:   header.State.Bytes(),
-		Height:      header.Number,
+		Proof:       header.L1Proof.Bytes(),
+		Root:        header.Root.Bytes(),
+		TxHash:      header.TxHash.Bytes(),
+		Number:      header.Number.Uint64(),
 		Withdrawals: withdrawalMsgs,
+		Bloom:       header.Bloom.Bytes(),
+		ReceiptHash: header.ReceiptHash.Bytes(),
+		Extra:       header.Extra,
 	}
 
 	return &headerMsg
@@ -103,12 +107,16 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *nodecommon.Header {
 
 	return &nodecommon.Header{
 		ParentHash:  common.BytesToHash(header.ParentHash),
-		Agg:         common.BytesToAddress(header.Agg),
+		Agg:         common.BytesToAddress(header.Node),
 		Nonce:       header.Nonce,
-		L1Proof:     common.BytesToHash(header.L1Proof),
-		State:       common.BytesToHash(header.StateRoot),
-		Number:      header.Height,
+		L1Proof:     common.BytesToHash(header.Proof),
+		Root:        common.BytesToHash(header.Root),
+		Number:      big.NewInt(int64(header.Number)),
+		TxHash:      common.BytesToHash(header.TxHash),
 		Withdrawals: withdrawals,
+		ReceiptHash: common.BytesToHash(header.ReceiptHash),
+		Bloom:       types.BytesToBloom(header.Bloom),
+		Extra:       header.Extra,
 	}
 }
 

@@ -1,6 +1,7 @@
 package nodecommon
 
 import (
+	"math/big"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -28,9 +29,13 @@ type Header struct {
 	Agg         common.Address
 	Nonce       obscurocommon.Nonce
 	L1Proof     obscurocommon.L1RootHash // the L1 block where the Parent was published
-	State       StateRoot
-	Number      uint64 // the rollup height
+	Root        StateRoot
+	TxHash      common.Hash // todo - include the synthetic deposits
+	Number      *big.Int    // the rollup height
 	Withdrawals []Withdrawal
+	Bloom       types.Bloom
+	ReceiptHash common.Hash
+	Extra       []byte
 }
 
 type Withdrawal struct {

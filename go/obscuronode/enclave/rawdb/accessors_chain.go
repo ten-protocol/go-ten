@@ -36,7 +36,7 @@ func ReadHeaderNumber(db ethdb.KeyValueReader, hash common.Hash) *uint64 {
 
 func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) {
 	WriteHeader(db, rollup.Header)
-	WriteBody(db, rollup.Hash(), rollup.Header.Number, rollup.Transactions)
+	WriteBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions)
 }
 
 // WriteHeader stores a rollup header into the database and also stores the hash-
@@ -44,7 +44,7 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) {
 func WriteHeader(db ethdb.KeyValueWriter, header *nodecommon.Header) {
 	var (
 		hash   = header.Hash()
-		number = header.Number
+		number = header.Number.Uint64()
 	)
 	// Write the hash -> number mapping
 	WriteHeaderNumber(db, hash, number)
