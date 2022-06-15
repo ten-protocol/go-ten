@@ -237,12 +237,8 @@ func toReceiptMap(txReceipts []*types.Receipt) map[common.Hash]*types.Receipt {
 
 func getReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
 	receipts := make([]*types.Receipt, 0)
-	for _, r := range txReceipts {
-		receipts = append(receipts, r)
-	}
-	for _, r := range depositReceipts {
-		receipts = append(receipts, r)
-	}
+	receipts = append(receipts, txReceipts...)
+	receipts = append(receipts, depositReceipts...)
 	return receipts
 }
 

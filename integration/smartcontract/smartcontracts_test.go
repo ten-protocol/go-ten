@@ -206,7 +206,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 		t.Error(err)
 	}
 
-	if storedRollup.Number.Int64() != int64(rollup.Header.Number) ||
+	if storedRollup.Number.Int64() != rollup.Header.Number.Int64() ||
 		!bytes.Equal(storedRollup.ParentHash[:], rollup.Header.ParentHash.Bytes()) ||
 		!bytes.Equal(storedRollup.AggregatorID[:], rollup.Header.Agg.Bytes()) ||
 		!bytes.Equal(storedRollup.L1Block[:], rollup.Header.L1Proof.Bytes()) {

@@ -19,6 +19,7 @@ import (
 
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
+// startAtCount - for the receipts and events, the evm needs to know for each transaction the order in which it was execute in the block.
 func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64, startAtCount int) []*types.Receipt {
 	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 	zero := uint64(0)
