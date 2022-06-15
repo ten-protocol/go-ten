@@ -19,14 +19,14 @@ import (
 
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
-// startAtCount - for the receipts and events, the evm needs to know for each transaction the order in which it was execute in the block.
-func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64, startAtCount int) []*types.Receipt {
+// fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
+func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64, fromTxIndex int) []*types.Receipt {
 	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 	zero := uint64(0)
 	usedGas := &zero
 	receipts := make([]*types.Receipt, 0)
 	for i, t := range txs {
-		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg, startAtCount+i)
+		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg, fromTxIndex+i)
 		if err != nil {
 			log.Info("Error transaction %d: %s", obscurocommon.ShortHash(t.Hash()), err)
 			continue
