@@ -1,7 +1,11 @@
 package core
 
 import (
+	"math/big"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -38,23 +42,33 @@ func NewHeader(parent *common.Hash, height uint64, a common.Address) *nodecommon
 	return &nodecommon.Header{
 		Agg:        a,
 		ParentHash: parentHash,
-		Number:     height,
+		Number:     big.NewInt(int64(height)),
 	}
 }
 
-func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []nodecommon.L2Tx, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []*nodecommon.L2Tx, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
 	h := nodecommon.Header{
 		Agg:        header.Agg,
 		ParentHash: header.ParentHash,
 		L1Proof:    blkHash,
 		Nonce:      nonce,
-		State:      state,
+		Root:       state,
 		Number:     header.Number,
+	}
+	transactions := make([]nodecommon.L2Tx, len(txs))
+	for i, tx := range txs {
+		transactions[i] = *tx
 	}
 	r := Rollup{
 		Header:       &h,
-		Transactions: txs,
+		Transactions: transactions,
 	}
+	if len(txs) == 0 {
+		h.TxHash = types.EmptyRootHash
+	} else {
+		h.TxHash = types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil))
+	}
+
 	return r
 }
 
@@ -69,9 +83,11 @@ func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Addr
 		ParentHash:  parentHash,
 		L1Proof:     blkHash,
 		Nonce:       nonce,
-		State:       state,
-		Number:      height,
+		Root:        state,
+		TxHash:      types.EmptyRootHash,
+		Number:      big.NewInt(int64(height)),
 		Withdrawals: withdrawals,
+		ReceiptHash: types.EmptyRootHash,
 	}
 	r := Rollup{
 		Header:       &h,

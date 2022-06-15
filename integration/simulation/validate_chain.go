@@ -201,14 +201,14 @@ func checkBlockchainOfObscuroNode(
 		return
 	}
 	l2Height := h.Number
-	if l2Height < minObscuroHeight {
+	if l2Height.Uint64() < minObscuroHeight {
 		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", l2Height, nodeAddr, minObscuroHeight)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeID]
 	// in case the blockchain has advanced above what was collected, there is no longer a point to this check
-	if l2Height <= totalL2Blocks {
-		efficiencyL2 := float64(totalL2Blocks-l2Height) / float64(totalL2Blocks)
+	if l2Height.Uint64() <= totalL2Blocks {
+		efficiencyL2 := float64(totalL2Blocks-l2Height.Uint64()) / float64(totalL2Blocks)
 		if efficiencyL2 > s.Params.L2EfficiencyThreshold {
 			t.Errorf("Node %d: Efficiency in L2 is %f. Expected:%f", nodeAddr, efficiencyL2, s.Params.L2EfficiencyThreshold)
 		}
@@ -216,7 +216,7 @@ func checkBlockchainOfObscuroNode(
 
 	// check that the pobi protocol doesn't waste too many blocks.
 	// todo- find the block where the genesis was published)
-	efficiency := float64(uint64(l1Height)-l2Height) / float64(l1Height)
+	efficiency := float64(uint64(l1Height)-l2Height.Uint64()) / float64(l1Height)
 	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
@@ -282,7 +282,7 @@ func checkBlockchainOfObscuroNode(
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// (execute deposits and transactions and compare to the state in the rollup)
 
-	heights[nodeIdx] = l2Height
+	heights[nodeIdx] = l2Height.Uint64()
 }
 
 func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
@@ -294,7 +294,7 @@ func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr 
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	for r := head; ; r = getRollupHeader(nodeClient, r.ParentHash) {
-		if r != nil && r.Number == obscurocommon.L1GenesisHeight {
+		if r != nil && r.Number.Uint64() == obscurocommon.L1GenesisHeight {
 			return
 		}
 		if r == nil {

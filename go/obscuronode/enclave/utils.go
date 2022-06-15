@@ -21,7 +21,7 @@ func findTxsNotIncluded(head *core.Rollup, txs []nodecommon.L2Tx, s db.RollupRes
 }
 
 func allIncludedTransactions(r *core.Rollup, s db.RollupResolver) map[common.Hash]nodecommon.L2Tx {
-	if r.Header.Number == obscurocommon.L2GenesisHeight {
+	if r.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
 		return makeMap(r.Transactions)
 	}
 	newMap := make(map[common.Hash]nodecommon.L2Tx)
@@ -49,7 +49,7 @@ func historicTxs(r *core.Rollup, s db.Storage) map[common.Hash]common.Hash {
 	i := obscurocommon.HeightCommittedBlocks
 	c := r
 	for {
-		if i == 0 || c.Header.Number == obscurocommon.L2GenesisHeight {
+		if i == 0 || c.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
 			return toMap(c.Transactions)
 		}
 		i--

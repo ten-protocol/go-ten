@@ -30,7 +30,7 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head rollup.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	return hexutil.Uint64(api.host.nodeDB.GetCurrentRollupHead().Number)
+	return hexutil.Uint64(api.host.nodeDB.GetCurrentRollupHead().Number.Uint64())
 }
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key for the address and

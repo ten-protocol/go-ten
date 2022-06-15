@@ -114,7 +114,7 @@ func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64
 		decodedRollup.Header.ParentHash,
 		decodedRollup.Header.Agg,
 		decodedRollup.Header.L1Proof,
-		big.NewInt(int64(decodedRollup.Header.Number)),
+		decodedRollup.Header.Number,
 		encRollupData,
 	)
 	if err != nil {

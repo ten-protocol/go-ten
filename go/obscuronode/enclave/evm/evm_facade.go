@@ -19,19 +19,20 @@ import (
 
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
-func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) map[common.Hash]*types.Receipt {
+// fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
+func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64, fromTxIndex int) []*types.Receipt {
 	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 	zero := uint64(0)
 	usedGas := &zero
-	receipts := make(map[common.Hash]*types.Receipt, len(txs))
-	for _, t := range txs {
-		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg)
+	receipts := make([]*types.Receipt, 0)
+	for i, t := range txs {
+		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg, fromTxIndex+i)
 		if err != nil {
 			log.Info("Error transaction %d: %s", obscurocommon.ShortHash(t.Hash()), err)
 			continue
 		}
-		receipts[t.Hash()] = r
-		if r.Status != 1 {
+		receipts = append(receipts, r)
+		if r.Status == types.ReceiptStatusFailed {
 			log.Info("Unsuccessful (status != 1) tx %d.", obscurocommon.ShortHash(t.Hash()))
 		} else {
 			log.Info("Successfully executed tx %d", obscurocommon.ShortHash(t.Hash()))
@@ -41,7 +42,9 @@ func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodeco
 	return receipts
 }
 
-func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *nodecommon.Header, t nodecommon.L2Tx, usedGas *uint64, vmCfg vm.Config) (*types.Receipt, error) {
+func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *nodecommon.Header, t nodecommon.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
+	s.Prepare(t.Hash(), tCount)
+
 	snap := s.Snapshot()
 	// todo - Author?
 	receipt, err := core2.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), &t, usedGas, vmCfg)

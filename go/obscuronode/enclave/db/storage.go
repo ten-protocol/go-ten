@@ -217,7 +217,7 @@ func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) *state.StateD
 		log.Panic("could not retrieve rollup for hash %s", hash.String())
 	}
 	// todo - snapshots?
-	statedb, err := state.New(rollup.Header.State, s.stateDB, nil)
+	statedb, err := state.New(rollup.Header.Root, s.stateDB, nil)
 	if err != nil {
 		log.Panic("could not create state DB. Cause: %s", err)
 	}
