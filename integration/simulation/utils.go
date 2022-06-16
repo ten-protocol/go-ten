@@ -2,17 +2,8 @@ package simulation
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 	"time"
-
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -111,17 +102,19 @@ func getTransaction(client obscuroclient.Client, hash common.Hash) *nodecommon.L
 
 // Uses the client to retrieve the balance of the wallet with the given address.
 func balance(client obscuroclient.Client, address common.Address) uint64 {
-	method := obscuroclient.RPCCall
-	balanceData := erc20contractlib.CreateBalanceOfData(address)
-	convertedData := (hexutil.Bytes)(balanceData)
-	txArgs := host.TransactionArgs{From: &address, To: &evm.Erc20ContractAddress, Data: &convertedData}
-
-	var encryptedResponse string
-	err := client.Call(&encryptedResponse, method, txArgs, rpc.BlockNumberOrHash{}, &host.StateOverride{})
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
-	}
-	r := new(big.Int)
-	r = r.SetBytes(common.Hex2Bytes(encryptedResponse))
-	return r.Uint64()
+	return 0
+	// todo - joel - re-enable
+	//method := obscuroclient.RPCCall
+	//balanceData := erc20contractlib.CreateBalanceOfData(address)
+	//convertedData := (hexutil.Bytes)(balanceData)
+	//txArgs := host.TransactionArgs{From: &address, To: &evm.Erc20ContractAddress, Data: &convertedData}
+	//
+	//var encryptedResponse string
+	//err := client.Call(&encryptedResponse, method, txArgs, rpc.BlockNumberOrHash{}, &host.StateOverride{})
+	//if err != nil {
+	//	panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+	//}
+	//r := new(big.Int)
+	//r = r.SetBytes(common.Hex2Bytes(encryptedResponse))
+	//return r.Uint64()
 }

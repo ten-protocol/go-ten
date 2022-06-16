@@ -1,10 +1,7 @@
 package host
 
 import (
-	"context"
 	"fmt"
-
-	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -83,28 +80,29 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		*result.(**nodecommon.L2Tx) = c.obscuroAPI.GetTransaction(hash)
 
-	case obscuroclient.RPCCall:
-		if len(args) != 3 {
-			return fmt.Errorf("expected 3 args to %s, got %d", obscuroclient.RPCCall, len(args))
-		}
-		txArgs, ok := args[0].(TransactionArgs)
-		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type host.TransactionArgs", obscuroclient.RPCCall)
-		}
-		blockNumberOrHash, ok := args[1].(rpc.BlockNumberOrHash)
-		if !ok {
-			return fmt.Errorf("arg 2 to %s was not of expected type rpc.BlockNumberOrHash", obscuroclient.RPCCall)
-		}
-		stateOverride, ok := args[2].(*StateOverride)
-		if !ok {
-			return fmt.Errorf("arg 3 to %s was not of expected type *host.StateOverride", obscuroclient.RPCCall)
-		}
-
-		encryptedResponse, err := c.ethAPI.Call(context.Background(), txArgs, blockNumberOrHash, stateOverride)
-		if err != nil {
-			return fmt.Errorf("off-chain call failed. Cause: %w", err)
-		}
-		*result.(*string) = encryptedResponse
+		// todo - joel - re-enable
+	//case obscuroclient.RPCCall:
+	//	if len(args) != 3 {
+	//		return fmt.Errorf("expected 3 args to %s, got %d", obscuroclient.RPCCall, len(args))
+	//	}
+	//	txArgs, ok := args[0].(TransactionArgs)
+	//	if !ok {
+	//		return fmt.Errorf("arg 1 to %s was not of expected type host.TransactionArgs", obscuroclient.RPCCall)
+	//	}
+	//	blockNumberOrHash, ok := args[1].(rpc.BlockNumberOrHash)
+	//	if !ok {
+	//		return fmt.Errorf("arg 2 to %s was not of expected type rpc.BlockNumberOrHash", obscuroclient.RPCCall)
+	//	}
+	//	stateOverride, ok := args[2].(*StateOverride)
+	//	if !ok {
+	//		return fmt.Errorf("arg 3 to %s was not of expected type *host.StateOverride", obscuroclient.RPCCall)
+	//	}
+	//
+	//	encryptedResponse, err := c.ethAPI.Call(context.Background(), txArgs, blockNumberOrHash, stateOverride)
+	//	if err != nil {
+	//		return fmt.Errorf("off-chain call failed. Cause: %w", err)
+	//	}
+	//	*result.(*string) = encryptedResponse
 
 	case obscuroclient.RPCNonce:
 		if len(args) != 1 {

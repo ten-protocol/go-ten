@@ -161,7 +161,7 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 }
 
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
-	result, err := s.enclave.ExecuteOffChainTransaction(common.BytesToAddress(request.From), common.BytesToAddress(request.ContractAddress), request.Data)
+	result, err := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
 	if err != nil {
 		return nil, err
 	}

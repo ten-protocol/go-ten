@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -46,6 +48,11 @@ const (
 	// EnclavePrivateKeyHex is the private key used for sensitive communication with the enclave.
 	// TODO - Replace this fixed key with a derived key.
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
+
+	// The relevant fields in a Call request's params.
+	callFieldTo   = "to"
+	callFieldFrom = "from"
+	callFieldData = "data"
 )
 
 type StatsCollector interface {
@@ -403,7 +410,39 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+	paramBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
+	}
+
+	var paramsJSONMap []interface{}
+	err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
+	}
+
+	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+	contractAddressString, ok := txArgs.(map[string]interface{})[callFieldTo].(string)
+	if !ok {
+		return nil, fmt.Errorf("to field in Call request params was not of expected type string")
+	}
+	fromString, ok := txArgs.(map[string]interface{})[callFieldFrom].(string)
+	if !ok {
+		return nil, fmt.Errorf("from field in Call request params was not of expected type string")
+	}
+	dataString, ok := txArgs.(map[string]interface{})[callFieldData].(string)
+	if !ok {
+		return nil, fmt.Errorf("data field in Call request params was not of expected type string")
+	}
+
+	contractAddress := common.HexToAddress(contractAddressString)
+	from := common.HexToAddress(fromString)
+	data, err := hexutil.Decode(dataString)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
+	}
+
 	hs := e.storage.FetchHeadState()
 	if hs == nil {
 		panic("Not initialised")
@@ -639,7 +678,7 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 	return e.viewingKeyManager.AddViewingKey(viewingKeyBytes, signature)
 }
 
-func (e *enclaveImpl) GetBalance(encryptedParams []byte) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
 	paramBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)

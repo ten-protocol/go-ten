@@ -49,8 +49,7 @@ type Enclave interface {
 
 	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
 	// Todo - return the result with a block delay. To prevent frontrunning.
-	// Todo - add encryption
-	ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (EncryptedResponse, error)
+	ExecuteOffChainTransaction(encryptedParams EncryptedParams) (EncryptedResponse, error)
 
 	// Nonce returns the nonce of the wallet with the given address.
 	Nonce(address common.Address) uint64
@@ -79,9 +78,9 @@ type Enclave interface {
 	AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error
 
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
-	// address. The request params are encrypted with the enclave's public key.
+	// address.
 	// TODO - Handle multiple viewing keys, and thus multiple return values.
-	GetBalance(encryptedParams []byte) (EncryptedResponse, error)
+	GetBalance(encryptedParams EncryptedParams) (EncryptedResponse, error)
 
 	// StopClient stops the enclave client if one exists
 	StopClient() error
