@@ -56,9 +56,7 @@ func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []*
 		Number:     header.Number,
 	}
 	transactions := make([]*nodecommon.L2Tx, len(txs))
-	for i, tx := range txs {
-		transactions[i] = tx
-	}
+	copy(transactions, txs)
 	r := Rollup{
 		Header:       &h,
 		Transactions: transactions,
