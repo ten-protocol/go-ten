@@ -35,8 +35,8 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key for the address and
 // encoded as hex.
-func (api *EthereumAPI) GetBalance(_ context.Context, address common.Address, _ rpc.BlockNumberOrHash) (string, error) {
-	encryptedBalance, err := api.host.EnclaveClient.GetBalance(address)
+func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams []byte) (string, error) {
+	encryptedBalance, err := api.host.EnclaveClient.GetBalance(encryptedParams)
 	if err != nil {
 		return "", err
 	}

@@ -78,9 +78,10 @@ type Enclave interface {
 	// "eth_call" and "eth_getBalance" requests that have that address as a "from" field.
 	AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error
 
-	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the address.
+	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
+	// address. The request params are encrypted with the enclave's public key.
 	// TODO - Handle multiple viewing keys, and thus multiple return values.
-	GetBalance(address common.Address) (EncryptedResponse, error)
+	GetBalance(encryptedParams []byte) (EncryptedResponse, error)
 
 	// StopClient stops the enclave client if one exists
 	StopClient() error

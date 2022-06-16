@@ -191,7 +191,7 @@ message AddViewingKeyRequest {
 message AddViewingKeyResponse {}
 
 message GetBalanceRequest {
-  bytes address = 1;
+  bytes encryptedParams = 1;
 }
 message GetBalanceResponse {
   bytes encryptedBalance = 1;

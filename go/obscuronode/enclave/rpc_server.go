@@ -220,7 +220,7 @@ func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingK
 }
 
 func (s *server) GetBalance(_ context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
-	encryptedBalance, err := s.enclave.GetBalance(common.BytesToAddress(request.Address))
+	encryptedBalance, err := s.enclave.GetBalance(request.EncryptedParams)
 	if err != nil {
 		return nil, err
 	}

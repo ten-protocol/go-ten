@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -633,12 +634,24 @@ func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscuro
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
 	viewingKeyBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
 	if err != nil {
-		return fmt.Errorf("could not decrypt viewing key. Cause: %w", err)
+		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
 	}
 	return e.viewingKeyManager.AddViewingKey(viewingKeyBytes, signature)
 }
 
-func (e *enclaveImpl) GetBalance(address common.Address) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) GetBalance(encryptedParams []byte) (nodecommon.EncryptedResponse, error) {
+	paramBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
+	}
+
+	var paramsJSONMap []string
+	err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse JSON params in GetBalance request. Cause: %w", err)
+	}
+	address := common.HexToAddress(paramsJSONMap[0]) // The first argument is the address, the second the block.
+
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
 	balance := DummyBalance // The Ethereum API is to return the balance in hex.
 
