@@ -29,7 +29,7 @@ const (
 	ToField           = "to"
 )
 
-func DecodeTransferTx(t types.Transaction) (bool, *common.Address, *big.Int) {
+func DecodeTransferTx(t *types.Transaction) (bool, *common.Address, *big.Int) {
 	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:methodBytesLen])
 	if err != nil {
 		log.Info("Could not decode tx %d, Err: %s", obscurocommon.ShortHash(t.Hash()), err)

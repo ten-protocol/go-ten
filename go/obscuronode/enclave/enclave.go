@@ -63,7 +63,7 @@ type enclaveImpl struct {
 	l1Blockchain      *core.BlockChain
 	viewingKeyManager viewingkeymanager.ViewingKeyManager
 
-	txCh                 chan nodecommon.L2Tx
+	txCh                 chan *nodecommon.L2Tx
 	roundWinnerCh        chan *obscurocore.Rollup
 	exitCh               chan bool
 	speculativeWorkInCh  chan bool
@@ -128,7 +128,7 @@ func NewEnclave(
 		statsCollector:        collector,
 		l1Blockchain:          l1Blockchain,
 		viewingKeyManager:     viewingkeymanager.NewViewingKeyManager(config.ViewingKeysEnabled),
-		txCh:                  make(chan nodecommon.L2Tx),
+		txCh:                  make(chan *nodecommon.L2Tx),
 		roundWinnerCh:         make(chan *obscurocore.Rollup),
 		exitCh:                make(chan bool),
 		speculativeWorkInCh:   make(chan bool),
@@ -158,7 +158,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 }
 
 func (e *enclaveImpl) start(block types.Block) {
-	env := processingEnvironment{processedTxsMap: make(map[common.Hash]nodecommon.L2Tx)}
+	env := processingEnvironment{processedTxsMap: make(map[common.Hash]*nodecommon.L2Tx)}
 	// determine whether the block where the speculative execution will start already contains Obscuro state
 	blockState, f := e.storage.FetchBlockState(block.Hash())
 	if f {
@@ -196,7 +196,7 @@ func (e *enclaveImpl) start(block types.Block) {
 				if !found {
 					env.processedTxsMap[tx.Hash()] = tx
 					env.processedTxs = append(env.processedTxs, tx)
-					evm.ExecuteTransactions([]nodecommon.L2Tx{tx}, env.state, env.header, e.storage, e.config.ObscuroChainID, 0)
+					evm.ExecuteTransactions([]*nodecommon.L2Tx{tx}, env.state, env.header, e.storage, e.config.ObscuroChainID, 0)
 				}
 			}
 
@@ -204,7 +204,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			if env.header == nil {
 				e.speculativeWorkOutCh <- speculativeWork{found: false}
 			} else {
-				b := make([]nodecommon.L2Tx, 0, len(env.processedTxs))
+				b := make([]*nodecommon.L2Tx, 0, len(env.processedTxs))
 				b = append(b, env.processedTxs...)
 				e.speculativeWorkOutCh <- speculativeWork{
 					found: true,
@@ -222,7 +222,7 @@ func (e *enclaveImpl) start(block types.Block) {
 }
 
 func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
-	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
+	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []*nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
 	b, f := e.storage.FetchBlock(blkHash)
 	if !f {
 		log.Panic("Could not find the block used as proof for the genesis rollup.")
@@ -334,7 +334,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	decryptedTx := obscurocore.DecryptTx(tx)
-	err := verifySignature(e.config.ObscuroChainID, &decryptedTx)
+	err := verifySignature(e.config.ObscuroChainID, decryptedTx)
 	if err != nil {
 		return err
 	}
@@ -493,7 +493,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	for i, tx := range newRollupTxs {
 		_, f := txReceiptsMap[tx.Hash()]
 		if f {
-			successfulTransactions = append(successfulTransactions, &newRollupTxs[i])
+			successfulTransactions = append(successfulTransactions, newRollupTxs[i])
 		} else {
 			log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.config.HostID), obscurocommon.ShortHash(tx.Hash()))
 		}
@@ -547,7 +547,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 		txs := rollup.Transactions
 		for _, tx := range txs {
 			if tx.Hash() == txHash {
-				return &tx
+				return tx
 			}
 		}
 		rollup = e.storage.ParentRollup(rollup)
@@ -750,16 +750,16 @@ type speculativeWork struct {
 	r     *obscurocore.Rollup
 	s     *state.StateDB
 	h     *nodecommon.Header
-	txs   []nodecommon.L2Tx
+	txs   []*nodecommon.L2Tx
 }
 
 // internal structure used for the speculative execution.
 type processingEnvironment struct {
-	headRollup      *obscurocore.Rollup             // the current head rollup, which will be the parent of the new rollup
-	header          *nodecommon.Header              // the header of the new rollup
-	processedTxs    []nodecommon.L2Tx               // txs that were already processed
-	processedTxsMap map[common.Hash]nodecommon.L2Tx // structure used to prevent duplicates
-	state           *state.StateDB                  // the state as calculated from the previous rollup and the processed transactions
+	headRollup      *obscurocore.Rollup              // the current head rollup, which will be the parent of the new rollup
+	header          *nodecommon.Header               // the header of the new rollup
+	processedTxs    []*nodecommon.L2Tx               // txs that were already processed
+	processedTxsMap map[common.Hash]*nodecommon.L2Tx // structure used to prevent duplicates
+	state           *state.StateDB                   // the state as calculated from the previous rollup and the processed transactions
 }
 
 // encryptWithPublicKey encrypts data with public key

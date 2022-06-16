@@ -60,7 +60,7 @@ func generateEncryptedRollupHex() []byte {
 		nil,
 		obscurocommon.L2GenesisHeight,
 		common.HexToAddress("0x0"),
-		[]nodecommon.L2Tx{},
+		[]*nodecommon.L2Tx{},
 		[]nodecommon.Withdrawal{},
 		expectedNonce,
 		common.BigToHash(big.NewInt(0)),

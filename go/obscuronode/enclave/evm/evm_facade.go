@@ -20,7 +20,7 @@ import (
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
-func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64, fromTxIndex int) []*types.Receipt {
+func ExecuteTransactions(txs []*nodecommon.L2Tx, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64, fromTxIndex int) []*types.Receipt {
 	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 	zero := uint64(0)
 	usedGas := &zero
@@ -42,12 +42,12 @@ func ExecuteTransactions(txs []nodecommon.L2Tx, s *state.StateDB, header *nodeco
 	return receipts
 }
 
-func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *nodecommon.Header, t nodecommon.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
+func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *nodecommon.Header, t *nodecommon.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
 	s.Prepare(t.Hash(), tCount)
 
 	snap := s.Snapshot()
 	// todo - Author?
-	receipt, err := core2.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), &t, usedGas, vmCfg)
+	receipt, err := core2.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), t, usedGas, vmCfg)
 	if err == nil {
 		return receipt, nil
 	}

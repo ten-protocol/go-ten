@@ -21,11 +21,11 @@ func EncryptTx(tx *nodecommon.L2Tx) nodecommon.EncryptedTx {
 
 // DecryptTx reverses the encryption performed by EncryptTx.
 // TODO - Perform real decryption here, and not just RLP decoding.
-func DecryptTx(tx nodecommon.EncryptedTx) nodecommon.L2Tx {
+func DecryptTx(tx nodecommon.EncryptedTx) *nodecommon.L2Tx {
 	t := nodecommon.L2Tx{}
 	if err := rlp.DecodeBytes(tx, &t); err != nil {
 		log.Panic("could not decrypt encrypted L2 transaction. Cause: %s", err)
 	}
 
-	return t
+	return &t
 }
