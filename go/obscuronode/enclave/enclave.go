@@ -50,9 +50,9 @@ const (
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 
 	// The relevant fields in a Call request's params.
-	callFieldTo   = "to"
-	callFieldFrom = "from"
-	callFieldData = "data"
+	CallFieldTo   = "to"
+	CallFieldFrom = "from"
+	CallFieldData = "data"
 )
 
 type StatsCollector interface {
@@ -411,27 +411,32 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 }
 
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
-	paramBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
+	// TODO - Encapsulate the config-based skipping of encryption in the viewing key manager.
+	paramBytes := encryptedParams
+	if e.config.ViewingKeysEnabled {
+		var err error
+		paramBytes, err = ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
+		}
 	}
 
 	var paramsJSONMap []interface{}
-	err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	err := json.Unmarshal(paramBytes, &paramsJSONMap)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
 	}
 
 	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	contractAddressString, ok := txArgs.(map[string]interface{})[callFieldTo].(string)
+	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
 	if !ok {
 		return nil, fmt.Errorf("to field in Call request params was not of expected type string")
 	}
-	fromString, ok := txArgs.(map[string]interface{})[callFieldFrom].(string)
+	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
 	if !ok {
 		return nil, fmt.Errorf("from field in Call request params was not of expected type string")
 	}
-	dataString, ok := txArgs.(map[string]interface{})[callFieldData].(string)
+	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
 	if !ok {
 		return nil, fmt.Errorf("data field in Call request params was not of expected type string")
 	}
@@ -679,13 +684,18 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 }
 
 func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
-	paramBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
+	// TODO - Encapsulate the config-based skipping of encryption in the viewing key manager.
+	paramBytes := encryptedParams
+	if e.config.ViewingKeysEnabled {
+		var err error
+		paramBytes, err = ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
+		}
 	}
 
 	var paramsJSONMap []string
-	err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	err := json.Unmarshal(paramBytes, &paramsJSONMap)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse JSON params in GetBalance request. Cause: %w", err)
 	}

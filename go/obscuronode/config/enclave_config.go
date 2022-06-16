@@ -32,7 +32,7 @@ type EnclaveConfig struct {
 	LogPath string
 	// Whether the enclave should use in-memory or persistent storage
 	UseInMemoryDB bool
-	// Whether the enclave should encrypt responses to sensitive requests with viewing keys
+	// Whether the client and the enclave should encrypt sensitive requests and responses.
 	// TODO - Consider removing this option and forcing the simulations to generate viewing keys.
 	ViewingKeysEnabled bool
 }
