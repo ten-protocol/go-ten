@@ -55,9 +55,9 @@ func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []*
 		Root:       state,
 		Number:     header.Number,
 	}
-	transactions := make([]nodecommon.L2Tx, len(txs))
+	transactions := make([]*nodecommon.L2Tx, len(txs))
 	for i, tx := range txs {
-		transactions[i] = *tx
+		transactions[i] = tx
 	}
 	r := Rollup{
 		Header:       &h,
@@ -73,7 +73,7 @@ func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []*
 }
 
 // NewRollup - produces a new rollup. only used for genesis. todo - review
-func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Address, txs []nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Address, txs []*nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
 	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()

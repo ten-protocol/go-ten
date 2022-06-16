@@ -23,8 +23,8 @@ func newCounter() *txInjectorCounter {
 		l1TransactionsLock:       sync.RWMutex{},
 		l1Transactions:           []obscurocommon.L1Transaction{},
 		l2TransactionsLock:       sync.RWMutex{},
-		transferL2Transactions:   []nodecommon.L2Tx{},
-		withdrawalL2Transactions: []nodecommon.L2Tx{},
+		transferL2Transactions:   []*nodecommon.L2Tx{},
+		withdrawalL2Transactions: []*nodecommon.L2Tx{},
 	}
 }
 
@@ -35,13 +35,13 @@ func (m *txInjectorCounter) trackL1Tx(tx obscurocommon.L1Transaction) {
 	m.l1Transactions = append(m.l1Transactions, tx)
 }
 
-func (m *txInjectorCounter) trackWithdrawalL2Tx(tx nodecommon.L2Tx) {
+func (m *txInjectorCounter) trackWithdrawalL2Tx(tx *nodecommon.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
 	m.withdrawalL2Transactions = append(m.withdrawalL2Transactions, tx)
 }
 
-func (m *txInjectorCounter) trackTransferL2Tx(tx nodecommon.L2Tx) {
+func (m *txInjectorCounter) trackTransferL2Tx(tx *nodecommon.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
 	m.transferL2Transactions = append(m.transferL2Transactions, tx)

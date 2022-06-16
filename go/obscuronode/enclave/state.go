@@ -187,7 +187,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 	return headRollup, stateDB
 }
 
-func (e *enclaveImpl) process(rollup *core.Rollup, stateDB *state.StateDB, depositTxs []nodecommon.L2Tx) (common.Hash, []*types.Receipt, []*types.Receipt) {
+func (e *enclaveImpl) process(rollup *core.Rollup, stateDB *state.StateDB, depositTxs []*nodecommon.L2Tx) (common.Hash, []*types.Receipt, []*types.Receipt) {
 	txReceipts := evm.ExecuteTransactions(rollup.Transactions, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, 0)
 	depositReceipts := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, len(rollup.Transactions))
 	rootHash, err := stateDB.Commit(true)
@@ -251,7 +251,7 @@ func extractDeposits(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	rollupState *state.StateDB,
 	chainID int64,
-) []nodecommon.L2Tx {
+) []*nodecommon.L2Tx {
 	from := obscurocommon.GenesisBlock.Hash()
 	height := obscurocommon.L1GenesisHeight
 	if fromBlock != nil {
@@ -262,7 +262,7 @@ func extractDeposits(
 		}
 	}
 
-	allDeposits := make([]nodecommon.L2Tx, 0)
+	allDeposits := make([]*nodecommon.L2Tx, 0)
 	b := toBlock
 	for {
 		if b.Hash() == from {
@@ -338,14 +338,14 @@ func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup
 	receiptsMap := toReceiptMap(receipts)
 	w := make([]nodecommon.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
-	for i, t := range newHeadRollup.Transactions {
+	for _, t := range newHeadRollup.Transactions {
 		found, address, amount := erc20contractlib.DecodeTransferTx(t)
 
 		if found && *t.To() == evm.Erc20ContractAddress && *address == evm.WithdrawalAddress {
 			receipt := receiptsMap[t.Hash()]
 			if receipt != nil && receipt.Status == types.ReceiptStatusSuccessful {
 				signer := types.NewLondonSigner(big.NewInt(e.config.ObscuroChainID))
-				from, err := types.Sender(signer, &newHeadRollup.Transactions[i])
+				from, err := types.Sender(signer, t)
 				if err != nil {
 					panic(err)
 				}
@@ -396,7 +396,7 @@ func toEnclaveRollup(r *nodecommon.Rollup, transactionBlobCrypto core.Transactio
 	}
 }
 
-func newDepositTx(address common.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64, chainID int64) nodecommon.L2Tx {
+func newDepositTx(address common.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64, chainID int64) *nodecommon.L2Tx {
 	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
 	signer := types.NewLondonSigner(big.NewInt(chainID))
 
@@ -416,5 +416,5 @@ func newDepositTx(address common.Address, amount uint64, rollupState *state.Stat
 	if err != nil {
 		log.Panic("could not encode L2 transaction data. Cause: %s", err)
 	}
-	return *newTx
+	return newTx
 }

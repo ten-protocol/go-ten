@@ -6,7 +6,7 @@ import (
 )
 
 // L2Txs Todo - is this type useful?
-type L2Txs []nodecommon.L2Tx
+type L2Txs []*nodecommon.L2Tx
 
 // BlockState - Represents the state after an L1 Block was processed.
 type BlockState struct {

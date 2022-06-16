@@ -199,7 +199,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			continue
 		}
 
-		go ti.counter.trackTransferL2Tx(*signedTx)
+		go ti.counter.trackTransferL2Tx(signedTx)
 	}
 }
 
@@ -250,7 +250,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		}
 
 		ti.stats.Withdrawal(v)
-		go ti.counter.trackWithdrawalL2Tx(*signedTx)
+		go ti.counter.trackWithdrawalL2Tx(signedTx)
 	}
 }
 
