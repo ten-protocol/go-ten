@@ -120,7 +120,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	method := reqJSONMap[reqJSONKeyMethod]
 	fmt.Printf("Received request from wallet: %s\n", body)
 
-	// We encrypt the request's params with the enclave's public key if it is a sensitive request.
+	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
 	maybeEncryptedBody := body
 	if isSensitive(method) {
 		fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
