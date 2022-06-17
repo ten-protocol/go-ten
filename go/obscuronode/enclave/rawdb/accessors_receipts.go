@@ -41,7 +41,7 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) types.Rec
 	// Convert the receipts from their storage form to their internal representation
 	storageReceipts := []*types.ReceiptForStorage{}
 	if err := rlp.DecodeBytes(data, &storageReceipts); err != nil {
-		log.Error("Invalid receipt array RLP", "hash", hash, "err", err)
+		log.Error("Invalid receipt array RLP. %s = %s; %s = %s;", "hash", hash, "err", err)
 		return nil
 	}
 	receipts := make(types.Receipts, len(storageReceipts))
@@ -66,12 +66,12 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 	}
 	body := ReadBody(db, hash, number)
 	if body == nil {
-		log.Error("Missing body but have receipt", "hash", hash, "number", number)
+		log.Error("Missing body but have receipt.%s = %s; %s = %d;", "hash", hash, "number", number)
 		return nil
 	}
 
 	if err := receipts.DeriveFields(config, hash, number, types.Transactions(body)); err != nil {
-		log.Error("Failed to derive block receipts fields", "hash", hash, "number", number, "err", err)
+		log.Error("Failed to derive block receipts fields. %s = %s; %s = %d; %s = %s;", "hash", hash, "number", number, "err", err)
 		return nil
 	}
 	return receipts
