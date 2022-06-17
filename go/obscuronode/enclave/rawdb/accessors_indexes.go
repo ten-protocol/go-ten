@@ -80,7 +80,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 	}
 	transactions := ReadBody(db, blockHash, *blockNumber)
 	if transactions == nil {
-		log.Error("Transaction referenced missing %s = %s; %s = %s", "number", *blockNumber, "hash", blockHash)
+		log.Error("Transaction referenced missing %s = %d; %s = %s", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}
 	for txIndex, tx := range transactions {
@@ -88,7 +88,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 			return tx, blockHash, *blockNumber, uint64(txIndex)
 		}
 	}
-	log.Error("Transaction not found %s = %s; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+	log.Error("Transaction not found %s = %d; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 
@@ -111,7 +111,7 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) 
 			return receipt, blockHash, *blockNumber, uint64(receiptIndex)
 		}
 	}
-	log.Error("Receipt not found %s = %s; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+	log.Error("Receipt not found %s = %d; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 
