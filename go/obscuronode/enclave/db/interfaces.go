@@ -1,6 +1,7 @@
 package db
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -63,10 +64,22 @@ type SharedSecretStorage interface {
 	StoreSecret(secret core.SharedEnclaveSecret)
 }
 
+type TransactionStorage interface {
+	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
+	GetReceiptsByHash(hash common.Hash) types.Receipts
+
+	// GetTransaction - returns the positional metadata of the tx by hash
+	GetTransaction(txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error)
+
+	// GetTransactionReceipt - returns the receipt of a tx by tx hash
+	GetTransactionReceipt(txHash common.Hash) (*types.Receipt, error)
+}
+
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
 	RollupResolver
 	SharedSecretStorage
 	BlockStateStorage
+	TransactionStorage
 }
