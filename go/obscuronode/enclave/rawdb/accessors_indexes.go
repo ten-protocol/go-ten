@@ -80,7 +80,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 	}
 	transactions := ReadBody(db, blockHash, *blockNumber)
 	if transactions == nil {
-		log.Error("Transaction referenced missing", "number", *blockNumber, "hash", blockHash)
+		log.Error("Transaction referenced missing %s = %s; %s = %s", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}
 	for txIndex, tx := range transactions {
@@ -88,7 +88,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 			return tx, blockHash, *blockNumber, uint64(txIndex)
 		}
 	}
-	log.Error("Transaction not found", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+	log.Error("Transaction not found %s = %s; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 
@@ -111,7 +111,7 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) 
 			return receipt, blockHash, *blockNumber, uint64(receiptIndex)
 		}
 	}
-	log.Error("Receipt not found", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+	log.Error("Receipt not found %s = %s; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 
@@ -143,7 +143,10 @@ func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64) {
 		if len(it.Key()) != len(bloomBitsPrefix)+2+8+32 {
 			continue
 		}
-		db.Delete(it.Key())
+		err := db.Delete(it.Key())
+		if err != nil {
+			log.Panic("Failed to delete bloom bits. Cause: %s", err)
+		}
 	}
 	if it.Error() != nil {
 		log.Panic("Failed to delete bloom bits. Cause: %s", it.Error())
