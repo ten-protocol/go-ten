@@ -576,7 +576,28 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
-	return nil, nil // todo - joel - implement
+	return nil, nil // todo - joel - fix
+	//paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
+	//if err != nil {
+	//	return nil, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
+	//}
+	//
+	//var paramsJSONMap []string
+	//err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	//if err != nil {
+	//	return nil, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. Cause: %w", err)
+	//}
+	//txHash := common.HexToHash(paramsJSONMap[0]) // The only argument is the transaction hash.
+	//
+	//txReceipt := TODO(txHash)
+	//viewingKeyAddress := TODO()
+	//
+	//encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, []byte(txReceipt))
+	//if err != nil {
+	//	return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
+	//}
+	//
+	//return encryptedTxReceipt, nil
 }
 
 func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {

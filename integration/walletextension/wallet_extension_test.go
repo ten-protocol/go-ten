@@ -62,9 +62,6 @@ var (
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 )
 
-// TODO - Move to separate package once DB conflicts have been resolved. Currently, starting multiple simulation
-//  networks at once causes DB issues.
-
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	stopHandle, err := createObscuroNetwork()
 	defer stopHandle()
@@ -264,6 +261,33 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	if !strings.Contains(string(respBody), expectedErr) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
 	}
+}
+
+// todo - joel - fix tests below
+
+func TestCannotGetTxReceiptWithoutSubmittingViewingKey(t *testing.T) {
+	stopHandle, err := createObscuroNetwork()
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
+
+	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
+	defer walletExtension.Shutdown()
+	go walletExtension.Serve(walletExtensionAddr)
+	waitForWalletExtension(t, walletExtensionAddr)
+
+	makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
+
+	// todo - joel
+}
+
+func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
+	// todo - joel
+}
+
+func TestCannotGetTxReceiptSubmittedFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
+	// todo - joel
 }
 
 // Waits for wallet extension to be ready. Times out after three seconds.

@@ -161,6 +161,8 @@ func (ti *TransactionInjector) deploySingleObscuroERC20(w wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
+	println("jjj tx hash")
+	println(signedTx.Hash().Hex())
 	encryptedTx := core.EncryptTx(signedTx)
 	err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {

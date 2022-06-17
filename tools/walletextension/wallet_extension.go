@@ -28,14 +28,15 @@ const (
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "./tools/walletextension/static"
 
-	reqJSONKeyMethod        = "method"
-	reqJSONKeyParams        = "params"
-	ReqJSONMethodGetBalance = "eth_getBalance"
-	ReqJSONMethodCall       = "eth_call"
-	respJSONKeyErr          = "error"
-	respJSONKeyMsg          = "message"
-	RespJSONKeyResult       = "result"
-	httpCodeErr             = 500
+	reqJSONKeyMethod          = "method"
+	reqJSONKeyParams          = "params"
+	ReqJSONMethodGetBalance   = "eth_getBalance"
+	ReqJSONMethodCall         = "eth_call"
+	ReqJSONMethodGetTxReceipt = "eth_getTransactionReceipt"
+	respJSONKeyErr            = "error"
+	respJSONKeyMsg            = "message"
+	RespJSONKeyResult         = "result"
+	httpCodeErr               = 500
 
 	Localhost         = "127.0.0.1"
 	websocketProtocol = "ws://"
@@ -303,7 +304,7 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 	return respJSONMap, nil
 }
 
-// Indicates whether the RPC method should be encrypted.
+// Indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
-	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall
+	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt
 }
