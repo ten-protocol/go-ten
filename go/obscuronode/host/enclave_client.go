@@ -33,6 +33,8 @@ type EnclaveRPCClient struct {
 	config      config.HostConfig
 }
 
+// TODO - Avoid panicking and return errors instead where appropriate.
+
 func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
@@ -301,7 +303,14 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 }
 
 func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
-	return nil, nil // todo - joel - implement
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
+	if err != nil {
+		return nil, err
+	}
+	return response.EncryptedTxReceipt, nil
 }
 
 func (c *EnclaveRPCClient) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {

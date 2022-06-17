@@ -201,6 +201,14 @@ func (s *server) GetTransaction(_ context.Context, request *generated.GetTransac
 	return &generated.GetTransactionResponse{Known: true, EncodedTransaction: buffer.Bytes()}, nil
 }
 
+func (s *server) GetTransactionReceipt(_ context.Context, request *generated.GetTransactionReceiptRequest) (*generated.GetTransactionReceiptResponse, error) {
+	encryptedTxReceipt, err := s.enclave.GetTransactionReceipt(request.EncryptedParams)
+	if err != nil {
+		return nil, err
+	}
+	return &generated.GetTransactionReceiptResponse{EncryptedTxReceipt: encryptedTxReceipt}, nil
+}
+
 func (s *server) GetRollup(_ context.Context, request *generated.GetRollupRequest) (*generated.GetRollupResponse, error) {
 	extRollup := s.enclave.GetRollup(common.BytesToHash(request.RollupHash))
 	if extRollup == nil {
