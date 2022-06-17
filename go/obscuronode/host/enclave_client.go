@@ -300,8 +300,8 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	return &l2Tx
 }
 
-func (c *EnclaveRPCClient) GetTransactionReceipt(common.Hash) *types.Receipt {
-	return nil // todo - joel - implement
+func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+	return nil, nil // todo - joel - implement
 }
 
 func (c *EnclaveRPCClient) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {

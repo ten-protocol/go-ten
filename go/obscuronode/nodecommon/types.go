@@ -21,6 +21,7 @@ type (
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
 	EncryptedParams       []byte // The params for an off-chain call or getBalance request, as a JSON list encrypted with the public key of the enclave.
 	EncryptedResponse     []byte // The response of an off-chain call or getBalance request. Encrypted with the viewing key of the user.
+	EncryptedResponseHex  string // As above, but encoded as hex.
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup

@@ -64,7 +64,7 @@ type Enclave interface {
 	GetTransaction(txHash common.Hash) *L2Tx
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
-	GetTransactionReceipt(txHash common.Hash) *types.Receipt
+	GetTransactionReceipt(encryptedParams EncryptedParams) (EncryptedResponse, error)
 
 	// GetRollup returns the rollup with the given hash
 	GetRollup(rollupHash obscurocommon.L2RootHash) *ExtRollup

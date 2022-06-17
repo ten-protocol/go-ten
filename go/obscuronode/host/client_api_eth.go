@@ -57,11 +57,18 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 // the `from` field and encoded as hex.
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams nodecommon.EncryptedParams) (string, error) {
 	encryptedResponse, err := api.host.EnclaveClient.ExecuteOffChainTransaction(encryptedParams)
-	return common.Bytes2Hex(encryptedResponse), err
+	if err != nil {
+		return "", err
+	}
+	return common.Bytes2Hex(encryptedResponse), nil
 }
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
 // corresponding to the original transaction submitter and encoded as hex.
-func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, _ nodecommon.EncryptedParams) (map[string]interface{}, error) {
-	return nil, nil // nolint:nilnil // todo - joel - return something sensible.
+func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams nodecommon.EncryptedParams) (string, error) {
+	encryptedResponse, err := api.host.EnclaveClient.GetTransactionReceipt(encryptedParams)
+	if err != nil {
+		return "", err
+	}
+	return common.Bytes2Hex(encryptedResponse), nil
 }
