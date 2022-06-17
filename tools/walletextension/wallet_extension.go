@@ -121,26 +121,10 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	fmt.Printf("Received request from wallet: %s\n", body)
 
 	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
-	maybeEncryptedBody := body
-	if isSensitive(method) {
-		fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
-		params := reqJSONMap[reqJSONKeyParams]
-		paramsJSON, err := json.Marshal(params)
-		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not marshal request params to JSON for encryption: %s", err))
-			return
-		}
-		encryptedParams, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, paramsJSON, nil, nil)
-		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not encrypt request params with enclave public key: %s", err))
-			return
-		}
-		reqJSONMap[reqJSONKeyParams] = []interface{}{encryptedParams}
-		maybeEncryptedBody, err = json.Marshal(reqJSONMap)
-		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not marshal request with encrypted params to JSON: %s", err))
-			return
-		}
+	maybeEncryptedBody, err := we.encryptParamsIfNeeded(body, method, reqJSONMap)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("failed to encrypt request parameters: %s", err))
+		return
 	}
 
 	// We forward the request on to the Obscuro node.
@@ -178,6 +162,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		respJSONMap[RespJSONKeyResult] = string(decryptedResult)
 	}
 
+	// We marshal the response to present to the client.
 	clientResponse, err := json.Marshal(respJSONMap)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
@@ -282,6 +267,31 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 		return nil, err
 	}
 	return message, nil
+}
+
+// Encrypts the request's params with the enclave public key if the request is sensitive.
+func (we *WalletExtension) encryptParamsIfNeeded(body []byte, method interface{}, reqJSONMap map[string]interface{}) ([]byte, error) {
+	if !isSensitive(method) {
+		return body, nil
+	}
+
+	fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
+	params := reqJSONMap[reqJSONKeyParams]
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal request params to JSON for encryption: %w", err)
+	}
+	encryptedParams, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, paramsJSON, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt request params with enclave public key: %w", err)
+	}
+	reqJSONMap[reqJSONKeyParams] = []interface{}{encryptedParams}
+	body, err = json.Marshal(reqJSONMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal request with encrypted params to JSON: %w", err)
+	}
+
+	return body, nil
 }
 
 // Indicates whether the RPC method should be encrypted.
