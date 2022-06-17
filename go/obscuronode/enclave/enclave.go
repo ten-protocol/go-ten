@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/trie"
 
@@ -45,6 +48,11 @@ const (
 	// EnclavePrivateKeyHex is the private key used for sensitive communication with the enclave.
 	// TODO - Replace this fixed key with a derived key.
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
+
+	// The relevant fields in a Call request's params.
+	CallFieldTo   = "to"
+	CallFieldFrom = "from"
+	CallFieldData = "data"
 )
 
 type StatsCollector interface {
@@ -402,7 +410,44 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) ExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+	// TODO - Encapsulate the config-based skipping of encryption in the viewing key manager.
+	paramBytes := encryptedParams
+	if e.config.ViewingKeysEnabled {
+		var err error
+		paramBytes, err = ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
+		}
+	}
+
+	var paramsJSONMap []interface{}
+	err := json.Unmarshal(paramBytes, &paramsJSONMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
+	}
+
+	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
+	if !ok {
+		return nil, fmt.Errorf("to field in Call request params was not of expected type string")
+	}
+	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
+	if !ok {
+		return nil, fmt.Errorf("from field in Call request params was not of expected type string")
+	}
+	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
+	if !ok {
+		return nil, fmt.Errorf("data field in Call request params was not of expected type string")
+	}
+
+	contractAddress := common.HexToAddress(contractAddressString)
+	from := common.HexToAddress(fromString)
+	data, err := hexutil.Decode(dataString)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
+	}
+
 	hs := e.storage.FetchHeadState()
 	if hs == nil {
 		panic("Not initialised")
@@ -633,12 +678,29 @@ func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscuro
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
 	viewingKeyBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
 	if err != nil {
-		return fmt.Errorf("could not decrypt viewing key. Cause: %w", err)
+		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
 	}
 	return e.viewingKeyManager.AddViewingKey(viewingKeyBytes, signature)
 }
 
-func (e *enclaveImpl) GetBalance(address common.Address) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+	// TODO - Encapsulate the config-based skipping of encryption in the viewing key manager.
+	paramBytes := encryptedParams
+	if e.config.ViewingKeysEnabled {
+		var err error
+		paramBytes, err = ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
+		}
+	}
+
+	var paramsJSONMap []string
+	err := json.Unmarshal(paramBytes, &paramsJSONMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse JSON params in GetBalance request. Cause: %w", err)
+	}
+	address := common.HexToAddress(paramsJSONMap[0]) // The first argument is the address, the second the block.
+
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
 	balance := DummyBalance // The Ethereum API is to return the balance in hex.
 

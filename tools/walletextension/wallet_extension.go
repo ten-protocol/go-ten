@@ -29,6 +29,7 @@ const (
 	staticDir              = "./tools/walletextension/static"
 
 	reqJSONKeyMethod        = "method"
+	reqJSONKeyParams        = "params"
 	ReqJSONMethodGetBalance = "eth_getBalance"
 	ReqJSONMethodCall       = "eth_call"
 	respJSONKeyErr          = "error"
@@ -119,17 +120,31 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	method := reqJSONMap[reqJSONKeyMethod]
 	fmt.Printf("Received request from wallet: %s\n", body)
 
-	//// We encrypt the JSON with the enclave's public key.
-	//fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
-	//eciesPublicKey := ecies.ImportECDSAPublic(we.enclavePublicKey)
-	//encryptedBody, err := ecies.Encrypt(rand.Reader, eciesPublicKey, body, nil, nil)
-	//if err != nil {
-	//	logAndSendErr(resp, fmt.Sprintf("could not encrypt request with enclave public key: %s", err))
-	//	return
-	//}
+	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
+	maybeEncryptedBody := body
+	if isSensitive(method) {
+		fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
+		params := reqJSONMap[reqJSONKeyParams]
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not marshal request params to JSON for encryption: %s", err))
+			return
+		}
+		encryptedParams, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, paramsJSON, nil, nil)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not encrypt request params with enclave public key: %s", err))
+			return
+		}
+		reqJSONMap[reqJSONKeyParams] = []interface{}{encryptedParams}
+		maybeEncryptedBody, err = json.Marshal(reqJSONMap)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not marshal request with encrypted params to JSON: %s", err))
+			return
+		}
+	}
 
 	// We forward the request on to the Obscuro node.
-	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.hostAddr, body)
+	nodeResp, err := forwardMsgOverWebsocket(websocketProtocol+we.hostAddr, maybeEncryptedBody)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("received error response when forwarding request to node at %s: %s", we.hostAddr, err))
 		return
@@ -150,7 +165,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 
 	// We decrypt the result field if it's encrypted.
-	if method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall {
+	if isSensitive(method) {
 		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
 
 		encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
@@ -267,4 +282,9 @@ func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
 		return nil, err
 	}
 	return message, nil
+}
+
+// Indicates whether the RPC method should be encrypted.
+func isSensitive(method interface{}) bool {
+	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall
 }

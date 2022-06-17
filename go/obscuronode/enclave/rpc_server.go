@@ -161,7 +161,7 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 }
 
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
-	result, err := s.enclave.ExecuteOffChainTransaction(common.BytesToAddress(request.From), common.BytesToAddress(request.ContractAddress), request.Data)
+	result, err := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingK
 }
 
 func (s *server) GetBalance(_ context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
-	encryptedBalance, err := s.enclave.GetBalance(common.BytesToAddress(request.Address))
+	encryptedBalance, err := s.enclave.GetBalance(request.EncryptedParams)
 	if err != nil {
 		return nil, err
 	}

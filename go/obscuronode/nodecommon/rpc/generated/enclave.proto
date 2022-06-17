@@ -141,9 +141,7 @@ message SubmitTxRequest {
 message SubmitTxResponse {}
 
 message OffChainRequest {
-  bytes from = 1;
-  bytes contractAddress = 2;
-  bytes data = 3;
+  bytes encryptedParams = 1;
 }
 message OffChainResponse {
   bytes result = 1;
@@ -191,7 +189,7 @@ message AddViewingKeyRequest {
 message AddViewingKeyResponse {}
 
 message GetBalanceRequest {
-  bytes address = 1;
+  bytes encryptedParams = 1;
 }
 message GetBalanceResponse {
   bytes encryptedBalance = 1;

@@ -194,8 +194,8 @@ func (a *Node) ReceiveTx(tx nodecommon.EncryptedTx) {
 }
 
 // RPCExecuteOffChainTransaction allows execution of off chain transactions
-func (a *Node) RPCExecuteOffChainTransaction(from common.Address, contractAddress common.Address, data []byte) (nodecommon.EncryptedResponse, error) {
-	return a.EnclaveClient.ExecuteOffChainTransaction(from, contractAddress, data)
+func (a *Node) RPCExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+	return a.EnclaveClient.ExecuteOffChainTransaction(encryptedParams)
 }
 
 // RPCCurrentBlockHead returns the current head of the blocks (l1)

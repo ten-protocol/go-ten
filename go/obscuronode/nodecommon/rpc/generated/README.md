@@ -17,6 +17,6 @@ Add this to the environment, because there are some binaries in ``$HOME/go``
 
 The files were generated using the following command:
 
-    cd path/to/generated
+    cd go/obscuronode/nodecommon/rpc/generated
 
     protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative enclave.proto
