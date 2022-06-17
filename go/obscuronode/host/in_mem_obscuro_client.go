@@ -83,7 +83,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 	case obscuroclient.RPCCall:
 		if len(args) != 1 {
-			return fmt.Errorf("expected 3 args to %s, got %d", obscuroclient.RPCCall, len(args))
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCCall, len(args))
 		}
 		params, ok := args[0].([]byte)
 		if !ok {
