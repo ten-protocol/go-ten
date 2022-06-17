@@ -199,16 +199,24 @@ func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.Bloc
 	return nil, false
 }
 
-func (s *storageImpl) SetBlockState(hash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup) {
-	if state.Block != hash {
-		log.Panic("failed sanity check: `state.Block.Hash() != hash`")
-	}
+func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt) {
+	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
-		s.StoreRollup(rollup)
+		obscurorawdb.WriteRollup(batch, rollup)
+		obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash())
+		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64())
+		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup)
+		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash())
+		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts)
 	}
-	obscurorawdb.WriteBlockState(s.db, state)
-	rawdb.WriteHeadHeaderHash(s.db, state.Block)
+
+	obscurorawdb.WriteBlockState(batch, state)
+	rawdb.WriteHeadHeaderHash(batch, state.Block)
+
+	if err := batch.Write(); err != nil {
+		log.Panic("could not save new head. Cause: %s", err)
+	}
 }
 
 func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB {

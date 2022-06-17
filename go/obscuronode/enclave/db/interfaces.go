@@ -48,8 +48,8 @@ type BlockStateStorage interface {
 	FetchBlockState(blockHash obscurocommon.L1RootHash) (*core.BlockState, bool)
 	// FetchHeadState returns the head rollup. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
-	// SetBlockState save the rollup-block mapping
-	SetBlockState(blockHash obscurocommon.L1RootHash, state *core.BlockState, rollup *core.Rollup)
+	// SaveNewHead save the rollup-block mapping
+	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt)
 	// CreateStateDB create a database that can be used to execute transactions
 	CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB
 	// GenesisStateDB create the original empty StateDB

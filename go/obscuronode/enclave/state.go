@@ -24,7 +24,6 @@ import (
 )
 
 // Determine the new canonical L2 head and calculate the State
-// Uses cache-ing to map the Head rollup and the State to each L1Node block.
 func updateState(
 	b *types.Block,
 	blockResolver db.BlockResolver,
@@ -79,13 +78,12 @@ func updateState(
 		return nil
 	}
 
-	bs, stateDB, head := calculateBlockState(b, parentState, blockResolver, rollups, erc20ContractLib, rollupResolver, bss, chainID)
+	bs, stateDB, head, receipts := calculateBlockState(b, parentState, blockResolver, rollups, erc20ContractLib, rollupResolver, bss, chainID)
 	log.Trace(fmt.Sprintf(">   Agg%d: Calc block state b_%d: Found: %t - r_%d, ",
 		nodeID,
 		obscurocommon.ShortHash(b.Hash()),
 		bs.FoundNewRollup,
-		obscurocommon.ShortHash(bs.HeadRollup),
-	))
+		obscurocommon.ShortHash(bs.HeadRollup)))
 
 	if bs.FoundNewRollup {
 		// todo - root
@@ -94,7 +92,7 @@ func updateState(
 			log.Panic("could not commit new rollup to state DB. Cause: %s", err)
 		}
 	}
-	bss.SetBlockState(b.Hash(), bs, head)
+	bss.SaveNewHead(bs, head, receipts)
 
 	return bs
 }
@@ -115,7 +113,7 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		bss.SetBlockState(b.Hash(), &bs, genesis)
+		bss.SaveNewHead(&bs, genesis, nil)
 		s := bss.GenesisStateDB()
 		_, err := s.Commit(true)
 		if err != nil {
@@ -293,22 +291,14 @@ func extractDeposits(
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func calculateBlockState(
-	b *types.Block,
-	parentState *core.BlockState,
-	blockResolver db.BlockResolver,
-	rollups []*core.Rollup,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	rollupResolver db.RollupResolver,
-	bss db.BlockStateStorage,
-	chainID int64,
-) (*core.BlockState, *state.StateDB, *core.Rollup) {
+func calculateBlockState(b *types.Block, parentState *core.BlockState, blockResolver db.BlockResolver, rollups []*core.Rollup, erc20ContractLib erc20contractlib.ERC20ContractLib, rollupResolver db.RollupResolver, bss db.BlockStateStorage, chainID int64) (*core.BlockState, *state.StateDB, *core.Rollup, []*types.Receipt) {
 	currentHead, found := rollupResolver.FetchRollup(parentState.HeadRollup)
 	if !found {
 		log.Panic("could not fetch parent rollup")
 	}
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
 	stateDB := bss.CreateStateDB(parentState.HeadRollup)
+	var receipts []*types.Receipt
 	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
 		// Preprocessing before passing to the vm
@@ -319,7 +309,7 @@ func calculateBlockState(
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID, 0)
+		receipts = evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID, 0)
 		// todo - handle failure , which means a new winner must be selected
 	} else {
 		newHeadRollup = currentHead
@@ -330,7 +320,7 @@ func calculateBlockState(
 		HeadRollup:     newHeadRollup.Hash(),
 		FoundNewRollup: found,
 	}
-	return &bs, stateDB, newHeadRollup
+	return &bs, stateDB, newHeadRollup, receipts
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
