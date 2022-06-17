@@ -1,4 +1,4 @@
-package simulation
+package walletextension
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/integration/simulation"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -416,7 +417,7 @@ func createObscuroNetwork() (func(), error) {
 	wallet := wallets.Erc20ObsOwnerWallets[0]
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
-		Nonce:    NextNonce(l2Clients[0], wallet),
+		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
 		Data:     contractBytes,
