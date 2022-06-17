@@ -13,7 +13,7 @@ import (
 
 const (
 	// TODO - This fixed nonce is insecure, and should be removed alongside the fixed rollup encryption key.
-	rollupCipherNonce = "000000000000"
+	RollupCipherNonce = "000000000000"
 	// RollupEncryptionKeyHex is the AES key used to encrypt and decrypt the transaction blob in rollups.
 	// TODO - Replace this fixed key with derived, rotating keys.
 	RollupEncryptionKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c"
@@ -51,11 +51,11 @@ func (t TransactionBlobCryptoImpl) Encrypt(transactions L2Txs) nodecommon.Encryp
 		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
 	}
 
-	return t.transactionCipher.Seal(nil, []byte(rollupCipherNonce), encodedTxs, nil)
+	return t.transactionCipher.Seal(nil, []byte(RollupCipherNonce), encodedTxs, nil)
 }
 
 func (t TransactionBlobCryptoImpl) Decrypt(encryptedTxs nodecommon.EncryptedTransactions) L2Txs {
-	encodedTxs, err := t.transactionCipher.Open(nil, []byte(rollupCipherNonce), encryptedTxs, nil)
+	encodedTxs, err := t.transactionCipher.Open(nil, []byte(RollupCipherNonce), encryptedTxs, nil)
 	if err != nil {
 		log.Panic("could not decrypt encrypted L2 transactions. Cause: %s", err)
 	}

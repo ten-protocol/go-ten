@@ -3,10 +3,16 @@ package obscuroscan
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,11 +28,10 @@ import (
 const (
 	pathHeadBlock     = "/headblock/"
 	pathHeadRollup    = "/headrollup/"
-	pathDecryptRollup = "/decryptrollup/"
+	pathDecryptTxBlob = "/decrypttxblob/"
 	staticDir         = "./tools/obscuroscan/static"
 	pathRoot          = "/"
 	httpCodeErr       = 500
-	methodBytesLen    = 4
 )
 
 // Obscuroscan is a server that allows the monitoring of a running Obscuro network.
@@ -57,8 +62,8 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
 	// Handle requests for the head rollup.
 	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)
-	// Handle requests to decrypt rollup.
-	serveMux.HandleFunc(pathDecryptRollup, o.decryptRollup)
+	// Handle requests to decrypt a transaction blob.
+	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
 	err := o.server.ListenAndServe()
@@ -127,9 +132,9 @@ func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// Decrypts the provided rollup using the provided key.
-func (o *Obscuroscan) decryptRollup(resp http.ResponseWriter, req *http.Request) {
-	// TODO - Update logic here once rollups are encrypted. Currently, we just unpack the Ethereum transaction.
+// Decrypts the provided transaction blob using the provided key.
+// TODO - Use the passed-in key, rather than a hardcoded enclave key.
+func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request) {
 	body := req.Body
 	defer body.Close()
 	buffer := new(bytes.Buffer)
@@ -139,52 +144,49 @@ func (o *Obscuroscan) decryptRollup(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	jsonRollup, err := decryptRollup(buffer.Bytes(), o.contractABI)
+	jsonTxs, err := decryptTxBlob(buffer.Bytes())
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not decrypt rollup. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not decrypt transaction blob. Cause: %s", err))
 		return
 	}
 
-	_, err = resp.Write(jsonRollup)
+	_, err = resp.Write(jsonTxs)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not decrypt rollup. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not write decrypted transactions to client. Cause: %s", err))
 		return
 	}
 }
 
-// Decrypts the rollup and returns it as JSON.
-func decryptRollup(encryptedRollupHex []byte, contractABI abi.ABI) ([]byte, error) {
-	encryptedRollupBytes := common.Hex2Bytes(string(encryptedRollupHex))
-
-	method, err := contractABI.MethodById(encryptedRollupBytes[:methodBytesLen])
+// Decrypts the transaction blob and returns it as JSON.
+func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
+	encryptedTxBytes, err := base64.StdEncoding.DecodeString(string(encryptedTxBytesBase64))
 	if err != nil {
-		return nil, fmt.Errorf("could not read ABI method for encrypted rollup. Cause: %w", err)
-	}
-	if method.Name != mgmtcontractlib.AddRollupMethod {
-		return nil, fmt.Errorf("encrypted rollup did not have correct ABI method name. Expected %s, got %s", mgmtcontractlib.AddRollupMethod, method.Name)
+		return nil, fmt.Errorf("could not decode encrypted transaction blob from Base64. Cause: %w", err)
 	}
 
-	contractCallData := map[string]interface{}{}
-	if err = method.Inputs.UnpackIntoMap(contractCallData, encryptedRollupBytes[4:]); err != nil {
-		return nil, fmt.Errorf("encrypted rollup could not be unpacked using ABI. Cause: %w", err)
-	}
-	callData, found := contractCallData["rollupData"]
-	if !found {
-		return nil, fmt.Errorf("encrypted rollup did not contain call data for rollupData")
-	}
-	zippedRollup := mgmtcontractlib.Base64DecodeFromString(callData.(string))
-	encodedRollup, err := mgmtcontractlib.Decompress(zippedRollup)
+	key := common.Hex2Bytes(core.RollupEncryptionKeyHex)
+	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("decrypted rollup could not be decompressed. Cause: %w", err)
+		return nil, fmt.Errorf("could not initialise AES cipher for enclave rollup key. Cause: %w", err)
 	}
-	cleartextRollup, err := nodecommon.DecodeRollup(encodedRollup)
+	transactionCipher, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("could not decode decompressed rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %w", err)
 	}
 
-	jsonRollup, err := json.Marshal(cleartextRollup)
+	encodedTxs, err := transactionCipher.Open(nil, []byte(core.RollupCipherNonce), encryptedTxBytes, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt rollup: %w", err)
+		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
+	}
+
+	cleartextTxs := core.L2Txs{}
+	if err = rlp.DecodeBytes(encodedTxs, &cleartextTxs); err != nil {
+		return nil, fmt.Errorf("could not decode encoded L2 transactions. Cause: %w", err)
+	}
+
+	jsonRollup, err := json.Marshal(cleartextTxs)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt transaction blob: %w", err)
 	}
 
 	return jsonRollup, nil
