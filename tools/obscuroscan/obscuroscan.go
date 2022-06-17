@@ -159,6 +159,9 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 // Decrypts the transaction blob and returns it as JSON.
 func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 	encryptedTxBytes, err := base64.StdEncoding.DecodeString(string(encryptedTxBytesBase64))
+	if err != nil {
+		return nil, fmt.Errorf("could not decode encrypted transaction blob from Base64. Cause: %w", err)
+	}
 
 	key := common.Hex2Bytes(core.RollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)

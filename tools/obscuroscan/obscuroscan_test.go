@@ -3,8 +3,9 @@ package obscuroscan
 import (
 	"encoding/base64"
 	"encoding/json"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"testing"
+
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
