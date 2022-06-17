@@ -575,6 +575,10 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	}
 }
 
+func (e *enclaveImpl) GetTransactionReceipt(common.Hash) *types.Receipt {
+	return nil // todo - joel - implement
+}
+
 func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
 	rollup, found := e.storage.FetchRollup(rollupHash)
 	if found {

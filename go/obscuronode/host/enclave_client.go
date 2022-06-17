@@ -300,6 +300,10 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	return &l2Tx
 }
 
+func (c *EnclaveRPCClient) GetTransactionReceipt(common.Hash) *types.Receipt {
+	return nil // todo - joel - implement
+}
+
 func (c *EnclaveRPCClient) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
