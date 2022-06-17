@@ -421,31 +421,9 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.Encr
 		}
 	}
 
-	var paramsJSONMap []interface{}
-	err := json.Unmarshal(paramBytes, &paramsJSONMap)
+	contractAddress, from, data, err := extractCallParams(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
-	}
-
-	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
-	if !ok {
-		return nil, fmt.Errorf("to field in Call request params was not of expected type string")
-	}
-	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
-	if !ok {
-		return nil, fmt.Errorf("from field in Call request params was not of expected type string")
-	}
-	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
-	if !ok {
-		return nil, fmt.Errorf("data field in Call request params was not of expected type string")
-	}
-
-	contractAddress := common.HexToAddress(contractAddressString)
-	from := common.HexToAddress(fromString)
-	data, err := hexutil.Decode(dataString)
-	if err != nil {
-		return nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
+		return nil, err
 	}
 
 	hs := e.storage.FetchHeadState()
@@ -804,6 +782,37 @@ func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.Sha
 		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoded, encKey)
 	}
 	return encKey, err
+}
+
+// Extracts and validates the relevant parameters in a Call request.
+func extractCallParams(decryptedParams []byte) (common.Address, common.Address, []byte, error) {
+	var paramsJSONMap []interface{}
+	err := json.Unmarshal(decryptedParams, &paramsJSONMap)
+	if err != nil {
+		return common.Address{}, common.Address{}, nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
+	}
+
+	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
+	if !ok {
+		return common.Address{}, common.Address{}, nil, fmt.Errorf("to field in Call request params was not of expected type string")
+	}
+	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
+	if !ok {
+		return common.Address{}, common.Address{}, nil, fmt.Errorf("from field in Call request params was not of expected type string")
+	}
+	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
+	if !ok {
+		return common.Address{}, common.Address{}, nil, fmt.Errorf("data field in Call request params was not of expected type string")
+	}
+
+	contractAddress := common.HexToAddress(contractAddressString)
+	from := common.HexToAddress(fromString)
+	data, err := hexutil.Decode(dataString)
+	if err != nil {
+		return common.Address{}, common.Address{}, nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
+	}
+	return contractAddress, from, data, nil
 }
 
 // internal structure to pass information.
