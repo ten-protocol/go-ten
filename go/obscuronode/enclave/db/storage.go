@@ -204,7 +204,6 @@ func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, r
 
 	if state.FoundNewRollup {
 		obscurorawdb.WriteRollup(batch, rollup)
-		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64())
 		obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash())
 		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64())
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup)
