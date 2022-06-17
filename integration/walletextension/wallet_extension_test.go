@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration/simulation"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/viewingkeymanager"
 
