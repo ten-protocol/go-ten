@@ -123,7 +123,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
 	maybeEncryptedBody, err := we.encryptParamsIfNeeded(body, method, reqJSONMap)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("failed to encrypt request parameters: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not encrypt request parameters: %s", err))
 		return
 	}
 
@@ -149,21 +149,14 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 
 	// We decrypt the result field if it's encrypted.
-	if isSensitive(method) {
-		fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
-
-		encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
-		decryptedResult, err := we.viewingPrivateKeyEcies.Decrypt(encryptedResult, nil, nil)
-		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not decrypt enclave response with viewing key: %s", err))
-			return
-		}
-
-		respJSONMap[RespJSONKeyResult] = string(decryptedResult)
+	maybeDecryptedRespJSONMap, err := we.decryptResponseIfNeeded(method, respJSONMap)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not decrypt response: %s", err))
+		return
 	}
 
 	// We marshal the response to present to the client.
-	clientResponse, err := json.Marshal(respJSONMap)
+	clientResponse, err := json.Marshal(maybeDecryptedRespJSONMap)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
 		return
@@ -292,6 +285,22 @@ func (we *WalletExtension) encryptParamsIfNeeded(body []byte, method interface{}
 	}
 
 	return body, nil
+}
+
+func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONMap map[string]interface{}) (map[string]interface{}, error) {
+	if !isSensitive(method) {
+		return respJSONMap, nil
+	}
+
+	fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
+	encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
+	decryptedResult, err := we.viewingPrivateKeyEcies.Decrypt(encryptedResult, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt enclave response with viewing key: %w", err)
+	}
+	respJSONMap[RespJSONKeyResult] = string(decryptedResult)
+
+	return respJSONMap, nil
 }
 
 // Indicates whether the RPC method should be encrypted.
