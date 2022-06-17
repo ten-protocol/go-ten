@@ -1,4 +1,4 @@
-package viewingkeymanager
+package rpcencryptionmanager
 
 import (
 	"crypto/rand"
@@ -24,23 +24,39 @@ const ViewingKeySignedMsgPrefix = "vk"
 // using ECIES throws an exception.
 var PlaceholderResult = []byte("<nil result>")
 
-// ViewingKeyManager manages the enclave's viewing keys.
-type ViewingKeyManager struct {
-	viewingKeysEnabled bool
+// RPCEncryptionManager manages the decryption and encryption of sensitive RPC requests.
+type RPCEncryptionManager struct {
+	viewingKeysEnabled     bool
+	enclavePrivateKeyECIES *ecies.PrivateKey
 	// TODO - Replace with persistent storage.
 	// TODO - Handle multiple viewing keys per address.
 	viewingKeys map[common.Address]*ecies.PublicKey
 }
 
-func NewViewingKeyManager(viewingKeysEnabled bool) ViewingKeyManager {
-	return ViewingKeyManager{
-		viewingKeysEnabled: viewingKeysEnabled,
-		viewingKeys:        make(map[common.Address]*ecies.PublicKey),
+func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ecies.PrivateKey) RPCEncryptionManager {
+	return RPCEncryptionManager{
+		viewingKeysEnabled:     viewingKeysEnabled,
+		enclavePrivateKeyECIES: enclavePrivateKeyECIES,
+		viewingKeys:            make(map[common.Address]*ecies.PublicKey),
 	}
 }
 
+// DecryptWithEnclaveKey decrypts the bytes with the enclave's public key.
+func (e *RPCEncryptionManager) DecryptWithEnclaveKey(encryptedBytes []byte) ([]byte, error) {
+	if !e.viewingKeysEnabled {
+		return encryptedBytes, nil
+	}
+
+	paramBytes, err := e.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
+	}
+
+	return paramBytes, nil
+}
+
 // AddViewingKey - see the description of Enclave.AddViewingKey.
-func (vkm *ViewingKeyManager) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (e *RPCEncryptionManager) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	// We recalculate the message signed by MetaMask.
 	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
 
@@ -58,18 +74,18 @@ func (vkm *ViewingKeyManager) AddViewingKey(viewingKeyBytes []byte, signature []
 	}
 	eciesPublicKey := ecies.ImportECDSAPublic(viewingKey)
 
-	vkm.viewingKeys[recoveredAddress] = eciesPublicKey
+	e.viewingKeys[recoveredAddress] = eciesPublicKey
 
 	return nil
 }
 
 // EncryptWithViewingKey encrypts the bytes with a viewing key for the address.
-func (vkm *ViewingKeyManager) EncryptWithViewingKey(address common.Address, bytes []byte) (nodecommon.EncryptedResponse, error) {
-	if !vkm.viewingKeysEnabled {
+func (e *RPCEncryptionManager) EncryptWithViewingKey(address common.Address, bytes []byte) (nodecommon.EncryptedResponse, error) {
+	if !e.viewingKeysEnabled {
 		return bytes, nil
 	}
 
-	viewingKey := vkm.viewingKeys[address]
+	viewingKey := e.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
 	}

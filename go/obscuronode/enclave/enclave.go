@@ -10,14 +10,14 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/viewingkeymanager"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/sql"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -62,14 +62,14 @@ type StatsCollector interface {
 }
 
 type enclaveImpl struct {
-	config            config.EnclaveConfig
-	nodeShortID       uint64
-	storage           db.Storage
-	blockResolver     db.BlockResolver
-	mempool           mempool.Manager
-	statsCollector    StatsCollector
-	l1Blockchain      *core.BlockChain
-	viewingKeyManager viewingkeymanager.ViewingKeyManager
+	config               config.EnclaveConfig
+	nodeShortID          uint64
+	storage              db.Storage
+	blockResolver        db.BlockResolver
+	mempool              mempool.Manager
+	statsCollector       StatsCollector
+	l1Blockchain         *core.BlockChain
+	rpcEncryptionManager rpcencryptionmanager.RPCEncryptionManager
 
 	txCh                 chan *nodecommon.L2Tx
 	roundWinnerCh        chan *obscurocore.Rollup
@@ -135,7 +135,7 @@ func NewEnclave(
 		mempool:               mempool.New(),
 		statsCollector:        collector,
 		l1Blockchain:          l1Blockchain,
-		viewingKeyManager:     viewingkeymanager.NewViewingKeyManager(config.ViewingKeysEnabled),
+		rpcEncryptionManager:  rpcencryptionmanager.NewRPCEncryptionManager(config.ViewingKeysEnabled, ecies.ImportECDSA(privKey)),
 		txCh:                  make(chan *nodecommon.L2Tx),
 		roundWinnerCh:         make(chan *obscurocore.Rollup),
 		exitCh:                make(chan bool),
@@ -411,14 +411,9 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 }
 
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
-	// TODO - Encapsulate the config-based skipping of encryption in the viewing key manager.
-	paramBytes := encryptedParams
-	if e.config.ViewingKeysEnabled {
-		var err error
-		paramBytes, err = ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
-		}
+	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
 	}
 
 	contractAddress, from, data, err := extractCallParams(paramBytes)
@@ -445,7 +440,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.Encr
 		return nil, result.Err
 	}
 
-	encryptedResult, err := e.viewingKeyManager.EncryptWithViewingKey(from, result.ReturnData)
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(from, result.ReturnData)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}
@@ -658,22 +653,17 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 	if err != nil {
 		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
 	}
-	return e.viewingKeyManager.AddViewingKey(viewingKeyBytes, signature)
+	return e.rpcEncryptionManager.AddViewingKey(viewingKeyBytes, signature)
 }
 
 func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
-	// TODO - Encapsulate the config-based skipping of encryption in the viewing key manager.
-	paramBytes := encryptedParams
-	if e.config.ViewingKeysEnabled {
-		var err error
-		paramBytes, err = ecies.ImportECDSA(e.privateKey).Decrypt(encryptedParams, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
-		}
+	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
 	}
 
 	var paramsJSONMap []string
-	err := json.Unmarshal(paramBytes, &paramsJSONMap)
+	err = json.Unmarshal(paramBytes, &paramsJSONMap)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse JSON params in GetBalance request. Cause: %w", err)
 	}
@@ -682,7 +672,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParams) (no
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
 	balance := DummyBalance // The Ethereum API is to return the balance in hex.
 
-	encryptedBalance, err := e.viewingKeyManager.EncryptWithViewingKey(address, []byte(balance))
+	encryptedBalance, err := e.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
