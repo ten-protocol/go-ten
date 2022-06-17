@@ -175,3 +175,56 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash common.Hash) *core.BlockState 
 	}
 	return bs
 }
+
+// ReadCanonicalHash retrieves the hash assigned to a canonical block number.
+func ReadCanonicalHash(db ethdb.Reader, number uint64) common.Hash {
+	// Get it by hash from leveldb
+	data, _ := db.Get(headerHashKey(number))
+	return common.BytesToHash(data)
+}
+
+// WriteCanonicalHash stores the hash assigned to a canonical block number.
+func WriteCanonicalHash(db ethdb.KeyValueWriter, hash common.Hash, number uint64) {
+	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
+		log.Panic("Failed to store number to hash mapping. Cause: %s", err)
+	}
+}
+
+// DeleteCanonicalHash removes the number to hash canonical mapping.
+func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) {
+	if err := db.Delete(headerHashKey(number)); err != nil {
+		log.Panic("Failed to delete number to hash mapping. Cause: %s", err)
+	}
+}
+
+// ReadHeadRollupHash retrieves the hash of the current canonical head block.
+func ReadHeadRollupHash(db ethdb.KeyValueReader) common.Hash {
+	data, _ := db.Get(headRollupKey)
+	if len(data) == 0 {
+		return common.Hash{}
+	}
+	return common.BytesToHash(data)
+}
+
+// WriteHeadRollupHash stores the head block's hash.
+func WriteHeadRollupHash(db ethdb.KeyValueWriter, hash common.Hash) {
+	if err := db.Put(headRollupKey, hash.Bytes()); err != nil {
+		log.Panic("Failed to store last block's hash. Cause: %s", err)
+	}
+}
+
+// ReadHeadHeaderHash retrieves the hash of the current canonical head header.
+func ReadHeadHeaderHash(db ethdb.KeyValueReader) common.Hash {
+	data, _ := db.Get(headHeaderKey)
+	if len(data) == 0 {
+		return common.Hash{}
+	}
+	return common.BytesToHash(data)
+}
+
+// WriteHeadHeaderHash stores the hash of the current canonical head header.
+func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash common.Hash) {
+	if err := db.Put(headHeaderKey, hash.Bytes()); err != nil {
+		log.Panic("Failed to store last header's hash. Cause: %s", err)
+	}
+}

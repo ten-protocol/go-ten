@@ -34,6 +34,9 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 	return v
 }
 
+func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
+func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
+
 func NewHeader(parent *common.Hash, height uint64, a common.Address) *nodecommon.Header {
 	parentHash := obscurocommon.GenesisHash
 	if parent != nil {
