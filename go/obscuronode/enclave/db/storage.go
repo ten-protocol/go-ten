@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -243,4 +244,31 @@ func (s *storageImpl) FetchHeadState() *core.BlockState {
 		return nil
 	}
 	return obscurorawdb.ReadBlockState(s.db, h)
+}
+
+// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
+func (s *storageImpl) GetReceiptsByHash(hash common.Hash) types.Receipts {
+	number := obscurorawdb.ReadHeaderNumber(s.db, hash)
+	if number == nil {
+		return nil
+	}
+	//todo - chainConfig
+	receipts := rawdb.ReadReceipts(s.db, hash, *number, nil)
+	return receipts
+}
+
+func (s *storageImpl) GetTransaction(txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash)
+	return tx, blockHash, blockNumber, index, nil
+}
+
+func (s *storageImpl) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
+	_, blockHash, _, index := obscurorawdb.ReadTransaction(s.db, txHash)
+	receipts := s.GetReceiptsByHash(blockHash)
+	if len(receipts) <= int(index) {
+		return nil, fmt.Errorf("receipt index not matching the transactions in block: %s", blockHash.Hex())
+	}
+	receipt := receipts[index]
+
+	return receipt, nil
 }
