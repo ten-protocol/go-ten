@@ -166,17 +166,17 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 		if logs := readLegacyLogs(db, hash, number, config); logs != nil {
 			return logs
 		}
-		log.Error("Invalid receipt array RLP", "hash", hash, "err", err)
+		log.Error("Invalid receipt array RLP.%s = %s; %s = %s;", "hash", hash, "err", err)
 		return nil
 	}
 
 	body := ReadBody(db, hash, number)
 	if body == nil {
-		log.Error("Missing body but have receipt", "hash", hash, "number", number)
+		log.Error("Missing body but have receipt. %s = %s; %s = %d;", "hash", hash, "number", number)
 		return nil
 	}
 	if err := deriveLogFields(receipts, hash, number, types.Transactions(body)); err != nil {
-		log.Error("Failed to derive block receipts fields", "hash", hash, "number", number, "err", err)
+		log.Error("Failed to derive block receipts fields. %s = %s; %s = %d; %s = %s;", "hash", hash, "number", number, "err", err)
 		return nil
 	}
 	logs := make([][]*types.Log, len(receipts))
