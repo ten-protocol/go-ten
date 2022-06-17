@@ -2,29 +2,29 @@
 
 const eventDomLoaded = "DOMContentLoaded";
 const typeSubmit = "submit"
-const idFormDecryptRollup = "form-decrypt-rollup"
-const idDecryptedRollup = "decryptedRollup";
-const idEncryptedRollup = "encryptedRollup";
-const pathDecryptRollup = "/decryptrollup/";
+const idFormDecryptTxBlob = "form-decrypt-tx-blob"
+const idDecryptedTxs = "decryptedTxs";
+const idEncryptedTxBlob = "encryptedTxBlob";
+const pathDecryptTxBlob = "/decrypttxblob/";
 const methodPost = "POST";
 
 const initialize = () => {
-    const decryptedRollupArea = document.getElementById(idDecryptedRollup);
+    const decryptedTxsArea = document.getElementById(idDecryptedTxs);
 
-    document.getElementById(idFormDecryptRollup).addEventListener(typeSubmit, async (event) => {
+    document.getElementById(idFormDecryptTxBlob).addEventListener(typeSubmit, async (event) => {
         event.preventDefault();
 
-        const encryptedRollup = document.getElementById(idEncryptedRollup).value
-        const decryptRollupResp = await fetch(pathDecryptRollup, {
+        const encryptedTxBlob = document.getElementById(idEncryptedTxBlob).value
+        const decryptTxBlobResp = await fetch(pathDecryptTxBlob, {
             method: methodPost,
-            body: encryptedRollup
+            body: encryptedTxBlob
         });
 
-        if (decryptRollupResp.ok) {
-            const json = JSON.parse(await decryptRollupResp.text())
-            decryptedRollupArea.innerText = JSON.stringify(json, null, "\t");
+        if (decryptTxBlobResp.ok) {
+            const json = JSON.parse(await decryptTxBlobResp.text())
+            decryptedTxsArea.innerText = JSON.stringify(json, null, "\t");
         } else {
-            decryptedRollupArea.innerText = "Failed to decrypt rollup. Cause: " + await decryptRollupResp.text()
+            decryptedTxsArea.innerText = "Failed to decrypt transaction blob. Cause: " + await decryptTxBlobResp.text()
         }
     })
 }

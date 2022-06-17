@@ -19,11 +19,6 @@ import (
 const expectedNonce = 777
 
 func TestCanDecryptRollup(t *testing.T) {
-	contractABI, err := abi.JSON(strings.NewReader(mgmtcontractlib.MgmtContractABI))
-	if err != nil {
-		panic(err)
-	}
-
 	rollupJSON, err := decryptRollup(generateEncryptedRollupHex(), contractABI)
 	if err != nil {
 		t.Fatalf("rollup decryption failed. Cause: %s", err)

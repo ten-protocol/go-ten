@@ -45,7 +45,7 @@ import (
 const (
 	msgNoRollup  = "could not fetch rollup"
 	DummyBalance = "0x0"
-	// EnclavePrivateKeyHex is the private key used for sensitive communication with the enclave.
+	// enclavePrivateKeyHex is the private key used for sensitive communication with the enclave.
 	// TODO - Replace this fixed key with a derived key.
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 
