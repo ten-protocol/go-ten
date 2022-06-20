@@ -410,7 +410,7 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 	e.roundWinnerCh <- winnerRollup
 }
 
-func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParamsCall) (nodecommon.EncryptedResponseCall, error) {
 	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
@@ -575,7 +575,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	}
 }
 
-func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (nodecommon.EncryptedResponseGetTxReceipt, error) {
 	txHash, err := e.extractTxHash(encryptedParams)
 	if err != nil {
 		return nil, err
@@ -684,7 +684,7 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 	return e.rpcEncryptionManager.AddViewingKey(viewingKeyBytes, signature)
 }
 
-func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBalance) (nodecommon.EncryptedResponseGetBalance, error) {
 	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
@@ -833,8 +833,8 @@ func extractCallParams(decryptedParams []byte) (common.Address, common.Address, 
 	return contractAddress, from, data, nil
 }
 
-// Returns the transaction hash from a nodecommon.EncryptedParams object.
-func (e *enclaveImpl) extractTxHash(encryptedParams nodecommon.EncryptedParams) (common.Hash, error) {
+// Returns the transaction hash from a nodecommon.EncryptedParamsGetTxReceipt object.
+func (e *enclaveImpl) extractTxHash(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (common.Hash, error) {
 	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)

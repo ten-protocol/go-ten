@@ -35,7 +35,7 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
 // `address` field and encoded as hex.
-func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams nodecommon.EncryptedParams) (string, error) {
+func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams nodecommon.EncryptedParamsGetBalance) (string, error) {
 	encryptedBalance, err := api.host.EnclaveClient.GetBalance(encryptedParams)
 	if err != nil {
 		return "", err
@@ -55,7 +55,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
-func (api *EthereumAPI) Call(_ context.Context, encryptedParams nodecommon.EncryptedParams) (string, error) {
+func (api *EthereumAPI) Call(_ context.Context, encryptedParams nodecommon.EncryptedParamsCall) (string, error) {
 	encryptedResponse, err := api.host.EnclaveClient.ExecuteOffChainTransaction(encryptedParams)
 	if err != nil {
 		return "", err
@@ -65,7 +65,7 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams nodecommon.Encry
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
 // corresponding to the original transaction submitter and encoded as hex.
-func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams nodecommon.EncryptedParams) (string, error) {
+func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (string, error) {
 	encryptedResponse, err := api.host.EnclaveClient.GetTransactionReceipt(encryptedParams)
 	if err != nil {
 		return "", err

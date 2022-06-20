@@ -19,9 +19,13 @@ type (
 	L2Tx                  = types.Transaction
 	EncryptedTx           []byte // A single transaction encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
-	EncryptedParams       []byte // The params for an off-chain call or getBalance request, as a JSON list encrypted with the public key of the enclave.
-	EncryptedResponse     []byte // The response of an off-chain call or getBalance request. Encrypted with the viewing key of the user.
-	EncryptedResponseHex  string // As above, but encoded as hex.
+
+	EncryptedParamsGetBalance     []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
+	EncryptedParamsCall           []byte // As above, but for an RPC call request.
+	EncryptedParamsGetTxReceipt   []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedResponseGetBalance   []byte // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
+	EncryptedResponseCall         []byte // As above, but for an RPC call request.
+	EncryptedResponseGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup
