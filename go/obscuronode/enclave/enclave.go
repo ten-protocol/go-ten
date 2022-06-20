@@ -840,12 +840,12 @@ func (e *enclaveImpl) extractTxHash(encryptedParams nodecommon.EncryptedParamsGe
 		return common.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
-	var paramsJSONMap []string
-	err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	var paramsJSONList []string
+	err = json.Unmarshal(paramBytes, &paramsJSONList)
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. Cause: %w", err)
 	}
-	txHash := common.HexToHash(paramsJSONMap[0]) // The only argument is the transaction hash.
+	txHash := common.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
 	return txHash, err
 }
 

@@ -21,6 +21,7 @@ const (
 	RPCAddViewingKey            = "obscuro_addViewingKey"
 	RPCStopHost                 = "obscuro_stopHost"
 	RPCCall                     = "eth_call"
+	RPCGetTxReceipt             = "eth_getTransactionReceipt"
 )
 
 // Client is used by client applications to interact with the Obscuro node.
