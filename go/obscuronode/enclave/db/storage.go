@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -253,8 +254,8 @@ func (s *storageImpl) GetReceiptsByHash(hash common.Hash) types.Receipts {
 	if number == nil {
 		return nil
 	}
-	// todo - chainConfig
-	receipts := rawdb.ReadReceipts(s.db, hash, *number, nil)
+	// todo - proper ChainConfig, instead of empty object
+	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, &params.ChainConfig{})
 	return receipts
 }
 
