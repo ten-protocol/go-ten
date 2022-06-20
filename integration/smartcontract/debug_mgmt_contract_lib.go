@@ -11,7 +11,7 @@ import (
 // allows the direct use of the generatedManagementContract package
 type debugMgmtContractLib struct {
 	mgmtcontractlib.MgmtContractLib
-	genContract *generatedManagementContract.ManagementContract
+	GenContract *generatedManagementContract.ManagementContract
 }
 
 // newDebugMgmtContractLib creates an instance of the generated contract package and allows the use of the MgmtContractLib properties

@@ -112,6 +112,7 @@ func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,
 		decodedRollup.Header.ParentHash,
+		decodedRollup.Hash(),
 		decodedRollup.Header.Agg,
 		decodedRollup.Header.L1Proof,
 		decodedRollup.Header.Number,

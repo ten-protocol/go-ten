@@ -1,6 +1,7 @@
 package smartcontract
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -68,4 +69,22 @@ func waitTxResult(client ethclient.EthClient, tx *types.Transaction) (*types.Rec
 		return receipt, nil
 	}
 	return nil, fmt.Errorf("transaction not minted after timeout")
+}
+
+func (w *debugWallet) debugTransaction(client ethclient.EthClient, tx *types.Transaction) ([]byte, error) {
+	return client.EthClient().CallContract(
+		context.Background(),
+		ethereum.CallMsg{
+			From:       w.Address(),
+			To:         tx.To(),
+			Gas:        tx.Gas(),
+			GasPrice:   tx.GasPrice(),
+			GasFeeCap:  tx.GasFeeCap(),
+			GasTipCap:  tx.GasTipCap(),
+			Value:      tx.Value(),
+			Data:       tx.Data(),
+			AccessList: tx.AccessList(),
+		},
+		nil,
+	)
 }
