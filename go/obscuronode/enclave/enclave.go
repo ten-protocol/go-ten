@@ -588,6 +588,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.Encrypted
 	}
 	txHash := common.HexToHash(paramsJSONMap[0]) // The only argument is the transaction hash.
 
+	// todo - joel - failing because no receipts are found in tx block
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)

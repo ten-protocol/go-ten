@@ -455,6 +455,8 @@ func createObscuroNetwork() (func(), error) {
 	if err != nil {
 		return obscuroNetwork.TearDown, err
 	}
+	// Provide enough time to process the ERC20 transaction everywhere.
+	time.Sleep(simParams.AvgBlockDuration * 6)
 
 	return obscuroNetwork.TearDown, nil
 }
