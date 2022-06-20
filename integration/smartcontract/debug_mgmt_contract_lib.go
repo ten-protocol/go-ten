@@ -11,12 +11,12 @@ import (
 // allows the direct use of the generatedManagementContract package
 type debugMgmtContractLib struct {
 	mgmtcontractlib.MgmtContractLib
-	genContract *generatedManagementContract.GeneratedManagementContract
+	genContract *generatedManagementContract.ManagementContract
 }
 
 // newDebugMgmtContractLib creates an instance of the generated contract package and allows the use of the MgmtContractLib properties
 func newDebugMgmtContractLib(address common.Address, client *ethclient.Client, mgmtContractLib mgmtcontractlib.MgmtContractLib) *debugMgmtContractLib {
-	genContract, err := generatedManagementContract.NewGeneratedManagementContract(address, client)
+	genContract, err := generatedManagementContract.NewManagementContract(address, client)
 	if err != nil {
 		panic(err)
 	}
