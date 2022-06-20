@@ -1,87 +1,43 @@
 package obscuroscan
 
 import (
+	"encoding/base64"
 	"encoding/json"
-	"math/big"
-	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-const expectedNonce = 777
+func TestCanDecryptTxBlob(t *testing.T) {
+	txs := []*nodecommon.L2Tx{datagenerator.CreateL2Tx(), datagenerator.CreateL2Tx()}
 
-func TestCanDecryptRollup(t *testing.T) {
-	contractABI, err := abi.JSON(strings.NewReader(mgmtcontractlib.MgmtContractABI))
+	txsJSONBytes, err := decryptTxBlob(generateEncryptedTxBlob(txs))
 	if err != nil {
-		panic(err)
+		t.Fatalf("transaction blob decryption failed. Cause: %s", err)
 	}
 
-	rollupJSON, err := decryptRollup(generateEncryptedRollupHex(), contractABI)
+	expectedTxsJSONBytes, err := json.Marshal(txs)
 	if err != nil {
-		t.Fatalf("rollup decryption failed. Cause: %s", err)
-	}
-	var rollupJSONMap map[string]interface{}
-	err = json.Unmarshal(rollupJSON, &rollupJSONMap)
-	if err != nil {
-		t.Fatalf("rollup JSON unmarshalling failed. Cause: %s", err)
+		t.Fatalf("marshalling transactions to JSON failed. Cause: %s", err)
 	}
 
-	// We use the nonce as an indicator of whether the entire rollup was successfully decrypted.
-	recoveredNonce := rollupJSONMap["Header"].(map[string]interface{})["Nonce"].(float64)
-	if recoveredNonce != expectedNonce {
-		t.Fatalf("rollup JSON did not contain correct nonce")
+	if string(expectedTxsJSONBytes) != string(txsJSONBytes) {
+		t.Fatalf("expected %s, got %s", string(expectedTxsJSONBytes), string(txsJSONBytes))
 	}
 }
 
 func TestThrowsIfEncryptedRollupIsInvalid(t *testing.T) {
-	contractABI, err := abi.JSON(strings.NewReader(mgmtcontractlib.MgmtContractABI))
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = decryptRollup([]byte("invalid_rollup"), contractABI)
+	_, err := decryptTxBlob([]byte("invalid_tx_blob"))
 	if err == nil {
-		t.Fatal("did not error on invalid rollup")
+		t.Fatal("did not error on invalid transaction blob")
 	}
 }
 
-// Generates an encrypted rollup in hex encoding.
-func generateEncryptedRollupHex() []byte {
-	rollup := core.NewRollup(
-		common.BigToHash(big.NewInt(0)),
-		nil,
-		obscurocommon.L2GenesisHeight,
-		common.HexToAddress("0x0"),
-		[]*nodecommon.L2Tx{},
-		[]nodecommon.Withdrawal{},
-		expectedNonce,
-		common.BigToHash(big.NewInt(0)),
-	)
-	rollupTx := &obscurocommon.L1RollupTx{
-		Rollup: nodecommon.EncodeRollup(rollup.ToExtRollup(core.NewTransactionBlobCryptoImpl()).ToRollup()),
-	}
-
-	mgmtContractAddress := common.BigToAddress(big.NewInt(0))
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&mgmtContractAddress)
-	rollupTxData := mgmtContractLib.CreateRollup(rollupTx, 0)
-
-	prvKey, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
-	signedRollupTx, err := types.SignNewTx(prvKey, types.NewEIP155Signer(big.NewInt(0)), rollupTxData)
-	if err != nil {
-		panic(err)
-	}
-
-	encryptedRollupHex := common.Bytes2Hex(signedRollupTx.Data())
-	return []byte(encryptedRollupHex)
+// Generates an encrypted transaction blob in Base64 encoding.
+func generateEncryptedTxBlob(txs []*nodecommon.L2Tx) []byte {
+	txBlob := core.NewTransactionBlobCryptoImpl().Encrypt(txs)
+	return []byte(base64.StdEncoding.EncodeToString(txBlob))
 }
