@@ -21,8 +21,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
-const testLogs = "../.build/simulations/"
-const receiptStatusSuccess = 1
+const (
+	testLogs = "../.build/simulations/"
+)
 
 func setupTestLog(simType string) *os.File {
 	// create a folder specific for the test
