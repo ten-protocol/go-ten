@@ -597,7 +597,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.Encrypted
 		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
-	tx, _, _, _, err := e.storage.GetTransaction(txHash)
+	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
 	}
