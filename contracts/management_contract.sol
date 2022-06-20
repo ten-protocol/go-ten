@@ -2,17 +2,13 @@
 import "libs/openzeppelin/cryptography/ECDSA.sol";
 
 
-
-
 pragma solidity >=0.7.0 <0.9.0;
 
 contract ManagementContract {
 
-    // TODO these should all be private
-    mapping(uint256 => MetaRollup[]) public rollups;
-    mapping(address => string) public attestationRequests;
-    mapping(address => bool) public attested;
-    Tree public tree;
+    mapping(address => string) private attestationRequests;
+    mapping(address => bool) private attested;
+    Tree private tree;
 
     // networkSecretNotInitialized marks if the network secret has been initialized
     bool private networkSecretInitialized ;
@@ -90,7 +86,6 @@ contract ManagementContract {
         return GetRollupByID(element.ParentID);
     }
 
-
     function AppendRollup(uint256 _parentID, MetaRollup memory _r) public {
         // guarantee the storage ids are not compromised
         uint rollupID = tree._nextID;
@@ -115,8 +110,16 @@ contract ManagementContract {
         }
     }
 
-
-
+    // HasSecondCousinFork returns whether there is a fork in the current view of the rollups
+    // It works by:
+    // - Traversing up two levels ( from the HEAD to the grand father element )
+    // - Checking if there are siblings ( at the grand father level )
+    // - Checking if the siblings have children ( meaning that a fork expanded )
+    //
+    // Will return true when a rollup 6 or 6' with parent 5 or 5' is inserted
+    // 0 -> 1 -> 2 -> 3 -> 4 -> 5
+    //                  -> 4'-> 5'
+    //
     function HasSecondCousinFork() view public returns (bool) {
         TreeElement memory currentElement = GetHeadRollup();
 
@@ -162,7 +165,6 @@ contract ManagementContract {
         require(attested[_aggregatorID], "aggregator not attested");
 
         MetaRollup memory r = MetaRollup(_parentHash, _hash, _aggregatorID, _l1Block, _number);
-        rollups[block.number].push(r);
 
         // if this is the first element initialize the tree structure
         // TODO this should be moved to the network initialization
@@ -219,8 +221,7 @@ contract ManagementContract {
         bytes32 calculatedHashSigned = ECDSA.toEthSignedMessageHash(abi.encodePacked(attesterID, requesterID, responseSecret));
         address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
-        // todo remove this toAsciiString helper
-        require(recoveredAddrSignedCalculated == attesterID,"recovered address and attesterID dont match");
+        require(recoveredAddrSignedCalculated == attesterID, "calculated address and attesterID dont match");
 
         // store the requesterID aggregator as an attested aggregator
         attested[requesterID] = true;
@@ -230,6 +231,11 @@ contract ManagementContract {
     // Accessor to check if the contract is locked or not
     function IsWithdrawalAvailable() view public returns (bool) {
         return isWithdrawalAvailable;
+    }
+
+    // Accessor that checks if an address is attested or not
+    function Attested(address _addr) view public returns (bool) {
+        return attested[_addr];
     }
 }
 
