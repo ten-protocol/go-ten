@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
