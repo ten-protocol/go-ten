@@ -1,4 +1,3 @@
-name: Manual Deploy L1 network
 # Deploys a L1 network on Azure for Testnet
 # Builds the l1 network image, kills any running container, pushes the image to dockerhub and starts the l1 network on azure
 #
@@ -12,6 +11,7 @@ name: Manual Deploy L1 network
 #  geth1.testnet.obscu.ro
 #  geth2.testnet.obscu.ro
 
+name: Manual Deploy L1 network
 
 on:
   workflow_dispatch:
@@ -36,4 +36,4 @@ jobs:
         with:
           push: true
           tags: obscuronet/obscuro_testnet_l1network:latest
-          file: {context}/testnet/gethnetwork.Dockerfile
+          file: ./testnet/gethnetwork.Dockerfile
