@@ -4,7 +4,7 @@ name: Manual Deploy L1 network
 #
 # The L1 network is a docker container that runs 3 geth nodes
 # It exposes the following ports:
-# HTTP:       8000, 8001, 8002
+# HTTP:       8025, 8026, 8027
 # WebSocket:  9000, 9001, 9002
 #
 # Exposes the following addresses: (only accessible internally)
