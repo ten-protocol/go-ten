@@ -1,4 +1,4 @@
-package walletextension
+package simulation
 
 import (
 	"bytes"
@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
-	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
@@ -35,6 +34,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
+
+// TODO - Move to separate package once DB conflicts have been resolved. Currently, starting multiple simulation
+//  networks at once causes DB issues.
 
 const (
 	chainIDHex = "0x539"
@@ -499,7 +501,7 @@ func createObscuroNetwork() (func(), error) {
 	wallet := wallets.Erc20ObsOwnerWallets[0]
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
-		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
+		Nonce:    NextNonce(l2Clients[0], wallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
 		Data:     contractBytes,
