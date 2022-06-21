@@ -36,4 +36,4 @@ jobs:
         with:
           push: true
           tags: obscuronet/obscuro_testnet_l1network:latest
-          file: {context}/testnet/gethnetwork.Dockerfile
+          file: ./testnet/gethnetwork.Dockerfile
