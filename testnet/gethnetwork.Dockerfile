@@ -1,8 +1,8 @@
 FROM golang:1.17-alpine
 
+# set the base libs to build / run
 RUN apk add build-base bash git linux-headers
 ENV CGO_ENABLED=1
-# build the enclave from the current branch
 
 # create the base directory
 RUN mkdir /home/go-obscuro
