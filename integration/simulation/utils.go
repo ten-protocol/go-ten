@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	testLogs = "../.build/simulations/"
+	testLogs      = "../.build/simulations/"
+	jsonKeyTxHash = "transactionHash"
 )
 
 func setupTestLog(simType string) *os.File {
@@ -103,7 +104,37 @@ func getTransaction(client obscuroclient.Client, txHash common.Hash) *nodecommon
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", obscuroclient.RPCGetTransaction, err))
 	}
+
+	// We check that there is a valid receipt for each transaction, as a sanity-check.
+	txReceiptJSONMap := getTransactionReceipt(client, txHash)
+	// TODO - Fix issue whereby all receipts have a status of 0 (failure). Then check the status here instead.
+	if txReceiptJSONMap[jsonKeyTxHash] != txHash.Hex() {
+		panic(fmt.Errorf("simulation failed because transaction receipt was not created for transaction %s", txHash.Hex()))
+	}
+
 	return l2Tx
+}
+
+// Returns the transaction receipt for the given transaction hash.
+func getTransactionReceipt(client obscuroclient.Client, txHash common.Hash) map[string]interface{} {
+	paramsJSON, err := json.Marshal([]string{txHash.Hex()})
+	if err != nil {
+		panic(fmt.Errorf("simulation failed because could not marshall JSON param to %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
+	}
+
+	var encryptedResponse string
+	err = client.Call(&encryptedResponse, obscuroclient.RPCGetTxReceipt, paramsJSON)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
+	}
+
+	var responseJSONMap map[string]interface{}
+	err = json.Unmarshal(common.Hex2Bytes(encryptedResponse), &responseJSONMap)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed because could not unmarshall JSON response to %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
+	}
+
+	return responseJSONMap
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
