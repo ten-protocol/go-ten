@@ -514,5 +514,5 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 		return obscuroNetwork.TearDown, nil, err
 	}
 
-	return obscuroNetwork.TearDown, wallets.Erc20ObsOwnerWallets[0].PrivateKey(), nil
+	return obscuroNetwork.TearDown, wallets.Tokens[evm.BTC].L1Owner.PrivateKey(), nil
 }
