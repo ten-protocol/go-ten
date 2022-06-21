@@ -109,7 +109,7 @@ func getTransaction(client obscuroclient.Client, txHash common.Hash) *nodecommon
 
 	// We check that there is a valid receipt for each transaction, as a sanity-check.
 	txReceiptJSONMap := getTransactionReceipt(client, txHash)
-	// Per Geth's rules, a receipt is invalid if the root is not set and the status is non-zero.
+	// Per Geth's rules, a receipt is valid if: status == 1 OR root.len == 32.
 	if len(txReceiptJSONMap[jsonKeyRoot].(string)) == 0 && txReceiptJSONMap[jsonKeyStatus] == receiptStatusFailure {
 		panic(fmt.Errorf("simulation failed because transaction receipt was not created for transaction %s", txHash.Hex()))
 	}
