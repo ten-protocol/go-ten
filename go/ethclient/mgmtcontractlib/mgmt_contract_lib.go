@@ -73,7 +73,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
-		callData, found := contractCallData["rollupData"]
+		callData, found := contractCallData["_rollupData"]
 		if !found {
 			panic("call data not found for rollupData")
 		}

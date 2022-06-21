@@ -8,6 +8,8 @@ contract ManagementContract {
 
     mapping(address => string) private attestationRequests;
     mapping(address => bool) private attested;
+
+    // tree holds a tree of rollups
     Tree private tree;
 
     // networkSecretNotInitialized marks if the network secret has been initialized
