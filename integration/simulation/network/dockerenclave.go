@@ -62,14 +62,14 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	}
 
 	// We start a geth network with all necessary contracts deployed.
-	params.MgmtContractAddr, params.Erc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
 	)
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr)
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.Erc20Address)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address)
 
 	// Start the enclave docker containers with the right addresses.
 	n.startDockerEnclaves(params)
@@ -112,7 +112,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) setupAndCheckDocker() error {
 
 func (n *basicNetworkOfNodesWithDockerEnclave) startDockerEnclaves(params *params.SimParams) {
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
-	n.containerIDs = createDockerContainers(n.ctx, n.client, params.NumberOfNodes, params.StartPort, params.MgmtContractAddr.Hex(), params.Erc20Address.Hex())
+	n.containerIDs = createDockerContainers(n.ctx, n.client, params.NumberOfNodes, params.StartPort, params.MgmtContractAddr.Hex(), []string{params.BtcErc20Address.Hex(), params.EthErc20Address.Hex()})
 
 	// We start the Docker containers.
 	for id := range n.containerIDs {

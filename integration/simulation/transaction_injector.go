@@ -47,10 +47,9 @@ type TransactionInjector struct {
 	l2Clients []obscuroclient.Client
 
 	// addrs and libs
-	erc20ContractAddr *common.Address
-	mgmtContractAddr  *common.Address
-	mgmtContractLib   mgmtcontractlib.MgmtContractLib
-	erc20ContractLib  erc20contractlib.ERC20ContractLib
+	mgmtContractAddr *common.Address
+	mgmtContractLib  mgmtcontractlib.MgmtContractLib
+	erc20ContractLib erc20contractlib.ERC20ContractLib
 
 	// controls
 	interruptRun     *int32
@@ -65,7 +64,6 @@ func NewTransactionInjector(
 	l1Nodes []ethclient.EthClient,
 	wallets *params.SimWallets,
 	mgmtContractAddr *common.Address,
-	erc20ContractAddr *common.Address,
 	l2NodeClients []obscuroclient.Client,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
@@ -73,18 +71,17 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		avgBlockDuration:  avgBlockDuration,
-		stats:             stats,
-		l1Clients:         l1Nodes,
-		l2Clients:         l2NodeClients,
-		interruptRun:      &interrupt,
-		fullyStoppedChan:  make(chan bool),
-		erc20ContractAddr: erc20ContractAddr,
-		mgmtContractAddr:  mgmtContractAddr,
-		mgmtContractLib:   mgmtContractLib,
-		erc20ContractLib:  erc20ContractLib,
-		wallets:           wallets,
-		counter:           newCounter(),
+		avgBlockDuration: avgBlockDuration,
+		stats:            stats,
+		l1Clients:        l1Nodes,
+		l2Clients:        l2NodeClients,
+		interruptRun:     &interrupt,
+		fullyStoppedChan: make(chan bool),
+		mgmtContractAddr: mgmtContractAddr,
+		mgmtContractLib:  mgmtContractLib,
+		erc20ContractLib: erc20ContractLib,
+		wallets:          wallets,
+		counter:          newCounter(),
 	}
 }
 
@@ -94,7 +91,9 @@ func NewTransactionInjector(
 func (ti *TransactionInjector) Start() {
 	// always deploy it from the first wallet
 	// since it has a hardcoded key
-	ti.deploySingleObscuroERC20(ti.wallets.Erc20ObsOwnerWallets[0])
+	ti.deployObscuroERC20(ti.wallets.Tokens[evm.BTC].L1Owner)
+	ti.deployObscuroERC20(ti.wallets.Tokens[evm.ETH].L1Owner)
+
 	// enough time to process everywhere
 	time.Sleep(ti.avgBlockDuration * 6)
 
@@ -104,7 +103,7 @@ func (ti *TransactionInjector) Start() {
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        initialBalance,
 			To:            ti.mgmtContractAddr,
-			TokenContract: ti.erc20ContractAddr,
+			TokenContract: ti.wallets.Tokens[evm.BTC].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
@@ -148,16 +147,16 @@ func (ti *TransactionInjector) Start() {
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
-func (ti *TransactionInjector) deploySingleObscuroERC20(w wallet.Wallet) {
+func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	// deploy the ERC20
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
-		Nonce:    NextNonce(ti.l2Clients[0], w),
+		Nonce:    NextNonce(ti.l2Clients[0], owner),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
 		Data:     contractBytes,
 	}
-	signedTx, err := w.SignTransaction(&deployContractTx)
+	signedTx, err := owner.SignTransaction(&deployContractTx)
 	if err != nil {
 		panic(err)
 	}
@@ -184,7 +183,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := newObscuroTransferTx(fromWallet, toWallet.Address(), obscurocommon.RndBtw(1, 500), ti.l2Clients[0])
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), obscurocommon.RndBtw(1, 500), ti.l2Clients[0])
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -212,7 +211,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        v,
 			To:            ti.mgmtContractAddr,
-			TokenContract: ti.erc20ContractAddr,
+			TokenContract: ti.wallets.Tokens[evm.BTC].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
@@ -236,7 +235,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		v := obscurocommon.RndBtw(1, 100)
 		obsWallet := ti.rndObsWallet()
 		// todo - random client
-		tx := newObscuroWithdrawalTx(obsWallet, v, ti.l2Clients[0])
+		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.l2Clients[0])
 		signedTx, err := obsWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -263,7 +262,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := newCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
+		tx := ti.newCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 		encryptedTx := core.EncryptTx(signedTx)
@@ -307,29 +306,29 @@ func (ti *TransactionInjector) rndL2NodeClient() obscuroclient.Client {
 	return ti.l2Clients[rand.Intn(len(ti.l2Clients))] //nolint:gosec
 }
 
-func newObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client obscuroclient.Client) types.TxData {
+func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client obscuroclient.Client) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
-	return newTx(data, NextNonce(client, from))
+	return ti.newTx(data, NextNonce(client, from))
 }
 
-func newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client obscuroclient.Client) types.TxData {
+func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client obscuroclient.Client) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(evm.WithdrawalAddress, amount)
-	return newTx(transferERC20data, NextNonce(client, from))
+	return ti.newTx(transferERC20data, NextNonce(client, from))
 }
 
-func newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
+func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(evm.WithdrawalAddress, amount)
-	return newTx(transferERC20data, 1)
+	return ti.newTx(transferERC20data, 1)
 }
 
-func newTx(data []byte, nonce uint64) types.TxData {
+func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    common.Big0,
 		Gas:      1_000_000,
 		GasPrice: common.Big0,
 		Data:     data,
-		To:       &evm.Erc20ContractAddress,
+		To:       ti.wallets.Tokens[evm.BTC].L2ContractAddress,
 	}
 }
 

@@ -28,7 +28,7 @@ func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
 }
 
 // Creates the test Docker containers.
-func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int, mngmtCtrAddr string, erc20Addr string) map[string]string {
+func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int, mngmtCtrAddr string, erc20Addrs []string) map[string]string {
 	var enclavePorts []string
 	for i := 0; i < numOfNodes; i++ {
 		// We assign an enclave port to each enclave service on the network.
@@ -44,7 +44,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 				"--" + enclaverunner.HostIDName, nodeID,
 				"--" + enclaverunner.AddressName, enclaveAddress,
 				"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
-				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addr,
+				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addrs[0] + "," + erc20Addrs[1],
 				"--" + enclaverunner.ViewingKeysEnabledName + "=false",
 			},
 		}

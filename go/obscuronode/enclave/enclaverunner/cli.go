@@ -54,6 +54,7 @@ func ParseConfig() config.EnclaveConfig {
 		return fileBasedConfig(*configPath)
 	}
 
+	fmt.Printf("addr: %s\n", *erc20ContractAddrs)
 	parsedERC20ContractAddrs := strings.Split(*erc20ContractAddrs, ",")
 	erc20contractAddresses := make([]*common.Address, len(parsedERC20ContractAddrs))
 	if *erc20ContractAddrs != "" {

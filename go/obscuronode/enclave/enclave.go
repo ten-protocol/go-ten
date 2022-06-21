@@ -70,6 +70,7 @@ type enclaveImpl struct {
 	statsCollector       StatsCollector
 	l1Blockchain         *core.BlockChain
 	rpcEncryptionManager rpcencryptionmanager.RPCEncryptionManager
+	bridge               *evm.Bridge
 
 	txCh                 chan *nodecommon.L2Tx
 	roundWinnerCh        chan *obscurocore.Rollup
@@ -136,6 +137,7 @@ func NewEnclave(
 		statsCollector:        collector,
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcencryptionmanager.NewRPCEncryptionManager(config.ViewingKeysEnabled, ecies.ImportECDSA(privKey)),
+		bridge:                evm.NewBridge(config.ObscuroChainID, config.ERC20ContractAddresses[0], config.ERC20ContractAddresses[1]),
 		txCh:                  make(chan *nodecommon.L2Tx),
 		roundWinnerCh:         make(chan *obscurocore.Rollup),
 		exitCh:                make(chan bool),
@@ -254,7 +256,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 		}
 
 		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto)
+		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto, e.bridge)
 		if bs == nil {
 			result[i] = e.noBlockStateBlockSubmissionResponse(block)
 		} else {
@@ -305,7 +307,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 
 	nodecommon.LogWithID(e.nodeShortID, "Update state: %d", obscurocommon.ShortHash(block.Hash()))
-	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto)
+	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto, e.bridge)
 	if blockState == nil {
 		return e.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -520,7 +522,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
 	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := extractDeposits(proof, b, e.blockResolver, e.erc20ContractLib, newRollupState, e.config.ObscuroChainID)
+	depositTxs := extractDeposits(e.bridge, proof, b, e.blockResolver, e.erc20ContractLib, newRollupState, e.config.ObscuroChainID)
 	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, len(newRollupTxs))
 	depositReceiptsMap := toReceiptMap(depositReceipts)
 	for _, tx := range depositTxs {

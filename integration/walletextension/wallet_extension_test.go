@@ -181,7 +181,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	// By transferring an amount of zero, we avoid the need to deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   evm.Erc20ContractAddress,
+		reqJSONKeyTo:   evm.WBtcContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -218,7 +218,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	// By transferring an amount of zero, we avoid the need to deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   evm.Erc20ContractAddress,
+		reqJSONKeyTo:   evm.WBtcContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -253,7 +253,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	// By transferring an amount of zero, we avoid the need to deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(dummyAccountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo: evm.Erc20ContractAddress,
+		reqJSONKeyTo: evm.WBtcContract,
 		// We send the request from a different address than the one we created a viewing key for.
 		reqJSONKeyFrom: dummyAccountAddress.Hex(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
@@ -393,7 +393,7 @@ func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byt
 
 // Creates a single-node Obscuro network for testing, and deploys an ERC20 contract to it.
 func createObscuroNetwork() (func(), error) {
-	wallets := params.NewSimWallets(1, 2, 1, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(1, 2, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
 		NumberOfNodes:      2,
@@ -414,7 +414,7 @@ func createObscuroNetwork() (func(), error) {
 	}
 
 	// Deploy an ERC20 contract to the Obscuro network.
-	wallet := wallets.Erc20ObsOwnerWallets[0]
+	wallet := wallets.Tokens[evm.BTC].L1Owner
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
 		Nonce:    simulation.NextNonce(l2Clients[0], wallet),

@@ -60,7 +60,7 @@ func ToRollupHeaderMsg(header *nodecommon.Header) *generated.HeaderMsg {
 	var headerMsg generated.HeaderMsg
 	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
 	for _, withdrawal := range header.Withdrawals {
-		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Address: withdrawal.Address.Bytes()}
+		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount, Recipient: withdrawal.Recipient.Bytes(), Contract: withdrawal.Contract.Bytes()}
 		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
 	}
 
@@ -100,8 +100,9 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *nodecommon.Header {
 	}
 	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range header.Withdrawals {
-		address := common.BytesToAddress(withdrawalMsg.Address)
-		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Address: address}
+		recipient := common.BytesToAddress(withdrawalMsg.Recipient)
+		contract := common.BytesToAddress(withdrawalMsg.Contract)
+		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Recipient: recipient, Contract: contract}
 		withdrawals = append(withdrawals, withdrawal)
 	}
 
