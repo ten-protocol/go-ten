@@ -10,8 +10,9 @@ import (
 )
 
 type IDData struct {
-	Owner  common.Address
-	PubKey []byte
+	Owner       common.Address
+	PubKey      []byte
+	HostAddress string
 }
 
 type AttestationProvider interface {
@@ -24,7 +25,7 @@ type AttestationProvider interface {
 type EgoAttestationProvider struct{}
 
 func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner common.Address, hostAddress string) (*obscurocommon.AttestationReport, error) {
-	idHash := getIDHash(owner, pubKey)
+	idHash := getIDHash(owner, pubKey, hostAddress)
 	report, err := enclave.GetRemoteReport(idHash)
 	if err != nil {
 		return nil, err
@@ -60,14 +61,15 @@ func (e *DummyAttestationProvider) GetReport(pubKey []byte, owner common.Address
 }
 
 func (e *DummyAttestationProvider) VerifyReport(att *obscurocommon.AttestationReport) ([]byte, error) {
-	return getIDHash(att.Owner, att.PubKey), nil
+	return getIDHash(att.Owner, att.PubKey, att.HostAddress), nil
 }
 
 // getIDHash provides a hash of identifying data to be included in an attestation report (or verified against the contents of an attestation report)
-func getIDHash(owner common.Address, pubKey []byte) []byte {
+func getIDHash(owner common.Address, pubKey []byte, hostAddress string) []byte {
 	idData := IDData{
-		Owner:  owner,
-		PubKey: pubKey,
+		Owner:       owner,
+		PubKey:      pubKey,
+		HostAddress: hostAddress,
 	}
 	idJSON, _ := json.Marshal(idData)
 	hash := sha256.Sum256(idJSON)

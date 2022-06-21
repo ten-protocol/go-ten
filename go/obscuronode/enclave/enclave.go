@@ -705,7 +705,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBa
 }
 
 func verifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {
-	expectedIDHash := getIDHash(att.Owner, att.PubKey)
+	expectedIDHash := getIDHash(att.Owner, att.PubKey, att.HostAddress)
 	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
 	if !bytes.Equal(expectedIDHash, data[:len(expectedIDHash)]) {
 		return fmt.Errorf("failed to verify hash for attestation report with owner: %s", att.Owner)
