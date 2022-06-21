@@ -16,14 +16,14 @@ type IDData struct {
 
 type AttestationProvider interface {
 	// GetReport returns the verifiable attestation report
-	GetReport(pubKey []byte, owner common.Address) (*obscurocommon.AttestationReport, error)
+	GetReport(pubKey []byte, owner common.Address, hostAddress string) (*obscurocommon.AttestationReport, error)
 	// VerifyReport returns the embedded report data
 	VerifyReport(att *obscurocommon.AttestationReport) ([]byte, error)
 }
 
 type EgoAttestationProvider struct{}
 
-func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner common.Address) (*obscurocommon.AttestationReport, error) {
+func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner common.Address, hostAddress string) (*obscurocommon.AttestationReport, error) {
 	idHash := getIDHash(owner, pubKey)
 	report, err := enclave.GetRemoteReport(idHash)
 	if err != nil {
@@ -31,9 +31,10 @@ func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner common.Address) 
 	}
 
 	return &obscurocommon.AttestationReport{
-		Report: report,
-		PubKey: pubKey,
-		Owner:  owner,
+		Report:      report,
+		PubKey:      pubKey,
+		Owner:       owner,
+		HostAddress: hostAddress,
 	}, nil
 }
 
@@ -49,11 +50,12 @@ func (e *EgoAttestationProvider) VerifyReport(att *obscurocommon.AttestationRepo
 
 type DummyAttestationProvider struct{}
 
-func (e *DummyAttestationProvider) GetReport(pubKey []byte, owner common.Address) (*obscurocommon.AttestationReport, error) {
+func (e *DummyAttestationProvider) GetReport(pubKey []byte, owner common.Address, hostAddress string) (*obscurocommon.AttestationReport, error) {
 	return &obscurocommon.AttestationReport{
-		Report: []byte("MOCK REPORT"),
-		PubKey: pubKey,
-		Owner:  owner,
+		Report:      []byte("MOCK REPORT"),
+		PubKey:      pubKey,
+		Owner:       owner,
+		HostAddress: hostAddress,
 	}, nil
 }
 

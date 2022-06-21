@@ -18,7 +18,12 @@ func ToAttestationReportMsg(report *obscurocommon.AttestationReport) generated.A
 }
 
 func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *obscurocommon.AttestationReport {
-	return &obscurocommon.AttestationReport{Report: msg.Report, PubKey: msg.PubKey, Owner: common.BytesToAddress(msg.Owner)}
+	return &obscurocommon.AttestationReport{
+		Report:      msg.Report,
+		PubKey:      msg.PubKey,
+		Owner:       common.BytesToAddress(msg.Owner),
+		HostAddress: msg.HostAddress,
+	}
 }
 
 func ToBlockSubmissionResponseMsg(response nodecommon.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {

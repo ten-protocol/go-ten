@@ -52,9 +52,10 @@ type EncodedAttestationReport []byte
 
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {
-	Report []byte         // the signed bytes of the report which includes some encrypted identifying data
-	PubKey []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
-	Owner  common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
+	Report      []byte         // the signed bytes of the report which includes some encrypted identifying data
+	PubKey      []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
+	Owner       common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
+	HostAddress string         // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
 }
 
 type AttestationVerification struct {

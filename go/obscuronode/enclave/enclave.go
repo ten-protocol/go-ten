@@ -619,7 +619,7 @@ func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
 	if e.publicKeySerialized == nil {
 		panic("public key not initialized, we can't produce the attestation report")
 	}
-	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID)
+	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID, "") // todo - joel - pass in host address
 	if err != nil {
 		panic("Failed to produce remote report.")
 	}
