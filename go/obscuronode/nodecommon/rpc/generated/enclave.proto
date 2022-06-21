@@ -212,8 +212,9 @@ message GetBalanceResponse {
 
 message AttestationReportMsg {
   bytes Report = 1; // The actual report bytes so it can be shared and verified by other nodes
-  bytes PubKey = 2; // public key to encrypt traffic back to this enclave (PKCS1 encoded)
+  bytes PubKey = 2; // Public key to encrypt traffic back to this enclave
   bytes Owner = 3;
+  string HostAddress = 4; // The IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
 }
 
 message BlockSubmissionResponseMsg {
