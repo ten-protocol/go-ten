@@ -8,7 +8,7 @@ const (
 	HostIDName  = "hostID"
 	hostIDUsage = "The 20 bytes of the address of the Obscuro host this enclave serves"
 
-	hostAddressName  = "hostID"
+	hostAddressName  = "hostAddress"
 	hostAddressUsage = "The peer-to-peer IP address of the Obscuro host this enclave serves"
 
 	AddressName  = "address"
