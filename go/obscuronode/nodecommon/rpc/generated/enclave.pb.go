@@ -1958,7 +1958,7 @@ type AttestationReportMsg struct {
 	unknownFields protoimpl.UnknownFields
 
 	Report      []byte `protobuf:"bytes,1,opt,name=Report,proto3" json:"Report,omitempty"` // The actual report bytes so it can be shared and verified by other nodes
-	PubKey      []byte `protobuf:"bytes,2,opt,name=PubKey,proto3" json:"PubKey,omitempty"` // Public key to encrypt traffic back to this enclave (PKCS1 encoded)
+	PubKey      []byte `protobuf:"bytes,2,opt,name=PubKey,proto3" json:"PubKey,omitempty"` // Public key to encrypt traffic back to this enclave
 	Owner       []byte `protobuf:"bytes,3,opt,name=Owner,proto3" json:"Owner,omitempty"`
 	HostAddress string `protobuf:"bytes,4,opt,name=HostAddress,proto3" json:"HostAddress,omitempty"` // The IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
 }
