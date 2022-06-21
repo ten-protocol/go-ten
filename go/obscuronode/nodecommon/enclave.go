@@ -49,7 +49,7 @@ type Enclave interface {
 
 	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
 	// Todo - return the result with a block delay. To prevent frontrunning.
-	ExecuteOffChainTransaction(encryptedParams EncryptedParams) (EncryptedResponse, error)
+	ExecuteOffChainTransaction(encryptedParams EncryptedParamsCall) (EncryptedResponseCall, error)
 
 	// Nonce returns the nonce of the wallet with the given address.
 	Nonce(address common.Address) uint64
@@ -62,6 +62,9 @@ type Enclave interface {
 
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
 	GetTransaction(txHash common.Hash) *L2Tx
+
+	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
+	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
 
 	// GetRollup returns the rollup with the given hash
 	GetRollup(rollupHash obscurocommon.L2RootHash) *ExtRollup
@@ -80,7 +83,7 @@ type Enclave interface {
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
 	// address.
 	// TODO - Handle multiple viewing keys, and thus multiple return values.
-	GetBalance(encryptedParams EncryptedParams) (EncryptedResponse, error)
+	GetBalance(encryptedParams EncryptedParamsGetBalance) (EncryptedResponseGetBalance, error)
 
 	// StopClient stops the enclave client if one exists
 	StopClient() error

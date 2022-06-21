@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
@@ -80,7 +79,7 @@ func (e *RPCEncryptionManager) AddViewingKey(viewingKeyBytes []byte, signature [
 }
 
 // EncryptWithViewingKey encrypts the bytes with a viewing key for the address.
-func (e *RPCEncryptionManager) EncryptWithViewingKey(address common.Address, bytes []byte) (nodecommon.EncryptedResponse, error) {
+func (e *RPCEncryptionManager) EncryptWithViewingKey(address common.Address, bytes []byte) ([]byte, error) {
 	if !e.viewingKeysEnabled {
 		return bytes, nil
 	}

@@ -26,7 +26,7 @@ func NewInMemObscuroClient(host *Node) obscuroclient.Client {
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
+func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error { //nolint:gocognit
 	switch method {
 	case obscuroclient.RPCGetID:
 		*result.(*common.Address) = c.obscuroAPI.GetID()
@@ -87,7 +87,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		}
 		params, ok := args[0].([]byte)
 		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type host.TransactionArgs", obscuroclient.RPCCall)
+			return fmt.Errorf("arg 1 to %s was not of expected type []byte]", obscuroclient.RPCCall)
 		}
 
 		encryptedResponse, err := c.ethAPI.Call(context.Background(), params)
@@ -106,6 +106,21 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		}
 
 		*result.(*uint64) = c.obscuroAPI.Nonce(address)
+
+	case obscuroclient.RPCGetTxReceipt:
+		if len(args) != 1 {
+			return fmt.Errorf("expected 1 arg to %s, got %d", obscuroclient.RPCGetTxReceipt, len(args))
+		}
+		params, ok := args[0].([]byte)
+		if !ok {
+			return fmt.Errorf("arg 1 to %s was not of expected type []byte]", obscuroclient.RPCGetTxReceipt)
+		}
+
+		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), params)
+		if err != nil {
+			return fmt.Errorf("getTransactionReceipt call failed. Cause: %w", err)
+		}
+		*result.(*string) = encryptedResponse
 
 	case obscuroclient.RPCStopHost:
 		c.obscuroAPI.StopHost()
