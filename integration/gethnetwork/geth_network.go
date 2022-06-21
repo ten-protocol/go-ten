@@ -356,6 +356,8 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	}
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
+
+	fmt.Printf("Geth node-%d started with ports: WebSocket: %d - HTTP: %d\n", idx, webSocketPort, httpPort)
 }
 
 // logNodeID prepends the nodeID to the log entries
