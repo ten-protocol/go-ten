@@ -1,4 +1,4 @@
-package simulation
+package walletextension
 
 import (
 	"bytes"
@@ -12,15 +12,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+	"github.com/obscuronet/obscuro-playground/integration/simulation"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 
 	"github.com/obscuronet/obscuro-playground/tools/walletextension"
 
@@ -35,9 +36,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-// TODO - Move to separate package once DB conflicts have been resolved. Currently, starting multiple simulation
-//  networks at once causes DB issues.
-
 const (
 	chainIDHex = "0x539"
 
@@ -48,7 +46,6 @@ const (
 	latestBlock          = "latest"
 	errInsecure          = "enclave could not respond securely to %s request"
 
-	startPort        = 3000
 	networkStartPort = integration.StartPortWalletExtensionTest + 1
 	nodeRPCHTTPPort  = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	nodeRPCWSPort    = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
@@ -58,16 +55,15 @@ const (
 var (
 	walletExtensionAddr   = fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 	walletExtensionConfig = walletextension.Config{
-		WalletExtensionPort:     startPort,
+		WalletExtensionPort:     int(integration.StartPortWalletExtensionTest),
 		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCHTTPPort),
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
 	}
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
-	wallets             = params.NewSimWallets(1, 2, 1, integration.EthereumChainID, integration.ObscuroChainID)
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -86,7 +82,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -106,7 +102,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -134,7 +130,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -161,7 +157,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -198,7 +194,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -236,7 +232,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -274,7 +270,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetTxReceiptWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -297,7 +293,7 @@ func TestCannotGetTxReceiptWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, erc20PrivateKey, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -311,7 +307,7 @@ func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
 	time.Sleep(6 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
 	// We create a viewing key for the private key that deployed the ERC20 contract.
-	generateAndSubmitViewingKey(t, walletExtensionAddr, wallets.Erc20ObsOwnerWallets[0].PrivateKey())
+	generateAndSubmitViewingKey(t, walletExtensionAddr, erc20PrivateKey)
 
 	// We get the transaction receipt for the Obscuro ERC20 contract.
 	txReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
@@ -323,7 +319,7 @@ func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetTxReceiptSubmittedFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, err := createObscuroNetwork()
+	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
@@ -478,7 +474,8 @@ func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byt
 }
 
 // Creates a single-node Obscuro network for testing, and deploys an ERC20 contract to it.
-func createObscuroNetwork() (func(), error) {
+func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
+	wallets := params.NewSimWallets(1, 2, 1, integration.EthereumChainID, integration.ObscuroChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:      2,
 		AvgBlockDuration:   1 * time.Second,
@@ -494,27 +491,27 @@ func createObscuroNetwork() (func(), error) {
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
 	_, l2Clients, _, err := obscuroNetwork.Create(&simParams, simStats)
 	if err != nil {
-		return obscuroNetwork.TearDown, err
+		return obscuroNetwork.TearDown, nil, err
 	}
 
 	// Deploy an ERC20 contract to the Obscuro network.
 	wallet := wallets.Erc20ObsOwnerWallets[0]
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
-		Nonce:    NextNonce(l2Clients[0], wallet),
+		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
 		Data:     contractBytes,
 	}
 	signedTx, err := wallet.SignTransaction(&deployContractTx)
 	if err != nil {
-		return obscuroNetwork.TearDown, err
+		return obscuroNetwork.TearDown, nil, err
 	}
 	encryptedTx := core.EncryptTx(signedTx)
 	err = l2Clients[0].Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
-		return obscuroNetwork.TearDown, err
+		return obscuroNetwork.TearDown, nil, err
 	}
 
-	return obscuroNetwork.TearDown, nil
+	return obscuroNetwork.TearDown, wallets.Erc20ObsOwnerWallets[0].PrivateKey(), nil
 }
