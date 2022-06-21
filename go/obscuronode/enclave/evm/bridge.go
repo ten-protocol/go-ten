@@ -10,17 +10,21 @@ import (
 
 // these addresses are the result of the deploying a smart contract from the hardcoded owners
 // Todo - remove these in a next iteration
+
+// WBtcContract X- address of the deployed "btc" erc20
 var WBtcContract = common.BytesToAddress(common.Hex2Bytes("f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"))
+
+// WEthContract - address of the deployed "eth" erc20
 var WEthContract = common.BytesToAddress(common.Hex2Bytes("9802F661d17c65527D7ABB59DAAD5439cb125a67"))
 
-var WithdrawalAddress = common.BytesToAddress(common.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+// BridgeAddress - address of the virtual bridge
+var BridgeAddress = common.BytesToAddress(common.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
 
-//todo
-var Erc20ContractTxHash  = common.HexToHash("0x03ec8936136e8a293d91309d8fcf095758015fb864aa64ecd9d77e3a4485b523")
-
+// ERC20 - the supported ERC20 tokens
+// a list of made-up tokens
+// todo - remove this
 type ERC20 int
 
-// the supported ERC20 tokens
 const (
 	BTC ERC20 = iota
 	ETH
@@ -37,9 +41,9 @@ type Token struct {
 }
 
 type Bridge struct {
-	// These are hardcoded values necessary as an intermediary step.
-	SupportedTokens   map[ERC20]*Token
-	WithdrawalAddress common.Address
+	SupportedTokens map[ERC20]*Token
+	// BridgeAddress The address the bridge on the L2
+	BridgeAddress common.Address
 }
 
 func NewBridge(obscuroChainID int64, btcAddress *common.Address, ethAddress *common.Address) *Bridge {
@@ -67,13 +71,13 @@ func NewBridge(obscuroChainID int64, btcAddress *common.Address, ethAddress *com
 	}
 
 	return &Bridge{
-		SupportedTokens:   tokens,
-		WithdrawalAddress: WithdrawalAddress,
+		SupportedTokens: tokens,
+		BridgeAddress:   BridgeAddress,
 	}
 }
 
 func (b *Bridge) IsWithdrawal(address common.Address) bool {
-	return address == b.WithdrawalAddress
+	return address == b.BridgeAddress
 }
 
 // L1Address - returns the L1 address of a token based on the mapping

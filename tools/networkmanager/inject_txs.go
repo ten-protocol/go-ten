@@ -50,7 +50,6 @@ func InjectTransactions(nmConfig Config) {
 			// todo
 		},
 		&nmConfig.mgmtContractAddress,
-		&nmConfig.erc20ContractAddress,
 		[]obscuroclient.Client{l2Client},
 		mgmtcontractlib.NewMgmtContractLib(&nmConfig.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&nmConfig.mgmtContractAddress, &nmConfig.erc20ContractAddress),

@@ -312,12 +312,12 @@ func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest com
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client obscuroclient.Client) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(evm.WithdrawalAddress, amount)
+	transferERC20data := erc20contractlib.CreateTransferTxData(evm.BridgeAddress, amount)
 	return ti.newTx(transferERC20data, NextNonce(client, from))
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(evm.WithdrawalAddress, amount)
+	transferERC20data := erc20contractlib.CreateTransferTxData(evm.BridgeAddress, amount)
 	return ti.newTx(transferERC20data, 1)
 }
 

@@ -52,6 +52,8 @@ const (
 	httpProtocol     = "http://"
 )
 
+var erc20ContractTxHash = common.HexToHash("0x03ec8936136e8a293d91309d8fcf095758015fb864aa64ecd9d77e3a4485b523")
+
 var (
 	walletExtensionAddr   = fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 	walletExtensionConfig = walletextension.Config{
@@ -284,7 +286,7 @@ func TestCannotGetTxReceiptWithoutSubmittingViewingKey(t *testing.T) {
 	time.Sleep(6 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
 	// We attempt to get the transaction receipt for the Obscuro ERC20 contract.
-	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
+	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{erc20ContractTxHash.Hex()})
 
 	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodGetTxReceipt)
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -310,9 +312,9 @@ func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
 	generateAndSubmitViewingKey(t, walletExtensionAddr, erc20PrivateKey)
 
 	// We get the transaction receipt for the Obscuro ERC20 contract.
-	txReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
+	txReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{erc20ContractTxHash.Hex()})
 
-	expectedTxHashJSON := fmt.Sprintf("\"transactionHash\":\"%s\"", evm.Erc20ContractTxHash.Hex())
+	expectedTxHashJSON := fmt.Sprintf("\"transactionHash\":\"%s\"", erc20ContractTxHash.Hex())
 	if !strings.Contains(txReceiptJSON[walletextension.RespJSONKeyResult].(string), expectedTxHashJSON) {
 		t.Fatalf("Expected transaction receipt containing %s, got %s", "\"transactionHash\":\"0x03ec8936136e8a293d91309d8fcf095758015fb864aa64ecd9d77e3a4485b523\"", txReceiptJSON[walletextension.RespJSONKeyResult])
 	}
@@ -340,7 +342,7 @@ func TestCannotGetTxReceiptSubmittedFromAnotherAddressAfterSubmittingViewingKey(
 	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
 
 	// We attempt to get the transaction receipt for the Obscuro ERC20 contract.
-	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
+	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{erc20ContractTxHash.Hex()})
 
 	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodGetTxReceipt)
 	if !strings.Contains(string(respBody), expectedErr) {
