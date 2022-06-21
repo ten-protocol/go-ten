@@ -22,8 +22,10 @@ import (
 )
 
 const (
-	testLogs      = "../.build/simulations/"
-	jsonKeyTxHash = "transactionHash"
+	testLogs             = "../.build/simulations/"
+	jsonKeyRoot          = "root"
+	jsonKeyStatus        = "status"
+	receiptStatusFailure = "0x0"
 )
 
 func setupTestLog(simType string) *os.File {
@@ -107,8 +109,8 @@ func getTransaction(client obscuroclient.Client, txHash common.Hash) *nodecommon
 
 	// We check that there is a valid receipt for each transaction, as a sanity-check.
 	txReceiptJSONMap := getTransactionReceipt(client, txHash)
-	// TODO - Fix issue whereby all receipts have a status of 0 (failure). Then check the status here instead.
-	if txReceiptJSONMap[jsonKeyTxHash] != txHash.Hex() {
+	// Per Geth's rules, a receipt is invalid if the root is not set and the status is non-zero.
+	if len(txReceiptJSONMap[jsonKeyRoot].(string)) == 0 && txReceiptJSONMap[jsonKeyStatus] == receiptStatusFailure {
 		panic(fmt.Errorf("simulation failed because transaction receipt was not created for transaction %s", txHash.Hex()))
 	}
 
