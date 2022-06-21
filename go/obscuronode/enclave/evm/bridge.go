@@ -15,6 +15,9 @@ var WEthContract = common.BytesToAddress(common.Hex2Bytes("9802F661d17c65527D7AB
 
 var WithdrawalAddress = common.BytesToAddress(common.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
 
+//todo
+var Erc20ContractTxHash  = common.HexToHash("0x03ec8936136e8a293d91309d8fcf095758015fb864aa64ecd9d77e3a4485b523")
+
 type ERC20 int
 
 // the supported ERC20 tokens

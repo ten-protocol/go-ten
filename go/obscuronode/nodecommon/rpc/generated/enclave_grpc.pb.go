@@ -49,7 +49,8 @@ type EnclaveProtoClient interface {
 	SubmitRollup(ctx context.Context, in *SubmitRollupRequest, opts ...grpc.CallOption) (*SubmitRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
-	// Balance - returns the balance of an address with a block delay
+	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
+	// viewing key corresponding to the `from` field
 	ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error)
 	// Nonce - returns the nonce of the wallet with the given address.
 	Nonce(ctx context.Context, in *NonceRequest, opts ...grpc.CallOption) (*NonceResponse, error)
@@ -59,11 +60,15 @@ type EnclaveProtoClient interface {
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
 	GetTransaction(ctx context.Context, in *GetTransactionRequest, opts ...grpc.CallOption) (*GetTransactionResponse, error)
-	// GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+	// GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
+	// corresponding to the original transaction submitter
+	GetTransactionReceipt(ctx context.Context, in *GetTransactionReceiptRequest, opts ...grpc.CallOption) (*GetTransactionReceiptResponse, error)
+	// GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
 	GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(ctx context.Context, in *AddViewingKeyRequest, opts ...grpc.CallOption) (*AddViewingKeyResponse, error)
-	// GetBalance returns the address's balance on the Obscuro network.
+	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
+	// the address
 	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceResponse, error)
 }
 
@@ -228,6 +233,15 @@ func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransact
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetTransactionReceipt(ctx context.Context, in *GetTransactionReceiptRequest, opts ...grpc.CallOption) (*GetTransactionReceiptResponse, error) {
+	out := new(GetTransactionReceiptResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetTransactionReceipt", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *enclaveProtoClient) GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error) {
 	out := new(GetRollupResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetRollup", in, out, opts...)
@@ -286,7 +300,8 @@ type EnclaveProtoServer interface {
 	SubmitRollup(context.Context, *SubmitRollupRequest) (*SubmitRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
-	// Balance - returns the balance of an address with a block delay
+	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
+	// viewing key corresponding to the `from` field
 	ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error)
 	// Nonce - returns the nonce of the wallet with the given address.
 	Nonce(context.Context, *NonceRequest) (*NonceResponse, error)
@@ -296,11 +311,15 @@ type EnclaveProtoServer interface {
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
 	GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error)
-	// GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+	// GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
+	// corresponding to the original transaction submitter
+	GetTransactionReceipt(context.Context, *GetTransactionReceiptRequest) (*GetTransactionReceiptResponse, error)
+	// GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
 	GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(context.Context, *AddViewingKeyRequest) (*AddViewingKeyResponse, error)
-	// GetBalance returns the address's balance on the Obscuro network.
+	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
+	// the address
 	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
@@ -359,6 +378,9 @@ func (UnimplementedEnclaveProtoServer) Stop(context.Context, *StopRequest) (*Sto
 }
 func (UnimplementedEnclaveProtoServer) GetTransaction(context.Context, *GetTransactionRequest) (*GetTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransaction not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetTransactionReceipt(context.Context, *GetTransactionReceiptRequest) (*GetTransactionReceiptResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTransactionReceipt not implemented")
 }
 func (UnimplementedEnclaveProtoServer) GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRollup not implemented")
@@ -688,6 +710,24 @@ func _EnclaveProto_GetTransaction_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetTransactionReceipt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTransactionReceiptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetTransactionReceipt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetTransactionReceipt",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetTransactionReceipt(ctx, req.(*GetTransactionReceiptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _EnclaveProto_GetRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRollupRequest)
 	if err := dec(in); err != nil {
@@ -816,6 +856,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTransaction",
 			Handler:    _EnclaveProto_GetTransaction_Handler,
+		},
+		{
+			MethodName: "GetTransactionReceipt",
+			Handler:    _EnclaveProto_GetTransactionReceipt_Handler,
 		},
 		{
 			MethodName: "GetRollup",

@@ -44,7 +44,8 @@ service EnclaveProto {
   // SubmitTx - user transactions
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
 
-  // Balance - returns the balance of an address with a block delay
+  // ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
+  // viewing key corresponding to the `from` field
   rpc ExecuteOffChainTransaction(OffChainRequest) returns (OffChainResponse) {}
 
   // Nonce - returns the nonce of the wallet with the given address.
@@ -59,13 +60,18 @@ service EnclaveProto {
   // GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
   rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse) {}
 
-  // GetTransaction returns a rollup given its hash, returns nil, false when the rollup is unknown
+  // GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
+  // corresponding to the original transaction submitter
+  rpc GetTransactionReceipt(GetTransactionReceiptRequest) returns (GetTransactionReceiptResponse) {}
+
+  // GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
   rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
 
   // AddViewingKey adds a viewing key to the enclave
   rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
 
-  // GetBalance returns the address's balance on the Obscuro network.
+  // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
+  // the address
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {}
 }
 
@@ -172,6 +178,13 @@ message GetTransactionRequest {
 message GetTransactionResponse {
   bool known = 1;
   bytes encodedTransaction = 2;
+}
+
+message GetTransactionReceiptRequest {
+  bytes encryptedParams = 1;
+}
+message GetTransactionReceiptResponse {
+  bytes encryptedTxReceipt = 1;
 }
 
 message GetRollupRequest {

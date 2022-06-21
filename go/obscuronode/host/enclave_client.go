@@ -33,6 +33,8 @@ type EnclaveRPCClient struct {
 	config      config.HostConfig
 }
 
+// TODO - Avoid panicking and return errors instead where appropriate.
+
 func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
@@ -225,7 +227,7 @@ func (c *EnclaveRPCClient) SubmitTx(tx nodecommon.EncryptedTx) error {
 	return err
 }
 
-func (c *EnclaveRPCClient) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+func (c *EnclaveRPCClient) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParamsCall) (nodecommon.EncryptedResponseCall, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -300,6 +302,17 @@ func (c *EnclaveRPCClient) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	return &l2Tx
 }
 
+func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (nodecommon.EncryptedResponseGetTxReceipt, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
+	if err != nil {
+		return nil, err
+	}
+	return response.EncryptedTxReceipt, nil
+}
+
 func (c *EnclaveRPCClient) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
@@ -331,7 +344,7 @@ func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byt
 	return nil
 }
 
-func (c *EnclaveRPCClient) GetBalance(encryptedParams nodecommon.EncryptedParams) (nodecommon.EncryptedResponse, error) {
+func (c *EnclaveRPCClient) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBalance) (nodecommon.EncryptedResponseGetBalance, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

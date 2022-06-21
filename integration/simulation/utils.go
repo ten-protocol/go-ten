@@ -19,7 +19,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 )
 
-const testLogs = "../.build/simulations/"
+const (
+	testLogs = "../.build/simulations/"
+)
 
 func setupTestLog(simType string) *os.File {
 	// create a folder specific for the test
@@ -93,16 +95,13 @@ func getRollupHeader(client obscuroclient.Client, hash common.Hash) *nodecommon.
 }
 
 // Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client obscuroclient.Client, hash common.Hash) *nodecommon.L2Tx {
-	method := obscuroclient.RPCGetTransaction
-
-	var result *nodecommon.L2Tx
-	err := client.Call(&result, method, hash)
+func getTransaction(client obscuroclient.Client, txHash common.Hash) *nodecommon.L2Tx {
+	var l2Tx *nodecommon.L2Tx
+	err := client.Call(&l2Tx, obscuroclient.RPCGetTransaction, txHash)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", obscuroclient.RPCGetTransaction, err))
 	}
-
-	return result
+	return l2Tx
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.

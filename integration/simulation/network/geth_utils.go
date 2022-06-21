@@ -106,21 +106,22 @@ func DeployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractB
 		return nil, err
 	}
 
+	var start time.Time
 	var receipt *types.Receipt
-	for start := time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
+	for start = time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
 		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, errors.New("unable to deploy contract")
 			}
-			break
+			log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
+			return &receipt.ContractAddress, nil
 		}
 
 		log.Info("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
 	}
 
-	log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
-	return &receipt.ContractAddress, nil
+	return nil, fmt.Errorf("failed to mine contract deploy tx into a block after %s. Aborting", time.Since(start))
 }
 
 func createEthClientConnection(id int64, port uint) ethclient.EthClient {
