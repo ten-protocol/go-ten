@@ -590,12 +590,8 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.Encrypted
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
-	txReceiptBytes, err := txReceipt.MarshalJSON()
-	if err != nil {
-		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
-	}
 
-	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txReceiptBytes)
+	encryptedTxReceipt, err := e.encryptTxReceiptWithViewingKey(viewingKeyAddress, txReceipt)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
 	}
@@ -860,6 +856,15 @@ func (e *enclaveImpl) getTxSender(txHash common.Hash) (common.Address, error) {
 		return common.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	return msg.From(), nil
+}
+
+// Marshalls the transaction receipt to JSON, and encrypts it with a viewing key for the address.
+func (e *enclaveImpl) encryptTxReceiptWithViewingKey(address common.Address, txReceipt *types.Receipt) ([]byte, error) {
+	txReceiptBytes, err := txReceipt.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	return e.rpcEncryptionManager.EncryptWithViewingKey(address, txReceiptBytes)
 }
 
 // internal structure to pass information.
