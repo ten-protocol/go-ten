@@ -37,7 +37,7 @@ type Message struct {
 // allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
 func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
-	var peerAddresses []string
+	var peerAddresses []string // TODO - Retrieve host P2P addresses dynamically from management contract.
 	for _, address := range config.AllP2PAddresses {
 		if address != config.P2PAddress {
 			peerAddresses = append(peerAddresses, address)

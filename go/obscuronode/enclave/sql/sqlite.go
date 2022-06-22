@@ -16,7 +16,7 @@ import (
 
 const (
 	tempDirName = "obscuro-persistence"
-	createQry   = `create table if not exists kv (key binary(32) primary key, value blob); delete from kv;`
+	createQry   = `create table if not exists keyvalue (ky varbinary(64) primary key, val blob); delete from keyvalue;`
 )
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,

@@ -14,6 +14,7 @@ import (
 // EnclaveConfigToml is the structure that an enclave's .toml config is parsed into.
 type EnclaveConfigToml struct {
 	HostID                    string
+	HostAddress               string
 	Address                   string
 	L1ChainID                 int64
 	ObscuroChainID            int64
@@ -35,6 +36,7 @@ func ParseConfig() config.EnclaveConfig {
 
 	configPath := flag.String(configName, "", configUsage)
 	hostID := flag.String(HostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
+	hostAddress := flag.String(hostAddressName, defaultConfig.HostAddress, hostAddressUsage)
 	address := flag.String(AddressName, defaultConfig.Address, addressUsage)
 	l1ChainID := flag.Int64(l1ChainIDName, defaultConfig.L1ChainID, l1ChainIDUsage)
 	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.ObscuroChainID, obscuroChainIDUsage)
@@ -68,6 +70,7 @@ func ParseConfig() config.EnclaveConfig {
 	}
 
 	defaultConfig.HostID = common.HexToAddress(*hostID)
+	defaultConfig.HostAddress = *hostAddress
 	defaultConfig.Address = *address
 	defaultConfig.L1ChainID = *l1ChainID
 	defaultConfig.ObscuroChainID = *obscuroChainID
@@ -105,6 +108,7 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 
 	return config.EnclaveConfig{
 		HostID:                    common.HexToAddress(tomlConfig.HostID),
+		HostAddress:               tomlConfig.HostAddress,
 		Address:                   tomlConfig.Address,
 		L1ChainID:                 tomlConfig.L1ChainID,
 		ObscuroChainID:            tomlConfig.ObscuroChainID,

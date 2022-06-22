@@ -7,6 +7,7 @@ const (
 	RespondSecretMethod    = "RespondNetworkSecret"
 	RequestSecretMethod    = "RequestNetworkSecret"
 	InitializeSecretMethod = "InitializeNetworkSecret" //#nosec
+	GetHostAddressesMethod = "GetHostAddresses"
 )
 
 var (

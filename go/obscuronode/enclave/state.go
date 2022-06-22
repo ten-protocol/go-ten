@@ -304,7 +304,7 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 	}
 	newHeadRollup, found := FindWinner(currentHead, rollups, blockResolver)
 	stateDB := bss.CreateStateDB(parentState.HeadRollup)
-	var receipts []*types.Receipt
+	var rollupTxReceipts []*types.Receipt
 	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
 		// Preprocessing before passing to the vm
@@ -326,6 +326,16 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 		}
 
 		// todo - handle failure , which means a new winner must be selected
+
+		// We only return the receipts for the rollup transactions, and not for deposits.
+		for _, receipt := range receipts {
+			for _, tx := range newHeadRollup.Transactions {
+				if receipt.TxHash == tx.Hash() {
+					rollupTxReceipts = append(rollupTxReceipts, receipt)
+					break
+				}
+			}
+		}
 	} else {
 		newHeadRollup = currentHead
 	}
@@ -335,7 +345,7 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 		HeadRollup:     newHeadRollup.Hash(),
 		FoundNewRollup: found,
 	}
-	return &bs, stateDB, newHeadRollup, receipts
+	return &bs, stateDB, newHeadRollup, rollupTxReceipts
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20

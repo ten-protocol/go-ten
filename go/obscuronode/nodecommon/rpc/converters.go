@@ -14,11 +14,16 @@ import (
 // Protobuf message classes.
 
 func ToAttestationReportMsg(report *obscurocommon.AttestationReport) generated.AttestationReportMsg {
-	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, Owner: report.Owner.Bytes()}
+	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, Owner: report.Owner.Bytes(), HostAddress: report.HostAddress}
 }
 
 func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *obscurocommon.AttestationReport {
-	return &obscurocommon.AttestationReport{Report: msg.Report, PubKey: msg.PubKey, Owner: common.BytesToAddress(msg.Owner)}
+	return &obscurocommon.AttestationReport{
+		Report:      msg.Report,
+		PubKey:      msg.PubKey,
+		Owner:       common.BytesToAddress(msg.Owner),
+		HostAddress: msg.HostAddress,
+	}
 }
 
 func ToBlockSubmissionResponseMsg(response nodecommon.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {

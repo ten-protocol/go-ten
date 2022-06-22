@@ -635,7 +635,7 @@ func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
 	if e.publicKeySerialized == nil {
 		panic("public key not initialized, we can't produce the attestation report")
 	}
-	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID)
+	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID, e.config.HostAddress)
 	if err != nil {
 		panic("Failed to produce remote report.")
 	}
@@ -721,7 +721,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBa
 }
 
 func verifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {
-	expectedIDHash := getIDHash(att.Owner, att.PubKey)
+	expectedIDHash := getIDHash(att.Owner, att.PubKey, att.HostAddress)
 	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
 	if !bytes.Equal(expectedIDHash, data[:len(expectedIDHash)]) {
 		return fmt.Errorf("failed to verify hash for attestation report with owner: %s", att.Owner)

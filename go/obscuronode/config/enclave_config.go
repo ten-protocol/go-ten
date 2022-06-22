@@ -8,6 +8,8 @@ import (
 type EnclaveConfig struct {
 	// The identity of the host the enclave service is tied to
 	HostID common.Address
+	// The peer-to-peer IP address of the host the enclave service is tied to
+	HostAddress string
 	// The address on which to serve requests
 	Address string
 	// The ID of the L1 chain
@@ -41,6 +43,7 @@ type EnclaveConfig struct {
 func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
 		HostID:                    common.BytesToAddress([]byte("")),
+		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
