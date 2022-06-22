@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	getQry    = `select kv.value from kv where kv.key = ?;`
-	putQry    = `insert or replace into kv values(?, ?);`
-	delQry    = `delete from kv where kv.key = ?;`
-	searchQry = `select * from kv where substring(kv.key, 1, ?) = ? and kv.key >= ? order by kv.key asc`
+	getQry    = `select keyvalue.val from keyvalue where keyvalue.ky = ?;`
+	putQry    = `insert or replace into keyvalue values(?, ?);`
+	delQry    = `delete from keyvalue where keyvalue.ky = ?;`
+	searchQry = `select * from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
 )
 
 // sqlEthDatabase implements ethdb.Database
