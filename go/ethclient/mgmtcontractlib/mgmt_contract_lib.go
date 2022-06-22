@@ -171,6 +171,7 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *obscurocommon.L1InitializeS
 		InitializeSecretMethod,
 		tx.AggregatorID,
 		tx.InitialSecret,
+		tx.HostAddress,
 	)
 	if err != nil {
 		panic(err)

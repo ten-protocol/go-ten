@@ -129,6 +129,7 @@ func (a *Node) Start() {
 		l1tx := &obscurocommon.L1InitializeSecretTx{
 			AggregatorID:  &a.ID,
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
+			HostAddress:   a.config.P2PAddress,
 		}
 		a.broadcastTx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		nodecommon.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")

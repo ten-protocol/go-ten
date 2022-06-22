@@ -37,8 +37,15 @@ type Message struct {
 // allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
 func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
+	allHostAddresses := []string{ // todo - joel - retrieve peer addresses from mgmt contract instead
+		"127.0.0.1:37200",
+		"127.0.0.1:37201",
+		"127.0.0.1:37202",
+		"127.0.0.1:37203",
+		"127.0.0.1:37204",
+	}
 	var peerAddresses []string
-	for _, address := range config.AllP2PAddresses { // todo - joel - don't read this from config
+	for _, address := range allHostAddresses {
 		if address != config.P2PAddress {
 			peerAddresses = append(peerAddresses, address)
 		}

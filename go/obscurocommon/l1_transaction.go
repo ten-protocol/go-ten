@@ -61,4 +61,5 @@ type L1RequestSecretTx struct {
 type L1InitializeSecretTx struct {
 	AggregatorID  *common.Address
 	InitialSecret []byte
+	HostAddress   string
 }

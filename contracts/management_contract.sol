@@ -32,14 +32,15 @@ contract ManagementContract {
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
-    function InitializeNetworkSecret(address aggregatorID, bytes calldata initSecret) public {
+    function InitializeNetworkSecret(address aggregatorID, bytes calldata initSecret, string memory hostAddress) public {
         require(!networkSecretInitialized);
 
         // network can no longer be initialized
         networkSecretInitialized = true;
 
-        // aggregator is now on the list of attested aggregators
+        // aggregator is now on the list of attested aggregators and its host address is available
         attested[aggregatorID] = true;
+        hostAddresses.push(hostAddress);
     }
 
     // Aggregators can request the Network Secret given an attestation request report
@@ -69,7 +70,7 @@ contract ManagementContract {
                 "\n Expected:                         ", toAsciiString(attesterID),
                 "\n / recoveredAddrSignedCalculated:  ", toAsciiString(recoveredAddrSignedCalculated)));
 
-        // mark the requesterID aggregator as an attested aggregator
+        // mark the requesterID aggregator as an attested aggregator and store its host address
         attested[requesterID] = true;
         hostAddresses.push(hostAddress);
     }
