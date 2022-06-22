@@ -8,7 +8,7 @@ contract ManagementContract {
     mapping(uint256 => Rollup[]) public rollups;
     mapping(address => string) public attestationRequests;
     mapping(address => bool) public attested;
-    string[] public hostAddresses; // The addresses of all the Obscuro hosts on the network.
+    string[] private hostAddresses; // The addresses of all the Obscuro hosts on the network.
 
     // networkSecretNotInitialized marks if the network secret has been initialized
     bool private networkSecretInitialized ;
