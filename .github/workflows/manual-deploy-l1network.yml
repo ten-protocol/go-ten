@@ -65,6 +65,7 @@ jobs:
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
           name: testnet-app
           location: 'uksouth'
+          restart-policy: 'Never'
           ports: '8025 8026 8027 9001 9002 9003'
           cpu: 2
           memory: 4

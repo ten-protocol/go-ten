@@ -44,6 +44,7 @@ const (
 	httpEnableFlag     = "--http"
 	httpPortFlag       = "--http.port"
 	httpAddrFlag       = "--http.addr"
+	httpVhostsFlag     = "--http.vhosts"
 	httpEnableApis     = "--http.api"
 	allowedAPIs        = "personal,eth,net,web3,debug"
 	allowCORSDomain    = "--http.corsdomain"
@@ -345,7 +346,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 		strconv.Itoa(port), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
 		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
 		httpEnableFlag, httpPortFlag, strconv.Itoa(httpPort), httpEnableApis, allowedAPIs, allowCORSDomain, "*",
-		httpAddrFlag, "*", wsAddrFlag, "*", gasLimitFlag,
+		httpAddrFlag, "0.0.0.0", wsAddrFlag, "0.0.0.0", httpVhostsFlag, "*", gasLimitFlag,
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
