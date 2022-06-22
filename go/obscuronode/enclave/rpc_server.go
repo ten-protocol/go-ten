@@ -83,7 +83,7 @@ func (s *server) IsReady(context.Context, *generated.IsReadyRequest) (*generated
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
 	attestation := s.enclave.Attestation()
-	msg := generated.AttestationReportMsg{Report: attestation.Report, PubKey: attestation.PubKey, Owner: attestation.Owner.Bytes()}
+	msg := rpc.ToAttestationReportMsg(attestation)
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 

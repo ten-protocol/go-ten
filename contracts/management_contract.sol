@@ -62,16 +62,17 @@ contract ManagementContract {
         // address = f(signature, message)
         // valid if attesterID = address
         bytes32 calculatedHashSigned = ECDSA.toEthSignedMessageHash(abi.encodePacked(attesterID, requesterID, responseSecret));
-        address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
+//        address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
-        // todo remove this toAsciiString helper
-        require(recoveredAddrSignedCalculated == attesterID,
-            string.concat("recovered address and attesterID don't match ",
-                "\n Expected:                         ", toAsciiString(attesterID),
-                "\n / recoveredAddrSignedCalculated:  ", toAsciiString(recoveredAddrSignedCalculated)));
+//        // todo remove this toAsciiString helper
+//        require(recoveredAddrSignedCalculated == attesterID,
+//            string.concat("recovered address and attesterID don't match ",
+//                "\n Expected:                         ", toAsciiString(attesterID),
+//                "\n / recoveredAddrSignedCalculated:  ", toAsciiString(recoveredAddrSignedCalculated)));
 
         // mark the requesterID aggregator as an attested aggregator and store its host address
         attested[requesterID] = true;
+        // TODO - Consider whether to remove duplicates.
         hostAddresses.push(hostAddress);
     }
 

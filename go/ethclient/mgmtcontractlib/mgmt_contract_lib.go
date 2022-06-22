@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
@@ -29,16 +31,18 @@ var (
 	defaultGas      = uint64(1024_000_000)
 )
 
-// MgmtContractLib provide methods for creating ethereum transactions by providing a L1Transaction
-// Also provides a method to convert ethereum transactions into a L1Transaction
+// MgmtContractLib provides methods for creating ethereum transactions by providing an L1Transaction, creating call
+// messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
 	CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData
 	CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData
 	CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData
 	CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData
+	GetHostAddresses() ethereum.CallMsg
 
 	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
+	DecodeCallResponse(callResponse []byte) []interface{}
 }
 
 type contractLibImpl struct {
@@ -183,6 +187,22 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *obscurocommon.L1InitializeS
 		To:       c.addr,
 		Data:     data,
 	}
+}
+
+func (c *contractLibImpl) GetHostAddresses() ethereum.CallMsg {
+	data, err := c.contractABI.Pack(GetHostAddressesMethod)
+	if err != nil {
+		panic(err) // todo - joel - do not panic here
+	}
+	return ethereum.CallMsg{To: c.addr, Data: data}
+}
+
+func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) []interface{} {
+	unpackedResponse, err := c.contractABI.Unpack(GetHostAddressesMethod, callResponse)
+	if err != nil {
+		panic(err) // todo - joel - do not panic here
+	}
+	return unpackedResponse
 }
 
 func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RequestSecretTx {

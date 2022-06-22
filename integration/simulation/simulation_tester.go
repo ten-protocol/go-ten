@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"runtime"
@@ -61,6 +62,17 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	// execute the simulation
 	simulation.Start()
+
+	println("jjjj making call")
+	msg := simulation.Params.MgmtContractLib.GetHostAddresses()
+	response, err := simulation.EthClients[0].EthClient().CallContract(context.Background(), msg, nil)
+	if err != nil {
+		panic(err)
+	}
+	decodedResponse := simulation.Params.MgmtContractLib.DecodeCallResponse(response)
+	for _, entry := range decodedResponse {
+		println(fmt.Sprintf("jjj call result: %s", entry.([]string)))
+	}
 
 	// run tests
 	checkNetworkValidity(t, &simulation)

@@ -130,8 +130,10 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 	for i := startAt; i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
+		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
 		enclaveConfig := config.EnclaveConfig{
 			HostID:             common.BigToAddress(big.NewInt(int64(i))),
+			HostAddress:        hostAddr,
 			Address:            enclaveAddr,
 			L1ChainID:          integration.EthereumChainID,
 			ObscuroChainID:     integration.ObscuroChainID,

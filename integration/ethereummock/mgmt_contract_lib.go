@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
@@ -45,6 +47,14 @@ func (m *mockContractLib) CreateRespondSecret(tx *obscurocommon.L1RespondSecretT
 
 func (m *mockContractLib) CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, initializeSecretTxAddr)
+}
+
+func (m *mockContractLib) GetHostAddresses() ethereum.CallMsg {
+	return ethereum.CallMsg{} // todo - joel - better mock if needed
+}
+
+func (m *mockContractLib) DecodeCallResponse([]byte) []interface{} {
+	return []interface{}{} // todo - joel - better mock if needed
 }
 
 func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
