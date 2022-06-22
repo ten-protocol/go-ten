@@ -548,7 +548,6 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	rootHash, err := newRollupState.Commit(true)
 	if err != nil {
 		panic(err)
-		return nil
 	}
 	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, obscurocommon.GenerateNonce(), rootHash)
 
