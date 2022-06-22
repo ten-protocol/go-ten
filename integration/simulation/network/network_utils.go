@@ -104,7 +104,6 @@ func createSocketObscuroNode(
 	avgGossipPeriod time.Duration,
 	stats *stats.Stats,
 	p2pAddr string,
-	peerAddrs []string,
 	enclaveAddr string,
 	clientRPCHost string,
 	clientRPCPortHTTP uint64,

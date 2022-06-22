@@ -89,7 +89,6 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			params.AvgGossipPeriod,
 			stats,
 			nodeP2pAddrs[i],
-			nodeP2pAddrs,
 			enclaveAddresses[i],
 			Localhost,
 			uint64(nodeRPCPortHTTP),
