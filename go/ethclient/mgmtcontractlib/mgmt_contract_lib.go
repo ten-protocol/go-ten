@@ -37,13 +37,14 @@ var (
 type MgmtContractLib interface {
 	CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData
 	CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData
-	CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData
+	CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData
 	GetHostAddresses() (ethereum.CallMsg, error)
 
 	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
-	DecodeCallResponse(callResponse []byte) ([]interface{}, error)
+	// DecodeCallResponse unpacks a call response into a slice of strings.
+	DecodeCallResponse(callResponse []byte) ([][]string, error)
 }
 
 type contractLibImpl struct {
@@ -150,7 +151,7 @@ func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 	}
 }
 
-func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -158,6 +159,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretT
 		tx.AttesterSig,
 		tx.Secret,
 		tx.HostAddress,
+		verifyAttester,
 	)
 	if err != nil {
 		panic(err)
@@ -198,12 +200,23 @@ func (c *contractLibImpl) GetHostAddresses() (ethereum.CallMsg, error) {
 	return ethereum.CallMsg{To: c.addr, Data: data}, nil
 }
 
-func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([]interface{}, error) {
+func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([][]string, error) {
 	unpackedResponse, err := c.contractABI.Unpack(GetHostAddressesMethod, callResponse)
 	if err != nil {
 		return nil, fmt.Errorf("could not unpack call response. Cause: %w", err)
 	}
-	return unpackedResponse, nil
+
+	// We convert the returned interfaces to strings.
+	unpackedResponseStrings := make([][]string, 0, len(unpackedResponse))
+	for _, obj := range unpackedResponse {
+		str, ok := obj.([]string)
+		if !ok {
+			return nil, fmt.Errorf("could not convert interface in call response to string")
+		}
+		unpackedResponseStrings = append(unpackedResponseStrings, str)
+	}
+
+	return unpackedResponseStrings, nil
 }
 
 func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RequestSecretTx {

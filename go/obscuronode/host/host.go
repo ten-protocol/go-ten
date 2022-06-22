@@ -504,7 +504,7 @@ func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
 				HostAddress: att.HostAddress,
 			}
 			// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-			a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+			a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
 		}
 	}
 }

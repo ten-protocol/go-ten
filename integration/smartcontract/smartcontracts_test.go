@@ -276,6 +276,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 			Secret:      fakeSecret,
 		}).Sign(aggCPrivateKey),
 		w.GetNonceAndIncrement(),
+		true,
 	)
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -294,6 +295,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 			AttesterID:  aggAID,
 		}).Sign(aggCPrivateKey),
 		w.GetNonceAndIncrement(),
+		true,
 	)
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
@@ -390,6 +392,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 			AttesterID:  aggAID,
 		}).Sign(aggAPrivateKey),
 		w.GetNonceAndIncrement(),
+		true,
 	)
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -416,6 +419,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 			AttesterID:  aggCID,
 		}).Sign(aggCPrivateKey),
 		w.GetNonceAndIncrement(),
+		true,
 	)
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {

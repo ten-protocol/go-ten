@@ -41,7 +41,7 @@ func (m *mockContractLib) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 	return encodeTx(tx, nonce, requestSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData {
+func (m *mockContractLib) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64, _ bool) types.TxData {
 	return encodeTx(tx, nonce, storeSecretTxAddr)
 }
 
@@ -53,7 +53,7 @@ func (m *mockContractLib) GetHostAddresses() (ethereum.CallMsg, error) {
 	panic("not implemented")
 }
 
-func (m *mockContractLib) DecodeCallResponse([]byte) ([]interface{}, error) {
+func (m *mockContractLib) DecodeCallResponse([]byte) ([][]string, error) {
 	panic("not implemented")
 }
 
