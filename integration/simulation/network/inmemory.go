@@ -3,6 +3,9 @@ package network
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -33,6 +36,12 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	n.obscuroClients = make([]obscuroclient.Client, params.NumberOfNodes)
 
+	// Invent some addresses to assign as the L1 erc20 contracts
+	a := common.HexToAddress("AA")
+	params.Wallets.Tokens[evm.BTC].L1ContractAddress = &a
+	b := common.HexToAddress("BB")
+	params.Wallets.Tokens[evm.ETH].L1ContractAddress = &b
+
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
@@ -52,6 +61,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.Wallets.NodeWallets[i],
 			miner,
 			params.ViewingKeysEnabled,
+			params.Wallets,
 		)
 		obscuroClient := host.NewInMemObscuroClient(agg)
 

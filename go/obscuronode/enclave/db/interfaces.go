@@ -20,6 +20,7 @@ type BlockResolver interface {
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
+	// Todo - this is super confusing, analyze the usage
 	IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool
 	// FetchHeadBlock - returns the head of the current chain
 	FetchHeadBlock() *types.Block

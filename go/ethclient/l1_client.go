@@ -1,6 +1,7 @@
 package ethclient
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -54,7 +55,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	var blocksBetween []*types.Block
 	var err error
 
-	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
+	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash().Bytes(), common.HexToHash("").Bytes()); {
 		currentBlk, err = e.BlockByHash(currentBlk.ParentHash())
 		if err != nil {
 			log.Panic("could not fetch parent block with hash %s. Cause: %s", currentBlk.ParentHash().String(), err)
@@ -66,7 +67,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 }
 
 func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
-	if maybeAncestor == block.Hash() || maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) || bytes.Equal(maybeAncestor.Bytes(), obscurocommon.GenesisBlock.Hash().Bytes()) {
 		return true
 	}
 

@@ -319,6 +319,9 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionR
 	}
 	e.mempool.RemoveMempoolTxs(historicTxs(hr, e.storage))
 	r := e.produceRollup(&block, blockState)
+
+	e.checkRollup(r)
+
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	e.storage.StoreRollup(r)
 
@@ -368,8 +371,18 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
 	}
 
+	headState := e.storage.FetchHeadState()
+	currentHeadRollup, found := e.storage.FetchRollup(headState.HeadRollup)
+	if !found {
+		panic("Should not happen")
+	}
+	// Check if round.winner is being called on an old rollup
+	if !bytes.Equal(currentHeadRollup.Hash().Bytes(), parent.Bytes()) {
+		return nodecommon.ExtRollup{}, false, nil
+	}
+
 	nodecommon.LogWithID(e.nodeShortID, "Round winner height: %d", head.Header.Number)
-	rollupsReceivedFromPeers := e.storage.FetchRollups(head.Header.Number.Uint64() + 1)
+	rollupsReceivedFromPeers := e.storage.FetchRollups(head.NumberU64() + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
 	for _, rol := range rollupsReceivedFromPeers {
@@ -378,20 +391,19 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 			nodecommon.LogWithID(e.nodeShortID, "Received rollup from peer but don't have parent rollup - discarding...")
 			continue
 		}
-		if p.Hash() == head.Hash() {
+		if bytes.Equal(p.Hash().Bytes(), head.Hash().Bytes()) {
 			usefulRollups = append(usefulRollups, rol)
 		}
 	}
 
-	parentState := e.storage.CreateStateDB(head.Hash())
 	// determine the winner of the round
-	winnerRollup, _ := e.findRoundWinner(usefulRollups, head, parentState, e.blockResolver, e.storage)
+	winnerRollup := e.findRoundWinner(usefulRollups, head)
 	if e.config.SpeculativeExecution {
 		go e.notifySpeculative(winnerRollup)
 	}
 
 	// we are the winner
-	if winnerRollup.Header.Agg == e.config.HostID {
+	if bytes.Equal(winnerRollup.Header.Agg.Bytes(), e.config.HostID.Bytes()) {
 		v := e.blockResolver.Proof(winnerRollup)
 		w := e.storage.ParentRollup(winnerRollup)
 		nodecommon.LogWithID(e.nodeShortID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
@@ -504,7 +516,7 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	// if !speculativeExecutionSucceeded {
 	// In case the speculative execution thread has not succeeded in producing a valid rollup
 	// we have to create a new one from the mempool transactions
-	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.Header.Number.Uint64()+1, e.config.HostID)
+	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.NumberU64()+1, e.config.HostID)
 	newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
 	newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
 	txReceipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, 0)
@@ -520,26 +532,28 @@ func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) 
 	}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
-	// process deposits from the proof of the parent to the current block (which is the proof of the new rollup)
-	proof := e.blockResolver.Proof(headRollup)
-	depositTxs := extractDeposits(e.bridge, proof, b, e.blockResolver, e.erc20ContractLib, newRollupState, e.config.ObscuroChainID)
-	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, len(newRollupTxs))
+	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
+	fromBlock := e.blockResolver.Proof(headRollup)
+	depositTxs := extractDeposits(fromBlock, b, e.bridge, e.blockResolver, e.erc20ContractLib, newRollupState, e.config.ObscuroChainID)
+	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, len(successfulTransactions))
 	depositReceiptsMap := toReceiptMap(depositReceipts)
+	// deposits should not fail
 	for _, tx := range depositTxs {
-		if depositReceiptsMap[tx.Hash()] == nil {
+		if depositReceiptsMap[tx.Hash()] == nil || depositReceiptsMap[tx.Hash()].Status == types.ReceiptStatusFailed {
 			panic("Should not happen")
 		}
 	}
 
-	// Create a new rollup based on the proof of inclusion of the previous, including all new transactions
+	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
 	rootHash, err := newRollupState.Commit(true)
 	if err != nil {
+		panic(err)
 		return nil
 	}
 	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, obscurocommon.GenerateNonce(), rootHash)
 
 	// Postprocessing - withdrawals
-	r.Header.Withdrawals = e.rollupPostProcessingWithdrawals(&r, newRollupState, txReceipts)
+	r.Header.Withdrawals = e.rollupPostProcessingWithdrawals(&r, newRollupState, txReceiptsMap)
 	receipts := getReceipts(txReceipts, depositReceipts)
 
 	if len(receipts) == 0 {
@@ -566,7 +580,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 	for {
 		txs := rollup.Transactions
 		for _, tx := range txs {
-			if tx.Hash() == txHash {
+			if bytes.Equal(tx.Hash().Bytes(), txHash.Bytes()) {
 				return tx
 			}
 		}
@@ -720,7 +734,7 @@ func (e *enclaveImpl) IsInitialised() bool {
 }
 
 func (e *enclaveImpl) isGenesisBlock(block *types.Block) bool {
-	return e.l1Blockchain != nil && block.Hash() == e.l1Blockchain.Genesis().Hash()
+	return e.l1Blockchain != nil && bytes.Equal(block.Hash().Bytes(), e.l1Blockchain.Genesis().Hash().Bytes())
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
@@ -867,6 +881,26 @@ func (e *enclaveImpl) encryptTxReceiptWithViewingKey(address common.Address, txR
 		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	return e.rpcEncryptionManager.EncryptWithViewingKey(address, txReceiptBytes)
+}
+
+func (e *enclaveImpl) checkRollup(r *obscurocore.Rollup) {
+	stateDB := e.storage.CreateStateDB(r.Header.ParentHash)
+	// calculate the state to compare with what is in the Rollup
+	depositTxs := extractDeposits(
+		e.blockResolver.Proof(e.storage.ParentRollup(r)),
+		e.blockResolver.Proof(r),
+		e.bridge, e.blockResolver, e.erc20ContractLib, stateDB, e.config.ObscuroChainID,
+	)
+
+	rootHash, txReceipts, depositReceipts := e.process(r, stateDB, depositTxs)
+	// dump := stateDB.Dump(&state.DumpConfig{})
+	dump := ""
+
+	log.Info("State rollup: r_%d. State: %s", obscurocommon.ShortHash(r.Hash()), dump)
+	isValid := e.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
+	if !isValid {
+		log.Error("Should not happen")
+	}
 }
 
 // internal structure to pass information.

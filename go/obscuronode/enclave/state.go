@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"sort"
@@ -125,7 +126,7 @@ func handleGenesisRollup(b *types.Block, rollups []*core.Rollup, genesisRollup *
 
 	// Re-processing the block that contains the rollup. This can happen as blocks can be fed to the enclave multiple times.
 	// In this case we don't update the state and move on.
-	if genesisRollup != nil && len(rollups) == 1 && rollups[0].Header.Hash() == genesisRollup.Hash() {
+	if genesisRollup != nil && len(rollups) == 1 && bytes.Equal(rollups[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
 		return nil, true
 	}
 	return nil, false
@@ -152,7 +153,7 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 	// todo - add statistics to determine why there are conflicts.
 	for i, r := range rollups {
 		switch {
-		case r.Header.ParentHash != parent.Hash(): // ignore rollups from L2 forks
+		case !bytes.Equal(r.Header.ParentHash.Bytes(), parent.Hash().Bytes()): // ignore rollups from L2 forks
 		case r.Header.Number.Int64() <= parent.Header.Number.Int64(): // ignore rollups that are older than the parent
 		case win == -1:
 			win = i
@@ -169,25 +170,20 @@ func FindWinner(parent *core.Rollup, rollups []*core.Rollup, blockResolver db.Bl
 	return rollups[win], true
 }
 
-func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup, stateDB *state.StateDB, blockResolver db.BlockResolver, rollupResolver db.RollupResolver) (*core.Rollup, *state.StateDB) {
-	headRollup, found := FindWinner(parent, receivedRollups, blockResolver)
+func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *core.Rollup) *core.Rollup {
+	headRollup, found := FindWinner(parent, receivedRollups, e.blockResolver)
 	if !found {
 		log.Panic("could not find winner. This should not happen for gossip rounds")
 	}
-	// calculate the state to compare with what is in the Rollup
-	p := blockResolver.Proof(rollupResolver.ParentRollup(headRollup))
-	depositTxs := extractDeposits(e.bridge, p, blockResolver.Proof(headRollup), blockResolver, e.erc20ContractLib, stateDB, e.config.ObscuroChainID)
-	log.Info(fmt.Sprintf(">   Agg%d: Deposits:%d", obscurocommon.ShortAddress(e.config.HostID), len(depositTxs)))
-
-	rootHash, txReceipts, depositReceipts := e.process(headRollup, stateDB, depositTxs)
-
-	e.validateRollup(headRollup, rootHash, txReceipts, depositReceipts, stateDB)
-
-	return headRollup, stateDB
+	e.checkRollup(headRollup)
+	return headRollup
 }
 
 func (e *enclaveImpl) process(rollup *core.Rollup, stateDB *state.StateDB, depositTxs []*nodecommon.L2Tx) (common.Hash, []*types.Receipt, []*types.Receipt) {
 	txReceipts := evm.ExecuteTransactions(rollup.Transactions, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, 0)
+	if len(rollup.Transactions) != len(txReceipts) {
+		panic("should not happen")
+	}
 	depositReceipts := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, len(rollup.Transactions))
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
@@ -196,34 +192,39 @@ func (e *enclaveImpl) process(rollup *core.Rollup, stateDB *state.StateDB, depos
 	return rootHash, txReceipts, depositReceipts
 }
 
-func (e *enclaveImpl) validateRollup(rollup *core.Rollup, rootHash common.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) {
+func (e *enclaveImpl) validateRollup(rollup *core.Rollup, rootHash common.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
 	h := rollup.Header
-	if rootHash != h.Root {
+	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		// dump := stateDB.Dump(&state.DumpConfig{})
 		dump := ""
-		log.Panic("Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s",
-			rootHash, h.Root, h.Number, printTxs(rollup.Transactions), dump)
+		log.Info("Calculated a different state. This should not happen as there are no malicious actors yet. Rollup: r_%d, \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
+			obscurocommon.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, printTxs(rollup.Transactions), dump, depositReceipts)
+		return false
 	}
 
 	//  check that the withdrawals in the header match the withdrawals as calculated
-	withdrawals := e.rollupPostProcessingWithdrawals(rollup, stateDB, txReceipts)
+	withdrawals := e.rollupPostProcessingWithdrawals(rollup, stateDB, toReceiptMap(txReceipts))
 	for i, w := range withdrawals {
 		hw := h.Withdrawals[i]
-		if hw.Amount != w.Amount || hw.Recipient != w.Recipient {
+		if hw.Amount != w.Amount || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
 			log.Panic("Withdrawals don't match")
 		}
 	}
 
 	rec := getReceipts(txReceipts, depositReceipts)
 	rbloom := types.CreateBloom(rec)
-	if rbloom != h.Bloom {
-		log.Panic("invalid bloom (remote: %x  local: %x)", h.Bloom, rbloom)
+	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
+		log.Info("invalid bloom (remote: %x  local: %x)", h.Bloom, rbloom)
+		return false
 	}
 
 	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
-	if receiptSha != h.ReceiptHash {
-		log.Panic("invalid receipt root hash (remote: %x local: %x)", h.ReceiptHash, receiptSha)
+	if !bytes.Equal(receiptSha.Bytes(), h.ReceiptHash.Bytes()) {
+		log.Info("invalid receipt root hash (remote: %x local: %x)", h.ReceiptHash, receiptSha)
+		return false
 	}
+
+	return true
 }
 
 func toReceiptMap(txReceipts []*types.Receipt) map[common.Hash]*types.Receipt {
@@ -241,12 +242,13 @@ func getReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 	return receipts
 }
 
+// todo - move to the bridge
 // returns a list of L2 deposit transactions generated from the L1 deposit transactions
 // starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
 func extractDeposits(
-	bridge *evm.Bridge,
 	fromBlock *types.Block,
 	toBlock *types.Block,
+	bridge *evm.Bridge,
 	blockResolver db.BlockResolver,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	rollupState *state.StateDB,
@@ -265,7 +267,7 @@ func extractDeposits(
 	allDeposits := make([]*nodecommon.L2Tx, 0)
 	b := toBlock
 	for {
-		if b.Hash() == from {
+		if bytes.Equal(b.Hash().Bytes(), from.Bytes()) {
 			break
 		}
 		for _, tx := range b.Transactions() {
@@ -275,6 +277,7 @@ func extractDeposits(
 			}
 
 			if depositTx, ok := t.(*obscurocommon.L1DepositTx); ok {
+				// todo - the adjust has to be per token
 				depL2Tx := newDepositTx(bridge, depositTx.TokenContract, *depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)), chainID)
 				allDeposits = append(allDeposits, depL2Tx)
 			}
@@ -289,6 +292,7 @@ func extractDeposits(
 		b = p
 	}
 
+	log.Info("Extracted deposits %d ->%d: %v.", fromBlock.NumberU64(), toBlock.NumberU64(), allDeposits)
 	return allDeposits
 }
 
@@ -306,12 +310,21 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 		// Preprocessing before passing to the vm
 		// todo transform into an eth block structure
 		parentRollup := rollupResolver.ParentRollup(newHeadRollup)
-		p := blockResolver.Proof(parentRollup)
-		depositTxs := extractDeposits(bridge, p, blockResolver.Proof(newHeadRollup), blockResolver, erc20ContractLib, stateDB, chainID)
+		depositTxs := extractDeposits(blockResolver.Proof(parentRollup), blockResolver.Proof(newHeadRollup), bridge, blockResolver, erc20ContractLib, stateDB, chainID)
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
 		receipts = evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID, 0)
+		rootHash := stateDB.IntermediateRoot(true)
+
+		// todo - this should be different
+		if !bytes.Equal(newHeadRollup.Header.Root.Bytes(), rootHash.Bytes()) {
+			// dump := stateDB.Dump(&state.DumpConfig{})
+			dump := ""
+			log.Error("Calculated a different state. This should not happen as there are no malicious actors yet. Rollup: r_%d, \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s",
+				obscurocommon.ShortHash(newHeadRollup.Hash()), rootHash, newHeadRollup.Header.Root, newHeadRollup.Header.Number, printTxs(newHeadRollup.Transactions), dump)
+		}
+
 		// todo - handle failure , which means a new winner must be selected
 	} else {
 		newHeadRollup = currentHead
@@ -326,8 +339,8 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receipts []*types.Receipt) []nodecommon.Withdrawal {
-	receiptsMap := toReceiptMap(receipts)
+// this belongs in the bridge
+func (e *enclaveImpl) rollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receiptsMap map[common.Hash]*types.Receipt) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for _, t := range newHeadRollup.Transactions {
@@ -400,9 +413,13 @@ func newDepositTx(bridge *evm.Bridge, contract *common.Address, address common.A
 	if token == nil {
 		panic("This should not happen as we don't generate deposits on unsupported tokens.")
 	}
+	if token.Name != evm.BTC {
+		panic("wtf")
+	}
 
 	// The nonce is adjusted with the number of deposits added to the rollup already.
-	nonce := rollupState.GetNonce(*token.L2Address) + adjustNonce
+	storedNonce := rollupState.GetNonce(token.Owner.Address())
+	nonce := storedNonce + adjustNonce
 
 	tx := types.NewTx(&types.LegacyTx{
 		Nonce:    nonce,
@@ -415,7 +432,7 @@ func newDepositTx(bridge *evm.Bridge, contract *common.Address, address common.A
 
 	newTx, err := types.SignTx(tx, signer, token.Owner.PrivateKey())
 	if err != nil {
-		log.Panic("could not encode L2 transaction data. Cause: %s", err)
+		log.Panic("could not sign synthetic deposit tx. Cause: %s", err)
 	}
 	return newTx
 }

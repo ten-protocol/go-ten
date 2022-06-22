@@ -40,6 +40,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			params.ViewingKeysEnabled,
+			params.Wallets,
 		)
 	}
 	// make sure the aggregators can talk to each other

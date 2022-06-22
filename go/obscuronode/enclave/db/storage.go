@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -125,7 +126,7 @@ func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, bool) {
 
 func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
 	s.assertSecretAvailable()
-	if maybeAncestor.Hash() == block.Hash() {
+	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
@@ -143,11 +144,11 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 
 func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
 	s.assertSecretAvailable()
-	if maybeAncestor == block.Hash() {
+	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
-	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+	if bytes.Equal(maybeAncestor.Bytes(), obscurocommon.GenesisBlock.Hash().Bytes()) {
 		return true
 	}
 
@@ -242,7 +243,7 @@ func (s *storageImpl) GenesisStateDB() *state.StateDB {
 
 func (s *storageImpl) FetchHeadState() *core.BlockState {
 	h := rawdb.ReadHeadHeaderHash(s.db)
-	if (h == common.Hash{}) {
+	if (bytes.Equal(h.Bytes(), common.Hash{}.Bytes())) {
 		log.Info("could not read head header hash from storage")
 		return nil
 	}

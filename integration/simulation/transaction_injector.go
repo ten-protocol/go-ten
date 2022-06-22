@@ -89,10 +89,8 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
-	// always deploy it from the first wallet
-	// since it has a hardcoded key
-	ti.deployObscuroERC20(ti.wallets.Tokens[evm.BTC].L1Owner)
-	ti.deployObscuroERC20(ti.wallets.Tokens[evm.ETH].L1Owner)
+	ti.deployObscuroERC20(ti.wallets.Tokens[evm.BTC].L2Owner)
+	ti.deployObscuroERC20(ti.wallets.Tokens[evm.ETH].L2Owner)
 
 	// enough time to process everywhere
 	time.Sleep(ti.avgBlockDuration * 6)
@@ -188,6 +186,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		if err != nil {
 			panic(err)
 		}
+		log.Info("*Transfer tx: %d. %d -> %d", obscurocommon.ShortHash(signedTx.Hash()), obscurocommon.ShortAddress(fromWallet.Address()), obscurocommon.ShortAddress(toWallet.Address()))
 
 		encryptedTx := core.EncryptTx(signedTx)
 		ti.stats.Transfer()
@@ -240,6 +239,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		if err != nil {
 			panic(err)
 		}
+		log.Info("*Withdraw tx: %d. %d ", obscurocommon.ShortHash(signedTx.Hash()), obscurocommon.ShortAddress(obsWallet.Address()))
 		encryptedTx := core.EncryptTx(signedTx)
 
 		err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -308,12 +308,16 @@ func (ti *TransactionInjector) rndL2NodeClient() obscuroclient.Client {
 
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client obscuroclient.Client) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
-	return ti.newTx(data, NextNonce(client, from))
+	t := ti.newTx(data, NextNonce(client, from))
+	log.Info("Transfer tx: %d. %d -> %d, amount %d", obscurocommon.ShortHash(types.NewTx(t).Hash()), obscurocommon.ShortAddress(from.Address()), obscurocommon.ShortAddress(dest), amount)
+	return t
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client obscuroclient.Client) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(evm.BridgeAddress, amount)
-	return ti.newTx(transferERC20data, NextNonce(client, from))
+	t := ti.newTx(transferERC20data, NextNonce(client, from))
+	log.Info("Withdrawal tx: %d. %d, amount %d", obscurocommon.ShortHash(types.NewTx(t).Hash()), obscurocommon.ShortAddress(from.Address()), amount)
+	return t
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {

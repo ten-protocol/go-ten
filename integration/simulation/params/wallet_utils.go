@@ -14,6 +14,8 @@ type SimToken struct {
 	Name              evm.ERC20
 	L1Owner           wallet.Wallet
 	L1ContractAddress *common.Address
+
+	L2Owner           wallet.Wallet
 	L2ContractAddress *common.Address
 }
 
@@ -50,11 +52,13 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	btc := SimToken{
 		Name:              evm.BTC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), evm.WBtcOwner),
 		L2ContractAddress: &evm.WBtcContract,
 	}
 	eth := SimToken{
 		Name:              evm.ETH,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), evm.WEthOnwer),
 		L2ContractAddress: &evm.WEthContract,
 	}
 
@@ -76,4 +80,11 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 		ethWallets = append(ethWallets, token.L1Owner)
 	}
 	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.MCOwnerWallet), ethWallets...)
+}
+
+func (w *SimWallets) AllEthAddresses() []*common.Address {
+	addresses := make([]*common.Address, 0)
+	addresses = append(addresses, w.Tokens[evm.BTC].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[evm.ETH].L1ContractAddress)
+	return addresses
 }

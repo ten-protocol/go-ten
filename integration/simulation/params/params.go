@@ -29,7 +29,7 @@ type SimParams struct {
 
 	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
-	// MgmtContractLib allows parsing ERC20Contract txs to and from the eth txs
+	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
 	// MgmtContractAddr defines the management contract address
