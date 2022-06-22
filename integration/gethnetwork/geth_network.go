@@ -43,7 +43,7 @@ const (
 	portFlag           = "--port"
 	httpEnableFlag     = "--http"
 	httpPortFlag       = "--http.port"
-	httpIPFlag         = "--http.addr"
+	httpAddrFlag       = "--http.addr"
 	httpEnableApis     = "--http.api"
 	allowedAPIs        = "personal,eth,net,web3,debug"
 	allowCORSDomain    = "--http.corsdomain"
@@ -52,6 +52,7 @@ const (
 	unlockInsecureFlag = "--allow-insecure-unlock"
 	websocketFlag      = "--ws" // Enables websocket connections to the node.
 	wsPortFlag         = "--ws.port"
+	wsAddrFlag         = "--ws.addr"
 	gasLimitFlag       = "--miner.gaslimit=2000000000" // Ensures the miners don't gradually reduce the block gas limit.
 
 	// syncModeFlag defines the node block sync approach
@@ -344,7 +345,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 		strconv.Itoa(port), unlockInsecureFlag, unlockFlag, network.addresses[idx], passwordFlag,
 		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
 		httpEnableFlag, httpPortFlag, strconv.Itoa(httpPort), httpEnableApis, allowedAPIs, allowCORSDomain, "*",
-		httpIPFlag, "0.0.0.0", gasLimitFlag,
+		httpAddrFlag, "*", wsAddrFlag, "*", gasLimitFlag,
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 
