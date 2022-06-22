@@ -314,7 +314,7 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 
 		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
 		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		receipts = evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID, 0)
+		receipts := evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID, 0)
 		rootHash := stateDB.IntermediateRoot(true)
 
 		// todo - this should be different
