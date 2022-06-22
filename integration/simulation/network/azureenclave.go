@@ -57,12 +57,6 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 	}
 	time.Sleep(10 * time.Second)
 
-	nodeP2pAddrs := make([]string, params.NumberOfNodes)
-	for i := 0; i < params.NumberOfNodes; i++ {
-		// We assign a P2P address to each node on the network according to the convention.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
-	}
-
 	// Start the rest of the enclaves
 	startRemoteEnclaveServers(len(n.azureEnclaveIps), params, stats)
 
