@@ -49,12 +49,12 @@ func (m *mockContractLib) CreateInitializeSecret(tx *obscurocommon.L1InitializeS
 	return encodeTx(tx, nonce, initializeSecretTxAddr)
 }
 
-func (m *mockContractLib) GetHostAddresses() ethereum.CallMsg {
-	return ethereum.CallMsg{} // todo - joel - better mock if needed
+func (m *mockContractLib) GetHostAddresses() (ethereum.CallMsg, error) {
+	panic("not implemented")
 }
 
-func (m *mockContractLib) DecodeCallResponse([]byte) []interface{} {
-	return []interface{}{} // todo - joel - better mock if needed
+func (m *mockContractLib) DecodeCallResponse([]byte) ([]interface{}, error) {
+	panic("not implemented")
 }
 
 func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {

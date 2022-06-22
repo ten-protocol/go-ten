@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"strings"
@@ -38,11 +39,11 @@ type MgmtContractLib interface {
 	CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData
 	CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64) types.TxData
 	CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData
-	GetHostAddresses() ethereum.CallMsg
+	GetHostAddresses() (ethereum.CallMsg, error)
 
 	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
 	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
-	DecodeCallResponse(callResponse []byte) []interface{}
+	DecodeCallResponse(callResponse []byte) ([]interface{}, error)
 }
 
 type contractLibImpl struct {
@@ -189,20 +190,20 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *obscurocommon.L1InitializeS
 	}
 }
 
-func (c *contractLibImpl) GetHostAddresses() ethereum.CallMsg {
+func (c *contractLibImpl) GetHostAddresses() (ethereum.CallMsg, error) {
 	data, err := c.contractABI.Pack(GetHostAddressesMethod)
 	if err != nil {
-		panic(err) // todo - joel - do not panic here
+		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
-	return ethereum.CallMsg{To: c.addr, Data: data}
+	return ethereum.CallMsg{To: c.addr, Data: data}, nil
 }
 
-func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) []interface{} {
+func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([]interface{}, error) {
 	unpackedResponse, err := c.contractABI.Unpack(GetHostAddressesMethod, callResponse)
 	if err != nil {
-		panic(err) // todo - joel - do not panic here
+		return nil, fmt.Errorf("could not unpack call response. Cause: %w", err)
 	}
-	return unpackedResponse
+	return unpackedResponse, nil
 }
 
 func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RequestSecretTx {

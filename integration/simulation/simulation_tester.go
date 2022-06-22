@@ -64,12 +64,18 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	simulation.Start()
 
 	println("jjjj making call")
-	msg := simulation.Params.MgmtContractLib.GetHostAddresses()
+	msg, err := simulation.Params.MgmtContractLib.GetHostAddresses()
+	if err != nil {
+		panic(err)
+	}
 	response, err := simulation.EthClients[0].EthClient().CallContract(context.Background(), msg, nil)
 	if err != nil {
 		panic(err)
 	}
-	decodedResponse := simulation.Params.MgmtContractLib.DecodeCallResponse(response)
+	decodedResponse, err := simulation.Params.MgmtContractLib.DecodeCallResponse(response)
+	if err != nil {
+		panic(err)
+	}
 	for _, entry := range decodedResponse {
 		println(fmt.Sprintf("jjj call result: %s", entry.([]string)))
 	}
