@@ -36,8 +36,8 @@ func (l *L1RespondSecretTx) Sign(privateKey *ecdsa.PrivateKey) *L1RespondSecretT
 	var data []byte
 	data = append(data, l.AttesterID.Bytes()...)
 	data = append(data, l.RequesterID.Bytes()...)
-	data = append(data, string(l.Secret)...)
 	data = append(data, l.HostAddress...)
+	data = append(data, string(l.Secret)...)
 
 	// form the data
 	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))

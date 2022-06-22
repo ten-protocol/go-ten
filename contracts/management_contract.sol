@@ -64,7 +64,7 @@ contract ManagementContract {
             // signature = f(PubKey, PrivateKey, message)
             // address = f(signature, message)
             // valid if attesterID = address
-            bytes32 calculatedHashSigned = ECDSA.toEthSignedMessageHash(abi.encodePacked(attesterID, requesterID, responseSecret, hostAddress));
+            bytes32 calculatedHashSigned = ECDSA.toEthSignedMessageHash(abi.encodePacked(attesterID, requesterID, hostAddress, responseSecret));
             address recoveredAddrSignedCalculated = ECDSA.recover(calculatedHashSigned, attesterSig);
 
             // todo remove this toAsciiString helper
