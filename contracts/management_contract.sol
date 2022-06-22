@@ -51,7 +51,7 @@ contract ManagementContract {
     // Attested node will pickup on Network Secret Request
     // and if valid will respond with the Network Secret
     // and mark the requesterID as attested
-    function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret, string hostAddress) public {
+    function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret, string memory hostAddress) public {
         // only attested aggregators can respond to Network Secret Requests
         bool isAggAttested = attested[attesterID];
         require(isAggAttested);
