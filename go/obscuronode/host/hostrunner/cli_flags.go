@@ -35,6 +35,9 @@ const (
 	p2pAddressName  = "p2pAddress"
 	p2pAddressUsage = "The P2P address for our node"
 
+	peerP2PAddressesName = "peerP2PAddresses"
+	peerP2PAddrsUsage    = "The P2P addresses of our peer nodes as a comma-separated list"
+
 	l1NodeHostName  = "l1NodeHost"
 	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
 

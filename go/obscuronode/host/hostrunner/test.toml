@@ -8,6 +8,7 @@ clientRPCTimeoutSecs = 10
 enclaveRPCAddress = "127.0.0.1:11000"
 enclaveRPCTimeoutSecs = 10
 p2pAddress = "127.0.0.1:10000"
+peerP2PAddresses = []
 l1NodeHost = "127.0.0.1"
 l1NodePort = 8546
 l1ConnectionTimeoutSecs = 15
