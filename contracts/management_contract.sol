@@ -54,6 +54,8 @@ contract ManagementContract {
     // and if valid will respond with the Network Secret
     // marking the requesterID as attested
     function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret) public {
+        require(1==2, "jjj should fail");
+
         // only attested aggregators can respond to Network Secret Requests
         bool isAggAttested = attested[attesterID];
         require(isAggAttested);
