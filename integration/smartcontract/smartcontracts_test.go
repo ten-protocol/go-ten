@@ -23,6 +23,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 )
 
+// todo - joel - extend tests as appropriate
+
 // netInfo is a bag holder struct for output data from the execution/run of a network
 type netInfo struct {
 	ethClients  []ethclient.EthClient

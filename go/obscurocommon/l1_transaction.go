@@ -28,6 +28,7 @@ type L1RespondSecretTx struct {
 	RequesterID common.Address
 	AttesterID  common.Address
 	AttesterSig []byte
+	HostAddress string
 }
 
 // Sign signs the payload with a given private key
@@ -36,6 +37,7 @@ func (l *L1RespondSecretTx) Sign(privateKey *ecdsa.PrivateKey) *L1RespondSecretT
 	data = append(data, l.AttesterID.Bytes()...)
 	data = append(data, l.RequesterID.Bytes()...)
 	data = append(data, string(l.Secret)...)
+	data = append(data, l.HostAddress...)
 
 	// form the data
 	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))

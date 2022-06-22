@@ -152,6 +152,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretT
 		tx.RequesterID,
 		tx.AttesterSig,
 		tx.Secret,
+		tx.HostAddress,
 	)
 	if err != nil {
 		panic(err)
@@ -207,11 +208,11 @@ func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	if err != nil {
 		log.Panic("could not unpack transaction. Cause: %s", err)
 	}
+
 	requesterData, found := contractCallData["requesterID"]
 	if !found {
 		log.Panic("call data not found for requesterID")
 	}
-
 	requesterAddr, ok := requesterData.(common.Address)
 	if !ok {
 		log.Panic("could not decode requester data")
@@ -221,7 +222,6 @@ func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	if !found {
 		log.Panic("call data not found for attesterID")
 	}
-
 	attesterAddr, ok := attesterData.(common.Address)
 	if !ok {
 		log.Panic("could not decode attester data")
@@ -229,17 +229,27 @@ func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 
 	responseSecretData, found := contractCallData["responseSecret"]
 	if !found {
-		log.Panic("call data not found for inputSecret")
+		log.Panic("call data not found for responseSecret")
 	}
 	responseSecretBytes, ok := responseSecretData.([]uint8)
 	if !ok {
-		log.Panic("could not decode requester responseSecret data")
+		log.Panic("could not decode responseSecret data")
+	}
+
+	hostAddressData, found := contractCallData["hostAddress"]
+	if !found {
+		log.Panic("call data not found for hostAddress")
+	}
+	hostAddressString, ok := hostAddressData.(string)
+	if !ok {
+		log.Panic("could not decode hostAddress data")
 	}
 
 	return &obscurocommon.L1RespondSecretTx{
 		AttesterID:  attesterAddr,
 		RequesterID: requesterAddr,
 		Secret:      responseSecretBytes[:],
+		HostAddress: hostAddressString,
 	}
 }
 

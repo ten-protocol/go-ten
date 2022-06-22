@@ -38,7 +38,7 @@ type Message struct {
 func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 	// We filter out our P2P address if it's contained in the list of all P2P addresses.
 	var peerAddresses []string
-	for _, address := range config.AllP2PAddresses {
+	for _, address := range config.AllP2PAddresses { // todo - joel - don't read this from config
 		if address != config.P2PAddress {
 			peerAddresses = append(peerAddresses, address)
 		}

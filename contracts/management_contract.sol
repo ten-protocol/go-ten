@@ -4,10 +4,11 @@ import "libs/openzeppelin/cryptography/ECDSA.sol";
 pragma solidity >=0.7.0 <0.9.0;
 
 contract ManagementContract {
-    mapping(uint256 => Rollup[]) private rollups;
-    mapping(address => string) private attestationRequests;
-    mapping(address => bool) private attested;
-    string[] private hostAddresses; // The addresses of all the Obscuro hosts on the network.
+    // TODO these should all be private, but are public for testing in integration/smartcontract
+    mapping(uint256 => Rollup[]) public rollups;
+    mapping(address => string) public attestationRequests;
+    mapping(address => bool) public attested;
+    string[] public hostAddresses; // The addresses of all the Obscuro hosts on the network.
 
     // networkSecretNotInitialized marks if the network secret has been initialized
     bool private networkSecretInitialized ;
@@ -49,8 +50,8 @@ contract ManagementContract {
 
     // Attested node will pickup on Network Secret Request
     // and if valid will respond with the Network Secret
-    // marking the requesterID as attested
-    function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret) public {
+    // and mark the requesterID as attested
+    function RespondNetworkSecret(address attesterID, address requesterID, bytes memory attesterSig, bytes memory responseSecret, string hostAddress) public {
         // only attested aggregators can respond to Network Secret Requests
         bool isAggAttested = attested[attesterID];
         require(isAggAttested);
@@ -68,11 +69,8 @@ contract ManagementContract {
                 "\n Expected:                         ", toAsciiString(attesterID),
                 "\n / recoveredAddrSignedCalculated:  ", toAsciiString(recoveredAddrSignedCalculated)));
 
-        // store the requesterID aggregator as an attested aggregator
+        // mark the requesterID aggregator as an attested aggregator
         attested[requesterID] = true;
-    }
-
-    function AddHostAddress(string memory hostAddress) public {
         hostAddresses.push(hostAddress);
     }
 
