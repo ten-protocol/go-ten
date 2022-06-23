@@ -321,9 +321,17 @@ func connectToEdgelessDB(edbHost string, edbPEM string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to append edb cert to mysql CA cert pool")
 	}
 
-	cert, err := tls.LoadX509KeyPair(userCertFilepath, userKeyFilepath)
+	userCert, err := readAndUnseal(userCertFilepath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate from block - %w", err)
+		return nil, err
+	}
+	userKey, err := readAndUnseal(userKeyFilepath)
+	if err != nil {
+		return nil, err
+	}
+	cert, err := tls.X509KeyPair(userCert, userKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare keypair from cert and key - %w", err)
 	}
 	err = mysql.RegisterTLSConfig("custom", &tls.Config{
 		RootCAs:      caCertPool,
@@ -439,17 +447,19 @@ func sealAndPersist(contents string, filepath string) error {
 	}
 	defer f.Close()
 
-	// START COMMENT-OUT IF DEBUGGING - while testing it can be useful to just f.WriteString(contents) below without sealing
-	//    so that you can connect to edb using the persisted certs with mysql-client from the container.
-	//    Note you also need to comment out the block in `readAndUnseal`
+	// IF DEBUGGING: uncomment this to have unsealed versions of files to connect to edb with mysql-client from container
+	//fUnseal, _ := os.Create(filepath + ".unsealed")
+	//_, _ = fUnseal.WriteString(contents)
+	//if err != nil {
+	//	return err
+	//}
+	//_ = fUnseal.Close()
 
 	// todo: do we prefer to seal with product key for upgradability or unique key to require fresh db with every code change
 	enc, err := ecrypto.SealWithProductKey([]byte(contents), nil)
 	if err != nil {
 		return fmt.Errorf("failed to seal contents bytes with enclave key to persist in %s - %w", filepath, err)
 	}
-	// END COMMENT-OUT IF DEBUGGING
-
 	_, err = f.Write(enc)
 	if err != nil {
 		return fmt.Errorf("failed to write manifest json file - %w", err)
@@ -463,13 +473,9 @@ func readAndUnseal(filepath string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read file %s - %w", filepath, err)
 	}
 
-	// START COMMENT-OUT IF DEBUGGING - just `return b, nil` if debugging without sealing files
-
 	data, err := ecrypto.Unseal(b, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unseal data from file %s - %w", filepath, err)
 	}
 	return data, nil
-
-	// END COMMENT-OUT IF DEBUGGING
 }
