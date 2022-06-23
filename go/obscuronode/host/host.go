@@ -338,11 +338,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			// todo: implement proper protocol so only one host responds to this secret requests initially
-			// 	for now we just have the genesis host respond until protocol implemented
-			if a.config.IsGenesis {
-				a.checkForSharedSecretRequests(block)
-			}
+			a.handleBlock(block)
 
 			// submit each block to the enclave for ingestion plus validation
 			result = a.EnclaveClient.SubmitBlock(*block.DecodeBlock())
@@ -361,6 +357,23 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
 		obscurocommon.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+	}
+}
+
+// Looks at each transaction in the block, and kicks off special handling based on the transaction if needed.
+func (a *Node) handleBlock(block obscurocommon.EncodedBlock) {
+	b := block.DecodeBlock()
+	for _, tx := range b.Transactions() {
+		t := a.mgmtContractLib.DecodeTx(tx)
+		if t == nil {
+			continue
+		}
+
+		if scrtReqTx, ok := t.(*obscurocommon.L1RequestSecretTx); ok {
+			a.processSharedSecretRequest(scrtReqTx)
+		}
+
+		// todo - joel - do extra check for new aggregators here
 	}
 }
 
@@ -470,43 +483,40 @@ func (a *Node) handleStoreSecretTx(t *obscurocommon.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
-	b := block.DecodeBlock()
-	for _, tx := range b.Transactions() {
-		t := a.mgmtContractLib.DecodeTx(tx)
-		if t == nil {
-			continue
-		}
-		if scrtReqTx, ok := t.(*obscurocommon.L1RequestSecretTx); ok {
-			att, err := nodecommon.DecodeAttestation(scrtReqTx.Attestation)
-			if err != nil {
-				nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
-				continue
-			}
-
-			jsonAttestation, err := json.Marshal(att)
-			if err == nil {
-				nodecommon.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
-			} else {
-				nodecommon.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
-			}
-
-			secret, err := a.EnclaveClient.ShareSecret(att)
-			if err != nil {
-				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
-				continue
-			}
-
-			l1tx := &obscurocommon.L1RespondSecretTx{
-				Secret:      secret,
-				RequesterID: att.Owner,
-				AttesterID:  a.ID,
-				HostAddress: att.HostAddress,
-			}
-			// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-			a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
-		}
+func (a *Node) processSharedSecretRequest(scrtReqTx *obscurocommon.L1RequestSecretTx) {
+	// todo: implement proper protocol so only one host responds to this secret requests initially
+	// 	for now we just have the genesis host respond until protocol implemented
+	if !a.config.IsGenesis {
+		return
 	}
+
+	att, err := nodecommon.DecodeAttestation(scrtReqTx.Attestation)
+	if err != nil {
+		nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
+		return
+	}
+
+	jsonAttestation, err := json.Marshal(att)
+	if err == nil {
+		nodecommon.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
+	} else {
+		nodecommon.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
+	}
+
+	secret, err := a.EnclaveClient.ShareSecret(att)
+	if err != nil {
+		nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
+		return
+	}
+
+	l1tx := &obscurocommon.L1RespondSecretTx{
+		Secret:      secret,
+		RequesterID: att.Owner,
+		AttesterID:  a.ID,
+		HostAddress: att.HostAddress,
+	}
+	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
+	a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
 }
 
 // monitors the L1 client for new blocks and injects them into the aggregator
