@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -568,6 +569,7 @@ func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) e
 	}
 
 	a.P2p.UpdatePeerList(filteredHostAddresses)
+	nodecommon.LogWithID(a.shortID, "Updated peer list to %s", strings.Join(filteredHostAddresses, ", "))
 	return nil
 }
 
