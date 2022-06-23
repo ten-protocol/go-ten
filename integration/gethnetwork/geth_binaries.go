@@ -43,7 +43,8 @@ func EnsureBinariesExist(version string) (string, error) {
 	cmd := exec.Command(shCmd, gethScript, fmt.Sprintf("%s=%s", versionFlag, version))
 	cmd.Stderr = os.Stderr
 
-	if _, err := cmd.Output(); err != nil {
+	if out, err := cmd.Output(); err != nil {
+		fmt.Printf("%s\n", out)
 		return "", err
 	}
 	return path.Join(basepath, fmt.Sprintf("%s-%s", gethBinaryPathRel, version)), nil

@@ -37,10 +37,10 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	n.obscuroClients = make([]obscuroclient.Client, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
-	a := common.HexToAddress("AA")
-	params.Wallets.Tokens[evm.BTC].L1ContractAddress = &a
-	b := common.HexToAddress("BB")
-	params.Wallets.Tokens[evm.ETH].L1ContractAddress = &b
+	dummyBTCAddress := common.HexToAddress("AA")
+	params.Wallets.Tokens[evm.BTC].L1ContractAddress = &dummyBTCAddress
+	dummyETHAddress := common.HexToAddress("BB")
+	params.Wallets.Tokens[evm.ETH].L1ContractAddress = &dummyETHAddress
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
