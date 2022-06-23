@@ -53,7 +53,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 
 	fmt.Printf("Please start the docker image on the azure server with with:\n")
 	for i := 0; i < len(n.azureEnclaveIps); i++ {
-		fmt.Printf("sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p %d:%d/tcp obscuro_enclave --hostID %d --address :11000 --managementContractAddress %s  --erc20ContractAddresses %s\n", enclavePort, enclavePort, i, params.MgmtContractAddr.Hex(), params.BtcErc20Address.Hex())
+		fmt.Printf("sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p %d:%d/tcp obscuro_enclave --hostID %d --address :11000 --managementContractAddress %s  --erc20ContractAddresses %s,%s\n", enclavePort, enclavePort, i, params.MgmtContractAddr.Hex(), params.BtcErc20Address.Hex(), params.EthErc20Address.Hex())
 	}
 	time.Sleep(10 * time.Second)
 
