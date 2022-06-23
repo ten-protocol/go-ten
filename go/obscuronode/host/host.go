@@ -338,7 +338,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			a.handleBlock(block)
+			a.processBlock(block)
 
 			// submit each block to the enclave for ingestion plus validation
 			result = a.EnclaveClient.SubmitBlock(*block.DecodeBlock())
@@ -360,8 +360,8 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	}
 }
 
-// Looks at each transaction in the block, and kicks off special handling based on the transaction if needed.
-func (a *Node) handleBlock(block obscurocommon.EncodedBlock) {
+// Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
+func (a *Node) processBlock(block obscurocommon.EncodedBlock) {
 	b := block.DecodeBlock()
 	for _, tx := range b.Transactions() {
 		t := a.mgmtContractLib.DecodeTx(tx)
