@@ -22,6 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
@@ -43,7 +48,7 @@ jobs:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${GITHUB_REF##*/}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh'
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh'
 
 
 
