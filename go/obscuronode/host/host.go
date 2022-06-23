@@ -295,11 +295,11 @@ func (a *Node) startProcessing() {
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := nodecommon.DecodeRollup(r)
-			//log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
-			//	a.shortID,
-			//	obscurocommon.ShortHash(rol.Hash()),
-			//	obscurocommon.ShortAddress(rol.Header.Agg),
-			//))
+			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
+				a.shortID,
+				obscurocommon.ShortHash(rol.Hash()),
+				obscurocommon.ShortAddress(rol.Header.Agg),
+			))
 			if err != nil {
 				nodecommon.LogWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}

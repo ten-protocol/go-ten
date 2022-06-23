@@ -10,8 +10,12 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
 
+// SimToken - mapping between the ERC20s on Ethereum and Obscuro. This holds both the contract addresses and the keys of the contract owners,
+// because it needs to sign transactions and deploy contracts.
+// Note: For now the l2 values are taken from the "bridge" inside the Obscuro core.
 type SimToken struct {
-	Name              evm.ERC20
+	Name evm.ERC20
+
 	L1Owner           wallet.Wallet
 	L1ContractAddress *common.Address
 
