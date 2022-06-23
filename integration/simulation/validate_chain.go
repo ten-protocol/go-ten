@@ -42,12 +42,12 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
 }
 
-// checkEthereumBlockchainValidity: sanity check on the mock implementation of the L1 on all nodes
-// - minimum height - the chain has a minimum number of blocks
-// - check height is similar across all Mock ethereum nodes
-// - check no duplicate txs
-// - check efficiency - no of created blocks/ height
-// - noReorgs
+// checkEthereumBlockchainValidity: sanity check of the state of all L1 nodes
+// - the chain has a minimum number of blocks
+// - the chain height is similar across all ethereum nodes
+// - there are no duplicate txs
+// - efficiency - number of created blocks/height
+// - no reorgs
 func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 	// Sanity check number for a minimum height
 	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
