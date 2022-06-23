@@ -543,27 +543,30 @@ func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) e
 		return err
 	}
 	hostAddresses := decodedResponse[0]
-	for _, entry := range decodedResponse {
-		a.config.AllP2PAddresses = entry
-	}
 
-	// We filter out any duplicate host addresses.
-	var noDupsHostAddresses []string
-	for _, newHostAddress := range hostAddresses {
-		found := false
-		for _, existingHostAddress := range noDupsHostAddresses {
-			if newHostAddress == existingHostAddress {
-				found = true
+	// We filter down the list of retrieved addresses.
+	var filteredHostAddresses []string //nolint:prealloc
+	for _, hostAddress := range hostAddresses {
+		// We exclude our own address.
+		if hostAddress == a.config.P2PAddress {
+			continue
+		}
+
+		// We exclude any duplicate host addresses.
+		isDup := false
+		for _, existingHostAddress := range filteredHostAddresses {
+			if hostAddress == existingHostAddress {
+				isDup = true
 			}
 		}
-		if !found {
-			noDupsHostAddresses = append(noDupsHostAddresses, newHostAddress)
+		if isDup {
+			continue
 		}
+
+		filteredHostAddresses = append(filteredHostAddresses, hostAddress)
 	}
 
-	// We update our list of peer addresses.
-	a.config.AllP2PAddresses = noDupsHostAddresses
-
+	a.P2p.UpdatePeerList(filteredHostAddresses)
 	return nil
 }
 
