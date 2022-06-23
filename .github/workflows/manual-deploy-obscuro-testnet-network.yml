@@ -31,17 +31,17 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-          az vm create -g Testnet  -n "ObscuroHostTestnet-${{ GITHUB.RUN_NUMBER }}" \
-          --admin-username obscurouser --admin-password "${{ secrets.VM_PWD }}" \
-          --size Standard_DS2_v2 --image ubuntults
+            az vm create -g Testnet  -n "ObscuroHostTestnet-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.VM_PWD }}" \
+            --size Standard_DS2_v2 --image ubuntults
 
       - name: 'Set up VM on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-          az vm run-command invoke -g Testnet -n ObscuroHostTestnet01 \
-          --command-id RunShellScript \
-          --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${GITHUB_REF##*/}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh'
+            az vm run-command invoke -g Testnet -n ObscuroHostTestnet01 \
+            --command-id RunShellScript \
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${GITHUB_REF##*/}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh'
 
 
 
