@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 	"math/big"
 	"sync"
 	"time"
@@ -235,7 +236,6 @@ func (e *enclaveImpl) start(block types.Block) {
 }
 
 func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
-	time.Sleep(2 * time.Second) // Allow time to avoid race condition todo: make this more robust
 	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []*nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
 	nodecommon.LogWithID(e.nodeShortID, "Fetching blockHash = %x", blkHash)
 	b, f := e.storage.FetchBlock(blkHash)
