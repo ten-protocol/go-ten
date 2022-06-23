@@ -419,7 +419,7 @@ func newDepositTx(bridge *evm.Bridge, contract *common.Address, address common.A
 	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
 	signer := types.NewLondonSigner(big.NewInt(chainID))
 
-	token := bridge.Token(contract)
+	token := bridge.GetMapping(contract)
 	if token == nil {
 		panic("This should not happen as we don't generate deposits on unsupported tokens.")
 	}

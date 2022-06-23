@@ -9,13 +9,20 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
 
-// these addresses are the result of the deploying a smart contract from the hardcoded owners
-// Todo - remove these in a next iteration
-// create the ethereum wallets to be used to deploy ERC20 contracts
-// and their counterparts in the Obscuro world for the Owner versions
-// this cannot be random for now, because there is hardcoded logic in the obscuro core
-// to generate synthetic "transfer" transactions on the Owner erc20 for each erc20 deposit on ethereum
-// and these transactions need to be signed
+// Todo - remove all hardcoded values in the next iteration.
+// The Contract addresses are the result of the deploying a smart contract from hardcoded owners.
+// The contracts and addresses cannot be random for now, because there is hardcoded logic in the core
+// to generate synthetic "transfer" transactions for each erc20 deposit on ethereum
+// and these transactions need to be signed. Which means he platform needs to "own" ERC20s.
+
+// ERC20 - the supported ERC20 tokens. A list of made-up tokens used for testing.
+// Todo - this will be removed together will all the keys and addresses.
+type ERC20 int
+
+const (
+	BTC ERC20 = iota
+	ETH
+)
 
 var WBtcOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")
 
@@ -30,17 +37,8 @@ var WEthContract = common.BytesToAddress(common.Hex2Bytes("9802F661d17c65527D7AB
 // BridgeAddress - address of the virtual bridge
 var BridgeAddress = common.BytesToAddress(common.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
 
-// ERC20 - the supported ERC20 tokens
-// a list of made-up tokens
-// todo - remove this
-type ERC20 int
-
-const (
-	BTC ERC20 = iota
-	ETH
-)
-
-type Token struct {
+// ERC20Mapping - maps an L1 Erc20 to an L2 Erc20 address
+type ERC20Mapping struct {
 	Name ERC20
 
 	// L1Owner   wallet.Wallet
@@ -50,23 +48,24 @@ type Token struct {
 	L2Address *common.Address
 }
 
+// Bridge encapsulates all logic around processing the interactions with an L1
 type Bridge struct {
-	SupportedTokens map[ERC20]*Token
+	SupportedTokens map[ERC20]*ERC20Mapping
 	// BridgeAddress The address the bridge on the L2
 	BridgeAddress common.Address
 }
 
 func NewBridge(obscuroChainID int64, btcAddress *common.Address, ethAddress *common.Address) *Bridge {
-	tokens := make(map[ERC20]*Token, 0)
+	tokens := make(map[ERC20]*ERC20Mapping, 0)
 
-	tokens[BTC] = &Token{
+	tokens[BTC] = &ERC20Mapping{
 		Name:      BTC,
 		L1Address: btcAddress,
 		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), WBtcOwner),
 		L2Address: &WBtcContract,
 	}
 
-	tokens[ETH] = &Token{
+	tokens[ETH] = &ERC20Mapping{
 		Name:      ETH,
 		L1Address: ethAddress,
 		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), WEthOnwer),
@@ -96,7 +95,8 @@ func (b *Bridge) L1Address(l2Address *common.Address) *common.Address {
 	return nil
 }
 
-func (b *Bridge) Token(l1ContractAddress *common.Address) *Token {
+// GetMapping - finds the maping based on the address that was called in an L1 transaction
+func (b *Bridge) GetMapping(l1ContractAddress *common.Address) *ERC20Mapping {
 	for _, t := range b.SupportedTokens {
 		if bytes.Equal(t.L1Address.Bytes(), l1ContractAddress.Bytes()) {
 			return t
@@ -104,3 +104,5 @@ func (b *Bridge) Token(l1ContractAddress *common.Address) *Token {
 	}
 	return nil
 }
+
+// Todo - move here the methods to extract deposits and post process withdrawal
