@@ -5,5 +5,13 @@
   "heapSize": 1024,
   "executableHeap": true,
   "productID": 1,
-  "securityVersion": 1
+  "securityVersion": 1,
+  "mounts": [
+    {
+      "source": "/home/obscuro/data",
+      "target": "/data",
+      "type": "hostfs",
+      "readOnly": false
+    }
+  ]
 }
