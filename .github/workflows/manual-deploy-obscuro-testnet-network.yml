@@ -34,7 +34,7 @@ jobs:
           inlineScript: |
             az vm create -g Testnet -n "ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}" \
+            --public-ip-address-dns-name "obscuronodetestnet-${{ GITHUB.RUN_NUMBER }}" \
             --size Standard_D2_v4 --image ubuntults --public-ip-sku Basic --authentication-type password
 
       - name: 'Set up VM on Azure'
