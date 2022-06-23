@@ -1,12 +1,10 @@
 package host
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -536,7 +534,7 @@ func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) e
 	if err != nil {
 		return err
 	}
-	response, err := a.ethClient.EthClient().CallContract(context.Background(), msg, nil)
+	response, err := a.ethClient.CallContract(msg)
 	if err != nil {
 		return err
 	}
@@ -565,9 +563,6 @@ func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) e
 
 	// We update our list of peer addresses.
 	a.config.AllP2PAddresses = noDupsHostAddresses
-
-	// todo - joel - delete this
-	println("hey jjj what's up?", strings.Join(a.config.AllP2PAddresses, ", "))
 
 	return nil
 }
