@@ -133,16 +133,17 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
 		enclaveConfig := config.EnclaveConfig{
-			HostID:             common.BigToAddress(big.NewInt(int64(i))),
-			HostAddress:        hostAddr,
-			Address:            enclaveAddr,
-			L1ChainID:          integration.EthereumChainID,
-			ObscuroChainID:     integration.ObscuroChainID,
-			ValidateL1Blocks:   false,
-			WillAttest:         false,
-			GenesisJSON:        nil,
-			UseInMemoryDB:      false,
-			ViewingKeysEnabled: params.ViewingKeysEnabled,
+			HostID:                 common.BigToAddress(big.NewInt(int64(i))),
+			HostAddress:            hostAddr,
+			Address:                enclaveAddr,
+			L1ChainID:              integration.EthereumChainID,
+			ObscuroChainID:         integration.ObscuroChainID,
+			ValidateL1Blocks:       false,
+			WillAttest:             false,
+			GenesisJSON:            nil,
+			UseInMemoryDB:          false,
+			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
+			ViewingKeysEnabled:     params.ViewingKeysEnabled,
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {
