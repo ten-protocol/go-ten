@@ -4,8 +4,8 @@ FROM golang:1.17-alpine
 #   /data                    contains working files for the enclave
 #   /home/obscuro/go-obscuro contains the src
 #
-# Note: on ego it maps /home/obscuro/data to /data inside the enclave,
-#   using /data here should allow us to preserve /data folder in paths inside enclave)
+# Note: ego uses a virtual file system mount to map data directory to /data inside the enclave,
+#   for this non-ego build I'm using /data as the data dir to preserve /data folder in paths inside enclave
 RUN mkdir /data
 RUN mkdir /home/obscuro
 RUN mkdir /home/obscuro/go-obscuro
