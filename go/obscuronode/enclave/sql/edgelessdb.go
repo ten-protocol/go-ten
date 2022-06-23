@@ -103,8 +103,7 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 		// Note: it usually takes around 10-15 seconds for edb to initialise and restart
 		log.Info("Waiting 30 seconds for EDB restart after initialization...")
 		time.Sleep(30 * time.Second)
-	}
-	if err != nil {
+	} else if err != nil {
 		// this doesn't happen if the manifest file just didn't exist, maybe there was an IO error
 		return nil, fmt.Errorf("failed to read manifest file - %w", err)
 	}
