@@ -557,6 +557,7 @@ func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) e
 		for _, existingHostAddress := range filteredHostAddresses {
 			if hostAddress == existingHostAddress {
 				isDup = true
+				break
 			}
 		}
 		if isDup {
