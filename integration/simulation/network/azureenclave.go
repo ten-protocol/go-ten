@@ -41,7 +41,7 @@ func NewNetworkWithAzureEnclaves(enclaveIps []string, wallets *params.SimWallets
 	}
 }
 
-func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
+func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
 	params.MgmtContractAddr, params.Erc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
@@ -68,10 +68,10 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	obscuroClients, nodeP2pAddrs := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 
-	return n.gethClients, n.obscuroClients, nodeP2pAddrs, nil
+	return n.gethClients, n.obscuroClients, nil
 }
 
 func (n *networkWithAzureEnclaves) TearDown() {

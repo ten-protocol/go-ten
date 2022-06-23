@@ -26,7 +26,7 @@ func NewNetworkInMemoryGeth(wallets *params.SimWallets) Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
+func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
 	// kickoff the network with the prefunded wallet addresses
 	params.MgmtContractAddr, params.Erc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
@@ -41,7 +41,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	// Start the obscuro nodes and return the handles
 	n.obscuroClients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
 
-	return n.gethClients, n.obscuroClients, nil, nil
+	return n.gethClients, n.obscuroClients, nil
 }
 
 func (n *networkInMemGeth) TearDown() {

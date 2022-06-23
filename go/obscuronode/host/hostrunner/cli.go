@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/naoina/toml"
@@ -27,7 +26,6 @@ type HostConfigToml struct {
 	EnclaveRPCAddress       string
 	EnclaveRPCTimeoutSecs   int
 	P2PAddress              string
-	PeerP2PAddresses        []string
 	L1NodeHost              string
 	L1NodePort              uint
 	L1ConnectionTimeoutSecs int
@@ -53,7 +51,6 @@ func ParseConfig() config.HostConfig {
 	enclaveRPCAddress := flag.String(enclaveRPCAddressName, defaultConfig.EnclaveRPCAddress, enclaveRPCAddressUsage)
 	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(defaultConfig.EnclaveRPCTimeout.Seconds()), enclaveRPCTimeoutSecsUsage)
 	p2pAddress := flag.String(p2pAddressName, defaultConfig.P2PAddress, p2pAddressUsage)
-	allP2PAddresses := flag.String(peerP2PAddressesName, "", peerP2PAddrsUsage)
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.L1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.L1NodeWebsocketPort), l1NodePortUsage)
 	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.L1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
@@ -68,12 +65,6 @@ func ParseConfig() config.HostConfig {
 		return fileBasedConfig(*configPath)
 	}
 
-	parsedP2PAddrs := strings.Split(*allP2PAddresses, ",")
-	if *allP2PAddresses == "" {
-		// We handle the special case of an empty list.
-		parsedP2PAddrs = []string{}
-	}
-
 	defaultConfig.ID = common.HexToAddress(*nodeID)
 	defaultConfig.IsGenesis = *isGenesis
 	defaultConfig.GossipRoundDuration = time.Duration(*gossipRoundNanos)
@@ -86,7 +77,6 @@ func ParseConfig() config.HostConfig {
 	defaultConfig.EnclaveRPCAddress = *enclaveRPCAddress
 	defaultConfig.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
 	defaultConfig.P2PAddress = *p2pAddress
-	defaultConfig.AllP2PAddresses = parsedP2PAddrs
 	defaultConfig.L1NodeHost = *l1NodeHost
 	defaultConfig.L1NodeWebsocketPort = uint(*l1NodePort)
 	defaultConfig.L1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
@@ -124,7 +114,6 @@ func fileBasedConfig(configPath string) config.HostConfig {
 		EnclaveRPCAddress:      tomlConfig.EnclaveRPCAddress,
 		EnclaveRPCTimeout:      time.Duration(tomlConfig.EnclaveRPCTimeoutSecs) * time.Second,
 		P2PAddress:             tomlConfig.P2PAddress,
-		AllP2PAddresses:        tomlConfig.PeerP2PAddresses,
 		L1NodeHost:             tomlConfig.L1NodeHost,
 		L1NodeWebsocketPort:    tomlConfig.L1NodePort,
 		L1ConnectionTimeout:    time.Duration(tomlConfig.L1ConnectionTimeoutSecs) * time.Second,
