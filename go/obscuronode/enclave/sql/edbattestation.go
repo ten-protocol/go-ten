@@ -7,8 +7,8 @@ package sql
 // ERA (Edgeless remote attestation) is a simple protocol for verifying edgeless tools. It's basically just a small json schema
 // that they use as a standard data blob to encrypt into their attestation reports, includes signerID, security version etc.
 
-// The only change from https://github.com/edgelesssys/era/blob/master/era/era.go is the use of enclave.VerifyRemoteReport
-// in place of eclient.VerifyRemoteReport
+// The only changes from https://github.com/edgelesssys/era/blob/master/era/era.go is the use of enclave.VerifyRemoteReport
+// in place of eclient.VerifyRemoteReport and a few tweaks to get our lint to pass.
 
 import (
 	"bytes"
@@ -20,13 +20,14 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+
 	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/tidwall/gjson"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 )
 
 type certQuoteResp struct {
@@ -56,7 +57,8 @@ func InsecureGetCertificate(host string) ([]*pem.Block, error) {
 type verifyFunc func([]byte) (attestation.Report, error)
 
 func getCertificate(host string, config []byte, verifyRemoteReport verifyFunc) ([]*pem.Block, tcbstatus.Status, error) {
-	cert, quote, err := httpGetCertQuote(&tls.Config{InsecureSkipVerify: true}, host, "quote")
+	// we skip verify because we have the security of the attestation
+	cert, quote, err := httpGetCertQuote(&tls.Config{InsecureSkipVerify: true}, host, "quote") //nolint:gosec
 	if err != nil {
 		return nil, tcbstatus.Unknown, err
 	}
@@ -70,7 +72,7 @@ func getCertificate(host string, config []byte, verifyRemoteReport verifyFunc) (
 
 	// If we get more than one certificate, append it to the slice
 	for len(rest) > 0 {
-		block, rest = pem.Decode([]byte(rest))
+		block, rest = pem.Decode(rest)
 		if block == nil {
 			return nil, tcbstatus.Unknown, errors.New("could not parse certificate chain")
 		}
@@ -86,7 +88,7 @@ func getCertificate(host string, config []byte, verifyRemoteReport verifyFunc) (
 	}
 
 	report, verifyErr := verifyRemoteReport(quote)
-	if verifyErr != nil && verifyErr != attestation.ErrTCBLevelInvalid {
+	if verifyErr != nil && !errors.Is(verifyErr, attestation.ErrTCBLevelInvalid) {
 		return nil, tcbstatus.Unknown, verifyErr
 	}
 
@@ -164,7 +166,7 @@ func verifyID(expected string, actual []byte, name string) error {
 func httpGetCertQuote(tlsConfig *tls.Config, host, path string) (string, []byte, error) {
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 	url := url.URL{Scheme: "https", Host: host, Path: path}
-	resp, err := client.Get(url.String())
+	resp, err := client.Get(url.String()) //nolint:noctx
 	if err != nil {
 		return "", nil, err
 	}
@@ -176,7 +178,7 @@ func httpGetCertQuote(tlsConfig *tls.Config, host, path string) (string, []byte,
 
 	/* Newer versions of Marblerun use a common JSON output format in which the quote
 	is embedded into "data" and the error messages are stored inside "message".
-	To keep compability with older versions, check if this block exists or
+	To keep compatibility with older versions, check if this block exists or
 	if we get the data back directly. */
 
 	if resp.StatusCode != http.StatusOK {

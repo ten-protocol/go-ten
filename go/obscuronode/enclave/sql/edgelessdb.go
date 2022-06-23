@@ -2,6 +2,7 @@ package sql
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -14,12 +15,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/edgelesssys/ego/ecrypto"
 	"io"
 	"math/big"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/edgelesssys/ego/ecrypto"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -64,7 +66,7 @@ const (
 	userCertFilepath       = dataDir + "user-cert.pem"
 	userKeyFilepath        = dataDir + "user-key.pem"
 	attestationCfgFilepath = dataDir + "edgelessdb-sgx.json"
-	edbHttpPort            = "8080"
+	edbHTTPPort            = "8080"
 )
 
 type manifest struct {
@@ -90,11 +92,7 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 
 	// now we know we are talking to a secure enclave, we can get the manifest and connect (or initialise if first time)
 	manifest, err := readManifestIfExists()
-	if err != nil {
-		// this doesn't happen if the manifest file just didn't exist, maybe there was an IO error
-		return nil, fmt.Errorf("failed to read manifest file - %w", err)
-	}
-	if manifest == nil {
+	if err != nil && os.IsNotExist(err) {
 		// this is the first time we have connected to this EDB, we will create certificates and a manifest to initialise it
 		log.Info("No manifest found, creating one and initializing edb")
 		manifest, err = createManifestAndInitEDB(edbCfg.Host, edbPEM)
@@ -105,6 +103,10 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 		// Note: it usually takes around 10-15 seconds for edb to initialise and restart
 		log.Info("Waiting 30 seconds for EDB restart after initialization...")
 		time.Sleep(30 * time.Second)
+	}
+	if err != nil {
+		// this doesn't happen if the manifest file just didn't exist, maybe there was an IO error
+		return nil, fmt.Errorf("failed to read manifest file - %w", err)
 	}
 
 	// we check that this edgeless DB was initialized with the manifest we expected (which is only known to this enclave)
@@ -128,7 +130,7 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 // perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
 func performRemoteAttestation(edbHost string) (string, error) {
 	// we need to make sure this dir exists before we start read/writing files in there
-	err := os.MkdirAll(dataDir, 0644)
+	err := os.MkdirAll(dataDir, 0o644)
 	if err != nil {
 		return "", err
 	}
@@ -137,12 +139,12 @@ func performRemoteAttestation(edbHost string) (string, error) {
 		return "", fmt.Errorf("failed to prepare latest edb attestation config file - %w", err)
 	}
 	log.Info("Verifying attestation from edgeless DB...")
-	edbHttpAddr := fmt.Sprintf("%s:%s", edbHost, edbHttpPort)
-	certs, tcbStatus, err := GetCertificate(edbHttpAddr, attestationCfgFilepath)
+	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
+	certs, tcbStatus, err := GetCertificate(edbHTTPAddr, attestationCfgFilepath)
 	if err != nil {
 		// todo should we check the error type with: err == attestation.ErrTCBLevelInvalid?
 		// for now it's maximum strictness (we can revisit this and permit some tcbStatuses if desired)
-		return "", fmt.Errorf("attestation failed, host=%s, tcbStatus=%s, err=%w", edbHttpAddr, tcbStatus, err)
+		return "", fmt.Errorf("attestation failed, host=%s, tcbStatus=%s, err=%w", edbHTTPAddr, tcbStatus, err)
 	}
 	if len(certs) == 0 {
 		return "", fmt.Errorf("no certificates found from edgeless db attestation process")
@@ -159,7 +161,7 @@ func prepareEDBAttestationConf(filepath string) error {
 	//
 	// Todo: revisit how we want to enforce this going forwards, but for now I'm just hardcoding the latest json blob:
 	b := []byte("{\n\t\"SecurityVersion\": 2,\n\t\"ProductID\": 16,\n\t\"SignerID\": \"67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe\"\n}")
-	return os.WriteFile(filepath, b, 0644)
+	return os.WriteFile(filepath, b, 0o444)
 }
 
 func createManifestAndInitEDB(edbHost string, edbPEM string) (*manifest, error) {
@@ -223,8 +225,8 @@ func initialiseEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest json - %w", err)
 	}
-	url := fmt.Sprintf("https://%s:%s/manifest", edbHost, edbHttpPort)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
+	url := fmt.Sprintf("https://%s:%s/manifest", edbHost, edbHTTPPort)
+	req, err := http.NewRequestWithContext(context.Background(), "POST", url, bytes.NewBuffer(b))
 	if err != nil {
 		return fmt.Errorf("faild to create manifest initialization req - %w", err)
 	}
@@ -236,7 +238,8 @@ func initialiseEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
+				RootCAs:    caCertPool,
+				MinVersion: tls.VersionTLS12,
 			},
 		},
 	}
@@ -266,8 +269,8 @@ func verifyEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	h := sha256.Sum256(b)
 	expectedHash := hex.EncodeToString(h[:])
 
-	url := fmt.Sprintf("https://%s:%s/signature", edbHost, edbHttpPort)
-	req, err := http.NewRequest("GET", url, nil)
+	url := fmt.Sprintf("https://%s:%s/signature", edbHost, edbHTTPPort)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("faild to create edb signature req - %w", err)
 	}
@@ -277,11 +280,17 @@ func verifyEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
+				RootCAs:    caCertPool,
+				MinVersion: tls.VersionTLS12,
 			},
 		},
 	}
 	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("/signature request failed - %w", err)
+	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		var msg []byte
 		_, err := resp.Body.Read(msg)
@@ -290,6 +299,7 @@ func verifyEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 		}
 		return fmt.Errorf("edb /signature req failed with status: %d %s", resp.StatusCode, msg)
 	}
+
 	var edbHash []byte
 	edbHash, err = io.ReadAll(resp.Body)
 	if err != nil {
@@ -316,9 +326,9 @@ func connectToEdgelessDB(edbHost string, edbPEM string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to parse certificate from block - %w", err)
 	}
 	err = mysql.RegisterTLSConfig("custom", &tls.Config{
-		InsecureSkipVerify: true,
-		RootCAs:            caCertPool,
-		Certificates:       []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare certs for mysql connection - %w", err)
@@ -344,7 +354,7 @@ func readManifestIfExists() (*manifest, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// we don't consider the file being missing as an error scenario, it's just not initialized
-			return nil, nil
+			return nil, err
 		}
 		// failed to open file
 		return nil, fmt.Errorf("failed to open manifest file - %w", err)
@@ -386,6 +396,9 @@ func prepareCertificates(caCert *x509.Certificate, caPEM string, caPrivKey *ecds
 		NotAfter:     time.Now().AddDate(10, 0, 0),
 	}
 	certPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return fmt.Errorf("failed to generate private key for user cert - %w", err)
+	}
 	userCertBytes, err := x509.CreateCertificate(rand.Reader, userCert, caCert, &certPrivKey.PublicKey, caPrivKey)
 	if err != nil {
 		return fmt.Errorf("failed to prepare user certificate - %w", err)
@@ -406,10 +419,16 @@ func prepareCertificates(caCert *x509.Certificate, caPEM string, caPrivKey *ecds
 
 	certKeyPEM := new(bytes.Buffer)
 	privKeyOut, err := x509.MarshalPKCS8PrivateKey(certPrivKey)
+	if err != nil {
+		return fmt.Errorf("failed to marshal cert priv key - %w", err)
+	}
 	err = pem.Encode(certKeyPEM, &pem.Block{
 		Type:  "PRIVATE KEY",
 		Bytes: privKeyOut,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to pem encode the user private key - %w", err)
+	}
 	return sealAndPersist(certKeyPEM.String(), userKeyFilepath)
 }
 
