@@ -7,12 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
