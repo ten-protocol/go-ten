@@ -1,10 +1,12 @@
 package host
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -373,7 +375,12 @@ func (a *Node) handleBlock(block obscurocommon.EncodedBlock) {
 			a.processSharedSecretRequest(scrtReqTx)
 		}
 
-		// todo - joel - do extra check for new aggregators here
+		if scrtRespTx, ok := t.(*obscurocommon.L1RespondSecretTx); ok {
+			err := a.processSharedSecretResponse(scrtRespTx)
+			if err != nil {
+				nodecommon.LogWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+			}
+		}
 	}
 }
 
@@ -517,6 +524,52 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *obscurocommon.L1RequestSecr
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 	a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+}
+
+// Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
+// may have joined the network.
+func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) error {
+	// We make a call to the L1 node to retrieve the new list of aggregators. An alternative would be to check that the
+	// transaction succeeded, and if so, extract the additional host address from the transaction arguments. But we
+	// believe this would be more brittle than just asking the L1 contract for its view of the current aggregators.
+	msg, err := a.mgmtContractLib.GetHostAddresses()
+	if err != nil {
+		return err
+	}
+	response, err := a.ethClient.EthClient().CallContract(context.Background(), msg, nil)
+	if err != nil {
+		return err
+	}
+	decodedResponse, err := a.mgmtContractLib.DecodeCallResponse(response)
+	if err != nil {
+		return err
+	}
+	hostAddresses := decodedResponse[0]
+	for _, entry := range decodedResponse {
+		a.config.AllP2PAddresses = entry
+	}
+
+	// We filter out any duplicate host addresses.
+	var noDupsHostAddresses []string
+	for _, newHostAddress := range hostAddresses {
+		found := false
+		for _, existingHostAddress := range noDupsHostAddresses {
+			if newHostAddress == existingHostAddress {
+				found = true
+			}
+		}
+		if !found {
+			noDupsHostAddresses = append(noDupsHostAddresses, newHostAddress)
+		}
+	}
+
+	// We update our list of peer addresses.
+	a.config.AllP2PAddresses = noDupsHostAddresses
+
+	// todo - joel - delete this
+	println("hey jjj what's up?", strings.Join(a.config.AllP2PAddresses, ", "))
+
+	return nil
 }
 
 // monitors the L1 client for new blocks and injects them into the aggregator
