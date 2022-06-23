@@ -42,6 +42,10 @@ func (netw *MockP2P) StopListening() error {
 	return nil
 }
 
+func (netw *MockP2P) UpdatePeerList([]string) {
+	// Do nothing.
+}
+
 // BroadcastRollup Broadcasts the rollup to all L2 peers
 func (netw *MockP2P) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {

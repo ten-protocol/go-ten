@@ -490,7 +490,7 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	_, l2Clients, _, err := obscuroNetwork.Create(&simParams, simStats)
+	_, l2Clients, err := obscuroNetwork.Create(&simParams, simStats)
 	if err != nil {
 		return obscuroNetwork.TearDown, nil, err
 	}

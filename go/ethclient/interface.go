@@ -3,6 +3,8 @@ package ethclient
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -24,6 +26,8 @@ type EthClient interface {
 	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool // returns if the node considers a block the ancestor
 	RPCBlockchainFeed() []*types.Block                                       // returns all blocks from genesis to head
 	BlockListener() chan *types.Header                                       // subscribes to new blocks and returns a listener with the blocks heads
+
+	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
 	Stop() // tries to cleanly stop the client and release any resources
 

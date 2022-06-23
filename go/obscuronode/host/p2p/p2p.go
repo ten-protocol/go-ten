@@ -34,26 +34,17 @@ type Message struct {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-// allAddresses is a list of all the transaction P2P addresses on the network, possibly including ourAddress.
 func NewSocketP2PLayer(config config.HostConfig) host.P2P {
-	// We filter out our P2P address if it's contained in the list of all P2P addresses.
-	var peerAddresses []string // TODO - Retrieve host P2P addresses dynamically from management contract.
-	for _, address := range config.AllP2PAddresses {
-		if address != config.P2PAddress {
-			peerAddresses = append(peerAddresses, address)
-		}
-	}
-
 	return &p2pImpl{
-		OurAddress:    config.P2PAddress,
-		PeerAddresses: peerAddresses,
+		ourAddress:    config.P2PAddress,
+		peerAddresses: []string{},
 		nodeID:        obscurocommon.ShortAddress(config.ID),
 	}
 }
 
 type p2pImpl struct {
-	OurAddress        string
-	PeerAddresses     []string
+	ourAddress        string
+	peerAddresses     []string
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 	nodeID            uint64
@@ -61,12 +52,12 @@ type p2pImpl struct {
 
 func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 	// We listen for P2P connections.
-	listener, err := net.Listen("tcp", p.OurAddress)
+	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
-		log.Panic("could not listen for P2P connections on %s. Cause: %s", p.OurAddress, err)
+		log.Panic("could not listen for P2P connections on %s. Cause: %s", p.ourAddress, err)
 	}
 
-	nodecommon.LogWithID(p.nodeID, "Start listening on port: %s", p.OurAddress)
+	nodecommon.LogWithID(p.nodeID, "Start listening on port: %s", p.ourAddress)
 	i := int32(0)
 	p.listenerInterrupt = &i
 	p.listener = listener
@@ -83,12 +74,16 @@ func (p *p2pImpl) StopListening() error {
 	return nil
 }
 
+func (p *p2pImpl) UpdatePeerList(newPeers []string) {
+	p.peerAddresses = newPeers
+}
+
 func (p *p2pImpl) BroadcastTx(tx nodecommon.EncryptedTx) {
-	p.broadcast(Tx, tx, append(p.PeerAddresses, p.OurAddress))
+	p.broadcast(Tx, tx, append(p.peerAddresses, p.ourAddress))
 }
 
 func (p *p2pImpl) BroadcastRollup(r obscurocommon.EncodedRollup) {
-	p.broadcast(Rollup, r, p.PeerAddresses)
+	p.broadcast(Rollup, r, p.peerAddresses)
 }
 
 // Listens for connections and handles them in a separate goroutine.
