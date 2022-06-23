@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/edgelesssys/ego/ecrypto"
 	"io"
 	"math/big"
 	"net/http"
@@ -31,20 +32,21 @@ import (
 
    The edgeless DB is unusable when it's first started, as an owner, we must initially:
      - do a remote attestation on the report provided by {edbAddress}/quote
-     - create a ca cert that will authenticate DB users going forwards
-     - prepare a manifest.json that contains that cert and some SQL to initialise the DB tables and users
+     - create a ca cert that will authenticate our DB users going forwards
+     - prepare a manifest.json that contains that CA cert and some SQL to initialise the DB tables and user
      - submit that manifest.json file to {edbAddress}/manifest, using the certificate provided from /quote to authenticate
-     - seal and persist the manifest.json and the certificate so we can reconnect if enclave is restarted
+     - seal and persist the manifest.json and the certs so we can reconnect if enclave is restarted
 
-   When connecting to an initialized edgeless DB we must:
+   When connecting to an already-initialized edgeless DB we must:
      - perform remote attestation on the edgeless db
      - unseal the manifest.json and get the hash of it, also unseal the certificate that edb was initialized with
 	 - verify the /signature request for edgeless DB matches the manifest.json hash
-     - connect to edb with the persisted, sealed cert - it's now safe to read and write to the DB
+     - connect to edb with the persisted cert - it's now safe to read and write to the DB
 
 	Some useful documentation for this:
 		Main edb docs: https://docs.edgeless.systems/edgelessdb/#/
 		EDB demo docs: https://github.com/edgelesssys/edgelessdb/tree/main/demo
+		// Note: due to an issue with the dependency, I've duplicated the relevant parts of the ERA tool into edbattestation.go
 		ERA - remote attestation tool: https://github.com/edgelesssys/era
 */
 
@@ -56,7 +58,6 @@ var manifestSQLStatements = []string{
 }
 
 const (
-	// todo: make all of these come from config and make the defaults sensible
 	dataDir                = "/data/"
 	manifestFilepath       = dataDir + "manifest.json"
 	caCertFilepath         = dataDir + "ca-cert.pem"
@@ -64,8 +65,6 @@ const (
 	userKeyFilepath        = dataDir + "user-key.pem"
 	attestationCfgFilepath = dataDir + "edgelessdb-sgx.json"
 	edbHttpPort            = "8080"
-	edbMySQLPort           = "3306"
-	edbAttestationConfUrl  = "https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json"
 )
 
 type manifest struct {
@@ -86,8 +85,8 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 	}
 	log.Info("retrieved edb PEM: %s", edbPEM)
 
-	// todo: we don't need to persist this, this is for debugging
-	_ = sealAndPersist(edbPEM, dataDir+"edb.pem")
+	// IF DEBUGGING: it can be useful to persist the edb.pem so you can connect to edb from mysql-client on the container
+	//_ = sealAndPersist(edbPEM, dataDir+"edb.pem")
 
 	// now we know we are talking to a secure enclave, we can get the manifest and connect (or initialise if first time)
 	manifest, err := readManifestIfExists()
@@ -102,19 +101,21 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Note: it usually takes around 10-15 seconds for edb to initialise and restart
 		log.Info("Waiting 30 seconds for EDB restart after initialization...")
 		time.Sleep(30 * time.Second)
 	}
 
-	// we check that this edgeless DB was initialized with the manifest we expect it to have been initialized with (which is only known to this enclave)
-	log.Info("Validating edb signature against expected manifest")
+	// we check that this edgeless DB was initialized with the manifest we expected (which is only known to this enclave)
+	log.Info("Validating edb signature against expected manifest...")
 	err = verifyEdgelessDB(edbCfg.Host, manifest, edbPEM)
 	if err != nil {
 		return nil, err
 	}
 
 	// connect to EDB (standard mysql-type connection, using certificate derived from the CA cert in the manifest)
-	log.Info("Setting up SQL connection to edb")
+	log.Info("Setting up SQL connection to edb...")
 	edbSQL, err := connectToEdgelessDB(edbCfg.Host, edbPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to EdgelessDB - %w", err)
@@ -124,56 +125,43 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 	return CreateSQLEthDatabase(edbSQL)
 }
 
+// perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
 func performRemoteAttestation(edbHost string) (string, error) {
 	// we need to make sure this dir exists before we start read/writing files in there
 	err := os.MkdirAll(dataDir, 0644)
 	if err != nil {
 		return "", err
 	}
-	// todo: we shouldn't download this probably - need to figure out what standards we want to enforce with this
-	err = downloadEDBAttestationConf(attestationCfgFilepath)
+	err = prepareEDBAttestationConf(attestationCfgFilepath)
 	if err != nil {
-		return "", fmt.Errorf("failed to download latest edb attestation config file - %w", err)
+		return "", fmt.Errorf("failed to prepare latest edb attestation config file - %w", err)
 	}
-	log.Info("Verifying attestation from edgeless DB")
+	log.Info("Verifying attestation from edgeless DB...")
 	edbHttpAddr := fmt.Sprintf("%s:%s", edbHost, edbHttpPort)
 	certs, tcbStatus, err := GetCertificate(edbHttpAddr, attestationCfgFilepath)
 	if err != nil {
 		// todo should we check the error type with: err == attestation.ErrTCBLevelInvalid?
-		// maximum strictness (we can revisit this and permit some tcbStatuses if desired)
+		// for now it's maximum strictness (we can revisit this and permit some tcbStatuses if desired)
 		return "", fmt.Errorf("attestation failed, host=%s, tcbStatus=%s, err=%w", edbHttpAddr, tcbStatus, err)
 	}
 	if len(certs) == 0 {
 		return "", fmt.Errorf("no certificates found from edgeless db attestation process")
 	}
-	log.Info("Verified edb attestation, found %d certs", len(certs))
+
+	log.Info("Successfully verified edb attestation and retrieved certificate.")
 	return string(pem.EncodeToMemory(certs[0])), nil
 }
 
-func downloadEDBAttestationConf(filepath string) error {
-	// for now I'm just hardcoding the verification json:
+func prepareEDBAttestationConf(filepath string) error {
+	// This json blob provides confidence in the version of edgeless DB we are talking to.
+	// The latest json for comparison is available here:
+	//     https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
+	//
+	// Todo: revisit how we want to enforce this going forwards, but for now I'm just hardcoding the latest json blob:
 	b := []byte("{\n\t\"SecurityVersion\": 2,\n\t\"ProductID\": 16,\n\t\"SignerID\": \"67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe\"\n}")
 	return os.WriteFile(filepath, b, 0644)
-	// todo: figure out how we want to handle this going forward, we can request it from an edgeless endpoint if we can trust that.
-	//resp, err := http.Get(edbAttestationConfUrl)
-	//if err != nil {
-	//	return err
-	//}
-	//defer resp.Body.Close()
-	//
-	//// Create the file
-	//out, err := os.Create(filepath)
-	//if err != nil {
-	//	return err
-	//}
-	//defer out.Close()
-	//
-	//// Write the body to file
-	//_, err = io.Copy(out, resp.Body)
-	//return err
 }
 
-// todo: carefully go through and make sure we're following best practices here, especially around sources of randomness, key generation and certificate metadata
 func createManifestAndInitEDB(edbHost string, edbPEM string) (*manifest, error) {
 	caCert := &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
@@ -183,7 +171,6 @@ func createManifestAndInitEDB(edbHost string, edbPEM string) (*manifest, error) 
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0),
 		DNSNames:              []string{"enclave"},
-		// todo: fill in more of these fields, duration and stuff, not sure how detailed it needs to be
 	}
 	caPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -206,18 +193,21 @@ func createManifestAndInitEDB(edbHost string, edbPEM string) (*manifest, error) 
 	manifest := &manifest{
 		SQL:  manifestSQLStatements,
 		Cert: caPEM,
-		// todo: remove this
-		Debug: true,
+		// IF DEBUGGING: this should be set to enable verbose logging
+		//     Note: it also requires EDG_EDB_DEBUG=1 on the process, see https://docs.edgeless.systems/edgelessdb/#/reference/configuration
+		// Debug: true,
 	}
 	err = initialiseEdgelessDB(edbHost, manifest, edbPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialise edgeless DB with created manifest - %w \nmanifest: %v", err, manifest)
 	}
+
 	// store certificates for DB connection
 	err = prepareCertificates(caCert, caPEM, caPrivKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare and persist certs for edb connection - %w", err)
 	}
+
 	// persist the manifest for any future restarts of the enclave
 	err = writeManifest(manifest)
 	if err != nil {
@@ -267,6 +257,7 @@ func initialiseEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	return nil
 }
 
+// verifyEdgelessDB requests the /signature from the edb, it should match the hash of the manifest we expected
 func verifyEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	b, err := json.Marshal(m)
 	if err != nil {
@@ -312,6 +303,7 @@ func verifyEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	return nil
 }
 
+// create Go standard database/sql connection to edb using a mysql driver
 func connectToEdgelessDB(edbHost string, edbPEM string) (*sql.DB, error) {
 	caCertPool := x509.NewCertPool()
 
@@ -379,6 +371,7 @@ func writeManifest(m *manifest) error {
 	return sealAndPersist(string(b), manifestFilepath)
 }
 
+// prepareCertificates persists the ca-cert we generated for the manifest and creates and persists a user cert + key from it
 func prepareCertificates(caCert *x509.Certificate, caPEM string, caPrivKey *ecdsa.PrivateKey) error {
 	err := sealAndPersist(caPEM, caCertFilepath)
 	if err != nil {
@@ -426,12 +419,19 @@ func sealAndPersist(contents string, filepath string) error {
 		return fmt.Errorf("failed to create file %s - %w", filepath, err)
 	}
 	defer f.Close()
+
+	// START COMMENT-OUT IF DEBUGGING - while testing it can be useful to just f.WriteString(contents) below without sealing
+	//    so that you can connect to edb using the persisted certs with mysql-client from the container.
+	//    Note you also need to comment out the block in `readAndUnseal`
+
 	// todo: do we prefer to seal with product key for upgradability or unique key to require fresh db with every code change
-	//enc, err := ecrypto.SealWithProductKey(contents, nil)
-	//if err != nil {
-	//	return fmt.Errorf("failed to seal contents bytes with enclave key to persist in %s - %w", filepath, err)
-	//}
-	_, err = f.WriteString(contents)
+	enc, err := ecrypto.SealWithProductKey([]byte(contents), nil)
+	if err != nil {
+		return fmt.Errorf("failed to seal contents bytes with enclave key to persist in %s - %w", filepath, err)
+	}
+	// END COMMENT-OUT IF DEBUGGING
+
+	_, err = f.Write(enc)
 	if err != nil {
 		return fmt.Errorf("failed to write manifest json file - %w", err)
 	}
@@ -444,11 +444,13 @@ func readAndUnseal(filepath string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read file %s - %w", filepath, err)
 	}
 
-	return b, nil
-	//data, err := ecrypto.Unseal(b, nil)
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to unseal data from file %s - %w", filepath, err)
-	//}
-	//return data, nil
+	// START COMMENT-OUT IF DEBUGGING - just `return b, nil` if debugging without sealing files
 
+	data, err := ecrypto.Unseal(b, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unseal data from file %s - %w", filepath, err)
+	}
+	return data, nil
+
+	// END COMMENT-OUT IF DEBUGGING
 }

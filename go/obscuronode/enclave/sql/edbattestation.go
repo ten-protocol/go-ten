@@ -1,7 +1,14 @@
 package sql
 
-// todo: I want to use the edgeless tool ERA as a dependency for verifying the edgeless db attestations but I'm hitting
-// 	weird dependency issues from eclient so going to try to understand it and progress by duplicating ERA without eclient
+// todo: was hoping to use the edgeless tool ERA as a dependency for verifying the edgeless db attestations but I'm hitting
+//   dependency issues from `eclient` so progressing by duplicating relevant part of ERA using their `enclave` client
+//   library instead of `eclient`
+
+// ERA (Edgeless remote attestation) is a simple protocol for verifying edgeless tools. It's basically just a small json schema
+// that they use as a standard data blob to encrypt into their attestation reports, includes signerID, security version etc.
+
+// The only change from https://github.com/edgelesssys/era/blob/master/era/era.go is the use of enclave.VerifyRemoteReport
+// in place of eclient.VerifyRemoteReport
 
 import (
 	"bytes"
