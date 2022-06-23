@@ -475,9 +475,10 @@ func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byt
 
 // Creates a single-node Obscuro network for testing, and deploys an ERC20 contract to it.
 func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
-	wallets := params.NewSimWallets(1, 2, 1, integration.EthereumChainID, integration.ObscuroChainID)
+	numberOfNodes := 1
+	wallets := params.NewSimWallets(1, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
 	simParams := params.SimParams{
-		NumberOfNodes:      2,
+		NumberOfNodes:      numberOfNodes,
 		AvgBlockDuration:   1 * time.Second,
 		AvgGossipPeriod:    1 * time.Second / 3,
 		MgmtContractLib:    ethereummock.NewMgmtContractLibMock(),
