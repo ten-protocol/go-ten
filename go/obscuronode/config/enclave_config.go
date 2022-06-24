@@ -48,7 +48,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
 		WillAttest:                false,
-		ValidateL1Blocks:          false,
+		ValidateL1Blocks:          true,
 		GenesisJSON:               nil,
 		SpeculativeExecution:      false,
 		ManagementContractAddress: common.BytesToAddress([]byte("")),
