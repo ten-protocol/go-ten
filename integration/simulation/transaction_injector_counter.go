@@ -65,7 +65,7 @@ func (m *txInjectorCounter) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
 		if !found {
 			panic("Should not happen")
 		}
-		withdrawals = append(withdrawals, nodecommon.Withdrawal{Amount: amount.Uint64(), Address: *address})
+		withdrawals = append(withdrawals, nodecommon.Withdrawal{Amount: amount.Uint64(), Recipient: *address})
 	}
 	return withdrawals
 }

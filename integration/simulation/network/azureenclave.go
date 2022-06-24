@@ -42,18 +42,18 @@ func NewNetworkWithAzureEnclaves(enclaveIps []string, wallets *params.SimWallets
 }
 
 func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
-	params.MgmtContractAddr, params.Erc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
 	)
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr)
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.Erc20Address)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address)
 
 	fmt.Printf("Please start the docker image on the azure server with with:\n")
 	for i := 0; i < len(n.azureEnclaveIps); i++ {
-		fmt.Printf("sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p %d:%d/tcp obscuro_enclave --hostID %d --address :11000 --managementContractAddress %s  --erc20ContractAddresses %s\n", enclavePort, enclavePort, i, params.MgmtContractAddr.Hex(), params.Erc20Address.Hex())
+		fmt.Printf("sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p %d:%d/tcp obscuro_enclave --hostID %d --address :11000 --managementContractAddress %s  --erc20ContractAddresses %s,%s\n", enclavePort, enclavePort, i, params.MgmtContractAddr.Hex(), params.BtcErc20Address.Hex(), params.EthErc20Address.Hex())
 	}
 	time.Sleep(10 * time.Second)
 
