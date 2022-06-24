@@ -48,5 +48,5 @@ const (
 	ViewingKeysEnabledUsage = "Whether the enclave should encrypt responses to sensitive requests with viewing keys"
 
 	edgelessDBHostName  = "edgelessDBHost"
-	edgelessDBHostUsage = "Whether the enclave will use an in-memory DB rather than persist data"
+	edgelessDBHostUsage = "host address for the edgeless DB instance (can be empty if useInMemoryDB is true or if not using attestation"
 )

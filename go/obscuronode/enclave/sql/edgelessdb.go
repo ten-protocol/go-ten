@@ -19,6 +19,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/edgelesssys/ego/ecrypto"
@@ -30,8 +31,21 @@ import (
 )
 
 /*
-   Getting an edgeless DB connection is a bit of a dance in order to achieve mutual trust.
+   The Obscuro Enclave (OE) needs a way to persist data into a trusted database. Trusted not to reveal that data to anyone but that particular enclave.
 
+   To achieve this, the OE must first perform Remote Attestation (RA), which gives it confidence that it is connected to
+	a trusted version of software running on trusted hardware. The result of this process is a Certificate which can be
+	used to set up a trusted TLS connection into the database.
+
+   The next step is to configure the database schema and users in such a way that the OE knows that the db engine will
+	only allow itself access to it. This is achieved by creating a "Manifest" file that contains the SQL init code and a
+	DBClient Certificate that is known only to the OE.
+
+	This "DBClient" Cert is used by the database to authenticate that it is communicating to the entity that has initialised that schema.
+
+	--------
+
+	In more detail :
    The edgeless DB is unusable when it's first started, as an owner, we must initially:
      - do a remote attestation on the report provided by {edbAddress}/quote
      - create a ca cert that will authenticate our DB users going forwards
@@ -48,25 +62,51 @@ import (
 	Some useful documentation for this:
 		Main edb docs: https://docs.edgeless.systems/edgelessdb/#/
 		EDB demo docs: https://github.com/edgelesssys/edgelessdb/tree/main/demo
-		// Note: due to an issue with the dependency, I've duplicated the relevant parts of the ERA tool into edbattestation.go
+		// Note: due to an issue with the dependency, I've duplicated the relevant parts of the ERA tool into edb_attestation.go
 		ERA - remote attestation tool: https://github.com/edgelesssys/era
 */
 
-var manifestSQLStatements = []string{
-	"CREATE USER obscuro REQUIRE ISSUER '/CN=obscuroCA' SUBJECT '/CN=obscuroUser'",
-	"CREATE DATABASE obsdb",
-	"CREATE TABLE obsdb.keyvalue (ky varbinary(64) primary key, val blob)",
-	"GRANT ALL ON obsdb.keyvalue TO obscuro",
-}
-
 const (
-	dataDir                = "/data/"
-	manifestFilepath       = dataDir + "manifest.json"
-	caCertFilepath         = dataDir + "ca-cert.pem"
-	userCertFilepath       = dataDir + "user-cert.pem"
-	userKeyFilepath        = dataDir + "user-key.pem"
-	attestationCfgFilepath = dataDir + "edgelessdb-sgx.json"
-	edbHTTPPort            = "8080"
+	edbHTTPPort          = "8080"
+	edbManifestEndpoint  = "/manifest"
+	edbSignatureEndpoint = "/signature"
+
+	dataDir         = "/data"
+	certIssuer      = "obscuroCA"
+	certSubject     = "obscuroUser"
+	enclaveHostName = "enclave"
+
+	dbUser    = "obscuro"
+	dbName    = "obsdb"
+	tableName = "keyvalue"
+	keyCol    = "ky"
+	valueCol  = "val"
+
+	// The attestation config comes from here (https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json)
+	//     todo: revisit whether we want this hardcoded
+	edbAttestationConf = "{\n\t\"SecurityVersion\": 2,\n\t\"ProductID\": 16,\n\t\"SignerID\": \"67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe\"\n}"
+
+	// change this flag to true to debug issues with edgeless DB (and start EDB process with -e EDG_EDB_DEBUG=1
+	//   this will give you:
+	//  	- verbose logging on EDB
+	//		- write the edb.pem file out for connecting to Edgeless DB services manually
+	//		- versions of files created with a '.unsealed' suffix that can be used to connect to the database using mysql-client
+	debugMode = false
+)
+
+var (
+	manifestFilepath       = filepath.Join(dataDir, "manifest.json")
+	caCertFilepath         = filepath.Join(dataDir, "ca-cert.pem")
+	userCertFilepath       = filepath.Join(dataDir, "user-cert.pem")
+	userKeyFilepath        = filepath.Join(dataDir, "user-key.pem")
+	attestationCfgFilepath = filepath.Join(dataDir, "edgelessdb-sgx.json")
+
+	manifestSQLStatements = []string{
+		fmt.Sprintf("CREATE USER %s REQUIRE ISSUER '/CN=%s' SUBJECT '/CN=%s'", dbUser, certIssuer, certSubject),
+		fmt.Sprintf("CREATE DATABASE %s", dbName),
+		fmt.Sprintf("CREATE TABLE %s.%s (%s varbinary(64) primary key, %s blob)", dbName, tableName, keyCol, valueCol),
+		fmt.Sprintf("GRANT ALL ON %s.%s TO %s", dbName, tableName, dbUser),
+	}
 )
 
 type manifest struct {
@@ -80,22 +120,41 @@ type EdgelessDBConfig struct {
 }
 
 func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
-	// before we try to connect to the Edgeless DB we have to do remote attestation on it
-	edbPEM, err := performRemoteAttestation(edbCfg.Host)
+	// Before we try to connect to the Edgeless DB we have to do Remote Attestation (RA) on it
+	// the RA will ensure that we are connecting to a database that will not leak any data.
+	// The RA will return a Certificate which we'll use for the TLS mutual authentication when we connect to the database.
+	// The trust path is as follows:
+	// 1. The Obscuro Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
+	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the Obscuro enclave confidence that it is only giving data away to some code and hardware it trusts.
+	edbPEM, err := performEDBRemoteAttestation(edbCfg.Host)
 	if err != nil {
 		return nil, fmt.Errorf("remote attestation of edgeless DB failed - %w", err)
 	}
-	log.Info("retrieved edb PEM: %s", edbPEM)
+
+	// client used to make secure HTTP requests to Edgeless DB using the ca-cert we have received
+	edbHTTPClient, err := prepareEDBHTTPClient(edbPEM)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare http client from EdgelessDB cert PEM - %w", err)
+	}
 
 	// IF DEBUGGING: it can be useful to persist the edb.pem so you can connect to edb from mysql-client on the container
-	//_ = sealAndPersist(edbPEM, dataDir+"edb.pem")
+	if debugMode {
+		err = sealAndPersist(edbPEM, filepath.Join(dataDir, "edb.pem"))
+		if err != nil {
+			return nil, fmt.Errorf("failed to writeout edb.pem file for debugging - %w", err)
+		}
+	}
 
 	// now we know we are talking to a secure enclave, we can get the manifest and connect (or initialise if first time)
-	manifest, err := readManifestIfExists()
-	if err != nil && os.IsNotExist(err) {
+	manifest, found, err := readManifestIfExists()
+	if err != nil {
+		// this doesn't happen if the manifest file just didn't exist, maybe there was an IO error
+		return nil, fmt.Errorf("failed to read manifest file - %w", err)
+	}
+	if !found {
 		// this is the first time we have connected to this EDB, we will create certificates and a manifest to initialise it
 		log.Info("No manifest found, creating one and initializing edb")
-		manifest, err = createManifestAndInitEDB(edbCfg.Host, edbPEM)
+		manifest, err = createManifestAndInitEDB(edbCfg.Host, edbHTTPClient)
 		if err != nil {
 			return nil, err
 		}
@@ -103,14 +162,11 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 		// Note: it usually takes around 10-15 seconds for edb to initialise and restart
 		log.Info("Waiting 30 seconds for EDB restart after initialization...")
 		time.Sleep(30 * time.Second)
-	} else if err != nil {
-		// this doesn't happen if the manifest file just didn't exist, maybe there was an IO error
-		return nil, fmt.Errorf("failed to read manifest file - %w", err)
 	}
 
 	// we check that this edgeless DB was initialized with the manifest we expected (which is only known to this enclave)
 	log.Info("Validating edb signature against expected manifest...")
-	err = verifyEdgelessDB(edbCfg.Host, manifest, edbPEM)
+	err = verifyEdgelessDB(edbCfg.Host, manifest, edbHTTPClient)
 	if err != nil {
 		return nil, err
 	}
@@ -126,14 +182,30 @@ func EdgelessDBConnector(edbCfg EdgelessDBConfig) (ethdb.Database, error) {
 	return CreateSQLEthDatabase(edbSQL)
 }
 
+func prepareEDBHTTPClient(edbPEM string) (*http.Client, error) {
+	caCertPool := x509.NewCertPool()
+	if ok := caCertPool.AppendCertsFromPEM([]byte(edbPEM)); !ok {
+		return nil, fmt.Errorf("failed to append to CA cert from edb cert pem")
+	}
+
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:    caCertPool,
+				MinVersion: tls.VersionTLS12,
+			},
+		},
+	}, nil
+}
+
 // perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
-func performRemoteAttestation(edbHost string) (string, error) {
+func performEDBRemoteAttestation(edbHost string) (string, error) {
 	// we need to make sure this dir exists before we start read/writing files in there
 	err := os.MkdirAll(dataDir, 0o644)
 	if err != nil {
 		return "", err
 	}
-	err = prepareEDBAttestationConf(attestationCfgFilepath)
+	err = prepareEDBAttestationRequirementsConf(attestationCfgFilepath)
 	if err != nil {
 		return "", fmt.Errorf("failed to prepare latest edb attestation config file - %w", err)
 	}
@@ -150,28 +222,27 @@ func performRemoteAttestation(edbHost string) (string, error) {
 	}
 
 	log.Info("Successfully verified edb attestation and retrieved certificate.")
-	return string(pem.EncodeToMemory(certs[0])), nil
+	// the last cert in the list is the CA
+	return string(pem.EncodeToMemory(certs[len(certs)-1])), nil
 }
 
-func prepareEDBAttestationConf(filepath string) error {
+func prepareEDBAttestationRequirementsConf(filepath string) error {
 	// This json blob provides confidence in the version of edgeless DB we are talking to.
 	// The latest json for comparison is available here:
 	//     https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
-	//
-	// Todo: revisit how we want to enforce this going forwards, but for now I'm just hardcoding the latest json blob:
-	b := []byte("{\n\t\"SecurityVersion\": 2,\n\t\"ProductID\": 16,\n\t\"SignerID\": \"67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe\"\n}")
-	return os.WriteFile(filepath, b, 0o444)
+	return os.WriteFile(filepath, []byte(edbAttestationConf), 0o444)
 }
 
-func createManifestAndInitEDB(edbHost string, edbPEM string) (*manifest, error) {
+func createManifestAndInitEDB(edbHost string, httpClient *http.Client) (*manifest, error) {
 	caCert := &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
 		IsCA:                  true,
 		BasicConstraintsValid: true,
-		Subject:               pkix.Name{CommonName: "obscuroCA"},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(10, 0, 0),
-		DNSNames:              []string{"enclave"},
+		// this subject must match the subject authorised in the manifest.json
+		Subject:   pkix.Name{CommonName: certIssuer},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().AddDate(10, 0, 0),
+		DNSNames:  []string{enclaveHostName},
 	}
 	caPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -192,13 +263,11 @@ func createManifestAndInitEDB(edbHost string, edbPEM string) (*manifest, error) 
 
 	caPEM := caPEMBuf.String()
 	manifest := &manifest{
-		SQL:  manifestSQLStatements,
-		Cert: caPEM,
-		// IF DEBUGGING: this should be set to enable verbose logging
-		//     Note: it also requires EDG_EDB_DEBUG=1 on the process, see https://docs.edgeless.systems/edgelessdb/#/reference/configuration
-		// Debug: true,
+		SQL:   manifestSQLStatements,
+		Cert:  caPEM,
+		Debug: debugMode,
 	}
-	err = initialiseEdgelessDB(edbHost, manifest, edbPEM)
+	err = initialiseEdgelessDB(edbHost, manifest, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialise edgeless DB with created manifest - %w \nmanifest: %v", err, manifest)
 	}
@@ -219,48 +288,27 @@ func createManifestAndInitEDB(edbHost string, edbPEM string) (*manifest, error) 
 }
 
 // initialiseEdgelessDB sends a manifest over http to the edgeless DB with its initial config
-func initialiseEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
+func initialiseEdgelessDB(edbHost string, m *manifest, httpClient *http.Client) error {
 	b, err := json.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest json - %w", err)
 	}
-	url := fmt.Sprintf("https://%s:%s/manifest", edbHost, edbHTTPPort)
+	url := fmt.Sprintf("https://%s:%s%s", edbHost, edbHTTPPort, edbManifestEndpoint)
 	req, err := http.NewRequestWithContext(context.Background(), "POST", url, bytes.NewBuffer(b))
 	if err != nil {
 		return fmt.Errorf("faild to create manifest initialization req - %w", err)
 	}
-	caCertPool := x509.NewCertPool()
-	if ok := caCertPool.AppendCertsFromPEM([]byte(edbPEM)); !ok {
-		return fmt.Errorf("failed to append to CA cert from edb cert pem")
-	}
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:    caCertPool,
-				MinVersion: tls.VersionTLS12,
-			},
-		},
-	}
-	resp, err := client.Do(req)
+	_, err = executeHTTPReq(httpClient, req)
 	if err != nil {
 		return fmt.Errorf("manifest initialization req failed - %w", err)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		var msg []byte
-		_, err := resp.Body.Read(msg)
-		if err != nil {
-			return fmt.Errorf("manifest initialization req failed with status code: %d, failed to read status text", resp.StatusCode)
-		}
-		return fmt.Errorf("manifest initialization req failed with status: %d %s", resp.StatusCode, msg)
-	}
 	return nil
 }
 
 // verifyEdgelessDB requests the /signature from the edb, it should match the hash of the manifest we expected
-func verifyEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
+func verifyEdgelessDB(edbHost string, m *manifest, httpClient *http.Client) error {
 	b, err := json.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest to json - %w", err)
@@ -268,44 +316,18 @@ func verifyEdgelessDB(edbHost string, m *manifest, edbPEM string) error {
 	h := sha256.Sum256(b)
 	expectedHash := hex.EncodeToString(h[:])
 
-	url := fmt.Sprintf("https://%s:%s/signature", edbHost, edbHTTPPort)
+	url := fmt.Sprintf("https://%s:%s%s", edbHost, edbHTTPPort, edbSignatureEndpoint)
 	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("faild to create edb signature req - %w", err)
 	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(edbPEM))
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:    caCertPool,
-				MinVersion: tls.VersionTLS12,
-			},
-		},
-	}
-	resp, err := client.Do(req)
+	edbHash, err := executeHTTPReq(httpClient, req)
 	if err != nil {
-		return fmt.Errorf("/signature request failed - %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		var msg []byte
-		_, err := resp.Body.Read(msg)
-		if err != nil {
-			return fmt.Errorf("edb /signature req failed with status code: %d, failed to read status text", resp.StatusCode)
-		}
-		return fmt.Errorf("edb /signature req failed with status: %d %s", resp.StatusCode, msg)
-	}
-
-	var edbHash []byte
-	edbHash, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read edbHash from /signature response - %w", err)
+		return fmt.Errorf("failed to receive edbHash from /signature request - %w", err)
 	}
 	if expectedHash != string(edbHash) {
-		return fmt.Errorf("hash from edb /signature request didn't match expected hash of manifest.json, expected=%s, found=%s resp=%v", expectedHash, edbHash, resp)
+		return fmt.Errorf("hash from edb /signature request didn't match expected hash of manifest.json, expected=%s, found=%s", expectedHash, edbHash)
 	}
 	log.Info("EDB signature matched the expected hash from our manifest (%s)", expectedHash)
 
@@ -343,9 +365,9 @@ func connectToEdgelessDB(edbHost string, edbPEM string) (*sql.DB, error) {
 	cfg := mysql.NewConfig()
 	cfg.Net = "tcp"
 	cfg.Addr = edbHost
-	cfg.User = "obscuro"
+	cfg.User = dbUser
+	cfg.DBName = dbName
 	cfg.TLSConfig = "custom"
-	cfg.DBName = "obsdb"
 	dsn := cfg.FormatDSN()
 	log.Info("Configuring mysql connection: %s", dsn)
 	db, err := sql.Open("mysql", dsn)
@@ -355,28 +377,29 @@ func connectToEdgelessDB(edbHost string, edbPEM string) (*sql.DB, error) {
 	return db, nil
 }
 
-func readManifestIfExists() (*manifest, error) {
+// readManifestIfExists returns manifest if it exists, whether it was found as a boolean, error
+func readManifestIfExists() (*manifest, bool, error) {
 	var manifest manifest
 	_, err := os.Stat(manifestFilepath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// we don't consider the file being missing as an error scenario, it's just not initialized
-			return nil, err
+			return nil, false, nil
 		}
 		// failed to open file
-		return nil, fmt.Errorf("failed to open manifest file - %w", err)
+		return nil, false, fmt.Errorf("failed to open manifest file - %w", err)
 	}
 	jsonData, err := readAndUnseal(manifestFilepath)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	err = json.Unmarshal(jsonData, &manifest)
 	if err != nil {
 		// failed to unmarshal the json
-		return nil, fmt.Errorf("failed to unmarshal manifest json - %w", err)
+		return nil, false, fmt.Errorf("failed to unmarshal manifest json - %w", err)
 	}
 	log.Info("Successfully loaded manifest from disk.")
-	return &manifest, nil
+	return &manifest, true, nil
 }
 
 func writeManifest(m *manifest) error {
@@ -397,10 +420,11 @@ func prepareCertificates(caCert *x509.Certificate, caPEM string, caPrivKey *ecds
 
 	userCert := &x509.Certificate{
 		SerialNumber: big.NewInt(2),
-		Issuer:       pkix.Name{CommonName: "obscuroCA"},
-		Subject:      pkix.Name{CommonName: "obscuroUser"},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(10, 0, 0),
+		// the issuer and subject have to match those submitted in manifest.json
+		Issuer:    pkix.Name{CommonName: certIssuer},
+		Subject:   pkix.Name{CommonName: certSubject},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().AddDate(10, 0, 0),
 	}
 	certPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -446,13 +470,14 @@ func sealAndPersist(contents string, filepath string) error {
 	}
 	defer f.Close()
 
-	// IF DEBUGGING: uncomment this to have unsealed versions of files to connect to edb with mysql-client from container
-	//fUnseal, _ := os.Create(filepath + ".unsealed")
-	//_, _ = fUnseal.WriteString(contents)
-	//if err != nil {
-	//	return err
-	//}
-	//_ = fUnseal.Close()
+	if debugMode {
+		fUnseal, _ := os.Create(filepath + ".unsealed")
+		_, err = fUnseal.WriteString(contents)
+		if err != nil {
+			return err
+		}
+		_ = fUnseal.Close()
+	}
 
 	// todo: do we prefer to seal with product key for upgradability or unique key to require fresh db with every code change
 	enc, err := ecrypto.SealWithProductKey([]byte(contents), nil)
@@ -477,4 +502,31 @@ func readAndUnseal(filepath string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to unseal data from file %s - %w", filepath, err)
 	}
 	return data, nil
+}
+
+// executeHTTPReq executes an HTTP request, returns an error if the response code was outside of 200-299, returns response body as bytes if there was a response body
+func executeHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed url=%s - %w", req.URL.String(), err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		var msg []byte
+		_, err := resp.Body.Read(msg)
+		if err != nil {
+			return nil, fmt.Errorf("req failed url=%s, statusCode=%d, failed to read status text", req.URL.String(), resp.StatusCode)
+		}
+		return nil, fmt.Errorf("req failed url=%s status: %d %s", req.URL.String(), resp.StatusCode, msg)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		// success status code but no body, ignoring error
+		return []byte{}, nil //nolint:nilerr
+	}
+	return body, nil
 }
