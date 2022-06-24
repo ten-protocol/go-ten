@@ -795,7 +795,6 @@ func generateKeyPair() *ecdsa.PrivateKey {
 	return key
 }
 
-// Todo - implement with better crypto
 func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) ([]byte, error) {
 	if e.privateKey == nil {
 		return nil, errors.New("private key not found - shouldn't happen")
@@ -803,7 +802,6 @@ func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveS
 	return decryptWithPrivateKey(secret, e.privateKey)
 }
 
-// Todo - implement with better crypto
 func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
 	nodecommon.LogWithID(e.nodeShortID, "Encrypting secret with public key %s", common.Bytes2Hex(pubKeyEncoded))
 	key, err := crypto.DecompressPubkey(pubKeyEncoded)
