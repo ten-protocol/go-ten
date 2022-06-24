@@ -1,14 +1,10 @@
 package sql
 
-// todo: was hoping to use the edgeless tool ERA as a dependency for verifying the edgeless db attestations but I'm hitting
-//   dependency issues from `eclient` so progressing by duplicating relevant part of ERA using their `enclave` client
-//   library instead of `eclient`
+// An obscuro implementation of the ERA (Edgeless remote attestation) tool (which is basically just a small json schema
+// that Edgeless use as a standard data blob to encrypt into their attestation reports, includes signerID, security version etc.)
 
-// ERA (Edgeless remote attestation) is a simple protocol for verifying edgeless tools. It's basically just a small json schema
-// that they use as a standard data blob to encrypt into their attestation reports, includes signerID, security version etc.
-
-// The only changes from https://github.com/edgelesssys/era/blob/master/era/era.go is the use of enclave.VerifyRemoteReport
-// in place of eclient.VerifyRemoteReport and a few tweaks to get our lint to pass.
+// Initially forked from https://github.com/edgelesssys/era/blob/master/era/era.go but reworked to have an obscuro-friendly
+// 	 API that just included the things we were using.
 
 import (
 	"bytes"
@@ -24,10 +20,18 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/obscuronet/obscuro-playground/go/log"
+
 	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/tidwall/gjson"
+)
+
+const (
+	quoteEndpoint = "quote"
+	msgJSONField  = "message"
+	dataJSONField = "data"
 )
 
 type certQuoteResp struct {
@@ -35,40 +39,61 @@ type certQuoteResp struct {
 	Quote []byte
 }
 
-// ErrEmptyQuote defines an error type when no quote was received. This likely occurs when the host is running in OE Simulation mode.
-var ErrEmptyQuote = errors.New("no quote received")
+type EdgelessAttestationConstraints struct {
+	SecurityVersion uint
+	UniqueID        string
+	SignerID        string
+	ProductID       uint16
+	Debug           bool
+}
 
-// GetCertificate gets the TLS certificate from the server in PEM format. It performs remote attestation
-// to verify the certificate. A config file must be provided that contains the attestation metadata.
-func GetCertificate(host, configFilename string) ([]*pem.Block, tcbstatus.Status, error) {
-	config, err := ioutil.ReadFile(configFilename)
+// The values here were the latest values from: https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
+// 	This should probably be configurable rather than relying on this hardcoded snapshot
+var defaultEDBConstraints = &EdgelessAttestationConstraints{
+	SecurityVersion: 2,
+	UniqueID:        "",
+	SignerID:        "67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe",
+	ProductID:       16,
+	Debug:           false,
+}
+
+// performEDBRemoteAttestation perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
+func performEDBRemoteAttestation(edbHost string, constraints *EdgelessAttestationConstraints) (string, error) {
+	log.Info("Verifying attestation from edgeless DB...")
+	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
+	certs, tcbStatus, err := performRAAndFetchTLSCert(edbHTTPAddr, constraints)
+	if err != nil {
+		// todo should we check the error type with: err == attestation.ErrTCBLevelInvalid?
+		// for now it's maximum strictness (we can revisit this and permit some tcbStatuses if desired)
+		return "", fmt.Errorf("attestation failed, host=%s, tcbStatus=%s, err=%w", edbHTTPAddr, tcbStatus, err)
+	}
+	if len(certs) == 0 {
+		return "", fmt.Errorf("no certificates found from edgeless db attestation process")
+	}
+
+	log.Info("Successfully verified edb attestation and retrieved certificate.")
+	// the last cert in the list is the CA
+	return string(pem.EncodeToMemory(certs[len(certs)-1])), nil
+}
+
+// performRAAndFetchTLSCert gets the TLS certificate from the Edgeless DB server in PEM format. It performs remote attestation
+// to verify the certificate. Attestation constraints must be provided to validate against.
+func performRAAndFetchTLSCert(host string, constraints *EdgelessAttestationConstraints) ([]*pem.Block, tcbstatus.Status, error) {
+	// we don't need to verify the TLS because we will be verifying the attestation report and that can't be faked
+	cert, quote, err := httpGetCertQuote(&tls.Config{InsecureSkipVerify: true}, host, quoteEndpoint) //nolint:gosec
 	if err != nil {
 		return nil, tcbstatus.Unknown, err
 	}
-	return getCertificate(host, config, enclave.VerifyRemoteReport)
-}
 
-// InsecureGetCertificate gets the TLS certificate from the server in PEM format, but does not perform remote attestation.
-func InsecureGetCertificate(host string) ([]*pem.Block, error) {
-	certs, _, err := getCertificate(host, nil, nil)
-	return certs, err
-}
-
-type verifyFunc func([]byte) (attestation.Report, error)
-
-func getCertificate(host string, config []byte, verifyRemoteReport verifyFunc) ([]*pem.Block, tcbstatus.Status, error) {
-	// we skip verify because we have the security of the attestation
-	cert, quote, err := httpGetCertQuote(&tls.Config{InsecureSkipVerify: true}, host, "quote") //nolint:gosec
-	if err != nil {
-		return nil, tcbstatus.Unknown, err
+	if len(quote) == 0 {
+		return nil, tcbstatus.Unknown, errors.New("no quote found, attestation failed")
 	}
 
-	var certs []*pem.Block
 	block, rest := pem.Decode([]byte(cert))
 	if block == nil {
 		return nil, tcbstatus.Unknown, errors.New("could not parse certificate")
 	}
-	certs = append(certs, block)
+	certs := []*pem.Block{block}
 
 	// If we get more than one certificate, append it to the slice
 	for len(rest) > 0 {
@@ -79,15 +104,9 @@ func getCertificate(host string, config []byte, verifyRemoteReport verifyFunc) (
 		certs = append(certs, block)
 	}
 
-	if verifyRemoteReport == nil {
-		return certs, tcbstatus.Unknown, nil
-	}
-
-	if len(quote) == 0 {
-		return nil, tcbstatus.Unknown, ErrEmptyQuote
-	}
-
-	report, verifyErr := verifyRemoteReport(quote)
+	report, verifyErr := enclave.VerifyRemoteReport(quote)
+	// depending on how strict you are being, some invalid TCBLevels would be acceptable (e.g. something might need an
+	//		upgrade but not have any known vulnerabilities). That's why we proceed when TCBLevelInvalid and let caller decide
 	if verifyErr != nil && !errors.Is(verifyErr, attestation.ErrTCBLevelInvalid) {
 		return nil, tcbstatus.Unknown, verifyErr
 	}
@@ -95,55 +114,46 @@ func getCertificate(host string, config []byte, verifyRemoteReport verifyFunc) (
 	// Use Root CA (last entry in certs) for attestation
 	certRaw := certs[len(certs)-1].Bytes
 
-	if err := verifyReport(report, certRaw, config); err != nil {
+	if err = checkAttestationConstraints(report, certRaw, constraints); err != nil {
 		return nil, tcbstatus.Unknown, err
 	}
 
 	return certs, report.TCBStatus, verifyErr
 }
 
-func verifyReport(report attestation.Report, cert []byte, config []byte) error {
+func checkAttestationConstraints(report attestation.Report, cert []byte, constraints *EdgelessAttestationConstraints) error {
 	hash := sha256.Sum256(cert)
 	if !bytes.Equal(report.Data[:len(hash)], hash[:]) {
 		return errors.New("report data does not match the certificate's hash")
 	}
 
-	var cfg struct {
-		SecurityVersion uint
-		UniqueID        string
-		SignerID        string
-		ProductID       uint16
-		Debug           bool
-	}
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return err
-	}
-	if cfg.UniqueID == "" {
-		if cfg.SecurityVersion == 0 {
+	if constraints.UniqueID == "" {
+		if constraints.SecurityVersion == 0 {
 			return errors.New("missing securityVersion in config")
 		}
-		if cfg.ProductID == 0 {
+		if constraints.ProductID == 0 {
 			return errors.New("missing productID in config")
 		}
 	}
 
-	if cfg.SecurityVersion != 0 && report.SecurityVersion < cfg.SecurityVersion {
+	if constraints.SecurityVersion != 0 && report.SecurityVersion < constraints.SecurityVersion {
 		return errors.New("invalid security version")
 	}
-	if cfg.ProductID != 0 && binary.LittleEndian.Uint16(report.ProductID) != cfg.ProductID {
+	if constraints.ProductID != 0 && binary.LittleEndian.Uint16(report.ProductID) != constraints.ProductID {
 		return errors.New("invalid product")
 	}
-	if report.Debug && !cfg.Debug {
+	if report.Debug && !constraints.Debug {
 		return errors.New("debug enclave not allowed")
 	}
-	if err := verifyID(cfg.UniqueID, report.UniqueID, "unqiueID"); err != nil {
+	if err := verifyID(constraints.UniqueID, report.UniqueID, "uniqueID"); err != nil {
 		return err
 	}
-	if err := verifyID(cfg.SignerID, report.SignerID, "signerID"); err != nil {
+	if err := verifyID(constraints.SignerID, report.SignerID, "signerID"); err != nil {
 		return err
 	}
-	if cfg.UniqueID == "" && cfg.SignerID == "" {
-		fmt.Println("Warning: Configuration contains neither uniqueID nor signerID!")
+	if constraints.UniqueID == "" && constraints.SignerID == "" {
+		fmt.Println("Warning: Configured constraints contains neither uniqueID nor signerID! " +
+			"This will not provide validation of the code running in the remote enclave.")
 	}
 
 	return nil
@@ -151,6 +161,7 @@ func verifyReport(report attestation.Report, cert []byte, config []byte) error {
 
 func verifyID(expected string, actual []byte, name string) error {
 	if expected == "" {
+		// we don't verify every ID, if expected is empty then don't check the value of actual
 		return nil
 	}
 	expectedBytes, err := hex.DecodeString(expected)
@@ -171,7 +182,6 @@ func httpGetCertQuote(tlsConfig *tls.Config, host, path string) (string, []byte,
 		return "", nil, err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
-	var certquote certQuoteResp
 	if err != nil {
 		return "", nil, err
 	}
@@ -182,23 +192,24 @@ func httpGetCertQuote(tlsConfig *tls.Config, host, path string) (string, []byte,
 	if we get the data back directly. */
 
 	if resp.StatusCode != http.StatusOK {
-		errorMessage := gjson.GetBytes(body, "message")
+		errorMessage := gjson.GetBytes(body, msgJSONField)
 		if errorMessage.Exists() {
 			return "", nil, errors.New(resp.Status + ": " + errorMessage.String())
 		}
 		return "", nil, errors.New(resp.Status + ": " + string(body))
 	}
 
-	quoteData := gjson.GetBytes(body, "data")
+	var certQuote certQuoteResp
+	quoteData := gjson.GetBytes(body, dataJSONField)
 	if quoteData.Exists() {
-		err = json.Unmarshal([]byte(quoteData.String()), &certquote)
+		err = json.Unmarshal([]byte(quoteData.String()), &certQuote)
 	} else {
-		err = json.Unmarshal(body, &certquote)
+		err = json.Unmarshal(body, &certQuote)
 	}
 
 	if err != nil {
 		return "", nil, err
 	}
 	resp.Body.Close()
-	return certquote.Cert, certquote.Quote, nil
+	return certQuote.Cert, certQuote.Quote, nil
 }

@@ -2,8 +2,9 @@ package egoutils
 
 import (
 	"fmt"
-	"github.com/edgelesssys/ego/ecrypto"
 	"os"
+
+	"github.com/edgelesssys/ego/ecrypto"
 )
 
 // SealAndPersist uses SGX's ProductKey to encrypt contents string to filepath string
@@ -29,7 +30,7 @@ func SealAndPersist(contents string, filepath string) error {
 	return nil
 }
 
-//ReadAndUnseal reverses SealAndPersist, uses SGX product key it attempts to decrypt the file
+// ReadAndUnseal reverses SealAndPersist, uses SGX product key it attempts to decrypt the file
 func ReadAndUnseal(filepath string) ([]byte, error) {
 	b, err := os.ReadFile(filepath)
 	if err != nil {

@@ -15,13 +15,14 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon/httputil"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core/egoutils"
 	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon/httputil"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core/egoutils"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -81,10 +82,6 @@ const (
 	keyCol    = "ky"
 	valueCol  = "val"
 
-	// The attestation config comes from here (https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json)
-	//     todo: revisit whether we want this hardcoded
-	edbAttestationConf = "{\n\t\"SecurityVersion\": 2,\n\t\"ProductID\": 16,\n\t\"SignerID\": \"67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe\"\n}"
-
 	// change this flag to true to debug issues with edgeless DB (and start EDB process with -e EDG_EDB_DEBUG=1
 	//   this will give you:
 	//  	- verbose logging on EDB
@@ -95,7 +92,6 @@ const (
 
 var (
 	edbCredentialsFilepath = filepath.Join(dataDir, "edb-credentials.json")
-	attestationCfgFilepath = filepath.Join(dataDir, "edgelessdb-sgx.json")
 
 	manifestSQLStatements = []string{
 		fmt.Sprintf("CREATE USER %s REQUIRE ISSUER '/CN=%s' SUBJECT '/CN=%s'", dbUser, certIssuer, certSubject),
@@ -189,7 +185,7 @@ func performHandshake(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) 
 	// The trust path is as follows:
 	// 1. The Obscuro Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
 	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the Obscuro enclave confidence that it is only giving data away to some code and hardware it trusts.
-	edbPEM, err := performEDBRemoteAttestation(edbCfg.Host)
+	edbPEM, err := performEDBRemoteAttestation(edbCfg.Host, defaultEDBConstraints)
 	if err != nil {
 		return nil, err
 	}
@@ -331,36 +327,6 @@ func prepareCerts() (string, string, string, error) {
 	}
 
 	return caPEMBuf.String(), userCertPEM.String(), certKeyPEM.String(), nil
-}
-
-// perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
-func performEDBRemoteAttestation(edbHost string) (string, error) {
-	err := prepareEDBAttestationRequirementsConf(attestationCfgFilepath)
-	if err != nil {
-		return "", fmt.Errorf("failed to prepare latest edb attestation config file - %w", err)
-	}
-	log.Info("Verifying attestation from edgeless DB...")
-	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
-	certs, tcbStatus, err := GetCertificate(edbHTTPAddr, attestationCfgFilepath)
-	if err != nil {
-		// todo should we check the error type with: err == attestation.ErrTCBLevelInvalid?
-		// for now it's maximum strictness (we can revisit this and permit some tcbStatuses if desired)
-		return "", fmt.Errorf("attestation failed, host=%s, tcbStatus=%s, err=%w", edbHTTPAddr, tcbStatus, err)
-	}
-	if len(certs) == 0 {
-		return "", fmt.Errorf("no certificates found from edgeless db attestation process")
-	}
-
-	log.Info("Successfully verified edb attestation and retrieved certificate.")
-	// the last cert in the list is the CA
-	return string(pem.EncodeToMemory(certs[len(certs)-1])), nil
-}
-
-func prepareEDBAttestationRequirementsConf(filepath string) error {
-	// This json blob provides confidence in the version of edgeless DB we are talking to.
-	// The latest json for comparison is available here:
-	//     https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
-	return os.WriteFile(filepath, []byte(edbAttestationConf), 0o444)
 }
 
 // initialiseEdgelessDB sends a manifest over http to the edgeless DB with its initial config
