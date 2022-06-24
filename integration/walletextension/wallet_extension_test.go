@@ -498,7 +498,7 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	}
 
 	// Deploy an ERC20 contract to the Obscuro network.
-	wallet := wallets.Tokens[evm.BTC].L1Owner
+	wallet := wallets.Tokens[evm.BTC].L2Owner
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
 		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
