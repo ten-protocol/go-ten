@@ -15,14 +15,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
+	"github.com/obscuronet/obscuro-playground/go/obscurocommon/httputil"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core/egoutils"
 	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/edgelesssys/ego/ecrypto"
 
 	"github.com/obscuronet/obscuro-playground/go/log"
 
@@ -112,16 +111,17 @@ type manifest struct {
 	Debug bool     `json:"debug"`
 }
 
+// todo: move more of the hardcoded config into this (attestation conf, usernames etc.)
 type EdgelessDBConfig struct {
 	Host string
 }
 
 type EdgelessDBCredentials struct {
-	ManifestJSON string
-	EDBCACertPEM string
-	CACertPEM    string
-	UserCertPEM  string
-	UserKeyPEM   string
+	ManifestJSON string // contains CA cert and sql statements to initialize edb and then to verify edb is setup as expected
+	EDBCACertPEM string // root cert securely provided by edb enclave to encrypt all our communication with it
+	CACertPEM    string // root cert we generate in our enclave and securely provide to the edb in the manifest
+	UserCertPEM  string // db user cert, generated in our enclave, signed by our root cert
+	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
 func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
@@ -146,11 +146,13 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
 }
 
 func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) {
+	// if we have previously performed the handshake we can retrieve the creds from disk and proceed
 	edbCreds, err := loadCredentialsFromFile()
 	if err != nil {
 		return nil, err
 	}
 	if edbCreds == nil {
+		// they don't exist on disk so we have to perform the handshake and set them up
 		edbCreds, err = performHandshake(edbCfg)
 		if err != nil {
 			return nil, err
@@ -161,7 +163,7 @@ func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, 
 }
 
 func loadCredentialsFromFile() (*EdgelessDBCredentials, error) {
-	b, err := readAndUnseal(edbCredentialsFilepath)
+	b, err := egoutils.ReadAndUnseal(edbCredentialsFilepath)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +195,7 @@ func performHandshake(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) 
 	}
 
 	// client used to make secure HTTP requests to Edgeless DB using the ca-cert we have received
-	edbHTTPClient, err := prepareEDBHTTPClient(edbPEM)
+	edbHTTPClient, err := httputil.CreateTLSHTTPClient(edbPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare http client from EdgelessDB cert PEM - %w", err)
 	}
@@ -227,10 +229,19 @@ func performHandshake(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) 
 	if err != nil {
 		return nil, err
 	}
-	err = sealAndPersist(string(edbCredsJSON), edbCredentialsFilepath)
+	err = egoutils.SealAndPersist(string(edbCredsJSON), edbCredentialsFilepath)
 	if err != nil {
 		return nil, err
 	}
+	if debugMode {
+		unsealedFile, _ := os.Create(edbCredentialsFilepath + ".unsealed")
+		_, err = unsealedFile.WriteString(string(edbCredsJSON))
+		if err != nil {
+			return nil, fmt.Errorf("failed to write unsealed credentials file when debug is enabled - %w", err)
+		}
+		_ = unsealedFile.Close()
+	}
+
 	return edbCreds, nil
 }
 
@@ -322,22 +333,6 @@ func prepareCerts() (string, string, string, error) {
 	return caPEMBuf.String(), userCertPEM.String(), certKeyPEM.String(), nil
 }
 
-func prepareEDBHTTPClient(edbPEM string) (*http.Client, error) {
-	caCertPool := x509.NewCertPool()
-	if ok := caCertPool.AppendCertsFromPEM([]byte(edbPEM)); !ok {
-		return nil, fmt.Errorf("failed to append to CA cert from edb cert pem")
-	}
-
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:    caCertPool,
-				MinVersion: tls.VersionTLS12,
-			},
-		},
-	}, nil
-}
-
 // perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
 func performEDBRemoteAttestation(edbHost string) (string, error) {
 	err := prepareEDBAttestationRequirementsConf(attestationCfgFilepath)
@@ -380,7 +375,7 @@ func initialiseEdgelessDB(edbHost string, manifest *manifest, httpClient *http.C
 		return fmt.Errorf("faild to create manifest initialization req - %w", err)
 	}
 
-	_, err = executeHTTPReq(httpClient, req)
+	_, err = httputil.ExecuteHTTPReq(httpClient, req)
 	if err != nil {
 		return fmt.Errorf("manifest initialization req failed - %w", err)
 	}
@@ -422,7 +417,7 @@ func verifyEdgelessDB(edbHost string, m *manifest, httpClient *http.Client) erro
 		return fmt.Errorf("faild to create edb signature req - %w", err)
 	}
 
-	edbHash, err := executeHTTPReq(httpClient, req)
+	edbHash, err := httputil.ExecuteHTTPReq(httpClient, req)
 	if err != nil {
 		return fmt.Errorf("failed to receive edbHash from /signature request - %w", err)
 	}
@@ -452,72 +447,4 @@ func connectToEdgelessDB(edbHost string, tlsCfg *tls.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to initialize mysql connection to edb - %w", err)
 	}
 	return db, nil
-}
-
-func sealAndPersist(contents string, filepath string) error {
-	f, err := os.Create(filepath)
-	if err != nil {
-		return fmt.Errorf("failed to create file %s - %w", filepath, err)
-	}
-	defer f.Close()
-
-	if debugMode {
-		fUnseal, _ := os.Create(filepath + ".unsealed")
-		_, err = fUnseal.WriteString(contents)
-		if err != nil {
-			return err
-		}
-		_ = fUnseal.Close()
-	}
-
-	// todo: do we prefer to seal with product key for upgradability or unique key to require fresh db with every code change
-	enc, err := ecrypto.SealWithProductKey([]byte(contents), nil)
-	if err != nil {
-		return fmt.Errorf("failed to seal contents bytes with enclave key to persist in %s - %w", filepath, err)
-	}
-	_, err = f.Write(enc)
-	if err != nil {
-		return fmt.Errorf("failed to write manifest json file - %w", err)
-	}
-	return nil
-}
-
-func readAndUnseal(filepath string) ([]byte, error) {
-	b, err := os.ReadFile(filepath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s - %w", filepath, err)
-	}
-
-	data, err := ecrypto.Unseal(b, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unseal data from file %s - %w", filepath, err)
-	}
-	return data, nil
-}
-
-// executeHTTPReq executes an HTTP request, returns an error if the response code was outside of 200-299, returns response body as bytes if there was a response body
-func executeHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed url=%s - %w", req.URL.String(), err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		var msg []byte
-		_, err := resp.Body.Read(msg)
-		if err != nil {
-			return nil, fmt.Errorf("req failed url=%s, statusCode=%d, failed to read status text", req.URL.String(), resp.StatusCode)
-		}
-		return nil, fmt.Errorf("req failed url=%s status: %d %s", req.URL.String(), resp.StatusCode, msg)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		// success status code but no body, ignoring error
-		return []byte{}, nil //nolint:nilerr
-	}
-	return body, nil
 }
