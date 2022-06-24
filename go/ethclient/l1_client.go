@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -157,6 +159,10 @@ func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
 
 func (e *gethRPCClient) BlockByHash(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
+}
+
+func (e *gethRPCClient) CallContract(msg ethereum.CallMsg) ([]byte, error) {
+	return e.client.CallContract(context.Background(), msg, nil)
 }
 
 func (e *gethRPCClient) EthClient() *ethclient.Client {

@@ -50,11 +50,11 @@ func (m *mockContractLib) CreateInitializeSecret(tx *obscurocommon.L1InitializeS
 }
 
 func (m *mockContractLib) GetHostAddresses() (ethereum.CallMsg, error) {
-	panic("not implemented")
+	return ethereum.CallMsg{}, nil
 }
 
 func (m *mockContractLib) DecodeCallResponse([]byte) ([][]string, error) {
-	panic("not implemented")
+	return [][]string{{""}}, nil
 }
 
 func decodeTx(tx *types.Transaction) obscurocommon.L1Transaction {

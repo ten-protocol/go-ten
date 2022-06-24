@@ -28,20 +28,15 @@ func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
 }
 
 // Creates the test Docker containers.
-func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int, mngmtCtrAddr string, erc20Addrs []string) map[string]string {
-	var enclavePorts []string
-	for i := 0; i < numOfNodes; i++ {
-		// We assign an enclave port to each enclave service on the network.
-		enclavePorts = append(enclavePorts, fmt.Sprintf("%d", startPort+DefaultEnclaveOffset+i))
-	}
-
+func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int, mngmtCtrAddr string, erc20Addr string) map[string]string {
 	containerIDs := map[string]string{}
-	for idx, port := range enclavePorts {
-		nodeID := common.BigToAddress(big.NewInt(int64(idx))).Hex()
+	for i := 0; i < numOfNodes; i++ {
+		nodeID := common.BigToAddress(big.NewInt(int64(i))).Hex()
 		containerConfig := &container.Config{
 			Image: enclaveDockerImg,
 			Cmd: []string{
 				"--" + enclaverunner.HostIDName, nodeID,
+				"--" + enclaverunner.HostAddressName, fmt.Sprintf("%s:%d", Localhost, startPort+DefaultHostP2pOffset+i),
 				"--" + enclaverunner.AddressName, enclaveAddress,
 				"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
 				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addrs[0] + "," + erc20Addrs[1],
@@ -52,6 +47,7 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 			Memory:     2 * 1024 * 1024 * 1024, // 2GB
 			MemorySwap: -1,
 		}
+		port := fmt.Sprintf("%d", startPort+DefaultEnclaveOffset+i)
 		hostConfig := &container.HostConfig{
 			PortBindings: nat.PortMap{nat.Port(enclaveDockerPort): []nat.PortBinding{{HostIP: Localhost, HostPort: port}}},
 			Resources:    r,

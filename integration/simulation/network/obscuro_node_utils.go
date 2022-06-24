@@ -64,17 +64,10 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	return obscuroClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient, enclaveAddresses []string) ([]obscuroclient.Client, []string) {
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient, enclaveAddresses []string) []obscuroclient.Client {
 	// handle to the obscuro clients
 	obscuroClients := make([]obscuroclient.Client, params.NumberOfNodes)
-
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
-	nodeP2pAddrs := make([]string, params.NumberOfNodes)
-
-	for i := 0; i < params.NumberOfNodes; i++ {
-		// We assign a P2P address to each node on the network according to the convention.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
-	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -89,8 +82,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			isGenesis,
 			params.AvgGossipPeriod,
 			stats,
-			nodeP2pAddrs[i],
-			nodeP2pAddrs,
+			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
 			enclaveAddresses[i],
 			Localhost,
 			uint64(nodeRPCPortHTTP),
@@ -124,7 +116,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		}
 	}
 
-	return obscuroClients, nodeP2pAddrs
+	return obscuroClients
 }
 
 func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {

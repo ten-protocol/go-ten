@@ -354,6 +354,10 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 	return result
 }
 
+func (m *Node) CallContract(ethereum.CallMsg) ([]byte, error) {
+	return nil, nil
+}
+
 func (m *Node) EthClient() *ethclient_ethereum.Client {
 	return nil
 }

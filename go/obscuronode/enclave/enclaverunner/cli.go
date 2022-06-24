@@ -36,7 +36,7 @@ func ParseConfig() config.EnclaveConfig {
 
 	configPath := flag.String(configName, "", configUsage)
 	hostID := flag.String(HostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
-	hostAddress := flag.String(hostAddressName, defaultConfig.HostAddress, hostAddressUsage)
+	hostAddress := flag.String(HostAddressName, defaultConfig.HostAddress, hostAddressUsage)
 	address := flag.String(AddressName, defaultConfig.Address, addressUsage)
 	l1ChainID := flag.Int64(l1ChainIDName, defaultConfig.L1ChainID, l1ChainIDUsage)
 	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.ObscuroChainID, obscuroChainIDUsage)

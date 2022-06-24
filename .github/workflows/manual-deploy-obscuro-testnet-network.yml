@@ -1,0 +1,47 @@
+# Deploys an Obscuro network on Azure for Testnet
+# TO BE FILLED IN
+#
+# The Obscuro network is composed of 3 obscuro nodes running on individual vms
+# It exposes the following ports:
+# HTTP:       8025, 8026, 8027
+# WebSocket:  9000, 9001, 9002
+#
+# Exposes the following addresses: (only accessible internally)
+#  obscuro01.testnet.obscu.ro
+#  obscuro01.testnet.obscu.ro
+#  obscuro01.testnet.obscu.ro
+
+name: Manual Deploy Obscuro network
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Create VM on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm create -g Testnet  -n "ObscuroHostTestnet-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.VM_PWD }}" \
+            --size Standard_DS2_v2 --image ubuntults
+
+      - name: 'Set up VM on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n ObscuroHostTestnet01 \
+            --command-id RunShellScript \
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${GITHUB_REF##*/}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh'
+
+
+
