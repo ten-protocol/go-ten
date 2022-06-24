@@ -171,10 +171,9 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscuroc
 }
 
 func (s *storageImpl) assertSecretAvailable() {
-	// TODO uncomment this
-	//if s.FetchSecret() == nil {
-	//	panic("Enclave not initialized")
-	//}
+	if s.FetchSecret() == nil {
+		panic("Enclave not initialized with secret")
+	}
 }
 
 // ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
