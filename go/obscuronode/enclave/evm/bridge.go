@@ -11,9 +11,10 @@ import (
 
 // Todo - remove all hardcoded values in the next iteration.
 // The Contract addresses are the result of the deploying a smart contract from hardcoded owners.
+// The "owners" are keys which are the de-facto "admins" of those erc20s and are able to transfer or mint tokens.
 // The contracts and addresses cannot be random for now, because there is hardcoded logic in the core
 // to generate synthetic "transfer" transactions for each erc20 deposit on ethereum
-// and these transactions need to be signed. Which means he platform needs to "own" ERC20s.
+// and these transactions need to be signed. Which means the platform needs to "own" ERC20s.
 
 // ERC20 - the supported ERC20 tokens. A list of made-up tokens used for testing.
 // Todo - this will be removed together will all the keys and addresses.

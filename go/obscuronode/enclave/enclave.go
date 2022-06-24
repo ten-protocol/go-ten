@@ -374,7 +374,7 @@ func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.E
 	headState := e.storage.FetchHeadState()
 	currentHeadRollup, found := e.storage.FetchRollup(headState.HeadRollup)
 	if !found {
-		panic("Should not happen")
+		panic("Should not happen since the header hash and the rollup are stored in a batch.")
 	}
 	// Check if round.winner is being called on an old rollup
 	if !bytes.Equal(currentHeadRollup.Hash().Bytes(), parent.Bytes()) {
@@ -882,6 +882,7 @@ func (e *enclaveImpl) encryptTxReceiptWithViewingKey(address common.Address, txR
 	return e.rpcEncryptionManager.EncryptWithViewingKey(address, txReceiptBytes)
 }
 
+// verifies that the headers of the rollup match the results of executing the transactions
 func (e *enclaveImpl) checkRollup(r *obscurocore.Rollup) {
 	stateDB := e.storage.CreateStateDB(r.Header.ParentHash)
 	// calculate the state to compare with what is in the Rollup
@@ -898,7 +899,7 @@ func (e *enclaveImpl) checkRollup(r *obscurocore.Rollup) {
 	log.Info("State rollup: r_%d. State: %s", obscurocommon.ShortHash(r.Hash()), dump)
 	isValid := e.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
 	if !isValid {
-		log.Error("Should not happen")
+		log.Error("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
 	}
 }
 

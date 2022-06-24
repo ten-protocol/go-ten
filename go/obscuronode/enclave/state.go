@@ -182,7 +182,7 @@ func (e *enclaveImpl) findRoundWinner(receivedRollups []*core.Rollup, parent *co
 func (e *enclaveImpl) process(rollup *core.Rollup, stateDB *state.StateDB, depositTxs []*nodecommon.L2Tx) (common.Hash, []*types.Receipt, []*types.Receipt) {
 	txReceipts := evm.ExecuteTransactions(rollup.Transactions, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, 0)
 	if len(rollup.Transactions) != len(txReceipts) {
-		panic("should not happen")
+		panic("Sanity check. All transactions that are included in a rollup must be executed and produce a receipt.")
 	}
 	depositReceipts := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, e.storage, e.config.ObscuroChainID, len(rollup.Transactions))
 	rootHash, err := stateDB.Commit(true)
@@ -317,7 +317,7 @@ func calculateBlockState(b *types.Block, parentState *core.BlockState, blockReso
 		receipts := evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rollupResolver, chainID, 0)
 		rootHash := stateDB.IntermediateRoot(true)
 
-		// todo - this should be different
+		// todo - this should call the "checkRollup" function, but that's difficult to achieve now without some refactoring. This will be done in the next PR.
 		if !bytes.Equal(newHeadRollup.Header.Root.Bytes(), rootHash.Bytes()) {
 			// dump := stateDB.Dump(&state.DumpConfig{})
 			dump := ""
@@ -422,9 +422,6 @@ func newDepositTx(bridge *evm.Bridge, contract *common.Address, address common.A
 	token := bridge.GetMapping(contract)
 	if token == nil {
 		panic("This should not happen as we don't generate deposits on unsupported tokens.")
-	}
-	if token.Name != evm.BTC {
-		panic("wtf")
 	}
 
 	// The nonce is adjusted with the number of deposits added to the rollup already.
