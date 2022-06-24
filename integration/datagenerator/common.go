@@ -39,8 +39,8 @@ func randomUInt64() uint64 {
 
 func randomWithdrawal() nodecommon.Withdrawal {
 	return nodecommon.Withdrawal{
-		Amount:  randomUInt64(),
-		Address: RandomAddress(),
+		Amount:    randomUInt64(),
+		Recipient: RandomAddress(),
 	}
 }
 

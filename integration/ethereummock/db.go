@@ -1,6 +1,7 @@
 package ethereummock
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
@@ -65,7 +66,7 @@ func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {
 }
 
 func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
-	if maybeAncestor.Hash() == block.Hash() {
+	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
@@ -82,11 +83,11 @@ func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types
 }
 
 func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
-	if maybeAncestor == block.Hash() {
+	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
-	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+	if bytes.Equal(maybeAncestor.Bytes(), obscurocommon.GenesisBlock.Hash().Bytes()) {
 		return true
 	}
 

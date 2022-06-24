@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -55,6 +57,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
+	dummyContractAddress := common.BytesToAddress([]byte("AA"))
+	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {

@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
@@ -44,12 +45,12 @@ func (o *OutputStats) countBlockChain() {
 	l2Client := o.simulation.ObscuroClients[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := getCurrentRollupHead(l2Client); header != nil && header.Hash() != obscurocommon.GenesisHash; header = getRollupHeader(l2Client, header.ParentHash) {
+	for header := getCurrentRollupHead(l2Client); header != nil && !bytes.Equal(header.Hash().Bytes(), obscurocommon.GenesisHash.Bytes()); header = getRollupHeader(l2Client, header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && headBlock.Hash() != obscurocommon.GenesisHash; headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
+	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), obscurocommon.GenesisHash.Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
 		for _, tx := range headBlock.Transactions() {
 			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 			if t == nil {

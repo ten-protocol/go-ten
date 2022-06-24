@@ -35,7 +35,7 @@ func ExecuteTransactions(txs []*nodecommon.L2Tx, s *state.StateDB, header *nodec
 		if r.Status == types.ReceiptStatusFailed {
 			log.Info("Unsuccessful (status != 1) tx %d.", obscurocommon.ShortHash(t.Hash()))
 		} else {
-			log.Info("Successfully executed tx %d", obscurocommon.ShortHash(t.Hash()))
+			log.Info("Successfully executed tx %d.", obscurocommon.ShortHash(t.Hash()))
 		}
 	}
 	s.Finalise(true)
