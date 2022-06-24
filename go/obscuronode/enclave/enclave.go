@@ -856,6 +856,9 @@ func (e *enclaveImpl) getTxSender(txHash common.Hash) (common.Address, error) {
 	if err != nil {
 		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+	if tx == nil {
+		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
+	}
 	msg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()), nil)
 	if err != nil {
 		return common.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
