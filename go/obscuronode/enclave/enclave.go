@@ -416,14 +416,9 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 }
 
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParamsCall) (nodecommon.EncryptedResponseCall, error) {
-	paramBytes := encryptedParams
-	var err error
-	// If viewing keys are not enabled, the params are already decrypted.
-	if e.config.ViewingKeysEnabled {
-		paramBytes, err = e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
-		if err != nil {
-			return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
-		}
+	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
 	}
 
 	contractAddress, from, data, err := extractCallParams(paramBytes)
@@ -691,14 +686,9 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 }
 
 func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBalance) (nodecommon.EncryptedResponseGetBalance, error) {
-	paramBytes := encryptedParams
-	var err error
-	// If viewing keys are not enabled, the params are already decrypted.
-	if e.config.ViewingKeysEnabled {
-		paramBytes, err = e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
-		if err != nil {
-			return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
-		}
+	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
 
 	var paramsJSONMap []string
@@ -846,14 +836,9 @@ func extractCallParams(decryptedParams []byte) (common.Address, common.Address, 
 
 // Returns the transaction hash from a nodecommon.EncryptedParamsGetTxReceipt object.
 func (e *enclaveImpl) extractTxHash(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (common.Hash, error) {
-	paramBytes := encryptedParams
-	var err error
-	// If viewing keys are not enabled, the params are already decrypted.
-	if e.config.ViewingKeysEnabled {
-		paramBytes, err = e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
-		if err != nil {
-			return common.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
-		}
+	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
 	var paramsJSONList []string
@@ -889,7 +874,7 @@ func (e *enclaveImpl) encryptTxReceiptWithViewingKey(address common.Address, txR
 
 // DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
 func (e *enclaveImpl) decryptTx(encryptedTx nodecommon.EncryptedTx) (*nodecommon.L2Tx, error) {
-	txBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedTx)
+	txBytes, err := e.rpcEncryptionManager.DecryptWithEnclavePrivateKey(encryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
 	}
