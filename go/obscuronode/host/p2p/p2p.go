@@ -121,18 +121,11 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 
 	switch msg.Type {
 	case Tx:
-		tx := nodecommon.L2Tx{}
-		err := rlp.DecodeBytes(msg.MsgContents, &tx)
-
-		// We only post the transaction if it decodes correctly.
-		if err == nil {
-			callback.ReceiveTx(msg.MsgContents)
-		} else {
-			nodecommon.LogWithID(p.nodeID, "failed to decode transaction received from peer: %v", err)
-		}
+		// The transaction is encrypted, so we cannot check that it's correctly formed.
+		callback.ReceiveTx(msg.MsgContents)
 	case Rollup:
 		rollup := nodecommon.Rollup{}
-		err := rlp.DecodeBytes(msg.MsgContents, &rollup)
+		err = rlp.DecodeBytes(msg.MsgContents, &rollup)
 
 		// We only post the rollup if it decodes correctly.
 		if err == nil {
