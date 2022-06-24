@@ -508,7 +508,10 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	if err != nil {
 		return obscuroNetwork.TearDown, nil, err
 	}
-	encryptedTx := core.EncryptTx(signedTx)
+	encryptedTx, err := core.EncryptTx(signedTx)
+	if err != nil {
+		return obscuroNetwork.TearDown, nil, err
+	}
 	err = l2Clients[0].Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
 		return obscuroNetwork.TearDown, nil, err

@@ -161,7 +161,10 @@ func (ti *TransactionInjector) deploySingleObscuroERC20(w wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	encryptedTx := core.EncryptTx(signedTx)
+	encryptedTx, err := core.EncryptTx(signedTx)
+	if err != nil {
+		panic(err)
+	}
 	err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
 		panic(err)
@@ -190,7 +193,10 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			panic(err)
 		}
 
-		encryptedTx := core.EncryptTx(signedTx)
+		encryptedTx, err := core.EncryptTx(signedTx)
+		if err != nil {
+			panic(err)
+		}
 		ti.stats.Transfer()
 
 		err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
@@ -241,7 +247,10 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		if err != nil {
 			panic(err)
 		}
-		encryptedTx := core.EncryptTx(signedTx)
+		encryptedTx, err := core.EncryptTx(signedTx)
+		if err != nil {
+			panic(err)
+		}
 
 		err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
@@ -266,9 +275,12 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		tx := newCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
-		encryptedTx := core.EncryptTx(signedTx)
+		encryptedTx, err := core.EncryptTx(signedTx)
+		if err != nil {
+			panic(err)
+		}
 
-		err := ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue

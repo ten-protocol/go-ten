@@ -42,10 +42,6 @@ func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ec
 
 // DecryptWithEnclaveKey decrypts the bytes with the enclave's public key.
 func (e *RPCEncryptionManager) DecryptWithEnclaveKey(encryptedBytes []byte) ([]byte, error) {
-	if !e.viewingKeysEnabled {
-		return encryptedBytes, nil
-	}
-
 	paramBytes, err := e.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
