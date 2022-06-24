@@ -1008,5 +1008,5 @@ func getEdgelessDB(cfg config.EnclaveConfig) (ethdb.Database, error) {
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}
 	dbConfig := sql.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
-	return sql.EdgelessDBConnector(dbConfig)
+	return sql.EdgelessDBConnector(&dbConfig)
 }
