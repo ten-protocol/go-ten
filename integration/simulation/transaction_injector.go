@@ -1,10 +1,17 @@
 package simulation
 
 import (
+	cryptorand "crypto/rand"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -23,12 +30,16 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-const timeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
+const (
+	timeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
+	// EnclavePublicKeyHex is the public key of the enclave.
+	// TODO - Retrieve this key from the management contract instead.
+	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+)
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
@@ -55,6 +66,8 @@ type TransactionInjector struct {
 	// controls
 	interruptRun     *int32
 	fullyStoppedChan chan bool
+
+	enclavePublicKey *ecies.PublicKey
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of obsWallets
@@ -72,6 +85,13 @@ func NewTransactionInjector(
 ) *TransactionInjector {
 	interrupt := int32(0)
 
+	// We retrieve the enclave public key to encrypt transactions.
+	enclavePublicKey, err := crypto.DecompressPubkey(common.Hex2Bytes(EnclavePublicKeyHex))
+	if err != nil {
+		panic(fmt.Errorf("could not decompress enclave public key from hex. Cause: %w", err))
+	}
+	enclavePublicKeyEcies := ecies.ImportECDSAPublic(enclavePublicKey)
+
 	return &TransactionInjector{
 		avgBlockDuration:  avgBlockDuration,
 		stats:             stats,
@@ -85,6 +105,7 @@ func NewTransactionInjector(
 		erc20ContractLib:  erc20ContractLib,
 		wallets:           wallets,
 		counter:           newCounter(),
+		enclavePublicKey:  enclavePublicKeyEcies,
 	}
 }
 
@@ -161,7 +182,7 @@ func (ti *TransactionInjector) deploySingleObscuroERC20(w wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	encryptedTx, err := core.EncryptTx(signedTx)
+	encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
 	if err != nil {
 		panic(err)
 	}
@@ -193,7 +214,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			panic(err)
 		}
 
-		encryptedTx, err := core.EncryptTx(signedTx)
+		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
 		if err != nil {
 			panic(err)
 		}
@@ -247,7 +268,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		if err != nil {
 			panic(err)
 		}
-		encryptedTx, err := core.EncryptTx(signedTx)
+		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
 		if err != nil {
 			panic(err)
 		}
@@ -275,7 +296,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		tx := newCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
-		encryptedTx, err := core.EncryptTx(signedTx)
+		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
 		if err != nil {
 			panic(err)
 		}
@@ -374,4 +395,19 @@ func NextNonce(cl obscuroclient.Client, w wallet.Wallet) uint64 {
 		}
 		time.Sleep(time.Millisecond)
 	}
+}
+
+// EncryptTx encrypts a single transaction using the enclave's public key to send it privately to the enclave.
+func EncryptTx(tx *nodecommon.L2Tx, enclavePublicKey *ecies.PublicKey) (nodecommon.EncryptedTx, error) {
+	txBytes, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode transaction bytes with RLP. Cause: %w", err)
+	}
+
+	encryptedTxBytes, err := ecies.Encrypt(cryptorand.Reader, enclavePublicKey, txBytes, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt request params with enclave public key. Cause: %w", err)
+	}
+
+	return encryptedTxBytes, nil
 }
