@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
@@ -19,7 +21,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 
@@ -497,6 +498,12 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 		return obscuroNetwork.TearDown, nil, err
 	}
 
+	enclavePublicKey, err := crypto.DecompressPubkey(common.Hex2Bytes(simulation.EnclavePublicKeyHex))
+	if err != nil {
+		panic(fmt.Errorf("could not decompress enclave public key from hex. Cause: %w", err))
+	}
+	enclavePublicKeyEcies := ecies.ImportECDSAPublic(enclavePublicKey)
+
 	// Deploy an ERC20 contract to the Obscuro network.
 	wallet := wallets.Tokens[evm.BTC].L2Owner
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
@@ -510,7 +517,10 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	if err != nil {
 		return obscuroNetwork.TearDown, nil, err
 	}
-	encryptedTx := core.EncryptTx(signedTx)
+	encryptedTx, err := simulation.EncryptTx(signedTx, enclavePublicKeyEcies)
+	if err != nil {
+		return obscuroNetwork.TearDown, nil, err
+	}
 	err = l2Clients[0].Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
 		return obscuroNetwork.TearDown, nil, err

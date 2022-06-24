@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -346,8 +348,11 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 }
 
 func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
-	decryptedTx := obscurocore.DecryptTx(tx)
-	err := verifySignature(e.config.ObscuroChainID, decryptedTx)
+	decryptedTx, err := e.decryptTx(tx)
+	if err != nil {
+		return fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+	}
+	err = verifySignature(e.config.ObscuroChainID, decryptedTx)
 	if err != nil {
 		return err
 	}
@@ -425,9 +430,9 @@ func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
 }
 
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParamsCall) (nodecommon.EncryptedResponseCall, error) {
-	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
+	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in Call request. Cause: %w", err)
+		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
 	}
 
 	contractAddress, from, data, err := extractCallParams(paramBytes)
@@ -696,9 +701,9 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 }
 
 func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBalance) (nodecommon.EncryptedResponseGetBalance, error) {
-	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
+	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in GetBalance request. Cause: %w", err)
+		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
 
 	var paramsJSONMap []string
@@ -790,7 +795,6 @@ func generateKeyPair() *ecdsa.PrivateKey {
 	return key
 }
 
-// Todo - implement with better crypto
 func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) ([]byte, error) {
 	if e.privateKey == nil {
 		return nil, errors.New("private key not found - shouldn't happen")
@@ -798,7 +802,6 @@ func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveS
 	return decryptWithPrivateKey(secret, e.privateKey)
 }
 
-// Todo - implement with better crypto
 func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
 	nodecommon.LogWithID(e.nodeShortID, "Encrypting secret with public key %s", common.Bytes2Hex(pubKeyEncoded))
 	key, err := crypto.DecompressPubkey(pubKeyEncoded)
@@ -846,7 +849,7 @@ func extractCallParams(decryptedParams []byte) (common.Address, common.Address, 
 
 // Returns the transaction hash from a nodecommon.EncryptedParamsGetTxReceipt object.
 func (e *enclaveImpl) extractTxHash(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (common.Hash, error) {
-	paramBytes, err := e.rpcEncryptionManager.DecryptWithEnclaveKey(encryptedParams)
+	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
 	}
@@ -866,6 +869,9 @@ func (e *enclaveImpl) getTxSender(txHash common.Hash) (common.Address, error) {
 	if err != nil {
 		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+	if tx == nil {
+		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
+	}
 	msg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()), nil)
 	if err != nil {
 		return common.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
@@ -880,6 +886,21 @@ func (e *enclaveImpl) encryptTxReceiptWithViewingKey(address common.Address, txR
 		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	return e.rpcEncryptionManager.EncryptWithViewingKey(address, txReceiptBytes)
+}
+
+// DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
+func (e *enclaveImpl) decryptTx(encryptedTx nodecommon.EncryptedTx) (*nodecommon.L2Tx, error) {
+	txBytes, err := e.rpcEncryptionManager.DecryptWithEnclavePrivateKey(encryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
+	}
+
+	transaction := nodecommon.L2Tx{}
+	if err = rlp.DecodeBytes(txBytes, &transaction); err != nil {
+		return nil, fmt.Errorf("could not decrypt encrypted L2 transaction. Cause: %w", err)
+	}
+
+	return &transaction, nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions

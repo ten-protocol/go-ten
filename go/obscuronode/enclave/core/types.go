@@ -14,3 +14,6 @@ type BlockState struct {
 	HeadRollup     common.Hash
 	FoundNewRollup bool
 }
+
+// todo - this should become an elaborate data structure
+type SharedEnclaveSecret []byte
