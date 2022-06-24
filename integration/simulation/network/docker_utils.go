@@ -28,7 +28,7 @@ func dockerImagesAvailable(ctx context.Context, cli *client.Client) bool {
 }
 
 // Creates the test Docker containers.
-func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int, mngmtCtrAddr string, erc20Addr string) map[string]string {
+func createDockerContainers(ctx context.Context, client *client.Client, numOfNodes int, startPort int, mngmtCtrAddr string, erc20Addrs []string) map[string]string {
 	containerIDs := map[string]string{}
 	for i := 0; i < numOfNodes; i++ {
 		nodeID := common.BigToAddress(big.NewInt(int64(i))).Hex()
