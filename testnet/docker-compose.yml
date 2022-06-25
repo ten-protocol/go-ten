@@ -1,0 +1,52 @@
+version: "3.9"
+networks:
+  default:
+    name: node_network
+services:
+  host:
+    networks:
+      - default
+    environment:
+      MGMTCONTRACTADDR: some_address
+      PKSTRING: some_string
+    image: obscuro_host:latest
+    entrypoint: [
+      "/home/go-obscuro/go/obscuronode/host/main/main",
+      "--l1NodeHost=gethnetwork",
+      "--l1NodePort=9000",
+      "--enclaveRPCAddress=enclave:11000",
+      "--rollupContractAddress=$MGMTCONTRACTADDR",
+      "--privateKey=$PKSTRING"
+    ]
+
+  enclave:
+    networks:
+      - default
+    environment:
+      MGMTCONTRACTADDR: some_address
+      ERC20CONTRACTADDR: some_address
+    image: obscuro_enclave:latest
+    entrypoint: [
+                 "ego", "run", "/home/obscuro-playground/go/obscuronode/enclave/main/main",
+                 "--hostID=0x0000000000000000000000000000000000000000",
+                 "--address=:11000",
+                 "--managementContractAddress=$MGMTCONTRACTADDR",
+                 "--erc20ContractAddresses=$ERC20CONTRACTADDR",
+                 "--viewingKeysEnabled=false",
+                 "--hostAddress=host:10000"
+    ]
+
+  contractdeployer:
+    networks:
+      - default
+    environment:
+      PKSTRING: some_string
+    image: obscuro_deployer:latest
+    entrypoint: [
+    "/home/go-obscuro/tools/contractdeployer/main/main",
+    "--l1NodeHost=gethnetwork",
+    "--l1NodePort=9001",
+    "--privateKey=$PKSTRING",
+    ]
+#  db:
+#    image: testnetobscuronet.azurecr.io/go-obscuro-edgelessdb:latest
