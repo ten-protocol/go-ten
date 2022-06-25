@@ -37,7 +37,7 @@ func DeployContract(config Config) {
 		ChainID:             config.chainID,
 	}
 
-	l1Client, err := ethclient.NewEthClient(hostConfig)
+	l1Client, err := ethclient.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(err)
 	}

@@ -29,7 +29,7 @@ func InjectTransactions(nmConfig Config) {
 	}
 
 	// TODO - Consider extending this command to support multiple L1 clients and L2 clients.
-	l1Client, err := ethclient.NewEthClient(hostConfig)
+	l1Client, err := ethclient.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}

@@ -1,4 +1,4 @@
-package runner
+package contractdeployer
 
 // Flag names, defaults and usages.
 const (

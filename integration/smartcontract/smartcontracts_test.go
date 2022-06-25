@@ -53,7 +53,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	)
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethclient.NewEthClient(config.HostConfig{
+	client, err := ethclient.NewEthClientFromConfig(config.HostConfig{
 		ID:                  common.Address{1},
 		L1NodeHost:          "127.0.0.1",
 		L1NodeWebsocketPort: gethNetwork.WebSocketPorts[0],

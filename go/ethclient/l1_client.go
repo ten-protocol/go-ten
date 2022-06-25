@@ -21,8 +21,8 @@ type gethRPCClient struct {
 	id     common.Address    // TODO remove the id common.Address
 }
 
-// NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
-func NewEthClient(config config.HostConfig) (EthClient, error) {
+// NewEthClientFromConfig instantiates a new ethclient.EthClient that connects to an ethereum node
+func NewEthClientFromConfig(config config.HostConfig) (EthClient, error) {
 	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1ConnectionTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
@@ -32,6 +32,19 @@ func NewEthClient(config config.HostConfig) (EthClient, error) {
 	return &gethRPCClient{
 		client: client,
 		id:     config.ID,
+	}, nil
+}
+
+// NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
+func NewEthClient(ipaddress string, port uint, timeout time.Duration) (EthClient, error) {
+	client, err := connect(ipaddress, port, timeout)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
+	}
+
+	log.Trace("Initialized eth node connection - addr: %s port: %d", ipaddress, port)
+	return &gethRPCClient{
+		client: client,
 	}, nil
 }
 

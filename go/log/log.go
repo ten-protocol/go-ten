@@ -16,9 +16,10 @@ func init() { //nolint:gochecknoinits
 
 // Errors will always show
 const (
-	InfoLevel  = zerolog.InfoLevel
-	DebugLevel = zerolog.DebugLevel
-	TraceLevel = zerolog.TraceLevel
+	InfoLevel     = zerolog.InfoLevel
+	DebugLevel    = zerolog.DebugLevel
+	TraceLevel    = zerolog.TraceLevel
+	DisabledLevel = zerolog.Disabled
 )
 
 // singleton usage of the logger

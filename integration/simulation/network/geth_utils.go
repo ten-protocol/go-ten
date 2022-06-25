@@ -48,7 +48,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		L1NodeWebsocketPort: gethNetwork.WebSocketPorts[0],
 		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
 	}
-	tmpEthClient, err := ethclient.NewEthClient(tmpHostConfig)
+	tmpEthClient, err := ethclient.NewEthClientFromConfig(tmpHostConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -126,7 +126,7 @@ func createEthClientConnection(id int64, port uint) ethclient.EthClient {
 		L1NodeWebsocketPort: port,
 		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
 	}
-	ethnode, err := ethclient.NewEthClient(hostConfig)
+	ethnode, err := ethclient.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(err)
 	}

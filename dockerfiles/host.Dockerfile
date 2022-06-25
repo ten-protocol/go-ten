@@ -23,5 +23,5 @@ WORKDIR /home/go-obscuro/go/obscuronode/host/main
 RUN go build
 
 # expose the http and the ws ports to the host
-EXPOSE 8025 8026 8027 9000 9001 9002
-ENTRYPOINT ["/home/go-obscuro/integration/obscuronode/main/main"]
+EXPOSE 8025 9000
+ENTRYPOINT ["/home/go-obscuro/go/obscuronode/host/main/main"]
