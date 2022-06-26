@@ -7,9 +7,7 @@
 # WebSocket:  9000, 9001, 9002
 #
 # Exposes the following addresses: (only accessible internally)
-#  geth0.testnet.obscu.ro
-#  geth1.testnet.obscu.ro
-#  geth2.testnet.obscu.ro
+#  testnet-gethnetwork-DEPLOYNUMBER.uksouth.azurecontainer.io
 
 name: Manual Deploy L1 network
 
@@ -58,16 +56,16 @@ jobs:
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: testnet-obscuro${{ github.run_number }}
+          dns-name-label: testnet-gethnetwork-${{ github.run_number }}
           image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_testnet_l1network:latest
           registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-          name: testnet-app
+          name: testnet-gethnetwork-app
           location: 'uksouth'
           restart-policy: 'Never'
           command-line: /home/go-obscuro/integration/gethnetwork/main/main --numNodes=3 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
-          ports: '8025 8026 8027 9001 9002 9003'
+          ports: '8025 8026 8027 9000 9001 9002'
           cpu: 2
           memory: 4
 
