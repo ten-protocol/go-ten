@@ -9,11 +9,8 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
