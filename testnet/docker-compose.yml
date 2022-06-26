@@ -9,11 +9,13 @@ services:
     environment:
       MGMTCONTRACTADDR: some_address
       PKSTRING: some_string
+      L1HOST: some_host
+      L1PORT: some_port
     image: obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/obscuronode/host/main/main",
-      "--l1NodeHost=gethnetwork",
-      "--l1NodePort=9000",
+      "--l1NodeHost=$L1HOST",
+      "--l1NodePort=$L1PORT",
       "--enclaveRPCAddress=enclave:11000",
       "--rollupContractAddress=$MGMTCONTRACTADDR",
       "--privateKey=$PKSTRING"
@@ -41,12 +43,12 @@ services:
       - default
     environment:
       PKSTRING: some_string
+      L1HOST: some_host
+      L1PORT: some_port
     image: obscuro_deployer:latest
     entrypoint: [
     "/home/go-obscuro/tools/contractdeployer/main/main",
-    "--l1NodeHost=gethnetwork",
-    "--l1NodePort=9001",
+    "--l1NodeHost=$L1HOST",
+    "--l1NodePort=$L1PORT",
     "--privateKey=$PKSTRING",
     ]
-#  db:
-#    image: testnetobscuronet.azurecr.io/go-obscuro-edgelessdb:latest

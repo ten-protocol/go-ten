@@ -26,11 +26,11 @@ func NewContractDeployer(config *Config) *ContractDeployer {
 	}
 }
 
-func (cd *ContractDeployer) Run() {
+func (cd *ContractDeployer) Run() error {
 	// connect to the L1
 	privateKey, err := crypto.HexToECDSA(cd.config.PrivateKey)
 	if err != nil {
-		log.Panic("could not recover private key from hex. Cause: %s", err)
+		return fmt.Errorf("could not recover private key from hex. Cause: %s", err)
 	}
 
 	// load the wallet
@@ -38,17 +38,17 @@ func (cd *ContractDeployer) Run() {
 	// connect to the l1
 	client, err := ethclient.NewEthClient(cd.config.L1NodeHost, cd.config.L1NodePort, 30*time.Second)
 	if err != nil {
-		log.Panic("unable to connect to the l1 host: %w", err)
+		return fmt.Errorf("unable to connect to the l1 host: %w", err)
 	}
 
 	// deploy the contracts
 	contractAddr, err := deployContract(client, w, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
 	if err != nil {
-		log.Panic("unable to deploy contract to the l1 host: %w", err)
+		return fmt.Errorf("unable to deploy contract to the l1 host: %w", err)
 	}
 	erc20contractAddr, err := deployContract(client, w, common.Hex2Bytes(erc20contract.ContractByteCode))
 	if err != nil {
-		log.Panic("unable to deploy contract to the l1 host: %w", err)
+		return fmt.Errorf("unable to deploy contract to the l1 host: %w", err)
 	}
 
 	// print the contract address
@@ -57,6 +57,7 @@ func (cd *ContractDeployer) Run() {
 		erc20contractAddr.Hex(),
 	)
 	time.Sleep(5 * time.Second)
+	return nil
 }
 
 // deployContract deploys a contract (with a tremendous amount of gas)
