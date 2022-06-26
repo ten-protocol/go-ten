@@ -44,9 +44,12 @@ type Header struct {
 	Extra       []byte
 }
 
+// Withdrawal - this is the withdrawal instruction that is included in the rollup header
 type Withdrawal struct {
-	Amount  uint64
-	Address common.Address
+	// Type      uint8 // the type of withdrawal. For now only ERC20. Todo - add this once more ERCs are supported
+	Amount    uint64
+	Recipient common.Address // the user account that will receive the money
+	Contract  common.Address // the contract
 }
 
 // ExtRollup is used for communication between the enclave and the outside world.

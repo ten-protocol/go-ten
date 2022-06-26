@@ -19,7 +19,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 )
 
-func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, []ethclient.EthClient, *gethnetwork.GethNetwork) {
+func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, *common.Address, []ethclient.EthClient, *gethnetwork.GethNetwork) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -57,10 +57,15 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
-	// todo deploy multiple erc20s here and store the mappings, etc
-	erc20ContractAddr, err := DeployContract(tmpEthClient, wallets.Erc20EthOwnerWallets[0], common.Hex2Bytes(erc20contract.ContractByteCode))
-	if err != nil {
-		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+
+	erc20ContractAddr := make([]*common.Address, 0)
+	for _, token := range wallets.Tokens {
+		address, err := DeployContract(tmpEthClient, token.L1Owner, common.Hex2Bytes(erc20contract.ContractByteCode))
+		if err != nil {
+			panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+		}
+		token.L1ContractAddress = address
+		erc20ContractAddr = append(erc20ContractAddr, address)
 	}
 
 	ethClients := make([]ethclient.EthClient, nrNodes)
@@ -68,7 +73,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		ethClients[i] = createEthClientConnection(int64(i), gethNetwork.WebSocketPorts[i])
 	}
 
-	return mgmtContractAddr, erc20ContractAddr, ethClients, gethNetwork
+	return mgmtContractAddr, erc20ContractAddr[0], erc20ContractAddr[1], ethClients, gethNetwork
 }
 
 func StopGethNetwork(clients []ethclient.EthClient, netw *gethnetwork.GethNetwork) {

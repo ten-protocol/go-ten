@@ -1,6 +1,7 @@
 package ethereummock
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"sync/atomic"
@@ -98,7 +99,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	for blk := m.Resolver.FetchHeadBlock(); blk.ParentHash() != obscurocommon.GenesisHash; {
+	for blk := m.Resolver.FetchHeadBlock(); !bytes.Equal(blk.ParentHash().Bytes(), obscurocommon.GenesisHash.Bytes()); {
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
@@ -155,7 +156,7 @@ func (m *Node) Start() {
 
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
-			if head.Hash() == mb.Hash() { // Ignore the locally produced block if someone else found one already
+			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
 				p, found := m.Resolver.ParentBlock(mb)
 				if !found {
 					panic("noo")
@@ -329,7 +330,7 @@ func (m *Node) AddClient(client NotifyNewBlock) {
 }
 
 func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.Block {
-	if blockA.Hash() == blockB.Hash() {
+	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
 		return []*types.Block{blockA}
 	}
 	blocks := make([]*types.Block, 0)
@@ -337,7 +338,7 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 	var found bool
 	for {
 		blocks = append(blocks, tempBlock)
-		if tempBlock.Hash() == blockA.Hash() {
+		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
 			break
 		}
 		tempBlock, found = m.Resolver.ParentBlock(tempBlock)
@@ -351,6 +352,10 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 		result[n-i-1] = block
 	}
 	return result
+}
+
+func (m *Node) CallContract(ethereum.CallMsg) ([]byte, error) {
+	return nil, nil
 }
 
 func (m *Node) EthClient() *ethclient_ethereum.Client {

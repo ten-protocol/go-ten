@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"bytes"
 	"sync/atomic"
 	"time"
 
@@ -42,6 +43,10 @@ func (netw *MockP2P) StopListening() error {
 	return nil
 }
 
+func (netw *MockP2P) UpdatePeerList([]string) {
+	// Do nothing.
+}
+
 // BroadcastRollup Broadcasts the rollup to all L2 peers
 func (netw *MockP2P) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
@@ -49,7 +54,7 @@ func (netw *MockP2P) BroadcastRollup(r obscurocommon.EncodedRollup) {
 	}
 
 	for _, a := range netw.Nodes {
-		if a.ID != netw.CurrentNode.ID {
+		if !bytes.Equal(a.ID.Bytes(), netw.CurrentNode.ID.Bytes()) {
 			t := a
 			obscurocommon.Schedule(netw.delay(), func() { t.ReceiveRollup(r) })
 		}
@@ -62,7 +67,7 @@ func (netw *MockP2P) BroadcastTx(tx nodecommon.EncryptedTx) {
 	}
 
 	for _, a := range netw.Nodes {
-		if a.ID != netw.CurrentNode.ID {
+		if !bytes.Equal(a.ID.Bytes(), netw.CurrentNode.ID.Bytes()) {
 			t := a
 			obscurocommon.Schedule(netw.delay()/2, func() { t.ReceiveTx(tx) })
 		}

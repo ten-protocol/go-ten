@@ -8,11 +8,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -140,14 +138,14 @@ func getTransactionReceipt(client obscuroclient.Client, txHash common.Hash) map[
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(client obscuroclient.Client, address common.Address) uint64 {
+func balance(client obscuroclient.Client, address common.Address, l2ContractAddress *common.Address) uint64 {
 	method := obscuroclient.RPCCall
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 	convertedData := (hexutil.Bytes)(balanceData)
 
 	params := map[string]interface{}{
 		enclave.CallFieldFrom: address.Hex(),
-		enclave.CallFieldTo:   evm.Erc20ContractAddress.Hex(),
+		enclave.CallFieldTo:   l2ContractAddress.Hex(),
 		enclave.CallFieldData: convertedData,
 	}
 	jsonParams, err := json.Marshal([]interface{}{params})

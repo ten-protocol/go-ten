@@ -40,18 +40,22 @@ func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ec
 	}
 }
 
-// DecryptWithEnclaveKey decrypts the bytes with the enclave's public key.
-func (e *RPCEncryptionManager) DecryptWithEnclaveKey(encryptedBytes []byte) ([]byte, error) {
+// DecryptRPCCall decrypts the bytes with the enclave's private key if viewing keys are enabled.
+func (e *RPCEncryptionManager) DecryptRPCCall(encryptedBytes []byte) ([]byte, error) {
 	if !e.viewingKeysEnabled {
 		return encryptedBytes, nil
 	}
+	return e.DecryptWithEnclavePrivateKey(encryptedBytes)
+}
 
-	paramBytes, err := e.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
+// DecryptWithEnclavePrivateKey the bytes with the enclave's private key.
+func (e *RPCEncryptionManager) DecryptWithEnclavePrivateKey(encryptedBytes []byte) ([]byte, error) {
+	bytes, err := e.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
 	}
 
-	return paramBytes, nil
+	return bytes, nil
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.

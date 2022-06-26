@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -273,7 +275,7 @@ func checkBlockchainOfObscuroNode(
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
-		total += balance(nodeClient, wallet.Address())
+		total += balance(nodeClient, wallet.Address(), s.Params.Wallets.Tokens[evm.BTC].L2ContractAddress)
 	}
 
 	if total != totalAmountInSystem {

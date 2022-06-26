@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -338,11 +339,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			// todo: implement proper protocol so only one host responds to this secret requests initially
-			// 	for now we just have the genesis host respond until protocol implemented
-			if a.config.IsGenesis {
-				a.checkForSharedSecretRequests(block)
-			}
+			a.processBlock(block)
 
 			// submit each block to the enclave for ingestion plus validation
 			result = a.EnclaveClient.SubmitBlock(*block.DecodeBlock())
@@ -361,6 +358,28 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
 		obscurocommon.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+	}
+}
+
+// Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
+func (a *Node) processBlock(block obscurocommon.EncodedBlock) {
+	b := block.DecodeBlock()
+	for _, tx := range b.Transactions() {
+		t := a.mgmtContractLib.DecodeTx(tx)
+		if t == nil {
+			continue
+		}
+
+		if scrtReqTx, ok := t.(*obscurocommon.L1RequestSecretTx); ok {
+			a.processSharedSecretRequest(scrtReqTx)
+		}
+
+		if scrtRespTx, ok := t.(*obscurocommon.L1RespondSecretTx); ok {
+			err := a.processSharedSecretResponse(scrtRespTx)
+			if err != nil {
+				nodecommon.LogWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+			}
+		}
 	}
 }
 
@@ -470,43 +489,88 @@ func (a *Node) handleStoreSecretTx(t *obscurocommon.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) checkForSharedSecretRequests(block obscurocommon.EncodedBlock) {
-	b := block.DecodeBlock()
-	for _, tx := range b.Transactions() {
-		t := a.mgmtContractLib.DecodeTx(tx)
-		if t == nil {
+func (a *Node) processSharedSecretRequest(scrtReqTx *obscurocommon.L1RequestSecretTx) {
+	// todo: implement proper protocol so only one host responds to this secret requests initially
+	// 	for now we just have the genesis host respond until protocol implemented
+	if !a.config.IsGenesis {
+		return
+	}
+
+	att, err := nodecommon.DecodeAttestation(scrtReqTx.Attestation)
+	if err != nil {
+		nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
+		return
+	}
+
+	jsonAttestation, err := json.Marshal(att)
+	if err == nil {
+		nodecommon.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
+	} else {
+		nodecommon.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
+	}
+
+	secret, err := a.EnclaveClient.ShareSecret(att)
+	if err != nil {
+		nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
+		return
+	}
+
+	l1tx := &obscurocommon.L1RespondSecretTx{
+		Secret:      secret,
+		RequesterID: att.Owner,
+		AttesterID:  a.ID,
+		HostAddress: att.HostAddress,
+	}
+	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
+	a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+}
+
+// Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
+// may have joined the network.
+func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) error {
+	// We make a call to the L1 node to retrieve the new list of aggregators. An alternative would be to check that the
+	// transaction succeeded, and if so, extract the additional host address from the transaction arguments. But we
+	// believe this would be more brittle than just asking the L1 contract for its view of the current aggregators.
+	msg, err := a.mgmtContractLib.GetHostAddresses()
+	if err != nil {
+		return err
+	}
+	response, err := a.ethClient.CallContract(msg)
+	if err != nil {
+		return err
+	}
+	decodedResponse, err := a.mgmtContractLib.DecodeCallResponse(response)
+	if err != nil {
+		return err
+	}
+	hostAddresses := decodedResponse[0]
+
+	// We filter down the list of retrieved addresses.
+	var filteredHostAddresses []string //nolint:prealloc
+	for _, hostAddress := range hostAddresses {
+		// We exclude our own address.
+		if hostAddress == a.config.P2PAddress {
 			continue
 		}
-		if scrtReqTx, ok := t.(*obscurocommon.L1RequestSecretTx); ok {
-			att, err := nodecommon.DecodeAttestation(scrtReqTx.Attestation)
-			if err != nil {
-				nodecommon.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
-				continue
-			}
 
-			jsonAttestation, err := json.Marshal(att)
-			if err == nil {
-				nodecommon.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
-			} else {
-				nodecommon.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
+		// We exclude any duplicate host addresses.
+		isDup := false
+		for _, existingHostAddress := range filteredHostAddresses {
+			if hostAddress == existingHostAddress {
+				isDup = true
+				break
 			}
-
-			secret, err := a.EnclaveClient.ShareSecret(att)
-			if err != nil {
-				nodecommon.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
-				continue
-			}
-
-			l1tx := &obscurocommon.L1RespondSecretTx{
-				Secret:      secret,
-				RequesterID: att.Owner,
-				AttesterID:  a.ID,
-				HostAddress: att.HostAddress,
-			}
-			// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-			a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
 		}
+		if isDup {
+			continue
+		}
+
+		filteredHostAddresses = append(filteredHostAddresses, hostAddress)
 	}
+
+	a.P2p.UpdatePeerList(filteredHostAddresses)
+	nodecommon.LogWithID(a.shortID, "Updated peer list to %s", strings.Join(filteredHostAddresses, ", "))
+	return nil
 }
 
 // monitors the L1 client for new blocks and injects them into the aggregator

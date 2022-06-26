@@ -1,10 +1,13 @@
 package ethclient
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
@@ -67,7 +70,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	var blocksBetween []*types.Block
 	var err error
 
-	for currentBlk := lastBlock; currentBlk != nil && currentBlk.Hash() != startingBlock.Hash() && currentBlk.ParentHash() != common.HexToHash(""); {
+	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash().Bytes(), common.HexToHash("").Bytes()); {
 		currentBlk, err = e.BlockByHash(currentBlk.ParentHash())
 		if err != nil {
 			log.Panic("could not fetch parent block with hash %s. Cause: %s", currentBlk.ParentHash().String(), err)
@@ -79,7 +82,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 }
 
 func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
-	if maybeAncestor == block.Hash() || maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) || bytes.Equal(maybeAncestor.Bytes(), obscurocommon.GenesisBlock.Hash().Bytes()) {
 		return true
 	}
 
@@ -169,6 +172,10 @@ func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
 
 func (e *gethRPCClient) BlockByHash(hash common.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
+}
+
+func (e *gethRPCClient) CallContract(msg ethereum.CallMsg) ([]byte, error) {
+	return e.client.CallContract(context.Background(), msg, nil)
 }
 
 func (e *gethRPCClient) EthClient() *ethclient.Client {

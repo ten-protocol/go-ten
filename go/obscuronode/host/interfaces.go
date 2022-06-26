@@ -17,6 +17,7 @@ type P2PCallback interface {
 type P2P interface {
 	StartListening(callback P2PCallback)
 	StopListening() error
+	UpdatePeerList([]string)
 	BroadcastRollup(r obscurocommon.EncodedRollup)
 	BroadcastTx(tx nodecommon.EncryptedTx)
 }

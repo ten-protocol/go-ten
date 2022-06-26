@@ -55,21 +55,21 @@ func NewBasicNetworkOfNodesWithDockerEnclave(wallets *params.SimWallets) Network
 
 // Create initializes Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, []string, error) {
+func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
 	// We create Docker client, and finish early if docker or the enclave image are not available.
 	if err := n.setupAndCheckDocker(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	// We start a geth network with all necessary contracts deployed.
-	params.MgmtContractAddr, params.Erc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
 	)
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr)
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.Erc20Address)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address)
 
 	// Start the enclave docker containers with the right addresses.
 	n.startDockerEnclaves(params)
@@ -80,10 +80,10 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	}
 
 	// Start the standalone obscuro nodes connected to the enclaves and to the geth nodes
-	obscuroClients, nodeP2pAddrs := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 
-	return n.gethClients, obscuroClients, nodeP2pAddrs, nil
+	return n.gethClients, obscuroClients, nil
 }
 
 func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
@@ -112,7 +112,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) setupAndCheckDocker() error {
 
 func (n *basicNetworkOfNodesWithDockerEnclave) startDockerEnclaves(params *params.SimParams) {
 	// We create the Docker containers and set up a hook to terminate them at the end of the test.
-	n.containerIDs = createDockerContainers(n.ctx, n.client, params.NumberOfNodes, params.StartPort, params.MgmtContractAddr.Hex(), params.Erc20Address.Hex())
+	n.containerIDs = createDockerContainers(n.ctx, n.client, params.NumberOfNodes, params.StartPort, params.MgmtContractAddr.Hex(), []string{params.BtcErc20Address.Hex(), params.EthErc20Address.Hex()})
 
 	// We start the Docker containers.
 	for id := range n.containerIDs {

@@ -40,6 +40,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			params.ViewingKeysEnabled,
+			params.Wallets,
 		)
 	}
 	// make sure the aggregators can talk to each other
@@ -63,17 +64,10 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	return obscuroClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient, enclaveAddresses []string) ([]obscuroclient.Client, []string) {
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient, enclaveAddresses []string) []obscuroclient.Client {
 	// handle to the obscuro clients
 	obscuroClients := make([]obscuroclient.Client, params.NumberOfNodes)
-
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
-	nodeP2pAddrs := make([]string, params.NumberOfNodes)
-
-	for i := 0; i < params.NumberOfNodes; i++ {
-		// We assign a P2P address to each node on the network according to the convention.
-		nodeP2pAddrs[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
-	}
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -88,8 +82,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			isGenesis,
 			params.AvgGossipPeriod,
 			stats,
-			nodeP2pAddrs[i],
-			nodeP2pAddrs,
+			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
 			enclaveAddresses[i],
 			Localhost,
 			uint64(nodeRPCPortHTTP),
@@ -123,7 +116,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		}
 	}
 
-	return obscuroClients, nodeP2pAddrs
+	return obscuroClients
 }
 
 func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {
@@ -132,16 +125,17 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
 		enclaveConfig := config.EnclaveConfig{
-			HostID:             common.BigToAddress(big.NewInt(int64(i))),
-			HostAddress:        hostAddr,
-			Address:            enclaveAddr,
-			L1ChainID:          integration.EthereumChainID,
-			ObscuroChainID:     integration.ObscuroChainID,
-			ValidateL1Blocks:   false,
-			WillAttest:         false,
-			GenesisJSON:        nil,
-			UseInMemoryDB:      false,
-			ViewingKeysEnabled: params.ViewingKeysEnabled,
+			HostID:                 common.BigToAddress(big.NewInt(int64(i))),
+			HostAddress:            hostAddr,
+			Address:                enclaveAddr,
+			L1ChainID:              integration.EthereumChainID,
+			ObscuroChainID:         integration.ObscuroChainID,
+			ValidateL1Blocks:       false,
+			WillAttest:             false,
+			GenesisJSON:            nil,
+			UseInMemoryDB:          false,
+			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
+			ViewingKeysEnabled:     params.ViewingKeysEnabled,
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {

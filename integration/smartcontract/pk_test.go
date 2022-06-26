@@ -59,7 +59,6 @@ func TestRetrieve(t *testing.T) {
 	}
 	pubKeyA := privateKeyA.PublicKey
 	addrA := crypto.PubkeyToAddress(pubKeyA)
-	t.Logf("pubkey addr: %s", addrA.Hex())
 	pubKeyABytes := crypto.FromECDSAPub(&pubKeyA)
 
 	// pk signs a random message

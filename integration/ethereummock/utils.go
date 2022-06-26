@@ -1,6 +1,8 @@
 package ethereummock
 
 import (
+	"bytes"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
@@ -11,7 +13,7 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) *t
 	if blockA.NumberU64() == obscurocommon.L1GenesisHeight || blockB.NumberU64() == obscurocommon.L1GenesisHeight {
 		return blockA
 	}
-	if blockA.Hash() == blockB.Hash() {
+	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
 		return blockA
 	}
 	if blockA.NumberU64() > blockB.NumberU64() {

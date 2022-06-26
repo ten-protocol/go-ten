@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
@@ -61,6 +63,7 @@ func createInMemObscuroNode(
 	ethWallet wallet.Wallet,
 	ethClient ethclient.EthClient,
 	viewingKeysEnabled bool,
+	wallets *params.SimWallets,
 ) *host.Node {
 	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
@@ -72,14 +75,15 @@ func createInMemObscuroNode(
 	}
 
 	enclaveConfig := config.EnclaveConfig{
-		HostID:             hostConfig.ID,
-		L1ChainID:          integration.EthereumChainID,
-		ObscuroChainID:     integration.ObscuroChainID,
-		WillAttest:         false,
-		ValidateL1Blocks:   validateBlocks,
-		GenesisJSON:        genesisJSON,
-		UseInMemoryDB:      true,
-		ViewingKeysEnabled: viewingKeysEnabled,
+		HostID:                 hostConfig.ID,
+		L1ChainID:              integration.EthereumChainID,
+		ObscuroChainID:         integration.ObscuroChainID,
+		WillAttest:             false,
+		ValidateL1Blocks:       validateBlocks,
+		GenesisJSON:            genesisJSON,
+		UseInMemoryDB:          true,
+		ViewingKeysEnabled:     viewingKeysEnabled,
+		ERC20ContractAddresses: wallets.AllEthAddresses(),
 	}
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
 
@@ -104,7 +108,6 @@ func createSocketObscuroNode(
 	avgGossipPeriod time.Duration,
 	stats *stats.Stats,
 	p2pAddr string,
-	peerAddrs []string,
 	enclaveAddr string,
 	clientRPCHost string,
 	clientRPCPortHTTP uint64,
@@ -126,7 +129,6 @@ func createSocketObscuroNode(
 		EnclaveRPCTimeout:      ClientRPCTimeoutSecs * time.Second,
 		EnclaveRPCAddress:      enclaveAddr,
 		P2PAddress:             p2pAddr,
-		AllP2PAddresses:        peerAddrs,
 		ChainID:                config.DefaultHostConfig().ChainID,
 	}
 
