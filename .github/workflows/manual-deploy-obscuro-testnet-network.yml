@@ -61,7 +61,7 @@ jobs:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && sudo apt-get update && sudo apt-get install -y docker.io docker-compose && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io'
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && sudo apt-get update && sudo apt-get install -y docker.io docker-compose jq && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io'
 
 
 
