@@ -34,7 +34,7 @@ services:
                  "--hostID=$HOSTID",
                  "--address=:11000",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
-                 "--erc20ContractAddresses=$ERC20CONTRACTADDR",
+                 "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
                  "--viewingKeysEnabled=false",
                  "--hostAddress=host:10000"
     ]
