@@ -91,7 +91,7 @@ docker run --name=contractdeployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
-    -l1NodeHost=${l1host} \
+    --l1NodeHost=${l1host} \
     --l1NodePort=${l1port} \
     --privateKey=${pk_string}
 
