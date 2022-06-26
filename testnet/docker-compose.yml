@@ -27,28 +27,14 @@ services:
     environment:
       MGMTCONTRACTADDR: some_address
       ERC20CONTRACTADDR: some_address
+      HOSTID: some_address
     image: obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro-playground/go/obscuronode/enclave/main/main",
-                 "--hostID=0x0000000000000000000000000000000000000000",
+                 "--hostID=$HOSTID",
                  "--address=:11000",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR",
                  "--viewingKeysEnabled=false",
                  "--hostAddress=host:10000"
-    ]
-
-  contractdeployer:
-    networks:
-      - default
-    environment:
-      PKSTRING: some_string
-      L1HOST: some_host
-      L1PORT: some_port
-    image: obscuro_deployer:latest
-    entrypoint: [
-    "/home/go-obscuro/tools/contractdeployer/main/main",
-    "--l1NodeHost=$L1HOST",
-    "--l1NodePort=$L1PORT",
-    "--privateKey=$PKSTRING",
     ]
