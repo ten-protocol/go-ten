@@ -30,7 +30,7 @@ services:
       HOSTID: some_address
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
-                 "ego", "run", "/home/obscuro-playground/go/obscuronode/enclave/main/main",
+                 "ego", "run", "/home/obscuro/go-obscuro/go/obscuronode/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
