@@ -70,7 +70,7 @@ then
   docker run --name=gethnetwork -d \
     --network=node_network \
     --entrypoint /home/go-obscuro/integration/gethnetwork/main/main \
-     obscuro_gethnetwork:latest \
+     testnetobscuronet.azurecr.io/obscuro_gethnetwork:latest \
     --numNodes=3 \
     --startPort=8000 \
     --websocketStartPort=${l1port} \
@@ -90,7 +90,7 @@ docker network create --driver bridge node_network || true
 docker run --name=contractdeployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     obscuro_contractdeployer:latest \
+     testnetobscuronet.azurecr.io/obscuro_contractdeployer:latest \
     -l1NodeHost=${l1host} \
     --l1NodePort=${l1port} \
     --privateKey=${pk_string}

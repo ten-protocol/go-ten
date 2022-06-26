@@ -11,7 +11,7 @@ services:
       PKSTRING: some_string
       L1HOST: some_host
       L1PORT: some_port
-    image: obscuro_host:latest
+    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/obscuronode/host/main/main",
       "--l1NodeHost=$L1HOST",
@@ -28,7 +28,7 @@ services:
       MGMTCONTRACTADDR: some_address
       ERC20CONTRACTADDR: some_address
       HOSTID: some_address
-    image: obscuro_enclave:latest
+    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro-playground/go/obscuronode/enclave/main/main",
                  "--hostID=$HOSTID",
