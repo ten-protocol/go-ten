@@ -30,7 +30,7 @@ func (cd *ContractDeployer) Run() error {
 	// connect to the L1
 	privateKey, err := crypto.HexToECDSA(cd.config.PrivateKey)
 	if err != nil {
-		return fmt.Errorf("could not recover private key from hex. Cause: %s", err)
+		return fmt.Errorf("could not recover private key from hex. Cause: %w", err)
 	}
 
 	// load the wallet

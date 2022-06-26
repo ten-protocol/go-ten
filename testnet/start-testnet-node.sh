@@ -106,6 +106,6 @@ echo "ERC20CONTRACTADDR=${erc20ContractAddr}" >> "${testnet_path}/.env"
 
 
 echo "Starting enclave and host..."
-docker-compose up enclave host
+docker compose up enclave host -d
 
 

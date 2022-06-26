@@ -9,9 +9,8 @@ func main() {
 	log.SetLogLevel(log.DisabledLevel)
 	config := contractdeployer.ParseConfig()
 	deployer := contractdeployer.NewContractDeployer(config)
-	err := deployer.Run()
-	if err != nil {
+	if err := deployer.Run(); err != nil {
 		log.SetLogLevel(log.TraceLevel)
-		log.Panic("%w", err)
+		log.Panic("%s", err)
 	}
 }
