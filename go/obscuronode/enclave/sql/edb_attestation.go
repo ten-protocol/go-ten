@@ -40,21 +40,23 @@ type certQuoteResp struct {
 }
 
 type EdgelessAttestationConstraints struct {
-	SecurityVersion uint
-	UniqueID        string
-	SignerID        string
-	ProductID       uint16
-	Debug           bool
+	// This triplet of fields is typically used to attest an instance of an edgeless product (again, see ERA docs for more info)
+	SecurityVersion uint   // Min required security version of the Edgeless product
+	SignerID        string // corresponds to MRSIGNER SGX data, the expected fingerprint of Edgeless System's signing key
+	ProductID       uint16 // The ID for the edgeless product, ProductID = 16 for Edgeless DB
+
+	// Alternative to the triplet above you can specify a UniqueID which corresponds to a specific enclave package
+	UniqueID string // This corresponds to the MRENCLAVE field in the SGX attestation data, it is stricter than the triplet above
+
+	Debug bool // while debugging this can be set to true to permit debug attestations to pass verification
 }
 
 // The values here were the latest values from: https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
 // 	This should probably be configurable rather than relying on this hardcoded snapshot
 var defaultEDBConstraints = &EdgelessAttestationConstraints{
 	SecurityVersion: 2,
-	UniqueID:        "",
 	SignerID:        "67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe",
 	ProductID:       16,
-	Debug:           false,
 }
 
 // performEDBRemoteAttestation perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
