@@ -34,7 +34,7 @@ func DeployContract(config Config) {
 		L1NodeWebsocketPort: config.l1NodeWebsocketPort,
 		L1ConnectionTimeout: config.l1ConnectionTimeout,
 		PrivateKeyString:    config.privateKeyString,
-		ChainID:             config.chainID,
+		ChainID:             config.obscuroChainID,
 	}
 
 	l1Client, err := ethclient.NewEthClient(hostConfig)
