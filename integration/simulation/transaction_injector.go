@@ -125,7 +125,7 @@ func (ti *TransactionInjector) Start() {
 			TokenContract: ti.wallets.Tokens[evm.BTC].L1ContractAddress,
 			Sender:        &addr,
 		}
-		tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
+		tx := ti.erc20ContractLib.CreateDepositTx(txData, NextNonce(ti.l2Clients[0], w))
 		signedTx, err := w.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -240,7 +240,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			TokenContract: ti.wallets.Tokens[evm.BTC].L1ContractAddress,
 			Sender:        &addr,
 		}
-		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
+		tx := ti.erc20ContractLib.CreateDepositTx(txData, NextNonce(ti.l2Clients[0], ethWallet))
 		signedTx, err := ethWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
