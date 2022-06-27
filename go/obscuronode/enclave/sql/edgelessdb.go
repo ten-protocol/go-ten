@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -99,6 +100,8 @@ var (
 		fmt.Sprintf("CREATE TABLE %s.%s (%s varbinary(64) primary key, %s blob)", dbName, tableName, keyCol, valueCol),
 		fmt.Sprintf("GRANT ALL ON %s.%s TO %s", dbName, tableName, dbUser),
 	}
+
+	edgelessDBStartTimeout = 60 * time.Second
 )
 
 type manifest struct {
@@ -121,6 +124,12 @@ type EdgelessDBCredentials struct {
 }
 
 func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
+	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
+	err := waitForEdgelessDBToStart(edbCfg.Host)
+	if err != nil {
+		return nil, err
+	}
+
 	// load credentials from encrypted persistence if available, otherwise perform handshake and initialization to prepare them
 	edbCredentials, err := getHandshakeCredentials(edbCfg)
 	if err != nil {
@@ -139,6 +148,24 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
 
 	// wrap it in our eth-compatible key-value store layer
 	return CreateSQLEthDatabase(sqlDB)
+}
+
+func waitForEdgelessDBToStart(edbHost string) error {
+	start := time.Now()
+	edgelessHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
+	log.Info("Waiting to ensure Edgeless DB is available for http requests...")
+	var conn net.Conn
+	var err error
+	for time.Since(start) < edgelessDBStartTimeout {
+		conn, err = net.DialTimeout("tcp", edgelessHTTPAddr, time.Second)
+		if err == nil {
+			_ = conn.Close()
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+	return fmt.Errorf("waited for %s but EdgelessDB http server (%s) was still unavailable - %w",
+		edgelessDBStartTimeout, edgelessHTTPAddr, err)
 }
 
 func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) {
