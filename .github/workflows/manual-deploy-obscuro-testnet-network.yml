@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -46,22 +46,38 @@ jobs:
           docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest
 
-      - name: 'Create VM on Azure'
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        host_id: [0x0000000000000000000000000000000000000000,0x0000000000000000000000000000000000000001,0x0000000000000000000000000000000000000002]
+        include:
+          - host_number: 0
+            host_id: 0x0000000000000000000000000000000000000000
+          - host_number: 1
+            host_id: 0x0000000000000000000000000000000000000001
+          - host_number: 2
+            host_id: 0x0000000000000000000000000000000000000002
+
+    steps:
+      - name: 'Create Obscuro node  ${{ matrix.hostid }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_number }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscuronodetestnet-${{ GITHUB.RUN_NUMBER }}" \
+            --public-ip-address-dns-name "obscuronode-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --size Standard_D2_v4 --image ubuntults --public-ip-sku Basic --authentication-type password
 
       - name: 'Set up VM on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_number }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-testnet-node.sh --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io'
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-testnet-node.sh --host_id= ${{ matrix.host_id }} --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io'
 
 
 
