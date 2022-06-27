@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 env:
-  L1HOST: testnet-gethnetwork-18.uksouth.azurecontainer.io
+  L1HOST: testnet-gethnetwork-21.uksouth.azurecontainer.io
 
 jobs:
   build:
@@ -37,10 +37,10 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest -f dockerfiles/host.Dockerfile .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest
+#          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
+#          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest
+#          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest -f dockerfiles/host.Dockerfile .
+#          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest
           docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest
           
