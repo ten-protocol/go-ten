@@ -3,35 +3,22 @@ package enclave
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"sync"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	obscurocrypto "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/crypto"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"github.com/ethereum/go-ethereum/trie"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/sql"
-
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
-
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
@@ -44,19 +31,7 @@ import (
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
 
-const (
-	msgNoRollup  = "could not fetch rollup"
-	DummyBalance = "0x0"
-	// enclavePrivateKeyHex is the private key used for sensitive communication with the enclave.
-	// TODO - Replace this fixed key with a derived key.
-	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
-
-	// The relevant fields in a Call request's params.
-	CallFieldTo   = "to"
-	CallFieldFrom = "from"
-	CallFieldData = "data"
-)
-
+// StatsCollector Todo - replace with a proper framework
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id common.Address)
@@ -72,22 +47,22 @@ type enclaveImpl struct {
 	statsCollector       StatsCollector
 	l1Blockchain         *core.BlockChain
 	rpcEncryptionManager rpcencryptionmanager.RPCEncryptionManager
-	bridge               *evm.Bridge
+	bridge               *bridge.Bridge
 
-	txCh                 chan *nodecommon.L2Tx
-	roundWinnerCh        chan *obscurocore.Rollup
-	exitCh               chan bool
-	speculativeWorkInCh  chan bool
-	speculativeWorkOutCh chan speculativeWork
+	chain *rollupchain.RollupChain
+
+	txCh          chan *nodecommon.L2Tx
+	roundWinnerCh chan *obscurocore.Rollup
+	exitCh        chan bool
+	// speculativeWorkInCh  chan bool
+	// speculativeWorkOutCh chan speculativeWork
 
 	mgmtContractLib       mgmtcontractlib.MgmtContractLib
 	erc20ContractLib      erc20contractlib.ERC20ContractLib
 	attestationProvider   AttestationProvider // interface for producing attestation reports and verifying them
 	publicKeySerialized   []byte
 	privateKey            *ecdsa.PrivateKey
-	transactionBlobCrypto obscurocore.TransactionBlobCrypto
-
-	blockProcessingMutex sync.Mutex
+	transactionBlobCrypto obscurocrypto.TransactionBlobCrypto
 }
 
 // NewEnclave creates a new enclave.
@@ -99,24 +74,30 @@ func NewEnclave(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	collector StatsCollector,
 ) nodecommon.Enclave {
+	// todo - add the delay: N hashes
+
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
 
-	backingDB, err := getDB(nodeShortID, config)
+	// Initialise the database
+	backingDB, err := db.CreateDBFromConfig(nodeShortID, config)
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
 	storage := db.NewStorage(backingDB, nodeShortID)
 
+	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
+	// Todo - check the minimum difficulty parameter
 	var l1Blockchain *core.BlockChain
 	if config.ValidateL1Blocks {
 		if config.GenesisJSON == nil {
 			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
 		}
-		l1Blockchain = NewL1Blockchain(config.GenesisJSON)
+		l1Blockchain = rollupchain.NewL1Blockchain(config.GenesisJSON)
 	} else {
 		nodecommon.LogWithID(obscurocommon.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
+	// Todo- make sure the enclave cannot be started in production with WillAttest=false
 	var attestationProvider AttestationProvider
 	if config.WillAttest {
 		attestationProvider = &EgoAttestationProvider{}
@@ -125,50 +106,300 @@ func NewEnclave(
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
-	nodecommon.LogWithID(nodeShortID, "Generating public key")
-	privKey := generateKeyPair()
-	serializedPubKey := crypto.CompressPubkey(&privKey.PublicKey)
+	// todo - this has to be read from the database when the node restarts.
+	// first time the node starts we derive the obscuro key from the master seed received after the shared secret exchange
+	nodecommon.LogWithID(nodeShortID, "Generating the Obscuro key")
+	obscuroKey := obscurocrypto.GetObscuroKey()
+	serializedPubKey := crypto.CompressPubkey(&obscuroKey.PublicKey)
 	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
+	rpcem := rpcencryptionmanager.NewRPCEncryptionManager(config.ViewingKeysEnabled, ecies.ImportECDSA(obscuroKey))
+
+	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
+
+	obscuroBridge := bridge.New(
+		config.ERC20ContractAddresses[0],
+		config.ERC20ContractAddresses[1],
+		mgmtContractLib,
+		erc20ContractLib,
+		nodeShortID,
+		transactionBlobCrypto,
+		config.ObscuroChainID,
+		config.L1ChainID,
+	)
+	memp := mempool.New(config.ObscuroChainID)
+
+	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, config.ObscuroChainID, config.L1ChainID)
 
 	return &enclaveImpl{
 		config:                config,
 		nodeShortID:           nodeShortID,
 		storage:               storage,
 		blockResolver:         storage,
-		mempool:               mempool.New(),
+		mempool:               memp,
 		statsCollector:        collector,
 		l1Blockchain:          l1Blockchain,
-		rpcEncryptionManager:  rpcencryptionmanager.NewRPCEncryptionManager(config.ViewingKeysEnabled, ecies.ImportECDSA(privKey)),
-		bridge:                evm.NewBridge(config.ObscuroChainID, config.ERC20ContractAddresses[0], config.ERC20ContractAddresses[1]),
+		rpcEncryptionManager:  rpcem,
+		bridge:                obscuroBridge,
+		chain:                 chain,
 		txCh:                  make(chan *nodecommon.L2Tx),
 		roundWinnerCh:         make(chan *obscurocore.Rollup),
 		exitCh:                make(chan bool),
-		speculativeWorkInCh:   make(chan bool),
-		speculativeWorkOutCh:  make(chan speculativeWork),
 		mgmtContractLib:       mgmtContractLib,
 		erc20ContractLib:      erc20ContractLib,
 		attestationProvider:   attestationProvider,
-		privateKey:            privKey,
+		privateKey:            obscuroKey,
 		publicKeySerialized:   serializedPubKey,
-		transactionBlobCrypto: obscurocore.NewTransactionBlobCryptoImpl(),
+		transactionBlobCrypto: transactionBlobCrypto,
 	}
 }
 
+// IsReady is only implemented by the RPC wrapper
 func (e *enclaveImpl) IsReady() error {
 	return nil // The enclave is local so it is always ready
 }
 
+// StopClient is only implemented by the RPC wrapper
 func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
 }
 
 func (e *enclaveImpl) Start(block types.Block) {
-	if e.config.SpeculativeExecution {
-		// start the speculative rollup execution loop on its own go routine
-		go e.start(block)
+	// todo - reinstate after TN1
+	/*	if e.config.SpeculativeExecution {
+			//start the speculative rollup execution loop on its own go routine
+			go e.start(block)
+		}
+	*/
+}
+
+func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
+	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
+	return nodecommon.BlockSubmissionResponse{
+		ProducedRollup: e.transactionBlobCrypto.ToExtRollup(rolGenesis),
+		BlockHeader:    b.Header(),
+		IngestedBlock:  true,
 	}
 }
 
+// IngestBlocks is used to update the enclave with the full history of the L1 chain to date.
+func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
+	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
+	for i, block := range blocks {
+		response := e.chain.IngestBlock(block)
+		result[i] = response
+		if !response.IngestedBlock {
+			return result // We return early, as all descendant blocks will also fail verification.
+		}
+	}
+	return result
+}
+
+// SubmitBlock is used to update the enclave with an additional L1 block.
+func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
+	return e.chain.SubmitBlock(block)
+}
+
+func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
+	r := e.transactionBlobCrypto.ToEnclaveRollup(rollup.ToRollup())
+
+	// only store if the parent exists
+	_, found := e.storage.FetchRollup(r.Header.ParentHash)
+	if found {
+		e.storage.StoreRollup(r)
+	} else {
+		nodecommon.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", obscurocommon.ShortHash(r.Hash()))
+	}
+}
+
+func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
+	decryptedTx, err := e.rpcEncryptionManager.DecryptTx(tx)
+	if err != nil {
+		return fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+	}
+	err = e.mempool.AddMempoolTx(decryptedTx)
+	if err != nil {
+		return err
+	}
+
+	if e.config.SpeculativeExecution {
+		e.txCh <- decryptedTx
+	}
+	return nil
+}
+
+func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
+	return e.chain.RoundWinner(parent)
+}
+
+func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParamsCall) (nodecommon.EncryptedResponseCall, error) {
+	return e.chain.ExecuteOffChainTransaction(encryptedParams)
+}
+
+func (e *enclaveImpl) Nonce(address common.Address) uint64 {
+	// todo user encryption
+	hs := e.storage.FetchHeadState()
+	if hs == nil {
+		return 0
+	}
+	s := e.storage.CreateStateDB(hs.HeadRollup)
+	return s.GetNonce(address)
+}
+
+func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
+	// todo - use the metadata stored in the database
+	hs := e.storage.FetchHeadState()
+	if hs == nil {
+		panic("should not happen")
+	}
+	rollup, found := e.storage.FetchRollup(hs.HeadRollup)
+	if !found {
+		log.Panic("could not fetch block's head rollup")
+	}
+
+	for {
+		txs := rollup.Transactions
+		for _, tx := range txs {
+			if bytes.Equal(tx.Hash().Bytes(), txHash.Bytes()) {
+				return tx
+			}
+		}
+		rollup = e.storage.ParentRollup(rollup)
+		if rollup == nil || rollup.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
+			return nil
+		}
+	}
+}
+
+func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (nodecommon.EncryptedResponseGetTxReceipt, error) {
+	txHash, err := e.rpcEncryptionManager.ExtractTxHash(encryptedParams)
+	if err != nil {
+		return nil, err
+	}
+
+	viewingKeyAddress, err := e.storage.GetSender(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+
+	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptTxReceiptWithViewingKey(viewingKeyAddress, txReceipt)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
+	}
+
+	return encryptedTxReceipt, nil
+}
+
+func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
+	rollup, found := e.storage.FetchRollup(rollupHash)
+	if found {
+		extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
+		return &extRollup
+	}
+	return nil
+}
+
+func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
+	if e.publicKeySerialized == nil {
+		panic("public key not initialized, we can't produce the attestation report")
+	}
+	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID, e.config.HostAddress)
+	if err != nil {
+		panic("Failed to produce remote report.")
+	}
+	return report
+}
+
+// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
+func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
+	secret := obscurocrypto.GenerateEntropy()
+	e.storage.StoreSecret(secret)
+	encSec, err := obscurocrypto.EncryptSecret(e.publicKeySerialized, secret, e.nodeShortID)
+	if err != nil {
+		log.Panic("failed to encrypt secret. Cause: %s", err)
+	}
+	return encSec
+}
+
+// InitEnclave - initialise an enclave with a seed received by another enclave
+func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) error {
+	secret, err := obscurocrypto.DecryptSecret(s, e.privateKey)
+	if err != nil {
+		return err
+	}
+	e.storage.StoreSecret(*secret)
+	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeShortID, secret)
+	return nil
+}
+
+// ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
+func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
+	data, err := e.attestationProvider.VerifyReport(att)
+	if err != nil {
+		return nil, err
+	}
+	// Then we verify the public key provided has come from the same enclave as that attestation report
+	if err = VerifyIdentity(data, att); err != nil {
+		return nil, err
+	}
+	nodecommon.LogWithID(e.nodeShortID, "Successfully verified attestation and identity. Owner: %s", att.Owner)
+
+	secret := e.storage.FetchSecret()
+	if secret == nil {
+		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
+	}
+	return obscurocrypto.EncryptSecret(att.PubKey, *secret, e.nodeShortID)
+}
+
+func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+	viewingKeyBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
+	if err != nil {
+		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
+	}
+	return e.rpcEncryptionManager.AddViewingKey(viewingKeyBytes, signature)
+}
+
+func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBalance) (nodecommon.EncryptedResponseGetBalance, error) {
+	return e.chain.GetBalance(encryptedParams)
+}
+
+func (e *enclaveImpl) IsInitialised() bool {
+	return e.storage.FetchSecret() != nil
+}
+
+func (e *enclaveImpl) Stop() error {
+	if e.config.SpeculativeExecution {
+		e.exitCh <- true
+	}
+	return nil
+}
+
+// Todo - reinstate speculative execution afer TN1
+/*
+// internal structure to pass information.
+type speculativeWork struct {
+	found bool
+	r     *obscurocore.Rollup
+	s     *state.StateDB
+	h     *nodecommon.Header
+	txs   []*nodecommon.L2Tx
+}
+
+// internal structure used for the speculative execution.
+type processingEnvironment struct {
+	headRollup      *obscurocore.Rollup              // the current head rollup, which will be the parent of the new rollup
+	header          *nodecommon.Header               // the header of the new rollup
+	processedTxs    []*nodecommon.L2Tx               // txs that were already processed
+	processedTxsMap map[common.Hash]*nodecommon.L2Tx // structure used to prevent duplicates
+	state           *state.StateDB                   // the state as calculated from the previous rollup and the processed transactions
+}
+*/
+/*
 func (e *enclaveImpl) start(block types.Block) {
 	env := processingEnvironment{processedTxsMap: make(map[common.Hash]*nodecommon.L2Tx)}
 	// determine whether the block where the speculative execution will start already contains Obscuro state
@@ -196,7 +427,7 @@ func (e *enclaveImpl) start(block types.Block) {
 
 			// determine the transactions that were not yet included
 			env.processedTxs = currentTxs(winnerRollup, e.mempool.FetchMempoolTxs(), e.storage)
-			env.processedTxsMap = makeMap(env.processedTxs)
+			env.processedTxsMap = obscurocore.MakeMap(env.processedTxs)
 
 			// calculate the State after executing them
 			evm.ExecuteTransactions(env.processedTxs, env.state, env.headRollup.Header, e.storage, e.config.ObscuroChainID, 0)
@@ -232,778 +463,4 @@ func (e *enclaveImpl) start(block types.Block) {
 		}
 	}
 }
-
-func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
-	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []*nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
-	b, f := e.storage.FetchBlock(blkHash)
-	if !f {
-		log.Panic("Could not find the block used as proof for the genesis rollup. expectedHash=%s", blkHash)
-	}
-	return nodecommon.BlockSubmissionResponse{
-		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
-		BlockHeader:    b.Header(),
-		IngestedBlock:  true,
-	}
-}
-
-// IngestBlocks is used to update the enclave with the full history of the L1 chain to date.
-func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubmissionResponse {
-	result := make([]nodecommon.BlockSubmissionResponse, len(blocks))
-	for i, block := range blocks {
-		// We ignore a failure on the genesis block, since insertion of the genesis also produces a failure in Geth
-		// (at least with Clique, where it fails with a `vote nonce not 0x00..0 or 0xff..f`).
-		if ingestionFailedResponse := e.insertBlockIntoL1Chain(block); !e.isGenesisBlock(block) && ingestionFailedResponse != nil {
-			result[i] = *ingestionFailedResponse
-			return result // We return early, as all descendant blocks will also fail verification.
-		}
-
-		e.storage.StoreBlock(block)
-		bs := updateState(block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto, e.bridge)
-		if bs == nil {
-			result[i] = e.noBlockStateBlockSubmissionResponse(block)
-		} else {
-			var rollup nodecommon.ExtRollup
-			if bs.FoundNewRollup {
-				hr, f := e.storage.FetchRollup(bs.HeadRollup)
-				if !f {
-					log.Panic(msgNoRollup)
-				}
-
-				rollup = hr.ToExtRollup(e.transactionBlobCrypto)
-			}
-			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
-		}
-	}
-	return result
-}
-
-// SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
-	e.blockProcessingMutex.Lock()
-	defer e.blockProcessingMutex.Unlock()
-
-	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
-	if e.isGenesisBlock(&block) {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
-	}
-
-	_, foundBlock := e.storage.FetchBlock(block.Hash())
-	if foundBlock {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
-	}
-
-	if ingestionFailedResponse := e.insertBlockIntoL1Chain(&block); ingestionFailedResponse != nil {
-		return *ingestionFailedResponse
-	}
-
-	_, f := e.storage.FetchBlock(block.Header().ParentHash)
-	if !f && block.NumberU64() > obscurocommon.L1GenesisHeight {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
-	}
-
-	// Only store the block if the parent is available.
-	stored := e.storage.StoreBlock(&block)
-	if !stored {
-		return nodecommon.BlockSubmissionResponse{IngestedBlock: false}
-	}
-
-	nodecommon.LogWithID(e.nodeShortID, "Update state: %d", obscurocommon.ShortHash(block.Hash()))
-	blockState := updateState(&block, e.blockResolver, e.mgmtContractLib, e.erc20ContractLib, e.storage, e.storage, e.nodeShortID, e.config.ObscuroChainID, e.transactionBlobCrypto, e.bridge)
-	if blockState == nil {
-		return e.noBlockStateBlockSubmissionResponse(&block)
-	}
-
-	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
-	hr, f := e.storage.FetchRollup(blockState.HeadRollup)
-	if !f {
-		log.Panic(msgNoRollup)
-	}
-	e.mempool.RemoveMempoolTxs(historicTxs(hr, e.storage))
-	r := e.produceRollup(&block, blockState)
-
-	e.checkRollup(r)
-
-	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
-	e.storage.StoreRollup(r)
-
-	nodecommon.LogWithID(e.nodeShortID, "Processed block: b_%d(%d)", obscurocommon.ShortHash(block.Hash()), block.NumberU64())
-
-	return e.blockStateBlockSubmissionResponse(blockState, r.ToExtRollup(e.transactionBlobCrypto))
-}
-
-func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
-	r := obscurocore.Rollup{
-		Header:       rollup.Header,
-		Transactions: e.transactionBlobCrypto.Decrypt(rollup.EncryptedTxBlob),
-	}
-
-	// only store if the parent exists
-	_, found := e.storage.FetchRollup(r.Header.ParentHash)
-	if found {
-		e.storage.StoreRollup(&r)
-	} else {
-		nodecommon.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", obscurocommon.ShortHash(r.Hash()))
-	}
-}
-
-func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
-	decryptedTx, err := e.decryptTx(tx)
-	if err != nil {
-		return fmt.Errorf("could not decrypt transaction. Cause: %w", err)
-	}
-	err = verifySignature(e.config.ObscuroChainID, decryptedTx)
-	if err != nil {
-		return err
-	}
-	e.mempool.AddMempoolTx(decryptedTx)
-	if e.config.SpeculativeExecution {
-		e.txCh <- decryptedTx
-	}
-	return nil
-}
-
-// Checks that the L2Tx has a valid signature.
-func verifySignature(chainID int64, decryptedTx *nodecommon.L2Tx) error {
-	signer := types.NewLondonSigner(big.NewInt(chainID))
-	_, err := types.Sender(signer, decryptedTx)
-	return err
-}
-
-func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
-	head, found := e.storage.FetchRollup(parent)
-	if !found {
-		return nodecommon.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
-	}
-
-	headState := e.storage.FetchHeadState()
-	currentHeadRollup, found := e.storage.FetchRollup(headState.HeadRollup)
-	if !found {
-		panic("Should not happen since the header hash and the rollup are stored in a batch.")
-	}
-	// Check if round.winner is being called on an old rollup
-	if !bytes.Equal(currentHeadRollup.Hash().Bytes(), parent.Bytes()) {
-		return nodecommon.ExtRollup{}, false, nil
-	}
-
-	nodecommon.LogWithID(e.nodeShortID, "Round winner height: %d", head.Header.Number)
-	rollupsReceivedFromPeers := e.storage.FetchRollups(head.NumberU64() + 1)
-	// filter out rollups with a different Parent
-	var usefulRollups []*obscurocore.Rollup
-	for _, rol := range rollupsReceivedFromPeers {
-		p := e.storage.ParentRollup(rol)
-		if p == nil {
-			nodecommon.LogWithID(e.nodeShortID, "Received rollup from peer but don't have parent rollup - discarding...")
-			continue
-		}
-		if bytes.Equal(p.Hash().Bytes(), head.Hash().Bytes()) {
-			usefulRollups = append(usefulRollups, rol)
-		}
-	}
-
-	// determine the winner of the round
-	winnerRollup := e.findRoundWinner(usefulRollups, head)
-	if e.config.SpeculativeExecution {
-		go e.notifySpeculative(winnerRollup)
-	}
-
-	// we are the winner
-	if bytes.Equal(winnerRollup.Header.Agg.Bytes(), e.config.HostID.Bytes()) {
-		v := e.blockResolver.Proof(winnerRollup)
-		w := e.storage.ParentRollup(winnerRollup)
-		nodecommon.LogWithID(e.nodeShortID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
-			obscurocommon.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
-			obscurocommon.ShortHash(w.Hash()),
-			obscurocommon.ShortHash(v.Hash()),
-			v.NumberU64(),
-			len(winnerRollup.Transactions),
-			printTxs(winnerRollup.Transactions),
-			winnerRollup.Header.Root,
-		)
-		return winnerRollup.ToExtRollup(e.transactionBlobCrypto), true, nil
-	}
-	return nodecommon.ExtRollup{}, false, nil
-}
-
-func (e *enclaveImpl) notifySpeculative(winnerRollup *obscurocore.Rollup) {
-	e.roundWinnerCh <- winnerRollup
-}
-
-func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.EncryptedParamsCall) (nodecommon.EncryptedResponseCall, error) {
-	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
-	}
-
-	contractAddress, from, data, err := extractCallParams(paramBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	hs := e.storage.FetchHeadState()
-	if hs == nil {
-		panic("Not initialised")
-	}
-	// todo - get the parent
-	r, f := e.storage.FetchRollup(hs.HeadRollup)
-	if !f {
-		panic("not found")
-	}
-	s := e.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, e.storage, e.config.ObscuroChainID)
-	if err != nil {
-		return nil, err
-	}
-	if result.Failed() {
-		log.Info("Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
-		return nil, result.Err
-	}
-
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(from, result.ReturnData)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
-	}
-
-	return encryptedResult, nil
-}
-
-func (e *enclaveImpl) Nonce(address common.Address) uint64 {
-	// todo user encryption
-	hs := e.storage.FetchHeadState()
-	if hs == nil {
-		return 0
-	}
-	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return s.GetNonce(address)
-}
-
-func (e *enclaveImpl) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
-	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
-	if !f {
-		log.Panic(msgNoRollup)
-	}
-
-	// These variables will be used to create the new rollup
-	var newRollupTxs obscurocore.L2Txs
-	var newRollupState *state.StateDB
-	var newRollupHeader *nodecommon.Header
-
-	/*
-			speculativeExecutionSucceeded := false
-		   todo - reenable
-			if e.speculativeExecutionEnabled {
-				// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
-				e.speculativeWorkInCh <- true
-				speculativeRollup := <-e.speculativeWorkOutCh
-
-				newRollupTxs = speculativeRollup.txs
-				newRollupState = speculativeRollup.s
-				newRollupHeader = speculativeRollup.h
-
-				// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-				// or speculative execution is disabled
-				speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
-
-				if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
-					nodecommon.LogWithID(e.nodeShortID, "Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
-						obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-						speculativeRollup.r.Header.Number,
-						obscurocommon.ShortHash(bs.HeadRollup),
-						headRollup.Header.Number)
-					if e.statsCollector != nil {
-						e.statsCollector.L2Recalc(e.nodeID)
-					}
-				}
-			}
-	*/
-
-	successfulTransactions := make([]*nodecommon.L2Tx, 0)
-	// if !speculativeExecutionSucceeded {
-	// In case the speculative execution thread has not succeeded in producing a valid rollup
-	// we have to create a new one from the mempool transactions
-	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.NumberU64()+1, e.config.HostID)
-	newRollupTxs = currentTxs(headRollup, e.mempool.FetchMempoolTxs(), e.storage)
-	newRollupState = e.storage.CreateStateDB(bs.HeadRollup)
-	txReceipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, 0)
-	txReceiptsMap := toReceiptMap(txReceipts)
-	// todo - only transactions that fail because of the nonce should be excluded
-	for i, tx := range newRollupTxs {
-		_, f := txReceiptsMap[tx.Hash()]
-		if f {
-			successfulTransactions = append(successfulTransactions, newRollupTxs[i])
-		} else {
-			log.Info(">   Agg%d: Excluding transaction %d", obscurocommon.ShortAddress(e.config.HostID), obscurocommon.ShortHash(tx.Hash()))
-		}
-	}
-
-	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
-	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	fromBlock := e.blockResolver.Proof(headRollup)
-	depositTxs := extractDeposits(fromBlock, b, e.bridge, e.blockResolver, e.erc20ContractLib, newRollupState, e.config.ObscuroChainID)
-	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, e.storage, e.config.ObscuroChainID, len(successfulTransactions))
-	depositReceiptsMap := toReceiptMap(depositReceipts)
-	// deposits should not fail
-	for _, tx := range depositTxs {
-		if depositReceiptsMap[tx.Hash()] == nil || depositReceiptsMap[tx.Hash()].Status == types.ReceiptStatusFailed {
-			panic("Should not happen")
-		}
-	}
-
-	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
-	rootHash, err := newRollupState.Commit(true)
-	if err != nil {
-		panic(err)
-	}
-	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, obscurocommon.GenerateNonce(), rootHash)
-
-	// Postprocessing - withdrawals
-	r.Header.Withdrawals = e.rollupPostProcessingWithdrawals(&r, newRollupState, txReceiptsMap)
-	receipts := getReceipts(txReceipts, depositReceipts)
-
-	if len(receipts) == 0 {
-		r.Header.ReceiptHash = types.EmptyRootHash
-	} else {
-		r.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
-		r.Header.Bloom = types.CreateBloom(receipts)
-	}
-
-	return &r
-}
-
-func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
-	// todo add some sort of cache
-	hs := e.storage.FetchHeadState()
-	if hs == nil {
-		panic("should not happen")
-	}
-	rollup, found := e.storage.FetchRollup(hs.HeadRollup)
-	if !found {
-		log.Panic("could not fetch block's head rollup")
-	}
-
-	for {
-		txs := rollup.Transactions
-		for _, tx := range txs {
-			if bytes.Equal(tx.Hash().Bytes(), txHash.Bytes()) {
-				return tx
-			}
-		}
-		rollup = e.storage.ParentRollup(rollup)
-		if rollup == nil || rollup.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
-			return nil
-		}
-	}
-}
-
-func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (nodecommon.EncryptedResponseGetTxReceipt, error) {
-	txHash, err := e.extractTxHash(encryptedParams)
-	if err != nil {
-		return nil, err
-	}
-
-	viewingKeyAddress, err := e.getTxSender(txHash)
-	if err != nil {
-		return nil, err
-	}
-
-	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	encryptedTxReceipt, err := e.encryptTxReceiptWithViewingKey(viewingKeyAddress, txReceipt)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	return encryptedTxReceipt, nil
-}
-
-func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
-	rollup, found := e.storage.FetchRollup(rollupHash)
-	if found {
-		extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
-		return &extRollup
-	}
-	return nil
-}
-
-func (e *enclaveImpl) Stop() error {
-	if e.config.SpeculativeExecution {
-		e.exitCh <- true
-	}
-	return nil
-}
-
-func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
-	if e.publicKeySerialized == nil {
-		panic("public key not initialized, we can't produce the attestation report")
-	}
-	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID, e.config.HostAddress)
-	if err != nil {
-		panic("Failed to produce remote report.")
-	}
-	return report
-}
-
-// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
-	secret := make([]byte, 32)
-	n, err := rand.Read(secret)
-	if n != 32 || err != nil {
-		log.Panic("could not generate secret. Cause: %s", err)
-	}
-	e.storage.StoreSecret(secret)
-	encSec, err := e.encryptSecret(e.publicKeySerialized, secret)
-	if err != nil {
-		log.Panic("failed to encrypt secret. Cause: %s", err)
-	}
-	return encSec
-}
-
-// InitEnclave - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) error {
-	secret, err := e.decryptSecret(s)
-	if err != nil {
-		return err
-	}
-	e.storage.StoreSecret(secret)
-	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeShortID, secret)
-	return nil
-}
-
-// ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
-func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
-	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
-	data, err := e.attestationProvider.VerifyReport(att)
-	if err != nil {
-		return nil, err
-	}
-	// Then we verify the public key provided has come from the same enclave as that attestation report
-	if err = verifyIdentity(data, att); err != nil {
-		return nil, err
-	}
-	nodecommon.LogWithID(e.nodeShortID, "Successfully verified attestation and identity. Owner: %s", att.Owner)
-
-	secret := e.storage.FetchSecret()
-	if secret == nil {
-		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
-	}
-	return e.encryptSecret(att.PubKey, secret)
-}
-
-func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
-	viewingKeyBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
-	if err != nil {
-		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
-	}
-	return e.rpcEncryptionManager.AddViewingKey(viewingKeyBytes, signature)
-}
-
-func (e *enclaveImpl) GetBalance(encryptedParams nodecommon.EncryptedParamsGetBalance) (nodecommon.EncryptedResponseGetBalance, error) {
-	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
-	}
-
-	var paramsJSONMap []string
-	err = json.Unmarshal(paramBytes, &paramsJSONMap)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in GetBalance request. Cause: %w", err)
-	}
-	address := common.HexToAddress(paramsJSONMap[0]) // The first argument is the address, the second the block.
-
-	// TODO - Calculate balance correctly, rather than returning this dummy value.
-	balance := DummyBalance // The Ethereum API is to return the balance in hex.
-
-	encryptedBalance, err := e.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
-	}
-
-	return encryptedBalance, nil
-}
-
-func verifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {
-	expectedIDHash := getIDHash(att.Owner, att.PubKey, att.HostAddress)
-	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
-	if !bytes.Equal(expectedIDHash, data[:len(expectedIDHash)]) {
-		return fmt.Errorf("failed to verify hash for attestation report with owner: %s", att.Owner)
-	}
-	return nil
-}
-
-func (e *enclaveImpl) IsInitialised() bool {
-	return e.storage.FetchSecret() != nil
-}
-
-func (e *enclaveImpl) isGenesisBlock(block *types.Block) bool {
-	return e.l1Blockchain != nil && bytes.Equal(block.Hash().Bytes(), e.l1Blockchain.Genesis().Hash().Bytes())
-}
-
-// Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
-// BlockSubmissionResponse if the insertion failed.
-func (e *enclaveImpl) insertBlockIntoL1Chain(block *types.Block) *nodecommon.BlockSubmissionResponse {
-	if e.l1Blockchain != nil {
-		_, err := e.l1Blockchain.InsertChain(types.Blocks{block})
-		if err != nil {
-			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
-			return &nodecommon.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
-		}
-	}
-	return nil
-}
-
-func (e *enclaveImpl) noBlockStateBlockSubmissionResponse(block *types.Block) nodecommon.BlockSubmissionResponse {
-	return nodecommon.BlockSubmissionResponse{
-		BlockHeader:   block.Header(),
-		IngestedBlock: true,
-		FoundNewHead:  false,
-	}
-}
-
-func (e *enclaveImpl) blockStateBlockSubmissionResponse(bs *obscurocore.BlockState, rollup nodecommon.ExtRollup) nodecommon.BlockSubmissionResponse {
-	headRollup, f := e.storage.FetchRollup(bs.HeadRollup)
-	if !f {
-		log.Panic(msgNoRollup)
-	}
-
-	headBlock, f := e.storage.FetchBlock(bs.Block)
-	if !f {
-		log.Panic("could not fetch block")
-	}
-
-	var head *nodecommon.Header
-	if bs.FoundNewRollup {
-		head = headRollup.Header
-	}
-	return nodecommon.BlockSubmissionResponse{
-		BlockHeader:    headBlock.Header(),
-		ProducedRollup: rollup,
-		IngestedBlock:  true,
-		FoundNewHead:   bs.FoundNewRollup,
-		RollupHead:     head,
-	}
-}
-
-func generateKeyPair() *ecdsa.PrivateKey {
-	// todo: This should be generated deterministically based on some enclave attributes if possible
-	key, err := crypto.HexToECDSA(enclavePrivateKeyHex)
-	if err != nil {
-		panic("Failed to create enclave private key")
-	}
-	return key
-}
-
-func (e *enclaveImpl) decryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret) ([]byte, error) {
-	if e.privateKey == nil {
-		return nil, errors.New("private key not found - shouldn't happen")
-	}
-	return decryptWithPrivateKey(secret, e.privateKey)
-}
-
-func (e *enclaveImpl) encryptSecret(pubKeyEncoded []byte, secret obscurocore.SharedEnclaveSecret) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
-	nodecommon.LogWithID(e.nodeShortID, "Encrypting secret with public key %s", common.Bytes2Hex(pubKeyEncoded))
-	key, err := crypto.DecompressPubkey(pubKeyEncoded)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key %w", err)
-	}
-
-	encKey, err := encryptWithPublicKey(secret, key)
-	if err != nil {
-		nodecommon.LogWithID(e.nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoded, encKey)
-	}
-	return encKey, err
-}
-
-// Extracts and validates the relevant parameters in a Call request.
-func extractCallParams(decryptedParams []byte) (common.Address, common.Address, []byte, error) {
-	var paramsJSONMap []interface{}
-	err := json.Unmarshal(decryptedParams, &paramsJSONMap)
-	if err != nil {
-		return common.Address{}, common.Address{}, nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
-	}
-
-	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
-	if !ok {
-		return common.Address{}, common.Address{}, nil, fmt.Errorf("to field in Call request params was not of expected type string")
-	}
-	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
-	if !ok {
-		return common.Address{}, common.Address{}, nil, fmt.Errorf("from field in Call request params was not of expected type string")
-	}
-	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
-	if !ok {
-		return common.Address{}, common.Address{}, nil, fmt.Errorf("data field in Call request params was not of expected type string")
-	}
-
-	contractAddress := common.HexToAddress(contractAddressString)
-	from := common.HexToAddress(fromString)
-	data, err := hexutil.Decode(dataString)
-	if err != nil {
-		return common.Address{}, common.Address{}, nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
-	}
-	return contractAddress, from, data, nil
-}
-
-// Returns the transaction hash from a nodecommon.EncryptedParamsGetTxReceipt object.
-func (e *enclaveImpl) extractTxHash(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (common.Hash, error) {
-	paramBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	var paramsJSONList []string
-	err = json.Unmarshal(paramBytes, &paramsJSONList)
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	txHash := common.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
-	return txHash, err
-}
-
-// Returns the sender of the transaction with the given hash.
-func (e *enclaveImpl) getTxSender(txHash common.Hash) (common.Address, error) {
-	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
-	if err != nil {
-		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	if tx == nil {
-		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
-	}
-	msg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()), nil)
-	if err != nil {
-		return common.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	return msg.From(), nil
-}
-
-// Marshalls the transaction receipt to JSON, and encrypts it with a viewing key for the address.
-func (e *enclaveImpl) encryptTxReceiptWithViewingKey(address common.Address, txReceipt *types.Receipt) ([]byte, error) {
-	txReceiptBytes, err := txReceipt.MarshalJSON()
-	if err != nil {
-		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	return e.rpcEncryptionManager.EncryptWithViewingKey(address, txReceiptBytes)
-}
-
-// DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
-func (e *enclaveImpl) decryptTx(encryptedTx nodecommon.EncryptedTx) (*nodecommon.L2Tx, error) {
-	txBytes, err := e.rpcEncryptionManager.DecryptWithEnclavePrivateKey(encryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
-	}
-
-	transaction := nodecommon.L2Tx{}
-	if err = rlp.DecodeBytes(txBytes, &transaction); err != nil {
-		return nil, fmt.Errorf("could not decrypt encrypted L2 transaction. Cause: %w", err)
-	}
-
-	return &transaction, nil
-}
-
-// verifies that the headers of the rollup match the results of executing the transactions
-func (e *enclaveImpl) checkRollup(r *obscurocore.Rollup) {
-	stateDB := e.storage.CreateStateDB(r.Header.ParentHash)
-	// calculate the state to compare with what is in the Rollup
-	depositTxs := extractDeposits(
-		e.blockResolver.Proof(e.storage.ParentRollup(r)),
-		e.blockResolver.Proof(r),
-		e.bridge, e.blockResolver, e.erc20ContractLib, stateDB, e.config.ObscuroChainID,
-	)
-
-	rootHash, txReceipts, depositReceipts := e.process(r, stateDB, depositTxs)
-	// dump := stateDB.Dump(&state.DumpConfig{})
-	dump := ""
-
-	log.Info("State rollup: r_%d. State: %s", obscurocommon.ShortHash(r.Hash()), dump)
-	isValid := e.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
-	if !isValid {
-		log.Error("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
-	}
-}
-
-// internal structure to pass information.
-type speculativeWork struct {
-	found bool
-	r     *obscurocore.Rollup
-	s     *state.StateDB
-	h     *nodecommon.Header
-	txs   []*nodecommon.L2Tx
-}
-
-// internal structure used for the speculative execution.
-type processingEnvironment struct {
-	headRollup      *obscurocore.Rollup              // the current head rollup, which will be the parent of the new rollup
-	header          *nodecommon.Header               // the header of the new rollup
-	processedTxs    []*nodecommon.L2Tx               // txs that were already processed
-	processedTxsMap map[common.Hash]*nodecommon.L2Tx // structure used to prevent duplicates
-	state           *state.StateDB                   // the state as calculated from the previous rollup and the processed transactions
-}
-
-// encryptWithPublicKey encrypts data with public key
-func encryptWithPublicKey(msg []byte, pub *ecdsa.PublicKey) ([]byte, error) {
-	ciphertext, err := ecies.Encrypt(rand.Reader, ecies.ImportECDSAPublic(pub), msg, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt with public key. %w", err)
-	}
-	return ciphertext, nil
-}
-
-// decryptWithPrivateKey decrypts data with private key
-func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, error) {
-	plaintext, err := ecies.ImportECDSA(priv).Decrypt(ciphertext, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt with private key. %w", err)
-	}
-	return plaintext, nil
-}
-
-// getDB creates an appropriate ethdb.Database instance based on your config
-func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
-	if err := validateDBConf(cfg); err != nil {
-		return nil, err
-	}
-	if cfg.UseInMemoryDB {
-		nodecommon.LogWithID(nodeID, "UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		return getInMemDB()
-	}
-
-	if !cfg.WillAttest {
-		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
-		nodecommon.LogWithID(nodeID, "Attestation is disabled, using a basic sqlite DB for persistence")
-		// todo: for now we pass in an empty dbPath which will provide a throwaway temp file,
-		// 		when we want to test persistence after node restart we should change this path to be config driven
-		return sql.CreateTemporarySQLiteDB("")
-	}
-
-	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
-	nodecommon.LogWithID(nodeID, fmt.Sprintf("Preparing Edgeless DB connection to %s...", cfg.EdgelessDBHost))
-	return getEdgelessDB(cfg)
-}
-
-// validateDBConf high-level checks that you have a valid configuration for DB creation
-func validateDBConf(cfg config.EnclaveConfig) error {
-	if cfg.UseInMemoryDB && cfg.EdgelessDBHost != "" {
-		return fmt.Errorf("invalid db config, useInMemoryDB=true so EdgelessDB host not expected, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
-	}
-	if !cfg.WillAttest && cfg.EdgelessDBHost != "" {
-		return fmt.Errorf("invalid db config, willAttest=false so EdgelessDB host not supported, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
-	}
-	if !cfg.UseInMemoryDB && cfg.WillAttest && cfg.EdgelessDBHost == "" {
-		return fmt.Errorf("useInMemoryDB=false, willAttest=true so expected an EdgelessDB host but none was provided")
-	}
-	return nil
-}
-
-func getInMemDB() (ethdb.Database, error) {
-	return rawdb.NewMemoryDatabase(), nil
-}
-
-func getEdgelessDB(cfg config.EnclaveConfig) (ethdb.Database, error) {
-	if cfg.EdgelessDBHost == "" {
-		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
-	}
-	dbConfig := sql.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
-	return sql.EdgelessDBConnector(&dbConfig)
-}
+*/

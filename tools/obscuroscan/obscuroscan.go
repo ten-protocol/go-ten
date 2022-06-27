@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/crypto"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
@@ -164,7 +166,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not decode encrypted transaction blob from Base64. Cause: %w", err)
 	}
 
-	key := common.Hex2Bytes(core.RollupEncryptionKeyHex)
+	key := common.Hex2Bytes(crypto.RollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialise AES cipher for enclave rollup key. Cause: %w", err)
@@ -174,7 +176,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %w", err)
 	}
 
-	encodedTxs, err := transactionCipher.Open(nil, []byte(core.RollupCipherNonce), encryptedTxBytes, nil)
+	encodedTxs, err := transactionCipher.Open(nil, []byte(crypto.RollupCipherNonce), encryptedTxBytes, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
 	}

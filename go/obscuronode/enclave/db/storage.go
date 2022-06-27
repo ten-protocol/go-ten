@@ -100,13 +100,8 @@ func (s *storageImpl) StoreSecret(secret core.SharedEnclaveSecret) {
 	obscurorawdb.WriteSharedSecret(s.db, secret)
 }
 
-func (s *storageImpl) FetchSecret() core.SharedEnclaveSecret {
-	ss := obscurorawdb.ReadSharedSecret(s.db)
-	if ss == nil {
-		return nil
-	}
-
-	return *ss
+func (s *storageImpl) FetchSecret() *core.SharedEnclaveSecret {
+	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
 func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
@@ -264,6 +259,21 @@ func (s *storageImpl) GetReceiptsByHash(hash common.Hash) types.Receipts {
 func (s *storageImpl) GetTransaction(txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
 	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash)
 	return tx, blockHash, blockNumber, index, nil
+}
+
+func (s *storageImpl) GetSender(txHash common.Hash) (common.Address, error) {
+	tx, _, _, _, err := s.GetTransaction(txHash) //nolint:dogsled
+	if err != nil {
+		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	if tx == nil {
+		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
+	}
+	msg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()), nil)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	return msg.From(), nil
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {

@@ -12,11 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
@@ -184,7 +185,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   evm.WBtcContract,
+		reqJSONKeyTo:   bridge.WBtcContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -223,7 +224,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   evm.WBtcContract,
+		reqJSONKeyTo:   bridge.WBtcContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -259,7 +260,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(dummyAccountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo: evm.WBtcContract,
+		reqJSONKeyTo: bridge.WBtcContract,
 		// We send the request from a different address than the one we created a viewing key for.
 		reqJSONKeyFrom: dummyAccountAddress.Hex(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
@@ -505,7 +506,7 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	enclavePublicKeyEcies := ecies.ImportECDSAPublic(enclavePublicKey)
 
 	// Deploy an ERC20 contract to the Obscuro network.
-	wallet := wallets.Tokens[evm.BTC].L2Owner
+	wallet := wallets.Tokens[bridge.BTC].L2Owner
 	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
 		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
@@ -526,5 +527,5 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 		return obscuroNetwork.TearDown, nil, err
 	}
 
-	return obscuroNetwork.TearDown, wallets.Tokens[evm.BTC].L2Owner.PrivateKey(), nil
+	return obscuroNetwork.TearDown, wallets.Tokens[bridge.BTC].L2Owner.PrivateKey(), nil
 }

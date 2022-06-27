@@ -5,6 +5,11 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
+const SharedSecretLen = 32
+
+// SharedEnclaveSecret - the entropy
+type SharedEnclaveSecret [SharedSecretLen]byte
+
 // L2Txs Todo - is this type useful?
 type L2Txs []*nodecommon.L2Tx
 
@@ -14,6 +19,3 @@ type BlockState struct {
 	HeadRollup     common.Hash
 	FoundNewRollup bool
 }
-
-// todo - this should become an elaborate data structure
-type SharedEnclaveSecret []byte

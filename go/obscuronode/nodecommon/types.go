@@ -58,19 +58,18 @@ type ExtRollup struct {
 	EncryptedTxBlob EncryptedTransactions
 }
 
-// Rollup extends ExtRollup with additional fields.
+// EncryptedRollup extends ExtRollup with additional fields.
 // This parallels the Block/extblock split in Go Ethereum.
-type Rollup struct {
+type EncryptedRollup struct {
 	Header *Header
 
 	hash atomic.Value
-	size atomic.Value //nolint
 
 	Transactions EncryptedTransactions
 }
 
-func (er ExtRollup) ToRollup() *Rollup {
-	return &Rollup{
+func (er ExtRollup) ToRollup() *EncryptedRollup {
+	return &EncryptedRollup{
 		Header:       er.Header,
 		Transactions: er.EncryptedTxBlob,
 	}
@@ -78,7 +77,7 @@ func (er ExtRollup) ToRollup() *Rollup {
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *Rollup) Hash() obscurocommon.L2RootHash {
+func (r *EncryptedRollup) Hash() obscurocommon.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
 		return hash.(obscurocommon.L2RootHash)
 	}

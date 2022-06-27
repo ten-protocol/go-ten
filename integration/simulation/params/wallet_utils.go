@@ -3,9 +3,10 @@ package params
 import (
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
@@ -14,7 +15,7 @@ import (
 // because it needs to sign transactions and deploy contracts.
 // Note: For now the l2 values are taken from the "bridge" inside the Obscuro core.
 type SimToken struct {
-	Name evm.ERC20
+	Name bridge.ERC20
 
 	L1Owner           wallet.Wallet
 	L1ContractAddress *common.Address
@@ -30,7 +31,7 @@ type SimWallets struct {
 	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
 	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
 
-	Tokens map[evm.ERC20]*SimToken // The supported tokens
+	Tokens map[bridge.ERC20]*SimToken // The supported tokens
 }
 
 func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroChainID int64) *SimWallets {
@@ -54,16 +55,16 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
 	btc := SimToken{
-		Name:              evm.BTC,
+		Name:              bridge.BTC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), evm.WBtcOwner),
-		L2ContractAddress: &evm.WBtcContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WBtcOwner),
+		L2ContractAddress: &bridge.WBtcContract,
 	}
 	eth := SimToken{
-		Name:              evm.ETH,
+		Name:              bridge.ETH,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), evm.WEthOnwer),
-		L2ContractAddress: &evm.WEthContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WEthOnwer),
+		L2ContractAddress: &bridge.WEthContract,
 	}
 
 	return &SimWallets{
@@ -71,9 +72,9 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 		NodeWallets:   nodeWallets,
 		SimEthWallets: simEthWallets,
 		SimObsWallets: simObsWallets,
-		Tokens: map[evm.ERC20]*SimToken{
-			evm.BTC: &btc,
-			evm.ETH: &eth,
+		Tokens: map[bridge.ERC20]*SimToken{
+			bridge.BTC: &btc,
+			bridge.ETH: &eth,
 		},
 	}
 }
@@ -88,7 +89,7 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 
 func (w *SimWallets) AllEthAddresses() []*common.Address {
 	addresses := make([]*common.Address, 0)
-	addresses = append(addresses, w.Tokens[evm.BTC].L1ContractAddress)
-	addresses = append(addresses, w.Tokens[evm.ETH].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[bridge.BTC].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[bridge.ETH].L1ContractAddress)
 	return addresses
 }
