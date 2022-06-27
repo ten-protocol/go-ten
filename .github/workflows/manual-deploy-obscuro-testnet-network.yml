@@ -16,6 +16,9 @@ name: Manual Deploy Obscuro network
 on:
   workflow_dispatch:
 
+env:
+  L1HOST: testnet-gethnetwork-18.uksouth.azurecontainer.io
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,24 +30,24 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-#      - name: 'Build and push obscuro node images'
-#        uses: azure/docker-login@v1
-#        with:
-#          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-#          username: ${{ secrets.REGISTRY_USERNAME }}
-#          password: ${{ secrets.REGISTRY_PASSWORD }}
-#      - run: |
-#          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
-#          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest
-#          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest -f dockerfiles/host.Dockerfile .
-#          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest
-#          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
-#          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest
+      - name: 'Build and push obscuro node images'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest -f dockerfiles/host.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest
           
       - name: 'Deploy Contracts'
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1HOST }} --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
           source ./tesnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "ERC20CONTRACTADDR=ERC20CONTRACTADDR" >> $GITHUB_ENV
@@ -93,7 +96,7 @@ jobs:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-testnet-node.sh --host_id=${{ matrix.host_addr }} --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=$MGMTCONTRACTADDR --erc20contractaddr=$ERC20CONTRACTADDR'
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-testnet-node.sh --host_id=${{ matrix.host_addr }} --l1host=${{ env.L1HOST }} --mgmtcontractaddr=${{ env.MGMTCONTRACTADDR }} --erc20contractaddr=${{ env.ERC20CONTRACTADDR }}'
 
 
 
