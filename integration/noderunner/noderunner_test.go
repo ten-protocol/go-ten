@@ -3,14 +3,13 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
 	"net"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -49,13 +48,13 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 	address := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	hostConfig := config.DefaultHostConfig()
+	hostConfig := defaultconfig.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
 	hostConfig.ClientRPCPortHTTP = startPort + 1
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
-	enclaveConfig := config.DefaultEnclaveConfig()
+	enclaveConfig := defaultconfig.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}

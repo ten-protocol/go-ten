@@ -3,6 +3,7 @@ package enclaverunner
 import (
 	"flag"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
 	"os"
 	"strings"
 
@@ -32,7 +33,12 @@ type EnclaveConfigToml struct {
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
 // with specific defaults (if the `config` flag isn't specified).
 func ParseConfig() config.EnclaveConfig {
-	defaultConfig := config.DefaultEnclaveConfig()
+	defaultConfig := defaultconfig.DefaultEnclaveConfig()
+
+	var defaultERC20ContractAddrs []string
+	for _, addr := range defaultConfig.ERC20ContractAddresses {
+		defaultERC20ContractAddrs = append(defaultERC20ContractAddrs, addr.Hex())
+	}
 
 	configPath := flag.String(configName, "", configUsage)
 	hostID := flag.String(HostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
@@ -44,7 +50,7 @@ func ParseConfig() config.EnclaveConfig {
 	validateL1Blocks := flag.Bool(validateL1BlocksName, defaultConfig.ValidateL1Blocks, validateL1BlocksUsage)
 	speculativeExecution := flag.Bool(speculativeExecutionName, defaultConfig.SpeculativeExecution, speculativeExecutionUsage)
 	managementContractAddress := flag.String(ManagementContractAddressName, defaultConfig.ManagementContractAddress.Hex(), managementContractAddressUsage)
-	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, "", erc20ContractAddrsUsage)
+	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, strings.Join(defaultERC20ContractAddrs, ","), erc20ContractAddrsUsage)
 	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
 	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
 	useInMemoryDB := flag.Bool(useInMemoryDBName, defaultConfig.UseInMemoryDB, useInMemoryDBUsage)

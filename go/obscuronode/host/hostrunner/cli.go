@@ -3,6 +3,7 @@ package hostrunner
 import (
 	"flag"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
 	"math/big"
 	"os"
 	"time"
@@ -38,7 +39,7 @@ type HostConfigToml struct {
 // ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
 func ParseConfig() config.HostConfig {
-	defaultConfig := config.DefaultHostConfig()
+	defaultConfig := defaultconfig.DefaultHostConfig()
 
 	configPath := flag.String(configName, "", configUsage)
 	nodeID := flag.String(nodeIDName, defaultConfig.ID.Hex(), nodeIDUsage)

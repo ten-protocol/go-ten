@@ -40,25 +40,3 @@ type EnclaveConfig struct {
 	// host address for the edgeless DB instance (can be empty if using InMemory DB or if attestation is disabled)
 	EdgelessDBHost string
 }
-
-// DefaultEnclaveConfig returns an EnclaveConfig with default values.
-func DefaultEnclaveConfig() EnclaveConfig {
-	return EnclaveConfig{
-		HostID:                    common.BytesToAddress([]byte("")),
-		HostAddress:               "127.0.0.1:10000",
-		Address:                   "127.0.0.1:11000",
-		L1ChainID:                 1337,
-		ObscuroChainID:            777,
-		WillAttest:                false,
-		ValidateL1Blocks:          false,
-		GenesisJSON:               nil,
-		SpeculativeExecution:      false,
-		ManagementContractAddress: common.BytesToAddress([]byte("")),
-		ERC20ContractAddresses:    []*common.Address{},
-		WriteToLogs:               false,
-		LogPath:                   "enclave_logs.txt",
-		UseInMemoryDB:             true,
-		ViewingKeysEnabled:        true,
-		EdgelessDBHost:            "",
-	}
-}
