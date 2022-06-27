@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1HOST }} --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
-          source ./tesnet/.env
+          source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "ERC20CONTRACTADDR=ERC20CONTRACTADDR" >> $GITHUB_ENV
           echo "Contracts deployed to $MGMTCONTRACTADDR and $ERC20CONTRACTADDR"
