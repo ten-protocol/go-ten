@@ -3,9 +3,10 @@ package networkmanager
 import (
 	"flag"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/integration"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum/common"
 )
