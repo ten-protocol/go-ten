@@ -115,16 +115,16 @@ func New(
 	}
 }
 
-func (b *Bridge) IsWithdrawal(address common.Address) bool {
-	return bytes.Equal(address.Bytes(), b.BridgeAddress.Bytes())
+func (bridge *Bridge) IsWithdrawal(address common.Address) bool {
+	return bytes.Equal(address.Bytes(), bridge.BridgeAddress.Bytes())
 }
 
 // L1Address - returns the L1 address of a token based on the mapping
-func (b *Bridge) L1Address(l2Address *common.Address) *common.Address {
+func (bridge *Bridge) L1Address(l2Address *common.Address) *common.Address {
 	if l2Address == nil {
 		return nil
 	}
-	for _, t := range b.SupportedTokens {
+	for _, t := range bridge.SupportedTokens {
 		if bytes.Equal(l2Address.Bytes(), t.L2Address.Bytes()) {
 			return t.L1Address
 		}
@@ -133,8 +133,8 @@ func (b *Bridge) L1Address(l2Address *common.Address) *common.Address {
 }
 
 // GetMapping - finds the mapping based on the address that was called in an L1 transaction
-func (b *Bridge) GetMapping(l1ContractAddress *common.Address) *ERC20Mapping {
-	for _, t := range b.SupportedTokens {
+func (bridge *Bridge) GetMapping(l1ContractAddress *common.Address) *ERC20Mapping {
+	for _, t := range bridge.SupportedTokens {
 		if bytes.Equal(t.L1Address.Bytes(), l1ContractAddress.Bytes()) {
 			return t
 		}
