@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/tools/transactioninjector"
 	"os"
+
+	"github.com/obscuronet/obscuro-playground/tools/transactioninjector"
 )
 
 func main() {
