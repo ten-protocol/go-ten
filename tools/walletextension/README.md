@@ -29,7 +29,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
   responses for the network will now pass through the wallet extension, with requests encrypted with the enclave 
   public key
 
-    * Initially, no viewing key has not been set up. The enclave will refuse to respond to `eth_getBalance`, `eth_call` 
+    * Initially, no viewing key has been set up. The enclave will refuse to respond to `eth_getBalance`, `eth_call` 
       and `eth_getTransactionReceipt` requests
 
 * Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Sign the viewing key when prompted by 
