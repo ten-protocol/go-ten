@@ -3,6 +3,7 @@ package networkmanager
 import (
 	"flag"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/integration"
 	"math/big"
 	"time"
 
@@ -33,10 +34,13 @@ const (
 	l1ConnectionTimeoutSecsUsage = "The timeout for connecting to the Ethereum client"
 
 	privateKeyName  = "privateKey"
-	privateKeyUsage = "The private key for the L1 node account"
+	privateKeyUsage = "The private key for an L1 wallet to which funds have been preallocated"
 
-	chainIDName  = "chainID"
-	chainIDUsage = "The ID of the L1 chain"
+	ethereumChainIDName  = "ethereumChainID"
+	ethereumChainIDUsage = "The ID of the L1 chain"
+
+	obscuroChainIDName  = "obscuroChainID"
+	obscuroChainIDUsage = "The ID of the L2 chain"
 
 	mgmtContractAddressName  = "managementContractAddress"
 	mgmtContractAddressUsage = "The hex address of the management contract on the L1"
@@ -54,7 +58,8 @@ type Config struct {
 	l1NodeWebsocketPort  uint
 	l1ConnectionTimeout  time.Duration
 	privateKeyString     string
-	chainID              big.Int
+	ethereumChainID      big.Int
+	obscuroChainID       big.Int
 	mgmtContractAddress  common.Address
 	erc20ContractAddress common.Address
 	obscuroClientAddress string
@@ -62,11 +67,13 @@ type Config struct {
 
 func defaultNetworkManagerConfig() Config {
 	return Config{
-		l1NodeHost:           "127.0.0.1",
-		l1NodeWebsocketPort:  8546,
-		l1ConnectionTimeout:  time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
-		privateKeyString:     "0000000000000000000000000000000000000000000000000000000000000001",
-		chainID:              *big.NewInt(1337),
+		l1NodeHost:          "127.0.0.1",
+		l1NodeWebsocketPort: 8546,
+		l1ConnectionTimeout: time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
+		// Default chosen to not conflict with default private key used by host.
+		privateKeyString:     "0000000000000000000000000000000000000000000000000000000000000002",
+		ethereumChainID:      *big.NewInt(integration.EthereumChainID),
+		obscuroChainID:       *big.NewInt(integration.ObscuroChainID),
 		mgmtContractAddress:  common.BytesToAddress([]byte("")),
 		erc20ContractAddress: common.BytesToAddress([]byte("")),
 		obscuroClientAddress: "",
@@ -79,7 +86,8 @@ func ParseCLIArgs() Config {
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodePortUsage)
 	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.l1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
-	chainID := flag.Int64(chainIDName, defaultConfig.chainID.Int64(), chainIDUsage)
+	ethereumChainID := flag.Int64(ethereumChainIDName, defaultConfig.ethereumChainID.Int64(), ethereumChainIDUsage)
+	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.obscuroChainID.Int64(), obscuroChainIDUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.privateKeyString, privateKeyUsage)
 	mgmtContractAddress := flag.String(mgmtContractAddressName, defaultConfig.mgmtContractAddress.Hex(), mgmtContractAddressUsage)
 	erc20ContractAddress := flag.String(erc20ContractAddressName, defaultConfig.erc20ContractAddress.Hex(), erc20ContractAddressUsage)
@@ -91,7 +99,8 @@ func ParseCLIArgs() Config {
 	defaultConfig.l1NodeWebsocketPort = uint(*l1NodePort)
 	defaultConfig.l1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
 	defaultConfig.privateKeyString = *privateKeyStr
-	defaultConfig.chainID = *big.NewInt(*chainID)
+	defaultConfig.ethereumChainID = *big.NewInt(*ethereumChainID)
+	defaultConfig.obscuroChainID = *big.NewInt(*obscuroChainID)
 	defaultConfig.mgmtContractAddress = common.HexToAddress(*mgmtContractAddress)
 	defaultConfig.erc20ContractAddress = common.HexToAddress(*erc20ContractAddress)
 	defaultConfig.obscuroClientAddress = *obscuroClientAddress
