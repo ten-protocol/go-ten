@@ -27,12 +27,12 @@ const (
 
 var WBtcOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")
 
-// WBtcContract X- address of the deployed "btc" erc20
+// WBtcContract X- address of the deployed "btc" erc20 on the L2
 var WBtcContract = common.BytesToAddress(common.Hex2Bytes("f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"))
 
 var WEthOnwer, _ = crypto.HexToECDSA("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8")
 
-// WEthContract - address of the deployed "eth" erc20
+// WEthContract - address of the deployed "eth" erc20 on the L2
 var WEthContract = common.BytesToAddress(common.Hex2Bytes("9802F661d17c65527D7ABB59DAAD5439cb125a67"))
 
 // BridgeAddress - address of the virtual bridge
