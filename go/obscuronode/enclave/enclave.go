@@ -237,7 +237,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmis
 	rolGenesis := obscurocore.NewRollup(blkHash, nil, obscurocommon.L2GenesisHeight, common.HexToAddress("0x0"), []*nodecommon.L2Tx{}, []nodecommon.Withdrawal{}, obscurocommon.GenerateNonce(), common.BigToHash(big.NewInt(0)))
 	b, f := e.storage.FetchBlock(blkHash)
 	if !f {
-		log.Panic("Could not find the block used as proof for the genesis rollup.")
+		log.Panic("Could not find the block used as proof for the genesis rollup. expectedHash=%s", blkHash)
 	}
 	return nodecommon.BlockSubmissionResponse{
 		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
@@ -274,7 +274,6 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 			result[i] = e.blockStateBlockSubmissionResponse(bs, rollup)
 		}
 	}
-
 	return result
 }
 
@@ -962,6 +961,9 @@ func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 
 // getDB creates an appropriate ethdb.Database instance based on your config
 func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
+	if err := validateDBConf(cfg); err != nil {
+		return nil, err
+	}
 	if cfg.UseInMemoryDB {
 		nodecommon.LogWithID(nodeID, "UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		return getInMemDB()
@@ -976,9 +978,32 @@ func getDB(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database, error) {
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
-	panic("Haven't implemented edgeless DB enclave connection yet")
+	nodecommon.LogWithID(nodeID, fmt.Sprintf("Preparing Edgeless DB connection to %s...", cfg.EdgelessDBHost))
+	return getEdgelessDB(cfg)
+}
+
+// validateDBConf high-level checks that you have a valid configuration for DB creation
+func validateDBConf(cfg config.EnclaveConfig) error {
+	if cfg.UseInMemoryDB && cfg.EdgelessDBHost != "" {
+		return fmt.Errorf("invalid db config, useInMemoryDB=true so EdgelessDB host not expected, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
+	}
+	if !cfg.WillAttest && cfg.EdgelessDBHost != "" {
+		return fmt.Errorf("invalid db config, willAttest=false so EdgelessDB host not supported, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
+	}
+	if !cfg.UseInMemoryDB && cfg.WillAttest && cfg.EdgelessDBHost == "" {
+		return fmt.Errorf("useInMemoryDB=false, willAttest=true so expected an EdgelessDB host but none was provided")
+	}
+	return nil
 }
 
 func getInMemDB() (ethdb.Database, error) {
 	return rawdb.NewMemoryDatabase(), nil
+}
+
+func getEdgelessDB(cfg config.EnclaveConfig) (ethdb.Database, error) {
+	if cfg.EdgelessDBHost == "" {
+		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
+	}
+	dbConfig := sql.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
+	return sql.EdgelessDBConnector(&dbConfig)
 }
