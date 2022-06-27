@@ -34,12 +34,12 @@ func SealAndPersist(contents string, filepath string) error {
 func ReadAndUnseal(filepath string) ([]byte, error) {
 	b, err := os.ReadFile(filepath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s - %w", filepath, err)
+		return nil, err
 	}
 
 	data, err := ecrypto.Unseal(b, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unseal data from file %s - %w", filepath, err)
+		return nil, err
 	}
 	return data, nil
 }

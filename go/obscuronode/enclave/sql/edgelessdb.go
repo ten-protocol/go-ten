@@ -165,7 +165,7 @@ func loadCredentialsFromFile() (*EdgelessDBCredentials, bool, error) {
 		if os.IsNotExist(err) {
 			return nil, false, nil
 		}
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to read and unseal credentials file - %w", err)
 	}
 	var edbCreds *EdgelessDBCredentials
 	err = json.Unmarshal(b, &edbCreds)
