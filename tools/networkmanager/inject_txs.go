@@ -1,4 +1,4 @@
-package transactioninjector
+package networkmanager
 
 import (
 	"fmt"
@@ -18,22 +18,22 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 )
 
-func InjectTransactions(cfg Config) {
+func InjectTransactions(nmConfig Config) {
 	hostConfig := config.HostConfig{
 		ID:                  common.HexToAddress(""),
-		L1NodeHost:          cfg.l1NodeHost,
-		L1NodeWebsocketPort: cfg.l1NodeWebsocketPort,
-		L1ConnectionTimeout: cfg.l1ConnectionTimeout,
-		PrivateKeyString:    cfg.privateKeyString,
-		ChainID:             cfg.chainID,
+		L1NodeHost:          nmConfig.l1NodeHost,
+		L1NodeWebsocketPort: nmConfig.l1NodeWebsocketPort,
+		L1ConnectionTimeout: nmConfig.l1ConnectionTimeout,
+		PrivateKeyString:    nmConfig.privateKeyString,
+		ChainID:             nmConfig.chainID,
 	}
 
-	// TODO - Consider extending this tool to support multiple L1 clients and L2 clients.
+	// TODO - Consider extending this command to support multiple L1 clients and L2 clients.
 	l1Client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
-	l2Client := obscuroclient.NewClient(cfg.obscuroClientAddress)
+	l2Client := obscuroclient.NewClient(nmConfig.obscuroClientAddress)
 
 	l1Wallet := wallet.NewInMemoryWalletFromConfig(hostConfig)
 	nonce, err := l1Client.Nonce(l1Wallet.Address())
@@ -49,10 +49,10 @@ func InjectTransactions(cfg Config) {
 		&params.SimWallets{
 			// todo
 		},
-		&cfg.mgmtContractAddress,
+		&nmConfig.mgmtContractAddress,
 		[]obscuroclient.Client{l2Client},
-		mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress),
-		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
+		mgmtcontractlib.NewMgmtContractLib(&nmConfig.mgmtContractAddress),
+		erc20contractlib.NewERC20ContractLib(&nmConfig.mgmtContractAddress, &nmConfig.erc20ContractAddress),
 	)
 
 	println("Injecting transactions into network...")
