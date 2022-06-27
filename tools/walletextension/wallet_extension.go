@@ -38,7 +38,7 @@ const (
 	RespJSONKeyResult         = "result"
 	httpCodeErr               = 500
 
-	Localhost         = "127.0.0.1"
+	AllInterfaces     = "0.0.0.0"
 	websocketProtocol = "ws://"
 
 	// EnclavePublicKeyHex is the public key of the enclave.

@@ -109,6 +109,12 @@ jobs:
             --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} \
             --size Standard_D2_v4 --image ubuntults --public-ip-sku Basic --authentication-type password
 
+      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm open-port -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001 
+
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
