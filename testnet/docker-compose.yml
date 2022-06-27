@@ -6,6 +6,9 @@ services:
   host:
     networks:
       - default
+    ports:
+      - "13000:13000"
+      - "13001:13001"
     environment:
       MGMTCONTRACTADDR: some_address
       PKSTRING: some_string

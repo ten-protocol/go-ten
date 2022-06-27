@@ -56,7 +56,7 @@ jobs:
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "ERC20CONTRACTADDR=ERC20CONTRACTADDR" >> $GITHUB_ENV
-          echo "Contracts deployed to ${{ env.MGMTCONTRACTADDR }} and $ERC20CONTRACTADDR"
+          echo "Contracts deployed to $MGMTCONTRACTADDR and $ERC20CONTRACTADDR"
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
           echo "::set-output name=erc20ContractAddr::$ERC20CONTRACTADDR"
         
@@ -99,7 +99,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Create Obscuro node-${{ matrix.host_id }} on Azure'
+      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -109,7 +109,7 @@ jobs:
             --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} \
             --size Standard_D2_v4 --image ubuntults --public-ip-sku Basic --authentication-type password
 
-      - name: 'Set up Obscuro node-${{ matrix.host_id }} on Azure'
+      - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
