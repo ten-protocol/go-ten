@@ -74,6 +74,11 @@ func NewEnclave(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	collector StatsCollector,
 ) nodecommon.Enclave {
+	if len(config.ERC20ContractAddresses) < 2 {
+		log.Panic("failed to initialise enclave. At least two ERC20 contract addresses are required - the BTC " +
+			"ERC20 address and the ETH ERC20 address")
+	}
+
 	// todo - add the delay: N hashes
 
 	nodeShortID := obscurocommon.ShortAddress(config.HostID)
