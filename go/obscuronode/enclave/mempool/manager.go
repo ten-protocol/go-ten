@@ -108,16 +108,3 @@ func removeExisting(base []*nodecommon.L2Tx, toRemove map[common.Hash]*nodecommo
 	}
 	return
 }
-
-// Returns all transactions found 20 levels below
-func historicTxs(r *obscurocore.Rollup, s db.Storage) map[common.Hash]common.Hash {
-	i := obscurocommon.HeightCommittedBlocks
-	c := r
-	for {
-		if i == 0 || c.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
-			return obscurocore.ToMap(c.Transactions)
-		}
-		i--
-		c = s.ParentRollup(c)
-	}
-}

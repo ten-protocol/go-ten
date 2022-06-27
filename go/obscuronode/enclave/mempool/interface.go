@@ -14,6 +14,6 @@ type Manager interface {
 	AddMempoolTx(tx *nodecommon.L2Tx) error
 	// RemoveMempoolTxs removes any L2 transactions whose hash is keyed in the map from the mempool
 	RemoveMempoolTxs(toRemove map[common.Hash]common.Hash)
-	// CurrentTxs Returns the transactins that should be included in the curent rollup
+	// CurrentTxs Returns the transactins that should be included in the current rollup
 	CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) obscurocore.L2Txs
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
@@ -128,8 +128,8 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetBalance, []string{accountAddr, latestBlock})
 
-	if getBalanceJSON[walletextension.RespJSONKeyResult] != enclave.DummyBalance {
-		t.Fatalf("Expected balance of %s, got %s", enclave.DummyBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
+	if getBalanceJSON[walletextension.RespJSONKeyResult] != rollupchain.DummyBalance {
+		t.Fatalf("Expected balance of %s, got %s", rollupchain.DummyBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
