@@ -52,7 +52,7 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1HOST }} --pkstring=$${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_0 }}
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_0 }}
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "ERC20CONTRACTADDR=ERC20CONTRACTADDR" >> $GITHUB_ENV
@@ -115,7 +115,7 @@ jobs:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-obscuro-node.sh --host_id=${{ matrix.host_addr }} --l1host=${{ env.L1HOST }} --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} --pkaddr=$${{ secrets[matrix.node_pk_addr] }} --pkstring=$${{ secrets[matrix.node_pk_str] }}'
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-obscuro-node.sh --host_id=${{ matrix.host_addr }} --l1host=${{ env.L1HOST }} --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} --pkaddr=${{ secrets[matrix.node_pk_addr] }} --pkstring=${{ secrets[matrix.node_pk_str] }}'
 
 
 
