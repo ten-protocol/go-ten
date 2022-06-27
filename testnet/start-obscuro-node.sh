@@ -23,6 +23,10 @@ help_and_exit() {
     echo ""
     echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
     echo ""
+    echo "  pkaddress          *Optional* Set the pk address. Defaults to 0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
+    echo ""
+    echo "  pkstring           *Optional* Set the pk string. Defaults to f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+    echo ""
     echo ""
     echo ""
     exit 1  # Exit with error explicitly
@@ -35,7 +39,10 @@ start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 
 # Define defaults
-l1port=9000
+l1_port=9000
+pk_address=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
+pk_string=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
+
 
 # Fetch options
 for argument in "$@"
@@ -44,33 +51,32 @@ do
     value=$(echo $argument | cut -f2 -d=)
 
     case "$key" in
-            --l1host)                   l1host=${value} ;;
-            --l1port)                   l1port=${value} ;;
+            --l1host)                   l1_host=${value} ;;
+            --l1port)                   l1_port=${value} ;;
             --host_id)                  host_id=${value} ;;
-            --mgmtcontractaddr)         mgmtcontractaddr=${value} ;;
-            --erc20contractaddr)        erc20contractaddr=${value} ;;
+            --mgmtcontractaddr)         mgmt_contract_addr=${value} ;;
+            --erc20contractaddr)        erc20_contract_addr=${value} ;;
+            --pkaddress)                pk_address=${value} ;;
+            --pkstring)                 pk_string=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac
 done
 
-if [[ -z ${l1host:-} || -z ${host_id:-} || -z ${mgmtcontractaddr:-} || -z ${erc20contractaddr:-} ]];
+if [[ -z ${l1_host:-} || -z ${host_id:-} || -z ${mgmt_contract_addr:-} || -z ${erc20_contract_addr:-} ]];
 then
     help_and_exit
 fi
 
-# Hardcoded geth pre funded private key
-pk_address=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
-pk_string=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 
 # set the data in the env file
 echo "PKSTRING=${pk_string}" > "${testnet_path}/.env"
 echo "PKADDR=${pk_address}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
-echo "MGMTCONTRACTADDR=${mgmtcontractaddr}"  >> "${testnet_path}/.env"
-echo "ERC20CONTRACTADDR=${erc20contractaddr}"  >> "${testnet_path}/.env"
-echo "L1HOST=${l1host}" >> "${testnet_path}/.env"
-echo "L1PORT=${l1port}" >> "${testnet_path}/.env"
+echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"
+echo "ERC20CONTRACTADDR=${erc20_contract_addr}"  >> "${testnet_path}/.env"
+echo "L1HOST=${l1_host}" >> "${testnet_path}/.env"
+echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
 
 
 echo "Starting enclave and host..."

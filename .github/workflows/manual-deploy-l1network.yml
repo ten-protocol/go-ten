@@ -64,7 +64,7 @@ jobs:
           name: testnet-gethnetwork-app
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: /home/go-obscuro/integration/gethnetwork/main/main --numNodes=3 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
+          command-line: /home/go-obscuro/integration/gethnetwork/main/main --numNodes=3 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_2 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_3 }}
           ports: '8025 8026 8027 9000 9001 9002'
           cpu: 2
           memory: 4
