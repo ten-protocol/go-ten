@@ -3,9 +3,10 @@ package enclaverunner
 import (
 	"flag"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
 	"os"
 	"strings"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/naoina/toml"
@@ -35,9 +36,9 @@ type EnclaveConfigToml struct {
 func ParseConfig() config.EnclaveConfig {
 	defaultConfig := defaultconfig.DefaultEnclaveConfig()
 
-	var defaultERC20ContractAddrs []string
-	for _, addr := range defaultConfig.ERC20ContractAddresses {
-		defaultERC20ContractAddrs = append(defaultERC20ContractAddrs, addr.Hex())
+	defaultERC20ContractAddrs := make([]string, len(defaultConfig.ERC20ContractAddresses))
+	for idx, addr := range defaultConfig.ERC20ContractAddresses {
+		defaultERC20ContractAddrs[idx] = addr.Hex()
 	}
 
 	configPath := flag.String(configName, "", configUsage)

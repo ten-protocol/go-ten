@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
@@ -129,7 +131,7 @@ func createSocketObscuroNode(
 		EnclaveRPCTimeout:      ClientRPCTimeoutSecs * time.Second,
 		EnclaveRPCAddress:      enclaveAddr,
 		P2PAddress:             p2pAddr,
-		ChainID:                config.DefaultHostConfig().ChainID,
+		ChainID:                defaultconfig.DefaultHostConfig().ChainID,
 	}
 
 	// create an enclave client

@@ -3,10 +3,11 @@ package hostrunner
 import (
 	"flag"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
 
 	"github.com/naoina/toml"
 

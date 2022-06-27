@@ -1,10 +1,11 @@
 package defaultconfig
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 )
 
 const (
