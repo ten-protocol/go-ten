@@ -7,8 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
-
 	"github.com/naoina/toml"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
@@ -40,7 +38,7 @@ type HostConfigToml struct {
 // ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
 func ParseConfig() config.HostConfig {
-	cfg := defaultconfig.DefaultHostConfig()
+	cfg := config.DefaultHostConfig()
 
 	configPath := flag.String(configName, "", configUsage)
 	nodeID := flag.String(nodeIDName, cfg.ID.Hex(), nodeIDUsage)

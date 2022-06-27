@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config/defaultconfig"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -49,13 +49,13 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 	address := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	hostConfig := defaultconfig.DefaultHostConfig()
+	hostConfig := config.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
 	hostConfig.ClientRPCPortHTTP = startPort + 1
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 
-	enclaveConfig := defaultconfig.DefaultEnclaveConfig()
+	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
