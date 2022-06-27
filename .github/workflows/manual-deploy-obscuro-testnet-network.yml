@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 env:
-  L1HOST: testnet-gethnetwork-21.uksouth.azurecontainer.io
+  L1HOST: testnet-gethnetwork-22.uksouth.azurecontainer.io
 
 jobs:
   build:
