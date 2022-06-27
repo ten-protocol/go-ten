@@ -161,6 +161,10 @@ func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, 
 func loadCredentialsFromFile() (*EdgelessDBCredentials, error) {
 	b, err := egoutils.ReadAndUnseal(edbCredentialsFilepath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			// In this situation nil, nil seems cleaner than sending an additional found parameter, this is expected on the first start for a new node
+			return nil, nil // nolint:nilnil
+		}
 		return nil, err
 	}
 	var edbCreds *EdgelessDBCredentials

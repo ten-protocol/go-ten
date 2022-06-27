@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -19,7 +18,7 @@ const azureTestEnv = "AZURE_TEST_ENABLED"
 //	 - if owner doesn't match - they shouldn't get secret
 
 // Todo: replace with the IPs of the VMs you are testing, see the azuredeployer README for more info.
-var vmIPs = []string{"20.90.162.69"}
+var vmIPs = []string{"20.90.164.68"}
 
 // This test creates a network of L2 nodes consisting of just the Azure nodes configured above.
 //
@@ -27,9 +26,9 @@ var vmIPs = []string{"20.90.162.69"}
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process, and the Ethereum nodes are mocked out.
 func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
-	if os.Getenv(azureTestEnv) == "" {
-		t.Skipf("set the variable to run this test: `%s=true`", azureTestEnv)
-	}
+	//if os.Getenv(azureTestEnv) == "" {
+	//	t.Skipf("set the variable to run this test: `%s=true`", azureTestEnv)
+	//}
 	setupTestLog("azure-enclave")
 
 	numberOfNodes := 1
