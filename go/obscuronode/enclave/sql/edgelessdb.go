@@ -143,11 +143,11 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
 
 func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) {
 	// if we have previously performed the handshake we can retrieve the creds from disk and proceed
-	edbCreds, err := loadCredentialsFromFile()
+	edbCreds, found, err := loadCredentialsFromFile()
 	if err != nil {
 		return nil, err
 	}
-	if edbCreds == nil {
+	if !found {
 		// they don't exist on disk so we have to perform the handshake and set them up
 		edbCreds, err = performHandshake(edbCfg)
 		if err != nil {
@@ -158,22 +158,22 @@ func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, 
 	return edbCreds, nil
 }
 
-func loadCredentialsFromFile() (*EdgelessDBCredentials, error) {
+// loadCredentialsFromFile returns (credentials object, found flag, error), if file not found it will return nil error but found=false
+func loadCredentialsFromFile() (*EdgelessDBCredentials, bool, error) {
 	b, err := egoutils.ReadAndUnseal(edbCredentialsFilepath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// In this situation nil, nil seems cleaner than sending an additional found parameter, this is expected on the first start for a new node
-			return nil, nil // nolint:nilnil
+			return nil, false, nil
 		}
-		return nil, err
+		return nil, false, err
 	}
 	var edbCreds *EdgelessDBCredentials
 	err = json.Unmarshal(b, &edbCreds)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return edbCreds, nil
+	return edbCreds, true, nil
 }
 
 func performHandshake(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) {
