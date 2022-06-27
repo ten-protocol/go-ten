@@ -1,15 +1,26 @@
-package transactioninjector
+package networkmanager
 
 import (
 	"flag"
+	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// Command indicates the command for the tool to run.
+type Command uint8
+
 const (
 	defaultL1ConnectionTimeoutSecs = 15
+
+	DeployMgmtContract Command = iota
+	DeployERC20Contract
+	InjectTxs
+	deployMgmtContractName  = "deployMgmtContract"
+	deployERC20ContractName = "deployERC20Contract"
+	injectTxsName           = "injectTransactions"
 
 	// Flag names, defaults and usages.
 	l1NodeHostName  = "l1NodeHost"
@@ -38,6 +49,7 @@ const (
 )
 
 type Config struct {
+	Command              Command
 	l1NodeHost           string
 	l1NodeWebsocketPort  uint
 	l1ConnectionTimeout  time.Duration
@@ -83,6 +95,18 @@ func ParseCLIArgs() Config {
 	defaultConfig.mgmtContractAddress = common.HexToAddress(*mgmtContractAddress)
 	defaultConfig.erc20ContractAddress = common.HexToAddress(*erc20ContractAddress)
 	defaultConfig.obscuroClientAddress = *obscuroClientAddress
+
+	command := flag.Arg(0)
+	switch command {
+	case deployMgmtContractName:
+		defaultConfig.Command = DeployMgmtContract
+	case deployERC20ContractName:
+		defaultConfig.Command = DeployERC20Contract
+	case injectTxsName:
+		defaultConfig.Command = InjectTxs
+	default:
+		panic(fmt.Sprintf("unrecognised command %s", command))
+	}
 
 	return defaultConfig
 }
