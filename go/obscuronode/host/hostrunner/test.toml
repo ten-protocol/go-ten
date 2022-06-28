@@ -13,5 +13,6 @@ l1NodePort = 8546
 l1ConnectionTimeoutSecs = 15
 rollupContractAddress = "0x0000000000000000000000000000000000000000"
 logPath = "host_logs.txt"
-chainID = 1337
+l1ChainID = 1337
+obscuroChainID = 777
 privateKey = "0000000000000000000000000000000000000000000000000000000000000001"
