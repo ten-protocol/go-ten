@@ -4,10 +4,11 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 const methodBytesLen = 4
@@ -25,10 +26,10 @@ var (
 type ERC20ContractLib interface {
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
 	// returns nil if the transaction is not convertible
-	DecodeTx(tx *types.Transaction) common.L1Transaction
+	DecodeTx(tx *types.Transaction) ethclient.L1Transaction
 
 	// CreateDepositTx receives an common.L1Transaction and converts it to an eth transaction
-	CreateDepositTx(tx *common.L1DepositTx, nonce uint64) types.TxData
+	CreateDepositTx(tx *ethclient.L1DepositTx, nonce uint64) types.TxData
 }
 
 // erc20ContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
@@ -52,7 +53,7 @@ func NewERC20ContractLib(mgmtContractAddr *gethcommon.Address, contractAddrs ...
 	}
 }
 
-func (c *erc20ContractLibImpl) CreateDepositTx(tx *common.L1DepositTx, nonce uint64) types.TxData {
+func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethclient.L1DepositTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack("transfer", &tx.To, big.NewInt(int64(tx.Amount)))
 	if err != nil {
 		panic(err)
@@ -67,7 +68,7 @@ func (c *erc20ContractLibImpl) CreateDepositTx(tx *common.L1DepositTx, nonce uin
 	}
 }
 
-func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) common.L1Transaction {
+func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethclient.L1Transaction {
 	if !c.isRelevant(tx) {
 		return nil
 	}
@@ -103,7 +104,7 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) common.L1Transact
 		panic(err)
 	}
 
-	return &common.L1DepositTx{
+	return &ethclient.L1DepositTx{
 		Amount:        amount.(*big.Int).Uint64(),
 		To:            &toAddr,
 		TokenContract: tx.To(),

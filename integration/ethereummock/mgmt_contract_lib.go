@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/gob"
 
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 )
 
@@ -30,23 +31,23 @@ func NewMgmtContractLibMock() mgmtcontractlib.MgmtContractLib {
 	return &mockContractLib{}
 }
 
-func (m *mockContractLib) DecodeTx(tx *types.Transaction) common.L1Transaction {
+func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethclient.L1Transaction {
 	return decodeTx(tx)
 }
 
-func (m *mockContractLib) CreateRollup(tx *common.L1RollupTx, nonce uint64) types.TxData {
+func (m *mockContractLib) CreateRollup(tx *ethclient.L1RollupTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, rollupTxAddr)
 }
 
-func (m *mockContractLib) CreateRequestSecret(tx *common.L1RequestSecretTx, nonce uint64) types.TxData {
+func (m *mockContractLib) CreateRequestSecret(tx *ethclient.L1RequestSecretTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, requestSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateRespondSecret(tx *common.L1RespondSecretTx, nonce uint64, _ bool) types.TxData {
+func (m *mockContractLib) CreateRespondSecret(tx *ethclient.L1RespondSecretTx, nonce uint64, _ bool) types.TxData {
 	return encodeTx(tx, nonce, storeSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateInitializeSecret(tx *common.L1InitializeSecretTx, nonce uint64) types.TxData {
+func (m *mockContractLib) CreateInitializeSecret(tx *ethclient.L1InitializeSecretTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, initializeSecretTxAddr)
 }
 
@@ -58,7 +59,7 @@ func (m *mockContractLib) DecodeCallResponse([]byte) ([][]string, error) {
 	return [][]string{{""}}, nil
 }
 
-func decodeTx(tx *types.Transaction) common.L1Transaction {
+func decodeTx(tx *types.Transaction) ethclient.L1Transaction {
 	if len(tx.Data()) == 0 {
 		panic("Data cannot be 0 in the mock implementation")
 	}
@@ -70,18 +71,18 @@ func decodeTx(tx *types.Transaction) common.L1Transaction {
 	// in the mock implementation we use the To address field to specify the L1 operation (rollup/storesecret/requestsecret)
 	// the mock implementation does not process contracts
 	// so this is a way that we can differentiate different contract calls
-	var t common.L1Transaction
+	var t ethclient.L1Transaction
 	switch tx.To().Hex() {
 	case rollupTxAddr.Hex():
-		t = &common.L1RollupTx{}
+		t = &ethclient.L1RollupTx{}
 	case storeSecretTxAddr.Hex():
-		t = &common.L1RespondSecretTx{}
+		t = &ethclient.L1RespondSecretTx{}
 	case depositTxAddr.Hex():
-		t = &common.L1DepositTx{}
+		t = &ethclient.L1DepositTx{}
 	case requestSecretTxAddr.Hex():
-		t = &common.L1RequestSecretTx{}
+		t = &ethclient.L1RequestSecretTx{}
 	case initializeSecretTxAddr.Hex():
-		t = &common.L1InitializeSecretTx{}
+		t = &ethclient.L1InitializeSecretTx{}
 	default:
 		panic("unexpected type")
 	}
@@ -93,7 +94,7 @@ func decodeTx(tx *types.Transaction) common.L1Transaction {
 	return t
 }
 
-func encodeTx(tx common.L1Transaction, nonce uint64, opType gethcommon.Address) types.TxData {
+func encodeTx(tx ethclient.L1Transaction, nonce uint64, opType gethcommon.Address) types.TxData {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 

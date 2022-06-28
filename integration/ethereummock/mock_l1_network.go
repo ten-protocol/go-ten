@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/ethclient"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/host"
 )
 
 // MockEthNetwork - models a full network including artificial random latencies
@@ -83,11 +84,11 @@ func printBlock(b *types.Block, m Node) string {
 		}
 
 		switch l1Tx := t.(type) {
-		case *common.L1RollupTx:
-			r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
+		case *ethclient.L1RollupTx:
+			r := common.DecodeRollupOrPanic(l1Tx.Rollup)
 			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
 
-		case *common.L1DepositTx:
+		case *ethclient.L1DepositTx:
 			var to uint64
 			if l1Tx.To != nil {
 				to = common.ShortAddress(*l1Tx.To)

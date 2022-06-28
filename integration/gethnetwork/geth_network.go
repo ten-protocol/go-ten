@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 )
 
 const (

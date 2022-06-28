@@ -3,12 +3,12 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -16,13 +16,13 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/host"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
 )
 
 type basicNetworkOfInMemoryNodes struct {
 	ethNodes       []*ethereum_mock.Node
-	obscuroClients []obscuroclient.Client
+	obscuroClients []rpcclientlib.Client
 }
 
 func NewBasicNetworkOfInMemoryNodes() Network {
@@ -30,11 +30,11 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
+func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []rpcclientlib.Client, error) {
 	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
-	n.obscuroClients = make([]obscuroclient.Client, params.NumberOfNodes)
+	n.obscuroClients = make([]rpcclientlib.Client, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyBTCAddress := common.HexToAddress("AA")
@@ -106,7 +106,7 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
 		go func() {
-			_ = temp.Call(nil, obscuroclient.RPCStopHost)
+			_ = temp.Call(nil, rpcclientlib.RPCStopHost)
 			temp.Stop()
 		}()
 	}

@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -15,7 +15,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // The threshold number of transactions below which we consider the simulation to have failed. We generally expect far
@@ -148,11 +147,11 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 				continue
 			}
 			switch l1tx := t.(type) {
-			case *common.L1DepositTx:
+			case *ethclient.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
 				totalDeposited += l1tx.Amount
-			case *common.L1RollupTx:
-				r := nodecommon.DecodeRollupOrPanic(l1tx.Rollup)
+			case *ethclient.L1RollupTx:
+				r := common.DecodeRollupOrPanic(l1tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
@@ -170,7 +169,7 @@ const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(
 	t *testing.T,
-	nodeClient obscuroclient.Client,
+	nodeClient rpcclientlib.Client,
 	minObscuroHeight uint64,
 	maxEthereumHeight uint64,
 	s *Simulation,
@@ -180,7 +179,7 @@ func checkBlockchainOfObscuroNode(
 ) {
 	defer wg.Done()
 	var nodeID gethcommon.Address
-	err := nodeClient.Call(&nodeID, obscuroclient.RPCGetID)
+	err := nodeClient.Call(&nodeID, rpcclientlib.RPCGetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
@@ -254,7 +253,7 @@ func checkBlockchainOfObscuroNode(
 
 	injectorDepositedAmt := uint64(0)
 	for _, tx := range s.TxInjector.Counter.GetL1Transactions() {
-		if depTx, ok := tx.(*common.L1DepositTx); ok {
+		if depTx, ok := tx.(*ethclient.L1DepositTx); ok {
 			injectorDepositedAmt += depTx.Amount
 		}
 	}
@@ -287,7 +286,7 @@ func checkBlockchainOfObscuroNode(
 	heights[nodeIdx] = l2Height.Uint64()
 }
 
-func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, nodeClient rpcclientlib.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {

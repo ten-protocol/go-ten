@@ -7,18 +7,19 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
-
-	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
 )
 
 type L1Network interface {

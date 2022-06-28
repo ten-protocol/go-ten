@@ -2,7 +2,7 @@ package network
 
 import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
@@ -17,6 +17,6 @@ type Network interface {
 	// Create - returns the started Ethereum nodes and the started Obscuro node clients.
 	// Responsible with spinning up all resources required for the test
 	// Return an error in case it cannot start for an expected reason. Otherwise it panics.
-	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error)
+	Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []rpcclientlib.Client, error)
 	TearDown()
 }

@@ -8,12 +8,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+
+	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -22,16 +24,14 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
@@ -56,7 +56,7 @@ type TransactionInjector struct {
 
 	// connections
 	l1Clients []ethclient.EthClient
-	l2Clients []obscuroclient.Client
+	l2Clients []rpcclientlib.Client
 
 	// addrs and libs
 	mgmtContractAddr *gethcommon.Address
@@ -78,7 +78,7 @@ func NewTransactionInjector(
 	l1Nodes []ethclient.EthClient,
 	wallets *params.SimWallets,
 	mgmtContractAddr *gethcommon.Address,
-	l2NodeClients []obscuroclient.Client,
+	l2NodeClients []rpcclientlib.Client,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 ) *TransactionInjector {
@@ -120,7 +120,7 @@ func (ti *TransactionInjector) Start() {
 	// deposit some initial amount into every simulation wallet
 	for _, w := range ti.wallets.SimEthWallets {
 		addr := w.Address()
-		txData := &common.L1DepositTx{
+		txData := &ethclient.L1DepositTx{
 			Amount:        initialBalance,
 			To:            ti.mgmtContractAddr,
 			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
@@ -184,7 +184,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
 		panic(err)
 	}
@@ -225,7 +225,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		}
 		ti.stats.Transfer()
 
-		err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -241,7 +241,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		v := common.RndBtw(1, 100)
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
-		txData := &common.L1DepositTx{
+		txData := &ethclient.L1DepositTx{
 			Amount:        v,
 			To:            ti.mgmtContractAddr,
 			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
@@ -288,7 +288,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			panic(err)
 		}
 
-		err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -316,7 +316,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 			panic(err)
 		}
 
-		err = ti.rndL2NodeClient().Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -351,17 +351,17 @@ func (ti *TransactionInjector) rndL1NodeClient() ethclient.EthClient {
 	return ti.l1Clients[rand.Intn(len(ti.l1Clients))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) rndL2NodeClient() obscuroclient.Client {
+func (ti *TransactionInjector) rndL2NodeClient() rpcclientlib.Client {
 	return ti.l2Clients[rand.Intn(len(ti.l2Clients))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, client obscuroclient.Client) types.TxData {
+func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, client rpcclientlib.Client) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
 	t := ti.newTx(data, NextNonce(client, from))
 	return t
 }
 
-func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client obscuroclient.Client) types.TxData {
+func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client rpcclientlib.Client) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
 	t := ti.newTx(transferERC20data, NextNonce(client, from))
 	return t
@@ -383,16 +383,16 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	}
 }
 
-func readNonce(cl obscuroclient.Client, a gethcommon.Address) uint64 {
+func readNonce(cl rpcclientlib.Client, a gethcommon.Address) uint64 {
 	var result uint64
-	err := cl.Call(&result, obscuroclient.RPCNonce, a)
+	err := cl.Call(&result, rpcclientlib.RPCNonce, a)
 	if err != nil {
 		panic(err)
 	}
 	return result
 }
 
-func NextNonce(cl obscuroclient.Client, w wallet.Wallet) uint64 {
+func NextNonce(cl rpcclientlib.Client, w wallet.Wallet) uint64 {
 	counter := 0
 
 	// only returns the nonce when the previous transaction was recorded
@@ -415,7 +415,7 @@ func NextNonce(cl obscuroclient.Client, w wallet.Wallet) uint64 {
 }
 
 // EncryptTx encrypts a single transaction using the enclave's public key to send it privately to the enclave.
-func EncryptTx(tx *nodecommon.L2Tx, enclavePublicKey *ecies.PublicKey) (nodecommon.EncryptedTx, error) {
+func EncryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) (common.EncryptedTx, error) {
 	txBytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode transaction bytes with RLP. Cause: %w", err)

@@ -3,11 +3,11 @@ package params
 import (
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 )
 

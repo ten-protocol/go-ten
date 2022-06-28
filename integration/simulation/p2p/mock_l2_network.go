@@ -5,10 +5,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/host"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // MockP2P - models a full network of in memory nodes including artificial random latencies
@@ -61,7 +60,7 @@ func (netw *MockP2P) BroadcastRollup(r common.EncodedRollup) {
 	}
 }
 
-func (netw *MockP2P) BroadcastTx(tx nodecommon.EncryptedTx) {
+func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return
 	}

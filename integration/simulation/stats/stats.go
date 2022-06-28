@@ -7,7 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.
@@ -64,7 +63,7 @@ func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(node gethcommon.Address, r *nodecommon.EncryptedRollup) {
+func (s *Stats) NewRollup(node gethcommon.Address, r *common.EncryptedRollup) {
 	s.statsMu.Lock()
 	s.NoL2Blocks[node]++
 	s.statsMu.Unlock()

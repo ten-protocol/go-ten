@@ -7,18 +7,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
+	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 )
 
 const (
@@ -57,8 +55,8 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 }
 
 // Uses the client to retrieve the height of the current block head.
-func getCurrentBlockHeadHeight(client obscuroclient.Client) int64 {
-	method := obscuroclient.RPCGetCurrentBlockHead
+func getCurrentBlockHeadHeight(client rpcclientlib.Client) int64 {
+	method := rpcclientlib.RPCGetCurrentBlockHead
 
 	var blockHead *types.Header
 	err := client.Call(&blockHead, method)
@@ -74,10 +72,10 @@ func getCurrentBlockHeadHeight(client obscuroclient.Client) int64 {
 }
 
 // Uses the client to retrieve the current rollup head.
-func getCurrentRollupHead(client obscuroclient.Client) *nodecommon.Header {
-	method := obscuroclient.RPCGetCurrentRollupHead
+func getCurrentRollupHead(client rpcclientlib.Client) *common.Header {
+	method := rpcclientlib.RPCGetCurrentRollupHead
 
-	var result *nodecommon.Header
+	var result *common.Header
 	err := client.Call(&result, method)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
@@ -87,10 +85,10 @@ func getCurrentRollupHead(client obscuroclient.Client) *nodecommon.Header {
 }
 
 // Uses the client to retrieve the rollup header with the matching hash.
-func getRollupHeader(client obscuroclient.Client, hash gethcommon.Hash) *nodecommon.Header {
-	method := obscuroclient.RPCGetRollupHeader
+func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.Header {
+	method := rpcclientlib.RPCGetRollupHeader
 
-	var result *nodecommon.Header
+	var result *common.Header
 	err := client.Call(&result, method, hash)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
@@ -100,11 +98,11 @@ func getRollupHeader(client obscuroclient.Client, hash gethcommon.Hash) *nodecom
 }
 
 // Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client obscuroclient.Client, txHash gethcommon.Hash) *nodecommon.L2Tx {
-	var l2Tx *nodecommon.L2Tx
-	err := client.Call(&l2Tx, obscuroclient.RPCGetTransaction, txHash)
+func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *common.L2Tx {
+	var l2Tx *common.L2Tx
+	err := client.Call(&l2Tx, rpcclientlib.RPCGetTransaction, txHash)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", obscuroclient.RPCGetTransaction, err))
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransaction, err))
 	}
 
 	// We check that there is a valid receipt for each transaction, as a sanity-check.
@@ -118,30 +116,30 @@ func getTransaction(client obscuroclient.Client, txHash gethcommon.Hash) *nodeco
 }
 
 // Returns the transaction receipt for the given transaction hash.
-func getTransactionReceipt(client obscuroclient.Client, txHash gethcommon.Hash) map[string]interface{} {
+func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) map[string]interface{} {
 	paramsJSON, err := json.Marshal([]string{txHash.Hex()})
 	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not marshall JSON param to %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
+		panic(fmt.Errorf("simulation failed because could not marshall JSON param to %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
 	}
 
 	var encryptedResponse string
-	err = client.Call(&encryptedResponse, obscuroclient.RPCGetTxReceipt, paramsJSON)
+	err = client.Call(&encryptedResponse, rpcclientlib.RPCGetTxReceipt, paramsJSON)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
 	}
 
 	var responseJSONMap map[string]interface{}
 	err = json.Unmarshal(gethcommon.Hex2Bytes(encryptedResponse), &responseJSONMap)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not unmarshall JSON response to %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
+		panic(fmt.Errorf("simulation failed because could not unmarshall JSON response to %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
 	}
 
 	return responseJSONMap
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(client obscuroclient.Client, address gethcommon.Address, l2ContractAddress *gethcommon.Address) uint64 {
-	method := obscuroclient.RPCCall
+func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractAddress *gethcommon.Address) uint64 {
+	method := rpcclientlib.RPCCall
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 	convertedData := (hexutil.Bytes)(balanceData)
 

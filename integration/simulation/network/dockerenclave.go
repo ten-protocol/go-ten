@@ -15,7 +15,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -32,7 +32,7 @@ const (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfNodesWithDockerEnclave struct {
-	obscuroClients   []obscuroclient.Client
+	obscuroClients   []rpcclientlib.Client
 	enclaveAddresses []string
 	// Geth
 	gethNetwork *gethnetwork.GethNetwork
@@ -55,7 +55,7 @@ func NewBasicNetworkOfNodesWithDockerEnclave(wallets *params.SimWallets) Network
 
 // Create initializes Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
+func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []rpcclientlib.Client, error) {
 	// We create Docker client, and finish early if docker or the enclave image are not available.
 	if err := n.setupAndCheckDocker(); err != nil {
 		return nil, nil, err

@@ -13,11 +13,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/config"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration"
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
@@ -108,7 +107,7 @@ func TestManagementContract(t *testing.T) {
 func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethclient.EthClient) {
 	rollup := datagenerator.RandomRollup()
 	txData := mgmtContractLib.CreateRollup(
-		&common.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)},
+		&common.L1RollupTx{Rollup: common.EncodeRollup(&rollup)},
 		w.GetNonceAndIncrement(),
 	)
 
@@ -192,7 +191,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	}
 
 	// issue a rollup from the attested node
-	txData = mgmtContractLib.CreateRollup(&common.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)}, w.GetNonceAndIncrement())
+	txData = mgmtContractLib.CreateRollup(&common.L1RollupTx{Rollup: common.EncodeRollup(&rollup)}, w.GetNonceAndIncrement())
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
 		t.Error(err)

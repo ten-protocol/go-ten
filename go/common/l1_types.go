@@ -1,16 +1,22 @@
 package common
 
 import (
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/log"
 	"math/big"
+
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-// the encoded version of an ExtBlock
+var GenesisHash = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
+
+// GenesisBlock - this is a hack that has to be removed ASAP.
+var GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
+
+// EncodedBlock the encoded version of an ExtBlock
 type EncodedBlock []byte
 
 func EncodeBlock(b *types.Block) EncodedBlock {
@@ -18,7 +24,6 @@ func EncodeBlock(b *types.Block) EncodedBlock {
 	if err != nil {
 		log.Panic("could not encode block to bytes. Cause: %s", err)
 	}
-
 	return encoded
 }
 
@@ -33,15 +38,10 @@ func (eb EncodedBlock) DecodeBlock() *types.Block {
 	if err != nil {
 		log.Panic("could not decode block from bytes. Cause: %s", err)
 	}
-
 	return b
 }
 
-var (
-	GenesisHash  = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
-	GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
-)
-
+// NewBlock - todo - remove this ASAP
 func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transaction) *types.Block {
 	parentHash := GenesisHash
 	height := L1GenesisHeight
@@ -70,20 +70,4 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transacti
 	}
 
 	return types.NewBlock(&header, txs, nil, nil, &trie.StackTrie{})
-}
-
-type EncryptedSharedEnclaveSecret []byte
-
-type EncodedAttestationReport []byte
-
-// AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
-type AttestationReport struct {
-	Report      []byte         // the signed bytes of the report which includes some encrypted identifying data
-	PubKey      []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
-	Owner       common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
-	HostAddress string         // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
-}
-
-type AttestationVerification struct {
-	ReportData []byte // the data embedded in the report at the time it was produced (up to 64bytes)
 }

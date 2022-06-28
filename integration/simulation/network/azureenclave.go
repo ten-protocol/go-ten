@@ -8,7 +8,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 
@@ -25,7 +25,7 @@ type networkWithAzureEnclaves struct {
 	gethClients []ethclient.EthClient
 	wallets     *params.SimWallets
 
-	obscuroClients  []obscuroclient.Client
+	obscuroClients  []rpcclientlib.Client
 	azureEnclaveIps []string
 
 	enclaveAddresses []string
@@ -41,7 +41,7 @@ func NewNetworkWithAzureEnclaves(enclaveIps []string, wallets *params.SimWallets
 	}
 }
 
-func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
+func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []rpcclientlib.Client, error) {
 	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,

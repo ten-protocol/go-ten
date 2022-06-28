@@ -4,12 +4,13 @@ import (
 	"math/big"
 	"strings"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+
 	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 func init() { //nolint:gochecknoinits

@@ -3,12 +3,13 @@ package ethclient
 import (
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/common"
+
 	"github.com/ethereum/go-ethereum"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
