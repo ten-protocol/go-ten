@@ -48,8 +48,10 @@ func InjectTransactions(cfg Config) {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for range c {
-			println("Stopped injecting transactions into network")
-			// TODO - Perform smoketest that transactions were injected successfully.
+			println(fmt.Sprintf(
+				"Stopped injecting transactions into network\nInjected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
+				len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
+			))
 			os.Exit(0)
 		}
 	}()
