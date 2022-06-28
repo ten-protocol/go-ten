@@ -1,14 +1,19 @@
 package nodecommon
 
 import (
+	"fmt"
 	"math/big"
+	"sync"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/obscuro-playground/go/hashing"
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -75,6 +80,31 @@ func (er ExtRollup) ToRollup() *EncryptedRollup {
 	}
 }
 
+var hasherPool = sync.Pool{
+	New: func() interface{} { return sha3.NewLegacyKeccak256() },
+}
+
+// RLPHash encodes value, hashes the encoded bytes and returns the hash.
+func RLPHash(value interface{}) (common.Hash, error) {
+	var hash common.Hash
+
+	sha := hasherPool.Get().(crypto.KeccakState)
+	defer hasherPool.Put(sha)
+	sha.Reset()
+
+	err := rlp.Encode(sha, value)
+	if err != nil {
+		return hash, fmt.Errorf("unable to encode Value. %w", err)
+	}
+
+	_, err = sha.Read(hash[:])
+	if err != nil {
+		return hash, fmt.Errorf("unable to read encoded value. %w", err)
+	}
+
+	return hash, nil
+}
+
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
 func (r *EncryptedRollup) Hash() obscurocommon.L2RootHash {
@@ -90,7 +120,7 @@ func (r *EncryptedRollup) Hash() obscurocommon.L2RootHash {
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
 func (h *Header) Hash() obscurocommon.L2RootHash {
-	hash, err := hashing.RLPHash(h)
+	hash, err := RLPHash(h)
 	if err != nil {
 		log.Error("err hashing the l2roothash")
 	}

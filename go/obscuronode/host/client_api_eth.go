@@ -25,7 +25,7 @@ func NewEthereumAPI(host *Node) *EthereumAPI {
 
 // ChainId returns the Obscuro chain ID.
 func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
-	return (*hexutil.Big)(&api.host.config.ChainID), nil
+	return (*hexutil.Big)(big.NewInt(api.host.config.ObscuroChainID)), nil
 }
 
 // BlockNumber returns the height of the current head rollup.

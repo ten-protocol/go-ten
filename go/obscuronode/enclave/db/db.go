@@ -3,10 +3,11 @@ package db
 import (
 	"fmt"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db/sql"
+
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/sql"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 

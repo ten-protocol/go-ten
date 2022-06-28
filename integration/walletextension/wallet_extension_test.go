@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	chainIDHex = "0x539"
+	l2ChainIDHex = "0x309"
 
 	reqJSONMethodChainID = "eth_chainId"
 	reqJSONKeyTo         = "to"
@@ -81,8 +81,8 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 
 	respJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, reqJSONMethodChainID, []string{})
 
-	if respJSON[walletextension.RespJSONKeyResult] != chainIDHex {
-		t.Fatalf("Expected chainId of %s, got %s", "1337", respJSON[walletextension.RespJSONKeyResult])
+	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
+		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
