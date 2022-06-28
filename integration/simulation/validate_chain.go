@@ -27,19 +27,28 @@ const txThreshold = 5
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	// ensure L1 and L2 txs were issued
-	if len(s.TxInjector.counter.l1Transactions) < txThreshold {
-		t.Errorf("Simulation only issued %d L1 transactions. At least %d expected", len(s.TxInjector.counter.l1Transactions), txThreshold)
-	}
-	if len(s.TxInjector.counter.transferL2Transactions) < txThreshold {
-		t.Errorf("Simulation only issued %d transfer L2 transactions. At least %d expected", len(s.TxInjector.counter.transferL2Transactions), txThreshold)
-	}
-	if len(s.TxInjector.counter.withdrawalL2Transactions) < txThreshold {
-		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.counter.withdrawalL2Transactions), txThreshold)
+	err := SufficientTxsIssued(s.TxInjector, txThreshold)
+	if err != nil {
+		t.Error(err)
 	}
 
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
+}
+
+// SufficientTxsIssued checks that at least `threshold` transactions have been issued for each of L1 transactions, L2
+// transfer transactions, and L2 withdrawal transactions.
+func SufficientTxsIssued(txInjector *TransactionInjector, threshold int) error {
+	if len(txInjector.counter.l1Transactions) < threshold {
+		return fmt.Errorf("transaction injector only issued %d L1 transactions. At least %d expected", len(txInjector.counter.l1Transactions), threshold)
+	}
+	if len(txInjector.counter.transferL2Transactions) < threshold {
+		return fmt.Errorf("transaction injector only issued %d transfer L2 transactions. At least %d expected", len(txInjector.counter.transferL2Transactions), threshold)
+	}
+	if len(txInjector.counter.withdrawalL2Transactions) < threshold {
+		return fmt.Errorf("transaction injector only issued %d withdrawal L2 transactions. At least %d expected", len(txInjector.counter.withdrawalL2Transactions), threshold)
+	}
+	return nil
 }
 
 // checkEthereumBlockchainValidity: sanity check of the state of all L1 nodes
