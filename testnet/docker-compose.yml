@@ -23,7 +23,8 @@ services:
       "--id=$HOSTID",
       "--enclaveRPCAddress=enclave:11000",
       "--rollupContractAddress=$MGMTCONTRACTADDR",
-      "--privateKey=$PKSTRING"
+      "--privateKey=$PKSTRING",
+      "--clientRPCHost=0.0.0.0"
     ]
 
   enclave:
