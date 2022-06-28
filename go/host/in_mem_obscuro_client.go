@@ -37,7 +37,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		}
 		tx, ok := args[0].(common.EncryptedTx)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type nodecommon.EncryptedTx", rpcclientlib.RPCSendTransactionEncrypted)
+			return fmt.Errorf("arg to %s was not of expected type EncryptedTx", rpcclientlib.RPCSendTransactionEncrypted)
 		}
 
 		c.obscuroAPI.SendTransactionEncrypted(tx)
