@@ -204,12 +204,15 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 // SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
 	bsr := e.chain.SubmitBlock(block)
-	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
-	hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())
-	if !f {
-		log.Panic("This should not happen because this rollup was just processed.")
+
+	if bsr.RollupHead != nil {
+		hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())
+		if !f {
+			log.Panic("This should not happen because this rollup was just processed.")
+		}
+		e.mempool.RemoveMempoolTxs(hr, e.storage)
 	}
-	e.mempool.RemoveMempoolTxs(hr, e.storage)
+
 	return bsr
 }
 
