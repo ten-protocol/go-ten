@@ -19,7 +19,7 @@ const azureTestEnv = "AZURE_TEST_ENABLED"
 //	 - if owner doesn't match - they shouldn't get secret
 
 // Todo: replace with the IPs of the VMs you are testing, see the azuredeployer README for more info.
-var vmIPs = []string{"20.90.162.69"}
+var vmIPs = []string{"20.90.164.68"}
 
 // This test creates a network of L2 nodes consisting of just the Azure nodes configured above.
 //
@@ -32,7 +32,7 @@ func TestAzureEnclaveNodesMonteCarloSimulation(t *testing.T) {
 	}
 	setupTestLog("azure-enclave")
 
-	numberOfNodes := 5
+	numberOfNodes := 1
 	numberOfSimWallets := 5
 
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)

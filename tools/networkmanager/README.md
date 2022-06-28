@@ -20,4 +20,4 @@ All commands are executed by running `networkmanager/main/main()`.
 
 * Arguments to inject transactions (runs until user interrupt):
 
-  `--l1NodeHost=<x> --l1NodePort=<x> --privateKey=<x> --chainID=<x> --managementContractAddress=<x> --erc20ContractAddress=<x> --obscuroClientAddress=<x> injectTransactions`
+  `--l1NodeHost=<x> --l1NodePort=<x> --managementContractAddress=<x> --erc20ContractAddress=<x> --obscuroClientAddress=<x> injectTransactions`

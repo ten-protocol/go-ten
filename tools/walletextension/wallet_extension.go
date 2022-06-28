@@ -38,6 +38,14 @@ const (
 	RespJSONKeyResult         = "result"
 	httpCodeErr               = 500
 
+	// CORS-related constants.
+	corsAllowOrigin  = "Access-Control-Allow-Origin"
+	originAll        = "*"
+	corsAllowMethods = "Access-Control-Allow-Methods"
+	reqOptions       = "OPTIONS"
+	corsAllowHeaders = "Access-Control-Allow-Headers"
+	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
+
 	AllInterfaces     = "0.0.0.0"
 	websocketProtocol = "ws://"
 
@@ -105,6 +113,14 @@ func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
 
 // Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
+	// We enable CORS, as required by some browsers (e.g. Firefox).
+	resp.Header().Set(corsAllowOrigin, originAll)
+	if (*req).Method == reqOptions {
+		resp.Header().Set(corsAllowMethods, reqOptions)
+		resp.Header().Set(corsAllowHeaders, corsHeaders)
+		return
+	}
+
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
@@ -115,7 +131,8 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	var reqJSONMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %s. "+
+			"If you're trying to generate a viewing key, visit %s", err, pathViewingKeys))
 		return
 	}
 	method := reqJSONMap[reqJSONKeyMethod]

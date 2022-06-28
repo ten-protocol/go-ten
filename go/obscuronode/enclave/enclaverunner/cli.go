@@ -32,23 +32,24 @@ type EnclaveConfigToml struct {
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
 // with specific defaults (if the `config` flag isn't specified).
 func ParseConfig() config.EnclaveConfig {
-	defaultConfig := config.DefaultEnclaveConfig()
+	cfg := config.DefaultEnclaveConfig()
 
 	configPath := flag.String(configName, "", configUsage)
-	hostID := flag.String(HostIDName, defaultConfig.HostID.Hex(), hostIDUsage)
-	hostAddress := flag.String(HostAddressName, defaultConfig.HostAddress, hostAddressUsage)
-	address := flag.String(AddressName, defaultConfig.Address, addressUsage)
-	l1ChainID := flag.Int64(l1ChainIDName, defaultConfig.L1ChainID, l1ChainIDUsage)
-	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.ObscuroChainID, obscuroChainIDUsage)
-	willAttest := flag.Bool(willAttestName, defaultConfig.WillAttest, willAttestUsage)
-	validateL1Blocks := flag.Bool(validateL1BlocksName, defaultConfig.ValidateL1Blocks, validateL1BlocksUsage)
-	speculativeExecution := flag.Bool(speculativeExecutionName, defaultConfig.SpeculativeExecution, speculativeExecutionUsage)
-	managementContractAddress := flag.String(ManagementContractAddressName, defaultConfig.ManagementContractAddress.Hex(), managementContractAddressUsage)
+	hostID := flag.String(HostIDName, cfg.HostID.Hex(), hostIDUsage)
+	hostAddress := flag.String(HostAddressName, cfg.HostAddress, hostAddressUsage)
+	address := flag.String(AddressName, cfg.Address, addressUsage)
+	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, l1ChainIDUsage)
+	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, obscuroChainIDUsage)
+	willAttest := flag.Bool(willAttestName, cfg.WillAttest, willAttestUsage)
+	validateL1Blocks := flag.Bool(validateL1BlocksName, cfg.ValidateL1Blocks, validateL1BlocksUsage)
+	speculativeExecution := flag.Bool(speculativeExecutionName, cfg.SpeculativeExecution, speculativeExecutionUsage)
+	managementContractAddress := flag.String(ManagementContractAddressName, cfg.ManagementContractAddress.Hex(), managementContractAddressUsage)
 	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, "", erc20ContractAddrsUsage)
-	writeToLogs := flag.Bool(writeToLogsName, defaultConfig.WriteToLogs, writeToLogsUsage)
-	logPath := flag.String(logPathName, defaultConfig.LogPath, logPathUsage)
-	useInMemoryDB := flag.Bool(useInMemoryDBName, defaultConfig.UseInMemoryDB, useInMemoryDBUsage)
-	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, defaultConfig.ViewingKeysEnabled, ViewingKeysEnabledUsage)
+	writeToLogs := flag.Bool(writeToLogsName, cfg.WriteToLogs, writeToLogsUsage)
+	logPath := flag.String(logPathName, cfg.LogPath, logPathUsage)
+	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, useInMemoryDBUsage)
+	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, cfg.ViewingKeysEnabled, ViewingKeysEnabledUsage)
+	edgelessDBHost := flag.String(edgelessDBHostName, cfg.EdgelessDBHost, edgelessDBHostUsage)
 
 	flag.Parse()
 
@@ -68,22 +69,23 @@ func ParseConfig() config.EnclaveConfig {
 		erc20contractAddresses = []*common.Address{}
 	}
 
-	defaultConfig.HostID = common.HexToAddress(*hostID)
-	defaultConfig.HostAddress = *hostAddress
-	defaultConfig.Address = *address
-	defaultConfig.L1ChainID = *l1ChainID
-	defaultConfig.ObscuroChainID = *obscuroChainID
-	defaultConfig.WillAttest = *willAttest
-	defaultConfig.ValidateL1Blocks = *validateL1Blocks
-	defaultConfig.SpeculativeExecution = *speculativeExecution
-	defaultConfig.ManagementContractAddress = common.HexToAddress(*managementContractAddress)
-	defaultConfig.ERC20ContractAddresses = erc20contractAddresses
-	defaultConfig.WriteToLogs = *writeToLogs
-	defaultConfig.LogPath = *logPath
-	defaultConfig.UseInMemoryDB = *useInMemoryDB
-	defaultConfig.ViewingKeysEnabled = *viewingKeysEnabled
+	cfg.HostID = common.HexToAddress(*hostID)
+	cfg.HostAddress = *hostAddress
+	cfg.Address = *address
+	cfg.L1ChainID = *l1ChainID
+	cfg.ObscuroChainID = *obscuroChainID
+	cfg.WillAttest = *willAttest
+	cfg.ValidateL1Blocks = *validateL1Blocks
+	cfg.SpeculativeExecution = *speculativeExecution
+	cfg.ManagementContractAddress = common.HexToAddress(*managementContractAddress)
+	cfg.ERC20ContractAddresses = erc20contractAddresses
+	cfg.WriteToLogs = *writeToLogs
+	cfg.LogPath = *logPath
+	cfg.UseInMemoryDB = *useInMemoryDB
+	cfg.ViewingKeysEnabled = *viewingKeysEnabled
+	cfg.EdgelessDBHost = *edgelessDBHost
 
-	return defaultConfig
+	return cfg
 }
 
 // Parses the config from the .toml file at configPath.

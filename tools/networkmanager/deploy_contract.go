@@ -33,8 +33,8 @@ func DeployContract(config Config) {
 		L1NodeHost:          config.l1NodeHost,
 		L1NodeWebsocketPort: config.l1NodeWebsocketPort,
 		L1ConnectionTimeout: config.l1ConnectionTimeout,
-		PrivateKeyString:    config.privateKeyString,
-		ChainID:             config.chainID,
+		PrivateKeyString:    config.privateKeys[0], // We deploy the contract using the first private key.
+		ChainID:             config.ethereumChainID,
 	}
 
 	l1Client, err := ethclient.NewEthClientFromConfig(hostConfig)

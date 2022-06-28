@@ -37,6 +37,8 @@ type EnclaveConfig struct {
 	// Whether the client and the enclave should encrypt sensitive requests and responses.
 	// TODO - Consider removing this option and forcing the simulations to generate viewing keys.
 	ViewingKeysEnabled bool
+	// host address for the edgeless DB instance (can be empty if using InMemory DB or if attestation is disabled)
+	EdgelessDBHost string
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -57,5 +59,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		LogPath:                   "enclave_logs.txt",
 		UseInMemoryDB:             true,
 		ViewingKeysEnabled:        true,
+		EdgelessDBHost:            "",
 	}
 }
