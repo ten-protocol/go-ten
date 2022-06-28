@@ -3,6 +3,7 @@ package networkmanager
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -26,6 +27,11 @@ func InjectTransactions(cfg Config) {
 		L1NodeWebsocketPort: cfg.l1NodeWebsocketPort,
 		L1ConnectionTimeout: cfg.l1ConnectionTimeout,
 	}
+	numOfTxs, err := strconv.Atoi(cfg.Args[0])
+	if err != nil {
+		panic(fmt.Errorf("could not parse number of transactions to inject. Cause: %w", err))
+	}
+
 	l1Client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
@@ -41,7 +47,7 @@ func InjectTransactions(cfg Config) {
 		[]obscuroclient.Client{l2Client},
 		mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
-		2,
+		numOfTxs,
 	)
 
 	println("Injecting transactions into network...")

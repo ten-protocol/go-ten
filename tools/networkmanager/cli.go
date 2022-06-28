@@ -56,6 +56,7 @@ const (
 
 type Config struct {
 	Command              Command
+	Args                 []string
 	l1NodeHost           string
 	l1NodeWebsocketPort  uint
 	l1ConnectionTimeout  time.Duration
@@ -115,6 +116,8 @@ func ParseCLIArgs() Config {
 		defaultConfig.Command = DeployERC20Contract
 	case injectTxsName:
 		defaultConfig.Command = InjectTxs
+		numOfTxs := flag.Arg(1)
+		defaultConfig.Args = []string{numOfTxs}
 	default:
 		panic(fmt.Sprintf("unrecognised command %s", command))
 	}
