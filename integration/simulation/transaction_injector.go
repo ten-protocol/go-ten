@@ -101,7 +101,7 @@ func NewTransactionInjector(
 		l1Clients:        l1Nodes,
 		l2Clients:        l2NodeClients,
 		interruptRun:     &interrupt,
-		fullyStoppedChan: make(chan bool),
+		fullyStoppedChan: make(chan bool, 1),
 		mgmtContractAddr: mgmtContractAddr,
 		mgmtContractLib:  mgmtContractLib,
 		erc20ContractLib: erc20ContractLib,
@@ -274,18 +274,6 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 	}
 }
 
-// Indicates whether to keep issuing transactions, or halt.
-func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
-	isInterrupted := atomic.LoadInt32(ti.interruptRun) != 0
-
-	// 0 is a special value indicating we should only stop issuing transactions when interrupted.
-	if ti.txsToIssue == 0 {
-		return !isInterrupted
-	}
-
-	return !isInterrupted && txCounter < ti.txsToIssue
-}
-
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
@@ -322,7 +310,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
 func (ti *TransactionInjector) issueInvalidL2Txs() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration)) {
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
@@ -340,6 +328,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
+		time.Sleep(obscurocommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}
 }
 
@@ -446,4 +435,16 @@ func EncryptTx(tx *nodecommon.L2Tx, enclavePublicKey *ecies.PublicKey) (nodecomm
 	}
 
 	return encryptedTxBytes, nil
+}
+
+// Indicates whether to keep issuing transactions, or halt.
+func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
+	isInterrupted := atomic.LoadInt32(ti.interruptRun) != 0
+
+	// 0 is a special value indicating we should only stop issuing transactions when interrupted.
+	if ti.txsToIssue == 0 {
+		return !isInterrupted
+	}
+
+	return !isInterrupted && txCounter < ti.txsToIssue
 }

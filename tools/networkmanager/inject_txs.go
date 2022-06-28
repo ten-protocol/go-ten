@@ -3,7 +3,6 @@ package networkmanager
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -42,24 +41,12 @@ func InjectTransactions(cfg Config) {
 		[]obscuroclient.Client{l2Client},
 		mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
-		3,
+		2,
 	)
-
-	// We listen for interrupts, to log statistics before exiting.
-	interruptChan := make(chan os.Signal, 1)
-	signal.Notify(interruptChan, os.Interrupt)
-	go func() {
-		for range interruptChan {
-			println(fmt.Sprintf(
-				"Stopped injecting transactions into network\nInjected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
-				len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
-			))
-			os.Exit(0)
-		}
-	}()
 
 	println("Injecting transactions into network...")
 	txInjector.Start()
+	reportFinishedInjecting(txInjector)
 }
 
 func createWallets(nmConfig Config, l1Client ethclient.EthClient, l2Client obscuroclient.Client) *params.SimWallets {
@@ -94,4 +81,12 @@ func createWallets(nmConfig Config, l1Client ethclient.EthClient, l2Client obscu
 	}
 
 	return wallets
+}
+
+func reportFinishedInjecting(txInjector *simulation.TransactionInjector) {
+	println(fmt.Sprintf(
+		"Stopped injecting transactions into network\nInjected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
+		len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
+	))
+	os.Exit(0)
 }
