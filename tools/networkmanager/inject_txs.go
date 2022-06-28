@@ -44,10 +44,11 @@ func InjectTransactions(cfg Config) {
 		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
 	)
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	// We listen for interrupts, to log statistics before exiting.
+	interruptChan := make(chan os.Signal, 1)
+	signal.Notify(interruptChan, os.Interrupt)
 	go func() {
-		for range c {
+		for range interruptChan {
 			println(fmt.Sprintf(
 				"Stopped injecting transactions into network\nInjected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
 				len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
