@@ -15,6 +15,8 @@ func TestSign(t *testing.T) {
 	}
 	pubKeyA := privateKeyA.PublicKey
 	addrA := crypto.PubkeyToAddress(pubKeyA)
+	t.Logf("%x\n", privateKeyA.D.Bytes())
+	t.Log(addrA)
 
 	// pk signs a random message
 	msg := crypto.Keccak256([]byte("foo"))

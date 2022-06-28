@@ -4,9 +4,16 @@
 # This script starts the gethnetwork in docker
 #
 
+#
+# Prefunded PK used for contract deployment
+# f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb -> 0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
+#
+# Prefunded PK used in tests
+# 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99 -> 0x0654D8B60033144D567f25bF41baC1FB0D60F23B
+
 help_and_exit() {
     echo ""
-    echo "Usage: $(basename "${0}") --pkaddress=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
+    echo "Usage: $(basename "${0}") --pkaddress=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
     echo ""
     echo "  pkaddress          *Required* Set the prefunded address"
     echo ""
@@ -50,6 +57,7 @@ echo "Starting the gethnetwork.."
 docker network create --driver bridge node_network || true
 docker run --name=gethnetwork -d \
   --network=node_network \
+  -p 8025:8025 -p 8026:8026 -p 8027:8027 -p 9000:9000 -p 9001:9001 -p 9002:9002 \
   --entrypoint /home/go-obscuro/integration/gethnetwork/main/main \
    testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetwork:latest \
   --numNodes=3 \
