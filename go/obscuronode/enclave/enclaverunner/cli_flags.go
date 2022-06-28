@@ -15,7 +15,7 @@ const (
 	addressUsage = "The address on which to serve the Obscuro enclave service"
 
 	l1ChainIDName  = "l1ChainID"
-	l1ChainIDUsage = "An integer representing the unique chain id of the Ethereum chain used as an L1(default 1337)"
+	l1ChainIDUsage = "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)"
 
 	obscuroChainIDName  = "obscuroChainID"
 	obscuroChainIDUsage = "An integer representing the unique chain id of the Obscuro chain (default 777)"
