@@ -21,16 +21,13 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 )
 
-func InjectTransactions(cfg Config) {
+func InjectTransactions(cfg Config, args []string) {
 	hostConfig := config.HostConfig{
 		L1NodeHost:          cfg.l1NodeHost,
 		L1NodeWebsocketPort: cfg.l1NodeWebsocketPort,
 		L1ConnectionTimeout: cfg.l1ConnectionTimeout,
 	}
-	numOfTxs, err := strconv.Atoi(cfg.Args[0])
-	if err != nil {
-		panic(fmt.Errorf("could not parse number of transactions to inject. Cause: %w", err))
-	}
+	numOfTxs := parseNumOfTxs(args)
 
 	l1Client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
@@ -53,6 +50,17 @@ func InjectTransactions(cfg Config) {
 	println("Injecting transactions into network...")
 	txInjector.Start()
 	reportFinishedInjecting(txInjector)
+}
+
+func parseNumOfTxs(args []string) int {
+	if len(args) != 1 {
+		panic(fmt.Errorf("expected one argument to %s command, got %d", injectTxsName, len(args)))
+	}
+	numOfTxs, err := strconv.Atoi(args[0])
+	if err != nil {
+		panic(fmt.Errorf("could not parse number of transactions to inject. Cause: %w", err))
+	}
+	return numOfTxs
 }
 
 func createWallets(nmConfig Config, l1Client ethclient.EthClient, l2Client obscuroclient.Client) *params.SimWallets {
