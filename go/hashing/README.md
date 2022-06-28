@@ -1,1 +1,0 @@
-This package contains code related to the hashing of arbitrary objects.
