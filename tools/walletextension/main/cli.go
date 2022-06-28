@@ -14,7 +14,7 @@ const (
 
 	// TODO - Use one flag for the shared HTTP + RPC host, and two other flags for the ports.
 	nodeRPCHTTPAddressName    = "nodeRPCHTTPAddress"
-	nodeRPCHTTPAddressDefault = "http://127.0.0.1:13000"
+	nodeRPCHTTPAddressDefault = "127.0.0.1:13000"
 	nodeRPCHTTPAddressUsage   = "The address on which to connect to the node via RPC using HTTP"
 
 	nodeRPCWebsocketAddressName    = "nodeRPCWebsocketAddress"
