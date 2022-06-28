@@ -313,7 +313,8 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
-		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
+		// We avoid transfers to self, unless there is only a single L2 wallet.
+		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
 		tx := ti.newCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))

@@ -2,14 +2,12 @@ package networkmanager
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 	"math/big"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
@@ -28,7 +26,6 @@ func InjectTransactions(cfg Config, args []string) {
 		L1NodeWebsocketPort: cfg.l1NodeWebsocketPort,
 		L1ConnectionTimeout: cfg.l1ConnectionTimeout,
 	}
-	numOfTxs := parseNumOfTxs(args)
 
 	l1Client, err := ethclient.NewEthClient(hostConfig)
 	if err != nil {
@@ -37,7 +34,7 @@ func InjectTransactions(cfg Config, args []string) {
 	l2Client := obscuroclient.NewClient(cfg.obscuroClientAddress)
 
 	txInjector := simulation.NewTransactionInjector(
-		1*time.Second,
+		time.Second,
 		stats.NewStats(1),
 		[]ethclient.EthClient{l1Client},
 		createWallets(cfg, l1Client, l2Client),
@@ -45,7 +42,7 @@ func InjectTransactions(cfg Config, args []string) {
 		[]obscuroclient.Client{l2Client},
 		mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
-		numOfTxs,
+		parseNumOfTxs(args),
 	)
 
 	println("Injecting transactions into network...")
