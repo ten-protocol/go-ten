@@ -45,7 +45,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
   The wallet extension is now listening on `http://127.0.0.1:3000/`
 
 * In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as 
-  the "New RPC URL", and use 777 as the "Chain ID" (fill in the other parameters as you see fit). Requests and 
+  the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and 
   responses for the network will now pass through the wallet extension, with requests encrypted with the enclave 
   public key
 
