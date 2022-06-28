@@ -17,7 +17,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -166,7 +166,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not decode encrypted transaction blob from Base64. Cause: %w", err)
 	}
 
-	key := common.Hex2Bytes(crypto.RollupEncryptionKeyHex)
+	key := gethcommon.Hex2Bytes(crypto.RollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialise AES cipher for enclave rollup key. Cause: %w", err)
