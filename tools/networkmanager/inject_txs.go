@@ -42,6 +42,7 @@ func InjectTransactions(cfg Config) {
 		[]obscuroclient.Client{l2Client},
 		mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
+		3,
 	)
 
 	// We listen for interrupts, to log statistics before exiting.
