@@ -25,8 +25,8 @@ type obscuroscanConfig struct {
 func defaultObscuroClientConfig() obscuroscanConfig {
 	return obscuroscanConfig{
 		nodeID:        "",
-		rpcServerAddr: "localhost:13000",
-		address:       "localhost:3000",
+		rpcServerAddr: "127.0.0.1:13000",
+		address:       "127.0.0.1:3000",
 	}
 }
 
