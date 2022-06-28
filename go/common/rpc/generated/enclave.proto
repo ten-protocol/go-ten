@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "obscuronode/enclave/rpc/generated";
+option go_package = "enclave/rpc/generated";
 
 package generated;
 

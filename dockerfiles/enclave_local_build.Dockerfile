@@ -9,8 +9,8 @@ RUN mkdir /home/obscuro/go-obscuro
 
 # build the enclave from the current branch
 COPY . /home/obscuro/go-obscuro
-RUN cd /home/obscuro/go-obscuro/go/obscuronode/enclave/main && ego-go build && ego sign main
+RUN cd /home/obscuro/go-obscuro/go/enclave/main && ego-go build && ego sign main
 
 ENV OE_SIMULATION=1
-ENTRYPOINT ["ego", "run", "/home/obscuro/go-obscuro/go/obscuronode/enclave/main/main"]
+ENTRYPOINT ["ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main"]
 EXPOSE 11000
