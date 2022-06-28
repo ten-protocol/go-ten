@@ -34,6 +34,10 @@ func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
 		rpcConfig.WSOrigins = []string{allOrigins}
 	}
 
+	// allows calls from any vhost
+	// TODO review if this poses a security issue
+	rpcConfig.HTTPVirtualHosts = []string{"*"}
+
 	rpcServerNode, err := node.New(&rpcConfig)
 	if err != nil {
 		log.Panic("could not create new client server. Cause: %s", err)
