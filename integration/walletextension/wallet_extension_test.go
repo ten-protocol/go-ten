@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
 

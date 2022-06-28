@@ -57,10 +57,11 @@ func (db *mempoolManager) FetchMempoolTxs() []*nodecommon.L2Tx {
 	return mpCopy
 }
 
-func (db *mempoolManager) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash) {
+func (db *mempoolManager) RemoveMempoolTxs(rollup *obscurocore.Rollup, resolver db.RollupResolver) {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
+	toRemove := historicTxs(rollup, resolver)
 	r := make(map[common.Hash]*nodecommon.L2Tx)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
@@ -71,7 +72,20 @@ func (db *mempoolManager) RemoveMempoolTxs(toRemove map[common.Hash]common.Hash)
 	db.mempool = r
 }
 
-// Calculate transactions to be included in the current rollup
+// Returns all transactions found 20 levels below
+func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) map[common.Hash]common.Hash {
+	i := obscurocommon.HeightCommittedBlocks
+	c := r
+	for {
+		if i == 0 || c.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
+			return obscurocore.ToMap(c.Transactions)
+		}
+		i--
+		c = resolver.ParentRollup(c)
+	}
+}
+
+// CurrentTxs - Calculate transactions to be included in the current rollup
 func (db *mempoolManager) CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) obscurocore.L2Txs {
 	txs := findTxsNotIncluded(head, db.FetchMempoolTxs(), resolver)
 	sort.Sort(sortByNonce(txs))

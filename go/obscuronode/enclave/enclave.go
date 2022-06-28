@@ -54,6 +54,8 @@ type enclaveImpl struct {
 	txCh          chan *nodecommon.L2Tx
 	roundWinnerCh chan *obscurocore.Rollup
 	exitCh        chan bool
+
+	// Todo - disabled temporarily until TN1 is released
 	// speculativeWorkInCh  chan bool
 	// speculativeWorkOutCh chan speculativeWork
 
@@ -201,7 +203,14 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []nodecommon.BlockSubm
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitBlock(block types.Block) nodecommon.BlockSubmissionResponse {
-	return e.chain.SubmitBlock(block)
+	bsr := e.chain.SubmitBlock(block)
+	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
+	hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())
+	if !f {
+		log.Panic("This should not happen because this rollup was just processed.")
+	}
+	e.mempool.RemoveMempoolTxs(hr, e.storage)
+	return bsr
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {

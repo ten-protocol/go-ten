@@ -53,9 +53,9 @@ type RollupChain struct {
 	blockProcessingMutex sync.Mutex
 }
 
-func New(nodeId uint64, hostId common.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, obscuroChainID int64, ethereumChainID int64) *RollupChain {
+func New(nodeID uint64, hostId common.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, obscuroChainID int64, ethereumChainID int64) *RollupChain {
 	return &RollupChain{
-		nodeID:                nodeId,
+		nodeID:                nodeID,
 		hostID:                hostId,
 		storage:               storage,
 		l1Blockchain:          l1Blockchain,
