@@ -13,7 +13,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/enclave"
 	"github.com/obscuronet/obscuro-playground/integration"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 	"github.com/obscuronet/obscuro-playground/go/host"
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
@@ -21,7 +21,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethclient.EthClient) []rpcclientlib.Client {
+func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpcclientlib.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -64,7 +64,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	return obscuroClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient, enclaveAddresses []string) []rpcclientlib.Client {
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) []rpcclientlib.Client {
 	// handle to the obscuro clients
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)

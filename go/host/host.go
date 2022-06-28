@@ -17,8 +17,8 @@ import (
 	"github.com/naoina/toml"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/config"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 )
 
@@ -28,10 +28,10 @@ type Node struct {
 	ID      gethcommon.Address
 	shortID uint64
 
-	P2p           P2P                 // For communication with other Obscuro nodes
-	ethClient     ethclient.EthClient // For communication with the L1 node
-	EnclaveClient common.Enclave      // For communication with the enclave
-	rpcServer     RPCServer           // For communication with Obscuro client applications
+	P2p           P2P                  // For communication with other Obscuro nodes
+	ethClient     ethadapter.EthClient // For communication with the L1 node
+	EnclaveClient common.Enclave       // For communication with the enclave
+	rpcServer     RPCServer            // For communication with Obscuro client applications
 
 	stats StatsCollector
 
@@ -59,7 +59,7 @@ func NewHost(
 	config config.HostConfig,
 	collector StatsCollector,
 	p2p P2P,
-	ethClient ethclient.EthClient,
+	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
@@ -127,7 +127,7 @@ func (a *Node) Start() {
 			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
 		}
 
-		l1tx := &ethclient.L1InitializeSecretTx{
+		l1tx := &ethadapter.L1InitializeSecretTx{
 			AggregatorID:  &a.ID,
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
 			HostAddress:   a.config.P2PAddress,
@@ -242,7 +242,7 @@ func (a *Node) Stop() {
 }
 
 // ConnectToEthNode connects the Aggregator to the ethereum node
-func (a *Node) ConnectToEthNode(node ethclient.EthClient) {
+func (a *Node) ConnectToEthNode(node ethadapter.EthClient) {
 	a.ethClient = node
 }
 
@@ -370,11 +370,11 @@ func (a *Node) processBlock(block common.EncodedBlock) {
 			continue
 		}
 
-		if scrtReqTx, ok := t.(*ethclient.L1RequestSecretTx); ok {
+		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
 			a.processSharedSecretRequest(scrtReqTx)
 		}
 
-		if scrtRespTx, ok := t.(*ethclient.L1RespondSecretTx); ok {
+		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			err := a.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
 				common.LogWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
@@ -400,7 +400,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 				winnerRollup.Header.Number,
 			)
 
-			tx := &ethclient.L1RollupTx{
+			tx := &ethadapter.L1RollupTx{
 				Rollup: common.EncodeRollup(winnerRollup.ToRollup()),
 			}
 
@@ -436,7 +436,7 @@ func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
 		"Initialising network. Genesis rollup r_%d.",
 		common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 	)
-	l1tx := &ethclient.L1RollupTx{
+	l1tx := &ethadapter.L1RollupTx{
 		Rollup: common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
 	}
 
@@ -466,7 +466,7 @@ func (a *Node) requestSecret() {
 		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation := common.EncodeAttestation(att)
-	l1tx := &ethclient.L1RequestSecretTx{
+	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
 	a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
@@ -474,7 +474,7 @@ func (a *Node) requestSecret() {
 	a.awaitSecret()
 }
 
-func (a *Node) handleStoreSecretTx(t *ethclient.L1RespondSecretTx) bool {
+func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	if t.RequesterID.Hex() != a.ID.Hex() {
 		// this secret is for somebody else
 		return false
@@ -489,7 +489,7 @@ func (a *Node) handleStoreSecretTx(t *ethclient.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) processSharedSecretRequest(scrtReqTx *ethclient.L1RequestSecretTx) {
+func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) {
 	// todo: implement proper protocol so only one host responds to this secret requests initially
 	// 	for now we just have the genesis host respond until protocol implemented
 	if !a.config.IsGenesis {
@@ -515,7 +515,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethclient.L1RequestSecretTx
 		return
 	}
 
-	l1tx := &ethclient.L1RespondSecretTx{
+	l1tx := &ethadapter.L1RespondSecretTx{
 		Secret:      secret,
 		RequesterID: att.Owner,
 		AttesterID:  a.ID,
@@ -527,7 +527,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethclient.L1RequestSecretTx
 
 // Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
 // may have joined the network.
-func (a *Node) processSharedSecretResponse(_ *ethclient.L1RespondSecretTx) error {
+func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) error {
 	// We make a call to the L1 node to retrieve the new list of aggregators. An alternative would be to check that the
 	// transaction succeeded, and if so, extract the additional host address from the transaction arguments. But we
 	// believe this would be more brittle than just asking the L1 contract for its view of the current aggregators.
@@ -699,7 +699,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 		if t == nil {
 			continue
 		}
-		if scrtTx, ok := t.(*ethclient.L1RespondSecretTx); ok {
+		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			ok := a.handleStoreSecretTx(scrtTx)
 			if ok {
 				common.LogWithID(a.shortID, "Stored enclave secret.")

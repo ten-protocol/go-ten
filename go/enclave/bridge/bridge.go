@@ -6,7 +6,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	crypto2 "github.com/obscuronet/obscuro-playground/go/enclave/crypto"
 
@@ -17,8 +17,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/common"
 	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 )
 
@@ -153,7 +153,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			continue
 		}
 
-		if rolTx, ok := t.(*ethclient.L1RollupTx); ok {
+		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
 			r := common.DecodeRollupOrPanic(rolTx.Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
@@ -231,7 +231,7 @@ func (bridge *Bridge) ExtractDeposits(
 				continue
 			}
 
-			if depositTx, ok := t.(*ethclient.L1DepositTx); ok {
+			if depositTx, ok := t.(*ethadapter.L1DepositTx); ok {
 				// todo - the adjust has to be per token
 				depL2Tx := bridge.NewDepositTx(depositTx.TokenContract, *depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)))
 				allDeposits = append(allDeposits, depL2Tx)

@@ -26,8 +26,8 @@ import (
 	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/enclave/mempool"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 )
 
 // StatsCollector Todo - replace with a proper framework

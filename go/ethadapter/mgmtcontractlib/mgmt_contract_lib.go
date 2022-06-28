@@ -11,7 +11,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum"
 
@@ -36,14 +36,14 @@ var (
 // MgmtContractLib provides methods for creating ethereum transactions by providing an L1Transaction, creating call
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
-	CreateRollup(t *ethclient.L1RollupTx, nonce uint64) types.TxData
-	CreateRequestSecret(tx *ethclient.L1RequestSecretTx, nonce uint64) types.TxData
-	CreateRespondSecret(tx *ethclient.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData
-	CreateInitializeSecret(tx *ethclient.L1InitializeSecretTx, nonce uint64) types.TxData
+	CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) types.TxData
+	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, nonce uint64) types.TxData
+	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData
+	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx, nonce uint64) types.TxData
 	GetHostAddresses() (ethereum.CallMsg, error)
 
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
-	DecodeTx(tx *types.Transaction) ethclient.L1Transaction
+	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
 	// DecodeCallResponse unpacks a call response into a slice of strings.
 	DecodeCallResponse(callResponse []byte) ([][]string, error)
 }
@@ -65,7 +65,7 @@ func NewMgmtContractLib(addr *gethcommon.Address) MgmtContractLib {
 	}
 }
 
-func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethclient.L1Transaction {
+func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	if tx.To() == nil || tx.To().Hex() != c.addr.Hex() || len(tx.Data()) == 0 {
 		return nil
 	}
@@ -90,7 +90,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethclient.L1Transactio
 			panic(err)
 		}
 
-		return &ethclient.L1RollupTx{
+		return &ethadapter.L1RollupTx{
 			Rollup: rollup,
 		}
 
@@ -104,7 +104,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethclient.L1Transactio
 	return nil
 }
 
-func (c *contractLibImpl) CreateRollup(t *ethclient.L1RollupTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) types.TxData {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
@@ -137,7 +137,7 @@ func (c *contractLibImpl) CreateRollup(t *ethclient.L1RollupTx, nonce uint64) ty
 	}
 }
 
-func (c *contractLibImpl) CreateRequestSecret(tx *ethclient.L1RequestSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
@@ -152,7 +152,7 @@ func (c *contractLibImpl) CreateRequestSecret(tx *ethclient.L1RequestSecretTx, n
 	}
 }
 
-func (c *contractLibImpl) CreateRespondSecret(tx *ethclient.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData {
+func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -174,7 +174,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethclient.L1RespondSecretTx, n
 	}
 }
 
-func (c *contractLibImpl) CreateInitializeSecret(tx *ethclient.L1InitializeSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
 		tx.AggregatorID,
@@ -220,7 +220,7 @@ func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([][]string, e
 	return unpackedResponseStrings, nil
 }
 
-func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethclient.L1RequestSecretTx {
+func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RequestSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		panic(err)
@@ -234,12 +234,12 @@ func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	if err != nil {
 		log.Panic("could not decode attestation request. Cause: %s", err)
 	}
-	return &ethclient.L1RequestSecretTx{
+	return &ethadapter.L1RequestSecretTx{
 		Attestation: att,
 	}
 }
 
-func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethclient.L1RespondSecretTx {
+func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RespondSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		log.Panic("could not unpack transaction. Cause: %s", err)
@@ -281,7 +281,7 @@ func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 		log.Panic("could not decode hostAddress data")
 	}
 
-	return &ethclient.L1RespondSecretTx{
+	return &ethadapter.L1RespondSecretTx{
 		AttesterID:  attesterAddr,
 		RequesterID: requesterAddr,
 		Secret:      responseSecretBytes[:],

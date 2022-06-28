@@ -11,8 +11,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/config"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 )
 
 // TODO - Replace with the genesis.json of Obscuro's L1 network.

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
 )
@@ -63,14 +63,14 @@ func (o *OutputStats) countBlockChain() {
 			}
 
 			switch l1Tx := t.(type) {
-			case *ethclient.L1RollupTx:
+			case *ethadapter.L1RollupTx:
 				r := common.DecodeRollupOrPanic(l1Tx.Rollup)
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}
 
-			case *ethclient.L1DepositTx:
+			case *ethadapter.L1DepositTx:
 				o.canonicalERC20DepositCount++
 			}
 		}

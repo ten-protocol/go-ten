@@ -1,9 +1,9 @@
 package network
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -15,7 +15,7 @@ type networkInMemGeth struct {
 
 	// geth
 	gethNetwork *gethnetwork.GethNetwork
-	gethClients []ethclient.EthClient
+	gethClients []ethadapter.EthClient
 	wallets     *params.SimWallets
 }
 
@@ -26,7 +26,7 @@ func NewNetworkInMemoryGeth(wallets *params.SimWallets) Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []rpcclientlib.Client, error) {
+func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) ([]ethadapter.EthClient, []rpcclientlib.Client, error) {
 	// kickoff the network with the prefunded wallet addresses
 	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,

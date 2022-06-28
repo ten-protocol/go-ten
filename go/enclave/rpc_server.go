@@ -17,8 +17,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/common/rpc"
 	"github.com/obscuronet/obscuro-playground/go/common/rpc/generated"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"google.golang.org/grpc"
 )
 

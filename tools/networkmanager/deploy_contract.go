@@ -5,8 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	obscuroconfig "github.com/obscuronet/obscuro-playground/go/config"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
@@ -37,7 +37,7 @@ func DeployContract(config Config) {
 		ChainID:             config.ethereumChainID,
 	}
 
-	l1Client, err := ethclient.NewEthClient(hostConfig)
+	l1Client, err := ethadapter.NewEthClient(hostConfig)
 	if err != nil {
 		panic(err)
 	}

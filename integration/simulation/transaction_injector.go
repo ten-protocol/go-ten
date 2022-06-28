@@ -28,9 +28,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
@@ -55,7 +55,7 @@ type TransactionInjector struct {
 	wallets *params.SimWallets
 
 	// connections
-	l1Clients []ethclient.EthClient
+	l1Clients []ethadapter.EthClient
 	l2Clients []rpcclientlib.Client
 
 	// addrs and libs
@@ -75,7 +75,7 @@ type TransactionInjector struct {
 func NewTransactionInjector(
 	avgBlockDuration time.Duration,
 	stats *stats2.Stats,
-	l1Nodes []ethclient.EthClient,
+	l1Nodes []ethadapter.EthClient,
 	wallets *params.SimWallets,
 	mgmtContractAddr *gethcommon.Address,
 	l2NodeClients []rpcclientlib.Client,
@@ -120,7 +120,7 @@ func (ti *TransactionInjector) Start() {
 	// deposit some initial amount into every simulation wallet
 	for _, w := range ti.wallets.SimEthWallets {
 		addr := w.Address()
-		txData := &ethclient.L1DepositTx{
+		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
 			To:            ti.mgmtContractAddr,
 			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
@@ -241,7 +241,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		v := common.RndBtw(1, 100)
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
-		txData := &ethclient.L1DepositTx{
+		txData := &ethadapter.L1DepositTx{
 			Amount:        v,
 			To:            ti.mgmtContractAddr,
 			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
@@ -347,7 +347,7 @@ func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
 	return ti.wallets.SimEthWallets[rand.Intn(len(ti.wallets.SimEthWallets))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) rndL1NodeClient() ethclient.EthClient {
+func (ti *TransactionInjector) rndL1NodeClient() ethadapter.EthClient {
 	return ti.l1Clients[rand.Intn(len(ti.l1Clients))] //nolint:gosec
 }
 

@@ -17,9 +17,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 )
 
 type L1Network interface {
@@ -126,8 +126,8 @@ func (m *Node) FetchHeadBlock() *types.Block {
 	return m.Resolver.FetchHeadBlock()
 }
 
-func (m *Node) Info() ethclient.Info {
-	return ethclient.Info{
+func (m *Node) Info() ethadapter.Info {
+	return ethadapter.Info{
 		ID: m.ID,
 	}
 }

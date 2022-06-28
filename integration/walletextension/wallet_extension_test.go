@@ -18,7 +18,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave/rpcencryptionmanager"

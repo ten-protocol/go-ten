@@ -6,7 +6,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
 
@@ -84,11 +84,11 @@ func printBlock(b *types.Block, m Node) string {
 		}
 
 		switch l1Tx := t.(type) {
-		case *ethclient.L1RollupTx:
+		case *ethadapter.L1RollupTx:
 			r := common.DecodeRollupOrPanic(l1Tx.Rollup)
 			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
 
-		case *ethclient.L1DepositTx:
+		case *ethadapter.L1DepositTx:
 			var to uint64
 			if l1Tx.To != nil {
 				to = common.ShortAddress(*l1Tx.To)

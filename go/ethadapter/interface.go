@@ -1,4 +1,4 @@
-package ethclient
+package ethadapter
 
 import (
 	"math/big"

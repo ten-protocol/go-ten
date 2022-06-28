@@ -9,7 +9,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -92,7 +92,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHeight uint64, s *Simulation) uint64 {
+func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation) uint64 {
 	nodeAddr := common.ShortAddress(node.Info().ID)
 	head := node.FetchHeadBlock()
 	height := head.NumberU64()
@@ -130,7 +130,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 	return height
 }
 
-func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s *Simulation) ([]gethcommon.Hash, []common.L2RootHash, uint64, int) {
+func extractDataFromEthereumChain(head *types.Block, node ethadapter.EthClient, s *Simulation) ([]gethcommon.Hash, []common.L2RootHash, uint64, int) {
 	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]common.L2RootHash, 0)
 	totalDeposited := uint64(0)
@@ -147,10 +147,10 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 				continue
 			}
 			switch l1tx := t.(type) {
-			case *ethclient.L1DepositTx:
+			case *ethadapter.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
 				totalDeposited += l1tx.Amount
-			case *ethclient.L1RollupTx:
+			case *ethadapter.L1RollupTx:
 				r := common.DecodeRollupOrPanic(l1tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
@@ -253,7 +253,7 @@ func checkBlockchainOfObscuroNode(
 
 	injectorDepositedAmt := uint64(0)
 	for _, tx := range s.TxInjector.Counter.GetL1Transactions() {
-		if depTx, ok := tx.(*ethclient.L1DepositTx); ok {
+		if depTx, ok := tx.(*ethadapter.L1DepositTx); ok {
 			injectorDepositedAmt += depTx.Amount
 		}
 	}

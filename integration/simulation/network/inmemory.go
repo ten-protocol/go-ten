@@ -10,7 +10,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -30,8 +30,8 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []rpcclientlib.Client, error) {
-	l1Clients := make([]ethclient.EthClient, params.NumberOfNodes)
+func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethadapter.EthClient, []rpcclientlib.Client, error) {
+	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	n.obscuroClients = make([]rpcclientlib.Client, params.NumberOfNodes)

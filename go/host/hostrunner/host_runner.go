@@ -8,13 +8,13 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
 
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/host"
 	"github.com/obscuronet/obscuro-playground/go/host/p2p"
 )
@@ -24,7 +24,7 @@ func RunHost(config config.HostConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethclient.NewEthClient(config)
+	l1Client, err := ethadapter.NewEthClient(config)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}

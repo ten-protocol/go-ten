@@ -9,18 +9,18 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/integration"
 	simp2p "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
@@ -62,7 +62,7 @@ func createInMemObscuroNode(
 	validateBlocks bool,
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
-	ethClient ethclient.EthClient,
+	ethClient ethadapter.EthClient,
 	viewingKeysEnabled bool,
 	wallets *params.SimWallets,
 ) *host.Node {
@@ -115,7 +115,7 @@ func createSocketObscuroNode(
 	clientRPCPortWS uint64,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	ethClient ethclient.EthClient,
+	ethClient ethadapter.EthClient,
 ) *host.Node {
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),

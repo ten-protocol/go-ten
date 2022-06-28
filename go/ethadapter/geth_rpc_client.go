@@ -1,4 +1,4 @@
-package ethclient
+package ethadapter
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ type gethRPCClient struct {
 	id     gethcommon.Address // TODO remove the id common.Address
 }
 
-// NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
+// NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
 func NewEthClient(config config.HostConfig) (EthClient, error) {
 	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1ConnectionTimeout)
 	if err != nil {
