@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	sql2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db/sql"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db/sql"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -26,7 +26,7 @@ func CreateDBFromConfig(nodeID uint64, cfg config.EnclaveConfig) (ethdb.Database
 		nodecommon.LogWithID(nodeID, "Attestation is disabled, using a basic sqlite DB for persistence")
 		// todo: for now we pass in an empty dbPath which will provide a throwaway temp file,
 		// 		when we want to test persistence after node restart we should change this path to be config driven
-		return sql2.CreateTemporarySQLiteDB("")
+		return sql.CreateTemporarySQLiteDB("")
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
@@ -56,6 +56,6 @@ func getEdgelessDB(cfg config.EnclaveConfig) (ethdb.Database, error) {
 	if cfg.EdgelessDBHost == "" {
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}
-	dbConfig := sql2.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
-	return sql2.EdgelessDBConnector(&dbConfig)
+	dbConfig := sql.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
+	return sql.EdgelessDBConnector(&dbConfig)
 }

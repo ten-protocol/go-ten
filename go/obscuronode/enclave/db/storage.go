@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	rawdb2 "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db/rawdb"
+	obscurorawdb "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db/rawdb"
 
 	"github.com/ethereum/go-ethereum/params"
 
@@ -35,12 +35,12 @@ func NewStorage(backingDB ethdb.Database, nodeID uint64) Storage {
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
-	rawdb2.WriteGenesisHash(s.db, rol.Hash())
+	obscurorawdb.WriteGenesisHash(s.db, rol.Hash())
 	s.StoreRollup(rol)
 }
 
 func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
-	hash := rawdb2.ReadGenesisHash(s.db)
+	hash := obscurorawdb.ReadGenesisHash(s.db)
 	if hash == nil {
 		return nil
 	}
@@ -52,7 +52,7 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	s.assertSecretAvailable()
 
 	batch := s.db.NewBatch()
-	rawdb2.WriteRollup(batch, rollup)
+	obscurorawdb.WriteRollup(batch, rollup)
 	if err := batch.Write(); err != nil {
 		log.Panic("could not write rollup to storage. Cause: %s", err)
 	}
@@ -60,7 +60,7 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 
 func (s *storageImpl) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, bool) {
 	s.assertSecretAvailable()
-	r := rawdb2.ReadRollup(s.db, hash)
+	r := obscurorawdb.ReadRollup(s.db, hash)
 	if r != nil {
 		return r, true
 	}
@@ -69,7 +69,7 @@ func (s *storageImpl) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, 
 
 func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 	s.assertSecretAvailable()
-	return rawdb2.ReadRollupsForHeight(s.db, height)
+	return obscurorawdb.ReadRollupsForHeight(s.db, height)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) bool {
@@ -98,11 +98,11 @@ func (s *storageImpl) FetchHeadBlock() *types.Block {
 }
 
 func (s *storageImpl) StoreSecret(secret core.SharedEnclaveSecret) {
-	rawdb2.WriteSharedSecret(s.db, secret)
+	obscurorawdb.WriteSharedSecret(s.db, secret)
 }
 
 func (s *storageImpl) FetchSecret() *core.SharedEnclaveSecret {
-	return rawdb2.ReadSharedSecret(s.db)
+	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
 func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
@@ -193,7 +193,7 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 }
 
 func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.BlockState, bool) {
-	bs := rawdb2.ReadBlockState(s.db, hash)
+	bs := obscurorawdb.ReadBlockState(s.db, hash)
 	if bs != nil {
 		return bs, true
 	}
@@ -204,15 +204,15 @@ func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, r
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
-		rawdb2.WriteRollup(batch, rollup)
-		rawdb2.WriteHeadHeaderHash(batch, rollup.Hash())
-		rawdb2.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64())
-		rawdb2.WriteTxLookupEntriesByBlock(batch, rollup)
-		rawdb2.WriteHeadRollupHash(batch, rollup.Hash())
-		rawdb2.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts)
+		obscurorawdb.WriteRollup(batch, rollup)
+		obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash())
+		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64())
+		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup)
+		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash())
+		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts)
 	}
 
-	rawdb2.WriteBlockState(batch, state)
+	obscurorawdb.WriteBlockState(batch, state)
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {
@@ -243,22 +243,22 @@ func (s *storageImpl) FetchHeadState() *core.BlockState {
 		log.Info("could not read head header hash from storage")
 		return nil
 	}
-	return rawdb2.ReadBlockState(s.db, h)
+	return obscurorawdb.ReadBlockState(s.db, h)
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
 func (s *storageImpl) GetReceiptsByHash(hash common.Hash) types.Receipts {
-	number := rawdb2.ReadHeaderNumber(s.db, hash)
+	number := obscurorawdb.ReadHeaderNumber(s.db, hash)
 	if number == nil {
 		return nil
 	}
 	// todo - proper ChainConfig, instead of empty object
-	receipts := rawdb2.ReadReceipts(s.db, hash, *number, &params.ChainConfig{})
+	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, &params.ChainConfig{})
 	return receipts
 }
 
 func (s *storageImpl) GetTransaction(txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
-	tx, blockHash, blockNumber, index := rawdb2.ReadTransaction(s.db, txHash)
+	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash)
 	return tx, blockHash, blockNumber, index, nil
 }
 
@@ -278,7 +278,7 @@ func (s *storageImpl) GetSender(txHash common.Hash) (common.Address, error) {
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
-	_, blockHash, _, index := rawdb2.ReadTransaction(s.db, txHash)
+	_, blockHash, _, index := obscurorawdb.ReadTransaction(s.db, txHash)
 	receipts := s.GetReceiptsByHash(blockHash)
 	if len(receipts) <= int(index) {
 		return nil, fmt.Errorf("receipt index not matching the transactions in block: %s", blockHash.Hex())
