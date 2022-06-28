@@ -16,9 +16,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 const methodBytesLen = 4
@@ -35,24 +35,24 @@ var (
 // MgmtContractLib provides methods for creating ethereum transactions by providing an L1Transaction, creating call
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
-	CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData
-	CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData
-	CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData
-	CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData
+	CreateRollup(t *common.L1RollupTx, nonce uint64) types.TxData
+	CreateRequestSecret(tx *common.L1RequestSecretTx, nonce uint64) types.TxData
+	CreateRespondSecret(tx *common.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData
+	CreateInitializeSecret(tx *common.L1InitializeSecretTx, nonce uint64) types.TxData
 	GetHostAddresses() (ethereum.CallMsg, error)
 
-	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
-	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
+	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
+	DecodeTx(tx *types.Transaction) common.L1Transaction
 	// DecodeCallResponse unpacks a call response into a slice of strings.
 	DecodeCallResponse(callResponse []byte) ([][]string, error)
 }
 
 type contractLibImpl struct {
-	addr        *common.Address
+	addr        *gethcommon.Address
 	contractABI abi.ABI
 }
 
-func NewMgmtContractLib(addr *common.Address) MgmtContractLib {
+func NewMgmtContractLib(addr *gethcommon.Address) MgmtContractLib {
 	contractABI, err := abi.JSON(strings.NewReader(MgmtContractABI))
 	if err != nil {
 		panic(err)
@@ -64,7 +64,7 @@ func NewMgmtContractLib(addr *common.Address) MgmtContractLib {
 	}
 }
 
-func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
+func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1Transaction {
 	if tx.To() == nil || tx.To().Hex() != c.addr.Hex() || len(tx.Data()) == 0 {
 		return nil
 	}
@@ -89,7 +89,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 			panic(err)
 		}
 
-		return &obscurocommon.L1RollupTx{
+		return &common.L1RollupTx{
 			Rollup: rollup,
 		}
 
@@ -103,7 +103,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transa
 	return nil
 }
 
-func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRollup(t *common.L1RollupTx, nonce uint64) types.TxData {
 	decodedRollup, err := nodecommon.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
@@ -136,7 +136,7 @@ func (c *contractLibImpl) CreateRollup(t *obscurocommon.L1RollupTx, nonce uint64
 	}
 }
 
-func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
@@ -151,7 +151,7 @@ func (c *contractLibImpl) CreateRequestSecret(tx *obscurocommon.L1RequestSecretT
 	}
 }
 
-func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData {
+func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -173,7 +173,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *obscurocommon.L1RespondSecretT
 	}
 }
 
-func (c *contractLibImpl) CreateInitializeSecret(tx *obscurocommon.L1InitializeSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
 		tx.AggregatorID,
@@ -219,7 +219,7 @@ func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([][]string, e
 	return unpackedResponseStrings, nil
 }
 
-func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RequestSecretTx {
+func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1RequestSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		panic(err)
@@ -233,12 +233,12 @@ func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	if err != nil {
 		log.Panic("could not decode attestation request. Cause: %s", err)
 	}
-	return &obscurocommon.L1RequestSecretTx{
+	return &common.L1RequestSecretTx{
 		Attestation: att,
 	}
 }
 
-func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *obscurocommon.L1RespondSecretTx {
+func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1RespondSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		log.Panic("could not unpack transaction. Cause: %s", err)
@@ -248,7 +248,7 @@ func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	if !found {
 		log.Panic("call data not found for requesterID")
 	}
-	requesterAddr, ok := requesterData.(common.Address)
+	requesterAddr, ok := requesterData.(gethcommon.Address)
 	if !ok {
 		log.Panic("could not decode requester data")
 	}
@@ -257,7 +257,7 @@ func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 	if !found {
 		log.Panic("call data not found for attesterID")
 	}
-	attesterAddr, ok := attesterData.(common.Address)
+	attesterAddr, ok := attesterData.(gethcommon.Address)
 	if !ok {
 		log.Panic("could not decode attester data")
 	}
@@ -280,7 +280,7 @@ func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 		log.Panic("could not decode hostAddress data")
 	}
 
-	return &obscurocommon.L1RespondSecretTx{
+	return &common.L1RespondSecretTx{
 		AttesterID:  attesterAddr,
 		RequesterID: requesterAddr,
 		Secret:      responseSecretBytes[:],

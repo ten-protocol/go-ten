@@ -12,9 +12,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
@@ -108,7 +108,7 @@ func TestManagementContract(t *testing.T) {
 func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethclient.EthClient) {
 	rollup := datagenerator.RandomRollup()
 	txData := mgmtContractLib.CreateRollup(
-		&obscurocommon.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)},
+		&common.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)},
 		w.GetNonceAndIncrement(),
 	)
 
@@ -126,7 +126,7 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethclient.EthClient) {
 	aggregatorID := datagenerator.RandomAddress()
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&obscurocommon.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			AggregatorID: &aggregatorID,
 		},
 		w.GetNonceAndIncrement(),
@@ -153,7 +153,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	// do the same again
 	aggregatorID = datagenerator.RandomAddress()
 	txData = mgmtContractLib.CreateInitializeSecret(
-		&obscurocommon.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			AggregatorID: &aggregatorID,
 		},
 		w.GetNonceAndIncrement(),
@@ -176,7 +176,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&obscurocommon.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			AggregatorID: requesterID,
 		},
 		w.GetNonceAndIncrement(),
@@ -192,7 +192,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	}
 
 	// issue a rollup from the attested node
-	txData = mgmtContractLib.CreateRollup(&obscurocommon.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)}, w.GetNonceAndIncrement())
+	txData = mgmtContractLib.CreateRollup(&common.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)}, w.GetNonceAndIncrement())
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
 		t.Error(err)
@@ -226,7 +226,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 
 	// aggregator A starts the network secret
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&obscurocommon.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			AggregatorID: &aggAID,
 		},
 		w.GetNonceAndIncrement(),
@@ -248,7 +248,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
 
 	txData = mgmtContractLib.CreateRequestSecret(
-		&obscurocommon.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 		w.GetNonceAndIncrement(),
@@ -272,7 +272,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	fakeSecret := []byte{123}
 
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&obscurocommon.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			AttesterID:  aggCID,
 			RequesterID: aggBID,
 			Secret:      fakeSecret,
@@ -291,7 +291,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 
 	// agg c responds to the secret AGAIN, but trying to mimick aggregator A
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&obscurocommon.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			Secret:      fakeSecret,
 			RequesterID: aggBID,
 			AttesterID:  aggAID,
@@ -321,7 +321,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&obscurocommon.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			AggregatorID:  &aggAID,
 			InitialSecret: secretBytes,
 		},
@@ -351,7 +351,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
 
 	txData = mgmtContractLib.CreateRequestSecret(
-		&obscurocommon.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 		w.GetNonceAndIncrement(),
@@ -372,7 +372,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	aggCID := crypto.PubkeyToAddress(aggCPrivateKey.PublicKey)
 
 	txData = mgmtContractLib.CreateRequestSecret(
-		&obscurocommon.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 		w.GetNonceAndIncrement(),
@@ -388,7 +388,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 
 	// Agg A responds to Agg C request
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&obscurocommon.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			Secret:      secretBytes,
 			RequesterID: aggCID,
 			AttesterID:  aggAID,
@@ -415,7 +415,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 
 	// agg C attests agg B
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&obscurocommon.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			Secret:      secretBytes,
 			RequesterID: aggBID,
 			AttesterID:  aggCID,
@@ -456,7 +456,7 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&obscurocommon.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			AggregatorID:  &aggAID,
 			InitialSecret: secretBytes,
 			HostAddress:   aggAHostAddr,
@@ -480,7 +480,7 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
 
 	txData = mgmtContractLib.CreateRequestSecret(
-		&obscurocommon.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 		w.GetNonceAndIncrement(),
@@ -495,7 +495,7 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 
 	// agg C requests the secret
 	txData = mgmtContractLib.CreateRequestSecret(
-		&obscurocommon.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 		w.GetNonceAndIncrement(),
@@ -511,7 +511,7 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 
 	// Agg A only responds to Agg B request
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&obscurocommon.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			Secret:      secretBytes,
 			RequesterID: aggBID,
 			AttesterID:  aggAID,

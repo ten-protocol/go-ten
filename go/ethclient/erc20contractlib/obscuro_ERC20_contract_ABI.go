@@ -4,10 +4,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
@@ -29,10 +29,10 @@ const (
 	ToField           = "to"
 )
 
-func DecodeTransferTx(t *types.Transaction) (bool, *common.Address, *big.Int) {
+func DecodeTransferTx(t *types.Transaction) (bool, *gethcommon.Address, *big.Int) {
 	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:methodBytesLen])
 	if err != nil {
-		log.Info("Could not decode tx %d, Err: %s", obscurocommon.ShortHash(t.Hash()), err)
+		log.Info("Could not decode tx %d, Err: %s", common.ShortHash(t.Hash()), err)
 		return false, nil, nil
 	}
 
@@ -45,12 +45,12 @@ func DecodeTransferTx(t *types.Transaction) (bool, *common.Address, *big.Int) {
 		panic(err)
 	}
 
-	address := args[ToField].(common.Address)
+	address := args[ToField].(gethcommon.Address)
 	amount := args[AmountField].(*big.Int)
 	return true, &address, amount
 }
 
-func CreateTransferTxData(address common.Address, amount uint64) []byte {
+func CreateTransferTxData(address gethcommon.Address, amount uint64) []byte {
 	transferERC20data, err := obscuroERC20ContractABIJSON.Pack(TransferFunction, address, big.NewInt(int64(amount)))
 	if err != nil {
 		panic(err)
@@ -58,7 +58,7 @@ func CreateTransferTxData(address common.Address, amount uint64) []byte {
 	return transferERC20data
 }
 
-func CreateBalanceOfData(address common.Address) []byte {
+func CreateBalanceOfData(address gethcommon.Address) []byte {
 	balanceData, err := obscuroERC20ContractABIJSON.Pack(BalanceOfFunction, address)
 	if err != nil {
 		panic(err)

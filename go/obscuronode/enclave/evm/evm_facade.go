@@ -4,15 +4,16 @@ import (
 	"math"
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/log"
 
-	"github.com/ethereum/go-ethereum/common"
 	core2 "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -28,14 +29,14 @@ func ExecuteTransactions(txs []*nodecommon.L2Tx, s *state.StateDB, header *nodec
 	for i, t := range txs {
 		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg, fromTxIndex+i)
 		if err != nil {
-			log.Info("Error transaction %d: %s", obscurocommon.ShortHash(t.Hash()), err)
+			log.Info("Error transaction %d: %s", common.ShortHash(t.Hash()), err)
 			continue
 		}
 		receipts = append(receipts, r)
 		if r.Status == types.ReceiptStatusFailed {
-			log.Info("Unsuccessful (status != 1) tx %d.", obscurocommon.ShortHash(t.Hash()))
+			log.Info("Unsuccessful (status != 1) tx %d.", common.ShortHash(t.Hash()))
 		} else {
-			log.Info("Successfully executed tx %d.", obscurocommon.ShortHash(t.Hash()))
+			log.Info("Successfully executed tx %d.", common.ShortHash(t.Hash()))
 		}
 	}
 	s.Finalise(true)
@@ -56,13 +57,13 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from common.Address, to common.Address, data []byte, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) (*core2.ExecutionResult, error) {
+func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *nodecommon.Header, rollupResolver db.RollupResolver, chainID int64) (*core2.ExecutionResult, error) {
 	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 
 	blockContext := core2.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, s, cc, vmCfg)
 
-	msg := types.NewMessage(from, &to, 0, common.Big0, 100_000, common.Big0, common.Big0, common.Big0, data, nil, true)
+	msg := types.NewMessage(from, &to, 0, gethcommon.Big0, 100_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
 	result, err := core2.ApplyMessage(vmenv, msg, gp)
 	if err != nil {
 		return nil, err
@@ -75,7 +76,7 @@ func initParams(rollupResolver db.RollupResolver, chainID int64) (*ObscuroChainC
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
 	cc := &params.ChainConfig{
 		ChainID:     big.NewInt(chainID),
-		LondonBlock: common.Big0,
+		LondonBlock: gethcommon.Big0,
 	}
 	vmCfg := vm.Config{
 		NoBaseFee: true,

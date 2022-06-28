@@ -19,18 +19,18 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
@@ -59,7 +59,7 @@ type TransactionInjector struct {
 	l2Clients []obscuroclient.Client
 
 	// addrs and libs
-	mgmtContractAddr *common.Address
+	mgmtContractAddr *gethcommon.Address
 	mgmtContractLib  mgmtcontractlib.MgmtContractLib
 	erc20ContractLib erc20contractlib.ERC20ContractLib
 
@@ -77,7 +77,7 @@ func NewTransactionInjector(
 	stats *stats2.Stats,
 	l1Nodes []ethclient.EthClient,
 	wallets *params.SimWallets,
-	mgmtContractAddr *common.Address,
+	mgmtContractAddr *gethcommon.Address,
 	l2NodeClients []obscuroclient.Client,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
@@ -85,7 +85,7 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	// We retrieve the enclave public key to encrypt transactions.
-	enclavePublicKey, err := crypto.DecompressPubkey(common.Hex2Bytes(EnclavePublicKeyHex))
+	enclavePublicKey, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(EnclavePublicKeyHex))
 	if err != nil {
 		panic(fmt.Errorf("could not decompress enclave public key from hex. Cause: %w", err))
 	}
@@ -120,7 +120,7 @@ func (ti *TransactionInjector) Start() {
 	// deposit some initial amount into every simulation wallet
 	for _, w := range ti.wallets.SimEthWallets {
 		addr := w.Address()
-		txData := &obscurocommon.L1DepositTx{
+		txData := &common.L1DepositTx{
 			Amount:        initialBalance,
 			To:            ti.mgmtContractAddr,
 			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
@@ -169,11 +169,11 @@ func (ti *TransactionInjector) Start() {
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
 func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	// deploy the ERC20
-	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
+	contractBytes := gethcommon.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.LegacyTx{
 		Nonce:    NextNonce(ti.l2Clients[0], owner),
 		Gas:      1025_000_000,
-		GasPrice: common.Big0,
+		GasPrice: gethcommon.Big0,
 		Data:     contractBytes,
 	}
 	signedTx, err := owner.SignTransaction(&deployContractTx)
@@ -200,23 +200,23 @@ func (ti *TransactionInjector) Stop() {
 
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomTransfers() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration)) {
+	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration)) {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
 		// We avoid transfers to self, unless there is only a single L2 wallet.
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), obscurocommon.RndBtw(1, 500), ti.l2Clients[0])
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), common.RndBtw(1, 500), ti.l2Clients[0])
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
 		log.Info(
 			"Transfer transaction injected into L2. Hash: %d. From address: %d. To address: %d",
-			obscurocommon.ShortHash(signedTx.Hash()),
-			obscurocommon.ShortAddress(fromWallet.Address()),
-			obscurocommon.ShortAddress(toWallet.Address()),
+			common.ShortHash(signedTx.Hash()),
+			common.ShortAddress(fromWallet.Address()),
+			common.ShortAddress(toWallet.Address()),
 		)
 
 		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
@@ -237,11 +237,11 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(ti.avgBlockDuration, ti.avgBlockDuration*2)) {
-		v := obscurocommon.RndBtw(1, 100)
+	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration, ti.avgBlockDuration*2)) {
+		v := common.RndBtw(1, 100)
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
-		txData := &obscurocommon.L1DepositTx{
+		txData := &common.L1DepositTx{
 			Amount:        v,
 			To:            ti.mgmtContractAddr,
 			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
@@ -254,8 +254,8 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		}
 		log.Info(
 			"Deposit transaction injected into L1. Hash: %d. From address: %d",
-			obscurocommon.ShortHash(signedTx.Hash()),
-			obscurocommon.ShortAddress(ethWallet.Address()),
+			common.ShortHash(signedTx.Hash()),
+			common.ShortAddress(ethWallet.Address()),
 		)
 		err = ti.rndL1NodeClient().SendTransaction(signedTx)
 		if err != nil {
@@ -269,8 +269,8 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(ti.avgBlockDuration, ti.avgBlockDuration*2)) {
-		v := obscurocommon.RndBtw(1, 100)
+	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration, ti.avgBlockDuration*2)) {
+		v := common.RndBtw(1, 100)
 		obsWallet := ti.rndObsWallet()
 		// todo - random client
 		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.l2Clients[0])
@@ -280,8 +280,8 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		}
 		log.Info(
 			"Withdrawal transaction injected into L2. Hash: %d. From address: %d",
-			obscurocommon.ShortHash(signedTx.Hash()),
-			obscurocommon.ShortAddress(obsWallet.Address()),
+			common.ShortHash(signedTx.Hash()),
+			common.ShortAddress(obsWallet.Address()),
 		)
 		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
 		if err != nil {
@@ -302,13 +302,13 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
 func (ti *TransactionInjector) issueInvalidL2Txs() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(obscurocommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration)) {
+	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration)) {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
 		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newCustomObscuroWithdrawalTx(obscurocommon.RndBtw(1, 100))
+		tx := ti.newCustomObscuroWithdrawalTx(common.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
@@ -355,7 +355,7 @@ func (ti *TransactionInjector) rndL2NodeClient() obscuroclient.Client {
 	return ti.l2Clients[rand.Intn(len(ti.l2Clients))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest common.Address, amount uint64, client obscuroclient.Client) types.TxData {
+func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, client obscuroclient.Client) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
 	t := ti.newTx(data, NextNonce(client, from))
 	return t
@@ -375,15 +375,15 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		Value:    common.Big0,
+		Value:    gethcommon.Big0,
 		Gas:      1_000_000,
-		GasPrice: common.Big0,
+		GasPrice: gethcommon.Big0,
 		Data:     data,
 		To:       ti.wallets.Tokens[bridge.BTC].L2ContractAddress,
 	}
 }
 
-func readNonce(cl obscuroclient.Client, a common.Address) uint64 {
+func readNonce(cl obscuroclient.Client, a gethcommon.Address) uint64 {
 	var result uint64
 	err := cl.Call(&result, obscuroclient.RPCNonce, a)
 	if err != nil {

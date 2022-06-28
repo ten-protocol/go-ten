@@ -1,17 +1,17 @@
 package db
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 )
 
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash and true, or (nil, false) if no such Block is stored
-	FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool)
+	FetchBlock(hash common.L1RootHash) (*types.Block, bool)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block) bool
 	// ParentBlock returns the L1 Block's parent and true, or (nil, false)  if no parent Block is stored
@@ -21,7 +21,7 @@ type BlockResolver interface {
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
 	// Todo - this is super confusing, analyze the usage
-	IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool
+	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 	// FetchHeadBlock - returns the head of the current chain
 	FetchHeadBlock() *types.Block
 	// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
@@ -32,7 +32,7 @@ type BlockResolver interface {
 
 type RollupResolver interface {
 	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored
-	FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, bool)
+	FetchRollup(hash common.L2RootHash) (*core.Rollup, bool)
 	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height uint64) []*core.Rollup
 	// StoreRollup persists the rollup
@@ -47,13 +47,13 @@ type RollupResolver interface {
 
 type BlockStateStorage interface {
 	// FetchBlockState returns the head rollup found in the block
-	FetchBlockState(blockHash obscurocommon.L1RootHash) (*core.BlockState, bool)
+	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, bool)
 	// FetchHeadState returns the head rollup. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
 	// SaveNewHead save the rollup-block mapping
 	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt)
 	// CreateStateDB create a database that can be used to execute transactions
-	CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB
+	CreateStateDB(hash common.L2RootHash) *state.StateDB
 	// GenesisStateDB create the original empty StateDB
 	GenesisStateDB() *state.StateDB
 }
@@ -67,15 +67,15 @@ type SharedSecretStorage interface {
 
 type TransactionStorage interface {
 	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByHash(hash common.Hash) types.Receipts
+	GetReceiptsByHash(hash gethcommon.Hash) types.Receipts
 
 	// GetTransaction - returns the positional metadata of the tx by hash
-	GetTransaction(txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error)
+	GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error)
 
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
-	GetTransactionReceipt(txHash common.Hash) (*types.Receipt, error)
+	GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error)
 
-	GetSender(txHash common.Hash) (common.Address, error)
+	GetSender(txHash gethcommon.Hash) (gethcommon.Address, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore

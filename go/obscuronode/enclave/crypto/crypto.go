@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
@@ -59,7 +59,7 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 	return plaintext, nil
 }
 
-func DecryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret, privateKey *ecdsa.PrivateKey) (*core.SharedEnclaveSecret, error) {
+func DecryptSecret(secret common.EncryptedSharedEnclaveSecret, privateKey *ecdsa.PrivateKey) (*core.SharedEnclaveSecret, error) {
 	if privateKey == nil {
 		return nil, errors.New("private key not found - shouldn't happen")
 	}
@@ -72,8 +72,8 @@ func DecryptSecret(secret obscurocommon.EncryptedSharedEnclaveSecret, privateKey
 	return &temp, nil
 }
 
-func EncryptSecret(pubKeyEncoded []byte, secret core.SharedEnclaveSecret, nodeShortID uint64) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
-	nodecommon.LogWithID(nodeShortID, "Encrypting secret with public key %s", common.Bytes2Hex(pubKeyEncoded))
+func EncryptSecret(pubKeyEncoded []byte, secret core.SharedEnclaveSecret, nodeShortID uint64) (common.EncryptedSharedEnclaveSecret, error) {
+	nodecommon.LogWithID(nodeShortID, "Encrypting secret with public key %s", gethcommon.Bytes2Hex(pubKeyEncoded))
 	key, err := crypto.DecompressPubkey(pubKeyEncoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse public key %w", err)

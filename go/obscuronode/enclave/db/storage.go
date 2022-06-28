@@ -15,9 +15,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 type storageImpl struct {
@@ -58,7 +58,7 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	}
 }
 
-func (s *storageImpl) FetchRollup(hash obscurocommon.L2RootHash) (*core.Rollup, bool) {
+func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 	s.assertSecretAvailable()
 	r := obscurorawdb.ReadRollup(s.db, hash)
 	if r != nil {
@@ -78,7 +78,7 @@ func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	return true
 }
 
-func (s *storageImpl) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
+func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
 	s.assertSecretAvailable()
 	height := rawdb.ReadHeaderNumber(s.db, hash)
 	if height == nil {
@@ -109,7 +109,7 @@ func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
 	s.assertSecretAvailable()
 	parent, found := s.FetchRollup(r.Header.ParentHash)
 	if !found {
-		nodecommon.LogWithID(s.nodeID, "Could not find rollup: r_%d", obscurocommon.ShortHash(r.Hash()))
+		nodecommon.LogWithID(s.nodeID, "Could not find rollup: r_%d", common.ShortHash(r.Hash()))
 		return nil
 	}
 	return parent
@@ -138,17 +138,17 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 	return s.IsAncestor(p, maybeAncestor)
 }
 
-func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
+func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool {
 	s.assertSecretAvailable()
 	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
-	if bytes.Equal(maybeAncestor.Bytes(), obscurocommon.GenesisBlock.Hash().Bytes()) {
+	if bytes.Equal(maybeAncestor.Bytes(), common.GenesisBlock.Hash().Bytes()) {
 		return true
 	}
 
-	if block.NumberU64() == obscurocommon.L1GenesisHeight {
+	if block.NumberU64() == common.L1GenesisHeight {
 		return false
 	}
 
@@ -192,7 +192,7 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	return v
 }
 
-func (s *storageImpl) FetchBlockState(hash obscurocommon.L1RootHash) (*core.BlockState, bool) {
+func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, bool) {
 	bs := obscurorawdb.ReadBlockState(s.db, hash)
 	if bs != nil {
 		return bs, true
@@ -220,7 +220,7 @@ func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, r
 	}
 }
 
-func (s *storageImpl) CreateStateDB(hash obscurocommon.L2RootHash) *state.StateDB {
+func (s *storageImpl) CreateStateDB(hash common.L2RootHash) *state.StateDB {
 	rollup, f := s.FetchRollup(hash)
 	if !f {
 		log.Panic("could not retrieve rollup for hash %s", hash.String())
@@ -239,7 +239,7 @@ func (s *storageImpl) GenesisStateDB() *state.StateDB {
 
 func (s *storageImpl) FetchHeadState() *core.BlockState {
 	h := rawdb.ReadHeadHeaderHash(s.db)
-	if (bytes.Equal(h.Bytes(), common.Hash{}.Bytes())) {
+	if (bytes.Equal(h.Bytes(), gethcommon.Hash{}.Bytes())) {
 		log.Info("could not read head header hash from storage")
 		return nil
 	}
@@ -247,7 +247,7 @@ func (s *storageImpl) FetchHeadState() *core.BlockState {
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-func (s *storageImpl) GetReceiptsByHash(hash common.Hash) types.Receipts {
+func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
 	number := obscurorawdb.ReadHeaderNumber(s.db, hash)
 	if number == nil {
 		return nil
@@ -257,27 +257,27 @@ func (s *storageImpl) GetReceiptsByHash(hash common.Hash) types.Receipts {
 	return receipts
 }
 
-func (s *storageImpl) GetTransaction(txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
 	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash)
 	return tx, blockHash, blockNumber, index, nil
 }
 
-func (s *storageImpl) GetSender(txHash common.Hash) (common.Address, error) {
+func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, error) {
 	tx, _, _, _, err := s.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
-		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
+		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	if tx == nil {
-		return common.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
+		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
 	}
 	msg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()), nil)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
+		return gethcommon.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	return msg.From(), nil
 }
 
-func (s *storageImpl) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
+func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
 	_, blockHash, _, index := obscurorawdb.ReadTransaction(s.db, txHash)
 	receipts := s.GetReceiptsByHash(blockHash)
 	if len(receipts) <= int(index) {

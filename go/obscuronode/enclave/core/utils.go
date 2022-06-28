@@ -8,21 +8,21 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
-func MakeMap(txs []*nodecommon.L2Tx) map[common.Hash]*nodecommon.L2Tx {
-	m := make(map[common.Hash]*nodecommon.L2Tx)
+func MakeMap(txs []*nodecommon.L2Tx) map[gethcommon.Hash]*nodecommon.L2Tx {
+	m := make(map[gethcommon.Hash]*nodecommon.L2Tx)
 	for _, tx := range txs {
 		m[tx.Hash()] = tx
 	}
 	return m
 }
 
-func ToMap(txs []*nodecommon.L2Tx) map[common.Hash]common.Hash {
-	m := make(map[common.Hash]common.Hash)
+func ToMap(txs []*nodecommon.L2Tx) map[gethcommon.Hash]gethcommon.Hash {
+	m := make(map[gethcommon.Hash]gethcommon.Hash)
 	for _, tx := range txs {
 		m[tx.Hash()] = tx.Hash()
 	}
@@ -37,7 +37,7 @@ func PrintTxs(txs []*nodecommon.L2Tx) (txsString []string) {
 }
 
 func printTx(t *nodecommon.L2Tx, txsString []string) []string {
-	txsString = append(txsString, fmt.Sprintf("%d,", obscurocommon.ShortHash(t.Hash())))
+	txsString = append(txsString, fmt.Sprintf("%d,", common.ShortHash(t.Hash())))
 	return txsString
 }
 

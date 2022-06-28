@@ -17,13 +17,13 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/mempool"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
@@ -34,7 +34,7 @@ import (
 // StatsCollector Todo - replace with a proper framework
 type StatsCollector interface {
 	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id common.Address)
+	L2Recalc(id gethcommon.Address)
 	RollupWithMoreRecentProof()
 }
 
@@ -83,7 +83,7 @@ func NewEnclave(
 
 	// todo - add the delay: N hashes
 
-	nodeShortID := obscurocommon.ShortAddress(config.HostID)
+	nodeShortID := common.ShortAddress(config.HostID)
 
 	// Initialise the database
 	backingDB, err := db.CreateDBFromConfig(nodeShortID, config)
@@ -101,7 +101,7 @@ func NewEnclave(
 		}
 		l1Blockchain = rollupchain.NewL1Blockchain(config.GenesisJSON)
 	} else {
-		nodecommon.LogWithID(obscurocommon.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
+		nodecommon.LogWithID(common.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
 	// Todo- make sure the enclave cannot be started in production with WillAttest=false
@@ -118,7 +118,7 @@ func NewEnclave(
 	nodecommon.LogWithID(nodeShortID, "Generating the Obscuro key")
 	obscuroKey := obscurocrypto.GetObscuroKey()
 	serializedPubKey := crypto.CompressPubkey(&obscuroKey.PublicKey)
-	nodecommon.LogWithID(nodeShortID, "Generated public key %s", common.Bytes2Hex(serializedPubKey))
+	nodecommon.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedPubKey))
 	rpcem := rpcencryptionmanager.NewRPCEncryptionManager(config.ViewingKeysEnabled, ecies.ImportECDSA(obscuroKey))
 
 	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
@@ -179,7 +179,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 	*/
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash common.Hash) nodecommon.BlockSubmissionResponse {
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) nodecommon.BlockSubmissionResponse {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
 	return nodecommon.BlockSubmissionResponse{
 		ProducedRollup: e.transactionBlobCrypto.ToExtRollup(rolGenesis),
@@ -224,7 +224,7 @@ func (e *enclaveImpl) SubmitRollup(rollup nodecommon.ExtRollup) {
 	if found {
 		e.storage.StoreRollup(r)
 	} else {
-		nodecommon.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", obscurocommon.ShortHash(r.Hash()))
+		nodecommon.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", common.ShortHash(r.Hash()))
 	}
 }
 
@@ -244,7 +244,7 @@ func (e *enclaveImpl) SubmitTx(tx nodecommon.EncryptedTx) error {
 	return nil
 }
 
-func (e *enclaveImpl) RoundWinner(parent obscurocommon.L2RootHash) (nodecommon.ExtRollup, bool, error) {
+func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (nodecommon.ExtRollup, bool, error) {
 	return e.chain.RoundWinner(parent)
 }
 
@@ -252,7 +252,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams nodecommon.Encr
 	return e.chain.ExecuteOffChainTransaction(encryptedParams)
 }
 
-func (e *enclaveImpl) Nonce(address common.Address) uint64 {
+func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
 	// todo user encryption
 	hs := e.storage.FetchHeadState()
 	if hs == nil {
@@ -262,7 +262,7 @@ func (e *enclaveImpl) Nonce(address common.Address) uint64 {
 	return s.GetNonce(address)
 }
 
-func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
+func (e *enclaveImpl) GetTransaction(txHash gethcommon.Hash) *nodecommon.L2Tx {
 	// todo - use the metadata stored in the database
 	hs := e.storage.FetchHeadState()
 	if hs == nil {
@@ -281,7 +281,7 @@ func (e *enclaveImpl) GetTransaction(txHash common.Hash) *nodecommon.L2Tx {
 			}
 		}
 		rollup = e.storage.ParentRollup(rollup)
-		if rollup == nil || rollup.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
+		if rollup == nil || rollup.Header.Number.Uint64() == common.L2GenesisHeight {
 			return nil
 		}
 	}
@@ -311,7 +311,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams nodecommon.Encrypted
 	return encryptedTxReceipt, nil
 }
 
-func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon.ExtRollup {
+func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *nodecommon.ExtRollup {
 	rollup, found := e.storage.FetchRollup(rollupHash)
 	if found {
 		extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
@@ -320,7 +320,7 @@ func (e *enclaveImpl) GetRollup(rollupHash obscurocommon.L2RootHash) *nodecommon
 	return nil
 }
 
-func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
+func (e *enclaveImpl) Attestation() *common.AttestationReport {
 	if e.publicKeySerialized == nil {
 		panic("public key not initialized, we can't produce the attestation report")
 	}
@@ -332,7 +332,7 @@ func (e *enclaveImpl) Attestation() *obscurocommon.AttestationReport {
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) GenerateSecret() common.EncryptedSharedEnclaveSecret {
 	secret := obscurocrypto.GenerateEntropy()
 	e.storage.StoreSecret(secret)
 	encSec, err := obscurocrypto.EncryptSecret(e.publicKeySerialized, secret, e.nodeShortID)
@@ -343,7 +343,7 @@ func (e *enclaveImpl) GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecre
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) error {
+func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 	secret, err := obscurocrypto.DecryptSecret(s, e.privateKey)
 	if err != nil {
 		return err
@@ -354,7 +354,7 @@ func (e *enclaveImpl) InitEnclave(s obscurocommon.EncryptedSharedEnclaveSecret) 
 }
 
 // ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
-func (e *enclaveImpl) ShareSecret(att *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error) {
+func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
 	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
 	data, err := e.attestationProvider.VerifyReport(att)
 	if err != nil {

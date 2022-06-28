@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -45,12 +45,12 @@ func (o *OutputStats) countBlockChain() {
 	l2Client := o.simulation.ObscuroClients[0]
 
 	// iterate the Node Headers and get the rollups
-	for header := getCurrentRollupHead(l2Client); header != nil && !bytes.Equal(header.Hash().Bytes(), obscurocommon.GenesisHash.Bytes()); header = getRollupHeader(l2Client, header.ParentHash) {
+	for header := getCurrentRollupHead(l2Client); header != nil && !bytes.Equal(header.Hash().Bytes(), common.GenesisHash.Bytes()); header = getRollupHeader(l2Client, header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), obscurocommon.GenesisHash.Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
+	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), common.GenesisHash.Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
 		for _, tx := range headBlock.Transactions() {
 			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 			if t == nil {
@@ -62,14 +62,14 @@ func (o *OutputStats) countBlockChain() {
 			}
 
 			switch l1Tx := t.(type) {
-			case *obscurocommon.L1RollupTx:
+			case *common.L1RollupTx:
 				r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
 				}
 
-			case *obscurocommon.L1DepositTx:
+			case *common.L1DepositTx:
 				o.canonicalERC20DepositCount++
 			}
 		}

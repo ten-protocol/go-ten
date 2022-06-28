@@ -12,8 +12,8 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
 const initialBalance = 5000
@@ -31,7 +31,7 @@ type Simulation struct {
 
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
-	log.Info(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
+	log.Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
 
 	s.WaitForObscuroGenesis()
 
@@ -67,13 +67,13 @@ func (s *Simulation) WaitForObscuroGenesis() {
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
 		head := client.FetchHeadBlock()
-		for _, b := range client.BlocksBetween(obscurocommon.GenesisBlock, head) {
+		for _, b := range client.BlocksBetween(common.GenesisBlock, head) {
 			for _, tx := range b.Transactions() {
 				t := s.Params.MgmtContractLib.DecodeTx(tx)
 				if t == nil {
 					continue
 				}
-				if _, ok := t.(*obscurocommon.L1RollupTx); ok {
+				if _, ok := t.(*common.L1RollupTx); ok {
 					// exit at the first obscuro rollup we see
 					return
 				}

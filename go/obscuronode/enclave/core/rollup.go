@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -25,9 +25,9 @@ type Rollup struct {
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *Rollup) Hash() obscurocommon.L2RootHash {
+func (r *Rollup) Hash() common.L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
-		return hash.(obscurocommon.L2RootHash)
+		return hash.(common.L2RootHash)
 	}
 	v := r.Header.Hash()
 	r.hash.Store(v)
@@ -37,8 +37,8 @@ func (r *Rollup) Hash() obscurocommon.L2RootHash {
 func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
 func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
 
-func NewHeader(parent *common.Hash, height uint64, a common.Address) *nodecommon.Header {
-	parentHash := obscurocommon.GenesisHash
+func NewHeader(parent *gethcommon.Hash, height uint64, a gethcommon.Address) *nodecommon.Header {
+	parentHash := common.GenesisHash
 	if parent != nil {
 		parentHash = *parent
 	}
@@ -49,7 +49,7 @@ func NewHeader(parent *common.Hash, height uint64, a common.Address) *nodecommon
 	}
 }
 
-func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []*nodecommon.L2Tx, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
+func NewRollupFromHeader(header *nodecommon.Header, blkHash gethcommon.Hash, txs []*nodecommon.L2Tx, nonce common.Nonce, state nodecommon.StateRoot) Rollup {
 	h := nodecommon.Header{
 		Agg:        header.Agg,
 		ParentHash: header.ParentHash,
@@ -74,8 +74,8 @@ func NewRollupFromHeader(header *nodecommon.Header, blkHash common.Hash, txs []*
 }
 
 // NewRollup - produces a new rollup. only used for genesis. todo - review
-func NewRollup(blkHash common.Hash, parent *Rollup, height uint64, a common.Address, txs []*nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce obscurocommon.Nonce, state nodecommon.StateRoot) Rollup {
-	parentHash := obscurocommon.GenesisHash
+func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcommon.Address, txs []*nodecommon.L2Tx, withdrawals []nodecommon.Withdrawal, nonce common.Nonce, state nodecommon.StateRoot) Rollup {
+	parentHash := common.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
 	}

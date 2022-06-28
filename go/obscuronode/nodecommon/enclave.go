@@ -1,9 +1,9 @@
 package nodecommon
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // Enclave represents the API of the service that runs inside the TEE.
@@ -12,22 +12,22 @@ type Enclave interface {
 	IsReady() error
 
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
-	Attestation() *obscurocommon.AttestationReport
+	Attestation() *common.AttestationReport
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-	GenerateSecret() obscurocommon.EncryptedSharedEnclaveSecret
+	GenerateSecret() common.EncryptedSharedEnclaveSecret
 
 	// ShareSecret - verify the attestation and return the shared secret (encrypted with the key from the attestation)
-	ShareSecret(report *obscurocommon.AttestationReport) (obscurocommon.EncryptedSharedEnclaveSecret, error)
+	ShareSecret(report *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error)
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
-	InitEnclave(secret obscurocommon.EncryptedSharedEnclaveSecret) error
+	InitEnclave(secret common.EncryptedSharedEnclaveSecret) error
 
 	// IsInitialised - true if the shared secret is available
 	IsInitialised() bool
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash common.Hash) BlockSubmissionResponse
+	ProduceGenesis(blkHash gethcommon.Hash) BlockSubmissionResponse
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
 	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
@@ -52,22 +52,22 @@ type Enclave interface {
 	ExecuteOffChainTransaction(encryptedParams EncryptedParamsCall) (EncryptedResponseCall, error)
 
 	// Nonce returns the nonce of the wallet with the given address.
-	Nonce(address common.Address) uint64
+	Nonce(address gethcommon.Address) uint64
 
 	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
-	RoundWinner(parent obscurocommon.L2RootHash) (ExtRollup, bool, error)
+	RoundWinner(parent common.L2RootHash) (ExtRollup, bool, error)
 
 	// Stop gracefully stops the enclave
 	Stop() error
 
 	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
-	GetTransaction(txHash common.Hash) *L2Tx
+	GetTransaction(txHash gethcommon.Hash) *L2Tx
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
 	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
 
 	// GetRollup returns the rollup with the given hash
-	GetRollup(rollupHash obscurocommon.L2RootHash) *ExtRollup
+	GetRollup(rollupHash common.L2RootHash) *ExtRollup
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.

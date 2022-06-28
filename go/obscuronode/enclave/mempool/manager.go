@@ -4,11 +4,12 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -24,12 +25,12 @@ func (c sortByNonce) Less(i, j int) bool { return c[i].Nonce() < c[j].Nonce() }
 type mempoolManager struct {
 	mpMutex        sync.RWMutex // Controls access to `mempool`
 	obscuroChainID int64
-	mempool        map[common.Hash]*nodecommon.L2Tx
+	mempool        map[gethcommon.Hash]*nodecommon.L2Tx
 }
 
 func New(chainID int64) Manager {
 	return &mempoolManager{
-		mempool:        make(map[common.Hash]*nodecommon.L2Tx),
+		mempool:        make(map[gethcommon.Hash]*nodecommon.L2Tx),
 		obscuroChainID: chainID,
 		mpMutex:        sync.RWMutex{},
 	}
@@ -62,7 +63,7 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *obscurocore.Rollup, resolver 
 	defer db.mpMutex.Unlock()
 
 	toRemove := historicTxs(rollup, resolver)
-	r := make(map[common.Hash]*nodecommon.L2Tx)
+	r := make(map[gethcommon.Hash]*nodecommon.L2Tx)
 	for id, t := range db.mempool {
 		_, f := toRemove[id]
 		if !f {
@@ -73,11 +74,11 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *obscurocore.Rollup, resolver 
 }
 
 // Returns all transactions found 20 levels below
-func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) map[common.Hash]common.Hash {
-	i := obscurocommon.HeightCommittedBlocks
+func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) map[gethcommon.Hash]gethcommon.Hash {
+	i := common.HeightCommittedBlocks
 	c := r
 	for {
-		if i == 0 || c.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
+		if i == 0 || c.Header.Number.Uint64() == common.L2GenesisHeight {
 			return obscurocore.ToMap(c.Transactions)
 		}
 		i--
@@ -99,11 +100,11 @@ func findTxsNotIncluded(head *obscurocore.Rollup, txs []*nodecommon.L2Tx, s db.R
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(r *obscurocore.Rollup, s db.RollupResolver) map[common.Hash]*nodecommon.L2Tx {
-	if r.Header.Number.Uint64() == obscurocommon.L2GenesisHeight {
+func allIncludedTransactions(r *obscurocore.Rollup, s db.RollupResolver) map[gethcommon.Hash]*nodecommon.L2Tx {
+	if r.Header.Number.Uint64() == common.L2GenesisHeight {
 		return obscurocore.MakeMap(r.Transactions)
 	}
-	newMap := make(map[common.Hash]*nodecommon.L2Tx)
+	newMap := make(map[gethcommon.Hash]*nodecommon.L2Tx)
 	for k, v := range allIncludedTransactions(s.ParentRollup(r), s) {
 		newMap[k] = v
 	}
@@ -113,7 +114,7 @@ func allIncludedTransactions(r *obscurocore.Rollup, s db.RollupResolver) map[com
 	return newMap
 }
 
-func removeExisting(base []*nodecommon.L2Tx, toRemove map[common.Hash]*nodecommon.L2Tx) (r []*nodecommon.L2Tx) {
+func removeExisting(base []*nodecommon.L2Tx, toRemove map[gethcommon.Hash]*nodecommon.L2Tx) (r []*nodecommon.L2Tx) {
 	for _, t := range base {
 		_, f := toRemove[t.Hash()]
 		if !f {

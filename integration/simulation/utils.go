@@ -7,9 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/common"
+
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
@@ -85,7 +87,7 @@ func getCurrentRollupHead(client obscuroclient.Client) *nodecommon.Header {
 }
 
 // Uses the client to retrieve the rollup header with the matching hash.
-func getRollupHeader(client obscuroclient.Client, hash common.Hash) *nodecommon.Header {
+func getRollupHeader(client obscuroclient.Client, hash gethcommon.Hash) *nodecommon.Header {
 	method := obscuroclient.RPCGetRollupHeader
 
 	var result *nodecommon.Header
@@ -98,7 +100,7 @@ func getRollupHeader(client obscuroclient.Client, hash common.Hash) *nodecommon.
 }
 
 // Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client obscuroclient.Client, txHash common.Hash) *nodecommon.L2Tx {
+func getTransaction(client obscuroclient.Client, txHash gethcommon.Hash) *nodecommon.L2Tx {
 	var l2Tx *nodecommon.L2Tx
 	err := client.Call(&l2Tx, obscuroclient.RPCGetTransaction, txHash)
 	if err != nil {
@@ -116,7 +118,7 @@ func getTransaction(client obscuroclient.Client, txHash common.Hash) *nodecommon
 }
 
 // Returns the transaction receipt for the given transaction hash.
-func getTransactionReceipt(client obscuroclient.Client, txHash common.Hash) map[string]interface{} {
+func getTransactionReceipt(client obscuroclient.Client, txHash gethcommon.Hash) map[string]interface{} {
 	paramsJSON, err := json.Marshal([]string{txHash.Hex()})
 	if err != nil {
 		panic(fmt.Errorf("simulation failed because could not marshall JSON param to %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
@@ -129,7 +131,7 @@ func getTransactionReceipt(client obscuroclient.Client, txHash common.Hash) map[
 	}
 
 	var responseJSONMap map[string]interface{}
-	err = json.Unmarshal(common.Hex2Bytes(encryptedResponse), &responseJSONMap)
+	err = json.Unmarshal(gethcommon.Hex2Bytes(encryptedResponse), &responseJSONMap)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed because could not unmarshall JSON response to %s RPC call. Cause: %w", obscuroclient.RPCGetTxReceipt, err))
 	}
@@ -138,7 +140,7 @@ func getTransactionReceipt(client obscuroclient.Client, txHash common.Hash) map[
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(client obscuroclient.Client, address common.Address, l2ContractAddress *common.Address) uint64 {
+func balance(client obscuroclient.Client, address gethcommon.Address, l2ContractAddress *gethcommon.Address) uint64 {
 	method := obscuroclient.RPCCall
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 	convertedData := (hexutil.Bytes)(balanceData)
@@ -159,6 +161,52 @@ func balance(client obscuroclient.Client, address common.Address, l2ContractAddr
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
 	r := new(big.Int)
-	r = r.SetBytes(common.Hex2Bytes(encryptedResponse))
+	r = r.SetBytes(gethcommon.Hex2Bytes(encryptedResponse))
 	return r.Uint64()
+}
+
+// FindHashDups - returns a map of all hashes that appear multiple times, and how many times
+func findHashDups(list []gethcommon.Hash) map[gethcommon.Hash]int {
+	elementCount := make(map[gethcommon.Hash]int)
+
+	for _, item := range list {
+		// check if the item/element exist in the duplicate_frequency map
+		_, exist := elementCount[item]
+		if exist {
+			elementCount[item]++ // increase counter by 1 if already in the map
+		} else {
+			elementCount[item] = 1 // else start counting from 1
+		}
+	}
+	dups := make(map[gethcommon.Hash]int)
+	for u, i := range elementCount {
+		if i > 1 {
+			dups[u] = i
+			fmt.Printf("Dup: %s\n", u)
+		}
+	}
+	return dups
+}
+
+// FindRollupDups - returns a map of all L2 root hashes that appear multiple times, and how many times
+func findRollupDups(list []common.L2RootHash) map[common.L2RootHash]int {
+	elementCount := make(map[common.L2RootHash]int)
+
+	for _, item := range list {
+		// check if the item/element exist in the duplicate_frequency map
+		_, exist := elementCount[item]
+		if exist {
+			elementCount[item]++ // increase counter by 1 if already in the map
+		} else {
+			elementCount[item] = 1 // else start counting from 1
+		}
+	}
+	dups := make(map[common.L2RootHash]int)
+	for u, i := range elementCount {
+		if i > 1 {
+			dups[u] = i
+			fmt.Printf("Dup: r_%d\n", common.ShortHash(u))
+		}
+	}
+	return dups
 }

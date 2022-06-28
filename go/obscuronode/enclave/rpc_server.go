@@ -11,12 +11,12 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
@@ -47,7 +47,7 @@ func StartServer(
 	enclaveServer := server{
 		enclave:     NewEnclave(enclaveConfig, mgmtContractLib, erc20ContractLib, collector),
 		rpcServer:   grpc.NewServer(),
-		nodeShortID: obscurocommon.ShortAddress(enclaveConfig.HostID),
+		nodeShortID: common.ShortAddress(enclaveConfig.HostID),
 	}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
@@ -112,7 +112,7 @@ func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest)
 }
 
 func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
-	genesisRollup := s.enclave.ProduceGenesis(common.BytesToHash(request.GetBlockHash()))
+	genesisRollup := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
 	blockSubmissionResponse := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
@@ -169,12 +169,12 @@ func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generate
 }
 
 func (s *server) Nonce(_ context.Context, request *generated.NonceRequest) (*generated.NonceResponse, error) {
-	nonce := s.enclave.Nonce(common.BytesToAddress(request.Address))
+	nonce := s.enclave.Nonce(gethcommon.BytesToAddress(request.Address))
 	return &generated.NonceResponse{Nonce: nonce}, nil
 }
 
 func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
-	extRollup, winner, err := s.enclave.RoundWinner(common.BytesToHash(request.Parent))
+	extRollup, winner, err := s.enclave.RoundWinner(gethcommon.BytesToHash(request.Parent))
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopR
 }
 
 func (s *server) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
-	tx := s.enclave.GetTransaction(common.BytesToHash(request.TxHash))
+	tx := s.enclave.GetTransaction(gethcommon.BytesToHash(request.TxHash))
 	if tx == nil {
 		return &generated.GetTransactionResponse{Known: false, EncodedTransaction: []byte{}}, nil
 	}
@@ -210,7 +210,7 @@ func (s *server) GetTransactionReceipt(_ context.Context, request *generated.Get
 }
 
 func (s *server) GetRollup(_ context.Context, request *generated.GetRollupRequest) (*generated.GetRollupResponse, error) {
-	extRollup := s.enclave.GetRollup(common.BytesToHash(request.RollupHash))
+	extRollup := s.enclave.GetRollup(gethcommon.BytesToHash(request.RollupHash))
 	if extRollup == nil {
 		return &generated.GetRollupResponse{Known: false, ExtRollup: nil}, nil
 	}

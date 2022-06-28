@@ -1,4 +1,4 @@
-package obscurocommon
+package common
 
 import (
 	"fmt"
@@ -69,52 +69,6 @@ func MaxInt(x, y uint32) uint32 {
 }
 
 // TODO - Refactor the three duplicate-finding methods below to reduce duplicated code
-
-// FindHashDups - returns a map of all hashes that appear multiple times, and how many times
-func FindHashDups(list []common.Hash) map[common.Hash]int {
-	elementCount := make(map[common.Hash]int)
-
-	for _, item := range list {
-		// check if the item/element exist in the duplicate_frequency map
-		_, exist := elementCount[item]
-		if exist {
-			elementCount[item]++ // increase counter by 1 if already in the map
-		} else {
-			elementCount[item] = 1 // else start counting from 1
-		}
-	}
-	dups := make(map[common.Hash]int)
-	for u, i := range elementCount {
-		if i > 1 {
-			dups[u] = i
-			fmt.Printf("Dup: %s\n", u)
-		}
-	}
-	return dups
-}
-
-// FindRollupDups - returns a map of all L2 root hashes that appear multiple times, and how many times
-func FindRollupDups(list []L2RootHash) map[L2RootHash]int {
-	elementCount := make(map[L2RootHash]int)
-
-	for _, item := range list {
-		// check if the item/element exist in the duplicate_frequency map
-		_, exist := elementCount[item]
-		if exist {
-			elementCount[item]++ // increase counter by 1 if already in the map
-		} else {
-			elementCount[item] = 1 // else start counting from 1
-		}
-	}
-	dups := make(map[L2RootHash]int)
-	for u, i := range elementCount {
-		if i > 1 {
-			dups[u] = i
-			fmt.Printf("Dup: r_%d\n", ShortHash(u))
-		}
-	}
-	return dups
-}
 
 // ShortHash converts the hash to a shorter uint64 for printing.
 func ShortHash(hash common.Hash) uint64 {

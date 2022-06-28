@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/naoina/toml"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
@@ -25,7 +25,7 @@ import (
 // Node this will become the Obscuro "Node" type
 type Node struct {
 	config  config.HostConfig
-	ID      common.Address
+	ID      gethcommon.Address
 	shortID uint64
 
 	P2p           P2P                 // For communication with other Obscuro nodes
@@ -40,10 +40,10 @@ type Node struct {
 	stopNodeInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the node is done bootstrapping
 
-	blockRPCCh   chan blockAndParent               // The channel that new blocks from the L1 node are sent to
-	forkRPCCh    chan []obscurocommon.EncodedBlock // The channel that new forks from the L1 node are sent to
-	rollupsP2PCh chan obscurocommon.EncodedRollup  // The channel that new rollups from peers are sent to
-	txP2PCh      chan nodecommon.EncryptedTx       // The channel that new transactions from peers are sent to
+	blockRPCCh   chan blockAndParent         // The channel that new blocks from the L1 node are sent to
+	forkRPCCh    chan []common.EncodedBlock  // The channel that new forks from the L1 node are sent to
+	rollupsP2PCh chan common.EncodedRollup   // The channel that new rollups from peers are sent to
+	txP2PCh      chan nodecommon.EncryptedTx // The channel that new transactions from peers are sent to
 
 	nodeDB       *DB    // Stores the node's publicly-available data
 	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
@@ -68,7 +68,7 @@ func NewHost(
 		// config
 		config:  config,
 		ID:      config.ID,
-		shortID: obscurocommon.ShortAddress(config.ID),
+		shortID: common.ShortAddress(config.ID),
 
 		// Communication layers.
 		P2p:           p2p,
@@ -85,8 +85,8 @@ func NewHost(
 
 		// incoming data
 		blockRPCCh:   make(chan blockAndParent),
-		forkRPCCh:    make(chan []obscurocommon.EncodedBlock),
-		rollupsP2PCh: make(chan obscurocommon.EncodedRollup),
+		forkRPCCh:    make(chan []common.EncodedBlock),
+		rollupsP2PCh: make(chan common.EncodedRollup),
 		txP2PCh:      make(chan nodecommon.EncryptedTx),
 
 		// Initialize the node DB
@@ -127,7 +127,7 @@ func (a *Node) Start() {
 			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
 		}
 
-		l1tx := &obscurocommon.L1InitializeSecretTx{
+		l1tx := &common.L1InitializeSecretTx{
 			AggregatorID:  &a.ID,
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
 			HostAddress:   a.config.P2PAddress,
@@ -162,7 +162,7 @@ func (a *Node) Start() {
 
 // MockedNewHead receives the notification of new blocks
 // This endpoint is specific to the ethereum mock node
-func (a *Node) MockedNewHead(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
+func (a *Node) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
@@ -171,7 +171,7 @@ func (a *Node) MockedNewHead(b obscurocommon.EncodedBlock, p obscurocommon.Encod
 
 // MockedNewFork receives the notification of a new fork
 // This endpoint is specific to the ethereum mock node
-func (a *Node) MockedNewFork(b []obscurocommon.EncodedBlock) {
+func (a *Node) MockedNewFork(b []common.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
@@ -180,7 +180,7 @@ func (a *Node) MockedNewFork(b []obscurocommon.EncodedBlock) {
 
 // ReceiveRollup is called by counterparties when there is a Rollup to broadcast
 // All it does is forward the rollup for processing to the enclave
-func (a *Node) ReceiveRollup(r obscurocommon.EncodedRollup) {
+func (a *Node) ReceiveRollup(r common.EncodedRollup) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
@@ -288,7 +288,7 @@ func (a *Node) startProcessing() {
 		select {
 		case b := <-a.blockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			a.processBlocks([]obscurocommon.EncodedBlock{b.p, b.b}, roundInterrupt)
+			a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
@@ -298,8 +298,8 @@ func (a *Node) startProcessing() {
 			rol, err := nodecommon.DecodeRollup(r)
 			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
 				a.shortID,
-				obscurocommon.ShortHash(rol.Hash()),
-				obscurocommon.ShortAddress(rol.Header.Agg),
+				common.ShortHash(rol.Hash()),
+				common.ShortAddress(rol.Header.Agg),
 			))
 			if err != nil {
 				nodecommon.LogWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
@@ -330,11 +330,11 @@ func triggerInterrupt(interrupt *int32) *int32 {
 }
 
 type blockAndParent struct {
-	b obscurocommon.EncodedBlock
-	p obscurocommon.EncodedBlock
+	b common.EncodedBlock
+	p common.EncodedBlock
 }
 
-func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int32) {
+func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	var result nodecommon.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
@@ -349,7 +349,7 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 
 	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		nodecommon.LogWithID(a.shortID, "Did not ingest block b_%d. Cause: %s", obscurocommon.ShortHash(b.Hash()), result.BlockNotIngestedCause)
+		nodecommon.LogWithID(a.shortID, "Did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
 		return
 	}
 
@@ -357,12 +357,12 @@ func (a *Node) processBlocks(blocks []obscurocommon.EncodedBlock, interrupt *int
 	if result.ProducedRollup.Header != nil {
 		a.P2p.BroadcastRollup(nodecommon.EncodeRollup(result.ProducedRollup.ToRollup()))
 
-		obscurocommon.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+		common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
 	}
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
-func (a *Node) processBlock(block obscurocommon.EncodedBlock) {
+func (a *Node) processBlock(block common.EncodedBlock) {
 	b := block.DecodeBlock()
 	for _, tx := range b.Transactions() {
 		t := a.mgmtContractLib.DecodeTx(tx)
@@ -370,11 +370,11 @@ func (a *Node) processBlock(block obscurocommon.EncodedBlock) {
 			continue
 		}
 
-		if scrtReqTx, ok := t.(*obscurocommon.L1RequestSecretTx); ok {
+		if scrtReqTx, ok := t.(*common.L1RequestSecretTx); ok {
 			a.processSharedSecretRequest(scrtReqTx)
 		}
 
-		if scrtRespTx, ok := t.(*obscurocommon.L1RespondSecretTx); ok {
+		if scrtRespTx, ok := t.(*common.L1RespondSecretTx); ok {
 			err := a.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
 				nodecommon.LogWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
@@ -395,12 +395,12 @@ func (a *Node) handleRoundWinner(result nodecommon.BlockSubmissionResponse) func
 		}
 		if isWinner {
 			nodecommon.LogWithID(a.shortID, "Winner (b_%d) r_%d(%d).",
-				obscurocommon.ShortHash(result.BlockHeader.Hash()),
-				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
+				common.ShortHash(result.BlockHeader.Hash()),
+				common.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,
 			)
 
-			tx := &obscurocommon.L1RollupTx{
+			tx := &common.L1RollupTx{
 				Rollup: nodecommon.EncodeRollup(winnerRollup.ToRollup()),
 			}
 
@@ -428,15 +428,15 @@ func (a *Node) storeBlockProcessingResult(result nodecommon.BlockSubmissionRespo
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol(block *types.Block) obscurocommon.L2RootHash {
+func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
 	// Create the genesis rollup and submit it to the MC
 	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
 	nodecommon.LogWithID(
 		a.shortID,
 		"Initialising network. Genesis rollup r_%d.",
-		obscurocommon.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
+		common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 	)
-	l1tx := &obscurocommon.L1RollupTx{
+	l1tx := &common.L1RollupTx{
 		Rollup: nodecommon.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
 	}
 
@@ -466,7 +466,7 @@ func (a *Node) requestSecret() {
 		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation := nodecommon.EncodeAttestation(att)
-	l1tx := &obscurocommon.L1RequestSecretTx{
+	l1tx := &common.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
 	a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
@@ -474,7 +474,7 @@ func (a *Node) requestSecret() {
 	a.awaitSecret()
 }
 
-func (a *Node) handleStoreSecretTx(t *obscurocommon.L1RespondSecretTx) bool {
+func (a *Node) handleStoreSecretTx(t *common.L1RespondSecretTx) bool {
 	if t.RequesterID.Hex() != a.ID.Hex() {
 		// this secret is for somebody else
 		return false
@@ -489,7 +489,7 @@ func (a *Node) handleStoreSecretTx(t *obscurocommon.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) processSharedSecretRequest(scrtReqTx *obscurocommon.L1RequestSecretTx) {
+func (a *Node) processSharedSecretRequest(scrtReqTx *common.L1RequestSecretTx) {
 	// todo: implement proper protocol so only one host responds to this secret requests initially
 	// 	for now we just have the genesis host respond until protocol implemented
 	if !a.config.IsGenesis {
@@ -515,7 +515,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *obscurocommon.L1RequestSecr
 		return
 	}
 
-	l1tx := &obscurocommon.L1RespondSecretTx{
+	l1tx := &common.L1RespondSecretTx{
 		Secret:      secret,
 		RequesterID: att.Owner,
 		AttesterID:  a.ID,
@@ -527,7 +527,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *obscurocommon.L1RequestSecr
 
 // Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
 // may have joined the network.
-func (a *Node) processSharedSecretResponse(_ *obscurocommon.L1RespondSecretTx) error {
+func (a *Node) processSharedSecretResponse(_ *common.L1RespondSecretTx) error {
 	// We make a call to the L1 node to retrieve the new list of aggregators. An alternative would be to check that the
 	// transaction succeeded, and if so, extract the additional host address from the transaction arguments. But we
 	// believe this would be more brittle than just asking the L1 contract for its view of the current aggregators.
@@ -605,10 +605,10 @@ func (a *Node) monitorBlocks() {
 		nodecommon.LogWithID(
 			a.shortID,
 			"Received a new block b_%d(%d)",
-			obscurocommon.ShortHash(blkHeader.Hash()),
+			common.ShortHash(blkHeader.Hash()),
 			blkHeader.Number.Uint64(),
 		)
-		a.blockRPCCh <- blockAndParent{obscurocommon.EncodeBlock(block), obscurocommon.EncodeBlock(blockParent)}
+		a.blockRPCCh <- blockAndParent{common.EncodeBlock(block), common.EncodeBlock(blockParent)}
 	}
 }
 
@@ -634,7 +634,7 @@ func (a *Node) bootstrapNode() types.Block {
 			nodecommon.LogWithID(
 				a.shortID,
 				"Failed to ingest block b_%d. Cause: %s",
-				obscurocommon.ShortHash(result[0].BlockHeader.Hash()),
+				common.ShortHash(result[0].BlockHeader.Hash()),
 				result[0].BlockNotIngestedCause,
 			)
 		}
@@ -699,7 +699,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 		if t == nil {
 			continue
 		}
-		if scrtTx, ok := t.(*obscurocommon.L1RespondSecretTx); ok {
+		if scrtTx, ok := t.(*common.L1RespondSecretTx); ok {
 			ok := a.handleStoreSecretTx(scrtTx)
 			if ok {
 				nodecommon.LogWithID(a.shortID, "Stored enclave secret.")

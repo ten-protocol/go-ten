@@ -8,15 +8,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	obscurocore "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
 )
@@ -40,32 +40,32 @@ const (
 var WBtcOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")
 
 // WBtcContract X- address of the deployed "btc" erc20 on the L2
-var WBtcContract = common.BytesToAddress(common.Hex2Bytes("f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"))
+var WBtcContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"))
 
 var WEthOnwer, _ = crypto.HexToECDSA("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8")
 
 // WEthContract - address of the deployed "eth" erc20 on the L2
-var WEthContract = common.BytesToAddress(common.Hex2Bytes("9802F661d17c65527D7ABB59DAAD5439cb125a67"))
+var WEthContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("9802F661d17c65527D7ABB59DAAD5439cb125a67"))
 
 // BridgeAddress - address of the virtual bridge
-var BridgeAddress = common.BytesToAddress(common.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+var BridgeAddress = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
 
 // ERC20Mapping - maps an L1 Erc20 to an L2 Erc20 address
 type ERC20Mapping struct {
 	Name ERC20
 
 	// L1Owner   wallet.Wallet
-	L1Address *common.Address
+	L1Address *gethcommon.Address
 
 	Owner     wallet.Wallet // for now the wrapped L2 version is owned by a wallet, but this will change
-	L2Address *common.Address
+	L2Address *gethcommon.Address
 }
 
 // Bridge encapsulates all logic around processing the interactions with an L1
 type Bridge struct {
 	SupportedTokens map[ERC20]*ERC20Mapping
 	// BridgeAddress The address the bridge on the L2
-	BridgeAddress common.Address
+	BridgeAddress gethcommon.Address
 
 	MgmtContractLib  mgmtcontractlib.MgmtContractLib
 	Erc20ContractLib erc20contractlib.ERC20ContractLib
@@ -78,8 +78,8 @@ type Bridge struct {
 }
 
 func New(
-	btcAddress *common.Address,
-	ethAddress *common.Address,
+	btcAddress *gethcommon.Address,
+	ethAddress *gethcommon.Address,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	nodeID uint64,
@@ -115,12 +115,12 @@ func New(
 	}
 }
 
-func (bridge *Bridge) IsWithdrawal(address common.Address) bool {
+func (bridge *Bridge) IsWithdrawal(address gethcommon.Address) bool {
 	return bytes.Equal(address.Bytes(), bridge.BridgeAddress.Bytes())
 }
 
 // L1Address - returns the L1 address of a token based on the mapping
-func (bridge *Bridge) L1Address(l2Address *common.Address) *common.Address {
+func (bridge *Bridge) L1Address(l2Address *gethcommon.Address) *gethcommon.Address {
 	if l2Address == nil {
 		return nil
 	}
@@ -133,7 +133,7 @@ func (bridge *Bridge) L1Address(l2Address *common.Address) *common.Address {
 }
 
 // GetMapping - finds the mapping based on the address that was called in an L1 transaction
-func (bridge *Bridge) GetMapping(l1ContractAddress *common.Address) *ERC20Mapping {
+func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Mapping {
 	for _, t := range bridge.SupportedTokens {
 		if bytes.Equal(t.L1Address.Bytes(), l1ContractAddress.Bytes()) {
 			return t
@@ -152,7 +152,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			continue
 		}
 
-		if rolTx, ok := t.(*obscurocommon.L1RollupTx); ok {
+		if rolTx, ok := t.(*common.L1RollupTx); ok {
 			r := nodecommon.DecodeRollupOrPanic(rolTx.Rollup)
 
 			// Ignore rollups created with proofs from different L1 blocks
@@ -160,8 +160,8 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 				rollups = append(rollups, bridge.TransactionBlobCrypto.ToEnclaveRollup(r))
 				nodecommon.LogWithID(bridge.NodeID, "Extracted Rollup r_%d from block b_%d",
-					obscurocommon.ShortHash(r.Hash()),
-					obscurocommon.ShortHash(b.Hash()),
+					common.ShortHash(r.Hash()),
+					common.ShortHash(b.Hash()),
 				)
 			}
 		}
@@ -171,7 +171,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 
 // this function creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
 // Todo - has to go through a few more iterations
-func (bridge *Bridge) NewDepositTx(contract *common.Address, address common.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64) *nodecommon.L2Tx {
+func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcommon.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64) *nodecommon.L2Tx {
 	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
 	signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
 
@@ -186,9 +186,9 @@ func (bridge *Bridge) NewDepositTx(contract *common.Address, address common.Addr
 
 	tx := types.NewTx(&types.LegacyTx{
 		Nonce:    nonce,
-		Value:    common.Big0,
+		Value:    gethcommon.Big0,
 		Gas:      1_000_000,
-		GasPrice: common.Big0,
+		GasPrice: gethcommon.Big0,
 		Data:     transferERC20data,
 		To:       token.L2Address,
 	})
@@ -208,8 +208,8 @@ func (bridge *Bridge) ExtractDeposits(
 	blockResolver db.BlockResolver,
 	rollupState *state.StateDB,
 ) []*nodecommon.L2Tx {
-	from := obscurocommon.GenesisBlock.Hash()
-	height := obscurocommon.L1GenesisHeight
+	from := common.GenesisBlock.Hash()
+	height := common.L1GenesisHeight
 	if fromBlock != nil {
 		from = fromBlock.Hash()
 		height = fromBlock.NumberU64()
@@ -230,7 +230,7 @@ func (bridge *Bridge) ExtractDeposits(
 				continue
 			}
 
-			if depositTx, ok := t.(*obscurocommon.L1DepositTx); ok {
+			if depositTx, ok := t.(*common.L1DepositTx); ok {
 				// todo - the adjust has to be per token
 				depL2Tx := bridge.NewDepositTx(depositTx.TokenContract, *depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)))
 				allDeposits = append(allDeposits, depL2Tx)
@@ -252,7 +252,7 @@ func (bridge *Bridge) ExtractDeposits(
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
 // this belongs in the bridge
-func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore.Rollup, state *state.StateDB, receiptsMap map[common.Hash]*types.Receipt) []nodecommon.Withdrawal {
+func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []nodecommon.Withdrawal {
 	w := make([]nodecommon.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for _, t := range newHeadRollup.Transactions {

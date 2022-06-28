@@ -1,4 +1,4 @@
-package obscurocommon
+package common
 
 import (
 	"crypto/ecdsa"
@@ -8,8 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// L1Transaction represents how obscuro interprets Transactions that happen on the Layer 1
-// These transactions can have different implementations
+// L1Transaction is an abstraction that transforms an Ethereum transaction into a format that can be consumed more easily by Obscuro.
 type L1Transaction interface{}
 
 type L1RollupTx struct {

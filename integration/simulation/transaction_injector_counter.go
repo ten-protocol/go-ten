@@ -5,14 +5,14 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 type txInjectorCounter struct {
 	l1TransactionsLock       sync.RWMutex
-	L1Transactions           []obscurocommon.L1Transaction
+	L1Transactions           []common.L1Transaction
 	l2TransactionsLock       sync.RWMutex
 	TransferL2Transactions   core.L2Txs
 	WithdrawalL2Transactions core.L2Txs
@@ -21,7 +21,7 @@ type txInjectorCounter struct {
 func newCounter() *txInjectorCounter {
 	return &txInjectorCounter{
 		l1TransactionsLock:       sync.RWMutex{},
-		L1Transactions:           []obscurocommon.L1Transaction{},
+		L1Transactions:           []common.L1Transaction{},
 		l2TransactionsLock:       sync.RWMutex{},
 		TransferL2Transactions:   []*nodecommon.L2Tx{},
 		WithdrawalL2Transactions: []*nodecommon.L2Tx{},
@@ -29,7 +29,7 @@ func newCounter() *txInjectorCounter {
 }
 
 // trackL1Tx adds an L1Tx to the internal list
-func (m *txInjectorCounter) trackL1Tx(tx obscurocommon.L1Transaction) {
+func (m *txInjectorCounter) trackL1Tx(tx common.L1Transaction) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
 	m.L1Transactions = append(m.L1Transactions, tx)
@@ -48,7 +48,7 @@ func (m *txInjectorCounter) trackTransferL2Tx(tx *nodecommon.L2Tx) {
 }
 
 // GetL1Transactions returns all generated L1 L2Txs
-func (m *txInjectorCounter) GetL1Transactions() []obscurocommon.L1Transaction {
+func (m *txInjectorCounter) GetL1Transactions() []common.L1Transaction {
 	return m.L1Transactions
 }
 

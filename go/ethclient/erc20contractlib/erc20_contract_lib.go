@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 const methodBytesLen = 4
@@ -23,23 +23,23 @@ var (
 
 // ERC20ContractLib provides methods for handling erc20 contracts
 type ERC20ContractLib interface {
-	// DecodeTx receives a *types.Transaction and converts it to an obscurocommon.L1Transaction
+	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
 	// returns nil if the transaction is not convertible
-	DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction
+	DecodeTx(tx *types.Transaction) common.L1Transaction
 
-	// CreateDepositTx receives an obscurocommon.L1Transaction and converts it to an eth transaction
-	CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData
+	// CreateDepositTx receives an common.L1Transaction and converts it to an eth transaction
+	CreateDepositTx(tx *common.L1DepositTx, nonce uint64) types.TxData
 }
 
 // erc20ContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
 // Watches for contract executions that might be deposits towards the Management Contract
 type erc20ContractLibImpl struct {
-	mgmtContractAddr   *common.Address
-	erc20ContractAddrs []*common.Address
+	mgmtContractAddr   *gethcommon.Address
+	erc20ContractAddrs []*gethcommon.Address
 	contractABI        abi.ABI
 }
 
-func NewERC20ContractLib(mgmtContractAddr *common.Address, contractAddrs ...*common.Address) ERC20ContractLib {
+func NewERC20ContractLib(mgmtContractAddr *gethcommon.Address, contractAddrs ...*gethcommon.Address) ERC20ContractLib {
 	contractABI, err := abi.JSON(strings.NewReader(ERC20ContractABI))
 	if err != nil {
 		panic(err)
@@ -52,7 +52,7 @@ func NewERC20ContractLib(mgmtContractAddr *common.Address, contractAddrs ...*com
 	}
 }
 
-func (c *erc20ContractLibImpl) CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData {
+func (c *erc20ContractLibImpl) CreateDepositTx(tx *common.L1DepositTx, nonce uint64) types.TxData {
 	data, err := c.contractABI.Pack("transfer", &tx.To, big.NewInt(int64(tx.Amount)))
 	if err != nil {
 		panic(err)
@@ -67,7 +67,7 @@ func (c *erc20ContractLibImpl) CreateDepositTx(tx *obscurocommon.L1DepositTx, no
 	}
 }
 
-func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
+func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) common.L1Transaction {
 	if !c.isRelevant(tx) {
 		return nil
 	}
@@ -87,7 +87,7 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1T
 	}
 
 	// only process transfers made to the management contract
-	toAddr, ok := to.(common.Address)
+	toAddr, ok := to.(gethcommon.Address)
 	if !ok || toAddr.Hex() != c.mgmtContractAddr.Hex() {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) obscurocommon.L1T
 		panic(err)
 	}
 
-	return &obscurocommon.L1DepositTx{
+	return &common.L1DepositTx{
 		Amount:        amount.(*big.Int).Uint64(),
 		To:            &toAddr,
 		TokenContract: tx.To(),

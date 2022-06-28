@@ -1,15 +1,15 @@
 package host
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
 type P2PCallback interface {
-	ReceiveRollup(r obscurocommon.EncodedRollup)
+	ReceiveRollup(r common.EncodedRollup)
 	ReceiveTx(tx nodecommon.EncryptedTx)
 }
 
@@ -18,7 +18,7 @@ type P2P interface {
 	StartListening(callback P2PCallback)
 	StopListening() error
 	UpdatePeerList([]string)
-	BroadcastRollup(r obscurocommon.EncodedRollup)
+	BroadcastRollup(r common.EncodedRollup)
 	BroadcastTx(tx nodecommon.EncryptedTx)
 }
 
@@ -30,8 +30,8 @@ type RPCServer interface {
 
 type StatsCollector interface {
 	// L2Recalc - called when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id common.Address)
+	L2Recalc(id gethcommon.Address)
 	NewBlock(block *types.Block)
-	NewRollup(node common.Address, rollup *nodecommon.EncryptedRollup)
+	NewRollup(node gethcommon.Address, rollup *nodecommon.EncryptedRollup)
 	RollupWithMoreRecentProof()
 }

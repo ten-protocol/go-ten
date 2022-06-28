@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon/httputil"
+	"github.com/obscuronet/obscuro-playground/go/common/httputil"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core/egoutils"
 
 	"github.com/obscuronet/obscuro-playground/go/log"

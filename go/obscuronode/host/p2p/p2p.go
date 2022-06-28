@@ -12,7 +12,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
@@ -38,7 +38,7 @@ func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 	return &p2pImpl{
 		ourAddress:    config.P2PAddress,
 		peerAddresses: []string{},
-		nodeID:        obscurocommon.ShortAddress(config.ID),
+		nodeID:        common.ShortAddress(config.ID),
 	}
 }
 
@@ -82,7 +82,7 @@ func (p *p2pImpl) BroadcastTx(tx nodecommon.EncryptedTx) {
 	p.broadcast(Tx, tx, append(p.peerAddresses, p.ourAddress))
 }
 
-func (p *p2pImpl) BroadcastRollup(r obscurocommon.EncodedRollup) {
+func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) {
 	p.broadcast(Rollup, r, p.peerAddresses)
 }
 

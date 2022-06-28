@@ -5,27 +5,27 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
 // TODO Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
 type EthClient interface {
-	BlockByHash(id common.Hash) (*types.Block, error)            // retrieves a block given a hash
-	BlockByNumber(n *big.Int) (*types.Block, error)              // retrieves a block given a number - returns head block if n is nil
-	SendTransaction(signedTx *types.Transaction) error           // issues an ethereum transaction (expects signed tx)
-	TransactionReceipt(hash common.Hash) (*types.Receipt, error) // fetches the ethereum transaction receipt
-	Nonce(address common.Address) (uint64, error)                // fetches the account nonce to use in the next transaction
+	BlockByHash(id gethcommon.Hash) (*types.Block, error)            // retrieves a block given a hash
+	BlockByNumber(n *big.Int) (*types.Block, error)                  // retrieves a block given a number - returns head block if n is nil
+	SendTransaction(signedTx *types.Transaction) error               // issues an ethereum transaction (expects signed tx)
+	TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) // fetches the ethereum transaction receipt
+	Nonce(address gethcommon.Address) (uint64, error)                // fetches the account nonce to use in the next transaction
 
-	Info() Info                                                              // retrieves the node Info
-	FetchHeadBlock() *types.Block                                            // retrieves the block at head height
-	BlocksBetween(block *types.Block, head *types.Block) []*types.Block      // returns the blocks between two blocks
-	IsBlockAncestor(block *types.Block, proof obscurocommon.L1RootHash) bool // returns if the node considers a block the ancestor
-	RPCBlockchainFeed() []*types.Block                                       // returns all blocks from genesis to head
-	BlockListener() chan *types.Header                                       // subscribes to new blocks and returns a listener with the blocks heads
+	Info() Info                                                         // retrieves the node Info
+	FetchHeadBlock() *types.Block                                       // retrieves the block at head height
+	BlocksBetween(block *types.Block, head *types.Block) []*types.Block // returns the blocks between two blocks
+	IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool   // returns if the node considers a block the ancestor
+	RPCBlockchainFeed() []*types.Block                                  // returns all blocks from genesis to head
+	BlockListener() chan *types.Header                                  // subscribes to new blocks and returns a listener with the blocks heads
 
 	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
@@ -36,5 +36,5 @@ type EthClient interface {
 
 // Info forces the RPC EthClient to return the data in the same format (independently of it's implementation)
 type Info struct {
-	ID common.Address
+	ID gethcommon.Address
 }

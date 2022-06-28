@@ -13,8 +13,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -94,7 +94,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHeight uint64, s *Simulation) uint64 {
-	nodeAddr := obscurocommon.ShortAddress(node.Info().ID)
+	nodeAddr := common.ShortAddress(node.Info().ID)
 	head := node.FetchHeadBlock()
 	height := head.NumberU64()
 
@@ -105,12 +105,12 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 	deposits, rollups, totalDeposited, blockCount := extractDataFromEthereumChain(head, node, s)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
-	if len(obscurocommon.FindHashDups(deposits)) > 0 {
-		dups := obscurocommon.FindHashDups(deposits)
+	if len(findHashDups(deposits)) > 0 {
+		dups := findHashDups(deposits)
 		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeAddr, dups)
 	}
-	if len(obscurocommon.FindRollupDups(rollups)) > 0 {
-		dups := obscurocommon.FindRollupDups(rollups)
+	if len(findRollupDups(rollups)) > 0 {
+		dups := findRollupDups(rollups)
 		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeAddr, dups)
 	}
 	if totalDeposited != s.Stats.TotalDepositedAmount {
@@ -131,12 +131,12 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 	return height
 }
 
-func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64, int) {
-	deposits := make([]common.Hash, 0)
-	rollups := make([]obscurocommon.L2RootHash, 0)
+func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s *Simulation) ([]gethcommon.Hash, []common.L2RootHash, uint64, int) {
+	deposits := make([]gethcommon.Hash, 0)
+	rollups := make([]common.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
+	blockchain := node.BlocksBetween(common.GenesisBlock, head)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
 			t := s.Params.ERC20ContractLib.DecodeTx(tx)
@@ -148,10 +148,10 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 				continue
 			}
 			switch l1tx := t.(type) {
-			case *obscurocommon.L1DepositTx:
+			case *common.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
 				totalDeposited += l1tx.Amount
-			case *obscurocommon.L1RollupTx:
+			case *common.L1RollupTx:
 				r := nodecommon.DecodeRollupOrPanic(l1tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
@@ -179,12 +179,12 @@ func checkBlockchainOfObscuroNode(
 	nodeIdx int,
 ) {
 	defer wg.Done()
-	var nodeID common.Address
+	var nodeID gethcommon.Address
 	err := nodeClient.Call(&nodeID, obscuroclient.RPCGetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
-	nodeAddr := obscurocommon.ShortAddress(nodeID)
+	nodeAddr := common.ShortAddress(nodeID)
 	l1Height := getCurrentBlockHeadHeight(nodeClient)
 
 	// check that the L1 view is consistent with the L1 network.
@@ -254,7 +254,7 @@ func checkBlockchainOfObscuroNode(
 
 	injectorDepositedAmt := uint64(0)
 	for _, tx := range s.TxInjector.Counter.GetL1Transactions() {
-		if depTx, ok := tx.(*obscurocommon.L1DepositTx); ok {
+		if depTx, ok := tx.(*common.L1DepositTx); ok {
 			injectorDepositedAmt += depTx.Amount
 		}
 	}
@@ -296,7 +296,7 @@ func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr 
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	for r := head; ; r = getRollupHeader(nodeClient, r.ParentHash) {
-		if r != nil && r.Number.Uint64() == obscurocommon.L1GenesisHeight {
+		if r != nil && r.Number.Uint64() == common.L1GenesisHeight {
 			return
 		}
 		if r == nil {

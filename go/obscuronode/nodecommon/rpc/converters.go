@@ -3,9 +3,9 @@ package rpc
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon/rpc/generated"
 )
@@ -13,15 +13,15 @@ import (
 // Functions to convert classes that need to be sent between the host and the enclave to and from their equivalent
 // Protobuf message classes.
 
-func ToAttestationReportMsg(report *obscurocommon.AttestationReport) generated.AttestationReportMsg {
+func ToAttestationReportMsg(report *common.AttestationReport) generated.AttestationReportMsg {
 	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, Owner: report.Owner.Bytes(), HostAddress: report.HostAddress}
 }
 
-func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *obscurocommon.AttestationReport {
-	return &obscurocommon.AttestationReport{
+func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.AttestationReport {
+	return &common.AttestationReport{
 		Report:      msg.Report,
 		PubKey:      msg.PubKey,
-		Owner:       common.BytesToAddress(msg.Owner),
+		Owner:       gethcommon.BytesToAddress(msg.Owner),
 		HostAddress: msg.HostAddress,
 	}
 }
@@ -105,22 +105,22 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *nodecommon.Header {
 	}
 	withdrawals := make([]nodecommon.Withdrawal, 0)
 	for _, withdrawalMsg := range header.Withdrawals {
-		recipient := common.BytesToAddress(withdrawalMsg.Recipient)
-		contract := common.BytesToAddress(withdrawalMsg.Contract)
+		recipient := gethcommon.BytesToAddress(withdrawalMsg.Recipient)
+		contract := gethcommon.BytesToAddress(withdrawalMsg.Contract)
 		withdrawal := nodecommon.Withdrawal{Amount: withdrawalMsg.Amount, Recipient: recipient, Contract: contract}
 		withdrawals = append(withdrawals, withdrawal)
 	}
 
 	return &nodecommon.Header{
-		ParentHash:  common.BytesToHash(header.ParentHash),
-		Agg:         common.BytesToAddress(header.Node),
+		ParentHash:  gethcommon.BytesToHash(header.ParentHash),
+		Agg:         gethcommon.BytesToAddress(header.Node),
 		Nonce:       header.Nonce,
-		L1Proof:     common.BytesToHash(header.Proof),
-		Root:        common.BytesToHash(header.Root),
+		L1Proof:     gethcommon.BytesToHash(header.Proof),
+		Root:        gethcommon.BytesToHash(header.Root),
 		Number:      big.NewInt(int64(header.Number)),
-		TxHash:      common.BytesToHash(header.TxHash),
+		TxHash:      gethcommon.BytesToHash(header.TxHash),
 		Withdrawals: withdrawals,
-		ReceiptHash: common.BytesToHash(header.ReceiptHash),
+		ReceiptHash: gethcommon.BytesToHash(header.ReceiptHash),
 		Bloom:       types.BytesToBloom(header.Bloom),
 		Extra:       header.Extra,
 	}
@@ -131,12 +131,12 @@ func FromBlockHeaderMsg(msg *generated.BlockHeaderMsg) *types.Header {
 		return nil
 	}
 	return &types.Header{
-		ParentHash:  common.BytesToHash(msg.ParentHash),
-		UncleHash:   common.BytesToHash(msg.UncleHash),
-		Coinbase:    common.BytesToAddress(msg.Coinbase),
-		Root:        common.BytesToHash(msg.Root),
-		TxHash:      common.BytesToHash(msg.TxHash),
-		ReceiptHash: common.BytesToHash(msg.ReceiptHash),
+		ParentHash:  gethcommon.BytesToHash(msg.ParentHash),
+		UncleHash:   gethcommon.BytesToHash(msg.UncleHash),
+		Coinbase:    gethcommon.BytesToAddress(msg.Coinbase),
+		Root:        gethcommon.BytesToHash(msg.Root),
+		TxHash:      gethcommon.BytesToHash(msg.TxHash),
+		ReceiptHash: gethcommon.BytesToHash(msg.ReceiptHash),
 		Bloom:       types.BytesToBloom(msg.Bloom),
 		Difficulty:  big.NewInt(int64(msg.Difficulty)),
 		Number:      big.NewInt(int64(msg.Number)),
@@ -144,7 +144,7 @@ func FromBlockHeaderMsg(msg *generated.BlockHeaderMsg) *types.Header {
 		GasUsed:     msg.GasUsed,
 		Time:        msg.Time,
 		Extra:       msg.Extra,
-		MixDigest:   common.BytesToHash(msg.MixDigest),
+		MixDigest:   gethcommon.BytesToHash(msg.MixDigest),
 		Nonce:       types.EncodeNonce(msg.Nonce),
 		BaseFee:     big.NewInt(int64(msg.BaseFee)),
 	}

@@ -11,8 +11,8 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
 	"github.com/obscuronet/obscuro-playground/integration"
 	simp2p "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
@@ -23,7 +23,7 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/p2p"
 	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
@@ -44,7 +44,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
-	miner := ethereum_mock.NewMiner(common.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
+	miner := ethereum_mock.NewMiner(gethcommon.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
 	mockEthNetwork.CurrentNode = miner
 	return miner
 }
@@ -68,7 +68,7 @@ func createInMemObscuroNode(
 	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	hostConfig := config.HostConfig{
-		ID:                  common.BigToAddress(big.NewInt(id)),
+		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
 		GossipRoundDuration: avgGossipPeriod,
 		HasClientRPCHTTP:    false,
@@ -117,7 +117,7 @@ func createSocketObscuroNode(
 	ethClient ethclient.EthClient,
 ) *host.Node {
 	hostConfig := config.HostConfig{
-		ID:                     common.BigToAddress(big.NewInt(id)),
+		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,
 		GossipRoundDuration:    avgGossipPeriod,
 		HasClientRPCHTTP:       true,
@@ -161,7 +161,7 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum
 			// while everyone else will have higher values.
 			// Over a large number of rounds, the actual average block duration will be around the desired value, while the number of miners who get very close numbers will be limited.
 			span := math.Max(2, float64(nrNodes)) // We handle the special cases of zero or one nodes.
-			return obscurocommon.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
+			return common.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
 		},
 	}
 }

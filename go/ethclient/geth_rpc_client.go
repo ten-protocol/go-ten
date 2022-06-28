@@ -11,17 +11,17 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
-	client *ethclient.Client // the underlying eth rpc client
-	id     common.Address    // TODO remove the id common.Address
+	client *ethclient.Client  // the underlying eth rpc client
+	id     gethcommon.Address // TODO remove the id common.Address
 }
 
 // NewEthClient instantiates a new ethclient.EthClient that connects to an ethereum node
@@ -57,7 +57,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	var blocksBetween []*types.Block
 	var err error
 
-	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash().Bytes(), common.HexToHash("").Bytes()); {
+	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash().Bytes(), gethcommon.HexToHash("").Bytes()); {
 		currentBlk, err = e.BlockByHash(currentBlk.ParentHash())
 		if err != nil {
 			log.Panic("could not fetch parent block with hash %s. Cause: %s", currentBlk.ParentHash().String(), err)
@@ -68,12 +68,12 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	return blocksBetween
 }
 
-func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
-	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) || bytes.Equal(maybeAncestor.Bytes(), obscurocommon.GenesisBlock.Hash().Bytes()) {
+func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool {
+	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) || bytes.Equal(maybeAncestor.Bytes(), common.GenesisBlock.Hash().Bytes()) {
 		return true
 	}
 
-	if block.Number().Int64() == int64(obscurocommon.L1GenesisHeight) {
+	if block.Number().Int64() == int64(common.L1GenesisHeight) {
 		return false
 	}
 
@@ -134,11 +134,11 @@ func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
 	return e.client.SendTransaction(context.Background(), signedTx)
 }
 
-func (e *gethRPCClient) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+func (e *gethRPCClient) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
 	return e.client.TransactionReceipt(context.Background(), hash)
 }
 
-func (e *gethRPCClient) Nonce(account common.Address) (uint64, error) {
+func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 	return e.client.PendingNonceAt(context.Background(), account)
 }
 
@@ -157,7 +157,7 @@ func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
 	return e.client.BlockByNumber(context.Background(), n)
 }
 
-func (e *gethRPCClient) BlockByHash(hash common.Hash) (*types.Block, error) {
+func (e *gethRPCClient) BlockByHash(hash gethcommon.Hash) (*types.Block, error) {
 	return e.client.BlockByHash(context.Background(), hash)
 }
 

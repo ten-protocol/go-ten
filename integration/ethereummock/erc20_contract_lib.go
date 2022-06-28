@@ -2,17 +2,17 @@ package ethereummock
 
 import (
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
 type contractLib struct{}
 
-func (c *contractLib) CreateDepositTx(tx *obscurocommon.L1DepositTx, nonce uint64) types.TxData {
+func (c *contractLib) CreateDepositTx(tx *common.L1DepositTx, nonce uint64) types.TxData {
 	return encodeTx(tx, nonce, depositTxAddr)
 }
 
-func (c *contractLib) DecodeTx(tx *types.Transaction) obscurocommon.L1Transaction {
+func (c *contractLib) DecodeTx(tx *types.Transaction) common.L1Transaction {
 	return decodeTx(tx)
 }
 
