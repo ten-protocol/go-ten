@@ -44,7 +44,7 @@ const (
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
 	// counters
-	counter *txInjectorCounter
+	Counter *txInjectorCounter
 	stats   *stats2.Stats
 
 	// settings
@@ -101,7 +101,7 @@ func NewTransactionInjector(
 		mgmtContractLib:  mgmtContractLib,
 		erc20ContractLib: erc20ContractLib,
 		wallets:          wallets,
-		counter:          newCounter(),
+		Counter:          newCounter(),
 		enclavePublicKey: enclavePublicKeyEcies,
 	}
 }
@@ -136,7 +136,7 @@ func (ti *TransactionInjector) Start() {
 		}
 
 		ti.stats.Deposit(initialBalance)
-		go ti.counter.trackL1Tx(txData)
+		go ti.Counter.trackL1Tx(txData)
 	}
 
 	// start transactions issuance
@@ -230,7 +230,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			continue
 		}
 
-		go ti.counter.trackTransferL2Tx(signedTx)
+		go ti.Counter.trackTransferL2Tx(signedTx)
 	}
 }
 
@@ -262,7 +262,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		}
 
 		ti.stats.Deposit(v)
-		go ti.counter.trackL1Tx(txData)
+		go ti.Counter.trackL1Tx(txData)
 	}
 }
 
@@ -294,7 +294,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		}
 
 		ti.stats.Withdrawal(v)
-		go ti.counter.trackWithdrawalL2Tx(signedTx)
+		go ti.Counter.trackWithdrawalL2Tx(signedTx)
 	}
 }
 

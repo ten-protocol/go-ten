@@ -92,3 +92,11 @@ func (w *SimWallets) AllEthAddresses() []*common.Address {
 	addresses = append(addresses, w.Tokens[evm.ETH].L1ContractAddress)
 	return addresses
 }
+
+func (w *SimWallets) AllObsWallets() []wallet.Wallet {
+	obsWallets := make([]wallet.Wallet, 0)
+	for _, token := range w.Tokens {
+		obsWallets = append(obsWallets, token.L2Owner)
+	}
+	return append(w.SimObsWallets, obsWallets...)
+}
