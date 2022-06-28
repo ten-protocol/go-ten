@@ -3,7 +3,6 @@ package datagenerator
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"math/big"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
 
@@ -18,7 +17,7 @@ func RandomWallet(chainID int64) wallet.Wallet {
 	}
 	walletConfig := config.HostConfig{
 		PrivateKeyString: pk,
-		ChainID:          *big.NewInt(chainID),
+		L1ChainID:        chainID,
 	}
 	return wallet.NewInMemoryWalletFromConfig(walletConfig)
 }

@@ -3,7 +3,6 @@ package hostrunner
 import (
 	"flag"
 	"fmt"
-	"math/big"
 	"os"
 	"time"
 
@@ -32,7 +31,8 @@ type HostConfigToml struct {
 	RollupContractAddress   string
 	LogPath                 string
 	PrivateKey              string
-	ChainID                 big.Int
+	L1ChainID               int64
+	ObscuroChainID          int64
 }
 
 // ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
@@ -56,7 +56,8 @@ func ParseConfig() config.HostConfig {
 	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(cfg.L1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
 	rollupContractAddress := flag.String(rollupContractAddrName, cfg.RollupContractAddress.Hex(), rollupContractAddrUsage)
 	logPath := flag.String(logPathName, cfg.LogPath, logPathUsage)
-	chainID := flag.Int64(chainIDName, cfg.ChainID.Int64(), chainIDUsage)
+	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, l1ChainIDUsage)
+	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, obscuroChainIDUsage)
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, privateKeyUsage)
 
 	flag.Parse()
@@ -83,7 +84,8 @@ func ParseConfig() config.HostConfig {
 	cfg.RollupContractAddress = common.HexToAddress(*rollupContractAddress)
 	cfg.PrivateKeyString = *privateKeyStr
 	cfg.LogPath = *logPath
-	cfg.ChainID = *big.NewInt(*chainID)
+	cfg.L1ChainID = *l1ChainID
+	cfg.ObscuroChainID = *obscuroChainID
 
 	return cfg
 }
@@ -120,6 +122,7 @@ func fileBasedConfig(configPath string) config.HostConfig {
 		RollupContractAddress:  common.HexToAddress(tomlConfig.RollupContractAddress),
 		LogPath:                tomlConfig.LogPath,
 		PrivateKeyString:       tomlConfig.PrivateKey,
-		ChainID:                tomlConfig.ChainID,
+		L1ChainID:              tomlConfig.L1ChainID,
+		ObscuroChainID:         tomlConfig.ObscuroChainID,
 	}
 }

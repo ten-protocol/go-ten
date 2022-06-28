@@ -1,7 +1,6 @@
 package config
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -51,7 +50,9 @@ type HostConfig struct {
 	// The stringified private key for the host's L1 wallet
 	PrivateKeyString string
 	// The ID of the L1 chain
-	ChainID big.Int
+	L1ChainID int64
+	// The ID of the Obscuro chain
+	ObscuroChainID int64
 }
 
 // DefaultHostConfig returns a HostConfig with default values.
@@ -75,6 +76,7 @@ func DefaultHostConfig() HostConfig {
 		RollupContractAddress:  common.BytesToAddress([]byte("")),
 		LogPath:                "host_logs.txt",
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
-		ChainID:                *big.NewInt(1337),
+		L1ChainID:              1337,
+		ObscuroChainID:         777,
 	}
 }

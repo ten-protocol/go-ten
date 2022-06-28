@@ -58,7 +58,7 @@ func NewInMemoryWalletFromConfig(config config.HostConfig) Wallet {
 	if err != nil {
 		log.Panic("could not recover private key from hex. Cause: %s", err)
 	}
-	return NewInMemoryWalletFromPK(&config.ChainID, privateKey)
+	return NewInMemoryWalletFromPK(big.NewInt(config.L1ChainID), privateKey)
 }
 
 // SignTransaction returns a signed transaction
