@@ -64,7 +64,7 @@ func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(node common.Address, r *nodecommon.Rollup) {
+func (s *Stats) NewRollup(node common.Address, r *nodecommon.EncryptedRollup) {
 	s.statsMu.Lock()
 	s.NoL2Blocks[node]++
 	s.statsMu.Unlock()

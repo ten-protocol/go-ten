@@ -33,7 +33,7 @@ func TestSerialiseRollup(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	r1 := nodecommon.Rollup{}
+	r1 := nodecommon.EncryptedRollup{}
 
 	err = rlp.Decode(read, &r1)
 	if err != nil {

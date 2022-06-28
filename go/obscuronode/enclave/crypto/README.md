@@ -1,0 +1,1 @@
+This package contains logic which implements the cryptographic requirements of Obscuro.

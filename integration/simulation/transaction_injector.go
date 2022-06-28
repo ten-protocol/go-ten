@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -18,7 +20,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
@@ -110,8 +111,8 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
-	ti.deployObscuroERC20(ti.wallets.Tokens[evm.BTC].L2Owner)
-	ti.deployObscuroERC20(ti.wallets.Tokens[evm.ETH].L2Owner)
+	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.BTC].L2Owner)
+	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
 
 	// enough time to process everywhere
 	time.Sleep(ti.avgBlockDuration * 6)
@@ -122,7 +123,7 @@ func (ti *TransactionInjector) Start() {
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        initialBalance,
 			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[evm.BTC].L1ContractAddress,
+			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
@@ -243,7 +244,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		txData := &obscurocommon.L1DepositTx{
 			Amount:        v,
 			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[evm.BTC].L1ContractAddress,
+			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
@@ -361,13 +362,13 @@ func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest com
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64, client obscuroclient.Client) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(evm.BridgeAddress, amount)
+	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
 	t := ti.newTx(transferERC20data, NextNonce(client, from))
 	return t
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(evm.BridgeAddress, amount)
+	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
 	return ti.newTx(transferERC20data, 1)
 }
 
@@ -378,7 +379,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 		Gas:      1_000_000,
 		GasPrice: common.Big0,
 		Data:     data,
-		To:       ti.wallets.Tokens[evm.BTC].L2ContractAddress,
+		To:       ti.wallets.Tokens[bridge.BTC].L2ContractAddress,
 	}
 }
 

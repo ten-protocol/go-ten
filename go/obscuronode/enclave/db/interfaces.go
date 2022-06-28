@@ -60,7 +60,7 @@ type BlockStateStorage interface {
 
 type SharedSecretStorage interface {
 	// FetchSecret returns the enclave's secret, returns nil if not found
-	FetchSecret() core.SharedEnclaveSecret
+	FetchSecret() *core.SharedEnclaveSecret
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret core.SharedEnclaveSecret)
 }
@@ -74,6 +74,8 @@ type TransactionStorage interface {
 
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash common.Hash) (*types.Receipt, error)
+
+	GetSender(txHash common.Hash) (common.Address, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore
