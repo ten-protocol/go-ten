@@ -18,7 +18,7 @@ const (
 	nodeRPCHTTPAddressUsage   = "The address on which to connect to the node via RPC using HTTP"
 
 	nodeRPCWebsocketAddressName    = "nodeRPCWebsocketAddress"
-	nodeRPCWebsocketAddressDefault = "http://127.0.0.1:14000"
+	nodeRPCWebsocketAddressDefault = "127.0.0.1:13001"
 	nodeRPCWebsocketAddressUsage   = "The address on which to connect to the node via RPC using websockets"
 )
 
