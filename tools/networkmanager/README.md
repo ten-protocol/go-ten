@@ -18,6 +18,8 @@ All commands are executed by running `networkmanager/main/main()`.
 
   `--l1NodeHost=<x> --l1NodePort=<x> --privateKey=<x> --chainID=<x> deployERC20Contract`
 
-* Arguments to inject transactions (runs until user interrupt):
+* Arguments to inject transactions:
 
-  `--l1NodeHost=<x> --l1NodePort=<x> --managementContractAddress=<x> --erc20ContractAddress=<x> --obscuroClientAddress=<x> injectTransactions`
+  `--l1NodeHost=<x> --l1NodePort=<x> --managementContractAddress=<x> --erc20ContractAddress=<x> --obscuroClientAddress=<x> injectTransactions <num of transactions, or 0 for unlimited>`
+
+  
