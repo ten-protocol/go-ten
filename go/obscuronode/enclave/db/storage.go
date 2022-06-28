@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	obscurorawdb "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db/rawdb"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -11,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/obscuro-playground/go/log"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	obscurorawdb "github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rawdb"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/common"
