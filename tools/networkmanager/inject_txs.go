@@ -56,9 +56,16 @@ func InjectTransactions(cfg Config, args []string) {
 
 	println("Injecting transactions into network...")
 	txInjector.Start()
-	println("Stopped injecting transactions into network")
 
-	checkInjectionSuccessful(txInjector, l1Client, startBlock, simStats, erc20ContractLib, mgmtContractLib)
+	println(fmt.Sprintf("Stopped injecting transactions into network.\n"+
+		"Injected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
+		len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
+	))
+
+	checkDepositsSuccessful(l1Client, simStats, erc20ContractLib, mgmtContractLib, startBlock)
+	checkL2TxsSuccessful(l2Client, txInjector)
+
+	os.Exit(0)
 }
 
 func createWallets(nmConfig Config, l1Client ethadapter.EthClient, l2Client rpcclientlib.Client) *params.SimWallets {
@@ -112,30 +119,7 @@ func parseNumOfTxs(args []string) int {
 	return numOfTxs
 }
 
-func checkInjectionSuccessful(
-	txInjector *simulation.TransactionInjector,
-	l1Client ethadapter.EthClient,
-	startBlock *types.Block,
-	stats *stats.Stats,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-) {
-	injectedL1Txs := txInjector.Counter.L1Transactions
-	injectedL2TransferTxs := txInjector.Counter.TransferL2Transactions
-	injectedL2WithdrawalTxs := txInjector.Counter.WithdrawalL2Transactions
-
-	checkDeposits(l1Client, stats, erc20ContractLib, mgmtContractLib, startBlock)
-
-	// TODO - Check L2 transactions.
-
-	println(fmt.Sprintf(
-		"Injected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
-		len(injectedL1Txs), len(injectedL2TransferTxs), len(injectedL2WithdrawalTxs),
-	))
-	os.Exit(0)
-}
-
-func checkDeposits(l1Client ethadapter.EthClient, stats *stats.Stats, erc20ContractLib erc20contractlib.ERC20ContractLib, mgmtContractLib mgmtcontractlib.MgmtContractLib, startBlock *types.Block) {
+func checkDepositsSuccessful(l1Client ethadapter.EthClient, stats *stats.Stats, erc20ContractLib erc20contractlib.ERC20ContractLib, mgmtContractLib mgmtcontractlib.MgmtContractLib, startBlock *types.Block) {
 	currentBlock := l1Client.FetchHeadBlock()
 	dummySim := simulation.Simulation{
 		Stats: stats,
@@ -146,11 +130,25 @@ func checkDeposits(l1Client ethadapter.EthClient, stats *stats.Stats, erc20Contr
 	}
 	_, _, totalDeposited, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &dummySim) // nolint:dogsled
 
+	// todo - joel - simpler to do a straight count here
 	if totalDeposited != stats.TotalDepositedAmount {
 		println(fmt.Sprintf("Mismatch between deposit transactions injected and deposit transactions found on L1.\n"+
 			"Expected deposits of %d, found deposits of %d.", stats.TotalDepositedAmount, totalDeposited))
-		os.Exit(1)
 	}
 
 	println("Deposit transactions injected successfully found on L1.")
+}
+
+func checkL2TxsSuccessful(l2Client rpcclientlib.Client, txInjector *simulation.TransactionInjector) {
+	notFoundTransfers, notFoundWithdrawals := simulation.FindNotIncludedL2Txs(l2Client, txInjector)
+
+	if notFoundTransfers != 0 {
+		println(fmt.Sprintf("Injected %d transfers but %d were missing on the L2.",
+			len(txInjector.Counter.TransferL2Transactions), notFoundTransfers))
+	}
+
+	if notFoundTransfers != 0 {
+		println(fmt.Sprintf("Injected %d withdrawals but %d were missing on the L2.",
+			len(txInjector.Counter.WithdrawalL2Transactions), notFoundWithdrawals))
+	}
 }
