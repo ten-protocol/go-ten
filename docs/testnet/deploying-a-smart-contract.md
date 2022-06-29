@@ -8,7 +8,7 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 ## Prepare Your MetaMask Wallet for Obscuro Testnet
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
 
-Follow the steps to [prepare your MetaMask wallet for Obscuro Testnet](https://docs.obscu.ro/testnet/deploying-a-smart-contract.html#prepare-your-metamask-wallet-for-obscuro-testnet) then return to this page.
+Follow the steps to config the MetaMask wallet extension [here](https://docs.obscu.ro/testnet/wallet-extension.html) then return to this page.
 
 Now your wallet is configured to make your encrypted traffic viewable you can go ahead and deploy your smart contract to the Obscuro Testnet.
 
