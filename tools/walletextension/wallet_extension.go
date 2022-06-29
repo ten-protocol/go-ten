@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -26,7 +29,7 @@ const (
 	pathViewingKeys        = "/viewingkeys/"
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
-	staticDir              = "./tools/walletextension/static"
+	staticDir              = "./static"
 
 	reqJSONKeyMethod          = "method"
 	reqJSONKeyParams          = "params"
@@ -52,6 +55,12 @@ const (
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+)
+
+var (
+	// prevents issues when calling from different packages/directories
+	_, b, _, _ = runtime.Caller(0)
+	basepath   = filepath.Dir(b)
 )
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
@@ -88,7 +97,7 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux.HandleFunc(pathRoot, we.handleHTTPEthJSON)
 	serveMux.HandleFunc(PathReady, we.handleReady)
 	// Handles the management of viewing keys.
-	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(staticDir))))
+	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(path.Join(basepath, staticDir)))))
 	serveMux.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
 	serveMux.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
 	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
