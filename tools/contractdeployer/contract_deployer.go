@@ -3,7 +3,6 @@ package contractdeployer
 import (
 	"errors"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 	"math/big"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
