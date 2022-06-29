@@ -104,14 +104,6 @@ func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *common.
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransaction, err))
 	}
-
-	// We check that there is a valid receipt for each transaction, as a sanity-check.
-	txReceiptJSONMap := getTransactionReceipt(client, txHash)
-	// Per Geth's rules, a receipt is valid if: status == 1 OR root.len == 32.
-	if len(txReceiptJSONMap[jsonKeyRoot].(string)) == 0 && txReceiptJSONMap[jsonKeyStatus] == receiptStatusFailure {
-		panic(fmt.Errorf("simulation failed because transaction receipt was not created for transaction %s", txHash.Hex()))
-	}
-
 	return l2Tx
 }
 

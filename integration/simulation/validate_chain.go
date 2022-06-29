@@ -235,6 +235,8 @@ func checkBlockchainOfObscuroNode(
 			nodeAddr, notFoundWithdrawals, len(s.TxInjector.Counter.WithdrawalL2Transactions))
 	}
 
+	checkTransactionReceipts(nodeClient, s.TxInjector)
+
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
 	// sanity check number of withdrawal transaction
@@ -295,6 +297,20 @@ func FindNotIncludedL2Txs(l2Client rpcclientlib.Client, txInjector *TransactionI
 	}
 
 	return notFoundTransfers, notFoundWithdrawals
+}
+
+// Checks that there is a receipt available for each L2 transaction.
+func checkTransactionReceipts(l2Client rpcclientlib.Client, txInjector *TransactionInjector) {
+	l2Txs := append(txInjector.Counter.TransferL2Transactions, txInjector.Counter.WithdrawalL2Transactions...)
+
+	for _, tx := range l2Txs {
+		// We check that there is a valid receipt for each transaction, as a sanity-check.
+		txReceiptJSONMap := getTransactionReceipt(l2Client, tx.Hash())
+		// Per Geth's rules, a receipt is valid if: status == 1 OR root.len == 32.
+		if len(txReceiptJSONMap[jsonKeyRoot].(string)) == 0 && txReceiptJSONMap[jsonKeyStatus] == receiptStatusFailure {
+			panic(fmt.Errorf("simulation failed because transaction receipt was not created for transaction %s", tx.Hash().Hex()))
+		}
+	}
 }
 
 func extractWithdrawals(t *testing.T, nodeClient rpcclientlib.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
