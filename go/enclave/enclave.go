@@ -58,11 +58,15 @@ type enclaveImpl struct {
 	// speculativeWorkInCh  chan bool
 	// speculativeWorkOutCh chan speculativeWork
 
-	mgmtContractLib       mgmtcontractlib.MgmtContractLib
-	erc20ContractLib      erc20contractlib.ERC20ContractLib
-	attestationProvider   AttestationProvider // interface for producing attestation reports and verifying them
-	publicKeySerialized   []byte
-	privateKey            *ecdsa.PrivateKey
+	mgmtContractLib     mgmtcontractlib.MgmtContractLib
+	erc20ContractLib    erc20contractlib.ERC20ContractLib
+	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
+
+	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
+	enclavePubKey []byte            // the public key of the above
+
+	obscuroNetworkKey *ecdsa.PrivateKey // this is a key known by all the enclaves. Used by users for encrypting transactions.
+
 	transactionBlobCrypto obscurocrypto.TransactionBlobCrypto
 }
 
@@ -115,9 +119,16 @@ func NewEnclave(
 	// todo - this has to be read from the database when the node restarts.
 	// first time the node starts we derive the obscuro key from the master seed received after the shared secret exchange
 	common.LogWithID(nodeShortID, "Generating the Obscuro key")
+
+	// todo - save this to the db
+	enclaveKey, err := crypto.GenerateKey()
+	if err != nil {
+		log.Panic("Failed to generate enclave key. Cause: %s", err)
+	}
+	serializedEnclavePubKey := crypto.CompressPubkey(&enclaveKey.PublicKey)
+	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey))
+
 	obscuroKey := obscurocrypto.GetObscuroKey()
-	serializedPubKey := crypto.CompressPubkey(&obscuroKey.PublicKey)
-	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedPubKey))
 	rpcem := rpcencryptionmanager.NewRPCEncryptionManager(config.ViewingKeysEnabled, ecies.ImportECDSA(obscuroKey))
 
 	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
@@ -134,7 +145,7 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, config.ObscuroChainID, config.L1ChainID)
+	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, enclaveKey, config.ObscuroChainID, config.L1ChainID)
 
 	return &enclaveImpl{
 		config:                config,
@@ -153,8 +164,9 @@ func NewEnclave(
 		mgmtContractLib:       mgmtContractLib,
 		erc20ContractLib:      erc20ContractLib,
 		attestationProvider:   attestationProvider,
-		privateKey:            obscuroKey,
-		publicKeySerialized:   serializedPubKey,
+		enclaveKey:            enclaveKey,
+		enclavePubKey:         serializedEnclavePubKey,
+		obscuroNetworkKey:     obscuroKey,
 		transactionBlobCrypto: transactionBlobCrypto,
 	}
 }
@@ -320,10 +332,10 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 }
 
 func (e *enclaveImpl) Attestation() *common.AttestationReport {
-	if e.publicKeySerialized == nil {
+	if e.enclavePubKey == nil {
 		panic("public key not initialized, we can't produce the attestation report")
 	}
-	report, err := e.attestationProvider.GetReport(e.publicKeySerialized, e.config.HostID, e.config.HostAddress)
+	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
 		panic("Failed to produce remote report.")
 	}
@@ -334,7 +346,7 @@ func (e *enclaveImpl) Attestation() *common.AttestationReport {
 func (e *enclaveImpl) GenerateSecret() common.EncryptedSharedEnclaveSecret {
 	secret := obscurocrypto.GenerateEntropy()
 	e.storage.StoreSecret(secret)
-	encSec, err := obscurocrypto.EncryptSecret(e.publicKeySerialized, secret, e.nodeShortID)
+	encSec, err := obscurocrypto.EncryptSecret(e.enclavePubKey, secret, e.nodeShortID)
 	if err != nil {
 		log.Panic("failed to encrypt secret. Cause: %s", err)
 	}
@@ -343,7 +355,7 @@ func (e *enclaveImpl) GenerateSecret() common.EncryptedSharedEnclaveSecret {
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
 func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
-	secret, err := obscurocrypto.DecryptSecret(s, e.privateKey)
+	secret, err := obscurocrypto.DecryptSecret(s, e.enclaveKey)
 	if err != nil {
 		return err
 	}
@@ -373,7 +385,7 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
-	viewingKeyBytes, err := ecies.ImportECDSA(e.privateKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
+	viewingKeyBytes, err := ecies.ImportECDSA(e.enclaveKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
 	if err != nil {
 		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
 	}

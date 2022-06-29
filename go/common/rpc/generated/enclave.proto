@@ -243,7 +243,9 @@ message HeaderMsg {
   bytes Bloom = 8;
   bytes ReceiptHash = 9;
   bytes Extra = 10;
-  repeated WithdrawalMsg Withdrawals = 11;
+  bytes R = 11;
+  bytes S = 12;
+  repeated WithdrawalMsg Withdrawals = 13;
 }
 
 message WithdrawalMsg {

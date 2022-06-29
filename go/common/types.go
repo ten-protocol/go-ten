@@ -54,10 +54,11 @@ type Header struct {
 	Root        StateRoot
 	TxHash      gethcommon.Hash // todo - include the synthetic deposits
 	Number      *big.Int        // the rollup height
-	Withdrawals []Withdrawal
 	Bloom       types.Bloom
 	ReceiptHash gethcommon.Hash
 	Extra       []byte
+	R, S        *big.Int // signature values
+	Withdrawals []Withdrawal
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header
