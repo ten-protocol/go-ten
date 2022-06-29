@@ -12,7 +12,7 @@ RUN mkdir /home/obscuro/go-obscuro
 
 # build the enclave from the current branch
 COPY . /home/obscuro/go-obscuro
-WORKDIR /home/obscuro/go-obscuro/go/obscuronode/enclave/main
+WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN apk add build-base
 ENV CGO_ENABLED=1
 # Download all the dependencies

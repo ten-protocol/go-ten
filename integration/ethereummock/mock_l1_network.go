@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
+	"github.com/obscuronet/obscuro-playground/go/host"
 )
 
 // MockEthNetwork - models a full network including artificial random latencies
@@ -37,12 +38,12 @@ func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration,
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
-func (n *MockEthNetwork) BroadcastBlock(b obscurocommon.EncodedBlock, p obscurocommon.EncodedBlock) {
+func (n *MockEthNetwork) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock) {
 	bl, _ := b.Decode()
 	for _, m := range n.AllNodes {
 		if m.ID != n.CurrentNode.ID {
 			t := m
-			obscurocommon.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
+			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
 			log.Info(printBlock(bl, *m))
 		}
@@ -59,14 +60,14 @@ func (n *MockEthNetwork) BroadcastTx(tx *types.Transaction) {
 			// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 			// todo - find a better way to express this
 			d := n.delay() / 2
-			obscurocommon.Schedule(d, func() { t.P2PGossipTx(tx) })
+			common.Schedule(d, func() { t.P2PGossipTx(tx) })
 		}
 	}
 }
 
 // delay returns an expected delay on the l1 network
 func (n *MockEthNetwork) delay() time.Duration {
-	return obscurocommon.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
+	return common.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
 }
 
 func printBlock(b *types.Block, m Node) string {
@@ -83,14 +84,14 @@ func printBlock(b *types.Block, m Node) string {
 		}
 
 		switch l1Tx := t.(type) {
-		case *obscurocommon.L1RollupTx:
-			r := nodecommon.DecodeRollupOrPanic(l1Tx.Rollup)
-			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", obscurocommon.ShortHash(r.Hash()), tx.Nonce()))
+		case *ethadapter.L1RollupTx:
+			r := common.DecodeRollupOrPanic(l1Tx.Rollup)
+			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
 
-		case *obscurocommon.L1DepositTx:
+		case *ethadapter.L1DepositTx:
 			var to uint64
 			if l1Tx.To != nil {
-				to = obscurocommon.ShortAddress(*l1Tx.To)
+				to = common.ShortAddress(*l1Tx.To)
 			}
 			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", to, l1Tx.Amount))
 		}
@@ -101,5 +102,5 @@ func printBlock(b *types.Block, m Node) string {
 	}
 
 	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[parent=b_%d]. Txs: %v",
-		obscurocommon.ShortAddress(m.ID), obscurocommon.ShortHash(b.Hash()), b.NumberU64(), obscurocommon.ShortNonce(b.Header().Nonce), obscurocommon.ShortHash(p.Hash()), txs)
+		common.ShortAddress(m.ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortNonce(b.Header().Nonce), common.ShortHash(p.Hash()), txs)
 }

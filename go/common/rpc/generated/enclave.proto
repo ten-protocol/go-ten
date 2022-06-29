@@ -1,0 +1,272 @@
+syntax = "proto3";
+
+option go_package = "enclave/rpc/generated";
+
+package generated;
+
+service EnclaveProto {
+  // IsReady is used to check whether the server is ready for requests.
+  rpc IsReady(IsReadyRequest) returns (IsReadyResponse) {}
+
+  // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
+  rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
+
+  // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
+  rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
+
+  // ShareSecret - return the shared secret encrypted with the key from the attestation
+  rpc ShareSecret(FetchSecretRequest) returns (ShareSecretResponse) {}
+
+  // Init - initialise an enclave with a seed received by another enclave
+  rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
+
+  // IsInitialised - true if the shared secret is available
+  rpc IsInitialised(IsInitialisedRequest) returns (IsInitialisedResponse) {}
+
+  // ProduceGenesis - the genesis enclave produces the genesis rollup
+  rpc ProduceGenesis(ProduceGenesisRequest) returns (ProduceGenesisResponse) {}
+
+  // IngestBlocks - feed L1 blocks into the enclave to catch up
+  rpc IngestBlocks(IngestBlocksRequest) returns (IngestBlocksResponse) {}
+
+  // Start - start speculative execution
+  rpc Start(StartRequest) returns (StartResponse) {}
+
+  // SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
+  // it is the responsibility of the host to gossip the returned rollup
+  // For good functioning the caller should always submit blocks ordered by height
+  // submitting a block before receiving a parent of it, will result in it being ignored
+  rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse) {}
+
+  // SubmitRollup - receive gossiped rollups
+  rpc SubmitRollup(SubmitRollupRequest) returns (SubmitRollupResponse) {}
+
+  // SubmitTx - user transactions
+  rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
+
+  // ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
+  // viewing key corresponding to the `from` field
+  rpc ExecuteOffChainTransaction(OffChainRequest) returns (OffChainResponse) {}
+
+  // Nonce - returns the nonce of the wallet with the given address.
+  rpc Nonce(NonceRequest) returns (NonceResponse) {}
+
+  // RoundWinner - calculates and returns the winner for a round
+  rpc RoundWinner(RoundWinnerRequest) returns (RoundWinnerResponse) {}
+
+  // Stop gracefully stops the enclave
+  rpc Stop(StopRequest) returns (StopResponse) {}
+
+  // GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
+  rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse) {}
+
+  // GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
+  // corresponding to the original transaction submitter
+  rpc GetTransactionReceipt(GetTransactionReceiptRequest) returns (GetTransactionReceiptResponse) {}
+
+  // GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
+  rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
+
+  // AddViewingKey adds a viewing key to the enclave
+  rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
+
+  // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
+  // the address
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {}
+}
+
+message IsReadyRequest {}
+message IsReadyResponse {
+  string error = 1;
+}
+
+message AttestationRequest {}
+message AttestationResponse {
+  AttestationReportMsg attestationReportMsg = 1;
+}
+
+message GenerateSecretRequest {}
+message GenerateSecretResponse {
+  bytes encryptedSharedEnclaveSecret = 1;
+}
+
+message FetchSecretRequest {
+  AttestationReportMsg attestationReportMsg = 1;
+}
+message ShareSecretResponse {
+  bytes encryptedSharedEnclaveSecret = 1;
+  string error = 2;
+}
+
+message InitEnclaveRequest {
+  bytes encryptedSharedEnclaveSecret = 1;
+}
+message InitEnclaveResponse {
+  string error = 1;}
+
+message IsInitialisedRequest {}
+message IsInitialisedResponse {
+  bool isInitialised = 1;
+}
+
+message ProduceGenesisRequest {
+  bytes blockHash = 1;
+}
+
+message ProduceGenesisResponse {
+  BlockSubmissionResponseMsg blockSubmissionResponse = 1;
+}
+
+message IngestBlocksRequest {
+  repeated bytes encodedBlocks = 1;
+}
+message IngestBlocksResponse {
+  repeated BlockSubmissionResponseMsg blockSubmissionResponses = 1;
+}
+
+message StartRequest {
+  bytes encodedBlock = 1;
+}
+message StartResponse {}
+
+message SubmitBlockRequest {
+  bytes encodedBlock = 1;
+}
+message SubmitBlockResponse {
+  BlockSubmissionResponseMsg blockSubmissionResponse = 1;
+}
+
+message SubmitRollupRequest {
+  ExtRollupMsg extRollup = 1;
+}
+message SubmitRollupResponse {}
+
+message SubmitTxRequest {
+  bytes encryptedTx = 1;
+}
+message SubmitTxResponse {}
+
+message OffChainRequest {
+  bytes encryptedParams = 1;
+}
+message OffChainResponse {
+  bytes result = 1;
+  string error = 2;
+}
+
+message NonceRequest {
+  bytes address = 1;
+}
+message NonceResponse {
+  uint64 nonce = 1;
+}
+
+message RoundWinnerRequest {
+  bytes parent = 1;
+}
+message RoundWinnerResponse {
+  bool winner = 1;
+  ExtRollupMsg extRollup = 2;
+}
+
+message StopRequest {}
+message StopResponse {}
+
+message GetTransactionRequest {
+  bytes txHash = 1;
+}
+message GetTransactionResponse {
+  bool known = 1;
+  bytes encodedTransaction = 2;
+}
+
+message GetTransactionReceiptRequest {
+  bytes encryptedParams = 1;
+}
+message GetTransactionReceiptResponse {
+  bytes encryptedTxReceipt = 1;
+}
+
+message GetRollupRequest {
+  bytes rollupHash = 1;
+}
+message GetRollupResponse {
+  bool known = 1;
+  ExtRollupMsg extRollup = 2;
+}
+
+message AddViewingKeyRequest {
+  bytes viewingKey = 1;
+  bytes signature = 2;
+}
+message AddViewingKeyResponse {}
+
+message GetBalanceRequest {
+  bytes encryptedParams = 1;
+}
+message GetBalanceResponse {
+  bytes encryptedBalance = 1;
+}
+
+// Nested message types.
+
+message AttestationReportMsg {
+  bytes Report = 1; // The actual report bytes so it can be shared and verified by other nodes
+  bytes PubKey = 2; // Public key to encrypt traffic back to this enclave
+  bytes Owner = 3;
+  string HostAddress = 4; // The IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
+}
+
+message BlockSubmissionResponseMsg {
+  BlockHeaderMsg blockHeader = 1;
+  bool ingestedBlock = 2;
+  string blockNotIngestedCause = 3;
+
+  ExtRollupMsg producedRollup = 4;
+  bool ingestedNewRollup = 5;
+  HeaderMsg rollupHead = 6;
+}
+
+message ExtRollupMsg {
+  HeaderMsg header = 1;
+  bytes txs = 2;
+}
+
+message HeaderMsg {
+  bytes ParentHash = 1;
+  bytes Node = 2;
+  uint64 Nonce = 3;
+  bytes Proof = 4;
+  bytes Root = 5;
+  bytes TxHash = 6;
+  uint64 Number = 7;
+  bytes Bloom = 8;
+  bytes ReceiptHash = 9;
+  bytes Extra = 10;
+  repeated WithdrawalMsg Withdrawals = 11;
+}
+
+message WithdrawalMsg {
+  uint64 amount = 1;
+  bytes recipient = 2;
+  bytes contract = 3;
+}
+
+message BlockHeaderMsg {
+  bytes ParentHash = 1;
+  bytes UncleHash = 2;
+  bytes Coinbase = 3;
+  bytes Root = 4;
+  bytes TxHash = 5;
+  bytes ReceiptHash = 6;
+  bytes Bloom = 7;
+  uint64 Difficulty = 8;
+  uint64 Number = 9;
+  uint64 GasLimit = 10;
+  uint64 GasUsed = 11;
+  uint64 Time = 12;
+  bytes Extra = 13;
+  bytes MixDigest = 14;
+  uint64 Nonce = 15;
+  uint64 BaseFee = 16;
+}

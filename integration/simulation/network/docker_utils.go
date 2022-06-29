@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
+	"github.com/obscuronet/obscuro-playground/go/enclave/enclaverunner"
 )
 
 // Checks the required Docker images exist.

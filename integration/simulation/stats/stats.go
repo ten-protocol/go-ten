@@ -3,11 +3,10 @@ package stats
 import (
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.
@@ -20,9 +19,9 @@ type Stats struct {
 	MaxRollupsPerBlock uint32
 	NrEmptyBlocks      int
 
-	NoL1Reorgs  map[common.Address]int
-	NoL2Recalcs map[common.Address]int
-	NoL2Blocks  map[common.Address]uint64
+	NoL1Reorgs  map[gethcommon.Address]int
+	NoL2Recalcs map[gethcommon.Address]int
+	NoL2Blocks  map[gethcommon.Address]uint64
 	// todo - actual avg block Duration
 
 	TotalDepositedAmount           uint64
@@ -35,20 +34,20 @@ type Stats struct {
 func NewStats(nrMiners int) *Stats {
 	return &Stats{
 		NrMiners:    nrMiners,
-		NoL1Reorgs:  map[common.Address]int{},
-		NoL2Recalcs: map[common.Address]int{},
-		NoL2Blocks:  map[common.Address]uint64{},
+		NoL1Reorgs:  map[gethcommon.Address]int{},
+		NoL2Recalcs: map[gethcommon.Address]int{},
+		NoL2Blocks:  map[gethcommon.Address]uint64{},
 		statsMu:     &sync.RWMutex{},
 	}
 }
 
-func (s *Stats) L1Reorg(id common.Address) {
+func (s *Stats) L1Reorg(id gethcommon.Address) {
 	s.statsMu.Lock()
 	s.NoL1Reorgs[id]++
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) L2Recalc(id common.Address) {
+func (s *Stats) L2Recalc(id gethcommon.Address) {
 	s.statsMu.Lock()
 	s.NoL2Recalcs[id]++
 	s.statsMu.Unlock()
@@ -57,14 +56,14 @@ func (s *Stats) L2Recalc(id common.Address) {
 func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Lock()
 	// s.l1Height = nodecommon.MaxInt(s.l1Height, b.Number)
-	s.MaxRollupsPerBlock = obscurocommon.MaxInt(s.MaxRollupsPerBlock, uint32(len(b.Transactions())))
+	s.MaxRollupsPerBlock = common.MaxInt(s.MaxRollupsPerBlock, uint32(len(b.Transactions())))
 	if len(b.Transactions()) == 0 {
 		s.NrEmptyBlocks++
 	}
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(node common.Address, r *nodecommon.EncryptedRollup) {
+func (s *Stats) NewRollup(node gethcommon.Address, r *common.EncryptedRollup) {
 	s.statsMu.Lock()
 	s.NoL2Blocks[node]++
 	s.statsMu.Unlock()

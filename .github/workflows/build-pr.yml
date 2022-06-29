@@ -25,7 +25,8 @@ jobs:
           sudo docker stop $(sudo docker ps -a -q)
           sudo docker rm $(sudo docker ps -a -q)
           sudo pkill -f geth
-          sudo pkill -f obscuronode
+          sudo pkill -f enclave
+          sudo pkill -f host
           sudo lsof -ti:30000-39999|xargs -r sudo kill -9
           sudo lsof -i -P -n | grep LISTEN
 

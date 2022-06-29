@@ -12,18 +12,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
+	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
+	"github.com/obscuronet/obscuro-playground/go/enclave/rpcencryptionmanager"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 
 	"github.com/obscuronet/obscuro-playground/tools/walletextension"
@@ -523,7 +523,7 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	if err != nil {
 		return obscuroNetwork.TearDown, nil, err
 	}
-	err = l2Clients[0].Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+	err = l2Clients[0].Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
 	if err != nil {
 		return obscuroNetwork.TearDown, nil, err
 	}
