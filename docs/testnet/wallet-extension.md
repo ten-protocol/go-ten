@@ -27,8 +27,8 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 ## Usage
 
-1. Precompiled binaries for the wallet extension are available for macOS ARM64, macOS AMD64 and Windows AMD64 on the 
-   project's [releases page](https://github.com/obscuronet/go-obscuro/releases/)
+1. Precompiled binaries for the wallet extension are available for macOS ARM64, macOS AMD64, Windows AMD64 and Linux
+   AMD64 on the project's [releases page](https://github.com/obscuronet/go-obscuro/releases/)
 
     * For other OSes and architectures, see `Compiling the binary`, below
 
