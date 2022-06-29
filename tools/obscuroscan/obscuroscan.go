@@ -9,6 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave/crypto"
@@ -31,9 +34,15 @@ const (
 	pathHeadBlock     = "/headblock/"
 	pathHeadRollup    = "/headrollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
-	staticDir         = "./tools/obscuroscan/static"
+	staticDir         = "static"
 	pathRoot          = "/"
 	httpCodeErr       = 500
+)
+
+var (
+	// Ensures can find static files when calling from different packages/directories.
+	_, callFile, _, _ = runtime.Caller(0)
+	basepath          = filepath.Dir(callFile)
 )
 
 // Obscuroscan is a server that allows the monitoring of a running Obscuro network.
@@ -59,7 +68,7 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 	// Serves the web interface.
-	serveMux.Handle(pathRoot, http.FileServer(http.Dir(staticDir)))
+	serveMux.Handle(pathRoot, http.FileServer(http.Dir(path.Join(basepath, staticDir))))
 	// Handle requests for block head height.
 	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
 	// Handle requests for the head rollup.
