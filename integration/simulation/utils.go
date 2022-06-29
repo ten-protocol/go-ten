@@ -3,15 +3,14 @@ package simulation
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
-	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 	"math/big"
-	"os"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
+	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 )
@@ -23,8 +22,8 @@ const (
 	receiptStatusFailure = "0x0"
 )
 
-func setupTestLog(simType string) *os.File {
-	return logutil.SetupTestLog(&logutil.TestLogCfg{
+func setupTestLog(simType string) {
+	logutil.SetupTestLog(&logutil.TestLogCfg{
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,
