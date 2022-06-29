@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -35,7 +34,11 @@ const (
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
-	setupTestLog()
+	logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "noderunner",
+		TestSubtype: "test",
+	})
 
 	startPort := integration.StartPortNodeRunnerTest
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, startPort)
@@ -123,12 +126,4 @@ func tcpConnectionAvailable(addr string) bool {
 	_ = conn.Close()
 	// we don't worry about failure while closing, it connected successfully so let test proceed
 	return true
-}
-
-func setupTestLog() *os.File {
-	return logutil.SetupTestLog(&logutil.TestLogCfg{
-		LogDir:      testLogs,
-		TestType:    "noderunner",
-		TestSubtype: "test",
-	})
 }

@@ -22,7 +22,7 @@ const (
 	receiptStatusFailure = "0x0"
 )
 
-func setupTestLog(simType string) {
+func setupSimTestLog(simType string) {
 	logutil.SetupTestLog(&logutil.TestLogCfg{
 		LogDir:      testLogs,
 		TestType:    "sim-log",
