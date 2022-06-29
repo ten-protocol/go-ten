@@ -3,11 +3,12 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 	"net"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
 

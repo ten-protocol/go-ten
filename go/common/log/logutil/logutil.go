@@ -2,9 +2,10 @@ package logutil
 
 import (
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/common/log"
 	"os"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 )
 
 type TestLogCfg struct {
