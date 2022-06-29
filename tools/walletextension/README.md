@@ -29,15 +29,19 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 1. Clone this repository: https://github.com/obscuronet/go-obscuro
 
-2. Build the wallet extension binary by running the following from the root of the repository:
+2. Precompiled binaries for the wallet extension are available for macOS AMD64 and Windows AMD64, under 
+   `tools/walletextension/bin/`. For other OSes and architectures, the required binary can be built by running the 
+   following from the root of the repository:
+
   ```
   cd tools/walletextension/main
   go build -o wallet_extension .
   ```
   This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`
 
-3. Run the `wallet_extension` binary to start the wallet extension:
-  ```./wallet_extension --nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
+3. Start the wallet extension by running the `wallet_extension` binary with the following flags:
+
+  ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
 
   The wallet extension is now listening on `http://127.0.0.1:3000/`
 
@@ -58,3 +62,13 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 # Troubleshooting
 
 Ask for support on the Obscuro Discord channel. You can join using the following link: https://discord.gg/7pkKv2Tyfn.
+
+# Developer notes
+
+The precompiled binaries for macOS AMD64 and Windows AMD64 can be rebuilt by running the following commands from the 
+root of the repository:
+
+```
+env GOOS=darwin GOARCH=amd64 go build -o ../bin/wallet_extension_macos_amd64 .
+env GOOS=windows GOARCH=amd64 go build -o ../bin/wallet_extension_win_amd64 .
+```
