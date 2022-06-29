@@ -8,34 +8,9 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 ## Prepare Your MetaMask Wallet for Obscuro Testnet
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
 
-Encyption is achieved using the public key of the Trusted Execution Environment (a secure area of the computer's CPU and memory) of the Obscuro Testnet node you are connected to. So you can check the details of a transaction on Obscuro Testnet, a viewing key which is unique to you decrypts the information to make it readable.
+Follow the steps to [prepare your MetaMask wallet for Obscuro Testnet](https://docs.obscu.ro/testnet/deploying-a-smart-contract.html#prepare-your-metamask-wallet-for-obscuro-testnet) then return to this page.
 
-The wallet extension should be run locally so that no sensitive data leaves the your machine unencrypted.
-
-1. Open a command line or terminal window on your local machine.
-1. Run `walletextension/main/main()` with the following flags to start the wallet extension:
-
-    ```--nodeRPCHTTPAddress=testnet-http.obscu.ro --nodeRPCWebsocketAddress=testnet-ws.obscu.ro```
-
-    The wallet extension is now listening on `http://localhost:3000/`
-
-1. In MetaMask choose to "Add Network"
-
-    1. Network Name = Obscuro Testnet
-    1. New RPC URL = http://127.0.0.1:3000/
-    1. Chain ID  = 777
-    1. Currency Symbol = OBX
-    1. Block Explorer URl = _leave blank_
-
-    Requests and responses for Obscuro Testnet will now pass through the local wallet extension in an encrypted format.
-
-1. Browse to `http://localhost:3000/viewingkeys/` to generate a new viewing key unique to you. Sign the viewing key when prompted by MetaMask.
-
-    Communications to the Obscuro Testnet will be now be encrypted with the viewing key unique to you, and decrypted automatically.
-
-    Do remember a new viewing key must be created each time the wallet extension is started.
-
-Now your wallet is configured to make your encrypted traffic viewable you can go ahead and cdeploy your smart contract to the Obscuro Testnet.
+Now your wallet is configured to make your encrypted traffic viewable you can go ahead and deploy your smart contract to the Obscuro Testnet.
 
 ## Deploy Your Smart Contract Using an IDE
 1. Open your favourite Solidity-compatible Integrated Development Environment. The steps below will assume you are using [Remix](https://github.com/ethereum/remix-ide).
