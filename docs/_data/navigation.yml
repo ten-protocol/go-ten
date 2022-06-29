@@ -37,34 +37,36 @@ pages:
       #  url: testnet/uninstall.html
   - title: Whitepaper
     children:
-      - title: Abstract
-        url: /obscuro-whitepaper/abstract.html
-      - title: Motivation
-        url: /obscuro-whitepaper/motivation.html
-      - title: Challenges
-        url: /obscuro-whitepaper/challenges.html
-      - title: Technical Background
-        url: /obscuro-whitepaper/technical-background.html
-      - title: High Level Design
-        url: /obscuro-whitepaper/high-level-design.html
-      - title: Consensus
-        url: /obscuro-whitepaper/consensus.html
-      - title: Detailed Design
-        url: /obscuro-whitepaper/detailed-design.html
-      - title: Fees and Rewards
-        url: /obscuro-whitepaper/fees-rewards.html
-      - title: Obscuro-Ethereum Interaction
-        url: /obscuro-whitepaper/obscuro-ethereum-interaction.html
-      - title: Threat Model
-        url: /obscuro-whitepaper/threat-model.html
-      - title: Tokenomics
-        url: /obscuro-whitepaper/tokenomics.html
-      - title: Governance
-        url: /obscuro-whitepaper/governance.html
-      - title: Appendix
-        url: /obscuro-whitepaper/appendix.html
-      - title: All-in-one
-        url: /obscuro-whitepaper/amalgamated.html
+      - title: Obscuro Whitepaper Content
+        url: whitepaper/redirect.html
+      #- title: Abstract
+      #  url: /obscuro-whitepaper/abstract.html
+      #- title: Motivation
+      #  url: /obscuro-whitepaper/motivation.html
+      #- title: Challenges
+      #  url: /obscuro-whitepaper/challenges.html
+      #- title: Technical Background
+      #  url: /obscuro-whitepaper/technical-background.html
+      #- title: High Level Design
+      #  url: /obscuro-whitepaper/high-level-design.html
+      #- title: Consensus
+      #  url: /obscuro-whitepaper/consensus.html
+      #- title: Detailed Design
+      #  url: /obscuro-whitepaper/detailed-design.html
+      #- title: Fees and Rewards
+      #  url: /obscuro-whitepaper/fees-rewards.html
+      #- title: Obscuro-Ethereum Interaction
+      #  url: /obscuro-whitepaper/obscuro-ethereum-interaction.html
+      #- title: Threat Model
+      #  url: /obscuro-whitepaper/threat-model.html
+      #- title: Tokenomics
+      #  url: /obscuro-whitepaper/tokenomics.html
+      #- title: Governance
+      #  url: /obscuro-whitepaper/governance.html
+      #- title: Appendix
+      #  url: /obscuro-whitepaper/appendix.html
+      #- title: All-in-one
+      #  url: /obscuro-whitepaper/amalgamated.html
   - title: Tokenomics
     children:
       - title: Overview
