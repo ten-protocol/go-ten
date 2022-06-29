@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
@@ -22,7 +21,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 )
 
-func InjectTransactions(cfg Config) {
+func InjectTransactions(cfg Config, args []string) {
 	hostConfig := config.HostConfig{
 		L1NodeHost:          cfg.l1NodeHost,
 		L1NodeWebsocketPort: cfg.l1NodeWebsocketPort,
@@ -35,7 +34,7 @@ func InjectTransactions(cfg Config) {
 	l2Client := rpcclientlib.NewClient(cfg.obscuroClientAddress)
 
 	txInjector := simulation.NewTransactionInjector(
-		1*time.Second,
+		time.Second,
 		stats.NewStats(1),
 		[]ethadapter.EthClient{l1Client},
 		createWallets(cfg, l1Client, l2Client),
@@ -43,23 +42,23 @@ func InjectTransactions(cfg Config) {
 		[]rpcclientlib.Client{l2Client},
 		mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress),
 		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
+		parseNumOfTxs(args),
 	)
-
-	// We listen for interrupts, to log statistics before exiting.
-	interruptChan := make(chan os.Signal, 1)
-	signal.Notify(interruptChan, os.Interrupt)
-	go func() {
-		for range interruptChan {
-			println(fmt.Sprintf(
-				"Stopped injecting transactions into network\nInjected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
-				len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
-			))
-			os.Exit(0)
-		}
-	}()
 
 	println("Injecting transactions into network...")
 	txInjector.Start()
+	reportFinishedInjecting(txInjector)
+}
+
+func parseNumOfTxs(args []string) int {
+	if len(args) != 1 {
+		panic(fmt.Errorf("expected one argument to %s command, got %d", injectTxsName, len(args)))
+	}
+	numOfTxs, err := strconv.Atoi(args[0])
+	if err != nil {
+		panic(fmt.Errorf("could not parse number of transactions to inject. Cause: %w", err))
+	}
+	return numOfTxs
 }
 
 func createWallets(nmConfig Config, l1Client ethadapter.EthClient, l2Client rpcclientlib.Client) *params.SimWallets {
@@ -94,4 +93,12 @@ func createWallets(nmConfig Config, l1Client ethadapter.EthClient, l2Client rpcc
 	}
 
 	return wallets
+}
+
+func reportFinishedInjecting(txInjector *simulation.TransactionInjector) {
+	println(fmt.Sprintf(
+		"Stopped injecting transactions into network\nInjected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
+		len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
+	))
+	os.Exit(0)
 }

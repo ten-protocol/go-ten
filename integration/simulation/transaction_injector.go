@@ -32,7 +32,7 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/go/wallet"
-	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	simstats "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
 const (
@@ -46,7 +46,7 @@ const (
 type TransactionInjector struct {
 	// counters
 	Counter *txInjectorCounter
-	stats   *stats2.Stats
+	stats   *simstats.Stats
 
 	// settings
 	avgBlockDuration time.Duration
@@ -68,19 +68,23 @@ type TransactionInjector struct {
 	fullyStoppedChan chan bool
 
 	enclavePublicKey *ecies.PublicKey
+
+	// The number of transactions of each type to issue, or 0 for unlimited transactions
+	txsToIssue int
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of obsWallets
 // todo Add methods that generate deterministic scenarios
 func NewTransactionInjector(
 	avgBlockDuration time.Duration,
-	stats *stats2.Stats,
+	stats *simstats.Stats,
 	l1Nodes []ethadapter.EthClient,
 	wallets *params.SimWallets,
 	mgmtContractAddr *gethcommon.Address,
 	l2NodeClients []rpcclientlib.Client,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	txsToIssue int,
 ) *TransactionInjector {
 	interrupt := int32(0)
 
@@ -97,13 +101,14 @@ func NewTransactionInjector(
 		l1Clients:        l1Nodes,
 		l2Clients:        l2NodeClients,
 		interruptRun:     &interrupt,
-		fullyStoppedChan: make(chan bool),
+		fullyStoppedChan: make(chan bool, 1),
 		mgmtContractAddr: mgmtContractAddr,
 		mgmtContractLib:  mgmtContractLib,
 		erc20ContractLib: erc20ContractLib,
 		wallets:          wallets,
 		Counter:          newCounter(),
 		enclavePublicKey: enclavePublicKeyEcies,
+		txsToIssue:       txsToIssue,
 	}
 }
 
@@ -200,7 +205,7 @@ func (ti *TransactionInjector) Stop() {
 
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomTransfers() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration)) {
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
 		// We avoid transfers to self, unless there is only a single L2 wallet.
@@ -232,12 +237,13 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		}
 
 		go ti.Counter.trackTransferL2Tx(signedTx)
+		common.SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 	}
 }
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration, ti.avgBlockDuration*2)) {
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		v := common.RndBtw(1, 100)
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
@@ -264,12 +270,13 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(v)
 		go ti.Counter.trackL1Tx(txData)
+		common.SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration, ti.avgBlockDuration*2)) {
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		v := common.RndBtw(1, 100)
 		obsWallet := ti.rndObsWallet()
 		// todo - random client
@@ -296,16 +303,18 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 
 		ti.stats.Withdrawal(v)
 		go ti.Counter.trackWithdrawalL2Tx(signedTx)
+		common.SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
 func (ti *TransactionInjector) issueInvalidL2Txs() {
-	for ; atomic.LoadInt32(ti.interruptRun) == 0; time.Sleep(common.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration)) {
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
-		for fromWallet.Address().Hex() == toWallet.Address().Hex() {
+		// We avoid transfers to self, unless there is only a single L2 wallet.
+		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
 		tx := ti.newCustomObscuroWithdrawalTx(common.RndBtw(1, 100))
@@ -319,8 +328,8 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
-			continue
 		}
+		time.Sleep(common.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}
 }
 
@@ -427,4 +436,16 @@ func EncryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) (common.Encry
 	}
 
 	return encryptedTxBytes, nil
+}
+
+// Indicates whether to keep issuing transactions, or halt.
+func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
+	isInterrupted := atomic.LoadInt32(ti.interruptRun) != 0
+
+	// 0 is a special value indicating we should only stop issuing transactions when interrupted.
+	if ti.txsToIssue == 0 {
+		return !isInterrupted
+	}
+
+	return !isInterrupted && txCounter < ti.txsToIssue
 }

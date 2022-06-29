@@ -81,7 +81,8 @@ func defaultNetworkManagerConfig() Config {
 	}
 }
 
-func ParseCLIArgs() Config {
+// ParseCLIArgs returns the config, and any arguments to the command.
+func ParseCLIArgs() (Config, []string) {
 	defaultConfig := defaultNetworkManagerConfig()
 
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
@@ -107,6 +108,7 @@ func ParseCLIArgs() Config {
 	defaultConfig.obscuroClientAddress = *obscuroClientAddress
 
 	command := flag.Arg(0)
+	var args []string
 	switch command {
 	case deployMgmtContractName:
 		defaultConfig.Command = DeployMgmtContract
@@ -114,9 +116,11 @@ func ParseCLIArgs() Config {
 		defaultConfig.Command = DeployERC20Contract
 	case injectTxsName:
 		defaultConfig.Command = InjectTxs
+		numOfTxs := flag.Arg(1)
+		args = append(args, numOfTxs)
 	default:
 		panic(fmt.Sprintf("unrecognised command %s", command))
 	}
 
-	return defaultConfig
+	return defaultConfig, args
 }
