@@ -29,7 +29,7 @@ const (
 	pathViewingKeys        = "/viewingkeys/"
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
-	staticDir              = "./static"
+	staticDir              = "static"
 
 	reqJSONKeyMethod          = "method"
 	reqJSONKeyParams          = "params"

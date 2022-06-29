@@ -34,7 +34,7 @@ const (
 	pathHeadBlock     = "/headblock/"
 	pathHeadRollup    = "/headrollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
-	staticDir         = "./static"
+	staticDir         = "static"
 	pathRoot          = "/"
 	httpCodeErr       = 500
 )
