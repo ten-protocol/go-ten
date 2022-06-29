@@ -56,6 +56,7 @@ func InjectTransactions(cfg Config, args []string) {
 
 	println("Injecting transactions into network...")
 	txInjector.Start()
+	println("Stopped injecting transactions into network")
 
 	checkInjectionSuccessful(txInjector, l1Client, startBlock, simStats, erc20ContractLib, mgmtContractLib)
 }
@@ -128,9 +129,7 @@ func checkInjectionSuccessful(
 	// TODO - Check L2 transactions.
 
 	println(fmt.Sprintf(
-		"Stopped injecting transactions into network\n"+
-			"Injected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.\n"+
-			"",
+		"Injected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
 		len(injectedL1Txs), len(injectedL2TransferTxs), len(injectedL2WithdrawalTxs),
 	))
 	os.Exit(0)
@@ -138,18 +137,20 @@ func checkInjectionSuccessful(
 
 func checkDeposits(l1Client ethadapter.EthClient, stats *stats.Stats, erc20ContractLib erc20contractlib.ERC20ContractLib, mgmtContractLib mgmtcontractlib.MgmtContractLib, startBlock *types.Block) {
 	currentBlock := l1Client.FetchHeadBlock()
-	sim := simulation.Simulation{
+	dummySim := simulation.Simulation{
 		Stats: stats,
 		Params: &params.SimParams{
 			ERC20ContractLib: erc20ContractLib,
 			MgmtContractLib:  mgmtContractLib,
 		},
 	}
-	_, _, totalDeposited, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &sim) // nolint:dogsled
+	_, _, totalDeposited, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &dummySim) // nolint:dogsled
 
 	if totalDeposited != stats.TotalDepositedAmount {
 		println(fmt.Sprintf("Mismatch between deposit transactions injected and deposit transactions found on L1.\n"+
 			"Expected deposits of %d, found deposits of %d.", stats.TotalDepositedAmount, totalDeposited))
 		os.Exit(1)
 	}
+
+	println("Deposit transactions injected successfully found on L1.")
 }
