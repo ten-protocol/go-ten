@@ -7,12 +7,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rollupchain"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
 
@@ -144,9 +144,9 @@ func balance(client obscuroclient.Client, address common.Address, l2ContractAddr
 	convertedData := (hexutil.Bytes)(balanceData)
 
 	params := map[string]interface{}{
-		enclave.CallFieldFrom: address.Hex(),
-		enclave.CallFieldTo:   l2ContractAddress.Hex(),
-		enclave.CallFieldData: convertedData,
+		rollupchain.CallFieldFrom: address.Hex(),
+		rollupchain.CallFieldTo:   l2ContractAddress.Hex(),
+		rollupchain.CallFieldData: convertedData,
 	}
 	jsonParams, err := json.Marshal([]interface{}{params})
 	if err != nil {

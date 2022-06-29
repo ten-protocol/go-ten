@@ -3,7 +3,12 @@ package rpcencryptionmanager
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -41,16 +46,16 @@ func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ec
 }
 
 // DecryptRPCCall decrypts the bytes with the enclave's private key if viewing keys are enabled.
-func (e *RPCEncryptionManager) DecryptRPCCall(encryptedBytes []byte) ([]byte, error) {
-	if !e.viewingKeysEnabled {
+func (rpc *RPCEncryptionManager) DecryptRPCCall(encryptedBytes []byte) ([]byte, error) {
+	if !rpc.viewingKeysEnabled {
 		return encryptedBytes, nil
 	}
-	return e.DecryptWithEnclavePrivateKey(encryptedBytes)
+	return rpc.DecryptWithEnclavePrivateKey(encryptedBytes)
 }
 
 // DecryptWithEnclavePrivateKey the bytes with the enclave's private key.
-func (e *RPCEncryptionManager) DecryptWithEnclavePrivateKey(encryptedBytes []byte) ([]byte, error) {
-	bytes, err := e.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
+func (rpc *RPCEncryptionManager) DecryptWithEnclavePrivateKey(encryptedBytes []byte) ([]byte, error) {
+	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
 	}
@@ -59,7 +64,7 @@ func (e *RPCEncryptionManager) DecryptWithEnclavePrivateKey(encryptedBytes []byt
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.
-func (e *RPCEncryptionManager) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (rpc *RPCEncryptionManager) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	// We recalculate the message signed by MetaMask.
 	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
 
@@ -77,18 +82,18 @@ func (e *RPCEncryptionManager) AddViewingKey(viewingKeyBytes []byte, signature [
 	}
 	eciesPublicKey := ecies.ImportECDSAPublic(viewingKey)
 
-	e.viewingKeys[recoveredAddress] = eciesPublicKey
+	rpc.viewingKeys[recoveredAddress] = eciesPublicKey
 
 	return nil
 }
 
 // EncryptWithViewingKey encrypts the bytes with a viewing key for the address.
-func (e *RPCEncryptionManager) EncryptWithViewingKey(address common.Address, bytes []byte) ([]byte, error) {
-	if !e.viewingKeysEnabled {
+func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address common.Address, bytes []byte) ([]byte, error) {
+	if !rpc.viewingKeysEnabled {
 		return bytes, nil
 	}
 
-	viewingKey := e.viewingKeys[address]
+	viewingKey := rpc.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
 	}
@@ -103,4 +108,44 @@ func (e *RPCEncryptionManager) EncryptWithViewingKey(address common.Address, byt
 	}
 
 	return encryptedBytes, nil
+}
+
+// ExtractTxHash - Returns the transaction hash from a nodecommon.EncryptedParamsGetTxReceipt object.
+func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams nodecommon.EncryptedParamsGetTxReceipt) (common.Hash, error) {
+	paramBytes, err := rpc.DecryptRPCCall(encryptedParams)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+
+	var paramsJSONList []string
+	err = json.Unmarshal(paramBytes, &paramsJSONList)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	txHash := common.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
+	return txHash, err
+}
+
+// Marshalls the transaction receipt to JSON, and encrypts it with a viewing key for the address.
+func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address common.Address, txReceipt *types.Receipt) ([]byte, error) {
+	txReceiptBytes, err := txReceipt.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	return rpc.EncryptWithViewingKey(address, txReceiptBytes)
+}
+
+// DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
+func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx nodecommon.EncryptedTx) (*nodecommon.L2Tx, error) {
+	txBytes, err := rpc.DecryptWithEnclavePrivateKey(encryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
+	}
+
+	transaction := nodecommon.L2Tx{}
+	if err = rlp.DecodeBytes(txBytes, &transaction); err != nil {
+		return nil, fmt.Errorf("could not decrypt encrypted L2 transaction. Cause: %w", err)
+	}
+
+	return &transaction, nil
 }

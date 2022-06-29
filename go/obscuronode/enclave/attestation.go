@@ -1,8 +1,10 @@
 package enclave
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/ethereum/go-ethereum/common"
@@ -74,4 +76,13 @@ func getIDHash(owner common.Address, pubKey []byte, hostAddress string) []byte {
 	idJSON, _ := json.Marshal(idData)
 	hash := sha256.Sum256(idJSON)
 	return hash[:]
+}
+
+func VerifyIdentity(data []byte, att *obscurocommon.AttestationReport) error {
+	expectedIDHash := getIDHash(att.Owner, att.PubKey, att.HostAddress)
+	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
+	if !bytes.Equal(expectedIDHash, data[:len(expectedIDHash)]) {
+		return fmt.Errorf("failed to verify hash for attestation report with owner: %s", att.Owner)
+	}
+	return nil
 }

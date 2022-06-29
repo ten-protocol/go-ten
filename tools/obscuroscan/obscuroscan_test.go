@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/crypto"
+
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
@@ -38,6 +39,6 @@ func TestThrowsIfEncryptedRollupIsInvalid(t *testing.T) {
 
 // Generates an encrypted transaction blob in Base64 encoding.
 func generateEncryptedTxBlob(txs []*nodecommon.L2Tx) []byte {
-	txBlob := core.NewTransactionBlobCryptoImpl().Encrypt(txs)
+	txBlob := crypto.NewTransactionBlobCryptoImpl().Encrypt(txs)
 	return []byte(base64.StdEncoding.EncodeToString(txBlob))
 }

@@ -6,9 +6,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
-// Enclave is the interface for interacting with the node's enclave
+// Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
-	// IsReady checks whether the enclave is ready to process requests
+	// IsReady checks whether the enclave is ready to process requests - only implemented by the RPC layer
 	IsReady() error
 
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
@@ -85,7 +85,7 @@ type Enclave interface {
 	// TODO - Handle multiple viewing keys, and thus multiple return values.
 	GetBalance(encryptedParams EncryptedParamsGetBalance) (EncryptedResponseGetBalance, error)
 
-	// StopClient stops the enclave client if one exists
+	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error
 }
 

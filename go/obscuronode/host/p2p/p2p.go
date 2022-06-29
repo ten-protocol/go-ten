@@ -124,7 +124,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.MsgContents)
 	case Rollup:
-		rollup := nodecommon.Rollup{}
+		rollup := nodecommon.EncryptedRollup{}
 		err = rlp.DecodeBytes(msg.MsgContents, &rollup)
 
 		// We only post the rollup if it decodes correctly.

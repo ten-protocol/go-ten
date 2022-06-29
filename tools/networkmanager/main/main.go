@@ -7,13 +7,13 @@ import (
 )
 
 func main() {
-	config := networkmanager.ParseCLIArgs()
+	config, args := networkmanager.ParseCLIArgs()
 
 	switch config.Command {
 	case networkmanager.DeployMgmtContract, networkmanager.DeployERC20Contract:
 		networkmanager.DeployContract(config)
 	case networkmanager.InjectTxs:
-		networkmanager.InjectTransactions(config)
+		networkmanager.InjectTransactions(config, args)
 	default:
 		panic("unrecognised command type")
 	}

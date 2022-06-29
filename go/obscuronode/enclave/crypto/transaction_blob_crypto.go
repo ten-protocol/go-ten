@@ -1,9 +1,11 @@
-package core
+package crypto
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"fmt"
+
+	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -21,8 +23,11 @@ const (
 
 // TransactionBlobCrypto handles the encryption and decryption of the transaction blobs stored inside a rollup.
 type TransactionBlobCrypto interface {
-	Encrypt(transactions L2Txs) nodecommon.EncryptedTransactions
-	Decrypt(encryptedTxs nodecommon.EncryptedTransactions) L2Txs
+	Encrypt(transactions core.L2Txs) nodecommon.EncryptedTransactions
+	Decrypt(encryptedTxs nodecommon.EncryptedTransactions) core.L2Txs
+	// ToExtRollup - Transforms an internal rollup as seen by the enclave to an external rollup with an encrypted payload
+	ToExtRollup(r *core.Rollup) nodecommon.ExtRollup
+	ToEnclaveRollup(r *nodecommon.EncryptedRollup) *core.Rollup
 }
 
 type TransactionBlobCryptoImpl struct {
@@ -45,7 +50,7 @@ func NewTransactionBlobCryptoImpl() TransactionBlobCrypto {
 }
 
 // TODO - Modify this logic so that transactions with different reveal periods are in different blobs, as per the whitepaper.
-func (t TransactionBlobCryptoImpl) Encrypt(transactions L2Txs) nodecommon.EncryptedTransactions {
+func (t TransactionBlobCryptoImpl) Encrypt(transactions core.L2Txs) nodecommon.EncryptedTransactions {
 	encodedTxs, err := rlp.EncodeToBytes(transactions)
 	if err != nil {
 		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
@@ -54,16 +59,30 @@ func (t TransactionBlobCryptoImpl) Encrypt(transactions L2Txs) nodecommon.Encryp
 	return t.transactionCipher.Seal(nil, []byte(RollupCipherNonce), encodedTxs, nil)
 }
 
-func (t TransactionBlobCryptoImpl) Decrypt(encryptedTxs nodecommon.EncryptedTransactions) L2Txs {
+func (t TransactionBlobCryptoImpl) Decrypt(encryptedTxs nodecommon.EncryptedTransactions) core.L2Txs {
 	encodedTxs, err := t.transactionCipher.Open(nil, []byte(RollupCipherNonce), encryptedTxs, nil)
 	if err != nil {
 		log.Panic("could not decrypt encrypted L2 transactions. Cause: %s", err)
 	}
 
-	txs := L2Txs{}
+	txs := core.L2Txs{}
 	if err := rlp.DecodeBytes(encodedTxs, &txs); err != nil {
 		log.Panic("could not decode encoded L2 transactions. Cause: %s", err)
 	}
 
 	return txs
+}
+
+func (t TransactionBlobCryptoImpl) ToExtRollup(r *core.Rollup) nodecommon.ExtRollup {
+	return nodecommon.ExtRollup{
+		Header:          r.Header,
+		EncryptedTxBlob: t.Encrypt(r.Transactions),
+	}
+}
+
+func (t TransactionBlobCryptoImpl) ToEnclaveRollup(r *nodecommon.EncryptedRollup) *core.Rollup {
+	return &core.Rollup{
+		Header:       r.Header,
+		Transactions: t.Decrypt(r.Transactions),
+	}
 }

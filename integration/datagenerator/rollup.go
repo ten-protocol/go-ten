@@ -6,8 +6,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
 )
 
-func RandomRollup() nodecommon.Rollup {
-	return nodecommon.Rollup{
+func RandomRollup() nodecommon.EncryptedRollup {
+	return nodecommon.EncryptedRollup{
 		Header: &nodecommon.Header{
 			ParentHash:  randomHash(),
 			Agg:         RandomAddress(),
