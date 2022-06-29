@@ -3,13 +3,10 @@ package simulation
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
+	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 	"math/big"
 	"os"
-	"time"
-
-	"github.com/obscuronet/obscuro-playground/go/common/log"
-
-	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -27,18 +24,11 @@ const (
 )
 
 func setupTestLog(simType string) *os.File {
-	// create a folder specific for the test
-	err := os.MkdirAll(testLogs, 0o700)
-	if err != nil {
-		panic(err)
-	}
-	timeFormatted := time.Now().Format("2006-01-02_15-04-05")
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("sim-log-%s-%s-*.txt", timeFormatted, simType))
-	if err != nil {
-		panic(err)
-	}
-	log.OutputToFile(f)
-	return f
+	return logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "sim-log",
+		TestSubtype: simType,
+	})
 }
 
 func minMax(arr []uint64) (min uint64, max uint64) {

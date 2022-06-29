@@ -3,12 +3,11 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 	"net"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
 
@@ -126,16 +125,9 @@ func tcpConnectionAvailable(addr string) bool {
 }
 
 func setupTestLog() *os.File {
-	// create a folder specific for the test
-	err := os.MkdirAll(testLogs, 0o700)
-	if err != nil {
-		panic(err)
-	}
-	timeFormatted := time.Now().Format("2006-01-02_15-04-05")
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("noderunner-%s-*.txt", timeFormatted))
-	if err != nil {
-		panic(err)
-	}
-	log.OutputToFile(f)
-	return f
+	return logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "noderunner",
+		TestSubtype: "test",
+	})
 }
