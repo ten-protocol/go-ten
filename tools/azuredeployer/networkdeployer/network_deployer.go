@@ -28,8 +28,8 @@ const (
 
 		cd ../../..
 		go mod tidy
-		go build -o ./go/host/main/host ./go/obscuronode/host/main/main.go
-		go build -o ./go/enclave/main/enclave ./go/obscuronode/enclave/main/main.go
+		go build -o ./go/host/main/host ./go/host/main/main.go
+		go build -o ./go/enclave/main/enclave ./go/enclave/main/main.go
 		go build -o ./integration/gethnetwork/main/geth ./integration/gethnetwork/main/*.go
 		go build -o ./tools/obscuroscan/main/obscuroscan ./tools/obscuroscan/main/*.go
 		go build -o ./tools/networkmanager/main/networkmanager ./tools/networkmanager/main/*.go
