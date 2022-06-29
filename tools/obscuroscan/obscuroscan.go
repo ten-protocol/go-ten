@@ -40,9 +40,9 @@ const (
 )
 
 var (
-	// prevents issues when calling from different packages/directories
-	_, b, _, _ = runtime.Caller(0)
-	basepath   = filepath.Dir(b)
+	// Ensures can find static files when calling from different packages/directories.
+	_, callFile, _, _ = runtime.Caller(0)
+	basepath          = filepath.Dir(callFile)
 )
 
 // Obscuroscan is a server that allows the monitoring of a running Obscuro network.

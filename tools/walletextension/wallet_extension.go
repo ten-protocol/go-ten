@@ -58,9 +58,9 @@ const (
 )
 
 var (
-	// prevents issues when calling from different packages/directories
-	_, b, _, _ = runtime.Caller(0)
-	basepath   = filepath.Dir(b)
+	// Ensures can find static files when calling from different packages/directories.
+	_, callFile, _, _ = runtime.Caller(0)
+	basepath          = filepath.Dir(callFile)
 )
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
