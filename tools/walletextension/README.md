@@ -27,18 +27,18 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 ## Usage
 
-1. Precompiled binaries for the wallet extension are available for macOS AMD64 and Windows AMD64 on the project's
-   [releases page](https://github.com/obscuronet/go-obscuro/releases/)
+1. Precompiled binaries for the wallet extension are available for macOS ARM64, macOS AMD64 and Windows AMD64 on the 
+   project's [releases page](https://github.com/obscuronet/go-obscuro/releases/)
 
     * For other OSes and architectures, see `Compiling the binary`, below
 
-2. Start the wallet extension by running the `wallet_extension` binary with the following flags:
+3. Start the wallet extension by running the `wallet_extension` binary with the following flags:
 
    ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
 
    The wallet extension is now listening on `http://127.0.0.1:3000/`
 
-3. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
+4. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
    the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and
    responses for the network will now automatically pass through the wallet extension, with all outbound requests
    encrypted with the enclave public key
@@ -46,7 +46,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
     * At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such
       as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`
 
-4. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Sign the viewing key when prompted by
+5. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Sign the viewing key when prompted by
    MetaMask. Responses to sensitive RPC requests will be now be encrypted with the viewing key and decrypted
    automatically by the wallet extension
 
@@ -75,5 +75,6 @@ root of the repository:
 
 ```
 env GOOS=darwin GOARCH=amd64 go build -o ../bin/wallet_extension_macos_amd64 .
+env GOOS=darwin GOARCH=arm64 go build -o ../bin/wallet_extension_macos_arm64 .
 env GOOS=windows GOARCH=amd64 go build -o ../bin/wallet_extension_win_amd64 .
 ```
