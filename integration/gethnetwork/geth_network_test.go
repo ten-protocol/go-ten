@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/obscuro-playground/go/config"
 
 	"github.com/obscuronet/obscuro-playground/integration"
 
@@ -117,7 +117,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 		L1NodeWebsocketPort: network.WebSocketPorts[0],
 		L1ConnectionTimeout: defaultL1ConnectionTimeout,
 	}
-	ethClient, err := ethclient.NewEthClientFromConfig(hostConfig)
+	ethClient, err := ethadapter.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(err)
 	}

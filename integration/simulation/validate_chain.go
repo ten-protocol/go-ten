@@ -5,17 +5,16 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/bridge"
+	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // The threshold number of transactions below which we consider the simulation to have failed. We generally expect far
@@ -93,8 +92,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHeight uint64, s *Simulation) uint64 {
-	nodeAddr := obscurocommon.ShortAddress(node.Info().ID)
+func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation) uint64 {
+	nodeAddr := common.ShortAddress(node.Info().ID)
 	head := node.FetchHeadBlock()
 	height := head.NumberU64()
 
@@ -102,15 +101,15 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeAddr, height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited, blockCount := extractDataFromEthereumChain(head, node, s)
+	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
-	if len(obscurocommon.FindHashDups(deposits)) > 0 {
-		dups := obscurocommon.FindHashDups(deposits)
+	if len(findHashDups(deposits)) > 0 {
+		dups := findHashDups(deposits)
 		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeAddr, dups)
 	}
-	if len(obscurocommon.FindRollupDups(rollups)) > 0 {
-		dups := obscurocommon.FindRollupDups(rollups)
+	if len(findRollupDups(rollups)) > 0 {
+		dups := findRollupDups(rollups)
 		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeAddr, dups)
 	}
 	if totalDeposited != s.Stats.TotalDepositedAmount {
@@ -131,12 +130,14 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 	return height
 }
 
-func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64, int) {
-	deposits := make([]common.Hash, 0)
-	rollups := make([]obscurocommon.L2RootHash, 0)
+// ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
+// between the start block and the end block.
+func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) ([]gethcommon.Hash, []common.L2RootHash, uint64, int) {
+	deposits := make([]gethcommon.Hash, 0)
+	rollups := make([]common.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
+	blockchain := node.BlocksBetween(startBlock, endBlock)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
 			t := s.Params.ERC20ContractLib.DecodeTx(tx)
@@ -148,11 +149,11 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 				continue
 			}
 			switch l1tx := t.(type) {
-			case *obscurocommon.L1DepositTx:
+			case *ethadapter.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
 				totalDeposited += l1tx.Amount
-			case *obscurocommon.L1RollupTx:
-				r := nodecommon.DecodeRollupOrPanic(l1tx.Rollup)
+			case *ethadapter.L1RollupTx:
+				r := common.DecodeRollupOrPanic(l1tx.Rollup)
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
@@ -165,12 +166,12 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 	return deposits, rollups, totalDeposited, len(blockchain)
 }
 
-// MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
-const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
+// MaxBlockDelay the maximum an Obscuro node can fall behind
+const MaxBlockDelay = 5
 
 func checkBlockchainOfObscuroNode(
 	t *testing.T,
-	nodeClient obscuroclient.Client,
+	nodeClient rpcclientlib.Client,
 	minObscuroHeight uint64,
 	maxEthereumHeight uint64,
 	s *Simulation,
@@ -179,19 +180,19 @@ func checkBlockchainOfObscuroNode(
 	nodeIdx int,
 ) {
 	defer wg.Done()
-	var nodeID common.Address
-	err := nodeClient.Call(&nodeID, obscuroclient.RPCGetID)
+	var nodeID gethcommon.Address
+	err := nodeClient.Call(&nodeID, rpcclientlib.RPCGetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
-	nodeAddr := obscurocommon.ShortAddress(nodeID)
+	nodeAddr := common.ShortAddress(nodeID)
 	l1Height := getCurrentBlockHeadHeight(nodeClient)
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	if int64(maxEthereumHeight)-l1Height > MAX_BLOCK_DELAY {
+	if int64(maxEthereumHeight)-l1Height > MaxBlockDelay {
 		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-uint64(l1Height))
 	}
 
@@ -254,7 +255,7 @@ func checkBlockchainOfObscuroNode(
 
 	injectorDepositedAmt := uint64(0)
 	for _, tx := range s.TxInjector.Counter.GetL1Transactions() {
-		if depTx, ok := tx.(*obscurocommon.L1DepositTx); ok {
+		if depTx, ok := tx.(*ethadapter.L1DepositTx); ok {
 			injectorDepositedAmt += depTx.Amount
 		}
 	}
@@ -287,7 +288,7 @@ func checkBlockchainOfObscuroNode(
 	heights[nodeIdx] = l2Height.Uint64()
 }
 
-func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, nodeClient rpcclientlib.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {
@@ -296,7 +297,7 @@ func extractWithdrawals(t *testing.T, nodeClient obscuroclient.Client, nodeAddr 
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	for r := head; ; r = getRollupHeader(nodeClient, r.ParentHash) {
-		if r != nil && r.Number.Uint64() == obscurocommon.L1GenesisHeight {
+		if r != nil && r.Number.Uint64() == common.L1GenesisHeight {
 			return
 		}
 		if r == nil {

@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
 	"github.com/gorilla/websocket"
 
@@ -60,7 +60,7 @@ const (
 type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
-	hostClient       obscuroclient.Client
+	hostClient       rpcclientlib.Client
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
 	viewingPublicKeyBytes  []byte
@@ -77,7 +77,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	return &WalletExtension{
 		enclavePublicKey: ecies.ImportECDSAPublic(enclavePublicKey),
 		hostAddr:         config.NodeRPCWebsocketAddress,
-		hostClient:       obscuroclient.NewClient(config.NodeRPCHTTPAddress),
+		hostClient:       rpcclientlib.NewClient(config.NodeRPCHTTPAddress),
 	}
 }
 
@@ -240,7 +240,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 
 	var rpcErr error
-	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, encryptedViewingKeyBytes, signature)
+	err = we.hostClient.Call(&rpcErr, rpcclientlib.RPCAddViewingKey, encryptedViewingKeyBytes, signature)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not add viewing key: %s", err))
 		return

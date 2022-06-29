@@ -4,24 +4,25 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/common"
+
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
+
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
-
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
 const initialBalance = 5000
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethclient.EthClient  // the list of mock ethereum clients
-	ObscuroClients   []obscuroclient.Client // the list of Obscuro host clients
+	EthClients       []ethadapter.EthClient // the list of mock ethereum clients
+	ObscuroClients   []rpcclientlib.Client  // the list of Obscuro host clients
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -31,7 +32,7 @@ type Simulation struct {
 
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
-	log.Info(fmt.Sprintf("Genesis block: b_%d.", obscurocommon.ShortHash(obscurocommon.GenesisBlock.Hash())))
+	log.Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
 
 	s.WaitForObscuroGenesis()
 
@@ -67,13 +68,13 @@ func (s *Simulation) WaitForObscuroGenesis() {
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
 		head := client.FetchHeadBlock()
-		for _, b := range client.BlocksBetween(obscurocommon.GenesisBlock, head) {
+		for _, b := range client.BlocksBetween(common.GenesisBlock, head) {
 			for _, tx := range b.Transactions() {
 				t := s.Params.MgmtContractLib.DecodeTx(tx)
 				if t == nil {
 					continue
 				}
-				if _, ok := t.(*obscurocommon.L1RollupTx); ok {
+				if _, ok := t.(*ethadapter.L1RollupTx); ok {
 					// exit at the first obscuro rollup we see
 					return
 				}

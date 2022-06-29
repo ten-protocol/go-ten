@@ -6,7 +6,7 @@ FROM ghcr.io/edgelesssys/ego-dev:latest
 RUN mkdir /home/obscuro
 RUN mkdir /home/obscuro/data
 COPY . /home/obscuro/go-obscuro
-RUN cd /home/obscuro/go-obscuro/go/obscuronode/enclave/main && ego-go build && ego sign main
+RUN cd /home/obscuro/go-obscuro/go/enclave/main && ego-go build && ego sign main
 
 ENV OE_SIMULATION=1
-ENTRYPOINT ["ego", "run", "/home/go-obscuro/go/obscuronode/enclave/main/main"]
+ENTRYPOINT ["ego", "run", "/home/go-obscuro/go/enclave/main/main"]
