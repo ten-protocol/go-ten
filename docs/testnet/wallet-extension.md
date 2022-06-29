@@ -32,11 +32,13 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
     * For other OSes and architectures, see `Compiling the binary`, below
 
-3. Start the wallet extension by running the `wallet_extension` binary with the following flags:
+2. Start the wallet extension by running the `wallet_extension` binary with the following flags:
 
    ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
 
    The wallet extension is now listening on `http://127.0.0.1:3000/`
+
+3. Sign into MetaMask
 
 4. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
    the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and
