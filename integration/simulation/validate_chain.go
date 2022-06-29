@@ -102,7 +102,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeAddr, height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited, blockCount := extractDataFromEthereumChain(head, node, s)
+	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(obscurocommon.GenesisBlock, head, node, s)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
 	if len(obscurocommon.FindHashDups(deposits)) > 0 {
@@ -131,12 +131,14 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethclient.EthClient, minHe
 	return height
 }
 
-func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64, int) {
+// ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
+// between the start block and the end block.
+func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethclient.EthClient, s *Simulation) ([]common.Hash, []obscurocommon.L2RootHash, uint64, int) {
 	deposits := make([]common.Hash, 0)
 	rollups := make([]obscurocommon.L2RootHash, 0)
 	totalDeposited := uint64(0)
 
-	blockchain := node.BlocksBetween(obscurocommon.GenesisBlock, head)
+	blockchain := node.BlocksBetween(startBlock, endBlock)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
 			t := s.Params.ERC20ContractLib.DecodeTx(tx)
@@ -165,8 +167,8 @@ func extractDataFromEthereumChain(head *types.Block, node ethclient.EthClient, s
 	return deposits, rollups, totalDeposited, len(blockchain)
 }
 
-// MAX_BLOCK_DELAY the maximum an Obscuro node can fall behind
-const MAX_BLOCK_DELAY = 5 // nolint:revive,stylecheck
+// MaxBlockDelay the maximum an Obscuro node can fall behind
+const MaxBlockDelay = 5 // nolint:revive,stylecheck
 
 func checkBlockchainOfObscuroNode(
 	t *testing.T,
@@ -191,7 +193,7 @@ func checkBlockchainOfObscuroNode(
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	if int64(maxEthereumHeight)-l1Height > MAX_BLOCK_DELAY {
+	if int64(maxEthereumHeight)-l1Height > MaxBlockDelay {
 		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-uint64(l1Height))
 	}
 

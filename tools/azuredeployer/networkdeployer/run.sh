@@ -21,9 +21,9 @@ go-obscuro/integration/gethnetwork/main/geth --numNodes=2 --startPort=12000 --we
 MGMT_CONTRACT_ADDR=$(go-obscuro/tools/networkmanager/main/networkmanager --l1NodePort=12100 --privateKeys=$PRIV_KEY_ONE deployMgmtContract)
 ERC20_CONTRACT_ADDR=$(go-obscuro/tools/networkmanager/main/networkmanager --l1NodePort=12100 --privateKeys=$PRIV_KEY_ONE deployERC20Contract)
 
-sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.1:11000:11000/tcp obscuro_enclave --hostID 1 --address :11000 --willAttest=true --erc20ContractAddresses=$BRIDGE_ERC20_PLACEHOLDER > ./run_logs.txt 2>&1 &
-sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.1:11001:11000/tcp obscuro_enclave --hostID 2 --address :11000 --willAttest=true --erc20ContractAddresses=$BRIDGE_ERC20_PLACEHOLDER > ./run_logs.txt 2>&1 &
+sudo docker run -e OE_SIMULATION=1 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.1:11000:11000/tcp obscuro_enclave --hostID 1 --address :11000 --willAttest=false --erc20ContractAddresses=$BRIDGE_ERC20_PLACEHOLDER > ./run_logs.txt 2>&1 &
+#sudo docker run -e OE_SIMULATION=1 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.1:11001:11000/tcp obscuro_enclave --hostID 2 --address :11000 --willAttest=false --erc20ContractAddresses=$BRIDGE_ERC20_PLACEHOLDER > ./run_logs.txt 2>&1 &
 go-obscuro/go/obscuronode/host/main/host --id=1 --isGenesis=true --p2pAddress=localhost:10000 --enclaveRPCAddress=localhost:11000 --clientRPCHost=0.0.0.0 --clientRPCPortHttp=13000 --l1NodePort=12100 --privateKey=$PRIV_KEY_ONE > ./run_logs.txt 2>&1 &
-go-obscuro/go/obscuronode/host/main/host --id=2 --isGenesis=false --p2pAddress=localhost:10001 --enclaveRPCAddress=localhost:11001 --clientRPCHost=localhost --clientRPCPortHttp=13001 --l1NodePort=12101 --privateKey=$PRIV_KEY_TWO > ./run_logs.txt 2>&1 &
+#go-obscuro/go/obscuronode/host/main/host --id=2 --isGenesis=false --p2pAddress=localhost:10001 --enclaveRPCAddress=localhost:11001 --clientRPCHost=localhost --clientRPCPortHttp=13001 --l1NodePort=12101 --privateKey=$PRIV_KEY_TWO > ./run_logs.txt 2>&1 &
 cd go-obscuro
 sudo ./tools/obscuroscan/main/obscuroscan --rpcServerAddress=127.0.0.1:13000 --address=0.0.0.0:80 > ../run_logs.txt 2>&1 &

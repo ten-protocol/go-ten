@@ -2,6 +2,7 @@ package networkmanager
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"os"
 	"strconv"
@@ -34,32 +35,29 @@ func InjectTransactions(cfg Config, args []string) {
 	}
 	l2Client := obscuroclient.NewClient(cfg.obscuroClientAddress)
 
+	// We store the block at which we start injecting transactions.
+	startBlock := l1Client.FetchHeadBlock()
+
+	simStats := stats.NewStats(0)
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress)
+	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress)
+
 	txInjector := simulation.NewTransactionInjector(
 		time.Second,
-		stats.NewStats(1),
+		simStats,
 		[]ethclient.EthClient{l1Client},
 		createWallets(cfg, l1Client, l2Client),
 		&cfg.mgmtContractAddress,
 		[]obscuroclient.Client{l2Client},
-		mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress),
-		erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress),
+		mgmtContractLib,
+		erc20ContractLib,
 		parseNumOfTxs(args),
 	)
 
 	println("Injecting transactions into network...")
 	txInjector.Start()
-	reportFinishedInjecting(txInjector)
-}
 
-func parseNumOfTxs(args []string) int {
-	if len(args) != 1 {
-		panic(fmt.Errorf("expected one argument to %s command, got %d", injectTxsName, len(args)))
-	}
-	numOfTxs, err := strconv.Atoi(args[0])
-	if err != nil {
-		panic(fmt.Errorf("could not parse number of transactions to inject. Cause: %w", err))
-	}
-	return numOfTxs
+	checkInjectionSuccessful(txInjector, l1Client, startBlock, simStats, erc20ContractLib, mgmtContractLib)
 }
 
 func createWallets(nmConfig Config, l1Client ethclient.EthClient, l2Client obscuroclient.Client) *params.SimWallets {
@@ -93,13 +91,65 @@ func createWallets(nmConfig Config, l1Client ethclient.EthClient, l2Client obscu
 		l2Wallet.SetNonce(nonce)
 	}
 
+	// We set the ERC20 contract for the tokens.
+	for _, token := range wallets.Tokens {
+		token.L1ContractAddress = &nmConfig.erc20ContractAddress
+	}
+
 	return wallets
 }
 
-func reportFinishedInjecting(txInjector *simulation.TransactionInjector) {
+// Extracts the number of transactions to inject from the command-line arguments.
+func parseNumOfTxs(args []string) int {
+	if len(args) != 1 {
+		panic(fmt.Errorf("expected one argument to %s command, got %d", injectTxsName, len(args)))
+	}
+	numOfTxs, err := strconv.Atoi(args[0])
+	if err != nil {
+		panic(fmt.Errorf("could not parse number of transactions to inject. Cause: %w", err))
+	}
+	return numOfTxs
+}
+
+func checkInjectionSuccessful(
+	txInjector *simulation.TransactionInjector,
+	l1Client ethclient.EthClient,
+	startBlock *types.Block,
+	stats *stats.Stats,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+) {
+	injectedL1Txs := txInjector.Counter.L1Transactions
+	injectedL2TransferTxs := txInjector.Counter.TransferL2Transactions
+	injectedL2WithdrawalTxs := txInjector.Counter.WithdrawalL2Transactions
+
+	checkDeposits(l1Client, stats, erc20ContractLib, mgmtContractLib, startBlock)
+
+	// TODO - Check L2 transactions.
+
 	println(fmt.Sprintf(
-		"Stopped injecting transactions into network\nInjected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.",
-		len(txInjector.Counter.L1Transactions), len(txInjector.Counter.TransferL2Transactions), len(txInjector.Counter.WithdrawalL2Transactions),
+		"Stopped injecting transactions into network\n"+
+			"Injected %d L1 transactions, %d L2 transfer transactions, and %d L2 withdrawal transactions.\n"+
+			"",
+		len(injectedL1Txs), len(injectedL2TransferTxs), len(injectedL2WithdrawalTxs),
 	))
 	os.Exit(0)
+}
+
+func checkDeposits(l1Client ethclient.EthClient, stats *stats.Stats, erc20ContractLib erc20contractlib.ERC20ContractLib, mgmtContractLib mgmtcontractlib.MgmtContractLib, startBlock *types.Block) {
+	currentBlock := l1Client.FetchHeadBlock()
+	sim := simulation.Simulation{
+		Stats: stats,
+		Params: &params.SimParams{
+			ERC20ContractLib: erc20ContractLib,
+			MgmtContractLib:  mgmtContractLib,
+		},
+	}
+	_, _, totalDeposited, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &sim)
+
+	if totalDeposited != stats.TotalDepositedAmount {
+		println(fmt.Sprintf("Mismatch between deposit transactions injected and deposit transactions found on L1.\n"+
+			"Expected deposits of %d, found deposits of %d.", stats.TotalDepositedAmount, totalDeposited))
+		os.Exit(1)
+	}
 }
