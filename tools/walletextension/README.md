@@ -27,23 +27,25 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 ## Usage
 
-1. Clone this repository: https://github.com/obscuronet/go-obscuro
+1. Precompiled binaries for the wallet extension are available for macOS AMD64 and Windows AMD64 on the project's 
+   [releases page](https://github.com/obscuronet/go-obscuro/releases/)
 
-2. Precompiled binaries for the wallet extension are available for macOS AMD64 and Windows AMD64, under 
-   `tools/walletextension/bin/`. For other OSes and architectures, the required binary can be built by running the 
-   following from the root of the repository:
-
-  ```
-  cd tools/walletextension/main
-  go build -o wallet_extension .
-  ```
-  This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`
+   * For other OSes and architectures, the wallet extension binary can be built by cloning the 
+     [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following commands from the root of 
+     the repository:
+     
+     ```
+     cd tools/walletextension/main
+     go build -o wallet_extension .
+     ```
+     
+     This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`
 
 3. Start the wallet extension by running the `wallet_extension` binary with the following flags:
 
-  ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
+   ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
 
-  The wallet extension is now listening on `http://127.0.0.1:3000/`
+   The wallet extension is now listening on `http://127.0.0.1:3000/`
 
 4. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as 
   the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and 
