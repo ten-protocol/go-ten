@@ -1,10 +1,11 @@
 # Network manager
 
-A tool that performs various functions for the management of an Obscuro network.
+A tool that performs various functions for the management of an Obscuro network:
 
-* Deploys the management contract to the L1, and returns its deployed address
-* Deploys the ERC20 contract to the L1, and returns its deployed address
-* Injects transactions (deposits from the L1 to the L2, transfers on the L2, and withdrawals back to the L1)
+* **Contract deployer**: Deploys the management contract and ERC20 contracts to the L1, and returns their deployed addresses
+* **Transaction injector**: Injects transactions across the L1 and L2 networks (deposits from the L1 to the L2, 
+  transfers on the L2, and withdrawals back to the L1), then reports on whether the injected transactions were 
+  successfully incorporated into the blockchain
 
 ## Usage
 
