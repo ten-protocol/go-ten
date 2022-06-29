@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 env:
-  L1HOST: testnet-gethnetwork-24.uksouth.azurecontainer.io
+  L1HOST: testnet-gethnetwork-25.uksouth.azurecontainer.io
 
 jobs:
   build:
@@ -52,7 +52,7 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_0 }}
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "ERC20CONTRACTADDR=ERC20CONTRACTADDR" >> $GITHUB_ENV
