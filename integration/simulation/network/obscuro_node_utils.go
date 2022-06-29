@@ -6,22 +6,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
+	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/obscuro-playground/go/enclave"
 	"github.com/obscuronet/obscuro-playground/integration"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/host"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethclient.EthClient) []obscuroclient.Client {
+func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpcclientlib.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -56,7 +56,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	}
 
 	// Create a handle to each node
-	obscuroClients := make([]obscuroclient.Client, params.NumberOfNodes)
+	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	for i, node := range obscuroNodes {
 		obscuroClients[i] = host.NewInMemObscuroClient(node)
 	}
@@ -64,9 +64,9 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	return obscuroClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethclient.EthClient, enclaveAddresses []string) []obscuroclient.Client {
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) []rpcclientlib.Client {
 	// handle to the obscuro clients
-	obscuroClients := make([]obscuroclient.Client, params.NumberOfNodes)
+	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -93,7 +93,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		)
 
 		nodeRPCAddress := fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		obscuroClients[i] = obscuroclient.NewClient(nodeRPCAddress)
+		obscuroClients[i] = rpcclientlib.NewClient(nodeRPCAddress)
 	}
 
 	// start each obscuro node
@@ -107,7 +107,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	for i, client := range obscuroClients {
 		started := false
 		for !started {
-			err := client.Call(nil, obscuroclient.RPCGetID)
+			err := client.Call(nil, rpcclientlib.RPCGetID)
 			started = err == nil
 			if !started {
 				fmt.Printf("Could not connect to client %d. Err %s. Retrying..\n", i, err)
@@ -144,13 +144,13 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 	}
 }
 
-func StopObscuroNodes(clients []obscuroclient.Client) {
+func StopObscuroNodes(clients []rpcclientlib.Client) {
 	var wg sync.WaitGroup
 	for _, client := range clients {
 		wg.Add(1)
-		go func(c obscuroclient.Client) {
+		go func(c rpcclientlib.Client) {
 			defer wg.Done()
-			err := c.Call(nil, obscuroclient.RPCStopHost)
+			err := c.Call(nil, rpcclientlib.RPCStopHost)
 			if err != nil {
 				log.Error("Failed to stop client %s", err)
 			}

@@ -3,14 +3,15 @@ package ethereummock
 import (
 	"bytes"
 
+	"github.com/obscuronet/obscuro-playground/go/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+	"github.com/obscuronet/obscuro-playground/go/enclave/db"
 )
 
 // LCA - returns the least common ancestor of the 2 blocks
 func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) *types.Block {
-	if blockA.NumberU64() == obscurocommon.L1GenesisHeight || blockB.NumberU64() == obscurocommon.L1GenesisHeight {
+	if blockA.NumberU64() == common.L1GenesisHeight || blockB.NumberU64() == common.L1GenesisHeight {
 		return blockA
 	}
 	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
@@ -50,15 +51,15 @@ func findNotIncludedTxs(head *types.Block, txs []*types.Transaction, r db.BlockR
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[obscurocommon.TxHash]*types.Transaction {
+func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[common.TxHash]*types.Transaction {
 	val, found := db.Txs(b)
 	if found {
 		return val
 	}
-	if b.NumberU64() == obscurocommon.L1GenesisHeight {
+	if b.NumberU64() == common.L1GenesisHeight {
 		return makeMap(b.Transactions())
 	}
-	newMap := make(map[obscurocommon.TxHash]*types.Transaction)
+	newMap := make(map[common.TxHash]*types.Transaction)
 	p, f := r.ParentBlock(b)
 	if !f {
 		panic("wtf")
@@ -73,7 +74,7 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[ob
 	return newMap
 }
 
-func removeExisting(base []*types.Transaction, toRemove map[obscurocommon.TxHash]*types.Transaction) (r []*types.Transaction) {
+func removeExisting(base []*types.Transaction, toRemove map[common.TxHash]*types.Transaction) (r []*types.Transaction) {
 	for _, t := range base {
 		_, f := toRemove[t.Hash()]
 		if !f {
@@ -83,8 +84,8 @@ func removeExisting(base []*types.Transaction, toRemove map[obscurocommon.TxHash
 	return
 }
 
-func makeMap(txs types.Transactions) map[obscurocommon.TxHash]*types.Transaction {
-	m := make(map[obscurocommon.TxHash]*types.Transaction)
+func makeMap(txs types.Transactions) map[common.TxHash]*types.Transaction {
+	m := make(map[common.TxHash]*types.Transaction)
 	for _, tx := range txs {
 		m[tx.Hash()] = tx
 	}

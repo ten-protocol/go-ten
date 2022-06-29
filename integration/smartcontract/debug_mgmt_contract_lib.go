@@ -4,7 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 )
 
 // debugMgmtContractLib is a wrapper around the MgmtContractLib

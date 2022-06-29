@@ -4,9 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/obscuro-playground/go/config"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 )
 
 // RandomWallet returns a wallet with a random private key

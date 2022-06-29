@@ -3,13 +3,13 @@ package network
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -18,12 +18,12 @@ import (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
-	obscuroClients   []obscuroclient.Client
+	obscuroClients   []rpcclientlib.Client
 	enclaveAddresses []string
 
 	// geth
 	gethNetwork *gethnetwork.GethNetwork
-	gethClients []ethclient.EthClient
+	gethClients []ethadapter.EthClient
 	wallets     *params.SimWallets
 }
 
@@ -33,7 +33,7 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 	}
 }
 
-func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethclient.EthClient, []obscuroclient.Client, error) {
+func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethadapter.EthClient, []rpcclientlib.Client, error) {
 	// kickoff the network with the prefunded wallet addresses
 	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,

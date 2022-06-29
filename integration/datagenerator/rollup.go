@@ -3,12 +3,12 @@ package datagenerator
 import (
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
-func RandomRollup() nodecommon.EncryptedRollup {
-	return nodecommon.EncryptedRollup{
-		Header: &nodecommon.Header{
+func RandomRollup() common.EncryptedRollup {
+	return common.EncryptedRollup{
+		Header: &common.Header{
 			ParentHash:  randomHash(),
 			Agg:         RandomAddress(),
 			Nonce:       randomUInt64(),
