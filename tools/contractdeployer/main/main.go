@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/log"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 	"github.com/obscuronet/obscuro-playground/tools/contractdeployer"
 )
 

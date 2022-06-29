@@ -3,16 +3,16 @@ package contractdeployer
 import (
 	"errors"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 )
 
@@ -36,7 +36,7 @@ func (cd *ContractDeployer) Run() error {
 	// load the wallet
 	w := wallet.NewInMemoryWalletFromPK(cd.config.ChainID, privateKey)
 	// connect to the l1
-	client, err := ethclient.NewEthClient(cd.config.L1NodeHost, cd.config.L1NodePort, 30*time.Second)
+	client, err := ethadapter.NewEthClient(cd.config.L1NodeHost, cd.config.L1NodePort, 30*time.Second)
 	if err != nil {
 		return fmt.Errorf("unable to connect to the l1 host: %w", err)
 	}
@@ -61,7 +61,7 @@ func (cd *ContractDeployer) Run() error {
 }
 
 // deployContract deploys a contract (with a tremendous amount of gas)
-func deployContract(c ethclient.EthClient, w wallet.Wallet, contractBytes []byte) (*common.Address, error) {
+func deployContract(c ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*common.Address, error) {
 	nonce, err := c.Nonce(w.Address())
 	if err != nil {
 		return nil, err
