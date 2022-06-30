@@ -17,10 +17,14 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
-// The threshold number of transactions below which we consider the simulation to have failed. We generally expect far
-// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
-// type, for example.
-const txThreshold = 5
+const (
+	// The threshold number of transactions below which we consider the simulation to have failed. We generally expect far
+	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
+	// type, for example.
+	txThreshold = 5
+	// The maximum number of blocks an Obscuro node can fall behind
+	maxBlockDelay = 5
+)
 
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
@@ -166,9 +170,6 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 	return deposits, rollups, totalDeposited, len(blockchain)
 }
 
-// MaxBlockDelay the maximum an Obscuro node can fall behind
-const MaxBlockDelay = 5
-
 func checkBlockchainOfObscuroNode(
 	t *testing.T,
 	nodeClient rpcclientlib.Client,
@@ -192,7 +193,7 @@ func checkBlockchainOfObscuroNode(
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	if int64(maxEthereumHeight)-l1Height > MaxBlockDelay {
+	if int64(maxEthereumHeight)-l1Height > maxBlockDelay {
 		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-uint64(l1Height))
 	}
 
@@ -224,27 +225,17 @@ func checkBlockchainOfObscuroNode(
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
 
-	// check that all expected transactions were included.
-	transfers, withdrawals := s.TxInjector.Counter.GetL2Transactions()
-	notFoundTransfers := 0
-	for _, tx := range transfers {
-		if l2tx := getTransaction(nodeClient, tx.Hash()); l2tx == nil {
-			notFoundTransfers++
-		}
-	}
+	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(nodeClient, s.TxInjector)
 	if notFoundTransfers > 0 {
-		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave", nodeAddr, notFoundTransfers, len(transfers))
-	}
-
-	notFoundWithdrawals := 0
-	for _, tx := range withdrawals {
-		if l2tx := getTransaction(nodeClient, tx.Hash()); l2tx == nil {
-			notFoundWithdrawals++
-		}
+		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
+			nodeAddr, notFoundTransfers, len(s.TxInjector.Counter.TransferL2Transactions))
 	}
 	if notFoundWithdrawals > 0 {
-		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in the enclave", nodeAddr, notFoundWithdrawals, len(withdrawals))
+		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in the enclave",
+			nodeAddr, notFoundWithdrawals, len(s.TxInjector.Counter.WithdrawalL2Transactions))
 	}
+
+	checkTransactionReceipts(nodeClient, s.TxInjector)
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
@@ -286,6 +277,40 @@ func checkBlockchainOfObscuroNode(
 	// (execute deposits and transactions and compare to the state in the rollup)
 
 	heights[nodeIdx] = l2Height.Uint64()
+}
+
+// FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
+func FindNotIncludedL2Txs(l2Client rpcclientlib.Client, txInjector *TransactionInjector) (int, int) {
+	transfers, withdrawals := txInjector.Counter.GetL2Transactions()
+	notFoundTransfers := 0
+	for _, tx := range transfers {
+		if l2tx := getTransaction(l2Client, tx.Hash()); l2tx == nil {
+			notFoundTransfers++
+		}
+	}
+
+	notFoundWithdrawals := 0
+	for _, tx := range withdrawals {
+		if l2tx := getTransaction(l2Client, tx.Hash()); l2tx == nil {
+			notFoundWithdrawals++
+		}
+	}
+
+	return notFoundTransfers, notFoundWithdrawals
+}
+
+// Checks that there is a receipt available for each L2 transaction.
+func checkTransactionReceipts(l2Client rpcclientlib.Client, txInjector *TransactionInjector) {
+	l2Txs := append(txInjector.Counter.TransferL2Transactions, txInjector.Counter.WithdrawalL2Transactions...)
+
+	for _, tx := range l2Txs {
+		// We check that there is a valid receipt for each transaction, as a sanity-check.
+		txReceiptJSONMap := getTransactionReceipt(l2Client, tx.Hash())
+		// Per Geth's rules, a receipt is valid if: status == 1 OR root.len == 32.
+		if len(txReceiptJSONMap[jsonKeyRoot].(string)) == 0 && txReceiptJSONMap[jsonKeyStatus] == receiptStatusFailure {
+			panic(fmt.Errorf("simulation failed because transaction receipt was not created for transaction %s", tx.Hash().Hex()))
+		}
+	}
 }
 
 func extractWithdrawals(t *testing.T, nodeClient rpcclientlib.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {

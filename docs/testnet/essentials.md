@@ -2,8 +2,8 @@
 An easy to read list of essential parameters and settings for Obscuro Testnet.
 
 ### Connection to an Obscuro Node
-- **RPC http address =** `testnet-http.obscu.ro`
-- **RPC websocket address =** `testnet-ws.obscu.ro`
+- **RPC http address =** `testnet.obscu.ro:13000`
+- **RPC websocket address =** `testnet.obscu.ro:13001`
 
 ### Custom Network for MetaMask
 - **Network Name =** `Obscuro Testnet`

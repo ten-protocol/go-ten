@@ -4,11 +4,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
 
@@ -35,7 +34,11 @@ const (
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
-	setupTestLog()
+	logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "noderunner",
+		TestSubtype: "test",
+	})
 
 	startPort := integration.StartPortNodeRunnerTest
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, startPort)
@@ -123,19 +126,4 @@ func tcpConnectionAvailable(addr string) bool {
 	_ = conn.Close()
 	// we don't worry about failure while closing, it connected successfully so let test proceed
 	return true
-}
-
-func setupTestLog() *os.File {
-	// create a folder specific for the test
-	err := os.MkdirAll(testLogs, 0o700)
-	if err != nil {
-		panic(err)
-	}
-	timeFormatted := time.Now().Format("2006-01-02_15-04-05")
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("noderunner-%s-*.txt", timeFormatted))
-	if err != nil {
-		panic(err)
-	}
-	log.OutputToFile(f)
-	return f
 }

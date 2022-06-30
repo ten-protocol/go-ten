@@ -15,7 +15,7 @@ import (
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes and enclaves live in the same process. The L1 network is a private geth network using Clique (PoA).
 func TestFullNetworkMonteCarloSimulation(t *testing.T) {
-	setupTestLog("full-network")
+	setupSimTestLog("full-network")
 
 	numberOfNodes := 5
 	numberOfSimWallets := 5
