@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -106,7 +107,7 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
 	err = we.server.ListenAndServe()
-	if err != http.ErrServerClosed {
+	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }

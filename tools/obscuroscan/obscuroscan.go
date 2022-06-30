@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -81,7 +82,7 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
 	err = o.server.ListenAndServe()
-	if err != http.ErrServerClosed {
+	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
