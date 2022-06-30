@@ -33,7 +33,8 @@ const (
 	CallFieldTo   = "to"
 	CallFieldFrom = "from"
 	CallFieldData = "data"
-	DummyBalance  = "0x0"
+
+	DummyBalance = "0xD3C21BCECCEDA1000000" // 1,000,000,000,000,000,000,000,000 in hex.
 )
 
 // RollupChain represents the canonical chain, and manages the state.
