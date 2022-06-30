@@ -108,7 +108,7 @@ jobs:
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} \
-            --vnet-name ObscuroHostTestnet01VNET --subnet ObscuroHostTestnet01Subnet\
+            --vnet-name ObscuroHostTestnet01VNET --subnet ObscuroHostTestnet01Subnet \
             --size Standard_D2_v4 --image ubuntults --public-ip-sku Basic --authentication-type password
 
       - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
