@@ -40,6 +40,7 @@ const (
 	ReqJSONMethodCall         = "eth_call"
 	ReqJSONMethodGetTxReceipt = "eth_getTransactionReceipt"
 	ReqJSONMethodSendRawTx    = "eth_sendRawTransaction"
+	ReqJSONMethodGetTxCount   = "eth_getTransactionCount"
 	respJSONKeyErr            = "error"
 	respJSONKeyMsg            = "message"
 	RespJSONKeyResult         = "result"
@@ -407,7 +408,7 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 
 // Indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
-	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodSendRawTx
+	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodSendRawTx || method == ReqJSONMethodGetTxCount
 }
 
 // Converts the decrypted result to its correct JSON representation.

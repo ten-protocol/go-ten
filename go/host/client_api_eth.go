@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"math/big"
+	"strings"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
 
@@ -80,6 +81,21 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
 
+// GetTransactionCount returns the nonce of the wallet with the given address.
+func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
+	encryptedResponse, err := api.host.EnclaveClient.GetTransactionCount(encryptedParams)
+	if err != nil {
+		return "", err
+	}
+	// todo: get rid of this hack when we stop supporting unencrypted params for testing purposes
+	// 		(the unencrypted hex number doesn't like to be bytes to hex encoded)
+	if strings.HasPrefix(string(encryptedResponse), "0x") {
+		// the response wasn't encrypted
+		return string(encryptedResponse), nil
+	}
+	return gethcommon.Bytes2Hex(encryptedResponse), nil
+}
+
 // EstimateGas is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	// TODO - Return a non-dummy gas estimate.
@@ -93,12 +109,6 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 		return "", err
 	}
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
-}
-
-// TODO - Temporary. Will be replaced by encrypted implementation.
-func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
-	nonce := api.host.EnclaveClient.Nonce(address)
-	return (*hexutil.Uint64)(&nonce), nil
 }
 
 // Maps an external rollup to a block.
