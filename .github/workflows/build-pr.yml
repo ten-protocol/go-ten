@@ -3,6 +3,8 @@ name: Build PR
 
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
     branches:
       - main
 
