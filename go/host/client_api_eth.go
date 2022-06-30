@@ -83,10 +83,3 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.Blo
 	// TODO - Return a non-dummy gas estimate.
 	return 0, nil
 }
-
-// GetTransactionCount is a placeholder for an RPC method required by MetaMask/Remix.
-func (api *EthereumAPI) GetTransactionCount(_ context.Context, _ gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
-	// TODO - Return a non-dummy count.
-	count := uint64(0)
-	return (*hexutil.Uint64)(&count), nil
-}
