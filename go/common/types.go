@@ -143,9 +143,12 @@ func (r *EncryptedRollup) Hash() L2RootHash {
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
-// RLP encoding.
+// RLP encoding excluding the signature.
 func (h *Header) Hash() L2RootHash {
-	hash, err := RLPHash(h)
+	cp := *h
+	cp.R = nil
+	cp.S = nil
+	hash, err := RLPHash(cp)
 	if err != nil {
 		log.Error("err hashing the l2roothash")
 	}

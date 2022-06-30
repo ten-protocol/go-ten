@@ -73,7 +73,7 @@ func NewRollupFromHeader(header *common.Header, blkHash gethcommon.Hash, txs []*
 }
 
 // NewRollup - produces a new rollup. only used for genesis. todo - review
-func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcommon.Address, txs []*common.L2Tx, withdrawals []common.Withdrawal, nonce common.Nonce, state common.StateRoot) Rollup {
+func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcommon.Address, txs []*common.L2Tx, withdrawals []common.Withdrawal, nonce common.Nonce, state common.StateRoot) *Rollup {
 	parentHash := common.GenesisHash
 	if parent != nil {
 		parentHash = parent.Hash()
@@ -93,5 +93,5 @@ func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcom
 		Header:       &h,
 		Transactions: txs,
 	}
-	return r
+	return &r
 }

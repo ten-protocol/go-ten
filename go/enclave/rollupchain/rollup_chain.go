@@ -88,7 +88,9 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		[]common.Withdrawal{},
 		common.GenerateNonce(),
 		gethcommon.BigToHash(big.NewInt(0)))
-	return &rolGenesis, b
+	rc.signRollup(rolGenesis)
+
+	return rolGenesis, b
 }
 
 func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionResponse {
@@ -685,5 +687,8 @@ func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
 
 func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
 	h := r.Hash()
+	if r.Header.R == nil || r.Header.S == nil {
+		panic("Missing signature on rollup")
+	}
 	return ecdsa.Verify(&rc.privateKey.PublicKey, h[:], r.Header.R, r.Header.S)
 }
