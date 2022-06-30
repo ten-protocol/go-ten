@@ -1,0 +1,78 @@
+pages:
+  - title: What is Obscuro?
+    children:
+      - title: Privacy Matters
+        url: what-is-obscuro/privacy-matters.html
+      - title: Technology
+        url: what-is-obscuro/technology.html
+      - title: User Experience
+        url: what-is-obscuro/user-experience.html
+      - title: Tokens
+        url: what-is-obscuro/tokens.html
+      - title: Community
+        url: what-is-obscuro/community.html
+      - title: Roadmap
+        url: what-is-obscuro/roadmap.html
+  - title: Community
+    children:
+      - title: Contributing to Obscuro
+        url: community/contributions.html
+  - title: Obscuro Testnet
+    children:
+      - title: Introduction
+        url: testnet/Introduction.html
+      - title: Essential Information
+        url: testnet/essentials.html
+      - title: Deploying a Smart Contract
+        url: testnet/deploying-a-smart-contract.html
+      - title: Wallet Extension
+        url: testnet/wallet-extension.html
+      - title: Troubleshooting
+        url: testnet/troubleshooting.html
+      - title: Change Log
+        url: testnet/changelog.html
+      #- title: Create a New Node
+      #  url: testnet/create-a-new-node.html
+      #- title: Uninstall
+      #  url: testnet/uninstall.html
+  - title: Whitepaper
+    children:
+      - title: Obscuro Whitepaper Content
+        url: whitepaper/redirect.html
+      #- title: Abstract
+      #  url: /obscuro-whitepaper/abstract.html
+      #- title: Motivation
+      #  url: /obscuro-whitepaper/motivation.html
+      #- title: Challenges
+      #  url: /obscuro-whitepaper/challenges.html
+      #- title: Technical Background
+      #  url: /obscuro-whitepaper/technical-background.html
+      #- title: High Level Design
+      #  url: /obscuro-whitepaper/high-level-design.html
+      #- title: Consensus
+      #  url: /obscuro-whitepaper/consensus.html
+      #- title: Detailed Design
+      #  url: /obscuro-whitepaper/detailed-design.html
+      #- title: Fees and Rewards
+      #  url: /obscuro-whitepaper/fees-rewards.html
+      #- title: Obscuro-Ethereum Interaction
+      #  url: /obscuro-whitepaper/obscuro-ethereum-interaction.html
+      #- title: Threat Model
+      #  url: /obscuro-whitepaper/threat-model.html
+      #- title: Tokenomics
+      #  url: /obscuro-whitepaper/tokenomics.html
+      #- title: Governance
+      #  url: /obscuro-whitepaper/governance.html
+      #- title: Appendix
+      #  url: /obscuro-whitepaper/appendix.html
+      #- title: All-in-one
+      #  url: /obscuro-whitepaper/amalgamated.html
+  - title: Tokenomics
+    children:
+      - title: Overview
+        url: tokenomics/overview.html
+  - title: About
+    children:
+      - title: Obscuro Home
+        url: https://obscu.ro
+

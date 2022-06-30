@@ -3,9 +3,12 @@ package walletextension
 import (
 	"context"
 	"crypto/rand"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -26,7 +29,7 @@ const (
 	pathViewingKeys        = "/viewingkeys/"
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
-	staticDir              = "./tools/walletextension/static"
+	staticDir              = "static"
 
 	reqJSONKeyMethod          = "method"
 	reqJSONKeyParams          = "params"
@@ -53,6 +56,9 @@ const (
 	// TODO - Retrieve this key from the management contract instead.
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
+
+//go:embed static
+var staticFiles embed.FS
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
 
@@ -84,17 +90,24 @@ func NewWalletExtension(config Config) *WalletExtension {
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
 func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
+
 	// Handles Ethereum JSON-RPC requests received over HTTP.
 	serveMux.HandleFunc(pathRoot, we.handleHTTPEthJSON)
 	serveMux.HandleFunc(PathReady, we.handleReady)
-	// Handles the management of viewing keys.
-	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(staticDir))))
 	serveMux.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
 	serveMux.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
+
+	// Serves the web assets for the management of viewing keys.
+	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
+
 	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
-	err := we.server.ListenAndServe()
-	if err != http.ErrServerClosed {
+	err = we.server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }

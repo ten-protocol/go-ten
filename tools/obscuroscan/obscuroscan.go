@@ -5,9 +5,12 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"strings"
 
@@ -31,10 +34,13 @@ const (
 	pathHeadBlock     = "/headblock/"
 	pathHeadRollup    = "/headrollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
-	staticDir         = "./tools/obscuroscan/static"
+	staticDir         = "static"
 	pathRoot          = "/"
 	httpCodeErr       = 500
 )
+
+//go:embed static
+var staticFiles embed.FS
 
 // Obscuroscan is a server that allows the monitoring of a running Obscuro network.
 type Obscuroscan struct {
@@ -58,18 +64,25 @@ func NewObscuroscan(address string) *Obscuroscan {
 // Serve listens for and serves Obscuroscan requests.
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
-	// Serves the web interface.
-	serveMux.Handle(pathRoot, http.FileServer(http.Dir(staticDir)))
+
 	// Handle requests for block head height.
 	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
 	// Handle requests for the head rollup.
 	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)
 	// Handle requests to decrypt a transaction blob.
 	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)
+
+	// Serves the web assets for the user interface.
+	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMux.Handle(pathRoot, http.FileServer(http.FS(noPrefixStaticFiles)))
+
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
-	err := o.server.ListenAndServe()
-	if err != http.ErrServerClosed {
+	err = o.server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }

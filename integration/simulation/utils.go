@@ -4,17 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"os"
-	"time"
-
-	"github.com/obscuronet/obscuro-playground/go/common/log"
-
-	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
+	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 )
@@ -26,19 +22,12 @@ const (
 	receiptStatusFailure = "0x0"
 )
 
-func setupTestLog(simType string) *os.File {
-	// create a folder specific for the test
-	err := os.MkdirAll(testLogs, 0o700)
-	if err != nil {
-		panic(err)
-	}
-	timeFormatted := time.Now().Format("2006-01-02_15-04-05")
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("sim-log-%s-%s-*.txt", timeFormatted, simType))
-	if err != nil {
-		panic(err)
-	}
-	log.OutputToFile(f)
-	return f
+func setupSimTestLog(simType string) {
+	logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "sim-log",
+		TestSubtype: simType,
+	})
 }
 
 func minMax(arr []uint64) (min uint64, max uint64) {
@@ -104,14 +93,6 @@ func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *common.
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransaction, err))
 	}
-
-	// We check that there is a valid receipt for each transaction, as a sanity-check.
-	txReceiptJSONMap := getTransactionReceipt(client, txHash)
-	// Per Geth's rules, a receipt is valid if: status == 1 OR root.len == 32.
-	if len(txReceiptJSONMap[jsonKeyRoot].(string)) == 0 && txReceiptJSONMap[jsonKeyStatus] == receiptStatusFailure {
-		panic(fmt.Errorf("simulation failed because transaction receipt was not created for transaction %s", txHash.Hex()))
-	}
-
 	return l2Tx
 }
 
