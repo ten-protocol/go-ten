@@ -29,10 +29,12 @@ func InjectTransactions(cfg Config, args []string) {
 		L1NodeWebsocketPort: cfg.l1NodeWebsocketPort,
 		L1ConnectionTimeout: cfg.l1ConnectionTimeout,
 	}
+	println("Connecting to L1 node...")
 	l1Client, err := ethadapter.NewEthClient(hostConfig)
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
+	println("Connecting to Obscuro node...")
 	l2Client := rpcclientlib.NewClient(cfg.obscuroClientAddress)
 
 	// We store the block at which we start injecting transactions.

@@ -13,14 +13,22 @@ All commands are executed by running `networkmanager/main/main()`.
 
 * Arguments to deploy a management contract:
 
-  `--l1NodeHost=<x> --l1NodePort=<x> --privateKey=<x> --chainID=<x> deployMgmtContract`
+  `--l1NodeHost=<x> --l1NodeWebsocketPort=<x> --privateKeys=<x> --chainID=<x> deployMgmtContract`
 
 * Arguments to deploy an ERC20 contract:
 
-  `--l1NodeHost=<x> --l1NodePort=<x> --privateKey=<x> --chainID=<x> deployERC20Contract`
+  `--l1NodeHost=<x> --l1NodeWebsocketPort=<x> --privateKeys=<x> --chainID=<x> deployERC20Contract`
 
 * Arguments to inject transactions:
 
-  `--l1NodeHost=<x> --l1NodePort=<x> --managementContractAddress=<x> --erc20ContractAddress=<x> --obscuroClientAddress=<x> injectTransactions <num of transactions, or 0 for unlimited>`
+  ```
+  --l1NodeHost=<x>
+  --l1NodeWebsocketPort=<x>
+  --obscuroClientAddress=<x>
+  --managementContractAddress=<x>
+  --erc20ContractAddress=<x>
+  --privateKeys=<private keys of L1 addresses with preallocated funds>
+  injectTransactions <num of transactions, or 0 for unlimited>
+  ```
 
   

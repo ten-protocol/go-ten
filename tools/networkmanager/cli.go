@@ -28,8 +28,8 @@ const (
 	l1NodeHostName  = "l1NodeHost"
 	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
 
-	l1NodePortName  = "l1NodePort"
-	l1NodePortUsage = "The port on which to connect to the Ethereum client"
+	l1NodeWebsocketPortName  = "l1NodeWebsocketPort"
+	l1NodeWebsocketPortUsage = "The websocket port on which to connect to the Ethereum client"
 
 	l1ConnectionTimeoutSecsName  = "l1ConnectionTimeoutSecs"
 	l1ConnectionTimeoutSecsUsage = "The timeout for connecting to the Ethereum client"
@@ -69,7 +69,7 @@ type Config struct {
 func defaultNetworkManagerConfig() Config {
 	return Config{
 		l1NodeHost:          "127.0.0.1",
-		l1NodeWebsocketPort: 8546,
+		l1NodeWebsocketPort: 12100,
 		l1ConnectionTimeout: time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
 		// Default chosen to not conflict with default private key used by host.
 		privateKeys:          []string{"0000000000000000000000000000000000000000000000000000000000000002"},
@@ -77,7 +77,7 @@ func defaultNetworkManagerConfig() Config {
 		obscuroChainID:       integration.ObscuroChainID,
 		mgmtContractAddress:  common.BytesToAddress([]byte("")),
 		erc20ContractAddress: common.BytesToAddress([]byte("")),
-		obscuroClientAddress: "",
+		obscuroClientAddress: "127.0.0.1:13000",
 	}
 }
 
@@ -86,7 +86,7 @@ func ParseCLIArgs() (Config, []string) {
 	defaultConfig := defaultNetworkManagerConfig()
 
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
-	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodePortUsage)
+	l1NodePort := flag.Uint64(l1NodeWebsocketPortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodeWebsocketPortUsage)
 	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.l1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
 	ethereumChainID := flag.Int64(ethereumChainIDName, defaultConfig.l1ChainID, ethereumChainIDUsage)
 	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.obscuroChainID, obscuroChainIDUsage)
