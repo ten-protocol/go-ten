@@ -17,6 +17,7 @@ on:
   workflow_dispatch:
 
 env:
+  # Make sure this is the correct L1 network before deployment
   L1HOST: testnet-gethnetwork-25.uksouth.azurecontainer.io
 
 jobs:

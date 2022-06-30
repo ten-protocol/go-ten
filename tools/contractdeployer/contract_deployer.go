@@ -1,5 +1,6 @@
 package contractdeployer
 
+// TODO we might merge this with the network manager package
 import (
 	"errors"
 	"fmt"
