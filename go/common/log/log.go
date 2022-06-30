@@ -19,7 +19,7 @@ const (
 	InfoLevel     = zerolog.InfoLevel
 	DebugLevel    = zerolog.DebugLevel
 	TraceLevel    = zerolog.TraceLevel
-	DisabledLevel = zerolog.Disabled
+	DisabledLevel = zerolog.Disabled // Nothing will show at this level not even errors
 )
 
 // singleton usage of the logger

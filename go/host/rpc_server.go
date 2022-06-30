@@ -26,16 +26,15 @@ func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
 	if config.HasClientRPCHTTP {
 		rpcConfig.HTTPHost = config.ClientRPCHost
 		rpcConfig.HTTPPort = int(config.ClientRPCPortHTTP)
+		// TODO review if this poses a security issue
+		rpcConfig.HTTPVirtualHosts = []string{allOrigins}
 	}
 	if config.HasClientRPCWebsockets {
 		rpcConfig.WSHost = config.ClientRPCHost
 		rpcConfig.WSPort = int(config.ClientRPCPortWS)
+		// TODO review if this poses a security issue
 		rpcConfig.WSOrigins = []string{allOrigins}
 	}
-
-	// allows calls from any vhost
-	// TODO review if this poses a security issue
-	rpcConfig.HTTPVirtualHosts = []string{"*"}
 
 	rpcServerNode, err := node.New(&rpcConfig)
 	if err != nil {

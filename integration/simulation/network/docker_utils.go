@@ -43,6 +43,13 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 				"--" + enclaverunner.ViewingKeysEnabledName + "=false",
 			},
 		}
+		fmt.Println([]string{
+			"--" + enclaverunner.HostIDName, nodeID,
+			"--" + enclaverunner.HostAddressName, fmt.Sprintf("%s:%d", Localhost, startPort+DefaultHostP2pOffset+i),
+			"--" + enclaverunner.AddressName, enclaveAddress,
+			"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
+			"--" + enclaverunner.Erc20ContractAddrsName, erc20Addrs[0] + "," + erc20Addrs[1],
+			"--" + enclaverunner.ViewingKeysEnabledName + "=false"})
 		r := container.Resources{
 			Memory:     2 * 1024 * 1024 * 1024, // 2GB
 			MemorySwap: -1,

@@ -13,9 +13,9 @@
 
 help_and_exit() {
     echo ""
-    echo "Usage: $(basename "${0}") --pkaddress=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+    echo "Usage: $(basename "${0}") --pkaddresses=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
     echo ""
-    echo "  pkaddress          *Required* Set the prefunded address"
+    echo "  pkaddresses          *Required* Set the prefunded addresses"
     echo ""
     echo "  wsport             *Optional* Set web socket start port. Defaults to 9000"
     echo ""
@@ -39,7 +39,7 @@ do
     value=$(echo $argument | cut -f2 -d=)
 
     case "$key" in
-            --pkaddress)                 pkaddress=${value} ;;
+            --pkaddresses)                 pkaddresses=${value} ;;
             --wsport)                   wsport=${value} ;;
             --port)                     port=${value} ;;
             --help)                     help_and_exit ;;
@@ -47,7 +47,7 @@ do
     esac
 done
 
-if [[ -z ${pkaddress:-} ]];
+if [[ -z ${pkaddresses:-} ]];
 then
     help_and_exit
 fi
@@ -63,7 +63,7 @@ docker run --name=gethnetwork -d \
   --numNodes=3 \
   --startPort=${port} \
   --websocketStartPort=${wsport} \
-  --prefundedAddrs=${pkaddress}
+  --prefundedAddrs=${pkaddresses}
 
 echo "Waiting 30s for the network to be up..."
 sleep 30

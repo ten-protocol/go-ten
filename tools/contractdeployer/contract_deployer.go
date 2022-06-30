@@ -34,7 +34,7 @@ func (cd *ContractDeployer) Run() error {
 	}
 
 	// load the wallet
-	w := wallet.NewInMemoryWalletFromPK(cd.config.ChainID, privateKey)
+	w := wallet.NewInMemoryWalletFromPK(cd.config.EthChainID, privateKey)
 	// connect to the l1
 	client, err := ethadapter.NewEthClient(cd.config.L1NodeHost, cd.config.L1NodePort, 30*time.Second)
 	if err != nil {
@@ -56,11 +56,13 @@ func (cd *ContractDeployer) Run() error {
 		contractAddr.Hex(),
 		erc20contractAddr.Hex(),
 	)
+	// this is a safety sleep to make sure the output is printed
 	time.Sleep(5 * time.Second)
 	return nil
 }
 
 // deployContract deploys a contract (with a tremendous amount of gas)
+// TODO This should be in a package somewhere + we should early exit if the error other than not found
 func deployContract(c ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*common.Address, error) {
 	nonce, err := c.Nonce(w.Address())
 	if err != nil {

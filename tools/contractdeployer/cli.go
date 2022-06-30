@@ -12,7 +12,7 @@ func DefaultConfig() *Config {
 		L1NodePort:       0,
 		MgmtContractPath: "",
 		PrivateKey:       "",
-		ChainID:          big.NewInt(1337),
+		EthChainID:       big.NewInt(1337),
 	}
 }
 
@@ -22,7 +22,7 @@ type Config struct {
 	L1NodePort       uint
 	MgmtContractPath string
 	PrivateKey       string
-	ChainID          *big.Int
+	EthChainID       *big.Int
 }
 
 // ParseConfig returns a Config after parsing all available flags
@@ -33,7 +33,7 @@ func ParseConfig() *Config {
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.L1NodePort), l1NodePortUsage)
 	mgmtContractPath := flag.String(mgmtContractPathName, defaultConfig.MgmtContractPath, mgmtContractPathUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKey, privateKeyUsage)
-	chainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
+	ethChainID := flag.Int64(chainIDName, defaultConfig.EthChainID.Int64(), chainIDUsage)
 
 	flag.Parse()
 
@@ -41,7 +41,7 @@ func ParseConfig() *Config {
 	defaultConfig.L1NodePort = uint(*l1NodePort)
 	defaultConfig.MgmtContractPath = *mgmtContractPath
 	defaultConfig.PrivateKey = *privateKeyStr
-	defaultConfig.ChainID = big.NewInt(*chainID)
+	defaultConfig.EthChainID = big.NewInt(*ethChainID)
 
 	return defaultConfig
 }

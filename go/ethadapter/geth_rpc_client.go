@@ -27,6 +27,7 @@ type gethRPCClient struct {
 }
 
 // NewEthClientFromConfig instantiates a new ethadapter.EthClient that connects to an ethereum node
+// TODO Refactor this acording with https://github.com/obscuronet/go-obscuro/pull/310#discussion_r910705504
 func NewEthClientFromConfig(config config.HostConfig) (EthClient, error) {
 	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1ConnectionTimeout)
 	if err != nil {

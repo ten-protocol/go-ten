@@ -46,7 +46,7 @@ const (
 	corsAllowHeaders = "Access-Control-Allow-Headers"
 	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 
-	AllInterfaces     = "0.0.0.0"
+	Localhost         = "127.0.0.1"
 	websocketProtocol = "ws://"
 
 	// EnclavePublicKeyHex is the public key of the enclave.
