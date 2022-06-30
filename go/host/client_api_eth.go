@@ -43,7 +43,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 	return gethcommon.Bytes2Hex(encryptedBalance), nil
 }
 
-// GetBlockByNumber is a placeholder for an RPC method required by MetaMask.
+// GetBlockByNumber is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) GetBlockByNumber(context.Context, rpc.BlockNumber, bool) (map[string]interface{}, error) {
 	result := map[string]interface{}{
 		// TODO - Return non-dummy values.
@@ -53,7 +53,7 @@ func (api *EthereumAPI) GetBlockByNumber(context.Context, rpc.BlockNumber, bool)
 	return result, nil
 }
 
-// GasPrice is a placeholder for an RPC method required by MetaMask.
+// GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 	return (*hexutil.Big)(big.NewInt(0)), nil
 }
@@ -78,8 +78,15 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
 
-// EstimateGas is a placeholder for an RPC method required by Remix.
+// EstimateGas is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	// TODO - Return a non-dummy gas estimate.
 	return 0, nil
+}
+
+// GetTransactionCount is a placeholder for an RPC method required by MetaMask/Remix.
+func (api *EthereumAPI) GetTransactionCount(_ context.Context, _ gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
+	// TODO - Return a non-dummy count.
+	count := uint64(0)
+	return (*hexutil.Uint64)(&count), nil
 }
