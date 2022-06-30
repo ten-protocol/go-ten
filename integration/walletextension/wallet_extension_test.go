@@ -545,6 +545,7 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 }
 
 func setupWalletTestLog(testName string) {
+	// todo: creating an individual file for every test is very heavy-handed, come up with a better solution?
 	logutil.SetupTestLog(&logutil.TestLogCfg{
 		LogDir:      testLogs,
 		TestType:    "wal-ext",
