@@ -356,15 +356,18 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 
 	log.Info("State rollup: r_%d. State: %s", common.ShortHash(r.Hash()), dump)
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
+	if !isValid {
+		log.Panic("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
+	}
 
 	// todo - check that the transactions hash to the header.txHash
 
 	// verify the signature
-	rc.verifySig(r)
-
+	isValid = rc.verifySig(r)
 	if !isValid {
-		log.Error("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
+		log.Panic("Should only happen once we start including malicious actors. Until then, a rollup with an invalid signature is a bug.")
 	}
+
 	return txReceipts, depositReceipts
 }
 
