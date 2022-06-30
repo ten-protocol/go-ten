@@ -443,6 +443,9 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 	}
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
 	resp, err := http.Post(httpProtocol+walletExtensionAddr+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		t.Fatalf("request to add viewing key failed with following status: %s", resp.Status)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
