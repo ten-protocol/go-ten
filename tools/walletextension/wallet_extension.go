@@ -97,7 +97,7 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
 	serveMux.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
 
-	// Handles the management of viewing keys.
+	// Serves the web assets for the management of viewing keys.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
 	if err != nil {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))

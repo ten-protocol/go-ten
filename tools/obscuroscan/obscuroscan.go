@@ -72,7 +72,7 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	// Handle requests to decrypt a transaction blob.
 	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)
 
-	// Serves the web interface.
+	// Serves the web assets for the user interface.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
 	if err != nil {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
