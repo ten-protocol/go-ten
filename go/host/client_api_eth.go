@@ -72,3 +72,9 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 	}
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
+
+// EstimateGas is a placeholder for an RPC method required by Remix.
+func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
+	// TODO - Return a non-dummy gas estimate.
+	return 0, nil
+}
