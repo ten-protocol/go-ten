@@ -16,9 +16,17 @@ name: Manual Deploy Obscuro network
 on:
   workflow_dispatch:
 
+env:
+  # Make sure this is the correct L1 network before deployment
+  L1HOST: testnet-gethnetwork-25.uksouth.azurecontainer.io
+
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      mgmtContractAddr: ${{ steps.deployContracts.outputs.mgmtContractAddr }}
+      erc20ContractAddr: ${{ steps.deployContracts.outputs.erc20ContractAddr }}
     steps:
       - uses: actions/checkout@v2
 
@@ -27,21 +35,95 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Create VM on Azure'
-        uses: azure/CLI@v1
+      - name: 'Build and push obscuro node images'
+        uses: azure/docker-login@v1
         with:
-          inlineScript: |
-            az vm create -g Testnet  -n "ObscuroHostTestnet-${{ GITHUB.RUN_NUMBER }}" \
-            --admin-username obscurouser --admin-password "${{ secrets.VM_PWD }}" \
-            --size Standard_DS2_v2 --image ubuntults
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest -f dockerfiles/host.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest
+          
+      - name: 'Deploy Contracts'
+        id: deployContracts
+        shell: bash
+        run: |
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
+          source ./testnet/.env
+          echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
+          echo "ERC20CONTRACTADDR=ERC20CONTRACTADDR" >> $GITHUB_ENV
+          echo "Contracts deployed to $MGMTCONTRACTADDR and $ERC20CONTRACTADDR"
+          echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
+          echo "::set-output name=erc20ContractAddr::$ERC20CONTRACTADDR"
+        
 
-      - name: 'Set up VM on Azure'
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        host_id: [0,1,2]
+        include:
+          - host_addr: 0x0000000000000000000000000000000000000000
+            host_id: 0
+          - host_addr: 0x0000000000000000000000000000000000000001
+            host_id: 1
+          - host_addr: 0x0000000000000000000000000000000000000002
+            host_id: 2
+          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
+            host_id: 0
+          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
+            host_id: 1
+          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_2
+            host_id: 2
+          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
+            host_id: 0
+          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
+            host_id: 1
+          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_2
+            host_id: 2
+
+    steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n ObscuroHostTestnet01 \
+            az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} \
+            --vnet-name ObscuroHostTestnet01VNET --subnet ObscuroHostTestnet01Subnet \
+            --size Standard_D2_v4 --image ubuntults --public-ip-sku Basic --authentication-type password
+
+      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm open-port -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001 
+
+      - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${GITHUB_REF##*/}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && /home/obscuro/go-obscuro/testnet/start-testnet-node.sh'
+            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-obscuro-node.sh --host_id=${{ matrix.host_addr }} --l1host=${{ env.L1HOST }} --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} --pkaddr=${{ secrets[matrix.node_pk_addr] }} --pkstring=${{ secrets[matrix.node_pk_str] }}'
 
 
 

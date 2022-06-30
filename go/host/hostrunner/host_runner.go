@@ -24,7 +24,7 @@ func RunHost(config config.HostConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethadapter.NewEthClient(config)
+	l1Client, err := ethadapter.NewEthClientFromConfig(config)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}

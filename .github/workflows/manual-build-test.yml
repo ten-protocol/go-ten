@@ -25,7 +25,7 @@ jobs:
         run: sudo docker stop $(sudo docker ps -a -q); sudo docker rm $(sudo docker ps -a -q);sudo lsof -ti:30000-39999|xargs -r sudo kill -9
 
       - name: Build Docker images
-        run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
+        run:  docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
 
       - name: Test
         run: go test --failfast -v -tags docker ./...

@@ -33,7 +33,7 @@ jobs:
           sudo lsof -i -P -n | grep LISTEN
 
       - name: Build Docker images
-        run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
+        run:  docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
 
       - name: Build
         run: go build -v ./...

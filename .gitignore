@@ -28,7 +28,13 @@ simulation_result.txt
 integration/simulation/cmd/cmd
 go/host/main/main
 go/enclave/main/main
+tools/walletextension/main/main
+tools/networkmanager/main/main
+tools/obscuroscan/main/main
 
 # Logs files
 **/enclave_logs.txt
 **/host_logs.txt
+
+# Temp env files
+testnet/.env
