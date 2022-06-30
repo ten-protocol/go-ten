@@ -69,7 +69,7 @@ type Config struct {
 func defaultNetworkManagerConfig() Config {
 	return Config{
 		l1NodeHost:          "127.0.0.1",
-		l1NodeWebsocketPort: 12100,
+		l1NodeWebsocketPort: 9000,
 		l1ConnectionTimeout: time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
 		// Default chosen to not conflict with default private key used by host.
 		privateKeys:          []string{"0000000000000000000000000000000000000000000000000000000000000002"},
