@@ -17,7 +17,7 @@ services:
       HOSTID: some_address
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
-      "/home/go-obscuro/go/obscuronode/host/main/main",
+      "/home/go-obscuro/go/host/main/main",
       "--l1NodeHost=$L1HOST",
       "--l1NodePort=$L1PORT",
       "--id=$HOSTID",
@@ -36,7 +36,7 @@ services:
       HOSTID: some_address
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
-                 "ego", "run", "/home/obscuro/go-obscuro/go/obscuronode/enclave/main/main",
+                 "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
                  "--managementContractAddress=$MGMTCONTRACTADDR",

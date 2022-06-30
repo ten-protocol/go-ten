@@ -19,9 +19,9 @@ RUN go get -d -v ./...
 COPY . /home/go-obscuro
 
 # build the gethnetwork exec
-WORKDIR /home/go-obscuro/go/obscuronode/host/main
+WORKDIR /home/go-obscuro/go/host/main
 RUN go build
 
 # expose the http and the ws ports to the host
 EXPOSE 8025 9000
-ENTRYPOINT ["/home/go-obscuro/go/obscuronode/host/main/main"]
+ENTRYPOINT ["/home/go-obscuro/go/host/main/main"]
