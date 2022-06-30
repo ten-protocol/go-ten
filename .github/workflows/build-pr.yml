@@ -48,4 +48,5 @@ jobs:
           path: |
             integration/.build/simulations/sim-log-*.txt
             integration/.build/noderunner/noderunner-*.txt
+            integration/.build/wallet_extension/wal-ext-*.txt
         if: always() # Ensures the artifacts are created even if the tests fail.

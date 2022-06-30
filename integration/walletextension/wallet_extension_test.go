@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -40,6 +41,7 @@ import (
 )
 
 const (
+	testLogs     = "../.build/wallet_extension/"
 	l2ChainIDHex = "0x309"
 
 	reqJSONMethodChainID = "eth_chainId"
@@ -68,6 +70,7 @@ var (
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("req-no-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -87,6 +90,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("bal-no-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -107,6 +111,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("bal-with-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -135,6 +140,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("others-bal-with-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -162,6 +168,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("tx-no-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -199,6 +206,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("tx-with-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -237,6 +245,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("others-tx-with-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -275,6 +284,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetTxReceiptWithoutSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("tx-rcpt-no-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -298,6 +308,7 @@ func TestCannotGetTxReceiptWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("tx-rcpt-with-viewing-key")
 	stopHandle, erc20PrivateKey, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -324,6 +335,7 @@ func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetTxReceiptSubmittedFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("others-tx-rcpt-with-viewing-key")
 	stopHandle, _, err := createObscuroNetwork()
 	defer stopHandle()
 	if err != nil {
@@ -529,4 +541,12 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	}
 
 	return obscuroNetwork.TearDown, wallets.Tokens[bridge.BTC].L2Owner.PrivateKey(), nil
+}
+
+func setupWalletTestLog(testName string) {
+	logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "wal-ext",
+		TestSubtype: testName,
+	})
 }
