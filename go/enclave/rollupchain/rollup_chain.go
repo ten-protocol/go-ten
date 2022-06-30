@@ -52,7 +52,7 @@ type RollupChain struct {
 	rpcEncryptionManager  rpcencryptionmanager.RPCEncryptionManager
 	mempool               mempool.Manager
 
-	privateKey           *ecdsa.PrivateKey
+	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
 }
 
@@ -65,7 +65,7 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		bridge:                bridge,
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
-		privateKey:            privateKey,
+		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		obscuroChainID:        obscuroChainID,
 		ethereumChainID:       ethereumChainID,
@@ -679,16 +679,17 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
 	var err error
 	h := r.Hash()
-	r.Header.R, r.Header.S, err = ecdsa.Sign(rand.Reader, rc.privateKey, h[:])
+	r.Header.R, r.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
 	if err != nil {
 		log.Panic("Could not sign rollup. Cause: %s", err)
 	}
 }
 
 func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
+	// Todo - it is not enough to verify the signature. We have to also check that the signer is one of the attested aggregators.
 	h := r.Hash()
 	if r.Header.R == nil || r.Header.S == nil {
 		panic("Missing signature on rollup")
 	}
-	return ecdsa.Verify(&rc.privateKey.PublicKey, h[:], r.Header.R, r.Header.S)
+	return ecdsa.Verify(&rc.enclavePrivateKey.PublicKey, h[:], r.Header.R, r.Header.S)
 }
