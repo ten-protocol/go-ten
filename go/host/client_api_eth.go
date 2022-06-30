@@ -2,7 +2,6 @@ package host
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
@@ -83,10 +82,4 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	// TODO - Return a non-dummy gas estimate.
 	return 0, nil
-}
-
-// Version is a placeholder for an RPC method required by Remix.
-func (api *EthereumAPI) Version() string {
-	// TODO - Return a non-dummy version.
-	return fmt.Sprintf("%d", 0)
 }
