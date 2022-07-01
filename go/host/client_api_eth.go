@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"math/big"
+	"strings"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
 
@@ -89,6 +90,12 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 	encryptedResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
 	if err != nil {
 		return "", err
+	}
+	// todo: get rid of this hack when we stop supporting unencrypted params for testing purposes
+	// 		(the unencrypted hex number doesn't like to be bytes to hex encoded)
+	if strings.HasPrefix(string(encryptedResponse), "0x") {
+		// the response wasn't encrypted
+		return string(encryptedResponse), nil
 	}
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }

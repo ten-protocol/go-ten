@@ -249,7 +249,8 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
 	}
 
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, decryptedTx.Hash().Bytes())
+	txHashBytes := []byte(decryptedTx.Hash().Hex())
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, txHashBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
 	}
