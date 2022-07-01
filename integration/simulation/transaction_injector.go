@@ -2,7 +2,6 @@ package simulation
 
 import (
 	cryptorand "crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -412,15 +411,16 @@ func NextNonce(cl rpcclientlib.Client, w wallet.Wallet) uint64 {
 	}
 }
 
-// Encrypts a single transaction using the enclave's public key to send it privately to the enclave.
+// Formats a transaction for sending to the enclave and encrypts it using the enclave's public key.
 func encryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) common.EncryptedParamsSendRawTx {
 	txBinary, err := tx.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}
 
-	txBinaryBase64 := base64.StdEncoding.EncodeToString(txBinary)
-	txBinaryListJSON, err := json.Marshal([]string{txBinaryBase64})
+	// We convert the transaction binary to the form expected for sending transactions via RPC.
+	txBinaryHex := gethcommon.Bytes2Hex(txBinary)
+	txBinaryListJSON, err := json.Marshal([]string{"0x" + txBinaryHex})
 	if err != nil {
 		panic(err)
 	}
