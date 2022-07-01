@@ -2,17 +2,15 @@ package rpcencryptionmanager
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
@@ -141,16 +139,9 @@ func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*com
 		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
 	}
 
-	var txBinaryList []string
-	err = json.Unmarshal(txBinaryListJSON, &txBinaryList)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal transaction from JSON. Cause: %w", err)
-	}
-
-	txBytes, err := base64.StdEncoding.DecodeString(txBinaryList[0])
-	if err != nil {
-		return nil, fmt.Errorf("could not Base64-decode transaction. Cause: %w", err)
-	}
+	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
+	txBinary := txBinaryListJSON[4 : len(txBinaryListJSON)-2]
+	txBytes := gethcommon.Hex2Bytes(string(txBinary))
 
 	tx := &common.L2Tx{}
 	err = tx.UnmarshalBinary(txBytes)

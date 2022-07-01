@@ -659,7 +659,7 @@ func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.A
 	}
 	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
 	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("from field in Call request params was not of expected type string")
+		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("from field in Call request params was not of expected type string. Was %s", txArgs.(map[string]interface{})[CallFieldFrom])
 	}
 	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
 	if !ok {
