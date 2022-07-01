@@ -44,7 +44,7 @@ type Enclave interface {
 	SubmitRollup(rollup ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx EncryptedTx) error
+	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
 
 	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
 	// Todo - return the result with a block delay. To prevent frontrunning.

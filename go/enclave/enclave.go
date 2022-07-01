@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
@@ -227,20 +228,33 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 	}
 }
 
-func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) error {
+func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	decryptedTx, err := e.rpcEncryptionManager.DecryptTx(tx)
 	if err != nil {
-		return fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 	err = e.mempool.AddMempoolTx(decryptedTx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if e.config.SpeculativeExecution {
 		e.txCh <- decryptedTx
 	}
-	return nil
+
+	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
+	signer := types.NewLondonSigner(big.NewInt(e.config.ObscuroChainID))
+	sender, err := signer.Sender(decryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
+	}
+
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, decryptedTx.Hash().Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
+	}
+
+	return encryptedResult, nil
 }
 
 func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {

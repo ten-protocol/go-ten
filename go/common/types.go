@@ -26,12 +26,15 @@ type (
 	EncryptedTx           []byte // A single transaction encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
 
-	EncryptedParamsGetBalance     []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
-	EncryptedParamsCall           []byte // As above, but for an RPC call request.
-	EncryptedParamsGetTxReceipt   []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedParamsGetBalance   []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
+	EncryptedParamsCall         []byte // As above, but for an RPC call request.
+	EncryptedParamsGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedParamsSendRawTx    []byte // As above, but for an RPC sendRawTransaction request.
+
 	EncryptedResponseGetBalance   []byte // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
 	EncryptedResponseCall         []byte // As above, but for an RPC call request.
 	EncryptedResponseGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedResponseSendRawTx    []byte // As above, but for an RPC sendRawTransaction request.
 
 	Nonce         = uint64
 	EncodedRollup []byte

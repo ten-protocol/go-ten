@@ -189,7 +189,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
+	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 	if err != nil {
 		panic(err)
 	}
@@ -230,7 +230,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		}
 		ti.stats.Transfer()
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -295,7 +295,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			panic(err)
 		}
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -325,7 +325,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 			panic(err)
 		}
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendTransactionEncrypted, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
@@ -424,7 +424,7 @@ func NextNonce(cl rpcclientlib.Client, w wallet.Wallet) uint64 {
 }
 
 // EncryptTx encrypts a single transaction using the enclave's public key to send it privately to the enclave.
-func EncryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) (common.EncryptedTx, error) {
+func EncryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) (common.EncryptedParamsSendRawTx, error) {
 	txBytes, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode transaction bytes with RLP. Cause: %w", err)
