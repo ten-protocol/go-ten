@@ -39,6 +39,7 @@ services:
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
+                 "--useInMemoryDB=false",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
                  "--viewingKeysEnabled=false",
