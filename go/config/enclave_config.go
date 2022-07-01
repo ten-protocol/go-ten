@@ -39,6 +39,9 @@ type EnclaveConfig struct {
 	ViewingKeysEnabled bool
 	// host address for the edgeless DB instance (can be empty if using InMemory DB or if attestation is disabled)
 	EdgelessDBHost string
+	// filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
+	//	if using InMemory DB or if attestation is enabled)
+	SqliteDBPath string
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -60,5 +63,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		UseInMemoryDB:             true, // todo: persistence should be on by default before production release
 		ViewingKeysEnabled:        true,
 		EdgelessDBHost:            "",
+		SqliteDBPath:              "",
 	}
 }
