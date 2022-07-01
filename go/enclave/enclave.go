@@ -231,6 +231,7 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	decryptedTx, err := e.rpcEncryptionManager.DecryptTx(tx)
 	if err != nil {
+		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 	err = e.mempool.AddMempoolTx(decryptedTx)

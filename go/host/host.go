@@ -182,7 +182,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
 	}
 	a.P2p.BroadcastTx(encryptedTx)
 
@@ -323,7 +323,7 @@ func (a *Node) startProcessing() {
 
 		case tx := <-a.txP2PCh:
 			if _, err := a.EnclaveClient.SubmitTx(tx); err != nil {
-				log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+				log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
 			}
 
 		case <-a.exitNodeCh:

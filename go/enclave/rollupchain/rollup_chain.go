@@ -636,6 +636,12 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, result.Err
 	}
 
+	// If the from field is empty, we cannot encrypt the response.
+	emptyAddress := gethcommon.Address{}
+	if from == emptyAddress {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_call request, as it had no `from` field")
+	}
+
 	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(from, result.ReturnData)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
@@ -657,17 +663,21 @@ func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.A
 	if !ok {
 		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("to field in Call request params was not of expected type string")
 	}
-	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
-	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("from field in Call request params was not of expected type string. Was %s", txArgs.(map[string]interface{})[CallFieldFrom])
-	}
 	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
 	if !ok {
 		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("data field in Call request params was not of expected type string")
 	}
 
+	var from gethcommon.Address
+	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
+	if !ok {
+		// If this field is not of type string, it is nil, and we return an empty address.
+		from = gethcommon.Address{}
+	} else {
+		from = gethcommon.HexToAddress(fromString)
+	}
+
 	contractAddress := gethcommon.HexToAddress(contractAddressString)
-	from := gethcommon.HexToAddress(fromString)
 	data, err := hexutil.Decode(dataString)
 	if err != nil {
 		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
