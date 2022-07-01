@@ -2,8 +2,9 @@ package host
 
 import (
 	"context"
-	"github.com/obscuronet/obscuro-playground/go/common"
 	"math/big"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -92,7 +93,7 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
 
-// todo - joel - temp
+// TODO - Temporary. Will be replaced by encrypted implementation.
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
 	nonce := api.host.EnclaveClient.Nonce(address)
 	return (*hexutil.Uint64)(&nonce), nil
