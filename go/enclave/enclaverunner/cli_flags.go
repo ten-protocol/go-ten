@@ -49,4 +49,7 @@ const (
 
 	edgelessDBHostName  = "edgelessDBHost"
 	edgelessDBHostUsage = "host address for the edgeless DB instance (can be empty if useInMemoryDB is true or if not using attestation"
+
+	sqliteDBPathName  = "sqliteDBPath"
+	sqliteDBPathUsage = "filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB or if using attestation/EdgelessDB)"
 )
