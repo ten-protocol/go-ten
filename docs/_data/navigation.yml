@@ -11,8 +11,8 @@ pages:
         url: what-is-obscuro/tokens.html
       - title: Community
         url: what-is-obscuro/community.html
-      - title: Roadmap
-        url: what-is-obscuro/roadmap.html
+      #- title: Roadmap
+      #  url: what-is-obscuro/roadmap.html
   - title: Community
     children:
       - title: Contributing to Obscuro
@@ -27,8 +27,10 @@ pages:
         url: testnet/deploying-a-smart-contract.html
       - title: Wallet Extension
         url: testnet/wallet-extension.html
-      - title: Troubleshooting
-        url: testnet/troubleshooting.html
+      - title: ObscuroScan
+        url: testnet/obscuroscan.html
+      #- title: Troubleshooting
+      #  url: testnet/troubleshooting.html
       - title: Change Log
         url: testnet/changelog.html
       #- title: Create a New Node
@@ -37,8 +39,8 @@ pages:
       #  url: testnet/uninstall.html
   - title: Whitepaper
     children:
-      - title: Obscuro Whitepaper Content
-        url: whitepaper/redirect.html
+      - title: Abstract
+        url: whitepaper/abstract.html
       #- title: Abstract
       #  url: /obscuro-whitepaper/abstract.html
       #- title: Motivation

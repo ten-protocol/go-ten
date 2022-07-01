@@ -30,7 +30,7 @@ func InjectTransactions(cfg Config, args []string) {
 		L1ConnectionTimeout: cfg.l1ConnectionTimeout,
 	}
 	println("Connecting to L1 node...")
-	l1Client, err := ethadapter.NewEthClient(hostConfig)
+	l1Client, err := ethadapter.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}

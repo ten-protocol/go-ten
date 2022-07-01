@@ -54,6 +54,10 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
     * Viewing keys are ephemeral. A new viewing key must be created each time the wallet extension is started
 
+# Auditing the source
+
+The source code for the wallet extension can be found [here](https://github.com/obscuronet/go-obscuro/tree/main/tools/walletextension).
+
 # Compiling the binary
 
 The wallet extension binary can be built by cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro) 

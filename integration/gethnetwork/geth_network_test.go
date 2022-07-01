@@ -117,7 +117,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 		L1NodeWebsocketPort: network.WebSocketPorts[0],
 		L1ConnectionTimeout: defaultL1ConnectionTimeout,
 	}
-	ethClient, err := ethadapter.NewEthClient(hostConfig)
+	ethClient, err := ethadapter.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(err)
 	}

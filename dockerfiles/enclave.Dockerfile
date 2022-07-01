@@ -5,10 +5,12 @@ FROM ghcr.io/edgelesssys/ego-dev:latest
 #   /home/obscuro/go-obscuro contains the src
 RUN mkdir /home/obscuro
 RUN mkdir /home/obscuro/data
-WORKDIR /home/obscuro
+COPY . /home/obscuro/go-obscuro
 
-RUN git clone https://github.com/obscuronet/go-obscuro
-RUN cd go-obscuro/go/enclave/main && ego-go build && ego sign main
+# build binary
+WORKDIR /home/obscuro/go-obscuro/go/enclave/main
+RUN ego-go build && ego sign main
 
 ENV OE_SIMULATION=1
+EXPOSE 11000
 ENTRYPOINT ["ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main"]
