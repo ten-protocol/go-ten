@@ -23,7 +23,7 @@ type (
 	L2RootHash            = gethcommon.Hash
 	TxHash                = gethcommon.Hash
 	L2Tx                  = types.Transaction
-	EncryptedTx           []byte // A single transaction encoded as a JSON list of Base64-encoded transaction binaries, encrypted using the enclave's public key
+	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
 
 	EncryptedParamsGetBalance   []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
