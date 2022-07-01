@@ -57,7 +57,7 @@ func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
 		{
 			Namespace: apiNamespaceNetwork,
 			Version:   apiVersion1,
-			Service:   NewNetworkAPI(),
+			Service:   NewNetworkAPI(host),
 			Public:    true,
 		},
 	}
