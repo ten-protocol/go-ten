@@ -155,8 +155,8 @@ func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollup
 }
 
 func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
-	err := s.enclave.SubmitTx(request.EncryptedTx)
-	return &generated.SubmitTxResponse{}, err
+	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
+	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err
 }
 
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {

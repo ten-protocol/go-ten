@@ -218,12 +218,15 @@ func (c *EnclaveRPCClient) SubmitRollup(rollup common.ExtRollup) {
 	}
 }
 
-func (c *EnclaveRPCClient) SubmitTx(tx common.EncryptedTx) error {
+func (c *EnclaveRPCClient) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
-	return err
+	response, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
+	if err != nil {
+		return nil, err
+	}
+	return response.EncryptedHash, err
 }
 
 func (c *EnclaveRPCClient) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
