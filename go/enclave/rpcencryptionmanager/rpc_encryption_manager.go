@@ -2,12 +2,11 @@ package rpcencryptionmanager
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -137,15 +136,27 @@ func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcomm
 
 // DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
 func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*common.L2Tx, error) {
-	txBytes, err := rpc.DecryptWithEnclavePrivateKey(encryptedTx)
+	txBinaryListJSON, err := rpc.DecryptWithEnclavePrivateKey(encryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
 	}
 
-	transaction := common.L2Tx{}
-	if err = rlp.DecodeBytes(txBytes, &transaction); err != nil {
-		return nil, fmt.Errorf("could not decrypt encrypted L2 transaction. Cause: %w", err)
+	var txBinaryList []string
+	err = json.Unmarshal(txBinaryListJSON, &txBinaryList)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal transaction from JSON. Cause: %w", err)
 	}
 
-	return &transaction, nil
+	txBytes, err := base64.StdEncoding.DecodeString(txBinaryList[0])
+	if err != nil {
+		return nil, fmt.Errorf("could not Base64-decode transaction. Cause: %w", err)
+	}
+
+	tx := &common.L2Tx{}
+	err = tx.UnmarshalBinary(txBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshall transaction from binary. Cause: %w", err)
+	}
+
+	return tx, nil
 }
