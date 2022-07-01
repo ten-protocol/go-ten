@@ -183,10 +183,11 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
 		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+		return nil, err
 	}
 	a.P2p.BroadcastTx(encryptedTx)
 
-	return encryptedResponse, err
+	return encryptedResponse, nil
 }
 
 // ReceiveRollup is called by counterparties when there is a Rollup to broadcast
