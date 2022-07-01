@@ -186,7 +186,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	}
 	a.P2p.BroadcastTx(encryptedTx)
 
-	return encryptedResponse, nil
+	return encryptedResponse, err
 }
 
 // ReceiveRollup is called by counterparties when there is a Rollup to broadcast

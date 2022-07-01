@@ -84,11 +84,13 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.Blo
 	return 0, nil
 }
 
-// todo - joel - handle the wallet extension piece
-
 // SendRawTransaction sends the encrypted transaction
-func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
-	return api.host.SubmitAndBroadcastTx(encryptedParams)
+func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
+	encryptedResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
+	if err != nil {
+		return "", err
+	}
+	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
 
 // todo - joel - temp

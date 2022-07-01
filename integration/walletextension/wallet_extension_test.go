@@ -541,7 +541,7 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 	}
 	err = l2Clients[0].Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 	if err != nil {
-		return obscuroNetwork.TearDown, nil, err
+		// Expected - we do not have the viewing key to get back the transaction hash, so we get an error instead.
 	}
 
 	return obscuroNetwork.TearDown, wallets.Tokens[bridge.BTC].L2Owner.PrivateKey(), nil
