@@ -2,6 +2,8 @@ package simulation
 
 import (
 	cryptorand "crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -14,7 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
@@ -185,10 +186,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
-	if err != nil {
-		panic(err)
-	}
+	encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 	if err != nil {
 		panic(err)
@@ -224,10 +222,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			common.ShortAddress(toWallet.Address()),
 		)
 
-		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
-		if err != nil {
-			panic(err)
-		}
+		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 		ti.stats.Transfer()
 
 		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
@@ -290,10 +285,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(obsWallet.Address()),
 		)
-		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
-		if err != nil {
-			panic(err)
-		}
+		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 
 		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 		if err != nil {
@@ -320,12 +312,9 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		tx := ti.newCustomObscuroWithdrawalTx(common.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
-		encryptedTx, err := EncryptTx(signedTx, ti.enclavePublicKey)
-		if err != nil {
-			panic(err)
-		}
+		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+		err := ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
@@ -423,19 +412,25 @@ func NextNonce(cl rpcclientlib.Client, w wallet.Wallet) uint64 {
 	}
 }
 
-// EncryptTx encrypts a single transaction using the enclave's public key to send it privately to the enclave.
-func EncryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) (common.EncryptedParamsSendRawTx, error) {
-	txBytes, err := rlp.EncodeToBytes(tx)
+// Encrypts a single transaction using the enclave's public key to send it privately to the enclave.
+func encryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) common.EncryptedParamsSendRawTx {
+	txBinary, err := tx.MarshalBinary()
 	if err != nil {
-		return nil, fmt.Errorf("could not encode transaction bytes with RLP. Cause: %w", err)
+		panic(err)
 	}
 
-	encryptedTxBytes, err := ecies.Encrypt(cryptorand.Reader, enclavePublicKey, txBytes, nil, nil)
+	txBinaryBase64 := base64.StdEncoding.EncodeToString(txBinary)
+	txBinaryListJSON, err := json.Marshal([]string{txBinaryBase64})
 	if err != nil {
-		return nil, fmt.Errorf("could not encrypt request params with enclave public key. Cause: %w", err)
+		panic(err)
 	}
 
-	return encryptedTxBytes, nil
+	encryptedTxBytes, err := ecies.Encrypt(cryptorand.Reader, enclavePublicKey, txBinaryListJSON, nil, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return encryptedTxBytes
 }
 
 // Indicates whether to keep issuing transactions, or halt.
