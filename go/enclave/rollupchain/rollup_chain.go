@@ -614,7 +614,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 
 	contractAddress, from, data, err := extractCallParams(paramBytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("aborting `eth_call` request. Cause: %w", err)
 	}
 
 	hs := rc.storage.FetchHeadState()
@@ -655,15 +655,18 @@ func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.A
 	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
 	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
 	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("to field in Call request params was not of expected type string")
+		return gethcommon.Address{}, gethcommon.Address{}, nil,
+			fmt.Errorf("`to` field in request params was missing or not of expected type string")
 	}
 	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
 	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("from field in Call request params was not of expected type string")
+		return gethcommon.Address{}, gethcommon.Address{}, nil,
+			fmt.Errorf("`from` field in request params is missing or was not of expected type string. The `from` field is required to encrypt the response")
 	}
 	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
 	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("data field in Call request params was not of expected type string")
+		return gethcommon.Address{}, gethcommon.Address{}, nil,
+			fmt.Errorf("`data` field in request params is missing or was not of expected type string")
 	}
 
 	contractAddress := gethcommon.HexToAddress(contractAddressString)
