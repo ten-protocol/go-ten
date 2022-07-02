@@ -269,7 +269,7 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 	if tx == nil {
 		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
 	}
-	msg, err := tx.AsMessage(types.NewEIP155Signer(tx.ChainId()), nil)
+	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
 	}
