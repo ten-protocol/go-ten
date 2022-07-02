@@ -6,10 +6,6 @@
 # HTTP:       8025, 8026, 8027
 # WebSocket:  9000, 9001, 9002
 #
-# Exposes the following addresses: (only accessible internally)
-#  obscuro01.testnet.obscu.ro
-#  obscuro01.testnet.obscu.ro
-#  obscuro01.testnet.obscu.ro
 
 name: Manual Deploy Obscuro network
 
@@ -48,7 +44,7 @@ jobs:
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest
           docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest
-          
+
       - name: 'Deploy Contracts'
         id: deployContracts
         shell: bash
@@ -60,7 +56,7 @@ jobs:
           echo "Contracts deployed to $MGMTCONTRACTADDR and $ERC20CONTRACTADDR"
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
           echo "::set-output name=erc20ContractAddr::$ERC20CONTRACTADDR"
-        
+  
 
   deploy:
     needs: build
@@ -123,7 +119,26 @@ jobs:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }}  https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh && sudo apt-get update && sudo apt-get install -y jq && cd /home/obscuro/go-obscuro/testnet/ && ./start-obscuro-node.sh --host_id=${{ matrix.host_addr }} --l1host=${{ env.L1HOST }} --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} --pkaddr=${{ secrets[matrix.node_pk_addr] }} --pkstring=${{ secrets[matrix.node_pk_str] }}'
-
-
-
+            --scripts 'mkdir -p /home/obscuro \
+            && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+            && sudo apt-get update \
+            && sudo apt-get install -y jq \
+            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
+            && docker run -d --name datadog-agent \
+               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
+               -e DD_LOGS_ENABLED=true \
+               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
+               -e DD_SITE="datadoghq.eu"  \
+               -v /var/run/docker.sock:/var/run/docker.sock:ro \
+               -v /proc/:/host/proc/:ro \
+               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
+               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               datadog/agent:latest \
+            && cd /home/obscuro/go-obscuro/testnet/ \
+            && ./start-obscuro-node.sh --host_id=${{ matrix.host_addr }} \
+               --l1host=${{ env.L1HOST }} \
+               --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
+               --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} \
+               --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
+               --pkstring=${{ secrets[matrix.node_pk_str] }}'
