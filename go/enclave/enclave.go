@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	obscurocrypto "github.com/obscuronet/obscuro-playground/go/enclave/crypto"
@@ -317,6 +316,14 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 		return &extRollup
 	}
 	return nil
+}
+
+// todo - joel - do rpc server side
+
+func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+	rollup := e.storage.FetchRollups(rollupHeight)[0]
+	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
+	return &extRollup
 }
 
 func (e *enclaveImpl) Attestation() *common.AttestationReport {

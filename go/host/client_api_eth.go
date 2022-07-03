@@ -43,6 +43,8 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 	return gethcommon.Bytes2Hex(encryptedBalance), nil
 }
 
+// todo - joel - update description
+// todo - joel - create block
 // GetBlockByNumber is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) GetBlockByNumber(context.Context, rpc.BlockNumber, bool) (map[string]interface{}, error) {
 	result := map[string]interface{}{
