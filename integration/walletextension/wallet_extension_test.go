@@ -247,7 +247,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallWithoutSettingFromField(t *testing.T) {
-	setupWalletTestLog("tx-with-viewing-key")
+	setupWalletTestLog("tx-no-from-field")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
