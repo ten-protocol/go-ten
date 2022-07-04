@@ -43,6 +43,8 @@ type RollupResolver interface {
 	StoreGenesisRollup(rol *core.Rollup)
 	// FetchGenesisRollup returns the rollup genesis
 	FetchGenesisRollup() *core.Rollup
+	// FetchHeadRollup returns the head rollup
+	FetchHeadRollup() *core.Rollup
 }
 
 type BlockStateStorage interface {

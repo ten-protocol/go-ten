@@ -319,6 +319,31 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 	return nil
 }
 
+func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+	// TODO - Consider improving efficiency by directly fetching rollup by number.
+	rollup := e.storage.FetchHeadRollup()
+	for {
+		if rollup.Number().Uint64() == rollupHeight {
+			// We have found the block.
+			break
+		}
+		if rollup.Number().Uint64() < rollupHeight {
+			// The current block number is below the sought number. Continuing to walk up the chain is pointless.
+			return nil
+		}
+
+		// We grab the next rollup and loop.
+		rollup = e.storage.ParentRollup(rollup)
+		if rollup == nil {
+			// We've reached the head of the chain without finding the block.
+			return nil
+		}
+	}
+
+	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
+	return &extRollup
+}
+
 func (e *enclaveImpl) Attestation() *common.AttestationReport {
 	if e.publicKeySerialized == nil {
 		panic("public key not initialized, we can't produce the attestation report")
