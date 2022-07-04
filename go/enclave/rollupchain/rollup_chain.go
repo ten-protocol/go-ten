@@ -309,7 +309,6 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := stateDB.Dump(&state.DumpConfig{})
-		// dump := ""
 		log.Info("Calculated a different state. This should not happen as there are no malicious actors yet. Rollup: r_%d, \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts)
 		return false
@@ -543,8 +542,8 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 		r.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
 	}
 
-	dump := newRollupState.Dump(&state.DumpConfig{})
-	log.Info("Create rollup. State: %s", dump)
+	// dump := newRollupState.Dump(&state.DumpConfig{})
+	// log.Info("Create rollup. State: %s", dump)
 
 	return r
 }
