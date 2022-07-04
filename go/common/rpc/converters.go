@@ -92,8 +92,15 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
 		}
 	}
 
+	// We recreate the transaction hashes.
+	txHashes := make([]gethcommon.Hash, len(msg.TxHashes))
+	for idx, bytes := range msg.TxHashes {
+		txHashes[idx] = gethcommon.BytesToHash(bytes)
+	}
+
 	return common.ExtRollup{
 		Header:          FromRollupHeaderMsg(msg.Header),
+		TxHashes:        txHashes,
 		EncryptedTxBlob: msg.Txs,
 	}
 }

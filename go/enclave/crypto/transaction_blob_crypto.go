@@ -76,7 +76,8 @@ func (t TransactionBlobCryptoImpl) Decrypt(encryptedTxs common.EncryptedTransact
 
 func (t TransactionBlobCryptoImpl) ToExtRollup(r *core.Rollup) common.ExtRollup {
 	return common.ExtRollup{
-		Header:          r.Header,
+		Header: r.Header,
+		// todo - joel - add txhashes here
 		EncryptedTxBlob: t.Encrypt(r.Transactions),
 	}
 }

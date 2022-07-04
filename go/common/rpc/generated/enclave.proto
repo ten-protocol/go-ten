@@ -240,7 +240,8 @@ message BlockSubmissionResponseMsg {
 
 message ExtRollupMsg {
   HeaderMsg header = 1;
-  bytes txs = 2;
+  repeated bytes txHashes = 2;
+  bytes txs = 3;
 }
 
 message HeaderMsg {
