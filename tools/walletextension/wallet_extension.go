@@ -383,6 +383,10 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 		return respJSONMap, nil
 	}
 
+	if we.viewingPrivateKeyEcies == nil {
+		return nil, fmt.Errorf("could not decrypt enclave response as no viewing key has been created")
+	}
+
 	fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
 	encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
 	decryptedResult, err := we.viewingPrivateKeyEcies.Decrypt(encryptedResult, nil, nil)
