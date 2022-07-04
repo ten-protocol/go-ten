@@ -58,6 +58,7 @@ func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumb
 		"miner":            extRollup.Header.Agg,
 		"extradata":        hexutil.Bytes(extRollup.Header.Extra),
 		"transactionsroot": extRollup.Header.TxHash,
+		"transactions":     extRollup.TxHashes,
 	}
 	return block, nil
 }

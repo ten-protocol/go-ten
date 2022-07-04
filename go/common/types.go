@@ -71,17 +71,17 @@ type Withdrawal struct {
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
 	Header          *Header
+	TxHashes        []gethcommon.Hash // The hashes of the transactions included in the rollup
 	EncryptedTxBlob EncryptedTransactions
 }
 
 // EncryptedRollup extends ExtRollup with additional fields.
 // This parallels the Block/extblock split in Go Ethereum.
 type EncryptedRollup struct {
-	Header *Header
-
-	hash atomic.Value
-
+	Header       *Header
+	TxHashes     []gethcommon.Hash // The hashes of the transactions included in the rollup
 	Transactions EncryptedTransactions
+	hash         atomic.Value
 }
 
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
@@ -95,6 +95,7 @@ type AttestationReport struct {
 func (er ExtRollup) ToRollup() *EncryptedRollup {
 	return &EncryptedRollup{
 		Header:       er.Header,
+		TxHashes:     er.TxHashes,
 		Transactions: er.EncryptedTxBlob,
 	}
 }
