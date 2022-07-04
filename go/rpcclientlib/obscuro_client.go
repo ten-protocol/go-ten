@@ -21,7 +21,7 @@ const (
 	RPCCall                 = "eth_call"
 	RPCGetTxReceipt         = "eth_getTransactionReceipt"
 	RPCSendRawTransaction   = "eth_sendRawTransaction"
-	RPCGetTransaction       = "eth_getTransaction"
+	RPCGetTransactionByHash = "eth_getTransactionByHash"
 )
 
 // Client is used by client applications to interact with the Obscuro node.

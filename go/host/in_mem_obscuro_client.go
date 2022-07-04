@@ -71,16 +71,20 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		*result.(**common.ExtRollup) = c.obscuroAPI.GetRollup(hash)
 
-	case rpcclientlib.RPCGetTransaction:
+	case rpcclientlib.RPCGetTransactionByHash:
 		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTransaction, len(args))
+			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTransactionByHash, len(args))
 		}
 		hash, ok := args[0].(gethcommon.Hash)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetTransaction)
+			return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetTransactionByHash)
 		}
 
-		*result.(**common.L2Tx) = c.ethAPI.GetTransaction(hash)
+		rpcTx, err := c.ethAPI.GetTransactionByHash(context.Background(), hash)
+		if err != nil {
+			return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
+		}
+		*result.(**RPCTransaction) = rpcTx
 
 	case rpcclientlib.RPCCall:
 		if len(args) != 1 {
