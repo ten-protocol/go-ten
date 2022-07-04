@@ -326,11 +326,11 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
 	for {
-		if rollup.Number().Uint64() == 0 {
+		if rollup.Number().Uint64() == rollupHeight {
 			// We have found the block.
 			break
 		}
-		if rollup.Number().Uint64() < rollupHeightBig.Uint64() {
+		if rollup.Number().Uint64() < rollupHeight {
 			// The current block number is below the sought number. Continuing to walk up the chain is pointless.
 			return nil
 		}
