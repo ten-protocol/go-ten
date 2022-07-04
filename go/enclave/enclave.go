@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
@@ -321,8 +320,6 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 }
 
 func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
-	rollupHeightBig := big.NewInt(int64(rollupHeight))
-
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
 	for {
