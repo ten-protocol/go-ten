@@ -77,7 +77,7 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 }
 
 func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) {
-	p.broadcast(Tx, tx, append(p.peerAddresses, p.ourAddress))
+	p.broadcast(Tx, tx, p.peerAddresses)
 }
 
 func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) {

@@ -6,14 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/common"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
@@ -137,15 +135,20 @@ func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcomm
 
 // DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
 func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*common.L2Tx, error) {
-	txBytes, err := rpc.DecryptWithEnclavePrivateKey(encryptedTx)
+	txBinaryListJSON, err := rpc.DecryptWithEnclavePrivateKey(encryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
 	}
 
-	transaction := common.L2Tx{}
-	if err = rlp.DecodeBytes(txBytes, &transaction); err != nil {
-		return nil, fmt.Errorf("could not decrypt encrypted L2 transaction. Cause: %w", err)
+	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
+	txBinary := txBinaryListJSON[4 : len(txBinaryListJSON)-2]
+	txBytes := gethcommon.Hex2Bytes(string(txBinary))
+
+	tx := &common.L2Tx{}
+	err = tx.UnmarshalBinary(txBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshall transaction from binary. Cause: %w", err)
 	}
 
-	return &transaction, nil
+	return tx, nil
 }

@@ -93,3 +93,18 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.Blo
 	// TODO - Return a non-dummy gas estimate.
 	return 0, nil
 }
+
+// SendRawTransaction sends the encrypted transaction
+func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
+	encryptedResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
+	if err != nil {
+		return "", err
+	}
+	return gethcommon.Bytes2Hex(encryptedResponse), nil
+}
+
+// TODO - Temporary. Will be replaced by encrypted implementation.
+func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
+	nonce := api.host.EnclaveClient.Nonce(address)
+	return (*hexutil.Uint64)(&nonce), nil
+}
