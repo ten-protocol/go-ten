@@ -51,7 +51,7 @@ services:
                  "--hostAddress=host:10000",
                  "--willAttest",
                  "--useInMemoryDB=false",
-                 "--edgelessDBHost edgelessdb"
+                 "--edgelessDBHost=edgelessdb"
     ]
 
   edgelessdb:
