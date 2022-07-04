@@ -43,16 +43,22 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 	return gethcommon.Bytes2Hex(encryptedBalance), nil
 }
 
-// todo - joel - update description
-// todo - joel - create block
-// GetBlockByNumber is a placeholder for an RPC method required by MetaMask/Remix.
-func (api *EthereumAPI) GetBlockByNumber(context.Context, rpc.BlockNumber, bool) (map[string]interface{}, error) {
-	result := map[string]interface{}{
-		// TODO - Return non-dummy values.
-		"baseFeePerGas": (*hexutil.Big)(big.NewInt(0)),
-		"number":        (*hexutil.Big)(big.NewInt(0)),
+// GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
+func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
+	extRollup := api.host.EnclaveClient.GetRollupByHeight(uint64(number))
+
+	block := map[string]interface{}{
+		"number":       extRollup.Header.Number,
+		"hash":         extRollup.Header.Hash(),
+		"parenthash":   extRollup.Header.ParentHash,
+		"nonce":        extRollup.Header.Nonce,
+		"logsbloom":    extRollup.Header.Bloom,
+		"stateroot":    extRollup.Header.Root,
+		"receiptsroot": extRollup.Header.ReceiptHash,
+		"miner":        extRollup.Header.Agg,
+		"extradata":    extRollup.Header.Extra,
 	}
-	return result, nil
+	return block, nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"math/big"
 
 	obscurocrypto "github.com/obscuronet/obscuro-playground/go/enclave/crypto"
 
@@ -318,10 +319,29 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 	return nil
 }
 
-// todo - joel - do rpc server side
-
 func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
-	rollup := e.storage.FetchRollups(rollupHeight)[0]
+	rollupHeightBig := big.NewInt(int64(rollupHeight))
+
+	// TODO - Consider improving efficiency by directly fetching rollup by number.
+	rollup := e.storage.FetchHeadRollup()
+	for {
+		if rollup.Number().Cmp(rollupHeightBig) == 0 {
+			// We have found the block.
+			break
+		}
+		if rollup.Number().Cmp(rollupHeightBig) == -1 {
+			// The current block number is below the sought number. Continuing to walk the chain is pointless.
+			return nil
+		}
+
+		// We grab the next rollup and loop.
+		rollup = e.storage.ParentRollup(rollup)
+		if rollup == nil {
+			// We've reached the head of the chain without finding the block.
+			return nil
+		}
+	}
+
 	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
 	return &extRollup
 }
