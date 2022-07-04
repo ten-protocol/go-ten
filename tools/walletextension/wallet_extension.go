@@ -81,9 +81,10 @@ type WalletExtension struct {
 	hostClient       rpcclientlib.Client
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
+	viewingPublicKeyBytes  []byte
+	viewingPrivateKeyEcies *ecies.PrivateKey
+	// The address associated with the last viewing key submitted. Used to set missing `from` fields in `eth_call` requests.
 	viewingPublicKeyAddress common.Address
-	viewingPublicKeyBytes   []byte
-	viewingPrivateKeyEcies  *ecies.PrivateKey
 	server                  *http.Server
 }
 
