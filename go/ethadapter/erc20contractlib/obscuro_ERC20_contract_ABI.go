@@ -31,6 +31,9 @@ const (
 )
 
 func DecodeTransferTx(t *types.Transaction) (bool, *gethcommon.Address, *big.Int) {
+	if len(t.Data()) < methodBytesLen {
+		return false, nil, nil
+	}
 	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:methodBytesLen])
 	if err != nil {
 		log.Info("Could not decode tx %d, Err: %s", common.ShortHash(t.Hash()), err)

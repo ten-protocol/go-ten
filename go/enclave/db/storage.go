@@ -274,10 +274,10 @@ func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction
 func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, error) {
 	tx, _, _, _, err := s.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt request. Cause: %w", err)
+		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction with hash %s. Cause: %w", txHash.Hex(), err)
 	}
 	if tx == nil {
-		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction in eth_getTransactionReceipt")
+		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction with hash %s", txHash.Hex())
 	}
 	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
 	if err != nil {

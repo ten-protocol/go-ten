@@ -1,5 +1,3 @@
-# This compose requires SGX capable CPU
-
 version: "3.9"
 networks:
   default:
@@ -26,43 +24,25 @@ services:
       "--enclaveRPCAddress=enclave:11000",
       "--rollupContractAddress=$MGMTCONTRACTADDR",
       "--privateKey=$PKSTRING",
-      "--clientRPCHost=0.0.0.0",
+      "--clientRPCHost=0.0.0.0"
     ]
 
   enclave:
-    privileged: true
-    volumes:
-      - /dev/sgx:/dev/sgx
     networks:
       - default
     environment:
       MGMTCONTRACTADDR: some_address
       ERC20CONTRACTADDR: some_address
       HOSTID: some_address
-      OE_SIMULATION: 0
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
+                 "--useInMemoryDB=false",
+                 "--sqliteDBPath=/data/sqlite.db",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
                  "--viewingKeysEnabled=false",
-                 "--hostAddress=host:10000",
-                 "--willAttest",
-                 "--useInMemoryDB=false",
-                 "--edgelessDBHost=edgelessdb"
+                 "--hostAddress=host:10000"
     ]
-
-  edgelessdb:
-    privileged: true
-    volumes:
-      - /dev/sgx:/dev/sgx
-    networks:
-      - default
-    environment:
-      EDG_EDB_CERT_DNS: edgelessdb
-    ports:
-      - "3306:3306"
-      - "8080:8080"
-    image: ghcr.io/edgelesssys/edgelessdb-sgx-1gb:latest
