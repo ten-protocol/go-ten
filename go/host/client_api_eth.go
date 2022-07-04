@@ -48,7 +48,7 @@ func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumb
 	extRollup := api.host.EnclaveClient.GetRollupByHeight(uint64(number))
 
 	block := map[string]interface{}{
-		"number":       extRollup.Header.Number,
+		"number":       (*hexutil.Big)(extRollup.Header.Number),
 		"hash":         extRollup.Header.Hash(),
 		"parenthash":   extRollup.Header.ParentHash,
 		"nonce":        extRollup.Header.Nonce,
@@ -56,7 +56,7 @@ func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumb
 		"stateroot":    extRollup.Header.Root,
 		"receiptsroot": extRollup.Header.ReceiptHash,
 		"miner":        extRollup.Header.Agg,
-		"extradata":    extRollup.Header.Extra,
+		"extradata":    hexutil.Bytes(extRollup.Header.Extra),
 	}
 	return block, nil
 }
