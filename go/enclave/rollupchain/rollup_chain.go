@@ -270,24 +270,46 @@ func (rc *RollupChain) findRoundWinner(receivedRollups []*obscurocore.Rollup, pa
 	return headRollup
 }
 
-func (rc *RollupChain) process(rollup *obscurocore.Rollup, stateDB *state.StateDB, depositTxs []*common.L2Tx) (gethcommon.Hash, []*types.Receipt, []*types.Receipt) {
-	txReceipts := evm.ExecuteTransactions(rollup.Transactions, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, 0)
-	if len(rollup.Transactions) != len(txReceipts) {
-		panic("Sanity check. All transactions that are included in a rollup must be executed and produce a receipt.")
+func (rc *RollupChain) process(rollup *obscurocore.Rollup, txs obscurocore.L2Txs, stateDB *state.StateDB) (gethcommon.Hash, obscurocore.L2Txs, []*types.Receipt, []*types.Receipt) {
+	var successfulTransactions obscurocore.L2Txs
+	txReceipts := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, 0)
+	txReceiptsMap := toReceiptMap(txReceipts)
+	// todo - only transactions that fail because of the nonce should be excluded
+	for _, tx := range txs {
+		_, f := txReceiptsMap[tx.Hash()]
+		if f {
+			successfulTransactions = append(successfulTransactions, tx)
+		} else {
+			log.Info(">   Agg%d: Excluding transaction %d", common.ShortAddress(rc.hostID), common.ShortHash(tx.Hash()))
+		}
 	}
-	depositReceipts := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, len(rollup.Transactions))
+
+	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
+	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
+	depositTxs := rc.bridge.ExtractDeposits(
+		rc.storage.Proof(rc.storage.ParentRollup(rollup)),
+		rc.storage.Proof(rollup),
+		rc.storage,
+		stateDB,
+	)
+
+	depositReceipts := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, len(successfulTransactions))
+	if len(depositReceipts) != len(depositTxs) {
+		log.Panic("Sanity check. Some deposit transactions failed.")
+	}
+
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		log.Panic("could not commit to state DB. Cause: %s", err)
 	}
-	return rootHash, txReceipts, depositReceipts
+	return rootHash, successfulTransactions, txReceipts, depositReceipts
 }
 
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
-		// dump := stateDB.Dump(&state.DumpConfig{})
-		dump := ""
+		dump := stateDB.Dump(&state.DumpConfig{})
+		// dump := ""
 		log.Info("Calculated a different state. This should not happen as there are no malicious actors yet. Rollup: r_%d, \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts)
 		return false
@@ -302,7 +324,7 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 		}
 	}
 
-	rec := getReceipts(txReceipts, depositReceipts)
+	rec := allReceipts(txReceipts, depositReceipts)
 	rbloom := types.CreateBloom(rec)
 	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
 		log.Info("invalid bloom (remote: %x  local: %x)", h.Bloom, rbloom)
@@ -374,18 +396,11 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) {
 	stateDB := rc.storage.CreateStateDB(r.Header.ParentHash)
 	// calculate the state to compare with what is in the Rollup
-	depositTxs := rc.bridge.ExtractDeposits(
-		rc.storage.Proof(rc.storage.ParentRollup(r)),
-		rc.storage.Proof(r),
-		rc.storage,
-		stateDB,
-	)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.process(r, r.Transactions, stateDB)
+	if len(successfulTxs) != len(r.Transactions) {
+		panic("Sanity check. All transactions that are included in a rollup must be executed and produce a receipt.")
+	}
 
-	rootHash, txReceipts, depositReceipts := rc.process(r, stateDB, depositTxs)
-	// dump := stateDB.Dump(&state.DumpConfig{})
-	dump := ""
-
-	log.Info("State rollup: r_%d. State: %s", common.ShortHash(r.Hash()), dump)
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
 	if !isValid {
 		log.Error("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
@@ -400,7 +415,7 @@ func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receip
 	return result
 }
 
-func getReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
+func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
 	receipts := make([]*types.Receipt, 0)
 	receipts = append(receipts, txReceipts...)
 	receipts = append(receipts, depositReceipts...)
@@ -465,7 +480,6 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	// These variables will be used to create the new rollup
 	var newRollupTxs obscurocore.L2Txs
 	var newRollupState *state.StateDB
-	var newRollupHeader *common.Header
 
 	/*
 			speculativeExecutionSucceeded := false
@@ -496,49 +510,26 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 			}
 	*/
 
-	successfulTransactions := make([]*common.L2Tx, 0)
 	// if !speculativeExecutionSucceeded {
 	// In case the speculative execution thread has not succeeded in producing a valid rollup
 	// we have to create a new one from the mempool transactions
-	newRollupHeader = obscurocore.NewHeader(&bs.HeadRollup, headRollup.NumberU64()+1, rc.hostID)
-	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
-	newRollupState = rc.storage.CreateStateDB(bs.HeadRollup)
-	txReceipts := evm.ExecuteTransactions(newRollupTxs, newRollupState, newRollupHeader, rc.storage, rc.obscuroChainID, 0)
-	txReceiptsMap := toReceiptMap(txReceipts)
-	// todo - only transactions that fail because of the nonce should be excluded
-	for i, tx := range newRollupTxs {
-		_, f := txReceiptsMap[tx.Hash()]
-		if f {
-			successfulTransactions = append(successfulTransactions, newRollupTxs[i])
-		} else {
-			log.Info(">   Agg%d: Excluding transaction %d", common.ShortAddress(rc.hostID), common.ShortHash(tx.Hash()))
-		}
-	}
-
-	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
-	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	fromBlock := rc.storage.Proof(headRollup)
-	depositTxs := rc.bridge.ExtractDeposits(fromBlock, b, rc.storage, newRollupState)
-	depositReceipts := evm.ExecuteTransactions(depositTxs, newRollupState, newRollupHeader, rc.storage, rc.obscuroChainID, len(successfulTransactions))
-	depositReceiptsMap := toReceiptMap(depositReceipts)
-	// deposits should not fail
-	for _, tx := range depositTxs {
-		if depositReceiptsMap[tx.Hash()] == nil || depositReceiptsMap[tx.Hash()].Status == types.ReceiptStatusFailed {
-			panic("Should not happen")
-		}
-	}
-
 	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
-	rootHash, err := newRollupState.Commit(true)
-	if err != nil {
-		panic(err)
-	}
-	r := obscurocore.NewRollupFromHeader(newRollupHeader, b.Hash(), successfulTransactions, common.GenerateNonce(), rootHash)
+	nonce := common.GenerateNonce()
+	r := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
+
+	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
+	newRollupState = rc.storage.CreateStateDB(r.Header.ParentHash)
+
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.process(r, newRollupTxs, newRollupState)
+
+	r.Header.Root = rootHash
+	r.Transactions = successfulTxs
 
 	// Postprocessing - withdrawals
-	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(&r, newRollupState, txReceiptsMap)
-	receipts := getReceipts(txReceipts, depositReceipts)
+	txReceiptsMap := toReceiptMap(txReceipts)
+	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
 
+	receipts := allReceipts(txReceipts, depositReceipts)
 	if len(receipts) == 0 {
 		r.Header.ReceiptHash = types.EmptyRootHash
 	} else {
@@ -546,7 +537,16 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 		r.Header.Bloom = types.CreateBloom(receipts)
 	}
 
-	return &r
+	if len(successfulTxs) == 0 {
+		r.Header.TxHash = types.EmptyRootHash
+	} else {
+		r.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
+	}
+
+	dump := newRollupState.Dump(&state.DumpConfig{})
+	log.Info("Create rollup. State: %s", dump)
+
+	return r
 }
 
 // TODO - this belongs in the protocol
