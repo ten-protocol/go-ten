@@ -149,7 +149,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 	method := reqJSONMap[reqJSONKeyMethod]
-	fmt.Printf("Received request from wallet: %s\n", body)
+	fmt.Printf("Received %s request from wallet: %s\n", method, body)
 
 	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
 	maybeEncryptedBody, err := we.encryptParamsIfNeeded(body, method, reqJSONMap)
@@ -192,7 +192,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
 		return
 	}
-	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(clientResponse)))
+	fmt.Printf("Received %s response from Obscuro node: %s\n", method, strings.TrimSpace(string(clientResponse)))
 
 	// We write the response to the client.
 	_, err = resp.Write(clientResponse)
