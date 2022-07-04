@@ -395,7 +395,17 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt enclave response with viewing key: %w", err)
 	}
-	respJSONMap[RespJSONKeyResult] = string(decryptedResult)
+	// todo - joel - cleanup. do for other result types - actually, it's only this one :)
+	if method == "eth_getTransactionReceipt" {
+		fields := map[string]interface{}{}
+		err := json.Unmarshal(decryptedResult, &fields)
+		if err != nil {
+			panic(err)
+		}
+		respJSONMap[RespJSONKeyResult] = fields
+	} else {
+		respJSONMap[RespJSONKeyResult] = string(decryptedResult)
+	}
 
 	return respJSONMap, nil
 }
