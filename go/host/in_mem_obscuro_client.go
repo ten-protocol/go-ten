@@ -80,7 +80,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetTransaction)
 		}
 
-		*result.(**common.L2Tx) = c.obscuroAPI.GetTransaction(hash)
+		*result.(**common.L2Tx) = c.ethAPI.GetTransaction(hash)
 
 	case rpcclientlib.RPCCall:
 		if len(args) != 1 {

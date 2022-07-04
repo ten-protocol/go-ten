@@ -108,3 +108,9 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommo
 	nonce := api.host.EnclaveClient.Nonce(address)
 	return (*hexutil.Uint64)(&nonce), nil
 }
+
+// GetTransaction returns the transaction with the given hash.
+func (api *EthereumAPI) GetTransaction(hash gethcommon.Hash) *common.L2Tx {
+	tx, _, _, _, _ := api.host.EnclaveClient.GetTransaction(hash) //nolint:dogsled
+	return tx
+}
