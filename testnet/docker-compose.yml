@@ -30,6 +30,8 @@ services:
     ]
 
   enclave:
+    volumes:
+      - /dev/sgx:/dev/sgx
     networks:
       - default
     environment:
@@ -52,6 +54,8 @@ services:
     ]
 
   edgelessdb:
+    volumes:
+      - /dev/sgx:/dev/sgx
     networks:
       - default
     environment:
