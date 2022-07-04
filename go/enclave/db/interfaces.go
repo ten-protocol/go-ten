@@ -1,6 +1,8 @@
 package db
 
 import (
+	"crypto/ecdsa"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -78,6 +80,14 @@ type TransactionStorage interface {
 	GetSender(txHash gethcommon.Hash) (gethcommon.Address, error)
 }
 
+type AttestationStorage interface {
+	// FetchAttestedKey returns the public key of an attested aggregator, returns nil if not found
+	FetchAttestedKey(aggregator gethcommon.Address) *ecdsa.PublicKey
+
+	// StoreAttestedKey - store the public key of an attested aggregator
+	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey)
+}
+
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
@@ -85,4 +95,5 @@ type Storage interface {
 	SharedSecretStorage
 	BlockStateStorage
 	TransactionStorage
+	AttestationStorage
 }

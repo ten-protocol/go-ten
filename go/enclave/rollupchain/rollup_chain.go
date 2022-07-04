@@ -690,10 +690,15 @@ func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
 }
 
 func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
-	// Todo - it is not enough to verify the signature. We have to also check that the signer is one of the attested aggregators.
+	// If this rollup is generted by the current enclave skip the sig verification
+	if bytes.Equal(r.Header.Agg.Bytes(), rc.hostID.Bytes()) {
+		return true
+	}
+
 	h := r.Hash()
 	if r.Header.R == nil || r.Header.S == nil {
 		panic("Missing signature on rollup")
 	}
-	return ecdsa.Verify(&rc.enclavePrivateKey.PublicKey, h[:], r.Header.R, r.Header.S)
+	pubKey := rc.storage.FetchAttestedKey(r.Header.Agg)
+	return ecdsa.Verify(pubKey, h[:], r.Header.R, r.Header.S)
 }

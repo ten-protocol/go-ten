@@ -377,6 +377,13 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 	}
 	common.LogWithID(e.nodeShortID, "Successfully verified attestation and identity. Owner: %s", att.Owner)
 
+	// Store the attestation
+	key, err := crypto.DecompressPubkey(att.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse public key %w", err)
+	}
+	e.storage.StoreAttestedKey(att.Owner, key)
+
 	secret := e.storage.FetchSecret()
 	if secret == nil {
 		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
