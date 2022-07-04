@@ -36,6 +36,7 @@ const (
 	ReqJSONMethodGetBalance   = "eth_getBalance"
 	ReqJSONMethodCall         = "eth_call"
 	ReqJSONMethodGetTxReceipt = "eth_getTransactionReceipt"
+	ReqJSONMethodSendRawTx    = "eth_sendRawTransaction"
 	respJSONKeyErr            = "error"
 	respJSONKeyMsg            = "message"
 	RespJSONKeyResult         = "result"
@@ -149,7 +150,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 	method := reqJSONMap[reqJSONKeyMethod]
-	fmt.Printf("Received request from wallet: %s\n", body)
+	fmt.Printf("Received %s request from wallet: %s\n", method, body)
 
 	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
 	maybeEncryptedBody, err := we.encryptParamsIfNeeded(body, method, reqJSONMap)
@@ -192,7 +193,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
 		return
 	}
-	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(clientResponse)))
+	fmt.Printf("Received %s response from Obscuro node: %s\n", method, strings.TrimSpace(string(clientResponse)))
 
 	// We write the response to the client.
 	_, err = resp.Write(clientResponse)
@@ -336,5 +337,5 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 
 // Indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
-	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt
+	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodSendRawTx
 }

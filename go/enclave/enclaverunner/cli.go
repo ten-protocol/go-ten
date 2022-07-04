@@ -50,6 +50,7 @@ func ParseConfig() config.EnclaveConfig {
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, useInMemoryDBUsage)
 	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, cfg.ViewingKeysEnabled, ViewingKeysEnabledUsage)
 	edgelessDBHost := flag.String(edgelessDBHostName, cfg.EdgelessDBHost, edgelessDBHostUsage)
+	sqliteDBPath := flag.String(sqliteDBPathName, cfg.SqliteDBPath, sqliteDBPathUsage)
 
 	flag.Parse()
 
@@ -84,6 +85,7 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.UseInMemoryDB = *useInMemoryDB
 	cfg.ViewingKeysEnabled = *viewingKeysEnabled
 	cfg.EdgelessDBHost = *edgelessDBHost
+	cfg.SqliteDBPath = *sqliteDBPath
 
 	return cfg
 }

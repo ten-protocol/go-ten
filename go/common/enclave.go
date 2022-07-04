@@ -44,7 +44,7 @@ type Enclave interface {
 	SubmitRollup(rollup ExtRollup)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx EncryptedTx) error
+	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
 
 	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
 	// Todo - return the result with a block delay. To prevent frontrunning.
@@ -67,6 +67,9 @@ type Enclave interface {
 
 	// GetRollup returns the rollup with the given hash
 	GetRollup(rollupHash L2RootHash) *ExtRollup
+
+	// GetRollupByHeight returns the canonical rollup with the given height.
+	GetRollupByHeight(rollupHeight uint64) *ExtRollup
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.

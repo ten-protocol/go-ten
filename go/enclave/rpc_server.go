@@ -155,8 +155,8 @@ func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollup
 }
 
 func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
-	err := s.enclave.SubmitTx(request.EncryptedTx)
-	return &generated.SubmitTxResponse{}, err
+	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
+	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err
 }
 
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
@@ -216,6 +216,16 @@ func (s *server) GetRollup(_ context.Context, request *generated.GetRollupReques
 
 	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
 	return &generated.GetRollupResponse{Known: true, ExtRollup: &extRollupMsg}, nil
+}
+
+func (s *server) GetRollupByHeight(_ context.Context, request *generated.GetRollupByHeightRequest) (*generated.GetRollupByHeightResponse, error) {
+	extRollup := s.enclave.GetRollupByHeight(request.RollupHeight)
+	if extRollup == nil {
+		return &generated.GetRollupByHeightResponse{Known: false, ExtRollup: nil}, nil
+	}
+
+	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
+	return &generated.GetRollupByHeightResponse{Known: true, ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {

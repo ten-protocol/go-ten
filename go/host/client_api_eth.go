@@ -43,14 +43,24 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 	return gethcommon.Bytes2Hex(encryptedBalance), nil
 }
 
-// GetBlockByNumber is a placeholder for an RPC method required by MetaMask/Remix.
-func (api *EthereumAPI) GetBlockByNumber(context.Context, rpc.BlockNumber, bool) (map[string]interface{}, error) {
-	result := map[string]interface{}{
-		// TODO - Return non-dummy values.
-		"baseFeePerGas": (*hexutil.Big)(big.NewInt(0)),
-		"number":        (*hexutil.Big)(big.NewInt(0)),
+// GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
+func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
+	extRollup := api.host.EnclaveClient.GetRollupByHeight(uint64(number))
+
+	block := map[string]interface{}{
+		"number":           (*hexutil.Big)(extRollup.Header.Number),
+		"hash":             extRollup.Header.Hash(),
+		"parenthash":       extRollup.Header.ParentHash,
+		"nonce":            extRollup.Header.Nonce,
+		"logsbloom":        extRollup.Header.Bloom,
+		"stateroot":        extRollup.Header.Root,
+		"receiptsroot":     extRollup.Header.ReceiptHash,
+		"miner":            extRollup.Header.Agg,
+		"extradata":        hexutil.Bytes(extRollup.Header.Extra),
+		"transactionsroot": extRollup.Header.TxHash,
+		"transactions":     extRollup.TxHashes,
 	}
-	return result, nil
+	return block, nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -82,4 +92,19 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	// TODO - Return a non-dummy gas estimate.
 	return 0, nil
+}
+
+// SendRawTransaction sends the encrypted transaction
+func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
+	encryptedResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
+	if err != nil {
+		return "", err
+	}
+	return gethcommon.Bytes2Hex(encryptedResponse), nil
+}
+
+// TODO - Temporary. Will be replaced by encrypted implementation.
+func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
+	nonce := api.host.EnclaveClient.Nonce(address)
+	return (*hexutil.Uint64)(&nonce), nil
 }

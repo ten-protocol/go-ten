@@ -178,6 +178,18 @@ func (a *Node) MockedNewFork(b []common.EncodedBlock) {
 	a.forkRPCCh <- b
 }
 
+func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
+	encryptedTx := common.EncryptedTx(encryptedParams)
+	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
+	if err != nil {
+		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+		return nil, err
+	}
+	a.P2p.BroadcastTx(encryptedTx)
+
+	return encryptedResponse, nil
+}
+
 // ReceiveRollup is called by counterparties when there is a Rollup to broadcast
 // All it does is forward the rollup for processing to the enclave
 func (a *Node) ReceiveRollup(r common.EncodedRollup) {
@@ -307,12 +319,13 @@ func (a *Node) startProcessing() {
 
 			go a.EnclaveClient.SubmitRollup(common.ExtRollup{
 				Header:          rol.Header,
+				TxHashes:        rol.TxHashes,
 				EncryptedTxBlob: rol.Transactions,
 			})
 
 		case tx := <-a.txP2PCh:
-			if err := a.EnclaveClient.SubmitTx(tx); err != nil {
-				log.Trace(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+			if _, err := a.EnclaveClient.SubmitTx(tx); err != nil {
+				log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
 			}
 
 		case <-a.exitNodeCh:

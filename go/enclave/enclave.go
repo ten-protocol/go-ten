@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
@@ -239,20 +240,35 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 	}
 }
 
-func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) error {
+func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	decryptedTx, err := e.rpcEncryptionManager.DecryptTx(tx)
 	if err != nil {
-		return fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
+		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 	err = e.mempool.AddMempoolTx(decryptedTx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if e.config.SpeculativeExecution {
 		e.txCh <- decryptedTx
 	}
-	return nil
+
+	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
+	signer := types.NewLondonSigner(big.NewInt(e.config.ObscuroChainID))
+	sender, err := signer.Sender(decryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
+	}
+
+	txHashBytes := []byte(decryptedTx.Hash().Hex())
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, txHashBytes)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
+	}
+
+	return encryptedResult, nil
 }
 
 func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
@@ -329,6 +345,31 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 		return &extRollup
 	}
 	return nil
+}
+
+func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+	// TODO - Consider improving efficiency by directly fetching rollup by number.
+	rollup := e.storage.FetchHeadRollup()
+	for {
+		if rollup.Number().Uint64() == rollupHeight {
+			// We have found the block.
+			break
+		}
+		if rollup.Number().Uint64() < rollupHeight {
+			// The current block number is below the sought number. Continuing to walk up the chain is pointless.
+			return nil
+		}
+
+		// We grab the next rollup and loop.
+		rollup = e.storage.ParentRollup(rollup)
+		if rollup == nil {
+			// We've reached the head of the chain without finding the block.
+			return nil
+		}
+	}
+
+	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
+	return &extRollup
 }
 
 func (e *enclaveImpl) Attestation() *common.AttestationReport {

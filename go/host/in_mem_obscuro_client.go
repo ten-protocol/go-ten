@@ -31,16 +31,17 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpcclientlib.RPCGetID:
 		*result.(*gethcommon.Address) = c.obscuroAPI.GetID()
 
-	case rpcclientlib.RPCSendTransactionEncrypted:
+	case rpcclientlib.RPCSendRawTransaction:
 		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCSendTransactionEncrypted, len(args))
+			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCSendRawTransaction, len(args))
 		}
-		tx, ok := args[0].(common.EncryptedTx)
+		tx, ok := args[0].(common.EncryptedParamsSendRawTx)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type EncryptedTx", rpcclientlib.RPCSendTransactionEncrypted)
+			return fmt.Errorf("arg to %s was not of expected type EncryptedParamsSendRawTx", rpcclientlib.RPCSendRawTransaction)
 		}
 
-		c.obscuroAPI.SendTransactionEncrypted(tx)
+		_, err := c.ethAPI.SendRawTransaction(context.Background(), tx)
+		return err
 
 	case rpcclientlib.RPCGetCurrentBlockHead:
 		*result.(**types.Header) = c.obscuroAPI.GetCurrentBlockHead()

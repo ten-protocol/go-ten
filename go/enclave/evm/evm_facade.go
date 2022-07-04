@@ -17,6 +17,9 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/enclave/db"
 )
 
+// The balance allocated to the sender when they perform a transaction, to ensure they have enough gas.
+const prealloc = 750000000000000000
+
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
@@ -44,6 +47,15 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 
 func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *common.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
 	s.Prepare(t.Hash(), tCount)
+
+	// Allocates a large balance to the sender, to allow them to perform any transaction.
+	// TODO - Allocate balances properly.
+	signer := types.NewLondonSigner(cc.ChainID)
+	sender, err := types.Sender(signer, t)
+	if err != nil {
+		return nil, err
+	}
+	s.AddBalance(sender, big.NewInt(prealloc))
 
 	snap := s.Snapshot()
 	// todo - Author?
