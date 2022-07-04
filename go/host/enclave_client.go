@@ -335,7 +335,7 @@ func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight uint64) *common.ExtRol
 
 	response, err := c.protoClient.GetRollupByHeight(timeoutCtx, &generated.GetRollupByHeightRequest{RollupHeight: rollupHeight})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to retrieve rollup with height %d. Cause: %s", common.ShortAddress(c.config.ID), err)
+		log.Panic(">   Agg%d: Failed to retrieve rollup with height %d. Cause: %s", common.ShortAddress(c.config.ID), rollupHeight, err)
 	}
 
 	if !response.Known {

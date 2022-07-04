@@ -5,8 +5,9 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/common/log"
 	"math/big"
+
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	obscurocrypto "github.com/obscuronet/obscuro-playground/go/enclave/crypto"
 
