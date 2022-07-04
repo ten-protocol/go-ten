@@ -8,11 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts"
 	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts"
 
 	"github.com/ethereum/go-ethereum/common"
 
