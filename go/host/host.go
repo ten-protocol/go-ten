@@ -319,6 +319,7 @@ func (a *Node) startProcessing() {
 
 			go a.EnclaveClient.SubmitRollup(common.ExtRollup{
 				Header:          rol.Header,
+				TxHashes:        rol.TxHashes,
 				EncryptedTxBlob: rol.Transactions,
 			})
 

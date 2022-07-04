@@ -3,6 +3,8 @@ package datagenerator
 import (
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
@@ -17,6 +19,7 @@ func RandomRollup() common.EncryptedRollup {
 			Number:      big.NewInt(int64(randomUInt64())),
 			Withdrawals: randomWithdrawals(10),
 		},
+		TxHashes:     []gethcommon.Hash{randomHash()},
 		Transactions: RandomBytes(10),
 	}
 }

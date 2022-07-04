@@ -50,8 +50,13 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) c
 }
 
 func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
+	txHashBytes := make([][]byte, len(rollup.TxHashes))
+	for idx, txHash := range rollup.TxHashes {
+		txHashBytes[idx] = txHash.Bytes()
+	}
+
 	if rollup.Header != nil {
-		return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Txs: rollup.EncryptedTxBlob}
+		return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
 	}
 
 	return generated.ExtRollupMsg{Header: nil}
@@ -92,8 +97,15 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
 		}
 	}
 
+	// We recreate the transaction hashes.
+	txHashes := make([]gethcommon.Hash, len(msg.TxHashes))
+	for idx, bytes := range msg.TxHashes {
+		txHashes[idx] = gethcommon.BytesToHash(bytes)
+	}
+
 	return common.ExtRollup{
 		Header:          FromRollupHeaderMsg(msg.Header),
+		TxHashes:        txHashes,
 		EncryptedTxBlob: msg.Txs,
 	}
 }

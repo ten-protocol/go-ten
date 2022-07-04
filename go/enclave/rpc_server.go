@@ -218,6 +218,16 @@ func (s *server) GetRollup(_ context.Context, request *generated.GetRollupReques
 	return &generated.GetRollupResponse{Known: true, ExtRollup: &extRollupMsg}, nil
 }
 
+func (s *server) GetRollupByHeight(_ context.Context, request *generated.GetRollupByHeightRequest) (*generated.GetRollupByHeightResponse, error) {
+	extRollup := s.enclave.GetRollupByHeight(request.RollupHeight)
+	if extRollup == nil {
+		return &generated.GetRollupByHeightResponse{Known: false, ExtRollup: nil}, nil
+	}
+
+	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
+	return &generated.GetRollupByHeightResponse{Known: true, ExtRollup: &extRollupMsg}, nil
+}
+
 func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
 	err := s.enclave.AddViewingKey(request.ViewingKey, request.Signature)
 	if err != nil {

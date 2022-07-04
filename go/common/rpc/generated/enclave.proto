@@ -67,6 +67,9 @@ service EnclaveProto {
   // GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
   rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
 
+  // GetBlock returns a rollup given its height
+  rpc GetRollupByHeight(GetRollupByHeightRequest) returns (GetRollupByHeightResponse) {}
+
   // AddViewingKey adds a viewing key to the enclave
   rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
 
@@ -197,6 +200,14 @@ message GetRollupResponse {
   ExtRollupMsg extRollup = 2;
 }
 
+message GetRollupByHeightRequest {
+  uint64 rollupHeight = 1;
+}
+message GetRollupByHeightResponse {
+  bool known = 1;
+  ExtRollupMsg extRollup = 2;
+}
+
 message AddViewingKeyRequest {
   bytes viewingKey = 1;
   bytes signature = 2;
@@ -231,7 +242,8 @@ message BlockSubmissionResponseMsg {
 
 message ExtRollupMsg {
   HeaderMsg header = 1;
-  bytes txs = 2;
+  repeated bytes txHashes = 2;
+  bytes txs = 3;
 }
 
 message HeaderMsg {
