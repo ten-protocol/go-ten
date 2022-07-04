@@ -375,3 +375,8 @@ func (c *EnclaveRPCClient) GetBalance(encryptedParams common.EncryptedParamsGetB
 	}
 	return resp.EncryptedBalance, nil
 }
+
+func (c *EnclaveRPCClient) StoreAttestation(att *common.AttestationReport) error {
+	/// todo
+	return nil
+}

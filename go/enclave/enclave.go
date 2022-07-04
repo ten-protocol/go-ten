@@ -418,13 +418,10 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 	}
 	common.LogWithID(e.nodeShortID, "Successfully verified attestation and identity. Owner: %s", att.Owner)
 
-	// Store the attestation
-	key, err := crypto.DecompressPubkey(att.PubKey)
+	err = e.StoreAttestation(att)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key %w", err)
+		log.Panic("Could not store attestation. Cause:%s", err)
 	}
-	e.storage.StoreAttestedKey(att.Owner, key)
-
 	secret := e.storage.FetchSecret()
 	if secret == nil {
 		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
@@ -438,6 +435,16 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
 	}
 	return e.rpcEncryptionManager.AddViewingKey(viewingKeyBytes, signature)
+}
+
+func (e *enclaveImpl) StoreAttestation(att *common.AttestationReport) error {
+	// Store the attestation
+	key, err := crypto.DecompressPubkey(att.PubKey)
+	if err != nil {
+		return fmt.Errorf("failed to parse public key %w", err)
+	}
+	e.storage.StoreAttestedKey(att.Owner, key)
+	return nil
 }
 
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
