@@ -23,15 +23,18 @@ type (
 	L2RootHash            = gethcommon.Hash
 	TxHash                = gethcommon.Hash
 	L2Tx                  = types.Transaction
-	EncryptedTx           []byte // A single transaction encrypted using the enclave's public key
+	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
 
-	EncryptedParamsGetBalance     []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
-	EncryptedParamsCall           []byte // As above, but for an RPC call request.
-	EncryptedParamsGetTxReceipt   []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedParamsGetBalance   []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
+	EncryptedParamsCall         []byte // As above, but for an RPC call request.
+	EncryptedParamsGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedParamsSendRawTx    []byte // As above, but for an RPC sendRawTransaction request.
+
 	EncryptedResponseGetBalance   []byte // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
 	EncryptedResponseCall         []byte // As above, but for an RPC call request.
 	EncryptedResponseGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
+	EncryptedResponseSendRawTx    []byte // As above, but for an RPC sendRawTransaction request.
 
 	Nonce         = uint64
 	EncodedRollup []byte
@@ -71,17 +74,17 @@ type Withdrawal struct {
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
 	Header          *Header
+	TxHashes        []gethcommon.Hash // The hashes of the transactions included in the rollup
 	EncryptedTxBlob EncryptedTransactions
 }
 
 // EncryptedRollup extends ExtRollup with additional fields.
 // This parallels the Block/extblock split in Go Ethereum.
 type EncryptedRollup struct {
-	Header *Header
-
-	hash atomic.Value
-
+	Header       *Header
+	TxHashes     []gethcommon.Hash // The hashes of the transactions included in the rollup
 	Transactions EncryptedTransactions
+	hash         atomic.Value
 }
 
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
@@ -95,6 +98,7 @@ type AttestationReport struct {
 func (er ExtRollup) ToRollup() *EncryptedRollup {
 	return &EncryptedRollup{
 		Header:       er.Header,
+		TxHashes:     er.TxHashes,
 		Transactions: er.EncryptedTxBlob,
 	}
 }

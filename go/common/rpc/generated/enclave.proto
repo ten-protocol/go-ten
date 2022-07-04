@@ -147,7 +147,9 @@ message SubmitRollupResponse {}
 message SubmitTxRequest {
   bytes encryptedTx = 1;
 }
-message SubmitTxResponse {}
+message SubmitTxResponse {
+  bytes encryptedHash = 1;
+}
 
 message OffChainRequest {
   bytes encryptedParams = 1;
@@ -240,7 +242,8 @@ message BlockSubmissionResponseMsg {
 
 message ExtRollupMsg {
   HeaderMsg header = 1;
-  bytes txs = 2;
+  repeated bytes txHashes = 2;
+  bytes txs = 3;
 }
 
 message HeaderMsg {

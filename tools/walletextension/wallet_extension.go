@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
@@ -33,9 +35,11 @@ const (
 
 	reqJSONKeyMethod          = "method"
 	reqJSONKeyParams          = "params"
+	reqJSONKeyFrom            = "from"
 	ReqJSONMethodGetBalance   = "eth_getBalance"
 	ReqJSONMethodCall         = "eth_call"
 	ReqJSONMethodGetTxReceipt = "eth_getTransactionReceipt"
+	ReqJSONMethodSendRawTx    = "eth_sendRawTransaction"
 	respJSONKeyErr            = "error"
 	respJSONKeyMsg            = "message"
 	RespJSONKeyResult         = "result"
@@ -55,6 +59,14 @@ const (
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+
+	// ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
+	// API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
+	// a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
+	// from asking a visitor to their website to personal_sign something that is actually a malicious transaction (e.g.
+	// theft of funds). By adding a prefix, the viewing key bytes no longer looks like a transaction hash, and thus get
+	// signed as-is.
+	ViewingKeySignedMsgPrefix = "vk"
 )
 
 //go:embed static
@@ -71,7 +83,9 @@ type WalletExtension struct {
 	//  to indicate which viewing key they were encrypted with.
 	viewingPublicKeyBytes  []byte
 	viewingPrivateKeyEcies *ecies.PrivateKey
-	server                 *http.Server
+	// The address associated with the last viewing key submitted. Used to set missing `from` fields in `eth_call` requests.
+	viewingPublicKeyAddress common.Address
+	server                  *http.Server
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
@@ -149,7 +163,13 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 	method := reqJSONMap[reqJSONKeyMethod]
-	fmt.Printf("Received request from wallet: %s\n", body)
+	fmt.Printf("Received %s request from wallet: %s\n", method, body)
+
+	reqJSONMap, err = we.ensureCallsHaveFromField(method, reqJSONMap)
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
+	}
 
 	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
 	maybeEncryptedBody, err := we.encryptParamsIfNeeded(body, method, reqJSONMap)
@@ -192,7 +212,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
 		return
 	}
-	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(clientResponse)))
+	fmt.Printf("Received %s response from Obscuro node: %s\n", method, strings.TrimSpace(string(clientResponse)))
 
 	// We write the response to the client.
 	_, err = resp.Write(clientResponse)
@@ -200,6 +220,39 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
 		return
 	}
+}
+
+// If an `eth_call` request doesn't have a `from` field, we won't be able to encrypt the response. In that case, we use
+// the viewing key address as the `from` field to allow encryption and decryption.
+func (we *WalletExtension) ensureCallsHaveFromField(method interface{}, reqJSONMap map[string]interface{}) (map[string]interface{}, error) {
+	if method != ReqJSONMethodCall {
+		// We only modify `eth_call` requests.
+		return reqJSONMap, nil
+	}
+
+	params, ok := reqJSONMap[reqJSONKeyParams].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("params for %s request were malformed", method)
+	}
+	txCallParams, ok := params[0].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("params for %s request were malformed", method)
+	}
+
+	if txCallParams[reqJSONKeyFrom] != nil {
+		// We only modify `eth_call` requests where the `from` field is not set.
+		return reqJSONMap, nil
+	}
+
+	if we.viewingPublicKeyAddress == (common.Address{}) {
+		return nil, fmt.Errorf("could not add `from` field to `eth_call` request as no viewing key has been generated")
+	}
+
+	txCallParams[reqJSONKeyFrom] = we.viewingPublicKeyAddress.Hex()
+	params[0] = txCallParams
+	reqJSONMap[reqJSONKeyParams] = params
+
+	return reqJSONMap, nil
 }
 
 // Generates a new viewing key.
@@ -237,13 +290,22 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 		return
 	}
 
-	// We have to drop the leading "0x", and transform the V from 27/28 to 0/1.
+	// We drop the leading "0x", and transform the V from 27/28 to 0/1.
 	signature, err := hex.DecodeString(reqJSONMap["signature"][2:])
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not decode signature from client to hex: %s", err))
 		return
 	}
 	signature[64] -= 27
+
+	// We recover the public key address.
+	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(we.viewingPublicKeyBytes)
+	recoveredPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not recover public key from signature: %s", err))
+		return
+	}
+	we.viewingPublicKeyAddress = crypto.PubkeyToAddress(*recoveredPublicKey)
 
 	// We encrypt the viewing key bytes.
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, we.viewingPublicKeyBytes, nil, nil)
@@ -323,6 +385,10 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 		return respJSONMap, nil
 	}
 
+	if we.viewingPrivateKeyEcies == nil {
+		return nil, fmt.Errorf("could not decrypt enclave response as no viewing key has been created")
+	}
+
 	fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
 	encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
 	decryptedResult, err := we.viewingPrivateKeyEcies.Decrypt(encryptedResult, nil, nil)
@@ -336,5 +402,5 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 
 // Indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
-	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt
+	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodSendRawTx
 }
