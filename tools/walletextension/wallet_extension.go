@@ -398,7 +398,7 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 
 	processedResult, err := processDecryptedResult(decryptedResult, method)
 	if err != nil {
-		return nil, fmt.Errorf("could not process decrypted enclave response: %s", err)
+		return nil, fmt.Errorf("could not process decrypted enclave response: %w", err)
 	}
 	respJSONMap[RespJSONKeyResult] = processedResult
 
