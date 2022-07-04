@@ -30,6 +30,7 @@ services:
     ]
 
   enclave:
+    privileged: true
     volumes:
       - /dev/sgx:/dev/sgx
     networks:
@@ -54,6 +55,7 @@ services:
     ]
 
   edgelessdb:
+    privileged: true
     volumes:
       - /dev/sgx:/dev/sgx
     networks:
