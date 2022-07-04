@@ -85,9 +85,9 @@ echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
 if ${sgx_enabled} ;
 then
   echo "Starting enclave with enabled SGX and host..."
-  docker compose up enclave host -d -f docker-compose.local.yml
+  docker compose up enclave host -d
 else
   echo "Starting enclave with DISABLED SGX and host..."
-  docker compose up enclave host -d
+  docker compose -f docker-compose.non-sgx.yml up enclave host -d
 fi
 
