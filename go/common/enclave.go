@@ -68,7 +68,7 @@ type Enclave interface {
 	// GetRollup returns the rollup with the given hash
 	GetRollup(rollupHash L2RootHash) *ExtRollup
 
-	// GetRollupByHeight returns the rollup with the given height.
+	// GetRollupByHeight returns the canonical rollup with the given height.
 	GetRollupByHeight(rollupHeight uint64) *ExtRollup
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
