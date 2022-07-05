@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"fmt"
-
 	"os"
 
 	"github.com/docker/docker/api/types"
