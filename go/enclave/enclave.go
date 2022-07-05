@@ -339,6 +339,10 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
 	for {
+		if rollup == nil {
+			// We've reached the head of the chain without finding the block.
+			return nil
+		}
 		if rollup.Number().Uint64() == rollupHeight {
 			// We have found the block.
 			break
@@ -350,10 +354,6 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
 
 		// We grab the next rollup and loop.
 		rollup = e.storage.ParentRollup(rollup)
-		if rollup == nil {
-			// We've reached the head of the chain without finding the block.
-			return nil
-		}
 	}
 
 	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
