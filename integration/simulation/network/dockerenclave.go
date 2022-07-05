@@ -3,11 +3,10 @@ package network
 import (
 	"context"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 	"os"
 
 	"github.com/docker/docker/pkg/stdcopy"
-
-	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -129,7 +128,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) startDockerEnclaves(params *param
 		go func() {
 			_, err := stdcopy.StdCopy(os.Stdout, os.Stderr, waiter.Reader)
 			if err != nil {
-				log.Error("Could not copy output from the docker container")
+				log.Error("Could not copy output from the docker container: %s", err)
 			}
 		}()
 
