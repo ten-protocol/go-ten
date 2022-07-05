@@ -270,7 +270,10 @@ func (rc *RollupChain) findRoundWinner(receivedRollups []*obscurocore.Rollup, pa
 	return headRollup
 }
 
-func (rc *RollupChain) process(rollup *obscurocore.Rollup, txs obscurocore.L2Txs, stateDB *state.StateDB) (gethcommon.Hash, obscurocore.L2Txs, []*types.Receipt, []*types.Receipt) {
+// This is where transactions are executed and the state is calculated.
+// Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
+// The rollup can be a final rollup as received from peers or the rollup under construction.
+func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.L2Txs, stateDB *state.StateDB) (gethcommon.Hash, obscurocore.L2Txs, []*types.Receipt, []*types.Receipt) {
 	var successfulTransactions obscurocore.L2Txs
 	txReceipts := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, 0)
 	txReceiptsMap := toReceiptMap(txReceipts)
@@ -395,7 +398,7 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) {
 	stateDB := rc.storage.CreateStateDB(r.Header.ParentHash)
 	// calculate the state to compare with what is in the Rollup
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.process(r, r.Transactions, stateDB)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
 		panic("Sanity check. All transactions that are included in a rollup must be executed and produce a receipt.")
 	}
@@ -519,7 +522,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
 	newRollupState = rc.storage.CreateStateDB(r.Header.ParentHash)
 
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.process(r, newRollupTxs, newRollupState)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
 
 	r.Header.Root = rootHash
 	r.Transactions = successfulTxs
