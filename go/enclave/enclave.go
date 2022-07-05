@@ -341,6 +341,10 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	// -1 is used by Ethereum to indicate that we should fetch the head.
 	if rollupHeight != -1 {
 		for {
+			if rollup == nil {
+				// We've reached the head of the chain without finding the block.
+				return nil
+			}
 			if rollup.Number().Int64() == rollupHeight {
 				// We have found the block.
 				break
@@ -352,10 +356,6 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 
 			// We grab the next rollup and loop.
 			rollup = e.storage.ParentRollup(rollup)
-			if rollup == nil {
-				// We've reached the head of the chain without finding the block.
-				return nil
-			}
 		}
 	}
 
