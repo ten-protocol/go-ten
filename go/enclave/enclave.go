@@ -443,7 +443,8 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
-	viewingKeyBytes, err := e.rpcEncryptionManager.DecryptRPCCall(encryptedViewingKeyBytes)
+	// todo - this should be done in the rpc encryption manager
+	viewingKeyBytes, err := ecies.ImportECDSA(e.obscuroNetworkKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
 	if err != nil {
 		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
 	}
