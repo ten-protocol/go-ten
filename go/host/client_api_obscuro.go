@@ -42,11 +42,6 @@ func (api *ObscuroAPI) GetRollup(hash gethcommon.Hash) *common.ExtRollup {
 	return api.host.EnclaveClient.GetRollup(hash)
 }
 
-// GetTransaction returns the transaction with the given hash.
-func (api *ObscuroAPI) GetTransaction(hash gethcommon.Hash) *common.L2Tx {
-	return api.host.EnclaveClient.GetTransaction(hash)
-}
-
 // Nonce returns the nonce of the wallet with the given address.
 func (api *ObscuroAPI) Nonce(address gethcommon.Address) uint64 {
 	return api.host.EnclaveClient.Nonce(address)

@@ -282,7 +282,7 @@ func (c *EnclaveRPCClient) Stop() error {
 	return nil
 }
 
-func (c *EnclaveRPCClient) GetTransaction(txHash gethcommon.Hash) *common.L2Tx {
+func (c *EnclaveRPCClient) GetTransaction(txHash gethcommon.Hash) (*common.L2Tx, gethcommon.Hash, uint64, uint64, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -292,7 +292,7 @@ func (c *EnclaveRPCClient) GetTransaction(txHash gethcommon.Hash) *common.L2Tx {
 	}
 
 	if !response.Known {
-		return nil
+		return nil, gethcommon.Hash{}, 0, 0, nil
 	}
 
 	l2Tx := common.L2Tx{}
@@ -301,7 +301,7 @@ func (c *EnclaveRPCClient) GetTransaction(txHash gethcommon.Hash) *common.L2Tx {
 		log.Panic(">   Agg%d: Failed to decode transaction. Cause: %s", common.ShortAddress(c.config.ID), err)
 	}
 
-	return &l2Tx
+	return &l2Tx, gethcommon.BytesToHash(response.BlockHash), response.BlockNumber, response.Index, nil
 }
 
 func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {

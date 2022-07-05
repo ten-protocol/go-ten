@@ -59,8 +59,8 @@ type Enclave interface {
 	// Stop gracefully stops the enclave
 	Stop() error
 
-	// GetTransaction returns a transaction given its signed hash, or nil if the transaction is unknown
-	GetTransaction(txHash gethcommon.Hash) *L2Tx
+	// GetTransaction returns a transaction, its block number and hash, and its index, or nil if the transaction is unknown
+	GetTransaction(txHash gethcommon.Hash) (*L2Tx, gethcommon.Hash, uint64, uint64, error)
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
 	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
