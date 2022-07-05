@@ -204,7 +204,7 @@ message GetRollupResponse {
 }
 
 message GetRollupByHeightRequest {
-  uint64 rollupHeight = 1;
+  int64 rollupHeight = 1;
 }
 message GetRollupByHeightResponse {
   bool known = 1;

@@ -46,7 +46,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	extRollup := api.host.EnclaveClient.GetRollupByHeight(uint64(number))
+	extRollup := api.host.EnclaveClient.GetRollupByHeight(number.Int64())
 	return extRollupToBlock(extRollup), nil
 }
 
@@ -100,7 +100,10 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	rollupHeight, ok := blockNrOrHash.Number()
 	if ok {
-		rollup := api.host.EnclaveClient.GetRollupByHeight(uint64(rollupHeight.Int64()))
+		rollup := api.host.EnclaveClient.GetRollupByHeight(rollupHeight.Int64())
+		if rollup == nil {
+			return nil, errors.New("invalid arguments; rollup with given height does not exist")
+		}
 		rollupHash := rollup.Header.Hash()
 		return api.host.EnclaveClient.GetCode(address, &rollupHash)
 	}

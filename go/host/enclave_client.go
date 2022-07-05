@@ -332,7 +332,7 @@ func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) *common.ExtRo
 	return &extRollup
 }
 
-func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

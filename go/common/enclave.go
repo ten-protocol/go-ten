@@ -69,7 +69,7 @@ type Enclave interface {
 	GetRollup(rollupHash L2RootHash) *ExtRollup
 
 	// GetRollupByHeight returns the canonical rollup with the given height.
-	GetRollupByHeight(rollupHeight uint64) *ExtRollup
+	GetRollupByHeight(rollupHeight int64) *ExtRollup
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.
