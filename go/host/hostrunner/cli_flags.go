@@ -47,6 +47,9 @@ const (
 	rollupContractAddrName  = "rollupContractAddress"
 	rollupContractAddrUsage = "The management contract address on the L1"
 
+	logLevelName  = "logLevel"
+	logLevelUsage = "The verbosity level of logs. (Defaults to Info)"
+
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the host's log file"
 

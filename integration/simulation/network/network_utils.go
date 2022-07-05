@@ -37,7 +37,7 @@ const (
 	DefaultEnclaveOffset       = 300 // The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
 	DefaultHostRPCHTTPOffset   = 400 // The default offset for the host's RPC HTTP port
 	DefaultHostRPCWSOffset     = 500 // The default offset for the host's RPC websocket port
-	ClientRPCTimeoutSecs       = 5
+	ClientRPCTimeout           = 5 * time.Second
 	DefaultL1ConnectionTimeout = 15 * time.Second
 )
 
@@ -126,8 +126,8 @@ func createSocketObscuroNode(
 		HasClientRPCWebsockets: true,
 		ClientRPCPortWS:        clientRPCPortWS,
 		ClientRPCHost:          clientRPCHost,
-		ClientRPCTimeout:       ClientRPCTimeoutSecs * time.Second,
-		EnclaveRPCTimeout:      ClientRPCTimeoutSecs * time.Second,
+		ClientRPCTimeout:       ClientRPCTimeout,
+		EnclaveRPCTimeout:      ClientRPCTimeout,
 		EnclaveRPCAddress:      enclaveAddr,
 		P2PAddress:             p2pAddr,
 		L1ChainID:              integration.EthereumChainID,

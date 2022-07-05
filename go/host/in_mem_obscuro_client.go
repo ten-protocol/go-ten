@@ -75,16 +75,16 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTransactionByHash, len(args))
 		}
-		hash, ok := args[0].(gethcommon.Hash)
+		params, ok := args[0].([]byte)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetTransactionByHash)
+			return fmt.Errorf("arg 1 to %s was not of expected type []byte", rpcclientlib.RPCGetTransactionByHash)
 		}
 
-		rpcTx, err := c.ethAPI.GetTransactionByHash(context.Background(), hash)
+		encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), params)
 		if err != nil {
 			return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
 		}
-		*result.(**RPCTransaction) = rpcTx
+		*result.(*string) = encryptedTx
 
 	case rpcclientlib.RPCCall:
 		if len(args) != 1 {
@@ -118,7 +118,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		}
 		params, ok := args[0].([]byte)
 		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type []byte]", rpcclientlib.RPCGetTxReceipt)
+			return fmt.Errorf("arg 1 to %s was not of expected type []byte", rpcclientlib.RPCGetTxReceipt)
 		}
 
 		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), params)

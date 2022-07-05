@@ -29,6 +29,8 @@ help_and_exit() {
     echo ""
     echo "  pkstring           *Optional* Set the pk string. Defaults to f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
     echo ""
+    echo "  is_genesis         *Optional* Set the node as genesis node. Defaults to false"
+    echo ""
     echo ""
     echo ""
     exit 1  # Exit with error explicitly
@@ -42,6 +44,7 @@ testnet_path="${start_path}"
 
 # Define defaults
 l1_port=9000
+is_genesis=false
 pk_address=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
 pk_string=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 
@@ -61,6 +64,7 @@ do
             --pkaddress)                pk_address=${value} ;;
             --pkstring)                 pk_string=${value} ;;
             --sgx_enabled)              sgx_enabled=${value} ;;
+            --is_genesis)               is_genesis=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac
@@ -80,6 +84,7 @@ echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"
 echo "ERC20CONTRACTADDR=${erc20_contract_addr}"  >> "${testnet_path}/.env"
 echo "L1HOST=${l1_host}" >> "${testnet_path}/.env"
 echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
+echo "ISGENESIS=${is_genesis}" >> "${testnet_path}/.env"
 
 
 if ${sgx_enabled} ;

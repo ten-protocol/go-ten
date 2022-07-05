@@ -23,6 +23,12 @@ import (
 func RunHost(config config.HostConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
 
+	log.SetLogLevel(log.ParseLevel(config.LogLevel))
+
+	if config.LogPath != "" {
+		setLogs(config.LogPath)
+	}
+
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethadapter.NewEthClientFromConfig(config)
 	if err != nil {
@@ -47,8 +53,8 @@ func RunHost(config config.HostConfig) {
 	handleInterrupt(agg)
 }
 
-// SetLogs sets the log file.
-func SetLogs(logPath string) {
+// setLogs sets the log file.
+func setLogs(logPath string) {
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		panic(fmt.Sprintf("could not create log file. Cause: %s", err))

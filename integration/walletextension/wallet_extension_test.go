@@ -325,8 +325,6 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-// This trio of tests covers both `eth_sendRawTransaction` and `eth_getTransactionReceipt`.
-
 func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("submit-tx-no-viewing-key")
 
@@ -364,7 +362,8 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-func TestCanSubmitTxAndGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
+// Covers `eth_sendRawTransaction`, `eth_getTransactionReceipt` and `eth_getTransactionByHash`.
+func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("submit-tx-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
@@ -398,17 +397,24 @@ func TestCanSubmitTxAndGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
 
 	time.Sleep(6 * time.Second) // We wait for the deployment of the contract to the Obscuro network.
 
-	// We get the transaction receipt for the Obscuro ERC20 contract.
+	// We get the transaction receipt for the Obscuro ERC20 contract deployment.
 	txHash, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
 		panic("could not retrieve transaction hash from JSON result")
 	}
 	txReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{txHash})
+	txReceiptResult := fmt.Sprintf("%s", txReceiptJSON[walletextension.RespJSONKeyResult])
+	expectedTxReceiptJSON := fmt.Sprintf("transactionHash:%s", txHash)
+	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
+		t.Fatalf("Expected transaction receipt containing %s, got %s", expectedTxReceiptJSON, txReceiptResult)
+	}
 
-	result := fmt.Sprintf("%s", txReceiptJSON[walletextension.RespJSONKeyResult])
-	expectedTxHashJSON := fmt.Sprintf("transactionHash:%s", txHash)
-	if !strings.Contains(result, expectedTxHashJSON) {
-		t.Fatalf("Expected transaction receipt containing %s, got %s", expectedTxHashJSON, result)
+	// We get the transaction by hash for the Obscuro ERC20 contract deployment.
+	getTxJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxByHash, []string{txHash})
+	getTxJSONResult := fmt.Sprintf("%s", getTxJSON[walletextension.RespJSONKeyResult])
+	expectedGetTxJSON := fmt.Sprintf("hash:%s", txHash)
+	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
+		t.Fatalf("Expected transaction containing %s, got %s", expectedGetTxJSON, getTxJSONResult)
 	}
 }
 

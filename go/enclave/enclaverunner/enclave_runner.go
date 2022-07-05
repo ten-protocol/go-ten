@@ -24,6 +24,11 @@ func RunEnclave(config config.EnclaveConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddresses...)
 
+	log.SetLogLevel(log.ParseLevel(config.LogLevel))
+	if config.LogPath != "" {
+		setLogs(config.LogPath)
+	}
+
 	if config.ValidateL1Blocks {
 		config.GenesisJSON = []byte(hardcodedGenesisJSON)
 	}
@@ -37,20 +42,12 @@ func RunEnclave(config config.EnclaveConfig) {
 	handleInterrupt(closeHandle)
 }
 
-// SetLogs sets the log file, defaulting to stdout if writeToLogs is false.
-func SetLogs(writeToLogs bool, logPath string) {
-	var logFile *os.File
-	var err error
-
-	if writeToLogs {
-		logFile, err = os.Create(logPath)
-		if err != nil {
-			panic(fmt.Sprintf("could not create log file. Cause: %s", err))
-		}
-	} else {
-		logFile = os.Stdout
+// setLogs sets the log file.
+func setLogs(logPath string) {
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 	}
-
 	log.OutputToFile(logFile)
 }
 

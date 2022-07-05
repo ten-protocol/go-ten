@@ -43,22 +43,12 @@ func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ec
 	}
 }
 
-// DecryptRPCCall decrypts the bytes with the enclave's private key if viewing keys are enabled.
-func (rpc *RPCEncryptionManager) DecryptRPCCall(encryptedBytes []byte) ([]byte, error) {
+// DecryptBytes decrypts the bytes with the enclave's private key if viewing keys are enabled.
+func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
 	if !rpc.viewingKeysEnabled {
 		return encryptedBytes, nil
 	}
-	return rpc.DecryptWithEnclavePrivateKey(encryptedBytes)
-}
-
-// DecryptWithEnclavePrivateKey the bytes with the enclave's private key.
-func (rpc *RPCEncryptionManager) DecryptWithEnclavePrivateKey(encryptedBytes []byte) ([]byte, error) {
-	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
-	}
-
-	return bytes, nil
+	return rpc.decryptWithEnclavePrivateKey(encryptedBytes)
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.
@@ -110,7 +100,7 @@ func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Addres
 
 // ExtractTxHash - Returns the transaction hash from a common.EncryptedParamsGetTxReceipt object.
 func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams common.EncryptedParamsGetTxReceipt) (gethcommon.Hash, error) {
-	paramBytes, err := rpc.DecryptRPCCall(encryptedParams)
+	paramBytes, err := rpc.DecryptBytes(encryptedParams)
 	if err != nil {
 		return gethcommon.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
 	}
@@ -124,7 +114,7 @@ func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams common.EncryptedP
 	return txHash, err
 }
 
-// Marshalls the transaction receipt to JSON, and encrypts it with a viewing key for the address.
+// EncryptTxReceiptWithViewingKey marshals the transaction receipt to JSON, and encrypts it with a viewing key for the address.
 func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcommon.Address, txReceipt *types.Receipt) ([]byte, error) {
 	txReceiptBytes, err := txReceipt.MarshalJSON()
 	if err != nil {
@@ -135,7 +125,7 @@ func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcomm
 
 // DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
 func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*common.L2Tx, error) {
-	txBinaryListJSON, err := rpc.DecryptWithEnclavePrivateKey(encryptedTx)
+	txBinaryListJSON, err := rpc.decryptWithEnclavePrivateKey(encryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
 	}
@@ -151,4 +141,14 @@ func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*com
 	}
 
 	return tx, nil
+}
+
+// Decrypts the bytes with the enclave's private key.
+func (rpc *RPCEncryptionManager) decryptWithEnclavePrivateKey(encryptedBytes []byte) ([]byte, error) {
+	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
+	}
+
+	return bytes, nil
 }

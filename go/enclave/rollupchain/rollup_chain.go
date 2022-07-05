@@ -590,7 +590,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 }
 
 func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	paramBytes, err := rc.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
+	paramBytes, err := rc.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
 	}
@@ -662,7 +662,7 @@ func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.A
 }
 
 func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
-	paramBytes, err := rc.rpcEncryptionManager.DecryptRPCCall(encryptedParams)
+	paramBytes, err := rc.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
