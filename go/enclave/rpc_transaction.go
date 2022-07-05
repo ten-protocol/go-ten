@@ -1,11 +1,12 @@
 package enclave
 
 import (
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
-	"math/big"
 )
 
 // Lifted from Geth's internal `ethapi` package.

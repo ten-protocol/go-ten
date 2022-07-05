@@ -284,6 +284,9 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	}
 	var paramList []string
 	err = json.Unmarshal(hashBytes, &paramList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshall RPC request params from JSON. Cause: %w", err)
+	}
 	txHash := gethcommon.HexToHash(paramList[0])
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
@@ -303,7 +306,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 
 	txBytes, err := json.Marshal(rpcTx)
 	if err != nil {
-		return nil, fmt.Errorf("could not marshall transaction to JSON. Cause: %s", err)
+		return nil, fmt.Errorf("could not marshall transaction to JSON. Cause: %w", err)
 	}
 	encryptedBytes, err := e.rpcEncryptionManager.EncryptWithViewingKey(rpcTx.From, txBytes)
 
