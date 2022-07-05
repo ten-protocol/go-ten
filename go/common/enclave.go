@@ -87,6 +87,9 @@ type Enclave interface {
 	// TODO - Handle multiple viewing keys, and thus multiple return values.
 	GetBalance(encryptedParams EncryptedParamsGetBalance) (EncryptedResponseGetBalance, error)
 
+	// GetCode returns the code stored at the given address in the state for the given rollup hash.
+	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error)
+
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error
 }

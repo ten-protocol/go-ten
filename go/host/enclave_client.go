@@ -375,3 +375,17 @@ func (c *EnclaveRPCClient) GetBalance(encryptedParams common.EncryptedParamsGetB
 	}
 	return resp.EncryptedBalance, nil
 }
+
+func (c *EnclaveRPCClient) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.GetCode(timeoutCtx, &generated.GetCodeRequest{
+		Address:    address.Bytes(),
+		RollupHash: rollupHash.Bytes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Code, nil
+}

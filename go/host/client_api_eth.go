@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
@@ -86,13 +87,30 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.Blo
 	return 0, nil
 }
 
-// SendRawTransaction sends the encrypted transaction
+// SendRawTransaction sends the encrypted transaction.
 func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
 	encryptedResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
 	if err != nil {
 		return "", err
 	}
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
+}
+
+// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash.
+func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+	rollupHeight, ok := blockNrOrHash.Number()
+	if ok {
+		rollup := api.host.EnclaveClient.GetRollupByHeight(uint64(rollupHeight.Int64()))
+		rollupHash := rollup.Header.Hash()
+		return api.host.EnclaveClient.GetCode(address, &rollupHash)
+	}
+
+	rollupHash, ok := blockNrOrHash.Hash()
+	if ok {
+		return api.host.EnclaveClient.GetCode(address, &rollupHash)
+	}
+
+	return nil, errors.New("invalid arguments; neither rollup height nor rollup hash specified")
 }
 
 // TODO - Temporary. Will be replaced by encrypted implementation.

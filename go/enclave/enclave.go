@@ -425,6 +425,10 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	return e.chain.GetBalance(encryptedParams)
 }
 
+func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
+}
+
 func (e *enclaveImpl) IsInitialised() bool {
 	return e.storage.FetchSecret() != nil
 }
