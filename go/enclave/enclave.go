@@ -417,6 +417,7 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 }
 
 func (e *enclaveImpl) StoreAttestation(att *common.AttestationReport) error {
+	common.LogWithID(e.nodeShortID, "Store attestation. Owner: %s", att.Owner)
 	// Store the attestation
 	key, err := crypto.DecompressPubkey(att.PubKey)
 	if err != nil {

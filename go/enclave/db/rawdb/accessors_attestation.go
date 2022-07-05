@@ -15,7 +15,7 @@ import (
 )
 
 func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) *ecdsa.PublicKey {
-	fmt.Printf("Read: %d\n", common.ShortAddress(address))
+	//fmt.Printf("Read: %d\n", common.ShortAddress(address))
 	key, err := db.Get(attestationPkKey(address))
 	if err != nil {
 		time.Sleep(time.Second)
