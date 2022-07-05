@@ -200,10 +200,12 @@ func (c *EnclaveRPCClient) SubmitBlock(block types.Block) common.BlockSubmission
 		log.Panic(">   Agg%d: Failed to encode block. Cause: %s", common.ShortAddress(c.config.ID), err)
 	}
 
+	processTime := time.Now()
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
 		log.Panic(">   Agg%d: Failed to submit block. Cause: %s", common.ShortAddress(c.config.ID), err)
 	}
+	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
 	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
