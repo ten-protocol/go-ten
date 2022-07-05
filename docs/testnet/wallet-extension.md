@@ -34,7 +34,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 2. Open a terminal window of command prompt. Start the wallet extension by running the `wallet_extension` binary with the following flags:
 
-   ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
+   ```--nodeRPCHTTPAddress=testnet.obscu.ro:13000 --nodeRPCWebsocketAddress=testnet.obscu.ro:13001```
 
    The wallet extension is now listening on `http://127.0.0.1:3000/`
 
