@@ -15,6 +15,7 @@ services:
       L1HOST: some_host
       L1PORT: some_port
       HOSTID: some_address
+      ISGENESIS: some_bool
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -24,7 +25,9 @@ services:
       "--enclaveRPCAddress=enclave:11000",
       "--rollupContractAddress=$MGMTCONTRACTADDR",
       "--privateKey=$PKSTRING",
-      "--clientRPCHost=0.0.0.0"
+      "--clientRPCHost=0.0.0.0",
+      "--isGenesis=$ISGENESIS",
+      "--logLevel=debug"
     ]
 
   enclave:

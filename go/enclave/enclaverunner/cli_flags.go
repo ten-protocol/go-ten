@@ -35,8 +35,8 @@ const (
 	Erc20ContractAddrsName  = "erc20ContractAddresses"
 	erc20ContractAddrsUsage = "The ERC20 contract addresses to monitor on the L1"
 
-	writeToLogsName  = "writeToLogs"
-	writeToLogsUsage = "Whether to redirect the output to the log file."
+	logLevelName  = "logLevel"
+	logLevelUsage = "The verbosity level of logs. (Defaults to Info)"
 
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the enclave service's log file"

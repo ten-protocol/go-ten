@@ -28,8 +28,8 @@ type EnclaveConfig struct {
 	ManagementContractAddress common.Address
 	// The addresses of ERC20 contracts to monitor on the L1 network
 	ERC20ContractAddresses []*common.Address
-	// Whether to redirect the enclave's output to the log file.
-	WriteToLogs bool
+	// LogLevel determines the verbosity of output logs
+	LogLevel string
 	// The path that the node's logs are written to
 	LogPath string
 	// Whether the enclave should use in-memory or persistent storage
@@ -58,8 +58,8 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		SpeculativeExecution:      false,
 		ManagementContractAddress: common.BytesToAddress([]byte("")),
 		ERC20ContractAddresses:    []*common.Address{},
-		WriteToLogs:               false,
-		LogPath:                   "enclave_logs.txt",
+		LogLevel:                  "info",
+		LogPath:                   "",
 		UseInMemoryDB:             true, // todo: persistence should be on by default before production release
 		ViewingKeysEnabled:        true,
 		EdgelessDBHost:            "",

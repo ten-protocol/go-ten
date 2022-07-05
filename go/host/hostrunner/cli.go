@@ -55,6 +55,7 @@ func ParseConfig() config.HostConfig {
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(cfg.L1NodeWebsocketPort), l1NodePortUsage)
 	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(cfg.L1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
 	rollupContractAddress := flag.String(rollupContractAddrName, cfg.RollupContractAddress.Hex(), rollupContractAddrUsage)
+	logLevel := flag.String(logLevelName, cfg.LogLevel, logLevelUsage)
 	logPath := flag.String(logPathName, cfg.LogPath, logPathUsage)
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, l1ChainIDUsage)
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, obscuroChainIDUsage)
@@ -83,6 +84,7 @@ func ParseConfig() config.HostConfig {
 	cfg.L1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
 	cfg.RollupContractAddress = common.HexToAddress(*rollupContractAddress)
 	cfg.PrivateKeyString = *privateKeyStr
+	cfg.LogLevel = *logLevel
 	cfg.LogPath = *logPath
 	cfg.L1ChainID = *l1ChainID
 	cfg.ObscuroChainID = *obscuroChainID
