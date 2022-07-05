@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/host"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -87,11 +89,11 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 }
 
 // Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *common.L2Tx {
-	var l2Tx *common.L2Tx
-	err := client.Call(&l2Tx, rpcclientlib.RPCGetTransaction, txHash)
+func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *host.RPCTransaction {
+	var l2Tx *host.RPCTransaction
+	err := client.Call(&l2Tx, rpcclientlib.RPCGetTransactionByHash, txHash)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransaction, err))
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
 	}
 	return l2Tx
 }

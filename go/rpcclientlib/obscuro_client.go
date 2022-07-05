@@ -15,13 +15,13 @@ const (
 	RPCGetCurrentRollupHead = "obscuro_getCurrentRollupHead"
 	RPCGetRollupHeader      = "obscuro_getRollupHeader"
 	RPCGetRollup            = "obscuro_getRollup"
-	RPCGetTransaction       = "obscuro_getTransaction"
 	RPCNonce                = "obscuro_nonce"
 	RPCAddViewingKey        = "obscuro_addViewingKey"
 	RPCStopHost             = "obscuro_stopHost"
 	RPCCall                 = "eth_call"
 	RPCGetTxReceipt         = "eth_getTransactionReceipt"
 	RPCSendRawTransaction   = "eth_sendRawTransaction"
+	RPCGetTransactionByHash = "eth_getTransactionByHash"
 )
 
 // Client is used by client applications to interact with the Obscuro node.

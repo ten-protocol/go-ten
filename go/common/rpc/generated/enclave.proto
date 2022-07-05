@@ -186,6 +186,9 @@ message GetTransactionRequest {
 message GetTransactionResponse {
   bool known = 1;
   bytes encodedTransaction = 2;
+  bytes blockHash = 3;
+  uint64 blockNumber = 4;
+  uint64 index = 5;
 }
 
 message GetTransactionReceiptRequest {
