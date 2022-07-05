@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/host"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -89,13 +87,25 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 }
 
 // Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *host.RPCTransaction {
-	var l2Tx *host.RPCTransaction
-	err := client.Call(&l2Tx, rpcclientlib.RPCGetTransactionByHash, txHash)
+func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) map[string]interface{} {
+	paramsJSON, err := json.Marshal([]string{txHash.Hex()})
+	if err != nil {
+		panic(fmt.Errorf("simulation failed because could not marshal JSON param to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
+	}
+
+	var encryptedResponse string
+	err = client.Call(&encryptedResponse, rpcclientlib.RPCGetTransactionByHash, paramsJSON)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
 	}
-	return l2Tx
+
+	var responseJSONMap map[string]interface{}
+	err = json.Unmarshal(gethcommon.Hex2Bytes(encryptedResponse), &responseJSONMap)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed because could not unmarshal JSON response to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
+	}
+
+	return responseJSONMap
 }
 
 // Returns the transaction receipt for the given transaction hash.

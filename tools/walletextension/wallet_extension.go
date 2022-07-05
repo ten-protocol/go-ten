@@ -40,6 +40,7 @@ const (
 	ReqJSONMethodCall         = "eth_call"
 	ReqJSONMethodGetTxReceipt = "eth_getTransactionReceipt"
 	ReqJSONMethodSendRawTx    = "eth_sendRawTransaction"
+	ReqJSONMethodGetTxByHash  = "eth_getTransactionByHash"
 	respJSONKeyErr            = "error"
 	respJSONKeyMsg            = "message"
 	RespJSONKeyResult         = "result"
@@ -407,13 +408,17 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 
 // Indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
-	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodSendRawTx
+	return method == ReqJSONMethodGetBalance ||
+		method == ReqJSONMethodCall ||
+		method == ReqJSONMethodGetTxReceipt ||
+		method == ReqJSONMethodSendRawTx ||
+		method == ReqJSONMethodGetTxByHash
 }
 
 // Converts the decrypted result to its correct JSON representation.
 func processDecryptedResult(decryptedResult []byte, method interface{}) (interface{}, error) {
 	// This method returns a JSON map, rather than a string.
-	if method == ReqJSONMethodGetTxReceipt {
+	if method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodGetTxByHash {
 		fields := map[string]interface{}{}
 		err := json.Unmarshal(decryptedResult, &fields)
 		if err != nil {
