@@ -188,16 +188,27 @@ func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopR
 }
 
 func (s *server) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
-	tx := s.enclave.GetTransaction(gethcommon.BytesToHash(request.TxHash))
+	tx, blockHash, blockNumber, index, err := s.enclave.GetTransaction(gethcommon.BytesToHash(request.TxHash))
+	if err != nil {
+		return nil, err
+	}
+
 	if tx == nil {
-		return &generated.GetTransactionResponse{Known: false, EncodedTransaction: []byte{}}, nil
+		return &generated.GetTransactionResponse{Known: false}, nil
 	}
 
 	var buffer bytes.Buffer
-	if err := tx.EncodeRLP(&buffer); err != nil {
-		common.LogWithID(s.nodeShortID, "failed to decode transaction sent to enclave: %v", err)
+	if err = tx.EncodeRLP(&buffer); err != nil {
+		common.LogWithID(s.nodeShortID, "failed to encode transaction to be sent from enclave: %v", err)
 	}
-	return &generated.GetTransactionResponse{Known: true, EncodedTransaction: buffer.Bytes()}, nil
+
+	return &generated.GetTransactionResponse{
+		Known:              true,
+		EncodedTransaction: buffer.Bytes(),
+		BlockHash:          blockHash.Bytes(),
+		BlockNumber:        blockNumber,
+		Index:              index,
+	}, nil
 }
 
 func (s *server) GetTransactionReceipt(_ context.Context, request *generated.GetTransactionReceiptRequest) (*generated.GetTransactionReceiptResponse, error) {

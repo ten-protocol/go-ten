@@ -1,7 +1,6 @@
 package enclave
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
@@ -289,29 +288,9 @@ func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
 	return s.GetNonce(address)
 }
 
-func (e *enclaveImpl) GetTransaction(txHash gethcommon.Hash) *common.L2Tx {
-	// todo - use the metadata stored in the database
-	hs := e.storage.FetchHeadState()
-	if hs == nil {
-		panic("should not happen")
-	}
-	rollup, found := e.storage.FetchRollup(hs.HeadRollup)
-	if !found {
-		log.Panic("could not fetch block's head rollup")
-	}
-
-	for {
-		txs := rollup.Transactions
-		for _, tx := range txs {
-			if bytes.Equal(tx.Hash().Bytes(), txHash.Bytes()) {
-				return tx
-			}
-		}
-		rollup = e.storage.ParentRollup(rollup)
-		if rollup == nil || rollup.Header.Number.Uint64() == common.L2GenesisHeight {
-			return nil
-		}
-	}
+func (e *enclaveImpl) GetTransaction(txHash gethcommon.Hash) (*common.L2Tx, gethcommon.Hash, uint64, uint64, error) {
+	// todo - joel - encrypt
+	return e.storage.GetTransaction(txHash)
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
@@ -351,6 +330,10 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
 	for {
+		if rollup == nil {
+			// We've reached the head of the chain without finding the block.
+			return nil
+		}
 		if rollup.Number().Uint64() == rollupHeight {
 			// We have found the block.
 			break
@@ -362,10 +345,6 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
 
 		// We grab the next rollup and loop.
 		rollup = e.storage.ParentRollup(rollup)
-		if rollup == nil {
-			// We've reached the head of the chain without finding the block.
-			return nil
-		}
 	}
 
 	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
