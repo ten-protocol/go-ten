@@ -11,7 +11,7 @@ ObscuroScan allows you to decrypt rollup transactions blobs on Testnet. You can 
 Notice the _Encrypted Transaction Blob_ field. You can copy and paste the field contents into ObscuroScan's _Decrypt rollup transaction blobs (testnet only!)_ page to see the content of the transaction in unencrypted plain text. This is a feature of Testnet. In contrast, on Mainnet, rollups will use rotating keys that are not known to anyone, or anything, other than the Obscuro enclaves.
 
 ## How to Decrypt Transaction Blobs
-Decrypting transaction blobs is only possible on Testnet to help you understand how Obscuro works. ObscuroScan on Testnet uses a rollup encryption key which is long-lived and well-known. In contrast, on Mainnet, rollups will use rotating keys that are not known to anyone, or anything, other than the Obscuro enclaves.
+Decrypting transaction blobs is only possible on Testnet to help you understand how Obscuro works. ObscuroScan on Testnet uses a rollup encryption key which is long-lived and well-known.
 
 1. From the [ObscuroScan landing page](http://obscuroscan-01.uksouth.azurecontainer.io/) click _Decrypt rollup transaction blobs (testnet only!)_ to go to the decryption page.
 
