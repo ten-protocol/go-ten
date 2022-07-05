@@ -23,9 +23,7 @@ Your wallet is now configured for the Obscuro Testnet which allows you to view e
 
 1. Log in to MetaMask and confirm you are connected to Obscuro Testnet network. The parameters for the Obscuro Testnet can be found [here](./essentials.md).
 
-1. In the _Deploy & Run Transactions_ section of Remix change the Environment to _Injected Web3_. This tells Remix to use the network settings currently configured in your MetaMask wallet, which in this case is the Obscuro Testnet.
-
-    If the connection to Obscuro Testnet is successful you will see the text _Custom (777) network_ displayed under _Injected Web3_.
+1. In the _Deploy & Run Transactions_ section of Remix change the Environment to _Injected Web3_. This tells Remix to use the network settings currently configured in your MetaMask wallet, which in this case is the Obscuro Testnet. If the connection to Obscuro Testnet is successful you will see the text _Custom (777) network_ displayed under _Injected Web3_.
 
 1. Click the _Deploy_ button to deploy your smart contract to the Obscuro Testnet.
 
