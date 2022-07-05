@@ -309,6 +309,11 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
+	// If the poststate is set, the status should be set to successful.
+	if len(txReceipt.PostState) == 32 {
+		txReceipt.Status = types.ReceiptStatusSuccessful
+	}
+
 	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptTxReceiptWithViewingKey(viewingKeyAddress, txReceipt)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
@@ -326,25 +331,28 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 	return nil
 }
 
-func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
-	for {
-		if rollup == nil {
-			// We've reached the head of the chain without finding the block.
-			return nil
-		}
-		if rollup.Number().Uint64() == rollupHeight {
-			// We have found the block.
-			break
-		}
-		if rollup.Number().Uint64() < rollupHeight {
-			// The current block number is below the sought number. Continuing to walk up the chain is pointless.
-			return nil
-		}
+	// -1 is used by Ethereum to indicate that we should fetch the head.
+	if rollupHeight != -1 {
+		for {
+			if rollup == nil {
+				// We've reached the head of the chain without finding the block.
+				return nil
+			}
+			if rollup.Number().Int64() == rollupHeight {
+				// We have found the block.
+				break
+			}
+			if rollup.Number().Int64() < rollupHeight {
+				// The current block number is below the sought number. Continuing to walk up the chain is pointless.
+				return nil
+			}
 
-		// We grab the next rollup and loop.
-		rollup = e.storage.ParentRollup(rollup)
+			// We grab the next rollup and loop.
+			rollup = e.storage.ParentRollup(rollup)
+		}
 	}
 
 	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
@@ -429,6 +437,10 @@ func (e *enclaveImpl) StoreAttestation(att *common.AttestationReport) error {
 
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
 	return e.chain.GetBalance(encryptedParams)
+}
+
+func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
 }
 
 func (e *enclaveImpl) IsInitialised() bool {

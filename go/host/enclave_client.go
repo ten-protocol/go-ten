@@ -332,7 +332,7 @@ func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) *common.ExtRo
 	return &extRollup
 }
 
-func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -376,7 +376,16 @@ func (c *EnclaveRPCClient) GetBalance(encryptedParams common.EncryptedParamsGetB
 	return resp.EncryptedBalance, nil
 }
 
-func (c *EnclaveRPCClient) StoreAttestation(att *common.AttestationReport) error {
-	/// todo
-	return nil
+func (c *EnclaveRPCClient) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.GetCode(timeoutCtx, &generated.GetCodeRequest{
+		Address:    address.Bytes(),
+		RollupHash: rollupHash.Bytes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Code, nil
 }

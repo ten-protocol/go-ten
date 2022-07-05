@@ -72,6 +72,8 @@ type EnclaveProtoClient interface {
 	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
 	// the address
 	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceResponse, error)
+	// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
+	GetCode(ctx context.Context, in *GetCodeRequest, opts ...grpc.CallOption) (*GetCodeResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -280,6 +282,15 @@ func (c *enclaveProtoClient) GetBalance(ctx context.Context, in *GetBalanceReque
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetCode(ctx context.Context, in *GetCodeRequest, opts ...grpc.CallOption) (*GetCodeResponse, error) {
+	out := new(GetCodeResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetCode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -334,6 +345,8 @@ type EnclaveProtoServer interface {
 	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
 	// the address
 	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceResponse, error)
+	// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
+	GetCode(context.Context, *GetCodeRequest) (*GetCodeResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -406,6 +419,9 @@ func (UnimplementedEnclaveProtoServer) AddViewingKey(context.Context, *AddViewin
 }
 func (UnimplementedEnclaveProtoServer) GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBalance not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetCode(context.Context, *GetCodeRequest) (*GetCodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCode not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -816,6 +832,24 @@ func _EnclaveProto_GetBalance_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetCode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetCode(ctx, req.(*GetCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -910,6 +944,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetBalance",
 			Handler:    _EnclaveProto_GetBalance_Handler,
+		},
+		{
+			MethodName: "GetCode",
+			Handler:    _EnclaveProto_GetCode_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
