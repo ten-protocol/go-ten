@@ -3,7 +3,7 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 
 ## Prerequisites
 * [MetaMask](https://metamask.io/) wallet installed in your browser.
-* A local copy of the Obscuro MetaMask wallet extension downloaded from the [releases area](https://github.com/obscuronet/go-obscuro/releases) Obscuro repository on GitHub.
+* A local copy of the Obscuro MetaMask wallet extension downloaded from the [releases area](https://github.com/obscuronet/go-obscuro/releases) of the Obscuro repository on GitHub.
 
 ## Prepare Your MetaMask Wallet for Obscuro Testnet
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
