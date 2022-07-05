@@ -90,7 +90,7 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) map[string]interface{} {
 	paramsJSON, err := json.Marshal([]string{txHash.Hex()})
 	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not marshall JSON param to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
+		panic(fmt.Errorf("simulation failed because could not marshal JSON param to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
 	}
 
 	var encryptedResponse string
@@ -102,7 +102,7 @@ func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) map[stri
 	var responseJSONMap map[string]interface{}
 	err = json.Unmarshal(gethcommon.Hex2Bytes(encryptedResponse), &responseJSONMap)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not unmarshall JSON response to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
+		panic(fmt.Errorf("simulation failed because could not unmarshal JSON response to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
 	}
 
 	return responseJSONMap

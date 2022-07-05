@@ -114,7 +114,7 @@ func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams common.EncryptedP
 	return txHash, err
 }
 
-// EncryptTxReceiptWithViewingKey marshalls the transaction receipt to JSON, and encrypts it with a viewing key for the address.
+// EncryptTxReceiptWithViewingKey marshals the transaction receipt to JSON, and encrypts it with a viewing key for the address.
 func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcommon.Address, txReceipt *types.Receipt) ([]byte, error) {
 	txReceiptBytes, err := txReceipt.MarshalJSON()
 	if err != nil {

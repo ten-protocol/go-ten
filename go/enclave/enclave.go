@@ -285,7 +285,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	var paramList []string
 	err = json.Unmarshal(hashBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshall RPC request params from JSON. Cause: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
 	}
 	txHash := gethcommon.HexToHash(paramList[0])
 
@@ -306,11 +306,9 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 
 	txBytes, err := json.Marshal(rpcTx)
 	if err != nil {
-		return nil, fmt.Errorf("could not marshall transaction to JSON. Cause: %w", err)
+		return nil, fmt.Errorf("could not marshal transaction to JSON. Cause: %w", err)
 	}
-	encryptedBytes, err := e.rpcEncryptionManager.EncryptWithViewingKey(rpcTx.From, txBytes)
-
-	return encryptedBytes, err
+	return e.rpcEncryptionManager.EncryptWithViewingKey(rpcTx.From, txBytes)
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
