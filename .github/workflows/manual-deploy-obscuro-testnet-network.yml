@@ -148,7 +148,7 @@ jobs:
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/testnet/ \
             && ./start-obscuro-node.sh \
-               --is_genesis=${{ matrix.is_genesis}} \
+               --is_genesis=${{ matrix.is_genesis }} \
                --sgx_enabled=true \
                --host_id=${{ matrix.host_addr }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
