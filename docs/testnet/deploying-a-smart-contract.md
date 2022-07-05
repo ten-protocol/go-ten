@@ -1,5 +1,5 @@
 # Deploying a Smart Contract to Obscuro Testnet
-Using the steps below you will add an extension to your MetaMask wallet so it can connect to Obscuro Testnet, then using Remix you will deploy your smart contract to Testnet.
+Using the steps below you will add an extension to your MetaMask wallet so it can connect to Obscuro Testnet, then using Remix you will deploy your smart contract to Testnet. Remember there are no gas fees on Obscuro Testnet so you do not need to load your account with OBX tokens in advance.
 
 ## Prerequisites
 * [MetaMask](https://metamask.io/) wallet installed in your browser.
