@@ -385,6 +385,7 @@ func (a *Node) processBlock(b *types.Block) {
 		}
 
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
+			common.LogWithID(a.shortID, "Process shared secret request. Block: %d. Tx: %d", b.NumberU64(), common.ShortHash(tx.Hash()))
 			a.processSharedSecretRequest(scrtReqTx)
 		}
 
@@ -516,15 +517,20 @@ func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 }
 
 func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) {
-	// todo: implement proper protocol so only one host responds to this secret requests initially
-	// 	for now we just have the genesis host respond until protocol implemented
-	if !a.config.IsGenesis {
-		return
-	}
-
 	att, err := common.DecodeAttestation(scrtReqTx.Attestation)
 	if err != nil {
 		common.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
+		return
+	}
+
+	err = a.EnclaveClient.StoreAttestation(att)
+	if err != nil {
+		log.Panic("Could not store attestation. Cause:%s", err)
+	}
+
+	// todo: implement proper protocol so only one host responds to this secret requests initially
+	// 	for now we just have the genesis host respond until protocol implemented
+	if !a.config.IsGenesis {
 		return
 	}
 
@@ -654,9 +660,10 @@ func (a *Node) bootstrapNode() types.Block {
 
 	startTime, logTime := time.Now(), time.Now()
 	for {
-		a.processBlock(currentBlock)
+		cb := *currentBlock
+		a.processBlock(&cb)
 		// TODO ingest one block at a time or batch the blocks
-		result := a.EnclaveClient.IngestBlocks([]*types.Block{currentBlock})
+		result := a.EnclaveClient.IngestBlocks([]*types.Block{&cb})
 		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
 			common.LogWithID(
 				a.shortID,
@@ -667,7 +674,7 @@ func (a *Node) bootstrapNode() types.Block {
 		}
 		a.storeBlockProcessingResult(result[0])
 
-		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(currentBlock.Number().Int64() + 1))
+		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(cb.Number().Int64() + 1))
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				break
@@ -677,7 +684,7 @@ func (a *Node) bootstrapNode() types.Block {
 		currentBlock = nextBlk
 
 		if time.Since(logTime) > 30*time.Second {
-			common.LogWithID(a.shortID, "Bootstrapping node at block... %d", currentBlock.NumberU64())
+			common.LogWithID(a.shortID, "Bootstrapping node at block... %d", cb.NumberU64())
 			logTime = time.Now()
 		}
 	}

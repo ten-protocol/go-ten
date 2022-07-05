@@ -11,6 +11,9 @@ service EnclaveProto {
   // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
 
+  // StoreAttestation - saves the attestation data of a counterparty to verify signatures against it.
+  rpc StoreAttestation(StoreAttestationRequest) returns (StoreAttestationResponse) {}
+
   // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
   rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
 
@@ -102,6 +105,13 @@ message FetchSecretRequest {
 message ShareSecretResponse {
   bytes encryptedSharedEnclaveSecret = 1;
   string error = 2;
+}
+
+message StoreAttestationRequest {
+  AttestationReportMsg attestationReportMsg = 1;
+}
+message StoreAttestationResponse {
+  string error = 1;
 }
 
 message InitEnclaveRequest {

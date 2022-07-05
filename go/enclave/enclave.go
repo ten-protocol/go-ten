@@ -405,10 +405,6 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 	}
 	common.LogWithID(e.nodeShortID, "Successfully verified attestation and identity. Owner: %s", att.Owner)
 
-	err = e.StoreAttestation(att)
-	if err != nil {
-		log.Panic("Could not store attestation. Cause:%s", err)
-	}
 	secret := e.storage.FetchSecret()
 	if secret == nil {
 		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
