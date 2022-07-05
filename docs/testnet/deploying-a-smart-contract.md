@@ -10,7 +10,7 @@ An essential part of how Obscuro provides full privacy is the encryption of comm
 
 Follow the steps to config the MetaMask wallet extension [here](wallet-extension.md) then return to this page. If you do not have the Obscuro wallet extension running MetaMask will not be able to communicate with the Obscuro Testnet. 
 
-Now your wallet is configured for the Obscuro Testnet and to make your encrypted traffic viewabl. You can now go ahead and deploy your smart contract to the Obscuro Testnet.
+Now your wallet is configured for the Obscuro Testnet which makes your encrypted traffic viewable. You can now go ahead and deploy your smart contract to the Obscuro Testnet.
 
 ## Deploy Your Smart Contract Using an IDE
 1. Browse to the popular Solidity-compatible Integrated Development Environment called [Remix](https://remix.ethereum.org/).
