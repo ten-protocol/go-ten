@@ -389,3 +389,8 @@ func (c *EnclaveRPCClient) GetCode(address gethcommon.Address, rollupHash *gethc
 	}
 	return resp.Code, nil
 }
+
+func (c *EnclaveRPCClient) StoreAttestation(att *common.AttestationReport) error {
+	/// todo
+	return nil
+}
