@@ -405,9 +405,10 @@ func TestCanSubmitTxAndGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
 	}
 	txReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{txHash})
 
-	expectedTxHashJSON := fmt.Sprintf("\"transactionHash\":\"%s\"", txHash)
-	if !strings.Contains(txReceiptJSON[walletextension.RespJSONKeyResult].(string), expectedTxHashJSON) {
-		t.Fatalf("Expected transaction receipt containing %s, got %s", "\"transactionHash\":\"0x03ec8936136e8a293d91309d8fcf095758015fb864aa64ecd9d77e3a4485b523\"", txReceiptJSON[walletextension.RespJSONKeyResult])
+	result := fmt.Sprintf("%s", txReceiptJSON[walletextension.RespJSONKeyResult])
+	expectedTxHashJSON := fmt.Sprintf("transactionHash:%s", txHash)
+	if !strings.Contains(result, expectedTxHashJSON) {
+		t.Fatalf("Expected transaction receipt containing %s, got %s", expectedTxHashJSON, result)
 	}
 }
 
