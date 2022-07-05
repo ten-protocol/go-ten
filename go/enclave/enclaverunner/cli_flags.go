@@ -35,6 +35,9 @@ const (
 	Erc20ContractAddrsName  = "erc20ContractAddresses"
 	erc20ContractAddrsUsage = "The ERC20 contract addresses to monitor on the L1"
 
+	logLevelName  = "logLevel"
+	logLevelUsage = "What is the verbosity of logs. (Defaults to Info)"
+
 	writeToLogsName  = "writeToLogs"
 	writeToLogsUsage = "Whether to redirect the output to the log file."
 

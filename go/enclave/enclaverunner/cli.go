@@ -45,6 +45,7 @@ func ParseConfig() config.EnclaveConfig {
 	speculativeExecution := flag.Bool(speculativeExecutionName, cfg.SpeculativeExecution, speculativeExecutionUsage)
 	managementContractAddress := flag.String(ManagementContractAddressName, cfg.ManagementContractAddress.Hex(), managementContractAddressUsage)
 	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, "", erc20ContractAddrsUsage)
+	loglevel := flag.String(logLevelName, cfg.LogLevel, logLevelUsage)
 	writeToLogs := flag.Bool(writeToLogsName, cfg.WriteToLogs, writeToLogsUsage)
 	logPath := flag.String(logPathName, cfg.LogPath, logPathUsage)
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, useInMemoryDBUsage)
@@ -80,6 +81,7 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.SpeculativeExecution = *speculativeExecution
 	cfg.ManagementContractAddress = common.HexToAddress(*managementContractAddress)
 	cfg.ERC20ContractAddresses = erc20contractAddresses
+	cfg.LogLevel = *loglevel
 	cfg.WriteToLogs = *writeToLogs
 	cfg.LogPath = *logPath
 	cfg.UseInMemoryDB = *useInMemoryDB

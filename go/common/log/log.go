@@ -54,3 +54,11 @@ func Info(msg string, args ...interface{}) {
 func Panic(msg string, args ...interface{}) {
 	logger.Panic().Msgf(msg, args...)
 }
+
+func ParseLevel(levelStr string) zerolog.Level {
+	lvl, err := zerolog.ParseLevel(levelStr)
+	if err != nil {
+		lvl = zerolog.InfoLevel
+	}
+	return lvl
+}

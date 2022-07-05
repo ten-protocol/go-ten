@@ -24,6 +24,8 @@ func RunEnclave(config config.EnclaveConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddresses...)
 
+	log.SetLogLevel(log.ParseLevel(config.LogLevel))
+
 	if config.ValidateL1Blocks {
 		config.GenesisJSON = []byte(hardcodedGenesisJSON)
 	}
