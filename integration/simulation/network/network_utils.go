@@ -37,7 +37,7 @@ const (
 	DefaultEnclaveOffset       = 300 // The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
 	DefaultHostRPCHTTPOffset   = 400 // The default offset for the host's RPC HTTP port
 	DefaultHostRPCWSOffset     = 500 // The default offset for the host's RPC websocket port
-	ClientRPCTimeout           = 30 * time.Second
+	ClientRPCTimeout           = 5 * time.Second
 	DefaultL1ConnectionTimeout = 15 * time.Second
 )
 
