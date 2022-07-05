@@ -255,6 +255,17 @@ func (s *server) GetBalance(_ context.Context, request *generated.GetBalanceRequ
 	return &generated.GetBalanceResponse{EncryptedBalance: encryptedBalance}, nil
 }
 
+func (s *server) GetCode(_ context.Context, request *generated.GetCodeRequest) (*generated.GetCodeResponse, error) {
+	address := gethcommon.BytesToAddress(request.Address)
+	rollupHash := gethcommon.BytesToHash(request.RollupHash)
+
+	code, err := s.enclave.GetCode(address, &rollupHash)
+	if err != nil {
+		return nil, err
+	}
+	return &generated.GetCodeResponse{Code: code}, nil
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

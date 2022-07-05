@@ -36,9 +36,9 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 		}
 		receipts = append(receipts, r)
 		if r.Status == types.ReceiptStatusFailed {
-			log.Info("Unsuccessful (status != 1) tx %d.", common.ShortHash(t.Hash()))
+			log.Info("Unsuccessful (status != 1) tx %s.", t.Hash().Hex())
 		} else {
-			log.Info("Successfully executed tx %d.", common.ShortHash(t.Hash()))
+			log.Info("Successfully executed tx %s.", t.Hash().Hex())
 		}
 	}
 	s.Finalise(true)
