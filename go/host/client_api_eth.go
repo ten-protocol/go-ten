@@ -49,21 +49,13 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	extRollup := api.host.EnclaveClient.GetRollupByHeight(uint64(number))
+	return extRollupToBlock(extRollup), nil
+}
 
-	block := map[string]interface{}{
-		"number":           (*hexutil.Big)(extRollup.Header.Number),
-		"hash":             extRollup.Header.Hash(),
-		"parenthash":       extRollup.Header.ParentHash,
-		"nonce":            extRollup.Header.Nonce,
-		"logsbloom":        extRollup.Header.Bloom,
-		"stateroot":        extRollup.Header.Root,
-		"receiptsroot":     extRollup.Header.ReceiptHash,
-		"miner":            extRollup.Header.Agg,
-		"extradata":        hexutil.Bytes(extRollup.Header.Extra),
-		"transactionsroot": extRollup.Header.TxHash,
-		"transactions":     extRollup.TxHashes,
-	}
-	return block, nil
+// GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
+func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
+	extRollup := api.host.EnclaveClient.GetRollup(hash)
+	return extRollupToBlock(extRollup), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -122,6 +114,23 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, hash gethcommon.
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
 	signer := types.NewLondonSigner(tx.ChainId())
 	return newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer), nil
+}
+
+// Maps an external rollup to a block.
+func extRollupToBlock(extRollup *common.ExtRollup) map[string]interface{} {
+	return map[string]interface{}{
+		"number":           (*hexutil.Big)(extRollup.Header.Number),
+		"hash":             extRollup.Header.Hash(),
+		"parenthash":       extRollup.Header.ParentHash,
+		"nonce":            extRollup.Header.Nonce,
+		"logsbloom":        extRollup.Header.Bloom,
+		"stateroot":        extRollup.Header.Root,
+		"receiptsroot":     extRollup.Header.ReceiptHash,
+		"miner":            extRollup.Header.Agg,
+		"extradata":        hexutil.Bytes(extRollup.Header.Extra),
+		"transactionsroot": extRollup.Header.TxHash,
+		"transactions":     extRollup.TxHashes,
+	}
 }
 
 // RPCTransaction is lifted from Geth's internal `ethapi` package.
