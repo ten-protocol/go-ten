@@ -32,7 +32,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
     * For other OSes and architectures, see `Compiling the binary`, below
 
-2. Start the wallet extension by running the `wallet_extension` binary with the following flags:
+2. Open a terminal window of command prompt. Start the wallet extension by running the `wallet_extension` binary with the following flags:
 
    ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
 
