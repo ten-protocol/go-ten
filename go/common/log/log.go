@@ -55,6 +55,7 @@ func Panic(msg string, args ...interface{}) {
 	logger.Panic().Msgf(msg, args...)
 }
 
+// ParseLevel returns a logging level given the string - defaults to info level if string not parseable
 func ParseLevel(levelStr string) zerolog.Level {
 	lvl, err := zerolog.ParseLevel(levelStr)
 	if err != nil {

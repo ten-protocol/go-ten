@@ -23,7 +23,7 @@ type EnclaveConfigToml struct {
 	SpeculativeExecution      bool
 	ManagementContractAddress string
 	ERC20ContractAddresses    []string
-	WriteToLogs               bool
+	LogLevel                  string
 	LogPath                   string
 	UseInMemoryDB             bool
 	ViewingKeysEnabled        bool
@@ -46,7 +46,6 @@ func ParseConfig() config.EnclaveConfig {
 	managementContractAddress := flag.String(ManagementContractAddressName, cfg.ManagementContractAddress.Hex(), managementContractAddressUsage)
 	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, "", erc20ContractAddrsUsage)
 	loglevel := flag.String(logLevelName, cfg.LogLevel, logLevelUsage)
-	writeToLogs := flag.Bool(writeToLogsName, cfg.WriteToLogs, writeToLogsUsage)
 	logPath := flag.String(logPathName, cfg.LogPath, logPathUsage)
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, useInMemoryDBUsage)
 	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, cfg.ViewingKeysEnabled, ViewingKeysEnabledUsage)
@@ -82,7 +81,6 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.ManagementContractAddress = common.HexToAddress(*managementContractAddress)
 	cfg.ERC20ContractAddresses = erc20contractAddresses
 	cfg.LogLevel = *loglevel
-	cfg.WriteToLogs = *writeToLogs
 	cfg.LogPath = *logPath
 	cfg.UseInMemoryDB = *useInMemoryDB
 	cfg.ViewingKeysEnabled = *viewingKeysEnabled
@@ -122,7 +120,7 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		SpeculativeExecution:      tomlConfig.SpeculativeExecution,
 		ManagementContractAddress: common.HexToAddress(tomlConfig.ManagementContractAddress),
 		ERC20ContractAddresses:    erc20contractAddresses,
-		WriteToLogs:               tomlConfig.WriteToLogs,
+		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
 		ViewingKeysEnabled:        tomlConfig.ViewingKeysEnabled,

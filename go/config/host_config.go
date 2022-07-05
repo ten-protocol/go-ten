@@ -45,6 +45,8 @@ type HostConfig struct {
 	L1ConnectionTimeout time.Duration
 	// The rollup contract address on the L1 network
 	RollupContractAddress common.Address
+	// LogLevel determines the verbosity of output logs
+	LogLevel string
 	// The path that the node's logs are written to
 	LogPath string
 	// The stringified private key for the host's L1 wallet
@@ -74,7 +76,8 @@ func DefaultHostConfig() HostConfig {
 		L1NodeWebsocketPort:    8546,
 		L1ConnectionTimeout:    time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
 		RollupContractAddress:  common.BytesToAddress([]byte("")),
-		LogPath:                "host_logs.txt",
+		LogLevel:               "info",
+		LogPath:                "",
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:              1337,
 		ObscuroChainID:         777,

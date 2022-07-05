@@ -67,12 +67,14 @@ jobs:
       matrix:
         host_id: [0,1,2]
         include:
+          # Hardcoded host addresses
           - host_addr: 0x0000000000000000000000000000000000000000
             host_id: 0
           - host_addr: 0x0000000000000000000000000000000000000001
             host_id: 1
           - host_addr: 0x0000000000000000000000000000000000000002
             host_id: 2
+          # Hardcoded host prefunded keys
           - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
             host_id: 0
           - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
@@ -84,6 +86,13 @@ jobs:
           - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
             host_id: 1
           - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_2
+            host_id: 2
+          # Ensure there is a genesis node
+          - is_genesis: true
+            host_id: 0
+          - is_genesis: false
+            host_id: 1
+          - is_genesis: false
             host_id: 2
 
     steps:
@@ -139,6 +148,7 @@ jobs:
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/testnet/ \
             && ./start-obscuro-node.sh \
+               --is_genesis=${{ matrix.is_genesis}} \
                --sgx_enabled=true \
                --host_id=${{ matrix.host_addr }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
