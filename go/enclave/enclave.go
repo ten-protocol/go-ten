@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -276,9 +277,38 @@ func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
 	return s.GetNonce(address)
 }
 
-func (e *enclaveImpl) GetTransaction(txHash gethcommon.Hash) (*common.L2Tx, gethcommon.Hash, uint64, uint64, error) {
-	// todo - joel - encrypt
-	return e.storage.GetTransaction(txHash)
+func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
+	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt encrypted RPC request params. Cause: %w", err)
+	}
+	var paramList []string
+	err = json.Unmarshal(hashBytes, &paramList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+	}
+	txHash := gethcommon.HexToHash(paramList[0])
+
+	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
+	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve transaction. Cause: %w", err)
+	}
+
+	if tx == nil {
+		// If there's no transaction, there's no `from` field we can use to determine which key to use to encrypt the response.
+		return nil, fmt.Errorf("transaction does not exist")
+	}
+
+	// Unlike in the Geth impl, we hardcode the use of a London signer.
+	signer := types.NewLondonSigner(tx.ChainId())
+	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
+
+	txBytes, err := json.Marshal(rpcTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal transaction to JSON. Cause: %w", err)
+	}
+	return e.rpcEncryptionManager.EncryptWithViewingKey(rpcTx.From, txBytes)
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
@@ -295,6 +325,11 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+
+	// If the poststate is set, the status should be set to successful.
+	if len(txReceipt.PostState) == 32 {
+		txReceipt.Status = types.ReceiptStatusSuccessful
 	}
 
 	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptTxReceiptWithViewingKey(viewingKeyAddress, txReceipt)
@@ -314,25 +349,28 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup 
 	return nil
 }
 
-func (e *enclaveImpl) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
-	for {
-		if rollup == nil {
-			// We've reached the head of the chain without finding the block.
-			return nil
-		}
-		if rollup.Number().Uint64() == rollupHeight {
-			// We have found the block.
-			break
-		}
-		if rollup.Number().Uint64() < rollupHeight {
-			// The current block number is below the sought number. Continuing to walk up the chain is pointless.
-			return nil
-		}
+	// -1 is used by Ethereum to indicate that we should fetch the head.
+	if rollupHeight != -1 {
+		for {
+			if rollup == nil {
+				// We've reached the head of the chain without finding the block.
+				return nil
+			}
+			if rollup.Number().Int64() == rollupHeight {
+				// We have found the block.
+				break
+			}
+			if rollup.Number().Int64() < rollupHeight {
+				// The current block number is below the sought number. Continuing to walk up the chain is pointless.
+				return nil
+			}
 
-		// We grab the next rollup and loop.
-		rollup = e.storage.ParentRollup(rollup)
+			// We grab the next rollup and loop.
+			rollup = e.storage.ParentRollup(rollup)
+		}
 	}
 
 	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
@@ -402,6 +440,10 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
 	return e.chain.GetBalance(encryptedParams)
+}
+
+func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
 }
 
 func (e *enclaveImpl) IsInitialised() bool {

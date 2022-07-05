@@ -18,7 +18,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"google.golang.org/grpc"
@@ -284,26 +283,15 @@ func (c *EnclaveRPCClient) Stop() error {
 	return nil
 }
 
-func (c *EnclaveRPCClient) GetTransaction(txHash gethcommon.Hash) (*common.L2Tx, gethcommon.Hash, uint64, uint64, error) {
+func (c *EnclaveRPCClient) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{TxHash: txHash.Bytes()})
+	resp, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to retrieve transaction. Cause: %s", common.ShortAddress(c.config.ID), err)
+		return nil, err
 	}
-
-	if !response.Known {
-		return nil, gethcommon.Hash{}, 0, 0, nil
-	}
-
-	l2Tx := common.L2Tx{}
-	err = l2Tx.DecodeRLP(rlp.NewStream(bytes.NewReader(response.EncodedTransaction), 0))
-	if err != nil {
-		log.Panic(">   Agg%d: Failed to decode transaction. Cause: %s", common.ShortAddress(c.config.ID), err)
-	}
-
-	return &l2Tx, gethcommon.BytesToHash(response.BlockHash), response.BlockNumber, response.Index, nil
+	return resp.EncryptedTx, nil
 }
 
 func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
@@ -334,7 +322,7 @@ func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) *common.ExtRo
 	return &extRollup
 }
 
-func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight uint64) *common.ExtRollup {
+func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -376,4 +364,18 @@ func (c *EnclaveRPCClient) GetBalance(encryptedParams common.EncryptedParamsGetB
 		return nil, err
 	}
 	return resp.EncryptedBalance, nil
+}
+
+func (c *EnclaveRPCClient) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.GetCode(timeoutCtx, &generated.GetCodeRequest{
+		Address:    address.Bytes(),
+		RollupHash: rollupHash.Bytes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Code, nil
 }

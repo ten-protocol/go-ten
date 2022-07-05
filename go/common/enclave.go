@@ -59,8 +59,8 @@ type Enclave interface {
 	// Stop gracefully stops the enclave
 	Stop() error
 
-	// GetTransaction returns a transaction, its block number and hash, and its index, or nil if the transaction is unknown
-	GetTransaction(txHash gethcommon.Hash) (*L2Tx, gethcommon.Hash, uint64, uint64, error)
+	// GetTransaction returns a transaction in JSON format, encrypted with the viewing key for the transaction's `from` field.
+	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) (EncryptedResponseGetTxByHash, error)
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
 	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
@@ -69,7 +69,7 @@ type Enclave interface {
 	GetRollup(rollupHash L2RootHash) *ExtRollup
 
 	// GetRollupByHeight returns the canonical rollup with the given height.
-	GetRollupByHeight(rollupHeight uint64) *ExtRollup
+	GetRollupByHeight(rollupHeight int64) *ExtRollup
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.
@@ -86,6 +86,9 @@ type Enclave interface {
 	// address.
 	// TODO - Handle multiple viewing keys, and thus multiple return values.
 	GetBalance(encryptedParams EncryptedParamsGetBalance) (EncryptedResponseGetBalance, error)
+
+	// GetCode returns the code stored at the given address in the state for the given rollup hash.
+	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error)
 
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error

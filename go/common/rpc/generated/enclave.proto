@@ -76,6 +76,9 @@ service EnclaveProto {
   // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
   // the address
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {}
+
+  // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
+  rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
 }
 
 message IsReadyRequest {}
@@ -178,14 +181,10 @@ message StopRequest {}
 message StopResponse {}
 
 message GetTransactionRequest {
-  bytes txHash = 1;
+  bytes encryptedParams = 1;
 }
 message GetTransactionResponse {
-  bool known = 1;
-  bytes encodedTransaction = 2;
-  bytes blockHash = 3;
-  uint64 blockNumber = 4;
-  uint64 index = 5;
+  bytes encryptedTx = 1;
 }
 
 message GetTransactionReceiptRequest {
@@ -204,7 +203,7 @@ message GetRollupResponse {
 }
 
 message GetRollupByHeightRequest {
-  uint64 rollupHeight = 1;
+  int64 rollupHeight = 1;
 }
 message GetRollupByHeightResponse {
   bool known = 1;
@@ -222,6 +221,14 @@ message GetBalanceRequest {
 }
 message GetBalanceResponse {
   bytes encryptedBalance = 1;
+}
+
+message GetCodeRequest {
+  bytes address = 1;
+  bytes rollupHash = 3;
+}
+message GetCodeResponse {
+  bytes code = 1;
 }
 
 // Nested message types.
