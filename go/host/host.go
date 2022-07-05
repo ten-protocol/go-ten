@@ -406,7 +406,6 @@ func (a *Node) processBlock(b *types.Block) {
 				log.Panic("Could not decode store the attestation report. Cause: %s", err)
 			}
 		}
-
 	}
 }
 
