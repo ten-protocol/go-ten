@@ -395,7 +395,12 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt enclave response with viewing key: %w", err)
 	}
-	respJSONMap[RespJSONKeyResult] = string(decryptedResult)
+
+	processedResult, err := processDecryptedResult(decryptedResult, method)
+	if err != nil {
+		return nil, fmt.Errorf("could not process decrypted enclave response: %w", err)
+	}
+	respJSONMap[RespJSONKeyResult] = processedResult
 
 	return respJSONMap, nil
 }
@@ -403,4 +408,19 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 // Indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
 	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodSendRawTx
+}
+
+// Converts the decrypted result to its correct JSON representation.
+func processDecryptedResult(decryptedResult []byte, method interface{}) (interface{}, error) {
+	// This method returns a JSON map, rather than a string.
+	if method == ReqJSONMethodGetTxReceipt {
+		fields := map[string]interface{}{}
+		err := json.Unmarshal(decryptedResult, &fields)
+		if err != nil {
+			return nil, err
+		}
+		return fields, nil
+	}
+
+	return string(decryptedResult), nil
 }
