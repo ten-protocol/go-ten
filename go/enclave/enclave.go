@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -276,9 +277,37 @@ func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
 	return s.GetNonce(address)
 }
 
-func (e *enclaveImpl) GetTransaction(txHash gethcommon.Hash) (*common.L2Tx, gethcommon.Hash, uint64, uint64, error) {
-	// todo - joel - encrypt
-	return e.storage.GetTransaction(txHash)
+func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
+	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt encrypted RPC request params. Cause: %w", err)
+	}
+	var paramList []string
+	err = json.Unmarshal(hashBytes, &paramList)
+	txHash := gethcommon.HexToHash(paramList[0])
+
+	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
+	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve transaction. Cause: %w", err)
+	}
+
+	if tx == nil {
+		// If there's no transaction, there's no `from` field we can use to determine which key to use to encrypt the response.
+		return nil, fmt.Errorf("transaction does not exist")
+	}
+
+	// Unlike in the Geth impl, we hardcode the use of a London signer.
+	signer := types.NewLondonSigner(tx.ChainId())
+	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
+
+	txBytes, err := json.Marshal(rpcTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshall transaction to JSON. Cause: %s", err)
+	}
+	encryptedBytes, err := e.rpcEncryptionManager.EncryptWithViewingKey(rpcTx.From, txBytes)
+
+	return encryptedBytes, err
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {

@@ -181,14 +181,10 @@ message StopRequest {}
 message StopResponse {}
 
 message GetTransactionRequest {
-  bytes txHash = 1;
+  bytes encryptedParams = 1;
 }
 message GetTransactionResponse {
-  bool known = 1;
-  bytes encodedTransaction = 2;
-  bytes blockHash = 3;
-  uint64 blockNumber = 4;
-  uint64 index = 5;
+  bytes encryptedTx = 1;
 }
 
 message GetTransactionReceiptRequest {
