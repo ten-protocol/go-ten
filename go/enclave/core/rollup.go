@@ -4,10 +4,8 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/trie"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/common"
 )
 
@@ -48,28 +46,18 @@ func NewHeader(parent *gethcommon.Hash, height uint64, a gethcommon.Address) *co
 	}
 }
 
-func NewRollupFromHeader(header *common.Header, blkHash gethcommon.Hash, txs []*common.L2Tx, nonce common.Nonce, state common.StateRoot) Rollup {
+func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) *Rollup {
 	h := common.Header{
-		Agg:        header.Agg,
-		ParentHash: header.ParentHash,
+		Agg:        agg,
+		ParentHash: parent.Hash(),
 		L1Proof:    blkHash,
 		Nonce:      nonce,
-		Root:       state,
-		Number:     header.Number,
+		Number:     big.NewInt(int64(parent.Number.Uint64() + 1)),
 	}
-	transactions := make([]*common.L2Tx, len(txs))
-	copy(transactions, txs)
 	r := Rollup{
-		Header:       &h,
-		Transactions: transactions,
+		Header: &h,
 	}
-	if len(txs) == 0 {
-		h.TxHash = types.EmptyRootHash
-	} else {
-		h.TxHash = types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil))
-	}
-
-	return r
+	return &r
 }
 
 // NewRollup - produces a new rollup. only used for genesis. todo - review
