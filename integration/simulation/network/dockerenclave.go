@@ -3,13 +3,13 @@ package network
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/common/log"
-	"os"
 
-	"github.com/docker/docker/pkg/stdcopy"
+	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
