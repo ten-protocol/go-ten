@@ -273,8 +273,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		v := common.RndBtw(1, 100)
 		obsWallet := ti.rndObsWallet()
-		// todo - random client
-		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.l2Clients[0])
+		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.rndL2NodeClient())
 		signedTx, err := obsWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
