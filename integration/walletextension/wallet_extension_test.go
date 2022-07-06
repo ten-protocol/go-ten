@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+
 	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/wallet"
@@ -70,7 +72,7 @@ var (
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("req-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -91,7 +93,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("bal-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -113,7 +115,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("bal-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -143,7 +145,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("others-bal-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -172,7 +174,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("call-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -211,7 +213,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("call-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -251,7 +253,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallWithoutSettingFromField(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("call-no-from-field")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -290,7 +292,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 }
 
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("others-call-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -330,7 +332,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("submit-tx-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -368,7 +370,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 
 // Covers `eth_sendRawTransaction`, `eth_getTransactionReceipt` and `eth_getTransactionByHash`.
 func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("submit-tx-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -423,7 +425,7 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 }
 
 func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog()
+	setupWalletTestLog("others-submit-tx-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -654,7 +656,11 @@ func formatTxForSubmission(wallet wallet.Wallet, tx types.TxData) (string, error
 	return txBinaryHex, nil
 }
 
-func setupWalletTestLog() {
+func setupWalletTestLog(testName string) {
 	// We reuse the same file for every test.
-	logutil.SetupTestLog(&logutil.TestLogCfg{LogFile: logFile})
+	log.OutputToFile(logFile)
+
+	log.Info("-----------")
+	log.Info("Starting test: %s", testName)
+	log.Info("-----------")
 }
