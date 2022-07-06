@@ -41,6 +41,8 @@ func createDockerContainers(ctx context.Context, client *client.Client, numOfNod
 				"--" + enclaverunner.ManagementContractAddressName, mngmtCtrAddr,
 				"--" + enclaverunner.Erc20ContractAddrsName, erc20Addrs[0] + "," + erc20Addrs[1],
 				"--" + enclaverunner.ViewingKeysEnabledName + "=false",
+				"--" + enclaverunner.WillAttestName + "=false",
+				"--" + enclaverunner.UseInMemoryDBName + "=true",
 			},
 		}
 		r := container.Resources{

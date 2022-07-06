@@ -20,8 +20,8 @@ const (
 	obscuroChainIDName  = "obscuroChainID"
 	obscuroChainIDUsage = "An integer representing the unique chain id of the Obscuro chain (default 777)"
 
-	willAttestName  = "willAttest"
-	willAttestUsage = "Whether the enclave will produce a verified attestation report"
+	WillAttestName  = "willAttest"
+	WillAttestUsage = "Whether the enclave will produce a verified attestation report"
 
 	validateL1BlocksName  = "validateL1Blocks"
 	validateL1BlocksUsage = "Whether to validate incoming blocks using the hardcoded L1 genesis.json config"
@@ -41,8 +41,8 @@ const (
 	logPathName  = "logPath"
 	logPathUsage = "The path to use for the enclave service's log file"
 
-	useInMemoryDBName  = "useInMemoryDB"
-	useInMemoryDBUsage = "Whether the enclave will use an in-memory DB rather than persist data"
+	UseInMemoryDBName  = "useInMemoryDB"
+	UseInMemoryDBUsage = "Whether the enclave will use an in-memory DB rather than persist data"
 
 	ViewingKeysEnabledName  = "viewingKeysEnabled"
 	ViewingKeysEnabledUsage = "Whether the enclave should encrypt responses to sensitive requests with viewing keys"
