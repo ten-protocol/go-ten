@@ -1,7 +1,6 @@
 package rollupchain
 
 import (
-	gethlogs "github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"os"
 	"testing"
@@ -10,6 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
+
+	gethlogs "github.com/ethereum/go-ethereum/log"
 )
 
 func TestInvalidBlocksAreRejected(t *testing.T) {
