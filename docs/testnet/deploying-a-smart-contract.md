@@ -3,9 +3,7 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 
 ## Prerequisites
 * [MetaMask](https://metamask.io/) wallet installed in your browser.
-* A local copy of the Obscuro MetaMask wallet extension downloaded from the [releases area](https://github.com/obscuronet/go-obscuro/releases) of the Obscuro repository on GitHub.
-
-  * If your system is not a Linux AMD64, Windows AMD64, macOS AMD64 or macOS ARM64 system, you'll have to compile the wallet extension yourself by following the instructions [here](wallet-extension.md)
+* A local copy of the [Obscuro MetaMask wallet extension](wallet-extension.md)
 
 ## Prepare Your MetaMask Wallet for Obscuro Testnet
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
@@ -31,7 +29,7 @@ Your wallet is now configured for the Obscuro Testnet which allows you to view e
 
 1. MetaMask will automatically open and ask you to confirm the transaction. Click _Confirm_.
 
-1. Wait for your transaction to be confirmed. Notifications will be shown in MetaMask and Remix to indicate whether or not the transaction was successful.
+1. Wait for your transaction to be confirmed. Notifications will be shown in MetaMask and Remix to indicate that the transaction was successful.
 
 Congratulations, your smart contract is now deployed to Obscuro Testnet!
 
