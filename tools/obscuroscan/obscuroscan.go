@@ -119,7 +119,6 @@ func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
 
 // Retrieves the head rollup for the Obscuro network.
 func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
-	// TODO - Update logic here once rollups are encrypted.
 	// TODO - If required, consolidate the two calls below into a single RPCGetHeadRollup call to minimise round trips.
 	var headRollupHeader *common.Header
 	err := o.client.Call(&headRollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
