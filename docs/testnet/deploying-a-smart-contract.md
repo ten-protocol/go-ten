@@ -5,10 +5,12 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 * [MetaMask](https://metamask.io/) wallet installed in your browser.
 * A local copy of the Obscuro MetaMask wallet extension downloaded from the [releases area](https://github.com/obscuronet/go-obscuro/releases) of the Obscuro repository on GitHub.
 
+  * If your system is not a Linux AMD64, Windows AMD64, macOS AMD64 or macOS ARM64 system, you'll have to compile the wallet extension yourself by following the instructions [here](wallet-extension.md)
+
 ## Prepare Your MetaMask Wallet for Obscuro Testnet
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
 
-Follow the steps to configure the MetaMask wallet extension, start the MetaMask wallet extension and generate a viewing key [here](wallet-extension.md) then return to this page. If you do not have the Obscuro wallet extension running MetaMask will not be able to communicate with the Obscuro Testnet. Also note that every time you restart the wallet extension you must generate a new viewing key.
+Follow the steps [here](wallet-extension.md) to configure and start the MetaMask wallet extension and generate a viewing key, then return to this page. If you do not have the Obscuro wallet extension running MetaMask will not be able to communicate with the Obscuro Testnet. Also note that every time you restart the wallet extension you must generate a new viewing key.
 
 Your wallet is now configured for the Obscuro Testnet which allows you to view encrypted traffic for your wallet only. You can now go ahead and deploy your smart contract to the Obscuro Testnet.
 
