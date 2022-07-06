@@ -12,8 +12,8 @@ Follow the steps [here](wallet-extension.md) to configure and start the MetaMask
 viewing key, then return to this page. If you do not have the Obscuro wallet extension running MetaMask will not be 
 able to communicate with the Obscuro Testnet.
 
-    > **_TIP_**  Every time you restart the wallet extension, you must generate a new viewing key. This is because the 
-      private-key part of the viewing key is only held in memory and never persisted to disk, for security reasons.
+> **_TIP_**  Every time you restart the wallet extension, you must generate a new viewing key. This is because the 
+  private-key part of the viewing key is only held in memory and never persisted to disk, for security reasons.
 
 Your wallet is now configured for the Obscuro Testnet which allows you to view encrypted traffic for your wallet only. You can now go ahead and deploy your smart contract to the Obscuro Testnet.
 
