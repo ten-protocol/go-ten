@@ -63,10 +63,14 @@ var (
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
 	}
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
+	// The log file used across all the wallet extension tests.
+	logFile = logutil.SetupTestLog(
+		&logutil.TestLogCfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
+	)
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("req-no-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -87,7 +91,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("bal-no-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -109,7 +113,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("bal-with-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -139,7 +143,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("others-bal-with-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -168,7 +172,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("tx-no-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -207,7 +211,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("tx-with-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -247,7 +251,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallWithoutSettingFromField(t *testing.T) {
-	setupWalletTestLog("tx-no-from-field")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -286,7 +290,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 }
 
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("others-tx-with-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -326,7 +330,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("submit-tx-no-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -364,7 +368,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 
 // Covers `eth_sendRawTransaction`, `eth_getTransactionReceipt` and `eth_getTransactionByHash`.
 func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("submit-tx-with-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -419,7 +423,7 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 }
 
 func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("others-submit-tx-with-viewing-key")
+	setupWalletTestLog()
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
@@ -650,11 +654,7 @@ func formatTxForSubmission(wallet wallet.Wallet, tx types.TxData) (string, error
 	return txBinaryHex, nil
 }
 
-func setupWalletTestLog(testName string) {
-	// todo: creating an individual file for every test is very heavy-handed, come up with a better solution?
-	logutil.SetupTestLog(&logutil.TestLogCfg{
-		LogDir:      testLogs,
-		TestType:    "wal-ext",
-		TestSubtype: testName,
-	})
+func setupWalletTestLog() {
+	// We reuse the same file for every test.
+	logutil.SetupTestLog(&logutil.TestLogCfg{LogFile: logFile})
 }
