@@ -251,7 +251,11 @@ func (s *server) GetCode(_ context.Context, request *generated.GetCodeRequest) (
 
 func (s *server) StoreAttestation(_ context.Context, req *generated.StoreAttestationRequest) (*generated.StoreAttestationResponse, error) {
 	err := s.enclave.StoreAttestation(rpc.FromAttestationReportMsg(req.AttestationReportMsg))
-	return &generated.StoreAttestationResponse{Error: err.Error()}, nil
+	resp := ""
+	if err != nil {
+		resp = err.Error()
+	}
+	return &generated.StoreAttestationResponse{Error: resp}, nil
 }
 
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {

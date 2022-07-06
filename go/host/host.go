@@ -354,10 +354,11 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			a.processBlock(block.DecodeBlock())
+			decoded := block.DecodeBlock()
+			a.processBlock(decoded)
 
 			// submit each block to the enclave for ingestion plus validation
-			result = a.EnclaveClient.SubmitBlock(*block.DecodeBlock())
+			result = a.EnclaveClient.SubmitBlock(*decoded)
 			a.storeBlockProcessingResult(result)
 		}
 	}

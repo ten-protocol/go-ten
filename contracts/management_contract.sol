@@ -33,7 +33,7 @@ contract ManagementContract {
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
-    function InitializeNetworkSecret(address aggregatorID, bytes calldata initSecret, string memory hostAddress) public {
+    function InitializeNetworkSecret(address aggregatorID, bytes calldata initSecret, string memory hostAddress, string calldata genesisAttestation) public {
         require(!networkSecretInitialized);
 
         // network can no longer be initialized
