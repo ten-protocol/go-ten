@@ -139,7 +139,7 @@ func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) {
 	msg := Message{Type: msgType, MsgContents: bytes}
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
-		log.Panic("could not encode message. Cause: %s", err)
+		common.LogWithID(p.nodeID, "could not encode message to send to peers. Cause: %s", err)
 	}
 
 	for _, address := range toAddresses {
