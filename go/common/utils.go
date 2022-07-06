@@ -72,8 +72,6 @@ func MaxInt(x, y uint32) uint32 {
 	return x
 }
 
-// TODO - Refactor the three duplicate-finding methods below to reduce duplicated code
-
 // ShortHash converts the hash to a shorter uint64 for printing.
 func ShortHash(hash common.Hash) uint64 {
 	return hash.Big().Uint64()

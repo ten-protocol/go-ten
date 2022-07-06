@@ -73,8 +73,6 @@ const (
 //go:embed static
 var staticFiles embed.FS
 
-// TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
-
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
