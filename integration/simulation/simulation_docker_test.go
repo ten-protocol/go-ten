@@ -14,11 +14,11 @@ import (
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 // $> docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}") will stop and remove all images
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
-	setupTestLog("docker")
+	setupSimTestLog("docker")
 
 	numberOfNodes := 5
 	numberOfSimWallets := 5
-	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
 		NumberOfNodes:         numberOfNodes,
@@ -27,7 +27,7 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold: 0.2,
 		// Very hard to have precision here as blocks are continually produced and not dependent on the simulation execution thread
 		L2EfficiencyThreshold:     0.6, // nodes might produce rollups because they receive a new block
-		L2ToL1EfficiencyThreshold: 0.7, // nodes might stop producing rollups but the geth network is still going
+		L2ToL1EfficiencyThreshold: 0.8, // nodes might stop producing rollups but the geth network is still going
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationDocker,
 		ViewingKeysEnabled:        false,

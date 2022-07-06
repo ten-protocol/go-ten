@@ -7,21 +7,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/evm"
+	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
+	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/rpcencryptionmanager"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
+
+	"github.com/obscuronet/obscuro-playground/go/enclave/rpcencryptionmanager"
 
 	"github.com/obscuronet/obscuro-playground/tools/walletextension"
 
@@ -37,7 +39,8 @@ import (
 )
 
 const (
-	chainIDHex = "0x539"
+	testLogs     = "../.build/wallet_extension/"
+	l2ChainIDHex = "0x309"
 
 	reqJSONMethodChainID = "eth_chainId"
 	reqJSONKeyTo         = "to"
@@ -63,35 +66,39 @@ var (
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+	setupWalletTestLog("req-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
+
 	respJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, reqJSONMethodChainID, []string{})
 
-	if respJSON[walletextension.RespJSONKeyResult] != chainIDHex {
-		t.Fatalf("Expected chainId of %s, got %s", "1337", respJSON[walletextension.RespJSONKeyResult])
+	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
+		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+	setupWalletTestLog("bal-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
 	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
 
@@ -102,16 +109,18 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+	setupWalletTestLog("bal-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
 	// We submit a viewing key for a random account.
 	privateKey, err := crypto.GenerateKey()
@@ -124,22 +133,24 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetBalance, []string{accountAddr, latestBlock})
 
-	if getBalanceJSON[walletextension.RespJSONKeyResult] != enclave.DummyBalance {
-		t.Fatalf("Expected balance of %s, got %s", enclave.DummyBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
+	if getBalanceJSON[walletextension.RespJSONKeyResult] != rollupchain.DummyBalance {
+		t.Fatalf("Expected balance of %s, got %s", rollupchain.DummyBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+	setupWalletTestLog("others-bal-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
 	// We submit a viewing key for a random account.
 	privateKey, err := crypto.GenerateKey()
@@ -157,16 +168,18 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+	setupWalletTestLog("tx-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
 	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
@@ -181,7 +194,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   evm.Erc20ContractAddress,
+		reqJSONKeyTo:   bridge.WBtcContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -194,16 +207,18 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+	setupWalletTestLog("tx-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
 	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
@@ -220,7 +235,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   evm.Erc20ContractAddress,
+		reqJSONKeyTo:   bridge.WBtcContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -231,17 +246,58 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+func TestCanCallWithoutSettingFromField(t *testing.T) {
+	setupWalletTestLog("tx-no-from-field")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
+
+	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
+
+	// We submit a viewing key for a random account.
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
+
+	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
+	// deposit any funds in the ERC20 contract.
+	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
+	reqParams := map[string]interface{}{
+		reqJSONKeyTo:   bridge.WBtcContract,
+		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
+	}
+	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, latestBlock})
+
+	if callJSON[walletextension.RespJSONKeyResult] != string(rpcencryptionmanager.PlaceholderResult) {
+		t.Fatalf("Expected call result of %s, got %s", rpcencryptionmanager.PlaceholderResult, callJSON[walletextension.RespJSONKeyResult])
+	}
+}
+
+func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("others-tx-with-viewing-key")
+
+	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
+	defer walletExtension.Shutdown()
+	go walletExtension.Serve(walletExtensionAddr)
+	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
 	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
@@ -256,7 +312,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(dummyAccountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo: evm.Erc20ContractAddress,
+		reqJSONKeyTo: bridge.WBtcContract,
 		// We send the request from a different address than the one we created a viewing key for.
 		reqJSONKeyFrom: dummyAccountAddress.Hex(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
@@ -269,80 +325,139 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-func TestCannotGetTxReceiptWithoutSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("submit-tx-no-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
-	time.Sleep(6 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
-	// We attempt to get the transaction receipt for the Obscuro ERC20 contract.
-	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
+	tx := types.LegacyTx{
+		Nonce:    0,
+		Gas:      1025_000_000,
+		GasPrice: common.Big0,
+		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
+	}
+	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
+	if err != nil {
+		panic(err)
+	}
+	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodSendRawTx, []interface{}{txBinaryHex})
 
-	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodGetTxReceipt)
+	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodSendRawTx)
 	if !strings.Contains(string(respBody), expectedErr) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
 	}
 }
 
-func TestCanGetTxReceiptAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, erc20PrivateKey, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+// Covers `eth_sendRawTransaction`, `eth_getTransactionReceipt` and `eth_getTransactionByHash`.
+func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("submit-tx-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
-	time.Sleep(6 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
-	// We create a viewing key for the private key that deployed the ERC20 contract.
-	generateAndSubmitViewingKey(t, walletExtensionAddr, erc20PrivateKey)
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
+	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
+	tx := types.LegacyTx{
+		Nonce:    0,
+		Gas:      1025_000_000,
+		GasPrice: common.Big0,
+		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
+	}
+	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
+	if err != nil {
+		panic(err)
+	}
+	sendTxJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodSendRawTx, []interface{}{txBinaryHex})
 
-	// We get the transaction receipt for the Obscuro ERC20 contract.
-	txReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
+	time.Sleep(6 * time.Second) // We wait for the deployment of the contract to the Obscuro network.
 
-	expectedTxHashJSON := fmt.Sprintf("\"transactionHash\":\"%s\"", evm.Erc20ContractTxHash.Hex())
-	if !strings.Contains(txReceiptJSON[walletextension.RespJSONKeyResult].(string), expectedTxHashJSON) {
-		t.Fatalf("Expected transaction receipt containing %s, got %s", "\"transactionHash\":\"0x03ec8936136e8a293d91309d8fcf095758015fb864aa64ecd9d77e3a4485b523\"", txReceiptJSON[walletextension.RespJSONKeyResult])
+	// We get the transaction receipt for the Obscuro ERC20 contract deployment.
+	txHash, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
+	if !ok {
+		panic("could not retrieve transaction hash from JSON result")
+	}
+	txReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{txHash})
+	txReceiptResult := fmt.Sprintf("%s", txReceiptJSON[walletextension.RespJSONKeyResult])
+	expectedTxReceiptJSON := fmt.Sprintf("transactionHash:%s", txHash)
+	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
+		t.Fatalf("Expected transaction receipt containing %s, got %s", expectedTxReceiptJSON, txReceiptResult)
+	}
+
+	// We get the transaction by hash for the Obscuro ERC20 contract deployment.
+	getTxJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxByHash, []string{txHash})
+	getTxJSONResult := fmt.Sprintf("%s", getTxJSON[walletextension.RespJSONKeyResult])
+	expectedGetTxJSON := fmt.Sprintf("hash:%s", txHash)
+	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
+		t.Fatalf("Expected transaction containing %s, got %s", expectedGetTxJSON, getTxJSONResult)
 	}
 }
 
-func TestCannotGetTxReceiptSubmittedFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	stopHandle, _, err := createObscuroNetwork()
-	defer stopHandle()
-	if err != nil {
-		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
-	}
+func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
+	setupWalletTestLog("others-submit-tx-with-viewing-key")
 
 	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
 
-	time.Sleep(6 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
 
 	// We submit a viewing key for a random account.
-	privateKey, err := crypto.GenerateKey()
+	randomPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	generateAndSubmitViewingKey(t, walletExtensionAddr, privateKey)
+	generateAndSubmitViewingKey(t, walletExtensionAddr, randomPrivateKey)
 
-	// We attempt to get the transaction receipt for the Obscuro ERC20 contract.
-	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{evm.Erc20ContractTxHash.Hex()})
+	// We submit a transaction using another account.
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
+	tx := types.LegacyTx{
+		Nonce:    0,
+		Gas:      1025_000_000,
+		GasPrice: common.Big0,
+		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
+	}
+	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
+	if err != nil {
+		panic(err)
+	}
+	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodSendRawTx, []interface{}{txBinaryHex})
 
-	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodGetTxReceipt)
+	expectedErr := fmt.Sprintf(errInsecure, walletextension.ReqJSONMethodSendRawTx)
 	if !strings.Contains(string(respBody), expectedErr) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
 	}
@@ -438,6 +553,9 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 	}
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
 	resp, err := http.Post(httpProtocol+walletExtensionAddr+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		t.Fatalf("request to add viewing key failed with following status: %s", resp.Status)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -474,10 +592,12 @@ func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byt
 }
 
 // Creates a single-node Obscuro network for testing, and deploys an ERC20 contract to it.
-func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
-	wallets := params.NewSimWallets(1, 2, 1, integration.EthereumChainID, integration.ObscuroChainID)
+func createObscuroNetwork(t *testing.T) (func(), error) {
+	// Create the Obscuro network.
+	numberOfNodes := 1
+	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 	simParams := params.SimParams{
-		NumberOfNodes:      2,
+		NumberOfNodes:      numberOfNodes,
 		AvgBlockDuration:   1 * time.Second,
 		AvgGossipPeriod:    1 * time.Second / 3,
 		MgmtContractLib:    ethereummock.NewMgmtContractLibMock(),
@@ -487,31 +607,54 @@ func createObscuroNetwork() (func(), *ecdsa.PrivateKey, error) {
 		ViewingKeysEnabled: true,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
-
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	_, l2Clients, _, err := obscuroNetwork.Create(&simParams, simStats)
+	_, l2Clients, err := obscuroNetwork.Create(&simParams, simStats)
 	if err != nil {
-		return obscuroNetwork.TearDown, nil, err
+		return obscuroNetwork.TearDown, err
 	}
 
 	// Deploy an ERC20 contract to the Obscuro network.
-	wallet := wallets.Erc20ObsOwnerWallets[0]
-	contractBytes := common.Hex2Bytes(erc20contract.ContractByteCode)
+	txWallet := wallets.Tokens[bridge.BTC].L2Owner
 	deployContractTx := types.LegacyTx{
-		Nonce:    simulation.NextNonce(l2Clients[0], wallet),
+		Nonce:    simulation.NextNonce(l2Clients[0], txWallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     contractBytes,
+		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
 	}
-	signedTx, err := wallet.SignTransaction(&deployContractTx)
+	generateAndSubmitViewingKey(t, walletExtensionAddr, txWallet.PrivateKey())
+	txBinaryHex, err := formatTxForSubmission(txWallet, &deployContractTx)
 	if err != nil {
-		return obscuroNetwork.TearDown, nil, err
+		return obscuroNetwork.TearDown, err
 	}
-	encryptedTx := core.EncryptTx(signedTx)
-	err = l2Clients[0].Call(nil, obscuroclient.RPCSendTransactionEncrypted, encryptedTx)
+	makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodSendRawTx, []interface{}{txBinaryHex})
+
+	return obscuroNetwork.TearDown, nil
+}
+
+// Formats a transaction for submission to the enclave.
+func formatTxForSubmission(wallet wallet.Wallet, tx types.TxData) (string, error) {
+	signedTx, err := wallet.SignTransaction(tx)
 	if err != nil {
-		return obscuroNetwork.TearDown, nil, err
+		return "", err
+	}
+	// We convert the transaction to the form expected for sending transactions via RPC.
+	txBinary, err := signedTx.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+	txBinaryHex := "0x" + common.Bytes2Hex(txBinary)
+	if err != nil {
+		return "", err
 	}
 
-	return obscuroNetwork.TearDown, wallets.Erc20ObsOwnerWallets[0].PrivateKey(), nil
+	return txBinaryHex, nil
+}
+
+func setupWalletTestLog(testName string) {
+	// todo: creating an individual file for every test is very heavy-handed, come up with a better solution?
+	logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "wal-ext",
+		TestSubtype: testName,
+	})
 }

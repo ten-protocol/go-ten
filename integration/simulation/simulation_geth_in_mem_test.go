@@ -12,12 +12,12 @@ import (
 
 // TestGethSimulation runs the simulation against a private geth network using Clique (PoA)
 func TestGethSimulation(t *testing.T) {
-	setupTestLog("geth-in-mem")
+	setupSimTestLog("geth-in-mem")
 
 	numberOfNodes := 5
 	numberOfSimWallets := 5
 
-	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := &params.SimParams{
 		NumberOfNodes:         numberOfNodes,

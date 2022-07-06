@@ -4,10 +4,10 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	obscuroconfig "github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	obscuroconfig "github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
 )
@@ -33,11 +33,11 @@ func DeployContract(config Config) {
 		L1NodeHost:          config.l1NodeHost,
 		L1NodeWebsocketPort: config.l1NodeWebsocketPort,
 		L1ConnectionTimeout: config.l1ConnectionTimeout,
-		PrivateKeyString:    config.privateKeyString,
-		ChainID:             config.chainID,
+		PrivateKeyString:    config.privateKeys[0], // We deploy the contract using the first private key.
+		L1ChainID:           config.l1ChainID,
 	}
 
-	l1Client, err := ethclient.NewEthClient(hostConfig)
+	l1Client, err := ethadapter.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(err)
 	}

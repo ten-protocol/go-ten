@@ -1,19 +1,20 @@
 package ethereummock
 
 import (
+	"bytes"
 	"sync"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/db"
+	"github.com/obscuronet/obscuro-playground/go/common"
+
+	"github.com/obscuronet/obscuro-playground/go/enclave/core"
+	"github.com/obscuronet/obscuro-playground/go/enclave/db"
 
 	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
 )
 
 // Received blocks ar stored here
 type blockResolverInMem struct {
-	blockCache map[obscurocommon.L1RootHash]*types.Block
+	blockCache map[common.L1RootHash]*types.Block
 	m          sync.RWMutex
 }
 
@@ -27,7 +28,7 @@ func (n *blockResolverInMem) Proof(_ *core.Rollup) *types.Block {
 
 func NewResolver() db.BlockResolver {
 	return &blockResolverInMem{
-		blockCache: map[obscurocommon.L1RootHash]*types.Block{},
+		blockCache: map[common.L1RootHash]*types.Block{},
 		m:          sync.RWMutex{},
 	}
 }
@@ -39,7 +40,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) bool {
 	return true
 }
 
-func (n *blockResolverInMem) FetchBlock(hash obscurocommon.L1RootHash) (*types.Block, bool) {
+func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
@@ -65,7 +66,7 @@ func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {
 }
 
 func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
-	if maybeAncestor.Hash() == block.Hash() {
+	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
@@ -81,16 +82,16 @@ func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types
 	return n.IsAncestor(p, maybeAncestor)
 }
 
-func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor obscurocommon.L1RootHash) bool {
-	if maybeAncestor == block.Hash() {
+func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool {
+	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
-	if maybeAncestor == obscurocommon.GenesisBlock.Hash() {
+	if bytes.Equal(maybeAncestor.Bytes(), common.GenesisBlock.Hash().Bytes()) {
 		return true
 	}
 
-	if block.NumberU64() == obscurocommon.L1GenesisHeight {
+	if block.NumberU64() == common.L1GenesisHeight {
 		return false
 	}
 
@@ -111,18 +112,18 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor o
 
 // The cache of included transactions
 type txDBInMem struct {
-	transactionsPerBlockCache map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*types.Transaction
+	transactionsPerBlockCache map[common.L1RootHash]map[common.TxHash]*types.Transaction
 	rpbcM                     *sync.RWMutex
 }
 
 func NewTxDB() TxDB {
 	return &txDBInMem{
-		transactionsPerBlockCache: make(map[obscurocommon.L1RootHash]map[obscurocommon.TxHash]*types.Transaction),
+		transactionsPerBlockCache: make(map[common.L1RootHash]map[common.TxHash]*types.Transaction),
 		rpbcM:                     &sync.RWMutex{},
 	}
 }
 
-func (n *txDBInMem) Txs(b *types.Block) (map[obscurocommon.TxHash]*types.Transaction, bool) {
+func (n *txDBInMem) Txs(b *types.Block) (map[common.TxHash]*types.Transaction, bool) {
 	n.rpbcM.RLock()
 	val, found := n.transactionsPerBlockCache[b.Hash()]
 	n.rpbcM.RUnlock()
@@ -130,7 +131,7 @@ func (n *txDBInMem) Txs(b *types.Block) (map[obscurocommon.TxHash]*types.Transac
 	return val, found
 }
 
-func (n *txDBInMem) AddTxs(b *types.Block, newMap map[obscurocommon.TxHash]*types.Transaction) {
+func (n *txDBInMem) AddTxs(b *types.Block, newMap map[common.TxHash]*types.Transaction) {
 	n.rpbcM.Lock()
 	n.transactionsPerBlockCache[b.Hash()] = newMap
 	n.rpbcM.Unlock()
@@ -144,7 +145,7 @@ func removeCommittedTransactions(
 	resolver db.BlockResolver,
 	db TxDB,
 ) []*types.Transaction {
-	if cb.NumberU64() <= obscurocommon.HeightCommittedBlocks {
+	if cb.NumberU64() <= common.HeightCommittedBlocks {
 		return mempool
 	}
 
@@ -152,7 +153,7 @@ func removeCommittedTransactions(
 	i := 0
 
 	for {
-		if i == obscurocommon.HeightCommittedBlocks {
+		if i == common.HeightCommittedBlocks {
 			break
 		}
 

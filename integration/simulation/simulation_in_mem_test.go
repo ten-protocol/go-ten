@@ -17,11 +17,11 @@ import (
 // Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
 // the CPU usage will be very high during the simulation which might result in inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
-	setupTestLog("in-mem")
+	setupSimTestLog("in-mem")
 
 	numberOfNodes := 7
 	numberOfSimWallets := 10
-	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, 1, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
 		NumberOfNodes:             numberOfNodes,

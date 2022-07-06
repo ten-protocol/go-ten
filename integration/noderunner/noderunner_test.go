@@ -4,22 +4,23 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
+	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
+
+	"github.com/obscuronet/obscuro-playground/go/config"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/obscuro-playground/integration"
 
-	"github.com/obscuronet/obscuro-playground/go/log"
-
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/enclaverunner"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/host/hostrunner"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/enclave/enclaverunner"
+	"github.com/obscuronet/obscuro-playground/go/host/hostrunner"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 )
 
@@ -33,7 +34,11 @@ const (
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
-	setupTestLog()
+	logutil.SetupTestLog(&logutil.TestLogCfg{
+		LogDir:      testLogs,
+		TestType:    "noderunner",
+		TestSubtype: "test",
+	})
 
 	startPort := integration.StartPortNodeRunnerTest
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, startPort)
@@ -55,6 +60,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
+	dummyContractAddress := common.BytesToAddress([]byte("AA"))
+	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -65,7 +72,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
-	obscuroClient := obscuroclient.NewClient(rpcServerAddr)
+	obscuroClient := rpcclientlib.NewClient(rpcServerAddr)
 	defer teardown(obscuroClient, rpcServerAddr)
 
 	// We sleep to give the network time to produce some blocks.
@@ -88,7 +95,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		var result types.Header
-		err = obscuroClient.Call(&result, obscuroclient.RPCGetCurrentBlockHead)
+		err = obscuroClient.Call(&result, rpcclientlib.RPCGetCurrentBlockHead)
 		if err == nil && result.Number.Uint64() > 0 {
 			return
 		}
@@ -97,8 +104,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
 }
 
-func teardown(obscuroClient obscuroclient.Client, rpcServerAddr string) {
-	obscuroClient.Call(nil, obscuroclient.RPCStopHost) //nolint:errcheck
+func teardown(obscuroClient rpcclientlib.Client, rpcServerAddr string) {
+	obscuroClient.Call(nil, rpcclientlib.RPCStopHost) //nolint:errcheck
 
 	// We wait for the client server port to be closed.
 	wait := 0
@@ -119,19 +126,4 @@ func tcpConnectionAvailable(addr string) bool {
 	_ = conn.Close()
 	// we don't worry about failure while closing, it connected successfully so let test proceed
 	return true
-}
-
-func setupTestLog() *os.File {
-	// create a folder specific for the test
-	err := os.MkdirAll(testLogs, 0o700)
-	if err != nil {
-		panic(err)
-	}
-	timeFormatted := time.Now().Format("2006-01-02_15-04-05")
-	f, err := os.CreateTemp(testLogs, fmt.Sprintf("noderunner-%s-*.txt", timeFormatted))
-	if err != nil {
-		panic(err)
-	}
-	log.OutputToFile(f)
-	return f
 }

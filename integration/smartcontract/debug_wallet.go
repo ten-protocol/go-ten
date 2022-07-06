@@ -8,8 +8,8 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 )
 
 var _timeout = 30 * time.Second
@@ -25,7 +25,7 @@ func newDebugWallet(w wallet.Wallet) *debugWallet {
 }
 
 // AwaitedSignAndSendTransaction signs a tx, issues the tx and awaits the tx to be minted into a block
-func (w *debugWallet) AwaitedSignAndSendTransaction(client ethclient.EthClient, txData types.TxData) (*types.Transaction, *types.Receipt, error) {
+func (w *debugWallet) AwaitedSignAndSendTransaction(client ethadapter.EthClient, txData types.TxData) (*types.Transaction, *types.Receipt, error) {
 	signedTx, err := w.SignAndSendTransaction(client, txData)
 	if err != nil {
 		return nil, nil, err
@@ -38,7 +38,7 @@ func (w *debugWallet) AwaitedSignAndSendTransaction(client ethclient.EthClient, 
 }
 
 // SignAndSendTransaction signs and sends a tx
-func (w *debugWallet) SignAndSendTransaction(client ethclient.EthClient, txData types.TxData) (*types.Transaction, error) {
+func (w *debugWallet) SignAndSendTransaction(client ethadapter.EthClient, txData types.TxData) (*types.Transaction, error) {
 	signedTx, err := w.SignTransaction(txData)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (w *debugWallet) SignAndSendTransaction(client ethclient.EthClient, txData 
 }
 
 // waitTxResult waits for a tx to be minted into a block
-func waitTxResult(client ethclient.EthClient, tx *types.Transaction) (*types.Receipt, error) {
+func waitTxResult(client ethadapter.EthClient, tx *types.Transaction) (*types.Receipt, error) {
 	var receipt *types.Receipt
 	var err error
 	for start := time.Now(); time.Since(start) < _timeout; time.Sleep(time.Second) {
@@ -71,7 +71,7 @@ func waitTxResult(client ethclient.EthClient, tx *types.Transaction) (*types.Rec
 	return nil, fmt.Errorf("transaction not minted after timeout")
 }
 
-func (w *debugWallet) debugTransaction(client ethclient.EthClient, tx *types.Transaction) ([]byte, error) {
+func (w *debugWallet) debugTransaction(client ethadapter.EthClient, tx *types.Transaction) ([]byte, error) {
 	return client.EthClient().CallContract(
 		context.Background(),
 		ethereum.CallMsg{

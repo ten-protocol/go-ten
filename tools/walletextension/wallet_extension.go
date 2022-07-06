@@ -3,16 +3,21 @@ package walletextension
 import (
 	"context"
 	"crypto/rand"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts"
+
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 
 	"github.com/gorilla/websocket"
 
@@ -26,17 +31,28 @@ const (
 	pathViewingKeys        = "/viewingkeys/"
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
-	staticDir              = "./tools/walletextension/static"
+	staticDir              = "static"
 
 	reqJSONKeyMethod          = "method"
 	reqJSONKeyParams          = "params"
+	reqJSONKeyFrom            = "from"
 	ReqJSONMethodGetBalance   = "eth_getBalance"
 	ReqJSONMethodCall         = "eth_call"
 	ReqJSONMethodGetTxReceipt = "eth_getTransactionReceipt"
+	ReqJSONMethodSendRawTx    = "eth_sendRawTransaction"
+	ReqJSONMethodGetTxByHash  = "eth_getTransactionByHash"
 	respJSONKeyErr            = "error"
 	respJSONKeyMsg            = "message"
 	RespJSONKeyResult         = "result"
 	httpCodeErr               = 500
+
+	// CORS-related constants.
+	corsAllowOrigin  = "Access-Control-Allow-Origin"
+	originAll        = "*"
+	corsAllowMethods = "Access-Control-Allow-Methods"
+	reqOptions       = "OPTIONS"
+	corsAllowHeaders = "Access-Control-Allow-Headers"
+	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 
 	Localhost         = "127.0.0.1"
 	websocketProtocol = "ws://"
@@ -44,7 +60,18 @@ const (
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+
+	// ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
+	// API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
+	// a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
+	// from asking a visitor to their website to personal_sign something that is actually a malicious transaction (e.g.
+	// theft of funds). By adding a prefix, the viewing key bytes no longer looks like a transaction hash, and thus get
+	// signed as-is.
+	ViewingKeySignedMsgPrefix = "vk"
 )
+
+//go:embed static
+var staticFiles embed.FS
 
 // TODO - Display error in browser if Metamask is not enabled (i.e. `ethereum` object is not available in-browser).
 
@@ -52,12 +79,14 @@ const (
 type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
-	hostClient       obscuroclient.Client
+	hostClient       rpcclientlib.Client
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
 	viewingPublicKeyBytes  []byte
 	viewingPrivateKeyEcies *ecies.PrivateKey
-	server                 *http.Server
+	// The address associated with the last viewing key submitted. Used to set missing `from` fields in `eth_call` requests.
+	viewingPublicKeyAddress common.Address
+	server                  *http.Server
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
@@ -69,24 +98,31 @@ func NewWalletExtension(config Config) *WalletExtension {
 	return &WalletExtension{
 		enclavePublicKey: ecies.ImportECDSAPublic(enclavePublicKey),
 		hostAddr:         config.NodeRPCWebsocketAddress,
-		hostClient:       obscuroclient.NewClient(config.NodeRPCHTTPAddress),
+		hostClient:       rpcclientlib.NewClient(config.NodeRPCHTTPAddress),
 	}
 }
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
 func (we *WalletExtension) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
+
 	// Handles Ethereum JSON-RPC requests received over HTTP.
 	serveMux.HandleFunc(pathRoot, we.handleHTTPEthJSON)
 	serveMux.HandleFunc(PathReady, we.handleReady)
-	// Handles the management of viewing keys.
-	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.Dir(staticDir))))
 	serveMux.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
 	serveMux.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
+
+	// Serves the web assets for the management of viewing keys.
+	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
+
 	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
-	err := we.server.ListenAndServe()
-	if err != http.ErrServerClosed {
+	err = we.server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
@@ -105,6 +141,14 @@ func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
 
 // Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
+	// We enable CORS, as required by some browsers (e.g. Firefox).
+	resp.Header().Set(corsAllowOrigin, originAll)
+	if (*req).Method == reqOptions {
+		resp.Header().Set(corsAllowMethods, reqOptions)
+		resp.Header().Set(corsAllowHeaders, corsHeaders)
+		return
+	}
+
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
@@ -115,11 +159,18 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	var reqJSONMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not unmarshall JSON-RPC request body to JSON: %s. "+
+			"If you're trying to generate a viewing key, visit %s", err, pathViewingKeys))
 		return
 	}
 	method := reqJSONMap[reqJSONKeyMethod]
-	fmt.Printf("Received request from wallet: %s\n", body)
+	fmt.Printf("Received %s request from wallet: %s\n", method, body)
+
+	reqJSONMap, err = we.ensureCallsHaveFromField(method, reqJSONMap)
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
+	}
 
 	// We encrypt the request's params with the enclave's public key if it's a sensitive request.
 	maybeEncryptedBody, err := we.encryptParamsIfNeeded(body, method, reqJSONMap)
@@ -162,7 +213,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
 		return
 	}
-	fmt.Printf("Received response from Obscuro node: %s\n", strings.TrimSpace(string(clientResponse)))
+	fmt.Printf("Received %s response from Obscuro node: %s\n", method, strings.TrimSpace(string(clientResponse)))
 
 	// We write the response to the client.
 	_, err = resp.Write(clientResponse)
@@ -170,6 +221,39 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
 		return
 	}
+}
+
+// If an `eth_call` request doesn't have a `from` field, we won't be able to encrypt the response. In that case, we use
+// the viewing key address as the `from` field to allow encryption and decryption.
+func (we *WalletExtension) ensureCallsHaveFromField(method interface{}, reqJSONMap map[string]interface{}) (map[string]interface{}, error) {
+	if method != ReqJSONMethodCall {
+		// We only modify `eth_call` requests.
+		return reqJSONMap, nil
+	}
+
+	params, ok := reqJSONMap[reqJSONKeyParams].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("params for %s request were malformed", method)
+	}
+	txCallParams, ok := params[0].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("params for %s request were malformed", method)
+	}
+
+	if txCallParams[reqJSONKeyFrom] != nil {
+		// We only modify `eth_call` requests where the `from` field is not set.
+		return reqJSONMap, nil
+	}
+
+	if we.viewingPublicKeyAddress == (common.Address{}) {
+		return nil, fmt.Errorf("could not add `from` field to `eth_call` request as no viewing key has been generated")
+	}
+
+	txCallParams[reqJSONKeyFrom] = we.viewingPublicKeyAddress.Hex()
+	params[0] = txCallParams
+	reqJSONMap[reqJSONKeyParams] = params
+
+	return reqJSONMap, nil
 }
 
 // Generates a new viewing key.
@@ -207,13 +291,22 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 		return
 	}
 
-	// We have to drop the leading "0x", and transform the V from 27/28 to 0/1.
+	// We drop the leading "0x", and transform the V from 27/28 to 0/1.
 	signature, err := hex.DecodeString(reqJSONMap["signature"][2:])
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not decode signature from client to hex: %s", err))
 		return
 	}
 	signature[64] -= 27
+
+	// We recover the public key address.
+	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(we.viewingPublicKeyBytes)
+	recoveredPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not recover public key from signature: %s", err))
+		return
+	}
+	we.viewingPublicKeyAddress = crypto.PubkeyToAddress(*recoveredPublicKey)
 
 	// We encrypt the viewing key bytes.
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, we.enclavePublicKey, we.viewingPublicKeyBytes, nil, nil)
@@ -223,7 +316,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 
 	var rpcErr error
-	err = we.hostClient.Call(&rpcErr, obscuroclient.RPCAddViewingKey, encryptedViewingKeyBytes, signature)
+	err = we.hostClient.Call(&rpcErr, rpcclientlib.RPCAddViewingKey, encryptedViewingKeyBytes, signature)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not add viewing key: %s", err))
 		return
@@ -293,18 +386,46 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 		return respJSONMap, nil
 	}
 
+	if we.viewingPrivateKeyEcies == nil {
+		return nil, fmt.Errorf("could not decrypt enclave response as no viewing key has been created")
+	}
+
 	fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
 	encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
 	decryptedResult, err := we.viewingPrivateKeyEcies.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt enclave response with viewing key: %w", err)
 	}
-	respJSONMap[RespJSONKeyResult] = string(decryptedResult)
+
+	processedResult, err := processDecryptedResult(decryptedResult, method)
+	if err != nil {
+		return nil, fmt.Errorf("could not process decrypted enclave response: %w", err)
+	}
+	respJSONMap[RespJSONKeyResult] = processedResult
 
 	return respJSONMap, nil
 }
 
 // Indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
-	return method == ReqJSONMethodGetBalance || method == ReqJSONMethodCall || method == ReqJSONMethodGetTxReceipt
+	return method == ReqJSONMethodGetBalance ||
+		method == ReqJSONMethodCall ||
+		method == ReqJSONMethodGetTxReceipt ||
+		method == ReqJSONMethodSendRawTx ||
+		method == ReqJSONMethodGetTxByHash
+}
+
+// Converts the decrypted result to its correct JSON representation.
+func processDecryptedResult(decryptedResult []byte, method interface{}) (interface{}, error) {
+	// This method returns a JSON map, rather than a string.
+	if method == ReqJSONMethodGetTxReceipt || method == ReqJSONMethodGetTxByHash {
+		fields := map[string]interface{}{}
+		err := json.Unmarshal(decryptedResult, &fields)
+		if err != nil {
+			return nil, err
+		}
+		return fields, nil
+	}
+
+	return string(decryptedResult), nil
 }

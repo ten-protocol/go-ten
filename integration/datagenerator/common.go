@@ -7,9 +7,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 func RandomBytes(length int) []byte {
@@ -21,12 +21,12 @@ func RandomBytes(length int) []byte {
 	return byteArr
 }
 
-func randomHash() common.Hash {
-	return common.BytesToHash(RandomBytes(32))
+func randomHash() gethcommon.Hash {
+	return gethcommon.BytesToHash(RandomBytes(32))
 }
 
-func RandomAddress() common.Address {
-	return common.BytesToAddress(RandomBytes(20))
+func RandomAddress() gethcommon.Address {
+	return gethcommon.BytesToAddress(RandomBytes(20))
 }
 
 func randomUInt64() uint64 {
@@ -37,15 +37,15 @@ func randomUInt64() uint64 {
 	return val.Uint64()
 }
 
-func randomWithdrawal() nodecommon.Withdrawal {
-	return nodecommon.Withdrawal{
-		Amount:  randomUInt64(),
-		Address: RandomAddress(),
+func randomWithdrawal() common.Withdrawal {
+	return common.Withdrawal{
+		Amount:    randomUInt64(),
+		Recipient: RandomAddress(),
 	}
 }
 
-func randomWithdrawals(length int) []nodecommon.Withdrawal {
-	withdrawals := make([]nodecommon.Withdrawal, length)
+func randomWithdrawals(length int) []common.Withdrawal {
+	withdrawals := make([]common.Withdrawal, length)
 	for i := 0; i < length; i++ {
 		withdrawals[i] = randomWithdrawal()
 	}
@@ -53,7 +53,7 @@ func randomWithdrawals(length int) []nodecommon.Withdrawal {
 }
 
 // Creates a dummy L2Tx for testing
-func CreateL2Tx() *nodecommon.L2Tx {
+func CreateL2Tx() *common.L2Tx {
 	return types.NewTx(CreateL2TxData())
 }
 

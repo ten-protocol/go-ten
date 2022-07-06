@@ -20,3 +20,10 @@ non-simulation mode instead, run:
 Stop and remove all Obscuro docker containers:
 
     docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}"))
+
+## Data directory
+The ego docker images setup a home directory in `/home/obscuro/` and within that `go-obscuro/` contains the code 
+while `data/` is used for persistence by the enclave.
+
+That `/home/obscuro/data` directory is mounted inside the enclave as `/data`, any files written to it by the enclave process
+should be sealed using the private enclave key, so it will be unreadable to anyone that accesses the container.

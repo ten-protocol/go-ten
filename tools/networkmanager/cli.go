@@ -3,8 +3,10 @@ package networkmanager
 import (
 	"flag"
 	"fmt"
-	"math/big"
+	"strings"
 	"time"
+
+	"github.com/obscuronet/obscuro-playground/integration"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -26,17 +28,20 @@ const (
 	l1NodeHostName  = "l1NodeHost"
 	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
 
-	l1NodePortName  = "l1NodePort"
-	l1NodePortUsage = "The port on which to connect to the Ethereum client"
+	l1NodeWebsocketPortName  = "l1NodeWebsocketPort"
+	l1NodeWebsocketPortUsage = "The websocket port on which to connect to the Ethereum client"
 
 	l1ConnectionTimeoutSecsName  = "l1ConnectionTimeoutSecs"
 	l1ConnectionTimeoutSecsUsage = "The timeout for connecting to the Ethereum client"
 
-	privateKeyName  = "privateKey"
-	privateKeyUsage = "The private key for the L1 node account"
+	privateKeysName  = "privateKeys"
+	privateKeysUsage = "The private keys for the L1 wallets, as a comma-separated list. These wallets should have been preallocated funds"
 
-	chainIDName  = "chainID"
-	chainIDUsage = "The ID of the L1 chain"
+	ethereumChainIDName  = "ethereumChainID"
+	ethereumChainIDUsage = "The ID of the L1 chain"
+
+	obscuroChainIDName  = "obscuroChainID"
+	obscuroChainIDUsage = "The ID of the L2 chain"
 
 	mgmtContractAddressName  = "managementContractAddress"
 	mgmtContractAddressUsage = "The hex address of the management contract on the L1"
@@ -53,8 +58,9 @@ type Config struct {
 	l1NodeHost           string
 	l1NodeWebsocketPort  uint
 	l1ConnectionTimeout  time.Duration
-	privateKeyString     string
-	chainID              big.Int
+	privateKeys          []string
+	l1ChainID            int64
+	obscuroChainID       int64
 	mgmtContractAddress  common.Address
 	erc20ContractAddress common.Address
 	obscuroClientAddress string
@@ -62,25 +68,29 @@ type Config struct {
 
 func defaultNetworkManagerConfig() Config {
 	return Config{
-		l1NodeHost:           "127.0.0.1",
-		l1NodeWebsocketPort:  8546,
-		l1ConnectionTimeout:  time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
-		privateKeyString:     "0000000000000000000000000000000000000000000000000000000000000001",
-		chainID:              *big.NewInt(1337),
+		l1NodeHost:          "127.0.0.1",
+		l1NodeWebsocketPort: 9000,
+		l1ConnectionTimeout: time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
+		// Default chosen to not conflict with default private key used by host.
+		privateKeys:          []string{"0000000000000000000000000000000000000000000000000000000000000002"},
+		l1ChainID:            integration.EthereumChainID,
+		obscuroChainID:       integration.ObscuroChainID,
 		mgmtContractAddress:  common.BytesToAddress([]byte("")),
 		erc20ContractAddress: common.BytesToAddress([]byte("")),
-		obscuroClientAddress: "",
+		obscuroClientAddress: "127.0.0.1:13000",
 	}
 }
 
-func ParseCLIArgs() Config {
+// ParseCLIArgs returns the config, and any arguments to the command.
+func ParseCLIArgs() (Config, []string) {
 	defaultConfig := defaultNetworkManagerConfig()
 
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
-	l1NodePort := flag.Uint64(l1NodePortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodePortUsage)
+	l1NodePort := flag.Uint64(l1NodeWebsocketPortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodeWebsocketPortUsage)
 	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.l1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
-	chainID := flag.Int64(chainIDName, defaultConfig.chainID.Int64(), chainIDUsage)
-	privateKeyStr := flag.String(privateKeyName, defaultConfig.privateKeyString, privateKeyUsage)
+	ethereumChainID := flag.Int64(ethereumChainIDName, defaultConfig.l1ChainID, ethereumChainIDUsage)
+	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.obscuroChainID, obscuroChainIDUsage)
+	privateKeys := flag.String(privateKeysName, strings.Join(defaultConfig.privateKeys, ","), privateKeysUsage)
 	mgmtContractAddress := flag.String(mgmtContractAddressName, defaultConfig.mgmtContractAddress.Hex(), mgmtContractAddressUsage)
 	erc20ContractAddress := flag.String(erc20ContractAddressName, defaultConfig.erc20ContractAddress.Hex(), erc20ContractAddressUsage)
 	obscuroClientAddress := flag.String(obscuroClientAddressName, defaultConfig.obscuroClientAddress, obscuroClientAddressUsage)
@@ -90,13 +100,15 @@ func ParseCLIArgs() Config {
 	defaultConfig.l1NodeHost = *l1NodeHost
 	defaultConfig.l1NodeWebsocketPort = uint(*l1NodePort)
 	defaultConfig.l1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
-	defaultConfig.privateKeyString = *privateKeyStr
-	defaultConfig.chainID = *big.NewInt(*chainID)
+	defaultConfig.privateKeys = strings.Split(*privateKeys, ",")
+	defaultConfig.l1ChainID = *ethereumChainID
+	defaultConfig.obscuroChainID = *obscuroChainID
 	defaultConfig.mgmtContractAddress = common.HexToAddress(*mgmtContractAddress)
 	defaultConfig.erc20ContractAddress = common.HexToAddress(*erc20ContractAddress)
 	defaultConfig.obscuroClientAddress = *obscuroClientAddress
 
 	command := flag.Arg(0)
+	var args []string
 	switch command {
 	case deployMgmtContractName:
 		defaultConfig.Command = DeployMgmtContract
@@ -104,9 +116,11 @@ func ParseCLIArgs() Config {
 		defaultConfig.Command = DeployERC20Contract
 	case injectTxsName:
 		defaultConfig.Command = InjectTxs
+		numOfTxs := flag.Arg(1)
+		args = append(args, numOfTxs)
 	default:
 		panic(fmt.Sprintf("unrecognised command %s", command))
 	}
 
-	return defaultConfig
+	return defaultConfig, args
 }

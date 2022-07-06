@@ -3,69 +3,70 @@ package simulation
 import (
 	"sync"
 
-	"github.com/obscuronet/obscuro-playground/go/ethclient/erc20contractlib"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
+
+	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/enclave/core"
 )
 
 type txInjectorCounter struct {
 	l1TransactionsLock       sync.RWMutex
-	l1Transactions           []obscurocommon.L1Transaction
+	L1Transactions           []ethadapter.L1Transaction
 	l2TransactionsLock       sync.RWMutex
-	transferL2Transactions   core.L2Txs
-	withdrawalL2Transactions core.L2Txs
+	TransferL2Transactions   core.L2Txs
+	WithdrawalL2Transactions core.L2Txs
 }
 
 func newCounter() *txInjectorCounter {
 	return &txInjectorCounter{
 		l1TransactionsLock:       sync.RWMutex{},
-		l1Transactions:           []obscurocommon.L1Transaction{},
+		L1Transactions:           []ethadapter.L1Transaction{},
 		l2TransactionsLock:       sync.RWMutex{},
-		transferL2Transactions:   []*nodecommon.L2Tx{},
-		withdrawalL2Transactions: []*nodecommon.L2Tx{},
+		TransferL2Transactions:   []*common.L2Tx{},
+		WithdrawalL2Transactions: []*common.L2Tx{},
 	}
 }
 
 // trackL1Tx adds an L1Tx to the internal list
-func (m *txInjectorCounter) trackL1Tx(tx obscurocommon.L1Transaction) {
+func (m *txInjectorCounter) trackL1Tx(tx ethadapter.L1Transaction) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
-	m.l1Transactions = append(m.l1Transactions, tx)
+	m.L1Transactions = append(m.L1Transactions, tx)
 }
 
-func (m *txInjectorCounter) trackWithdrawalL2Tx(tx *nodecommon.L2Tx) {
+func (m *txInjectorCounter) trackWithdrawalL2Tx(tx *common.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
-	m.withdrawalL2Transactions = append(m.withdrawalL2Transactions, tx)
+	m.WithdrawalL2Transactions = append(m.WithdrawalL2Transactions, tx)
 }
 
-func (m *txInjectorCounter) trackTransferL2Tx(tx *nodecommon.L2Tx) {
+func (m *txInjectorCounter) trackTransferL2Tx(tx *common.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
-	m.transferL2Transactions = append(m.transferL2Transactions, tx)
+	m.TransferL2Transactions = append(m.TransferL2Transactions, tx)
 }
 
 // GetL1Transactions returns all generated L1 L2Txs
-func (m *txInjectorCounter) GetL1Transactions() []obscurocommon.L1Transaction {
-	return m.l1Transactions
+func (m *txInjectorCounter) GetL1Transactions() []ethadapter.L1Transaction {
+	return m.L1Transactions
 }
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
 func (m *txInjectorCounter) GetL2Transactions() (core.L2Txs, core.L2Txs) {
-	return m.transferL2Transactions, m.withdrawalL2Transactions
+	return m.TransferL2Transactions, m.WithdrawalL2Transactions
 }
 
 // GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions
-func (m *txInjectorCounter) GetL2WithdrawalRequests() []nodecommon.Withdrawal {
-	withdrawals := make([]nodecommon.Withdrawal, 0)
-	for _, req := range m.withdrawalL2Transactions {
+func (m *txInjectorCounter) GetL2WithdrawalRequests() []common.Withdrawal {
+	withdrawals := make([]common.Withdrawal, 0)
+	for _, req := range m.WithdrawalL2Transactions {
 		found, address, amount := erc20contractlib.DecodeTransferTx(req)
 		if !found {
 			panic("Should not happen")
 		}
-		withdrawals = append(withdrawals, nodecommon.Withdrawal{Amount: amount.Uint64(), Address: *address})
+		withdrawals = append(withdrawals, common.Withdrawal{Amount: amount.Uint64(), Recipient: *address})
 	}
 	return withdrawals
 }

@@ -5,44 +5,52 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"strings"
 
+	"github.com/obscuronet/obscuro-playground/go/enclave/crypto"
+
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/enclave/core"
+	"github.com/obscuronet/obscuro-playground/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
 
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/obscuroclient"
+	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 )
 
 const (
 	pathHeadBlock     = "/headblock/"
 	pathHeadRollup    = "/headrollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
-	staticDir         = "./tools/obscuroscan/static"
+	staticDir         = "static"
 	pathRoot          = "/"
 	httpCodeErr       = 500
 )
 
+//go:embed static
+var staticFiles embed.FS
+
 // Obscuroscan is a server that allows the monitoring of a running Obscuro network.
 type Obscuroscan struct {
 	server      *http.Server
-	client      obscuroclient.Client
+	client      rpcclientlib.Client
 	contractABI abi.ABI
 }
 
 func NewObscuroscan(address string) *Obscuroscan {
-	client := obscuroclient.NewClient(address)
+	client := rpcclientlib.NewClient(address)
 	contractABI, err := abi.JSON(strings.NewReader(mgmtcontractlib.MgmtContractABI))
 	if err != nil {
 		panic("could not parse management contract ABI to decrypt rollups")
@@ -56,18 +64,25 @@ func NewObscuroscan(address string) *Obscuroscan {
 // Serve listens for and serves Obscuroscan requests.
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
-	// Serves the web interface.
-	serveMux.Handle(pathRoot, http.FileServer(http.Dir(staticDir)))
+
 	// Handle requests for block head height.
 	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
 	// Handle requests for the head rollup.
 	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)
 	// Handle requests to decrypt a transaction blob.
 	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)
+
+	// Serves the web assets for the user interface.
+	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMux.Handle(pathRoot, http.FileServer(http.FS(noPrefixStaticFiles)))
+
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
 
-	err := o.server.ListenAndServe()
-	if err != http.ErrServerClosed {
+	err = o.server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
@@ -84,7 +99,7 @@ func (o *Obscuroscan) Shutdown() {
 // Retrieves the current block header for the Obscuro network.
 func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
 	var headBlock *types.Header
-	err := o.client.Call(&headBlock, obscuroclient.RPCGetCurrentBlockHead)
+	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block. Cause: %s", err))
 		return
@@ -106,15 +121,15 @@ func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
 func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 	// TODO - Update logic here once rollups are encrypted.
 	// TODO - If required, consolidate the two calls below into a single RPCGetHeadRollup call to minimise round trips.
-	var headRollupHeader *nodecommon.Header
-	err := o.client.Call(&headRollupHeader, obscuroclient.RPCGetCurrentRollupHead)
+	var headRollupHeader *common.Header
+	err := o.client.Call(&headRollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup header. Cause: %s", err))
 		return
 	}
 
-	var headRollup *nodecommon.ExtRollup
-	err = o.client.Call(&headRollup, obscuroclient.RPCGetRollup, headRollupHeader.Hash())
+	var headRollup *common.ExtRollup
+	err = o.client.Call(&headRollup, rpcclientlib.RPCGetRollup, headRollupHeader.Hash())
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return
@@ -164,7 +179,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not decode encrypted transaction blob from Base64. Cause: %w", err)
 	}
 
-	key := common.Hex2Bytes(core.RollupEncryptionKeyHex)
+	key := gethcommon.Hex2Bytes(crypto.RollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialise AES cipher for enclave rollup key. Cause: %w", err)
@@ -174,7 +189,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %w", err)
 	}
 
-	encodedTxs, err := transactionCipher.Open(nil, []byte(core.RollupCipherNonce), encryptedTxBytes, nil)
+	encodedTxs, err := transactionCipher.Open(nil, []byte(crypto.RollupCipherNonce), encryptedTxBytes, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
 	}

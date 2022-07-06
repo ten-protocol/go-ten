@@ -1,0 +1,74 @@
+# Deploys a L1 network on Azure for Testnet
+# Builds the l1 network image, kills any running container, pushes the image to dockerhub and starts the l1 network on azure
+#
+# The L1 network is a docker container that runs 3 geth nodes
+# It exposes the following ports:
+# HTTP:       8025, 8026, 8027
+# WebSocket:  9000, 9001, 9002
+#
+# Exposes the following addresses: (only accessible internally)
+#  testnet-gethnetwork-DEPLOYNUMBER.uksouth.azurecontainer.io
+
+name: Manual Deploy L1 network
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v1
+
+# to be used when our dockerhub account is fixed
+#      - name: Login to DockerHub
+#        uses: docker/login-action@v2
+#        with:
+#          username: ${{ secrets.DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#
+#      - name: Build and push
+#        uses: docker/build-push-action@v3
+#        with:
+#          push: true
+#          tags: obscuronet/obscuro_testnet_l1network:latest
+#          file: ./testnet/gethnetwork.Dockerfile
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Build and push image'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_testnet_l1network:latest -f testnet/gethnetwork.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_testnet_l1network:latest
+
+      - name: 'Deploy to Azure Container Instances'
+        uses: 'azure/aci-deploy@v1'
+        with:
+          resource-group: ${{ secrets.RESOURCE_GROUP }}
+          dns-name-label: testnet-gethnetwork
+          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_testnet_l1network:latest
+          registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          registry-username: ${{ secrets.REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+          name: testnet-gethnetwork-app
+          location: 'uksouth'
+          restart-policy: 'Never'
+          command-line: /home/go-obscuro/integration/gethnetwork/main/main --numNodes=3 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_2 }}
+          # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
+          # Each node has Port + id
+          ports: '8025 8026 8027 9000 9001 9002'
+          cpu: 2
+          memory: 4
+
+

@@ -6,20 +6,21 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/log"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/config"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/wallet"
+	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 )
 
-func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, []ethclient.EthClient, *gethnetwork.GethNetwork) {
+func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, *common.Address, []ethadapter.EthClient, *gethnetwork.GethNetwork) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -48,7 +49,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		L1NodeWebsocketPort: gethNetwork.WebSocketPorts[0],
 		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
 	}
-	tmpEthClient, err := ethclient.NewEthClient(tmpHostConfig)
+	tmpEthClient, err := ethadapter.NewEthClientFromConfig(tmpHostConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -57,21 +58,26 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
-	// todo deploy multiple erc20s here and store the mappings, etc
-	erc20ContractAddr, err := DeployContract(tmpEthClient, wallets.Erc20EthOwnerWallets[0], common.Hex2Bytes(erc20contract.ContractByteCode))
-	if err != nil {
-		panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+
+	erc20ContractAddr := make([]*common.Address, 0)
+	for _, token := range wallets.Tokens {
+		address, err := DeployContract(tmpEthClient, token.L1Owner, common.Hex2Bytes(erc20contract.ContractByteCode))
+		if err != nil {
+			panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+		}
+		token.L1ContractAddress = address
+		erc20ContractAddr = append(erc20ContractAddr, address)
 	}
 
-	ethClients := make([]ethclient.EthClient, nrNodes)
+	ethClients := make([]ethadapter.EthClient, nrNodes)
 	for i := 0; i < nrNodes; i++ {
 		ethClients[i] = createEthClientConnection(int64(i), gethNetwork.WebSocketPorts[i])
 	}
 
-	return mgmtContractAddr, erc20ContractAddr, ethClients, gethNetwork
+	return mgmtContractAddr, erc20ContractAddr[0], erc20ContractAddr[1], ethClients, gethNetwork
 }
 
-func StopGethNetwork(clients []ethclient.EthClient, netw *gethnetwork.GethNetwork) {
+func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwork) {
 	// Stop the clients first
 	for _, c := range clients {
 		if c != nil {
@@ -83,7 +89,7 @@ func StopGethNetwork(clients []ethclient.EthClient, netw *gethnetwork.GethNetwor
 }
 
 // DeployContract todo -this should live somewhere else
-func DeployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractBytes []byte) (*common.Address, error) {
+func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*common.Address, error) {
 	deployContractTx := types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(2000000000),
@@ -119,14 +125,14 @@ func DeployContract(workerClient ethclient.EthClient, w wallet.Wallet, contractB
 	return nil, fmt.Errorf("failed to mine contract deploy tx into a block after %s. Aborting", time.Since(start))
 }
 
-func createEthClientConnection(id int64, port uint) ethclient.EthClient {
+func createEthClientConnection(id int64, port uint) ethadapter.EthClient {
 	hostConfig := config.HostConfig{
 		ID:                  common.BigToAddress(big.NewInt(id)),
 		L1NodeHost:          Localhost,
 		L1NodeWebsocketPort: port,
 		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
 	}
-	ethnode, err := ethclient.NewEthClient(hostConfig)
+	ethnode, err := ethadapter.NewEthClientFromConfig(hostConfig)
 	if err != nil {
 		panic(err)
 	}

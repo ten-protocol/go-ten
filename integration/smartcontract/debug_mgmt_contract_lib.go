@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
-	"github.com/obscuronet/obscuro-playground/go/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/ethclient/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/obscurocommon"
-	"github.com/obscuronet/obscuro-playground/go/obscuronode/nodecommon"
+	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	ethereumclient "github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -23,7 +22,7 @@ type debugMgmtContractLib struct {
 }
 
 // newDebugMgmtContractLib creates an instance of the generated contract package and allows the use of the MgmtContractLib properties
-func newDebugMgmtContractLib(address common.Address, client *ethereumclient.Client, mgmtContractLib mgmtcontractlib.MgmtContractLib) *debugMgmtContractLib {
+func newDebugMgmtContractLib(address gethcommon.Address, client *ethereumclient.Client, mgmtContractLib mgmtcontractlib.MgmtContractLib) *debugMgmtContractLib {
 	genContract, err := generatedManagementContract.NewManagementContract(address, client)
 	if err != nil {
 		panic(err)
@@ -36,9 +35,9 @@ func newDebugMgmtContractLib(address common.Address, client *ethereumclient.Clie
 }
 
 // AwaitedIssueRollup speeds ups the issuance of rollup, await of tx to be minted and makes sure the values are correctly stored
-func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup nodecommon.Rollup, client ethclient.EthClient, w *debugWallet) error {
+func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.EncryptedRollup, client ethadapter.EthClient, w *debugWallet) error {
 	txData := d.CreateRollup(
-		&obscurocommon.L1RollupTx{Rollup: nodecommon.EncodeRollup(&rollup)},
+		&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&rollup)},
 		w.GetNonceAndIncrement(),
 	)
 

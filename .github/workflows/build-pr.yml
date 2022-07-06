@@ -3,6 +3,8 @@ name: Build PR
 
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
     branches:
       - main
 
@@ -25,12 +27,13 @@ jobs:
           sudo docker stop $(sudo docker ps -a -q)
           sudo docker rm $(sudo docker ps -a -q)
           sudo pkill -f geth
-          sudo pkill -f obscuronode
+          sudo pkill -f enclave
+          sudo pkill -f host
           sudo lsof -ti:30000-39999|xargs -r sudo kill -9
           sudo lsof -i -P -n | grep LISTEN
 
       - name: Build Docker images
-        run:  docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
+        run:  docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
 
       - name: Build
         run: go build -v ./...
@@ -47,4 +50,5 @@ jobs:
           path: |
             integration/.build/simulations/sim-log-*.txt
             integration/.build/noderunner/noderunner-*.txt
+            integration/.build/wallet_extension/wal-ext-*.txt
         if: always() # Ensures the artifacts are created even if the tests fail.

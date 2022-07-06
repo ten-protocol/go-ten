@@ -1,0 +1,51 @@
+version: "3.9"
+networks:
+  default:
+    name: node_network
+services:
+  host:
+    networks:
+      - default
+    ports:
+      - "13000:13000"
+      - "13001:13001"
+    environment:
+      MGMTCONTRACTADDR: some_address
+      PKSTRING: some_string
+      L1HOST: some_host
+      L1PORT: some_port
+      HOSTID: some_address
+      ISGENESIS: some_bool
+    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
+    entrypoint: [
+      "/home/go-obscuro/go/host/main/main",
+      "--l1NodeHost=$L1HOST",
+      "--l1NodePort=$L1PORT",
+      "--id=$HOSTID",
+      "--enclaveRPCAddress=enclave:11000",
+      "--rollupContractAddress=$MGMTCONTRACTADDR",
+      "--privateKey=$PKSTRING",
+      "--clientRPCHost=0.0.0.0",
+      "--isGenesis=$ISGENESIS",
+      "--logLevel=debug"
+    ]
+
+  enclave:
+    networks:
+      - default
+    environment:
+      MGMTCONTRACTADDR: some_address
+      ERC20CONTRACTADDR: some_address
+      HOSTID: some_address
+    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
+    entrypoint: [
+                 "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
+                 "--hostID=$HOSTID",
+                 "--address=:11000",
+                 "--useInMemoryDB=false",
+                 "--sqliteDBPath=/data/sqlite.db",
+                 "--managementContractAddress=$MGMTCONTRACTADDR",
+                 "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
+                 "--viewingKeysEnabled=false",
+                 "--hostAddress=host:10000"
+    ]
