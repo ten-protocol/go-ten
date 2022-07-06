@@ -62,6 +62,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
+	enclaveConfig.WillAttest = false
+	enclaveConfig.UseInMemoryDB = true
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {

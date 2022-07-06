@@ -52,7 +52,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		Address:                   "127.0.0.1:11000",
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
-		WillAttest:                false, // todo: attestation should be on by default before production release
+		WillAttest:                true,
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
 		SpeculativeExecution:      false,
@@ -60,7 +60,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		ERC20ContractAddresses:    []*common.Address{},
 		LogLevel:                  "info",
 		LogPath:                   "",
-		UseInMemoryDB:             true, // todo: persistence should be on by default before production release
+		UseInMemoryDB:             false,
 		ViewingKeysEnabled:        true,
 		EdgelessDBHost:            "",
 		SqliteDBPath:              "",
