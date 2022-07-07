@@ -1,8 +1,6 @@
 package host
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/obscuro-playground/go/common/log"
@@ -70,7 +68,6 @@ func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
 
 func (s *rpcServerImpl) Start() {
 	if err := s.node.Start(); err != nil {
-		fmt.Printf("%+v\n", s.node.Config())
 		log.Panic("could not start node client server. Cause: %s", err)
 	}
 }
