@@ -29,7 +29,7 @@ jobs:
           sudo pkill -f geth
           sudo pkill -f enclave
           sudo pkill -f host
-          sleep 1
+          sudo kill $( sudo lsof -ti:30000-39999 ) -9
           sudo ss -pntl
 
       - name: Build Docker images
