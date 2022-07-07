@@ -29,8 +29,8 @@ jobs:
           sudo pkill -f geth
           sudo pkill -f enclave
           sudo pkill -f host
-          sudo lsof -ti:30000-39999|xargs -r sudo kill -9
-          sudo lsof -i -P -n | grep LISTEN
+          sleep 1
+          sudo ss -pntl
 
       - name: Build Docker images
         run:  docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
