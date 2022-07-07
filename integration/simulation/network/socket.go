@@ -60,10 +60,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 }
 
 func (n *networkOfSocketNodes) TearDown() {
-	// First stop the obscuro nodes
+	// Stop the Obscuro nodes first (each host will attempt to shut down its enclave as part of shutdown).
 	StopObscuroNodes(n.obscuroClients)
 	StopGethNetwork(n.gethClients, n.gethNetwork)
-
-	// stop the enclaves
-	// todo
 }
