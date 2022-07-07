@@ -80,7 +80,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 		if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[4:]); err != nil {
 			panic(err)
 		}
-		callData, found := contractCallData["rollupData"]
+		callData, found := contractCallData["_rollupData"]
 		if !found {
 			panic("call data not found for rollupData")
 		}
@@ -122,6 +122,7 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,
 		decodedRollup.Header.ParentHash,
+		decodedRollup.Hash(),
 		decodedRollup.Header.Agg,
 		decodedRollup.Header.L1Proof,
 		decodedRollup.Header.Number,
