@@ -4,6 +4,9 @@
 # This script cleans up the environment BEFORE any job run
 #
 # It's expected to exist in /home/obscuro/scripts/pre-run-cleanup.sh
+# It's expected to be configured in /home/obscuro/githubRunner/actions-runner/.env
+# The .env file is expected to have ACTIONS_RUNNER_HOOK_JOB_STARTED=/home/obscuro/scripts/pre-run-cleanup.sh
+#
 # Has to be manually deployed, updating the CI will not update the script.
 # More details : https://docs.github.com/en/actions/hosting-your-own-runners/running-scripts-before-or-after-a-job#triggering-the-scripts
 #
