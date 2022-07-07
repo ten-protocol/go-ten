@@ -2,21 +2,15 @@ package rawdb
 
 import (
 	"crypto/ecdsa"
-	"time"
-
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 )
 
 func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) *ecdsa.PublicKey {
 	key, err := db.Get(attestationPkKey(address))
-	if err != nil {
-		time.Sleep(time.Second)
-		key, err = db.Get(attestationPkKey(address))
-	}
 	if err != nil {
 		log.Panic("Could not read key from db. Cause: %s", err)
 	}
@@ -29,6 +23,6 @@ func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) *ec
 
 func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey) {
 	if err := db.Put(attestationPkKey(address), crypto.CompressPubkey(key)); err != nil {
-		log.Panic("Failed to store the . Cause: %s", err)
+		log.Panic("Failed to store the attested key. Cause: %s", err)
 	}
 }

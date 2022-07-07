@@ -398,13 +398,15 @@ func (a *Node) processBlock(b *types.Block) {
 		}
 
 		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
+			// todo - there can ever be only one `L1InitializeSecretTx` message.
+			// there must be a way to make sure that this transaction can only be sent once.
 			att, err := common.DecodeAttestation(initSecretTx.Attestation)
 			if err != nil {
 				log.Panic("Could not decode attestation report. Cause: %s", err)
 			}
 			err = a.EnclaveClient.StoreAttestation(att)
 			if err != nil {
-				log.Panic("Could not decode store the attestation report. Cause: %s", err)
+				log.Panic("Could not store the attestation report. Cause: %s", err)
 			}
 		}
 	}
@@ -523,17 +525,6 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		return
 	}
 
-	err = a.EnclaveClient.StoreAttestation(att)
-	if err != nil {
-		log.Panic("Could not store attestation. Cause:%s", err)
-	}
-
-	// todo: implement proper protocol so only one host responds to this secret requests initially
-	// 	for now we just have the genesis host respond until protocol implemented
-	if !a.config.IsGenesis {
-		return
-	}
-
 	jsonAttestation, err := json.Marshal(att)
 	if err == nil {
 		common.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
@@ -544,6 +535,18 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 	secret, err := a.EnclaveClient.ShareSecret(att)
 	if err != nil {
 		common.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
+		return
+	}
+
+	// Store the attested key only if the attestation process succeeded.
+	err = a.EnclaveClient.StoreAttestation(att)
+	if err != nil {
+		log.Panic("Could not store attestation. Cause:%s", err)
+	}
+
+	// todo: implement proper protocol so only one host responds to this secret requests initially
+	// 	for now we just have the genesis host respond until protocol implemented
+	if !a.config.IsGenesis {
 		return
 	}
 
