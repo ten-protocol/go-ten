@@ -29,7 +29,10 @@ jobs:
           sudo pkill -f geth
           sudo pkill -f enclave
           sudo pkill -f host
-          sudo kill $( sudo lsof -ti:30000-39999 ) -9
+          echo 'Before port kill'
+          sudo ss -pntl
+          sudo lsof -ti:30000-39999|xargs -r sudo kill -9
+          echo 'After port kill'
           sudo ss -pntl
 
       - name: Build Docker images
