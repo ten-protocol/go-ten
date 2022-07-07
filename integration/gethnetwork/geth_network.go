@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -120,6 +121,12 @@ type GethNetwork struct {
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
 func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) *GethNetwork {
+	fmt.Printf("NewGethNetwork requested with: portStart:%d, websocketPortStart:%d, gethBinaryPath:%s, numNodes:%d",
+		portStart,
+		websocketPortStart,
+		gethBinaryPath,
+		numNodes)
+	debug.PrintStack()
 	err := ensurePortsAreAvailable(portStart, websocketPortStart, numNodes)
 	if err != nil {
 		panic(err)
