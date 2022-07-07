@@ -28,23 +28,39 @@ var (
 	_ = event.NewSubscription
 )
 
-// GeneratedManagementContractMetaData contains all meta data concerning the GeneratedManagementContract contract.
-var GeneratedManagementContractMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"rollupData\",\"type\":\"string\"}],\"name\":\"AddRollup\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"GetHostAddresses\",\"outputs\":[{\"internalType\":\"string[]\",\"name\":\"\",\"type\":\"string[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"aggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"initSecret\",\"type\":\"bytes\"},{\"internalType\":\"string\",\"name\":\"hostAddress\",\"type\":\"string\"}],\"name\":\"InitializeNetworkSecret\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"requestReport\",\"type\":\"string\"}],\"name\":\"RequestNetworkSecret\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"attesterID\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"requesterID\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"attesterSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"responseSecret\",\"type\":\"bytes\"},{\"internalType\":\"string\",\"name\":\"hostAddress\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"verifyAttester\",\"type\":\"bool\"}],\"name\":\"RespondNetworkSecret\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"attestationRequests\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"attested\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"rollups\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-	Bin: "0x608060405234801561001057600080fd5b5061266a806100206000396000f3fe608060405234801561001057600080fd5b50600436106100885760003560e01c8063d4c806641161005b578063d4c8066414610113578063e0643dfc14610143578063e0fd84bd14610176578063e34fbfc81461019257610088565b8063324ff8661461008d57806368e10383146100ab5780638ef74f89146100c7578063bbd79e15146100f7575b600080fd5b6100956101ae565b6040516100a291906110c7565b60405180910390f35b6100c560048036038101906100c091906112f0565b610287565b005b6100e160048036038101906100dc9190611380565b61034f565b6040516100ee91906113f7565b60405180910390f35b610111600480360381019061010c91906114f2565b6103ef565b005b61012d60048036038101906101289190611380565b6105cc565b60405161013a91906115e2565b60405180910390f35b61015d60048036038101906101589190611633565b6105ec565b60405161016d94939291906116aa565b60405180910390f35b610190600480360381019061018b9190611771565b610659565b005b6101ac60048036038101906101a7919061180b565b610796565b005b60606003805480602002602001604051908101604052809291908181526020016000905b8282101561027e5783829060005260206000200180546101f190611887565b80601f016020809104026020016040519081016040528092919081815260200182805461021d90611887565b801561026a5780601f1061023f5761010080835404028352916020019161026a565b820191906000526020600020905b81548152906001019060200180831161024d57829003601f168201915b5050505050815260200190600101906101d2565b50505050905090565b600460009054906101000a900460ff16156102a157600080fd5b6001600460006101000a81548160ff0219169083151502179055506001600260008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff0219169083151502179055506003819080600181540180825580915050600190039060005260206000200160009091909190915090816103489190611a64565b5050505050565b6001602052806000526040600020600091509050805461036e90611887565b80601f016020809104026020016040519081016040528092919081815260200182805461039a90611887565b80156103e75780601f106103bc576101008083540402835291602001916103e7565b820191906000526020600020905b8154815290600101906020018083116103ca57829003601f168201915b505050505081565b6000600260008873ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff1690508061044a57600080fd5b81156105365760006104808888868860405160200161046c9493929190611c01565b6040516020818303038152906040526107e9565b9050600061048e8288610824565b90508873ffffffffffffffffffffffffffffffffffffffff168173ffffffffffffffffffffffffffffffffffffffff16146104c88a61084b565b6104d18361084b565b6040516020016104e2929190611d9d565b60405160208183030381529060405290610532576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161052991906113f7565b60405180910390fd5b5050505b6001600260008873ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff0219169083151502179055506003839080600181540180825580915050600190039060005260206000200160009091909190915090816105c29190611a64565b5050505050505050565b60026020528060005260406000206000915054906101000a900460ff1681565b6000602052816000526040600020818154811061060857600080fd5b9060005260206000209060040201600091509150508060000154908060010160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16908060020154908060030154905084565b600260008673ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff166106af57600080fd5b600060405180608001604052808881526020018773ffffffffffffffffffffffffffffffffffffffff1681526020018681526020018581525090506000804381526020019081526020016000208190806001815401808255809150506001900390600052602060002090600402016000909190919091506000820151816000015560208201518160010160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506040820151816002015560608201518160030155505050505050505050565b8181600160003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002091826107e4929190611ded565b505050565b60006107f58251610a0e565b82604051602001610807929190611f09565b604051602081830303815290604052805190602001209050919050565b60008060006108338585610b6e565b9150915061084081610bef565b819250505092915050565b60606000602867ffffffffffffffff81111561086a576108696111c5565b5b6040519080825280601f01601f19166020018201604052801561089c5781602001600182028036833780820191505090505b50905060005b6014811015610a045760008160136108ba9190611f67565b60086108c69190611f9b565b60026108d29190612128565b8573ffffffffffffffffffffffffffffffffffffffff166108f391906121a2565b60f81b9050600060108260f81c61090a91906121e0565b60f81b905060008160f81c60106109219190612211565b8360f81c61092f919061224c565b60f81b905061093d82610dbb565b8585600261094b9190611f9b565b8151811061095c5761095b612280565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a90535061099481610dbb565b8560018660026109a49190611f9b565b6109ae91906122af565b815181106109bf576109be612280565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a90535050505080806109fc90612305565b9150506108a2565b5080915050919050565b606060008203610a55576040518060400160405280600181526020017f30000000000000000000000000000000000000000000000000000000000000008152509050610b69565b600082905060005b60008214610a87578080610a7090612305565b915050600a82610a8091906121a2565b9150610a5d565b60008167ffffffffffffffff811115610aa357610aa26111c5565b5b6040519080825280601f01601f191660200182016040528015610ad55781602001600182028036833780820191505090505b5090505b60008514610b6257600182610aee9190611f67565b9150600a85610afd919061234d565b6030610b0991906122af565b60f81b818381518110610b1f57610b1e612280565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a905350600a85610b5b91906121a2565b9450610ad9565b8093505050505b919050565b6000806041835103610baf5760008060006020860151925060408601519150606086015160001a9050610ba387828585610e01565b94509450505050610be8565b6040835103610bdf576000806020850151915060408501519050610bd4868383610f0d565b935093505050610be8565b60006002915091505b9250929050565b60006004811115610c0357610c0261237e565b5b816004811115610c1657610c1561237e565b5b0315610db85760016004811115610c3057610c2f61237e565b5b816004811115610c4357610c4261237e565b5b03610c83576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610c7a906123f9565b60405180910390fd5b60026004811115610c9757610c9661237e565b5b816004811115610caa57610ca961237e565b5b03610cea576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610ce190612465565b60405180910390fd5b60036004811115610cfe57610cfd61237e565b5b816004811115610d1157610d1061237e565b5b03610d51576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610d48906124f7565b60405180910390fd5b600480811115610d6457610d6361237e565b5b816004811115610d7757610d7661237e565b5b03610db7576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610dae90612589565b60405180910390fd5b5b50565b6000600a8260f81c60ff161015610de65760308260f81c610ddc91906125a9565b60f81b9050610dfc565b60578260f81c610df691906125a9565b60f81b90505b919050565b6000807f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a08360001c1115610e3c576000600391509150610f04565b601b8560ff1614158015610e545750601c8560ff1614155b15610e66576000600491509150610f04565b600060018787878760405160008152602001604052604051610e8b94939291906125ef565b6020604051602081039080840390855afa158015610ead573d6000803e3d6000fd5b505050602060405103519050600073ffffffffffffffffffffffffffffffffffffffff168173ffffffffffffffffffffffffffffffffffffffff1603610efb57600060019250925050610f04565b80600092509250505b94509492505050565b60008060007f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff60001b841690506000601b60ff8660001c901c610f5091906122af565b9050610f5e87828885610e01565b935093505050935093915050565b600081519050919050565b600082825260208201905092915050565b6000819050602082019050919050565b600081519050919050565b600082825260208201905092915050565b60005b83811015610fd2578082015181840152602081019050610fb7565b83811115610fe1576000848401525b50505050565b6000601f19601f8301169050919050565b600061100382610f98565b61100d8185610fa3565b935061101d818560208601610fb4565b61102681610fe7565b840191505092915050565b600061103d8383610ff8565b905092915050565b6000602082019050919050565b600061105d82610f6c565b6110678185610f77565b93508360208202850161107985610f88565b8060005b858110156110b557848403895281516110968582611031565b94506110a183611045565b925060208a0199505060018101905061107d565b50829750879550505050505092915050565b600060208201905081810360008301526110e18184611052565b905092915050565b6000604051905090565b600080fd5b600080fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000611128826110fd565b9050919050565b6111388161111d565b811461114357600080fd5b50565b6000813590506111558161112f565b92915050565b600080fd5b600080fd5b600080fd5b60008083601f8401126111805761117f61115b565b5b8235905067ffffffffffffffff81111561119d5761119c611160565b5b6020830191508360018202830111156111b9576111b8611165565b5b9250929050565b600080fd5b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b6111fd82610fe7565b810181811067ffffffffffffffff8211171561121c5761121b6111c5565b5b80604052505050565b600061122f6110e9565b905061123b82826111f4565b919050565b600067ffffffffffffffff82111561125b5761125a6111c5565b5b61126482610fe7565b9050602081019050919050565b82818337600083830152505050565b600061129361128e84611240565b611225565b9050828152602081018484840111156112af576112ae6111c0565b5b6112ba848285611271565b509392505050565b600082601f8301126112d7576112d661115b565b5b81356112e7848260208601611280565b91505092915050565b6000806000806060858703121561130a576113096110f3565b5b600061131887828801611146565b945050602085013567ffffffffffffffff811115611339576113386110f8565b5b6113458782880161116a565b9350935050604085013567ffffffffffffffff811115611368576113676110f8565b5b611374878288016112c2565b91505092959194509250565b600060208284031215611396576113956110f3565b5b60006113a484828501611146565b91505092915050565b600082825260208201905092915050565b60006113c982610f98565b6113d381856113ad565b93506113e3818560208601610fb4565b6113ec81610fe7565b840191505092915050565b6000602082019050818103600083015261141181846113be565b905092915050565b600067ffffffffffffffff821115611434576114336111c5565b5b61143d82610fe7565b9050602081019050919050565b600061145d61145884611419565b611225565b905082815260208101848484011115611479576114786111c0565b5b611484848285611271565b509392505050565b600082601f8301126114a1576114a061115b565b5b81356114b184826020860161144a565b91505092915050565b60008115159050919050565b6114cf816114ba565b81146114da57600080fd5b50565b6000813590506114ec816114c6565b92915050565b60008060008060008060c0878903121561150f5761150e6110f3565b5b600061151d89828a01611146565b965050602061152e89828a01611146565b955050604087013567ffffffffffffffff81111561154f5761154e6110f8565b5b61155b89828a0161148c565b945050606087013567ffffffffffffffff81111561157c5761157b6110f8565b5b61158889828a0161148c565b935050608087013567ffffffffffffffff8111156115a9576115a86110f8565b5b6115b589828a016112c2565b92505060a06115c689828a016114dd565b9150509295509295509295565b6115dc816114ba565b82525050565b60006020820190506115f760008301846115d3565b92915050565b6000819050919050565b611610816115fd565b811461161b57600080fd5b50565b60008135905061162d81611607565b92915050565b6000806040838503121561164a576116496110f3565b5b60006116588582860161161e565b92505060206116698582860161161e565b9150509250929050565b6000819050919050565b61168681611673565b82525050565b6116958161111d565b82525050565b6116a4816115fd565b82525050565b60006080820190506116bf600083018761167d565b6116cc602083018661168c565b6116d9604083018561167d565b6116e6606083018461169b565b95945050505050565b6116f881611673565b811461170357600080fd5b50565b600081359050611715816116ef565b92915050565b60008083601f8401126117315761173061115b565b5b8235905067ffffffffffffffff81111561174e5761174d611160565b5b60208301915083600182028301111561176a57611769611165565b5b9250929050565b60008060008060008060a0878903121561178e5761178d6110f3565b5b600061179c89828a01611706565b96505060206117ad89828a01611146565b95505060406117be89828a01611706565b94505060606117cf89828a0161161e565b935050608087013567ffffffffffffffff8111156117f0576117ef6110f8565b5b6117fc89828a0161171b565b92509250509295509295509295565b60008060208385031215611822576118216110f3565b5b600083013567ffffffffffffffff8111156118405761183f6110f8565b5b61184c8582860161171b565b92509250509250929050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b6000600282049050600182168061189f57607f821691505b6020821081036118b2576118b1611858565b5b50919050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b600082821b905092915050565b60006008830261191a7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff826118dd565b61192486836118dd565b95508019841693508086168417925050509392505050565b6000819050919050565b600061196161195c611957846115fd565b61193c565b6115fd565b9050919050565b6000819050919050565b61197b83611946565b61198f61198782611968565b8484546118ea565b825550505050565b600090565b6119a4611997565b6119af818484611972565b505050565b5b818110156119d3576119c860008261199c565b6001810190506119b5565b5050565b601f821115611a18576119e9816118b8565b6119f2846118cd565b81016020851015611a01578190505b611a15611a0d856118cd565b8301826119b4565b50505b505050565b600082821c905092915050565b6000611a3b60001984600802611a1d565b1980831691505092915050565b6000611a548383611a2a565b9150826002028217905092915050565b611a6d82610f98565b67ffffffffffffffff811115611a8657611a856111c5565b5b611a908254611887565b611a9b8282856119d7565b600060209050601f831160018114611ace5760008415611abc578287015190505b611ac68582611a48565b865550611b2e565b601f198416611adc866118b8565b60005b82811015611b0457848901518255600182019150602085019450602081019050611adf565b86831015611b215784890151611b1d601f891682611a2a565b8355505b6001600288020188555050505b505050505050565b60008160601b9050919050565b6000611b4e82611b36565b9050919050565b6000611b6082611b43565b9050919050565b611b78611b738261111d565b611b55565b82525050565b600081905092915050565b6000611b9482610f98565b611b9e8185611b7e565b9350611bae818560208601610fb4565b80840191505092915050565b600081519050919050565b600081905092915050565b6000611bdb82611bba565b611be58185611bc5565b9350611bf5818560208601610fb4565b80840191505092915050565b6000611c0d8287611b67565b601482019150611c1d8286611b67565b601482019150611c2d8285611b89565b9150611c398284611bd0565b915081905095945050505050565b7f7265636f7665726564206164647265737320616e64206174746573746572494460008201527f20646f6e2774206d617463682000000000000000000000000000000000000000602082015250565b6000611ca3602d83611b7e565b9150611cae82611c47565b602d82019050919050565b7f0a2045787065637465643a20202020202020202020202020202020202020202060008201527f2020202000000000000000000000000000000000000000000000000000000000602082015250565b6000611d15602483611b7e565b9150611d2082611cb9565b602482019050919050565b7f0a202f207265636f7665726564416464725369676e656443616c63756c61746560008201527f643a202000000000000000000000000000000000000000000000000000000000602082015250565b6000611d87602483611b7e565b9150611d9282611d2b565b602482019050919050565b6000611da882611c96565b9150611db382611d08565b9150611dbf8285611b89565b9150611dca82611d7a565b9150611dd68284611b89565b91508190509392505050565b600082905092915050565b611df78383611de2565b67ffffffffffffffff811115611e1057611e0f6111c5565b5b611e1a8254611887565b611e258282856119d7565b6000601f831160018114611e545760008415611e42578287013590505b611e4c8582611a48565b865550611eb4565b601f198416611e62866118b8565b60005b82811015611e8a57848901358255600182019150602085019450602081019050611e65565b86831015611ea75784890135611ea3601f891682611a2a565b8355505b6001600288020188555050505b50505050505050565b7f19457468657265756d205369676e6564204d6573736167653a0a000000000000600082015250565b6000611ef3601a83611b7e565b9150611efe82611ebd565b601a82019050919050565b6000611f1482611ee6565b9150611f208285611b89565b9150611f2c8284611bd0565b91508190509392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b6000611f72826115fd565b9150611f7d836115fd565b925082821015611f9057611f8f611f38565b5b828203905092915050565b6000611fa6826115fd565b9150611fb1836115fd565b9250817fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0483118215151615611fea57611fe9611f38565b5b828202905092915050565b60008160011c9050919050565b6000808291508390505b600185111561204c5780860481111561202857612027611f38565b5b60018516156120375780820291505b808102905061204585611ff5565b945061200c565b94509492505050565b6000826120655760019050612121565b816120735760009050612121565b81600181146120895760028114612093576120c2565b6001915050612121565b60ff8411156120a5576120a4611f38565b5b8360020a9150848211156120bc576120bb611f38565b5b50612121565b5060208310610133831016604e8410600b84101617156120f75782820a9050838111156120f2576120f1611f38565b5b612121565b6121048484846001612002565b9250905081840481111561211b5761211a611f38565b5b81810290505b9392505050565b6000612133826115fd565b915061213e836115fd565b925061216b7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8484612055565b905092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601260045260246000fd5b60006121ad826115fd565b91506121b8836115fd565b9250826121c8576121c7612173565b5b828204905092915050565b600060ff82169050919050565b60006121eb826121d3565b91506121f6836121d3565b92508261220657612205612173565b5b828204905092915050565b600061221c826121d3565b9150612227836121d3565b92508160ff048311821515161561224157612240611f38565b5b828202905092915050565b6000612257826121d3565b9150612262836121d3565b92508282101561227557612274611f38565b5b828203905092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b60006122ba826115fd565b91506122c5836115fd565b9250827fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff038211156122fa576122f9611f38565b5b828201905092915050565b6000612310826115fd565b91507fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff820361234257612341611f38565b5b600182019050919050565b6000612358826115fd565b9150612363836115fd565b92508261237357612372612173565b5b828206905092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602160045260246000fd5b7f45434453413a20696e76616c6964207369676e61747572650000000000000000600082015250565b60006123e36018836113ad565b91506123ee826123ad565b602082019050919050565b60006020820190508181036000830152612412816123d6565b9050919050565b7f45434453413a20696e76616c6964207369676e6174757265206c656e67746800600082015250565b600061244f601f836113ad565b915061245a82612419565b602082019050919050565b6000602082019050818103600083015261247e81612442565b9050919050565b7f45434453413a20696e76616c6964207369676e6174757265202773272076616c60008201527f7565000000000000000000000000000000000000000000000000000000000000602082015250565b60006124e16022836113ad565b91506124ec82612485565b604082019050919050565b60006020820190508181036000830152612510816124d4565b9050919050565b7f45434453413a20696e76616c6964207369676e6174757265202776272076616c60008201527f7565000000000000000000000000000000000000000000000000000000000000602082015250565b60006125736022836113ad565b915061257e82612517565b604082019050919050565b600060208201905081810360008301526125a281612566565b9050919050565b60006125b4826121d3565b91506125bf836121d3565b92508260ff038211156125d5576125d4611f38565b5b828201905092915050565b6125e9816121d3565b82525050565b6000608082019050612604600083018761167d565b61261160208301866125e0565b61261e604083018561167d565b61262b606083018461167d565b9594505050505056fea2646970667358221220bde4184c57edfb4d663773abe26cf737cd1760097acde475b33ec07bba2b176364736f6c634300080f0033",
+// ManagementContractMetaRollup is an auto generated low-level Go binding around an user-defined struct.
+type ManagementContractMetaRollup struct {
+	ParentHash   [32]byte
+	Hash         [32]byte
+	AggregatorID common.Address
+	L1Block      [32]byte
+	Number       *big.Int
 }
 
-// GeneratedManagementContractABI is the input ABI used to generate the binding from.
-// Deprecated: Use GeneratedManagementContractMetaData.ABI instead.
-var GeneratedManagementContractABI = GeneratedManagementContractMetaData.ABI
+// ManagementContractTreeElement is an auto generated low-level Go binding around an user-defined struct.
+type ManagementContractTreeElement struct {
+	ElementID *big.Int
+	ParentID  *big.Int
+	Rollup    ManagementContractMetaRollup
+}
 
-// GeneratedManagementContractBin is the compiled bytecode used for deploying new contracts.
-// Deprecated: Use GeneratedManagementContractMetaData.Bin instead.
-var GeneratedManagementContractBin = GeneratedManagementContractMetaData.Bin
+// ECDSAMetaData contains all meta data concerning the ECDSA contract.
+var ECDSAMetaData = &bind.MetaData{
+	ABI: "[]",
+	Bin: "0x60566037600b82828239805160001a607314602a57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600080fdfea2646970667358221220744e00a84dcdd38eb90023f9a414401959a8ad7256c8c6e2f82c723706df170b64736f6c634300080c0033",
+}
 
-// DeployGeneratedManagementContract deploys a new Ethereum contract, binding an instance of GeneratedManagementContract to it.
-func DeployGeneratedManagementContract(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *GeneratedManagementContract, error) {
-	parsed, err := GeneratedManagementContractMetaData.GetAbi()
+// ECDSAABI is the input ABI used to generate the binding from.
+// Deprecated: Use ECDSAMetaData.ABI instead.
+var ECDSAABI = ECDSAMetaData.ABI
+
+// ECDSABin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use ECDSAMetaData.Bin instead.
+var ECDSABin = ECDSAMetaData.Bin
+
+// DeployECDSA deploys a new Ethereum contract, binding an instance of ECDSA to it.
+func DeployECDSA(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *ECDSA, error) {
+	parsed, err := ECDSAMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
@@ -52,111 +68,111 @@ func DeployGeneratedManagementContract(auth *bind.TransactOpts, backend bind.Con
 		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
 	}
 
-	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(GeneratedManagementContractBin), backend)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(ECDSABin), backend)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
-	return address, tx, &GeneratedManagementContract{GeneratedManagementContractCaller: GeneratedManagementContractCaller{contract: contract}, GeneratedManagementContractTransactor: GeneratedManagementContractTransactor{contract: contract}, GeneratedManagementContractFilterer: GeneratedManagementContractFilterer{contract: contract}}, nil
+	return address, tx, &ECDSA{ECDSACaller: ECDSACaller{contract: contract}, ECDSATransactor: ECDSATransactor{contract: contract}, ECDSAFilterer: ECDSAFilterer{contract: contract}}, nil
 }
 
-// GeneratedManagementContract is an auto generated Go binding around an Ethereum contract.
-type GeneratedManagementContract struct {
-	GeneratedManagementContractCaller     // Read-only binding to the contract
-	GeneratedManagementContractTransactor // Write-only binding to the contract
-	GeneratedManagementContractFilterer   // Log filterer for contract events
+// ECDSA is an auto generated Go binding around an Ethereum contract.
+type ECDSA struct {
+	ECDSACaller     // Read-only binding to the contract
+	ECDSATransactor // Write-only binding to the contract
+	ECDSAFilterer   // Log filterer for contract events
 }
 
-// GeneratedManagementContractCaller is an auto generated read-only Go binding around an Ethereum contract.
-type GeneratedManagementContractCaller struct {
+// ECDSACaller is an auto generated read-only Go binding around an Ethereum contract.
+type ECDSACaller struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// GeneratedManagementContractTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type GeneratedManagementContractTransactor struct {
+// ECDSATransactor is an auto generated write-only Go binding around an Ethereum contract.
+type ECDSATransactor struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// GeneratedManagementContractFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type GeneratedManagementContractFilterer struct {
+// ECDSAFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type ECDSAFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// GeneratedManagementContractSession is an auto generated Go binding around an Ethereum contract,
+// ECDSASession is an auto generated Go binding around an Ethereum contract,
 // with pre-set call and transact options.
-type GeneratedManagementContractSession struct {
-	Contract     *GeneratedManagementContract // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts                // Call options to use throughout this session
-	TransactOpts bind.TransactOpts            // Transaction auth options to use throughout this session
+type ECDSASession struct {
+	Contract     *ECDSA            // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
 }
 
-// GeneratedManagementContractCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// ECDSACallerSession is an auto generated read-only Go binding around an Ethereum contract,
 // with pre-set call options.
-type GeneratedManagementContractCallerSession struct {
-	Contract *GeneratedManagementContractCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts                      // Call options to use throughout this session
+type ECDSACallerSession struct {
+	Contract *ECDSACaller  // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts // Call options to use throughout this session
 }
 
-// GeneratedManagementContractTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// ECDSATransactorSession is an auto generated write-only Go binding around an Ethereum contract,
 // with pre-set transact options.
-type GeneratedManagementContractTransactorSession struct {
-	Contract     *GeneratedManagementContractTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts                      // Transaction auth options to use throughout this session
+type ECDSATransactorSession struct {
+	Contract     *ECDSATransactor  // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
 }
 
-// GeneratedManagementContractRaw is an auto generated low-level Go binding around an Ethereum contract.
-type GeneratedManagementContractRaw struct {
-	Contract *GeneratedManagementContract // Generic contract binding to access the raw methods on
+// ECDSARaw is an auto generated low-level Go binding around an Ethereum contract.
+type ECDSARaw struct {
+	Contract *ECDSA // Generic contract binding to access the raw methods on
 }
 
-// GeneratedManagementContractCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type GeneratedManagementContractCallerRaw struct {
-	Contract *GeneratedManagementContractCaller // Generic read-only contract binding to access the raw methods on
+// ECDSACallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type ECDSACallerRaw struct {
+	Contract *ECDSACaller // Generic read-only contract binding to access the raw methods on
 }
 
-// GeneratedManagementContractTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type GeneratedManagementContractTransactorRaw struct {
-	Contract *GeneratedManagementContractTransactor // Generic write-only contract binding to access the raw methods on
+// ECDSATransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type ECDSATransactorRaw struct {
+	Contract *ECDSATransactor // Generic write-only contract binding to access the raw methods on
 }
 
-// NewGeneratedManagementContract creates a new instance of GeneratedManagementContract, bound to a specific deployed contract.
-func NewGeneratedManagementContract(address common.Address, backend bind.ContractBackend) (*GeneratedManagementContract, error) {
-	contract, err := bindGeneratedManagementContract(address, backend, backend, backend)
+// NewECDSA creates a new instance of ECDSA, bound to a specific deployed contract.
+func NewECDSA(address common.Address, backend bind.ContractBackend) (*ECDSA, error) {
+	contract, err := bindECDSA(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &GeneratedManagementContract{GeneratedManagementContractCaller: GeneratedManagementContractCaller{contract: contract}, GeneratedManagementContractTransactor: GeneratedManagementContractTransactor{contract: contract}, GeneratedManagementContractFilterer: GeneratedManagementContractFilterer{contract: contract}}, nil
+	return &ECDSA{ECDSACaller: ECDSACaller{contract: contract}, ECDSATransactor: ECDSATransactor{contract: contract}, ECDSAFilterer: ECDSAFilterer{contract: contract}}, nil
 }
 
-// NewGeneratedManagementContractCaller creates a new read-only instance of GeneratedManagementContract, bound to a specific deployed contract.
-func NewGeneratedManagementContractCaller(address common.Address, caller bind.ContractCaller) (*GeneratedManagementContractCaller, error) {
-	contract, err := bindGeneratedManagementContract(address, caller, nil, nil)
+// NewECDSACaller creates a new read-only instance of ECDSA, bound to a specific deployed contract.
+func NewECDSACaller(address common.Address, caller bind.ContractCaller) (*ECDSACaller, error) {
+	contract, err := bindECDSA(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &GeneratedManagementContractCaller{contract: contract}, nil
+	return &ECDSACaller{contract: contract}, nil
 }
 
-// NewGeneratedManagementContractTransactor creates a new write-only instance of GeneratedManagementContract, bound to a specific deployed contract.
-func NewGeneratedManagementContractTransactor(address common.Address, transactor bind.ContractTransactor) (*GeneratedManagementContractTransactor, error) {
-	contract, err := bindGeneratedManagementContract(address, nil, transactor, nil)
+// NewECDSATransactor creates a new write-only instance of ECDSA, bound to a specific deployed contract.
+func NewECDSATransactor(address common.Address, transactor bind.ContractTransactor) (*ECDSATransactor, error) {
+	contract, err := bindECDSA(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &GeneratedManagementContractTransactor{contract: contract}, nil
+	return &ECDSATransactor{contract: contract}, nil
 }
 
-// NewGeneratedManagementContractFilterer creates a new log filterer instance of GeneratedManagementContract, bound to a specific deployed contract.
-func NewGeneratedManagementContractFilterer(address common.Address, filterer bind.ContractFilterer) (*GeneratedManagementContractFilterer, error) {
-	contract, err := bindGeneratedManagementContract(address, nil, nil, filterer)
+// NewECDSAFilterer creates a new log filterer instance of ECDSA, bound to a specific deployed contract.
+func NewECDSAFilterer(address common.Address, filterer bind.ContractFilterer) (*ECDSAFilterer, error) {
+	contract, err := bindECDSA(address, nil, nil, filterer)
 	if err != nil {
 		return nil, err
 	}
-	return &GeneratedManagementContractFilterer{contract: contract}, nil
+	return &ECDSAFilterer{contract: contract}, nil
 }
 
-// bindGeneratedManagementContract binds a generic wrapper to an already deployed contract.
-func bindGeneratedManagementContract(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(GeneratedManagementContractABI))
+// bindECDSA binds a generic wrapper to an already deployed contract.
+func bindECDSA(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(ECDSAABI))
 	if err != nil {
 		return nil, err
 	}
@@ -167,46 +183,269 @@ func bindGeneratedManagementContract(address common.Address, caller bind.Contrac
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_GeneratedManagementContract *GeneratedManagementContractRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _GeneratedManagementContract.Contract.GeneratedManagementContractCaller.contract.Call(opts, result, method, params...)
+func (_ECDSA *ECDSARaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _ECDSA.Contract.ECDSACaller.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_GeneratedManagementContract *GeneratedManagementContractRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.GeneratedManagementContractTransactor.contract.Transfer(opts)
+func (_ECDSA *ECDSARaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ECDSA.Contract.ECDSATransactor.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_GeneratedManagementContract *GeneratedManagementContractRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.GeneratedManagementContractTransactor.contract.Transact(opts, method, params...)
+func (_ECDSA *ECDSARaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _ECDSA.Contract.ECDSATransactor.contract.Transact(opts, method, params...)
 }
 
 // Call invokes the (constant) contract method with params as input values and
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_GeneratedManagementContract *GeneratedManagementContractCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _GeneratedManagementContract.Contract.contract.Call(opts, result, method, params...)
+func (_ECDSA *ECDSACallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _ECDSA.Contract.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_GeneratedManagementContract *GeneratedManagementContractTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.contract.Transfer(opts)
+func (_ECDSA *ECDSATransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ECDSA.Contract.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_GeneratedManagementContract *GeneratedManagementContractTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.contract.Transact(opts, method, params...)
+func (_ECDSA *ECDSATransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _ECDSA.Contract.contract.Transact(opts, method, params...)
+}
+
+// ManagementContractMetaData contains all meta data concerning the ManagementContract contract.
+var ManagementContractMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_parentHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_aggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"_l1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_number\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_rollupData\",\"type\":\"string\"}],\"name\":\"AddRollup\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_parentID\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"Hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"}],\"internalType\":\"structManagementContract.MetaRollup\",\"name\":\"_r\",\"type\":\"tuple\"}],\"name\":\"AppendRollup\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"Attested\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"GetHostAddresses\",\"outputs\":[{\"internalType\":\"string[]\",\"name\":\"\",\"type\":\"string[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"ElementID\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"ParentID\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"Hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"}],\"internalType\":\"structManagementContract.MetaRollup\",\"name\":\"rollup\",\"type\":\"tuple\"}],\"internalType\":\"structManagementContract.TreeElement\",\"name\":\"element\",\"type\":\"tuple\"}],\"name\":\"GetParentRollup\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"ElementID\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"ParentID\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"Hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"}],\"internalType\":\"structManagementContract.MetaRollup\",\"name\":\"rollup\",\"type\":\"tuple\"}],\"internalType\":\"structManagementContract.TreeElement\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"rollupHash\",\"type\":\"bytes32\"}],\"name\":\"GetRollupByHash\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"ElementID\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"ParentID\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"Hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"}],\"internalType\":\"structManagementContract.MetaRollup\",\"name\":\"rollup\",\"type\":\"tuple\"}],\"internalType\":\"structManagementContract.TreeElement\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"rollupID\",\"type\":\"uint256\"}],\"name\":\"GetRollupByID\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"ElementID\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"ParentID\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"Hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"}],\"internalType\":\"structManagementContract.MetaRollup\",\"name\":\"rollup\",\"type\":\"tuple\"}],\"internalType\":\"structManagementContract.TreeElement\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"HasSecondCousinFork\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_aggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"_initSecret\",\"type\":\"bytes\"},{\"internalType\":\"string\",\"name\":\"_hostAddress\",\"type\":\"string\"}],\"name\":\"InitializeNetworkSecret\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"ParentHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"Hash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"AggregatorID\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"L1Block\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"Number\",\"type\":\"uint256\"}],\"internalType\":\"structManagementContract.MetaRollup\",\"name\":\"r\",\"type\":\"tuple\"}],\"name\":\"InitializeTree\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"IsWithdrawalAvailable\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"requestReport\",\"type\":\"string\"}],\"name\":\"RequestNetworkSecret\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"attesterID\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"requesterID\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"attesterSig\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"responseSecret\",\"type\":\"bytes\"},{\"internalType\":\"string\",\"name\":\"hostAddress\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"verifyAttester\",\"type\":\"bool\"}],\"name\":\"RespondNetworkSecret\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Sigs: map[string]string{
+		"1b1e5402": "AddRollup(bytes32,bytes32,address,bytes32,uint256,string)",
+		"1ac63930": "AppendRollup(uint256,(bytes32,bytes32,address,bytes32,uint256))",
+		"43348b2f": "Attested(address)",
+		"324ff866": "GetHostAddresses()",
+		"31b1d255": "GetParentRollup((uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))",
+		"8236a7ba": "GetRollupByHash(bytes32)",
+		"92aaec79": "GetRollupByID(uint256)",
+		"57b70600": "HasSecondCousinFork()",
+		"68e10383": "InitializeNetworkSecret(address,bytes,string)",
+		"73bba846": "InitializeTree((bytes32,bytes32,address,bytes32,uint256))",
+		"a52f433c": "IsWithdrawalAvailable()",
+		"e34fbfc8": "RequestNetworkSecret(string)",
+		"bbd79e15": "RespondNetworkSecret(address,address,bytes,bytes,string,bool)",
+	},
+	Bin: "0x608060405234801561001057600080fd5b50611959806100206000396000f3fe608060405234801561001057600080fd5b50600436106100cf5760003560e01c806368e103831161008c57806392aaec791161006657806392aaec7914610209578063a52f433c1461021c578063bbd79e151461022c578063e34fbfc81461023f57600080fd5b806368e10383146101d057806373bba846146101e35780638236a7ba146101f657600080fd5b80631ac63930146100d45780631b1e5402146100e957806331b1d255146100fc578063324ff8661461017757806343348b2f1461018c57806357b70600146101c8575b600080fd5b6100e76100e2366004611310565b610252565b005b6100e76100f736600461137f565b610389565b61010f61010a3660046113fa565b6104de565b6040805192151583528151602080850191909152808301518483015291810151805160608086019190915292810151608080860191909152918101516001600160a01b031660a08501529182015160c0840152015160e0820152610100015b60405180910390f35b61017f6104fe565b60405161016e919061148b565b6101b861019a366004611505565b6001600160a01b031660009081526001602052604090205460ff1690565b604051901515815260200161016e565b6101b86105d7565b6100e76101de3660046115b4565b61077f565b6100e76101f136600461162e565b6107fe565b61010f61020436600461164a565b6109d4565b61010f61021736600461164a565b6109f2565b600a54610100900460ff166101b8565b6100e761023a366004611663565b610a72565b6100e761024d366004611725565b610bc4565b6008805490819060006102648361177d565b9190505550600080610275856109f2565b91509150816102be5760405162461bcd60e51b815260206004820152601060248201526f1c185c995b9d081b9bdd08199bdd5b9960821b60448201526064015b60405180910390fd5b6040805160608082018352858252602080830189815283850189815260008981526003808552878220965187559251600180880191909155915180516002880155808501519387019390935582870151600480880180546001600160a01b0319166001600160a01b0390931692909217909155948301516005808801919091556080909301516006909601959095558a8552908252848420805491820181558452818420018790558781015183525220839055600754815114156103825760078390555b5050505050565b6001600160a01b03851660009081526001602052604090205460ff166103f15760405162461bcd60e51b815260206004820152601760248201527f61676772656761746f72206e6f7420617474657374656400000000000000000060448201526064016102b5565b6040805160a081018252888152602081018890526001600160a01b03871691810191909152606081018590526080810184905260095460ff1661043d57610437816107fe565b506104d5565b6000806104498a6109d4565b915091508161049a5760405162461bcd60e51b815260206004820152601a60248201527f756e61626c6520746f2066696e6420706172656e74206861736800000000000060448201526064016102b5565b600754600210156104c55760006104af6105d7565b905080156104c357600a805461ff00191690555b505b80516104d19084610252565b5050505b50505050505050565b60006104e8611118565b6104f583602001516109f2565b91509150915091565b60606002805480602002602001604051908101604052809291908181526020016000905b828210156105ce57838290600052602060002001805461054190611798565b80601f016020809104026020016040519081016040528092919081815260200182805461056d90611798565b80156105ba5780601f1061058f576101008083540402835291602001916105ba565b820191906000526020600020905b81548152906001019060200180831161059d57829003601f168201915b505050505081526020019060010190610522565b50505050905090565b6000806105e2610be3565b90506000806105f0836104de565b915091508161062d5760405162461bcd60e51b81526020600482015260096024820152681b9bc81c185c995b9d60ba1b60448201526064016102b5565b600080610639836104de565b915091508161067c5760405162461bcd60e51b815260206004820152600f60248201526e1b9bc819dc985b99081c185c995b9d608a1b60448201526064016102b5565b80516000908152600560209081526040808320805482518185028101850190935280835291929091908301828280156106d457602002820191906000526020600020905b8154815260200190600101908083116106c0575b5050505050905060005b81518110156107715760008061070c8484815181106106ff576106ff6117d3565b60200260200101516109f2565b9150915081610725576000995050505050505050505090565b86518151141561073657505061075f565b80516000908152600560205260409020541561075c576001995050505050505050505090565b50505b806107698161177d565b9150506106de565b506000965050505050505090565b600a5460ff161561078f57600080fd5b600a8054600160ff1991821681179092556001600160a01b03861660009081526020838152604082208054909316841790925560028054938401815590528251610382927f405787fa12a823e0f2b7631cc41b3ba8828b3321ca811111fa75cd3aa3bb5ace019184019061115a565b60095460ff16156108515760405162461bcd60e51b815260206004820152601b60248201527f63616e6e6f7420626520696e697469616c697a656420616761696e000000000060448201526064016102b5565b6009805460ff191660019081179091556040805160608082018352838252600060208084018281528486018881528784526003835294517fa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3054c55517fa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3054d55925180517fa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3054e55808401517fa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3054f55808501517fa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3055080546001600160a01b039092166001600160a01b0319909216919091179055918201517fa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c30551556080909101517fa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3055255600784905560026008559381015184526004905290912055600a805461ff001916610100179055565b60006109de611118565b6000838152600460205260409020546104f5905b60006109fc611118565b505060009081526003602081815260409283902083516060808201865282548252600183015482850152855160a08101875260028401548152948301549385019390935260048201546001600160a01b031684860152600582015492840192909252600601546080830152918201528051151591565b6001600160a01b03861660009081526001602052604090205460ff1680610a9857600080fd5b8115610b57576000610ace88888688604051602001610aba94939291906117e9565b604051602081830303815290604052610c5f565b90506000610adc8288610c9a565b9050886001600160a01b0316816001600160a01b031614610b545760405162461bcd60e51b815260206004820152602c60248201527f63616c63756c61746564206164647265737320616e642061747465737465724960448201526b08840c8dedce840dac2e8c6d60a31b60648201526084016102b5565b50505b6001600160a01b03861660009081526001602081815260408320805460ff1916831790556002805492830181559092528451610bba927f405787fa12a823e0f2b7631cc41b3ba8828b3321ca811111fa75cd3aa3bb5ace9092019186019061115a565b5050505050505050565b336000908152602081905260409020610bde9083836111de565b505050565b610beb611118565b5060075460009081526003602081815260409283902083516060808201865282548252600183015482850152855160a08101875260028401548152948301549385019390935260048201546001600160a01b0316848601526005820154928401929092526006015460808301529182015290565b6000610c6b8251610cbe565b82604051602001610c7d929190611845565b604051602081830303815290604052805190602001209050919050565b6000806000610ca98585610dc4565b91509150610cb681610e34565b509392505050565b606081610ce25750506040805180820190915260018152600360fc1b602082015290565b8160005b8115610d0c5780610cf68161177d565b9150610d059050600a836118b6565b9150610ce6565b60008167ffffffffffffffff811115610d2757610d27611267565b6040519080825280601f01601f191660200182016040528015610d51576020820181803683370190505b5090505b8415610dbc57610d666001836118ca565b9150610d73600a866118e1565b610d7e9060306118f5565b60f81b818381518110610d9357610d936117d3565b60200101906001600160f81b031916908160001a905350610db5600a866118b6565b9450610d55565b949350505050565b600080825160411415610dfb5760208301516040840151606085015160001a610def87828585610ff2565b94509450505050610e2d565b825160401415610e255760208301516040840151610e1a8683836110df565b935093505050610e2d565b506000905060025b9250929050565b6000816004811115610e4857610e4861190d565b1415610e515750565b6001816004811115610e6557610e6561190d565b1415610eb35760405162461bcd60e51b815260206004820152601860248201527f45434453413a20696e76616c6964207369676e6174757265000000000000000060448201526064016102b5565b6002816004811115610ec757610ec761190d565b1415610f155760405162461bcd60e51b815260206004820152601f60248201527f45434453413a20696e76616c6964207369676e6174757265206c656e6774680060448201526064016102b5565b6003816004811115610f2957610f2961190d565b1415610f825760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202773272076616c604482015261756560f01b60648201526084016102b5565b6004816004811115610f9657610f9661190d565b1415610fef5760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202776272076616c604482015261756560f01b60648201526084016102b5565b50565b6000807f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a083111561102957506000905060036110d6565b8460ff16601b1415801561104157508460ff16601c14155b1561105257506000905060046110d6565b6040805160008082526020820180845289905260ff881692820192909252606081018690526080810185905260019060a0016020604051602081039080840390855afa1580156110a6573d6000803e3d6000fd5b5050604051601f1901519150506001600160a01b0381166110cf576000600192509250506110d6565b9150600090505b94509492505050565b6000806001600160ff1b038316816110fc60ff86901c601b6118f5565b905061110a87828885610ff2565b935093505050935093915050565b604080516060808201835260008083526020808401829052845160a0810186528281529081018290528085018290529182018190526080820152909182015290565b82805461116690611798565b90600052602060002090601f01602090048101928261118857600085556111ce565b82601f106111a157805160ff19168380011785556111ce565b828001600101855582156111ce579182015b828111156111ce5782518255916020019190600101906111b3565b506111da929150611252565b5090565b8280546111ea90611798565b90600052602060002090601f01602090048101928261120c57600085556111ce565b82601f106112255782800160ff198235161785556111ce565b828001600101855582156111ce579182015b828111156111ce578235825591602001919060010190611237565b5b808211156111da5760008155600101611253565b634e487b7160e01b600052604160045260246000fd5b80356001600160a01b038116811461129457600080fd5b919050565b600060a082840312156112ab57600080fd5b60405160a0810181811067ffffffffffffffff821117156112ce576112ce611267565b806040525080915082358152602083013560208201526112f06040840161127d565b604082015260608301356060820152608083013560808201525092915050565b60008060c0838503121561132357600080fd5b823591506113348460208501611299565b90509250929050565b60008083601f84011261134f57600080fd5b50813567ffffffffffffffff81111561136757600080fd5b602083019150836020828501011115610e2d57600080fd5b600080600080600080600060c0888a03121561139a57600080fd5b87359650602088013595506113b16040890161127d565b9450606088013593506080880135925060a088013567ffffffffffffffff8111156113db57600080fd5b6113e78a828b0161133d565b989b979a50959850939692959293505050565b600060e0828403121561140c57600080fd5b6040516060810181811067ffffffffffffffff8211171561142f5761142f611267565b8060405250823581526020830135602082015261144f8460408501611299565b60408201529392505050565b60005b8381101561147657818101518382015260200161145e565b83811115611485576000848401525b50505050565b6000602080830181845280855180835260408601915060408160051b870101925083870160005b828110156114f857878503603f19018452815180518087526114d9818989018a850161145b565b601f01601f1916959095018601945092850192908501906001016114b2565b5092979650505050505050565b60006020828403121561151757600080fd5b6115208261127d565b9392505050565b600082601f83011261153857600080fd5b813567ffffffffffffffff8082111561155357611553611267565b604051601f8301601f19908116603f0116810190828211818310171561157b5761157b611267565b8160405283815286602085880101111561159457600080fd5b836020870160208301376000602085830101528094505050505092915050565b600080600080606085870312156115ca57600080fd5b6115d38561127d565b9350602085013567ffffffffffffffff808211156115f057600080fd5b6115fc8883890161133d565b9095509350604087013591508082111561161557600080fd5b5061162287828801611527565b91505092959194509250565b600060a0828403121561164057600080fd5b6115208383611299565b60006020828403121561165c57600080fd5b5035919050565b60008060008060008060c0878903121561167c57600080fd5b6116858761127d565b95506116936020880161127d565b9450604087013567ffffffffffffffff808211156116b057600080fd5b6116bc8a838b01611527565b955060608901359150808211156116d257600080fd5b6116de8a838b01611527565b945060808901359150808211156116f457600080fd5b5061170189828a01611527565b92505060a0870135801515811461171757600080fd5b809150509295509295509295565b6000806020838503121561173857600080fd5b823567ffffffffffffffff81111561174f57600080fd5b61175b8582860161133d565b90969095509350505050565b634e487b7160e01b600052601160045260246000fd5b600060001982141561179157611791611767565b5060010190565b600181811c908216806117ac57607f821691505b602082108114156117cd57634e487b7160e01b600052602260045260246000fd5b50919050565b634e487b7160e01b600052603260045260246000fd5b60006bffffffffffffffffffffffff19808760601b168352808660601b16601484015250835161182081602885016020880161145b565b83519083019061183781602884016020880161145b565b016028019695505050505050565b7f19457468657265756d205369676e6564204d6573736167653a0a00000000000081526000835161187d81601a85016020880161145b565b83519083019061189481601a84016020880161145b565b01601a01949350505050565b634e487b7160e01b600052601260045260246000fd5b6000826118c5576118c56118a0565b500490565b6000828210156118dc576118dc611767565b500390565b6000826118f0576118f06118a0565b500690565b6000821982111561190857611908611767565b500190565b634e487b7160e01b600052602160045260246000fdfea2646970667358221220baaab66f3329a970b01d7a536b8fe48d7b58d508a7b63743cedea5f3bf60780464736f6c634300080c0033",
+}
+
+// ManagementContractABI is the input ABI used to generate the binding from.
+// Deprecated: Use ManagementContractMetaData.ABI instead.
+var ManagementContractABI = ManagementContractMetaData.ABI
+
+// Deprecated: Use ManagementContractMetaData.Sigs instead.
+// ManagementContractFuncSigs maps the 4-byte function signature to its string representation.
+var ManagementContractFuncSigs = ManagementContractMetaData.Sigs
+
+// ManagementContractBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use ManagementContractMetaData.Bin instead.
+var ManagementContractBin = ManagementContractMetaData.Bin
+
+// DeployManagementContract deploys a new Ethereum contract, binding an instance of ManagementContract to it.
+func DeployManagementContract(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *ManagementContract, error) {
+	parsed, err := ManagementContractMetaData.GetAbi()
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
+
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(ManagementContractBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &ManagementContract{ManagementContractCaller: ManagementContractCaller{contract: contract}, ManagementContractTransactor: ManagementContractTransactor{contract: contract}, ManagementContractFilterer: ManagementContractFilterer{contract: contract}}, nil
+}
+
+// ManagementContract is an auto generated Go binding around an Ethereum contract.
+type ManagementContract struct {
+	ManagementContractCaller     // Read-only binding to the contract
+	ManagementContractTransactor // Write-only binding to the contract
+	ManagementContractFilterer   // Log filterer for contract events
+}
+
+// ManagementContractCaller is an auto generated read-only Go binding around an Ethereum contract.
+type ManagementContractCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// ManagementContractTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type ManagementContractTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// ManagementContractFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type ManagementContractFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// ManagementContractSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type ManagementContractSession struct {
+	Contract     *ManagementContract // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts       // Call options to use throughout this session
+	TransactOpts bind.TransactOpts   // Transaction auth options to use throughout this session
+}
+
+// ManagementContractCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type ManagementContractCallerSession struct {
+	Contract *ManagementContractCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts             // Call options to use throughout this session
+}
+
+// ManagementContractTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type ManagementContractTransactorSession struct {
+	Contract     *ManagementContractTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts             // Transaction auth options to use throughout this session
+}
+
+// ManagementContractRaw is an auto generated low-level Go binding around an Ethereum contract.
+type ManagementContractRaw struct {
+	Contract *ManagementContract // Generic contract binding to access the raw methods on
+}
+
+// ManagementContractCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type ManagementContractCallerRaw struct {
+	Contract *ManagementContractCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// ManagementContractTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type ManagementContractTransactorRaw struct {
+	Contract *ManagementContractTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewManagementContract creates a new instance of ManagementContract, bound to a specific deployed contract.
+func NewManagementContract(address common.Address, backend bind.ContractBackend) (*ManagementContract, error) {
+	contract, err := bindManagementContract(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &ManagementContract{ManagementContractCaller: ManagementContractCaller{contract: contract}, ManagementContractTransactor: ManagementContractTransactor{contract: contract}, ManagementContractFilterer: ManagementContractFilterer{contract: contract}}, nil
+}
+
+// NewManagementContractCaller creates a new read-only instance of ManagementContract, bound to a specific deployed contract.
+func NewManagementContractCaller(address common.Address, caller bind.ContractCaller) (*ManagementContractCaller, error) {
+	contract, err := bindManagementContract(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &ManagementContractCaller{contract: contract}, nil
+}
+
+// NewManagementContractTransactor creates a new write-only instance of ManagementContract, bound to a specific deployed contract.
+func NewManagementContractTransactor(address common.Address, transactor bind.ContractTransactor) (*ManagementContractTransactor, error) {
+	contract, err := bindManagementContract(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &ManagementContractTransactor{contract: contract}, nil
+}
+
+// NewManagementContractFilterer creates a new log filterer instance of ManagementContract, bound to a specific deployed contract.
+func NewManagementContractFilterer(address common.Address, filterer bind.ContractFilterer) (*ManagementContractFilterer, error) {
+	contract, err := bindManagementContract(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &ManagementContractFilterer{contract: contract}, nil
+}
+
+// bindManagementContract binds a generic wrapper to an already deployed contract.
+func bindManagementContract(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(ManagementContractABI))
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_ManagementContract *ManagementContractRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _ManagementContract.Contract.ManagementContractCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_ManagementContract *ManagementContractRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ManagementContract.Contract.ManagementContractTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_ManagementContract *ManagementContractRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _ManagementContract.Contract.ManagementContractTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_ManagementContract *ManagementContractCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _ManagementContract.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_ManagementContract *ManagementContractTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ManagementContract.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_ManagementContract *ManagementContractTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _ManagementContract.Contract.contract.Transact(opts, method, params...)
+}
+
+// Attested is a free data retrieval call binding the contract method 0x43348b2f.
+//
+// Solidity: function Attested(address _addr) view returns(bool)
+func (_ManagementContract *ManagementContractCaller) Attested(opts *bind.CallOpts, _addr common.Address) (bool, error) {
+	var out []interface{}
+	err := _ManagementContract.contract.Call(opts, &out, "Attested", _addr)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// Attested is a free data retrieval call binding the contract method 0x43348b2f.
+//
+// Solidity: function Attested(address _addr) view returns(bool)
+func (_ManagementContract *ManagementContractSession) Attested(_addr common.Address) (bool, error) {
+	return _ManagementContract.Contract.Attested(&_ManagementContract.CallOpts, _addr)
+}
+
+// Attested is a free data retrieval call binding the contract method 0x43348b2f.
+//
+// Solidity: function Attested(address _addr) view returns(bool)
+func (_ManagementContract *ManagementContractCallerSession) Attested(_addr common.Address) (bool, error) {
+	return _ManagementContract.Contract.Attested(&_ManagementContract.CallOpts, _addr)
 }
 
 // GetHostAddresses is a free data retrieval call binding the contract method 0x324ff866.
 //
 // Solidity: function GetHostAddresses() view returns(string[])
-func (_GeneratedManagementContract *GeneratedManagementContractCaller) GetHostAddresses(opts *bind.CallOpts) ([]string, error) {
+func (_ManagementContract *ManagementContractCaller) GetHostAddresses(opts *bind.CallOpts) ([]string, error) {
 	var out []interface{}
-	err := _GeneratedManagementContract.contract.Call(opts, &out, "GetHostAddresses")
+	err := _ManagementContract.contract.Call(opts, &out, "GetHostAddresses")
 
 	if err != nil {
 		return *new([]string), err
@@ -221,54 +460,119 @@ func (_GeneratedManagementContract *GeneratedManagementContractCaller) GetHostAd
 // GetHostAddresses is a free data retrieval call binding the contract method 0x324ff866.
 //
 // Solidity: function GetHostAddresses() view returns(string[])
-func (_GeneratedManagementContract *GeneratedManagementContractSession) GetHostAddresses() ([]string, error) {
-	return _GeneratedManagementContract.Contract.GetHostAddresses(&_GeneratedManagementContract.CallOpts)
+func (_ManagementContract *ManagementContractSession) GetHostAddresses() ([]string, error) {
+	return _ManagementContract.Contract.GetHostAddresses(&_ManagementContract.CallOpts)
 }
 
 // GetHostAddresses is a free data retrieval call binding the contract method 0x324ff866.
 //
 // Solidity: function GetHostAddresses() view returns(string[])
-func (_GeneratedManagementContract *GeneratedManagementContractCallerSession) GetHostAddresses() ([]string, error) {
-	return _GeneratedManagementContract.Contract.GetHostAddresses(&_GeneratedManagementContract.CallOpts)
+func (_ManagementContract *ManagementContractCallerSession) GetHostAddresses() ([]string, error) {
+	return _ManagementContract.Contract.GetHostAddresses(&_ManagementContract.CallOpts)
 }
 
-// AttestationRequests is a free data retrieval call binding the contract method 0x8ef74f89.
+// GetParentRollup is a free data retrieval call binding the contract method 0x31b1d255.
 //
-// Solidity: function attestationRequests(address ) view returns(string)
-func (_GeneratedManagementContract *GeneratedManagementContractCaller) AttestationRequests(opts *bind.CallOpts, arg0 common.Address) (string, error) {
+// Solidity: function GetParentRollup((uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)) element) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractCaller) GetParentRollup(opts *bind.CallOpts, element ManagementContractTreeElement) (bool, ManagementContractTreeElement, error) {
 	var out []interface{}
-	err := _GeneratedManagementContract.contract.Call(opts, &out, "attestationRequests", arg0)
+	err := _ManagementContract.contract.Call(opts, &out, "GetParentRollup", element)
 
 	if err != nil {
-		return *new(string), err
+		return *new(bool), *new(ManagementContractTreeElement), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(string)).(*string)
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+	out1 := *abi.ConvertType(out[1], new(ManagementContractTreeElement)).(*ManagementContractTreeElement)
 
-	return out0, err
+	return out0, out1, err
 
 }
 
-// AttestationRequests is a free data retrieval call binding the contract method 0x8ef74f89.
+// GetParentRollup is a free data retrieval call binding the contract method 0x31b1d255.
 //
-// Solidity: function attestationRequests(address ) view returns(string)
-func (_GeneratedManagementContract *GeneratedManagementContractSession) AttestationRequests(arg0 common.Address) (string, error) {
-	return _GeneratedManagementContract.Contract.AttestationRequests(&_GeneratedManagementContract.CallOpts, arg0)
+// Solidity: function GetParentRollup((uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)) element) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractSession) GetParentRollup(element ManagementContractTreeElement) (bool, ManagementContractTreeElement, error) {
+	return _ManagementContract.Contract.GetParentRollup(&_ManagementContract.CallOpts, element)
 }
 
-// AttestationRequests is a free data retrieval call binding the contract method 0x8ef74f89.
+// GetParentRollup is a free data retrieval call binding the contract method 0x31b1d255.
 //
-// Solidity: function attestationRequests(address ) view returns(string)
-func (_GeneratedManagementContract *GeneratedManagementContractCallerSession) AttestationRequests(arg0 common.Address) (string, error) {
-	return _GeneratedManagementContract.Contract.AttestationRequests(&_GeneratedManagementContract.CallOpts, arg0)
+// Solidity: function GetParentRollup((uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)) element) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractCallerSession) GetParentRollup(element ManagementContractTreeElement) (bool, ManagementContractTreeElement, error) {
+	return _ManagementContract.Contract.GetParentRollup(&_ManagementContract.CallOpts, element)
 }
 
-// Attested is a free data retrieval call binding the contract method 0xd4c80664.
+// GetRollupByHash is a free data retrieval call binding the contract method 0x8236a7ba.
 //
-// Solidity: function attested(address ) view returns(bool)
-func (_GeneratedManagementContract *GeneratedManagementContractCaller) Attested(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+// Solidity: function GetRollupByHash(bytes32 rollupHash) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractCaller) GetRollupByHash(opts *bind.CallOpts, rollupHash [32]byte) (bool, ManagementContractTreeElement, error) {
 	var out []interface{}
-	err := _GeneratedManagementContract.contract.Call(opts, &out, "attested", arg0)
+	err := _ManagementContract.contract.Call(opts, &out, "GetRollupByHash", rollupHash)
+
+	if err != nil {
+		return *new(bool), *new(ManagementContractTreeElement), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+	out1 := *abi.ConvertType(out[1], new(ManagementContractTreeElement)).(*ManagementContractTreeElement)
+
+	return out0, out1, err
+
+}
+
+// GetRollupByHash is a free data retrieval call binding the contract method 0x8236a7ba.
+//
+// Solidity: function GetRollupByHash(bytes32 rollupHash) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractSession) GetRollupByHash(rollupHash [32]byte) (bool, ManagementContractTreeElement, error) {
+	return _ManagementContract.Contract.GetRollupByHash(&_ManagementContract.CallOpts, rollupHash)
+}
+
+// GetRollupByHash is a free data retrieval call binding the contract method 0x8236a7ba.
+//
+// Solidity: function GetRollupByHash(bytes32 rollupHash) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractCallerSession) GetRollupByHash(rollupHash [32]byte) (bool, ManagementContractTreeElement, error) {
+	return _ManagementContract.Contract.GetRollupByHash(&_ManagementContract.CallOpts, rollupHash)
+}
+
+// GetRollupByID is a free data retrieval call binding the contract method 0x92aaec79.
+//
+// Solidity: function GetRollupByID(uint256 rollupID) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractCaller) GetRollupByID(opts *bind.CallOpts, rollupID *big.Int) (bool, ManagementContractTreeElement, error) {
+	var out []interface{}
+	err := _ManagementContract.contract.Call(opts, &out, "GetRollupByID", rollupID)
+
+	if err != nil {
+		return *new(bool), *new(ManagementContractTreeElement), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+	out1 := *abi.ConvertType(out[1], new(ManagementContractTreeElement)).(*ManagementContractTreeElement)
+
+	return out0, out1, err
+
+}
+
+// GetRollupByID is a free data retrieval call binding the contract method 0x92aaec79.
+//
+// Solidity: function GetRollupByID(uint256 rollupID) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractSession) GetRollupByID(rollupID *big.Int) (bool, ManagementContractTreeElement, error) {
+	return _ManagementContract.Contract.GetRollupByID(&_ManagementContract.CallOpts, rollupID)
+}
+
+// GetRollupByID is a free data retrieval call binding the contract method 0x92aaec79.
+//
+// Solidity: function GetRollupByID(uint256 rollupID) view returns(bool, (uint256,uint256,(bytes32,bytes32,address,bytes32,uint256)))
+func (_ManagementContract *ManagementContractCallerSession) GetRollupByID(rollupID *big.Int) (bool, ManagementContractTreeElement, error) {
+	return _ManagementContract.Contract.GetRollupByID(&_ManagementContract.CallOpts, rollupID)
+}
+
+// HasSecondCousinFork is a free data retrieval call binding the contract method 0x57b70600.
+//
+// Solidity: function HasSecondCousinFork() view returns(bool)
+func (_ManagementContract *ManagementContractCaller) HasSecondCousinFork(opts *bind.CallOpts) (bool, error) {
+	var out []interface{}
+	err := _ManagementContract.contract.Call(opts, &out, "HasSecondCousinFork")
 
 	if err != nil {
 		return *new(bool), err
@@ -280,155 +584,346 @@ func (_GeneratedManagementContract *GeneratedManagementContractCaller) Attested(
 
 }
 
-// Attested is a free data retrieval call binding the contract method 0xd4c80664.
+// HasSecondCousinFork is a free data retrieval call binding the contract method 0x57b70600.
 //
-// Solidity: function attested(address ) view returns(bool)
-func (_GeneratedManagementContract *GeneratedManagementContractSession) Attested(arg0 common.Address) (bool, error) {
-	return _GeneratedManagementContract.Contract.Attested(&_GeneratedManagementContract.CallOpts, arg0)
+// Solidity: function HasSecondCousinFork() view returns(bool)
+func (_ManagementContract *ManagementContractSession) HasSecondCousinFork() (bool, error) {
+	return _ManagementContract.Contract.HasSecondCousinFork(&_ManagementContract.CallOpts)
 }
 
-// Attested is a free data retrieval call binding the contract method 0xd4c80664.
+// HasSecondCousinFork is a free data retrieval call binding the contract method 0x57b70600.
 //
-// Solidity: function attested(address ) view returns(bool)
-func (_GeneratedManagementContract *GeneratedManagementContractCallerSession) Attested(arg0 common.Address) (bool, error) {
-	return _GeneratedManagementContract.Contract.Attested(&_GeneratedManagementContract.CallOpts, arg0)
+// Solidity: function HasSecondCousinFork() view returns(bool)
+func (_ManagementContract *ManagementContractCallerSession) HasSecondCousinFork() (bool, error) {
+	return _ManagementContract.Contract.HasSecondCousinFork(&_ManagementContract.CallOpts)
 }
 
-// Rollups is a free data retrieval call binding the contract method 0xe0643dfc.
+// IsWithdrawalAvailable is a free data retrieval call binding the contract method 0xa52f433c.
 //
-// Solidity: function rollups(uint256 , uint256 ) view returns(bytes32 ParentHash, address AggregatorID, bytes32 L1Block, uint256 Number)
-func (_GeneratedManagementContract *GeneratedManagementContractCaller) Rollups(opts *bind.CallOpts, arg0 *big.Int, arg1 *big.Int) (struct {
-	ParentHash   [32]byte
-	AggregatorID common.Address
-	L1Block      [32]byte
-	Number       *big.Int
-}, error) {
+// Solidity: function IsWithdrawalAvailable() view returns(bool)
+func (_ManagementContract *ManagementContractCaller) IsWithdrawalAvailable(opts *bind.CallOpts) (bool, error) {
 	var out []interface{}
-	err := _GeneratedManagementContract.contract.Call(opts, &out, "rollups", arg0, arg1)
+	err := _ManagementContract.contract.Call(opts, &out, "IsWithdrawalAvailable")
 
-	outstruct := new(struct {
-		ParentHash   [32]byte
-		AggregatorID common.Address
-		L1Block      [32]byte
-		Number       *big.Int
-	})
 	if err != nil {
-		return *outstruct, err
+		return *new(bool), err
 	}
 
-	outstruct.ParentHash = *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
-	outstruct.AggregatorID = *abi.ConvertType(out[1], new(common.Address)).(*common.Address)
-	outstruct.L1Block = *abi.ConvertType(out[2], new([32]byte)).(*[32]byte)
-	outstruct.Number = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
 
-	return *outstruct, err
+	return out0, err
 
 }
 
-// Rollups is a free data retrieval call binding the contract method 0xe0643dfc.
+// IsWithdrawalAvailable is a free data retrieval call binding the contract method 0xa52f433c.
 //
-// Solidity: function rollups(uint256 , uint256 ) view returns(bytes32 ParentHash, address AggregatorID, bytes32 L1Block, uint256 Number)
-func (_GeneratedManagementContract *GeneratedManagementContractSession) Rollups(arg0 *big.Int, arg1 *big.Int) (struct {
-	ParentHash   [32]byte
-	AggregatorID common.Address
-	L1Block      [32]byte
-	Number       *big.Int
-}, error) {
-	return _GeneratedManagementContract.Contract.Rollups(&_GeneratedManagementContract.CallOpts, arg0, arg1)
+// Solidity: function IsWithdrawalAvailable() view returns(bool)
+func (_ManagementContract *ManagementContractSession) IsWithdrawalAvailable() (bool, error) {
+	return _ManagementContract.Contract.IsWithdrawalAvailable(&_ManagementContract.CallOpts)
 }
 
-// Rollups is a free data retrieval call binding the contract method 0xe0643dfc.
+// IsWithdrawalAvailable is a free data retrieval call binding the contract method 0xa52f433c.
 //
-// Solidity: function rollups(uint256 , uint256 ) view returns(bytes32 ParentHash, address AggregatorID, bytes32 L1Block, uint256 Number)
-func (_GeneratedManagementContract *GeneratedManagementContractCallerSession) Rollups(arg0 *big.Int, arg1 *big.Int) (struct {
-	ParentHash   [32]byte
-	AggregatorID common.Address
-	L1Block      [32]byte
-	Number       *big.Int
-}, error) {
-	return _GeneratedManagementContract.Contract.Rollups(&_GeneratedManagementContract.CallOpts, arg0, arg1)
+// Solidity: function IsWithdrawalAvailable() view returns(bool)
+func (_ManagementContract *ManagementContractCallerSession) IsWithdrawalAvailable() (bool, error) {
+	return _ManagementContract.Contract.IsWithdrawalAvailable(&_ManagementContract.CallOpts)
 }
 
-// AddRollup is a paid mutator transaction binding the contract method 0xe0fd84bd.
+// AddRollup is a paid mutator transaction binding the contract method 0x1b1e5402.
 //
-// Solidity: function AddRollup(bytes32 ParentHash, address AggregatorID, bytes32 L1Block, uint256 Number, string rollupData) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactor) AddRollup(opts *bind.TransactOpts, ParentHash [32]byte, AggregatorID common.Address, L1Block [32]byte, Number *big.Int, rollupData string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.contract.Transact(opts, "AddRollup", ParentHash, AggregatorID, L1Block, Number, rollupData)
+// Solidity: function AddRollup(bytes32 _parentHash, bytes32 _hash, address _aggregatorID, bytes32 _l1Block, uint256 _number, string _rollupData) returns()
+func (_ManagementContract *ManagementContractTransactor) AddRollup(opts *bind.TransactOpts, _parentHash [32]byte, _hash [32]byte, _aggregatorID common.Address, _l1Block [32]byte, _number *big.Int, _rollupData string) (*types.Transaction, error) {
+	return _ManagementContract.contract.Transact(opts, "AddRollup", _parentHash, _hash, _aggregatorID, _l1Block, _number, _rollupData)
 }
 
-// AddRollup is a paid mutator transaction binding the contract method 0xe0fd84bd.
+// AddRollup is a paid mutator transaction binding the contract method 0x1b1e5402.
 //
-// Solidity: function AddRollup(bytes32 ParentHash, address AggregatorID, bytes32 L1Block, uint256 Number, string rollupData) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractSession) AddRollup(ParentHash [32]byte, AggregatorID common.Address, L1Block [32]byte, Number *big.Int, rollupData string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.AddRollup(&_GeneratedManagementContract.TransactOpts, ParentHash, AggregatorID, L1Block, Number, rollupData)
+// Solidity: function AddRollup(bytes32 _parentHash, bytes32 _hash, address _aggregatorID, bytes32 _l1Block, uint256 _number, string _rollupData) returns()
+func (_ManagementContract *ManagementContractSession) AddRollup(_parentHash [32]byte, _hash [32]byte, _aggregatorID common.Address, _l1Block [32]byte, _number *big.Int, _rollupData string) (*types.Transaction, error) {
+	return _ManagementContract.Contract.AddRollup(&_ManagementContract.TransactOpts, _parentHash, _hash, _aggregatorID, _l1Block, _number, _rollupData)
 }
 
-// AddRollup is a paid mutator transaction binding the contract method 0xe0fd84bd.
+// AddRollup is a paid mutator transaction binding the contract method 0x1b1e5402.
 //
-// Solidity: function AddRollup(bytes32 ParentHash, address AggregatorID, bytes32 L1Block, uint256 Number, string rollupData) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactorSession) AddRollup(ParentHash [32]byte, AggregatorID common.Address, L1Block [32]byte, Number *big.Int, rollupData string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.AddRollup(&_GeneratedManagementContract.TransactOpts, ParentHash, AggregatorID, L1Block, Number, rollupData)
+// Solidity: function AddRollup(bytes32 _parentHash, bytes32 _hash, address _aggregatorID, bytes32 _l1Block, uint256 _number, string _rollupData) returns()
+func (_ManagementContract *ManagementContractTransactorSession) AddRollup(_parentHash [32]byte, _hash [32]byte, _aggregatorID common.Address, _l1Block [32]byte, _number *big.Int, _rollupData string) (*types.Transaction, error) {
+	return _ManagementContract.Contract.AddRollup(&_ManagementContract.TransactOpts, _parentHash, _hash, _aggregatorID, _l1Block, _number, _rollupData)
 }
 
-// InitializeNetworkSecret is a paid mutator transaction binding the contract method 0x68e10383.
+// AppendRollup is a paid mutator transaction binding the contract method 0x1ac63930.
 //
-// Solidity: function InitializeNetworkSecret(address aggregatorID, bytes initSecret, string hostAddress) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactor) InitializeNetworkSecret(opts *bind.TransactOpts, aggregatorID common.Address, initSecret []byte, hostAddress string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.contract.Transact(opts, "InitializeNetworkSecret", aggregatorID, initSecret, hostAddress)
+// Solidity: function AppendRollup(uint256 _parentID, (bytes32,bytes32,address,bytes32,uint256) _r) returns()
+func (_ManagementContract *ManagementContractTransactor) AppendRollup(opts *bind.TransactOpts, _parentID *big.Int, _r ManagementContractMetaRollup) (*types.Transaction, error) {
+	return _ManagementContract.contract.Transact(opts, "AppendRollup", _parentID, _r)
 }
 
-// InitializeNetworkSecret is a paid mutator transaction binding the contract method 0x68e10383.
+// AppendRollup is a paid mutator transaction binding the contract method 0x1ac63930.
 //
-// Solidity: function InitializeNetworkSecret(address aggregatorID, bytes initSecret, string hostAddress) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractSession) InitializeNetworkSecret(aggregatorID common.Address, initSecret []byte, hostAddress string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.InitializeNetworkSecret(&_GeneratedManagementContract.TransactOpts, aggregatorID, initSecret, hostAddress)
+// Solidity: function AppendRollup(uint256 _parentID, (bytes32,bytes32,address,bytes32,uint256) _r) returns()
+func (_ManagementContract *ManagementContractSession) AppendRollup(_parentID *big.Int, _r ManagementContractMetaRollup) (*types.Transaction, error) {
+	return _ManagementContract.Contract.AppendRollup(&_ManagementContract.TransactOpts, _parentID, _r)
+}
+
+// AppendRollup is a paid mutator transaction binding the contract method 0x1ac63930.
+//
+// Solidity: function AppendRollup(uint256 _parentID, (bytes32,bytes32,address,bytes32,uint256) _r) returns()
+func (_ManagementContract *ManagementContractTransactorSession) AppendRollup(_parentID *big.Int, _r ManagementContractMetaRollup) (*types.Transaction, error) {
+	return _ManagementContract.Contract.AppendRollup(&_ManagementContract.TransactOpts, _parentID, _r)
 }
 
 // InitializeNetworkSecret is a paid mutator transaction binding the contract method 0x68e10383.
 //
-// Solidity: function InitializeNetworkSecret(address aggregatorID, bytes initSecret, string hostAddress) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactorSession) InitializeNetworkSecret(aggregatorID common.Address, initSecret []byte, hostAddress string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.InitializeNetworkSecret(&_GeneratedManagementContract.TransactOpts, aggregatorID, initSecret, hostAddress)
+// Solidity: function InitializeNetworkSecret(address _aggregatorID, bytes _initSecret, string _hostAddress) returns()
+func (_ManagementContract *ManagementContractTransactor) InitializeNetworkSecret(opts *bind.TransactOpts, _aggregatorID common.Address, _initSecret []byte, _hostAddress string) (*types.Transaction, error) {
+	return _ManagementContract.contract.Transact(opts, "InitializeNetworkSecret", _aggregatorID, _initSecret, _hostAddress)
+}
+
+// InitializeNetworkSecret is a paid mutator transaction binding the contract method 0x68e10383.
+//
+// Solidity: function InitializeNetworkSecret(address _aggregatorID, bytes _initSecret, string _hostAddress) returns()
+func (_ManagementContract *ManagementContractSession) InitializeNetworkSecret(_aggregatorID common.Address, _initSecret []byte, _hostAddress string) (*types.Transaction, error) {
+	return _ManagementContract.Contract.InitializeNetworkSecret(&_ManagementContract.TransactOpts, _aggregatorID, _initSecret, _hostAddress)
+}
+
+// InitializeNetworkSecret is a paid mutator transaction binding the contract method 0x68e10383.
+//
+// Solidity: function InitializeNetworkSecret(address _aggregatorID, bytes _initSecret, string _hostAddress) returns()
+func (_ManagementContract *ManagementContractTransactorSession) InitializeNetworkSecret(_aggregatorID common.Address, _initSecret []byte, _hostAddress string) (*types.Transaction, error) {
+	return _ManagementContract.Contract.InitializeNetworkSecret(&_ManagementContract.TransactOpts, _aggregatorID, _initSecret, _hostAddress)
+}
+
+// InitializeTree is a paid mutator transaction binding the contract method 0x73bba846.
+//
+// Solidity: function InitializeTree((bytes32,bytes32,address,bytes32,uint256) r) returns()
+func (_ManagementContract *ManagementContractTransactor) InitializeTree(opts *bind.TransactOpts, r ManagementContractMetaRollup) (*types.Transaction, error) {
+	return _ManagementContract.contract.Transact(opts, "InitializeTree", r)
+}
+
+// InitializeTree is a paid mutator transaction binding the contract method 0x73bba846.
+//
+// Solidity: function InitializeTree((bytes32,bytes32,address,bytes32,uint256) r) returns()
+func (_ManagementContract *ManagementContractSession) InitializeTree(r ManagementContractMetaRollup) (*types.Transaction, error) {
+	return _ManagementContract.Contract.InitializeTree(&_ManagementContract.TransactOpts, r)
+}
+
+// InitializeTree is a paid mutator transaction binding the contract method 0x73bba846.
+//
+// Solidity: function InitializeTree((bytes32,bytes32,address,bytes32,uint256) r) returns()
+func (_ManagementContract *ManagementContractTransactorSession) InitializeTree(r ManagementContractMetaRollup) (*types.Transaction, error) {
+	return _ManagementContract.Contract.InitializeTree(&_ManagementContract.TransactOpts, r)
 }
 
 // RequestNetworkSecret is a paid mutator transaction binding the contract method 0xe34fbfc8.
 //
 // Solidity: function RequestNetworkSecret(string requestReport) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactor) RequestNetworkSecret(opts *bind.TransactOpts, requestReport string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.contract.Transact(opts, "RequestNetworkSecret", requestReport)
+func (_ManagementContract *ManagementContractTransactor) RequestNetworkSecret(opts *bind.TransactOpts, requestReport string) (*types.Transaction, error) {
+	return _ManagementContract.contract.Transact(opts, "RequestNetworkSecret", requestReport)
 }
 
 // RequestNetworkSecret is a paid mutator transaction binding the contract method 0xe34fbfc8.
 //
 // Solidity: function RequestNetworkSecret(string requestReport) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractSession) RequestNetworkSecret(requestReport string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.RequestNetworkSecret(&_GeneratedManagementContract.TransactOpts, requestReport)
+func (_ManagementContract *ManagementContractSession) RequestNetworkSecret(requestReport string) (*types.Transaction, error) {
+	return _ManagementContract.Contract.RequestNetworkSecret(&_ManagementContract.TransactOpts, requestReport)
 }
 
 // RequestNetworkSecret is a paid mutator transaction binding the contract method 0xe34fbfc8.
 //
 // Solidity: function RequestNetworkSecret(string requestReport) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactorSession) RequestNetworkSecret(requestReport string) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.RequestNetworkSecret(&_GeneratedManagementContract.TransactOpts, requestReport)
+func (_ManagementContract *ManagementContractTransactorSession) RequestNetworkSecret(requestReport string) (*types.Transaction, error) {
+	return _ManagementContract.Contract.RequestNetworkSecret(&_ManagementContract.TransactOpts, requestReport)
 }
 
 // RespondNetworkSecret is a paid mutator transaction binding the contract method 0xbbd79e15.
 //
 // Solidity: function RespondNetworkSecret(address attesterID, address requesterID, bytes attesterSig, bytes responseSecret, string hostAddress, bool verifyAttester) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactor) RespondNetworkSecret(opts *bind.TransactOpts, attesterID common.Address, requesterID common.Address, attesterSig []byte, responseSecret []byte, hostAddress string, verifyAttester bool) (*types.Transaction, error) {
-	return _GeneratedManagementContract.contract.Transact(opts, "RespondNetworkSecret", attesterID, requesterID, attesterSig, responseSecret, hostAddress, verifyAttester)
+func (_ManagementContract *ManagementContractTransactor) RespondNetworkSecret(opts *bind.TransactOpts, attesterID common.Address, requesterID common.Address, attesterSig []byte, responseSecret []byte, hostAddress string, verifyAttester bool) (*types.Transaction, error) {
+	return _ManagementContract.contract.Transact(opts, "RespondNetworkSecret", attesterID, requesterID, attesterSig, responseSecret, hostAddress, verifyAttester)
 }
 
 // RespondNetworkSecret is a paid mutator transaction binding the contract method 0xbbd79e15.
 //
 // Solidity: function RespondNetworkSecret(address attesterID, address requesterID, bytes attesterSig, bytes responseSecret, string hostAddress, bool verifyAttester) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractSession) RespondNetworkSecret(attesterID common.Address, requesterID common.Address, attesterSig []byte, responseSecret []byte, hostAddress string, verifyAttester bool) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.RespondNetworkSecret(&_GeneratedManagementContract.TransactOpts, attesterID, requesterID, attesterSig, responseSecret, hostAddress, verifyAttester)
+func (_ManagementContract *ManagementContractSession) RespondNetworkSecret(attesterID common.Address, requesterID common.Address, attesterSig []byte, responseSecret []byte, hostAddress string, verifyAttester bool) (*types.Transaction, error) {
+	return _ManagementContract.Contract.RespondNetworkSecret(&_ManagementContract.TransactOpts, attesterID, requesterID, attesterSig, responseSecret, hostAddress, verifyAttester)
 }
 
 // RespondNetworkSecret is a paid mutator transaction binding the contract method 0xbbd79e15.
 //
 // Solidity: function RespondNetworkSecret(address attesterID, address requesterID, bytes attesterSig, bytes responseSecret, string hostAddress, bool verifyAttester) returns()
-func (_GeneratedManagementContract *GeneratedManagementContractTransactorSession) RespondNetworkSecret(attesterID common.Address, requesterID common.Address, attesterSig []byte, responseSecret []byte, hostAddress string, verifyAttester bool) (*types.Transaction, error) {
-	return _GeneratedManagementContract.Contract.RespondNetworkSecret(&_GeneratedManagementContract.TransactOpts, attesterID, requesterID, attesterSig, responseSecret, hostAddress, verifyAttester)
+func (_ManagementContract *ManagementContractTransactorSession) RespondNetworkSecret(attesterID common.Address, requesterID common.Address, attesterSig []byte, responseSecret []byte, hostAddress string, verifyAttester bool) (*types.Transaction, error) {
+	return _ManagementContract.Contract.RespondNetworkSecret(&_ManagementContract.TransactOpts, attesterID, requesterID, attesterSig, responseSecret, hostAddress, verifyAttester)
+}
+
+// StringsMetaData contains all meta data concerning the Strings contract.
+var StringsMetaData = &bind.MetaData{
+	ABI: "[]",
+	Bin: "0x60566037600b82828239805160001a607314602a57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600080fdfea264697066735822122096e640a4442fdf7ef4a072b5526cb009808d85b9a856a0f78712415574c622e864736f6c634300080c0033",
+}
+
+// StringsABI is the input ABI used to generate the binding from.
+// Deprecated: Use StringsMetaData.ABI instead.
+var StringsABI = StringsMetaData.ABI
+
+// StringsBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use StringsMetaData.Bin instead.
+var StringsBin = StringsMetaData.Bin
+
+// DeployStrings deploys a new Ethereum contract, binding an instance of Strings to it.
+func DeployStrings(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *Strings, error) {
+	parsed, err := StringsMetaData.GetAbi()
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
+
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(StringsBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &Strings{StringsCaller: StringsCaller{contract: contract}, StringsTransactor: StringsTransactor{contract: contract}, StringsFilterer: StringsFilterer{contract: contract}}, nil
+}
+
+// Strings is an auto generated Go binding around an Ethereum contract.
+type Strings struct {
+	StringsCaller     // Read-only binding to the contract
+	StringsTransactor // Write-only binding to the contract
+	StringsFilterer   // Log filterer for contract events
+}
+
+// StringsCaller is an auto generated read-only Go binding around an Ethereum contract.
+type StringsCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// StringsTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type StringsTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// StringsFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type StringsFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// StringsSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type StringsSession struct {
+	Contract     *Strings          // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// StringsCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type StringsCallerSession struct {
+	Contract *StringsCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts  // Call options to use throughout this session
+}
+
+// StringsTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type StringsTransactorSession struct {
+	Contract     *StringsTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts  // Transaction auth options to use throughout this session
+}
+
+// StringsRaw is an auto generated low-level Go binding around an Ethereum contract.
+type StringsRaw struct {
+	Contract *Strings // Generic contract binding to access the raw methods on
+}
+
+// StringsCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type StringsCallerRaw struct {
+	Contract *StringsCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// StringsTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type StringsTransactorRaw struct {
+	Contract *StringsTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewStrings creates a new instance of Strings, bound to a specific deployed contract.
+func NewStrings(address common.Address, backend bind.ContractBackend) (*Strings, error) {
+	contract, err := bindStrings(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &Strings{StringsCaller: StringsCaller{contract: contract}, StringsTransactor: StringsTransactor{contract: contract}, StringsFilterer: StringsFilterer{contract: contract}}, nil
+}
+
+// NewStringsCaller creates a new read-only instance of Strings, bound to a specific deployed contract.
+func NewStringsCaller(address common.Address, caller bind.ContractCaller) (*StringsCaller, error) {
+	contract, err := bindStrings(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &StringsCaller{contract: contract}, nil
+}
+
+// NewStringsTransactor creates a new write-only instance of Strings, bound to a specific deployed contract.
+func NewStringsTransactor(address common.Address, transactor bind.ContractTransactor) (*StringsTransactor, error) {
+	contract, err := bindStrings(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &StringsTransactor{contract: contract}, nil
+}
+
+// NewStringsFilterer creates a new log filterer instance of Strings, bound to a specific deployed contract.
+func NewStringsFilterer(address common.Address, filterer bind.ContractFilterer) (*StringsFilterer, error) {
+	contract, err := bindStrings(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &StringsFilterer{contract: contract}, nil
+}
+
+// bindStrings binds a generic wrapper to an already deployed contract.
+func bindStrings(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := abi.JSON(strings.NewReader(StringsABI))
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Strings *StringsRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Strings.Contract.StringsCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Strings *StringsRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Strings.Contract.StringsTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Strings *StringsRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Strings.Contract.StringsTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Strings *StringsCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Strings.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Strings *StringsTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Strings.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Strings *StringsTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Strings.Contract.contract.Transact(opts, method, params...)
 }

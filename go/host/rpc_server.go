@@ -63,15 +63,15 @@ func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
 	}
 	rpcServerNode.RegisterAPIs(rpcAPIs)
 
-	return rpcServerImpl{node: rpcServerNode}
+	return &rpcServerImpl{node: rpcServerNode}
 }
 
-func (s rpcServerImpl) Start() {
+func (s *rpcServerImpl) Start() {
 	if err := s.node.Start(); err != nil {
 		log.Panic("could not start node client server. Cause: %s", err)
 	}
 }
 
-func (s rpcServerImpl) Stop() error {
+func (s *rpcServerImpl) Stop() error {
 	return s.node.Close()
 }
