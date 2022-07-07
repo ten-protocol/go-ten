@@ -112,7 +112,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			if !started {
 				fmt.Printf("Could not connect to client %d. Err %s. Retrying..\n", i, err)
 			}
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 
