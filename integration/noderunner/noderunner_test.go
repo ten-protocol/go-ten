@@ -94,12 +94,12 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	// Check if the host profiler is up
-	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultHostPort))
+	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultHostPort)) //nolint
 	if err != nil {
 		t.Errorf("host profiler is not reachable: %s", err)
 	}
 	// Check if the enclave profiler is up
-	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultEnclavePort))
+	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultEnclavePort)) //nolint
 	if err != nil {
 		t.Errorf("host profiler is not reachable: %s", err)
 	}
@@ -142,9 +142,4 @@ func tcpConnectionAvailable(addr string) bool {
 	_ = conn.Close()
 	// we don't worry about failure while closing, it connected successfully so let test proceed
 	return true
-}
-
-func http_check(url string) error {
-	_, err := http.Get(url)
-	return err
 }
