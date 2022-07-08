@@ -230,7 +230,7 @@ func unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallD
 	if err != nil {
 		panic(err)
 	}
-	callData, found := contractCallData["genesisAttestation"]
+	callData, found := contractCallData["_genesisAttestation"]
 	if !found {
 		panic("call data not found for requestReport")
 	}
