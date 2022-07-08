@@ -129,6 +129,7 @@ func (a *Node) Start() {
 
 		l1tx := &ethadapter.L1InitializeSecretTx{
 			AggregatorID:  &a.ID,
+			Attestation:   common.EncodeAttestation(attestation),
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
 			HostAddress:   a.config.P2PAddress,
 		}
@@ -280,6 +281,7 @@ func (a *Node) waitForEnclave() {
 
 // starts the host main processing loop
 func (a *Node) startProcessing() {
+	//	time.Sleep(time.Second)
 	// Only open the p2p connection when the node is fully initialised
 	a.P2p.StartListening(a)
 
@@ -352,10 +354,11 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			a.processBlock(block)
+			decoded := block.DecodeBlock()
+			a.processBlock(decoded)
 
 			// submit each block to the enclave for ingestion plus validation
-			result = a.EnclaveClient.SubmitBlock(*block.DecodeBlock())
+			result = a.EnclaveClient.SubmitBlock(*decoded)
 			a.storeBlockProcessingResult(result)
 		}
 	}
@@ -375,8 +378,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
-func (a *Node) processBlock(block common.EncodedBlock) {
-	b := block.DecodeBlock()
+func (a *Node) processBlock(b *types.Block) {
 	for _, tx := range b.Transactions() {
 		t := a.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -384,6 +386,7 @@ func (a *Node) processBlock(block common.EncodedBlock) {
 		}
 
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
+			common.LogWithID(a.shortID, "Process shared secret request. Block: %d. Tx: %d", b.NumberU64(), common.ShortHash(tx.Hash()))
 			a.processSharedSecretRequest(scrtReqTx)
 		}
 
@@ -391,6 +394,19 @@ func (a *Node) processBlock(block common.EncodedBlock) {
 			err := a.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
 				common.LogWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+			}
+		}
+
+		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
+			// todo - there can ever be only one `L1InitializeSecretTx` message.
+			// there must be a way to make sure that this transaction can only be sent once.
+			att, err := common.DecodeAttestation(initSecretTx.Attestation)
+			if err != nil {
+				log.Panic("Could not decode attestation report. Cause: %s", err)
+			}
+			err = a.EnclaveClient.StoreAttestation(att)
+			if err != nil {
+				log.Panic("Could not store the attestation report. Cause: %s", err)
 			}
 		}
 	}
@@ -503,12 +519,6 @@ func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 }
 
 func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) {
-	// todo: implement proper protocol so only one host responds to this secret requests initially
-	// 	for now we just have the genesis host respond until protocol implemented
-	if !a.config.IsGenesis {
-		return
-	}
-
 	att, err := common.DecodeAttestation(scrtReqTx.Attestation)
 	if err != nil {
 		common.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
@@ -525,6 +535,18 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 	secret, err := a.EnclaveClient.ShareSecret(att)
 	if err != nil {
 		common.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
+		return
+	}
+
+	// Store the attested key only if the attestation process succeeded.
+	err = a.EnclaveClient.StoreAttestation(att)
+	if err != nil {
+		log.Panic("Could not store attestation. Cause:%s", err)
+	}
+
+	// todo: implement proper protocol so only one host responds to this secret requests initially
+	// 	for now we just have the genesis host respond until protocol implemented
+	if !a.config.IsGenesis {
 		return
 	}
 
@@ -641,8 +663,10 @@ func (a *Node) bootstrapNode() types.Block {
 
 	startTime, logTime := time.Now(), time.Now()
 	for {
+		cb := *currentBlock
+		a.processBlock(&cb)
 		// TODO ingest one block at a time or batch the blocks
-		result := a.EnclaveClient.IngestBlocks([]*types.Block{currentBlock})
+		result := a.EnclaveClient.IngestBlocks([]*types.Block{&cb})
 		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
 			common.LogWithID(
 				a.shortID,
@@ -653,7 +677,7 @@ func (a *Node) bootstrapNode() types.Block {
 		}
 		a.storeBlockProcessingResult(result[0])
 
-		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(currentBlock.Number().Int64() + 1))
+		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(cb.Number().Int64() + 1))
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				break
@@ -663,7 +687,7 @@ func (a *Node) bootstrapNode() types.Block {
 		currentBlock = nextBlk
 
 		if time.Since(logTime) > 30*time.Second {
-			common.LogWithID(a.shortID, "Bootstrapping node at block... %d", currentBlock.NumberU64())
+			common.LogWithID(a.shortID, "Bootstrapping node at block... %d", cb.NumberU64())
 			logTime = time.Now()
 		}
 	}

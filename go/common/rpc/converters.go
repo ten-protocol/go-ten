@@ -85,6 +85,8 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 		Bloom:       header.Bloom.Bytes(),
 		ReceiptHash: header.ReceiptHash.Bytes(),
 		Extra:       header.Extra,
+		R:           header.R.Bytes(),
+		S:           header.S.Bytes(),
 	}
 
 	return &headerMsg
@@ -122,6 +124,8 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 		withdrawals = append(withdrawals, withdrawal)
 	}
 
+	r := &big.Int{}
+	s := &big.Int{}
 	return &common.Header{
 		ParentHash:  gethcommon.BytesToHash(header.ParentHash),
 		Agg:         gethcommon.BytesToAddress(header.Node),
@@ -134,6 +138,8 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 		ReceiptHash: gethcommon.BytesToHash(header.ReceiptHash),
 		Bloom:       types.BytesToBloom(header.Bloom),
 		Extra:       header.Extra,
+		R:           r.SetBytes(header.R),
+		S:           s.SetBytes(header.S),
 	}
 }
 

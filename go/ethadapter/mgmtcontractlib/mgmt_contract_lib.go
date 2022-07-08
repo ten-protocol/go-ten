@@ -99,6 +99,9 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 
 	case RequestSecretMethod:
 		return unpackRequestSecretTx(tx, method, contractCallData)
+
+	case InitializeSecretMethod:
+		return unpackInitSecretTx(tx, method, contractCallData)
 	}
 
 	return nil
@@ -181,6 +184,7 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 		tx.AggregatorID,
 		tx.InitialSecret,
 		tx.HostAddress,
+		base64EncodeToString(tx.Attestation),
 	)
 	if err != nil {
 		panic(err)
@@ -219,6 +223,27 @@ func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([][]string, e
 	}
 
 	return unpackedResponseStrings, nil
+}
+
+func unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1InitializeSecretTx {
+	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
+	if err != nil {
+		panic(err)
+	}
+	callData, found := contractCallData["_genesisAttestation"]
+	if !found {
+		panic("call data not found for requestReport")
+	}
+
+	att := Base64DecodeFromString(callData.(string))
+	if err != nil {
+		log.Panic("could not decode attestation request. Cause: %s", err)
+	}
+
+	// todo - add the other fields
+	return &ethadapter.L1InitializeSecretTx{
+		Attestation: att,
+	}
 }
 
 func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RequestSecretTx {

@@ -59,10 +59,11 @@ type Header struct {
 	Root        StateRoot
 	TxHash      gethcommon.Hash // todo - include the synthetic deposits
 	Number      *big.Int        // the rollup height
-	Withdrawals []Withdrawal
 	Bloom       types.Bloom
 	ReceiptHash gethcommon.Hash
 	Extra       []byte
+	R, S        *big.Int // signature values
+	Withdrawals []Withdrawal
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header
@@ -148,9 +149,12 @@ func (r *EncryptedRollup) Hash() L2RootHash {
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
-// RLP encoding.
+// RLP encoding excluding the signature.
 func (h *Header) Hash() L2RootHash {
-	hash, err := RLPHash(h)
+	cp := *h
+	cp.R = nil
+	cp.S = nil
+	hash, err := RLPHash(cp)
 	if err != nil {
 		log.Error("err hashing the l2roothash")
 	}
