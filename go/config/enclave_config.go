@@ -42,6 +42,8 @@ type EnclaveConfig struct {
 	// filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
 	//	if using InMemory DB or if attestation is enabled)
 	SqliteDBPath string
+	// ProfilerEnabled starts a profiler instance
+	ProfilerEnabled bool
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -64,5 +66,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		ViewingKeysEnabled:        true,
 		EdgelessDBHost:            "",
 		SqliteDBPath:              "",
+		ProfilerEnabled:           false,
 	}
 }

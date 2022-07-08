@@ -55,6 +55,8 @@ type HostConfig struct {
 	L1ChainID int64
 	// The ID of the Obscuro chain
 	ObscuroChainID int64
+	// ProfilerEnabled starts a profiler instance
+	ProfilerEnabled bool
 }
 
 // DefaultHostConfig returns a HostConfig with default values.

@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/common/profiler"
+
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
@@ -102,6 +104,15 @@ func NewHost(
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
 		host.rpcServer = NewRPCServer(config, host)
+	}
+
+	var prof *profiler.Profiler
+	if config.ProfilerEnabled {
+		prof = profiler.NewProfiler(profiler.DefaultHostPort)
+		err := prof.Start()
+		if err != nil {
+			log.Panic("unable to start the profiler: %s", err)
+		}
 	}
 
 	return host

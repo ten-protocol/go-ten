@@ -33,6 +33,7 @@ type HostConfigToml struct {
 	PrivateKey              string
 	L1ChainID               int64
 	ObscuroChainID          int64
+	ProfilerEnabled         bool
 }
 
 // ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
@@ -60,6 +61,7 @@ func ParseConfig() config.HostConfig {
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, l1ChainIDUsage)
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, obscuroChainIDUsage)
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, privateKeyUsage)
+	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, profilerEnabledUsage)
 
 	flag.Parse()
 
@@ -88,6 +90,7 @@ func ParseConfig() config.HostConfig {
 	cfg.LogPath = *logPath
 	cfg.L1ChainID = *l1ChainID
 	cfg.ObscuroChainID = *obscuroChainID
+	cfg.ProfilerEnabled = *profilerEnabled
 
 	return cfg
 }
@@ -126,5 +129,6 @@ func fileBasedConfig(configPath string) config.HostConfig {
 		PrivateKeyString:       tomlConfig.PrivateKey,
 		L1ChainID:              tomlConfig.L1ChainID,
 		ObscuroChainID:         tomlConfig.ObscuroChainID,
+		ProfilerEnabled:        tomlConfig.ProfilerEnabled,
 	}
 }

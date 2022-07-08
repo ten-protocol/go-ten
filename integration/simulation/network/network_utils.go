@@ -132,6 +132,7 @@ func createSocketObscuroNode(
 		P2PAddress:             p2pAddr,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
+		ProfilerEnabled:        isGenesis,
 	}
 
 	// create an enclave client
