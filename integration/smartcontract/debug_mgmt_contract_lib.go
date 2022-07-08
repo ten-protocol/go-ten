@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"fmt"
 
+	generatedManagementContract "github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
+
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"

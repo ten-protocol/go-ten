@@ -1,6 +1,6 @@
 package mgmtcontractlib
 
-import "github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
+import ManagementContract "github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
 
 const (
 	AddRollupMethod        = "AddRollup"
