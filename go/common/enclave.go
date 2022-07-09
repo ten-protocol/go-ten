@@ -19,6 +19,9 @@ type Enclave interface {
 	// ShareSecret - verify the attestation and return the shared secret (encrypted with the key from the attestation)
 	ShareSecret(report *AttestationReport) (EncryptedSharedEnclaveSecret, error)
 
+	// StoreAttestation - store the public key against the counterparties
+	StoreAttestation(report *AttestationReport) error
+
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 

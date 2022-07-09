@@ -1,6 +1,6 @@
 package mgmtcontractlib
 
-import "github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
+import ManagementContract "github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
 
 const (
 	AddRollupMethod        = "AddRollup"
@@ -11,6 +11,6 @@ const (
 )
 
 var (
-	MgmtContractByteCode = generatedManagementContract.GeneratedManagementContractMetaData.Bin[2:]
-	MgmtContractABI      = generatedManagementContract.GeneratedManagementContractMetaData.ABI
+	MgmtContractByteCode = ManagementContract.ManagementContractMetaData.Bin[2:]
+	MgmtContractABI      = ManagementContract.ManagementContractMetaData.ABI
 )

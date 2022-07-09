@@ -379,3 +379,20 @@ func (c *EnclaveRPCClient) GetCode(address gethcommon.Address, rollupHash *gethc
 	}
 	return resp.Code, nil
 }
+
+func (c *EnclaveRPCClient) StoreAttestation(report *common.AttestationReport) error {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	msg := rpc.ToAttestationReportMsg(report)
+	resp, err := c.protoClient.StoreAttestation(timeoutCtx, &generated.StoreAttestationRequest{
+		AttestationReportMsg: &msg,
+	})
+	if err != nil {
+		return err
+	}
+	if resp.Error != "" {
+		return fmt.Errorf(resp.Error)
+	}
+	return nil
+}

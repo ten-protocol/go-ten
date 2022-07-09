@@ -2,6 +2,8 @@ package rollupchain
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -51,10 +53,11 @@ type RollupChain struct {
 	rpcEncryptionManager  rpcencryptionmanager.RPCEncryptionManager
 	mempool               mempool.Manager
 
+	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, obscuroChainID int64, ethereumChainID int64) *RollupChain {
+func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, privateKey *ecdsa.PrivateKey, obscuroChainID int64, ethereumChainID int64) *RollupChain {
 	return &RollupChain{
 		nodeID:                nodeID,
 		hostID:                hostID,
@@ -63,6 +66,7 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		bridge:                bridge,
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
+		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		obscuroChainID:        obscuroChainID,
 		ethereumChainID:       ethereumChainID,
@@ -85,7 +89,9 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		[]common.Withdrawal{},
 		common.GenerateNonce(),
 		gethcommon.BigToHash(big.NewInt(0)))
-	return &rolGenesis, b
+	rc.signRollup(rolGenesis)
+
+	return rolGenesis, b
 }
 
 func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionResponse {
@@ -209,20 +215,13 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 		return nil
 	}
 
-	bs, stateDB, head, receipts := rc.calculateBlockState(b, parentState, rollups)
+	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
 	log.Trace(fmt.Sprintf(">   Agg%d: Calc block state b_%d: Found: %t - r_%d, ",
 		rc.nodeID,
 		common.ShortHash(b.Hash()),
 		bs.FoundNewRollup,
 		common.ShortHash(bs.HeadRollup)))
 
-	if bs.FoundNewRollup {
-		// todo - root
-		_, err := stateDB.Commit(true)
-		if err != nil {
-			log.Panic("could not commit new rollup to state DB. Cause: %s", err)
-		}
-	}
 	rc.storage.SaveNewHead(bs, head, receipts)
 
 	return bs
@@ -343,45 +342,16 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscurocore.BlockState, rollups []*obscurocore.Rollup) (*obscurocore.BlockState, *state.StateDB, *obscurocore.Rollup, []*types.Receipt) {
+func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscurocore.BlockState, rollups []*obscurocore.Rollup) (*obscurocore.BlockState, *obscurocore.Rollup, []*types.Receipt) {
 	currentHead, found := rc.storage.FetchRollup(parentState.HeadRollup)
 	if !found {
 		log.Panic("could not fetch parent rollup")
 	}
 	newHeadRollup, found := FindWinner(currentHead, rollups, rc.storage)
-	stateDB := rc.storage.CreateStateDB(parentState.HeadRollup)
 	var rollupTxReceipts []*types.Receipt
 	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
-		// Preprocessing before passing to the vm
-		// todo transform into an eth block structure
-		parentRollup := rc.storage.ParentRollup(newHeadRollup)
-		depositTxs := rc.bridge.ExtractDeposits(rc.storage.Proof(parentRollup), rc.storage.Proof(newHeadRollup), rc.storage, stateDB)
-
-		// deposits have to be processed after the normal transactions were executed because during speculative execution they are not available
-		txsToProcess := append(newHeadRollup.Transactions, depositTxs...)
-		receipts := evm.ExecuteTransactions(txsToProcess, stateDB, newHeadRollup.Header, rc.storage, rc.obscuroChainID, 0)
-		rootHash := stateDB.IntermediateRoot(true)
-
-		// todo - this should call the "checkRollup" function, but that's difficult to achieve now without some refactoring. This will be done in the next PR.
-		if !bytes.Equal(newHeadRollup.Header.Root.Bytes(), rootHash.Bytes()) {
-			// dump := stateDB.Dump(&state.DumpConfig{})
-			dump := ""
-			log.Error("Calculated a different state. This should not happen as there are no malicious actors yet. Rollup: r_%d, \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s",
-				common.ShortHash(newHeadRollup.Hash()), rootHash, newHeadRollup.Header.Root, newHeadRollup.Header.Number, obscurocore.PrintTxs(newHeadRollup.Transactions), dump)
-		}
-
-		// todo - handle failure , which means a new winner must be selected
-
-		// We only return the receipts for the rollup transactions, and not for deposits.
-		for _, receipt := range receipts {
-			for _, tx := range newHeadRollup.Transactions {
-				if receipt.TxHash == tx.Hash() {
-					rollupTxReceipts = append(rollupTxReceipts, receipt)
-					break
-				}
-			}
-		}
+		rollupTxReceipts, _ = rc.checkRollup(newHeadRollup)
 	} else {
 		newHeadRollup = currentHead
 	}
@@ -391,11 +361,11 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 		HeadRollup:     newHeadRollup.Hash(),
 		FoundNewRollup: found,
 	}
-	return &bs, stateDB, newHeadRollup, rollupTxReceipts
+	return &bs, newHeadRollup, rollupTxReceipts
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
-func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) {
+func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*types.Receipt) {
 	stateDB := rc.storage.CreateStateDB(r.Header.ParentHash)
 	// calculate the state to compare with what is in the Rollup
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
@@ -405,8 +375,18 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) {
 
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
 	if !isValid {
-		log.Error("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
+		log.Panic("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
 	}
+
+	// todo - check that the transactions hash to the header.txHash
+
+	// verify the signature
+	isValid = rc.verifySig(r)
+	if !isValid {
+		log.Panic("Should only happen once we start including malicious actors. Until then, a rollup with an invalid signature is a bug.")
+	}
+
+	return txReceipts, depositReceipts
 }
 
 func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receipt {
@@ -463,6 +443,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	r := rc.produceRollup(&block, blockState)
 
+	rc.signRollup(r)
 	rc.checkRollup(r)
 
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
@@ -702,4 +683,27 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	}
 
 	return encryptedBalance, nil
+}
+
+func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
+	var err error
+	h := r.Hash()
+	r.Header.R, r.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
+	if err != nil {
+		log.Panic("Could not sign rollup. Cause: %s", err)
+	}
+}
+
+func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
+	// If this rollup is generated by the current enclave skip the sig verification
+	if bytes.Equal(r.Header.Agg.Bytes(), rc.hostID.Bytes()) {
+		return true
+	}
+
+	h := r.Hash()
+	if r.Header.R == nil || r.Header.S == nil {
+		panic("Missing signature on rollup")
+	}
+	pubKey := rc.storage.FetchAttestedKey(r.Header.Agg)
+	return ecdsa.Verify(pubKey, h[:], r.Header.R, r.Header.S)
 }
