@@ -476,13 +476,11 @@ func (a *Node) broadcastL1Tx(tx types.TxData) {
 	// TODO add retry and deal with failures
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
-		// todo - joel - wrap err, log+panic
 		panic(err)
 	}
 
 	err = a.ethClient.SendTransaction(signedTx)
 	if err != nil {
-		// todo - joel - wrap err, log+panic
 		panic(err)
 	}
 }
