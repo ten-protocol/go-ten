@@ -15,13 +15,12 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/enclave/core"
 )
 
-// enclavePrivateKeyHex is the private key used for sensitive communication with the enclave.
-// TODO - Replace this fixed key with a derived key.
-const enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
+// obscuroPrivateKeyHex is the private key used for sensitive communication with the enclave.
+// TODO - Replace this fixed key with a key derived from the master seed.
+const obscuroPrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 
 func GetObscuroKey() *ecdsa.PrivateKey {
-	// todo: This should be generated deterministically based on some enclave attributes if possible
-	key, err := crypto.HexToECDSA(enclavePrivateKeyHex)
+	key, err := crypto.HexToECDSA(obscuroPrivateKeyHex)
 	if err != nil {
 		panic("Failed to create enclave private key")
 	}

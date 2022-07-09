@@ -1,17 +1,13 @@
 package smartcontract
 
 import (
-	"bytes"
-	"math/big"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/obscuro-playground/go/common"
 	"github.com/obscuronet/obscuro-playground/go/config"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter"
@@ -21,6 +17,8 @@ import (
 	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
 	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
 	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // netInfo is a bag holder struct for output data from the execution/run of a network
@@ -85,6 +83,7 @@ func TestManagementContract(t *testing.T) {
 		"nonAttestedNodesCannotAttest":       nonAttestedNodesCannotAttest,
 		"newlyAttestedNodesCanAttest":        newlyAttestedNodesCanAttest,
 		"attestedNodeHostAddressesAreStored": attestedNodeHostAddressesAreStored,
+		"detectSimpleFork":                   detectSimpleFork,
 	} {
 		t.Run(name, func(t *testing.T) {
 			// deploy the same contract to a new address
@@ -141,7 +140,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	}
 
 	// was the pubkey stored ?
-	attested, err := mgmtContractLib.genContract.Attested(nil, aggregatorID)
+	attested, err := mgmtContractLib.GenContract.Attested(nil, aggregatorID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -187,31 +186,13 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
+		t.Errorf("transaction should have succeeded, expected %d got %d", types.ReceiptStatusSuccessful, receipt.Status)
 	}
 
 	// issue a rollup from the attested node
-	txData = mgmtContractLib.CreateRollup(&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&rollup)}, w.GetNonceAndIncrement())
-	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
+	err = mgmtContractLib.AwaitedIssueRollup(rollup, client, w)
 	if err != nil {
 		t.Error(err)
-	}
-
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
-	}
-
-	// make sure the rollup was stored in the contract
-	storedRollup, err := mgmtContractLib.genContract.Rollups(nil, receipt.BlockNumber, big.NewInt(0))
-	if err != nil {
-		t.Error(err)
-	}
-
-	if storedRollup.Number.Int64() != rollup.Header.Number.Int64() ||
-		!bytes.Equal(storedRollup.ParentHash[:], rollup.Header.ParentHash.Bytes()) ||
-		!bytes.Equal(storedRollup.AggregatorID[:], rollup.Header.Agg.Bytes()) ||
-		!bytes.Equal(storedRollup.L1Block[:], rollup.Header.L1Proof.Bytes()) {
-		t.Error("stored rollup does not match the generated rollup")
 	}
 }
 
@@ -334,7 +315,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
-	attested, err := mgmtContractLib.genContract.Attested(nil, aggAID)
+	attested, err := mgmtContractLib.GenContract.Attested(nil, aggAID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -404,7 +385,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	}
 
 	// test if aggregator is attested
-	attested, err = mgmtContractLib.genContract.Attested(nil, aggCID)
+	attested, err = mgmtContractLib.GenContract.Attested(nil, aggCID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -431,7 +412,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	}
 
 	// test if aggregator is attested
-	attested, err = mgmtContractLib.genContract.Attested(nil, aggBID)
+	attested, err = mgmtContractLib.GenContract.Attested(nil, aggBID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -527,12 +508,158 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}
 
-	hostAddresses, err := mgmtContractLib.genContract.GetHostAddresses(nil)
+	hostAddresses, err := mgmtContractLib.GenContract.GetHostAddresses(nil)
 	if err != nil {
 		t.Error(err)
 	}
 	expectedHostAddresses := []string{aggAHostAddr, aggBHostAddr}
 	if !reflect.DeepEqual(hostAddresses, expectedHostAddresses) {
 		t.Errorf("expected to find host addresses %s, found %s", expectedHostAddresses, hostAddresses)
+	}
+}
+
+// detectSimpleFork agg A initializes the network, agg A creates 3 correct rollups, then makes a depth 2 fork and expects the contract to detect
+//
+//                    -> 4'-> 5'
+//   0 -> 1 -> 2 -> 3 -> 4 -> 5  -> 6 (contract marked with invalid withdrawals)
+//
+func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
+	secretBytes := []byte("This is super random")
+	// crypto.GenerateKey will generate a PK that does not play along this test
+	aggAPrivateKey, err := crypto.ToECDSA(hexutil.MustDecode("0xc0083389f7a5925b662f8982080ced523bcc5e5dc33c6b1eaf11e288183e3c95"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	aggAID := crypto.PubkeyToAddress(aggAPrivateKey.PublicKey)
+
+	// the aggregator starts the network
+	txData := mgmtContractLib.CreateInitializeSecret(
+		&ethadapter.L1InitializeSecretTx{
+			AggregatorID:  &aggAID,
+			InitialSecret: secretBytes,
+		},
+		w.GetNonceAndIncrement(),
+	)
+
+	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
+	if err != nil {
+		t.Error(err)
+	}
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
+	}
+	attested, err := mgmtContractLib.GenContract.Attested(nil, aggAID)
+	if err != nil {
+		t.Error(err)
+	}
+	if !attested {
+		t.Error("expected agg to be attested")
+	}
+
+	// Issue a genesis rollup
+	rollup := datagenerator.RandomRollup()
+	rollup.Header.Agg = aggAID
+
+	err = mgmtContractLib.AwaitedIssueRollup(rollup, client, w)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Logf("Issued Rollup: %s parent: %s", rollup.Hash(), rollup.Header.ParentHash)
+
+	// Issues 3 rollups
+	parentRollup := rollup
+	for i := 0; i < 3; i++ {
+		// issue rollup - make sure it comes from the attested aggregator
+		r := datagenerator.RandomRollup()
+		r.Header.Agg = aggAID
+		r.Header.ParentHash = parentRollup.Header.Hash()
+
+		// each rollup is child of the previous rollup
+		parentRollup = r
+
+		// issue the rollup
+		err = mgmtContractLib.AwaitedIssueRollup(r, client, w)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)
+	}
+
+	// inserts a fork ( two rollups at same height / same parent )
+	splitPoint := make([]common.EncryptedRollup, 2)
+	for i := 0; i < 2; i++ {
+		r := datagenerator.RandomRollup()
+		r.Header.Agg = aggAID
+
+		// same parent
+		r.Header.ParentHash = parentRollup.Header.Hash()
+
+		// store these on the side as fork branches
+		splitPoint[i] = r
+
+		// issue the rollup
+		err = mgmtContractLib.AwaitedIssueRollup(r, client, w)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)
+	}
+
+	// create the fork
+	forks := make([]common.EncryptedRollup, 2)
+	for i, parentRollup := range splitPoint {
+		r := datagenerator.RandomRollup()
+		r.Header.Agg = aggAID
+		r.Header.ParentHash = parentRollup.Header.Hash()
+
+		forks[i] = r
+
+		// issue the rollup
+		err = mgmtContractLib.AwaitedIssueRollup(r, client, w)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)
+	}
+
+	available, err := mgmtContractLib.GenContract.IsWithdrawalAvailable(nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !available {
+		t.Error("Withdrawals should be available at this stage")
+	}
+
+	// lock the contract
+	parentRollup = forks[1]
+
+	r := datagenerator.RandomRollup()
+	r.Header.Agg = aggAID
+	r.Header.ParentHash = parentRollup.Header.Hash()
+
+	t.Logf("LAST Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)
+
+	txData = mgmtContractLib.CreateRollup(
+		&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&r)},
+		w.GetNonceAndIncrement(),
+	)
+
+	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		t.Errorf("transaction should have succeeded, expected %d got %d ", types.ReceiptStatusSuccessful, receipt.Status)
+	}
+
+	available, err = mgmtContractLib.GenContract.IsWithdrawalAvailable(nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if available {
+		t.Error("Withdrawals should NOT be available at this stage")
 	}
 }

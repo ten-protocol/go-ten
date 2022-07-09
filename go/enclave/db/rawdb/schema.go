@@ -7,7 +7,10 @@ import (
 )
 
 var (
-	sharedSecret             = []byte("SharedSecret")
+	sharedSecret = []byte("SharedSecret")
+
+	attestationKeyPrefix = []byte("oAK") // attestationKeyPrefix + address -> key
+
 	genesisRollupHash        = []byte("GenesisRollupHash")
 	rollupHeaderPrefix       = []byte("oh")          // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
 	headerHashSuffix         = []byte("on")          // headerPrefix + num (uint64 big endian) + headerHashSuffix -> hash
@@ -75,4 +78,8 @@ func bloomBitsKey(bit uint, section uint64, hash common.Hash) []byte {
 // headerHashKey = headerPrefix + num (uint64 big endian) + headerHashSuffix
 func headerHashKey(number uint64) []byte {
 	return append(append(rollupHeaderPrefix, encodeRollupNumber(number)...), headerHashSuffix...)
+}
+
+func attestationPkKey(aggregator common.Address) []byte {
+	return append(attestationKeyPrefix, aggregator.Bytes()...)
 }

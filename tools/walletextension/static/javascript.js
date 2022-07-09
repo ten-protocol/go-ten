@@ -18,6 +18,11 @@ const initialize = () => {
     const statusArea = document.getElementById(idStatus);
 
     generateViewingKeyButton.addEventListener(eventClick, async () => {
+        if (typeof ethereum === "undefined") {
+            statusArea.innerText = "`ethereum` object is not available. Please install and enable MetaMask."
+            return
+        }
+
         const viewingKeyResp = await fetch(pathGenerateViewingKey);
         if (!viewingKeyResp.ok) {
             statusArea.innerText = "Failed to generate viewing key."
