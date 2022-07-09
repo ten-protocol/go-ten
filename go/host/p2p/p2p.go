@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
 	"sync/atomic"
@@ -76,12 +77,12 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 	p.peerAddresses = newPeers
 }
 
-func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) {
-	p.broadcast(Tx, tx, p.peerAddresses)
+func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
+	return p.broadcast(Tx, tx, p.peerAddresses)
 }
 
-func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) {
-	p.broadcast(Rollup, r, p.peerAddresses)
+func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) error {
+	return p.broadcast(Rollup, r, p.peerAddresses)
 }
 
 // Listens for connections and handles them in a separate goroutine.
@@ -135,16 +136,18 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 }
 
 // Creates a P2P message and broadcasts it to all peers.
-func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) {
+func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) error {
 	msg := Message{Type: msgType, MsgContents: bytes}
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
-		common.LogWithID(p.nodeID, "could not encode message to send to peers. Cause: %s", err)
+		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
 
 	for _, address := range toAddresses {
 		p.sendBytes(address, msgEncoded)
 	}
+
+	return nil
 }
 
 // sendBytes Sends the bytes over P2P to the given address.
