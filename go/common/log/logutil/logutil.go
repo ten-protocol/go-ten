@@ -16,7 +16,7 @@ type TestLogCfg struct {
 
 // SetupTestLog will direct logs to a timestamped log file with a standard naming pattern, useful for simulations etc.
 func SetupTestLog(cfg *TestLogCfg) *os.File {
-	// create a folder specific for the test
+	// Create a folder for the logs if none exists.
 	err := os.MkdirAll(cfg.LogDir, 0o700)
 	if err != nil {
 		panic(err)
