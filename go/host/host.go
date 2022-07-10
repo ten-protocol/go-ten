@@ -308,14 +308,14 @@ func (a *Node) startProcessing() {
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			err := a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
 			if err != nil {
-				common.LogWithID(a.shortID, "Could not process block received via RPC. Cause: %v", err)
+				common.WarnWithID(a.shortID, "Could not process block received via RPC. Cause: %v", err)
 			}
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			err := a.processBlocks(f, roundInterrupt)
 			if err != nil {
-				common.LogWithID(a.shortID, "Could not process fork received via RPC. Cause: %v", err)
+				common.WarnWithID(a.shortID, "Could not process fork received via RPC. Cause: %v", err)
 			}
 
 		case r := <-a.rollupsP2PCh:
@@ -326,7 +326,7 @@ func (a *Node) startProcessing() {
 				common.ShortAddress(rol.Header.Agg),
 			))
 			if err != nil {
-				common.LogWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
+				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
 
 			go a.EnclaveClient.SubmitRollup(common.ExtRollup{
@@ -337,7 +337,7 @@ func (a *Node) startProcessing() {
 
 		case tx := <-a.txP2PCh:
 			if _, err := a.EnclaveClient.SubmitTx(tx); err != nil {
-				log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+				common.WarnWithID(a.shortID, "Could not submit transaction. Cause: %s", err)
 			}
 
 		case <-a.exitNodeCh:

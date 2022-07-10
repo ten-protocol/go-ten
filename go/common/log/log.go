@@ -17,6 +17,7 @@ func init() { //nolint:gochecknoinits
 // Errors will always show
 const (
 	InfoLevel     = zerolog.InfoLevel
+	WarnLevel     = zerolog.WarnLevel
 	DebugLevel    = zerolog.DebugLevel
 	TraceLevel    = zerolog.TraceLevel
 	DisabledLevel = zerolog.Disabled // Nothing will show at this level not even errors
@@ -45,6 +46,10 @@ func Trace(msg string, args ...interface{}) {
 
 func Debug(msg string, args ...interface{}) {
 	logger.Debug().Msgf(msg, args...)
+}
+
+func Warn(msg string, args ...interface{}) {
+	logger.Warn().Msgf(msg, args...)
 }
 
 func Info(msg string, args ...interface{}) {
