@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	testlog "github.com/obscuronet/obscuro-playground/integration/common/log"
+	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
@@ -67,7 +67,7 @@ var (
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 	// The log file used across all the wallet extension tests.
 	logFile = testlog.SetupTestLog(
-		&testlog.TestLogCfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
+		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
 	)
 )
 

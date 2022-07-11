@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/common/log"
+	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
 
 	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
 
@@ -27,7 +27,7 @@ const (
 )
 
 func setupSimTestLog(simType string) {
-	log.SetupTestLog(&log.TestLogCfg{
+	testlog.SetupTestLog(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,

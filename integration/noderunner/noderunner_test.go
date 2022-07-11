@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/common/log"
+	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
 
@@ -34,7 +34,7 @@ const (
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
-	log.SetupTestLog(&log.TestLogCfg{
+	testlog.SetupTestLog(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
