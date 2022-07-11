@@ -16,6 +16,7 @@ services:
       L1PORT: some_port
       HOSTID: some_address
       ISGENESIS: some_bool
+      PROFILERENABLED: some_bool
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -27,7 +28,8 @@ services:
       "--privateKey=$PKSTRING",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
-      "--logLevel=debug"
+      "--logLevel=debug",
+      "--profilerEnabled=$PROFILERENABLED"
     ]
 
   enclave:
@@ -37,6 +39,7 @@ services:
       MGMTCONTRACTADDR: some_address
       ERC20CONTRACTADDR: some_address
       HOSTID: some_address
+      PROFILERENABLED: some_bool
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -47,5 +50,6 @@ services:
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
                  "--viewingKeysEnabled=false",
-                 "--hostAddress=host:10000"
+                 "--hostAddress=host:10000",
+                 "--profilerEnabled=$PROFILERENABLED"
     ]

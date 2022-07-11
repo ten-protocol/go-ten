@@ -14,11 +14,12 @@ const (
 	DefaultHostPort    = 6061
 )
 
+// Profiler stores the data relevant to the profiler instance
 type Profiler struct {
 	port int
 }
 
-// NewProfiler returns a new profiler that will bind on 0.0.0.0:port
+// NewProfiler returns a new profiler that binds on 0.0.0.0:port
 func NewProfiler(port int) *Profiler {
 	return &Profiler{port: port}
 }
