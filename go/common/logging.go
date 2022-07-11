@@ -29,3 +29,9 @@ func ErrorWithID(nodeID uint64, msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	log.Error(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
 }
+
+// PanicWithID logs a message at PANIC level with the aggregator's identity prepended.
+func PanicWithID(nodeID uint64, msg string, args ...interface{}) {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	log.Panic(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
+}
