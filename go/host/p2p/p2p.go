@@ -91,7 +91,7 @@ func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
-				log.Panic("host could not handle P2P connection: %s", err)
+				common.WarnWithID(p.nodeID, "host could not from P2P connection: %s", err)
 			}
 			return
 		}
@@ -107,14 +107,14 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 
 	encodedMsg, err := ioutil.ReadAll(conn)
 	if err != nil {
-		common.LogWithID(p.nodeID, "failed to read message from peer: %v", err)
+		common.WarnWithID(p.nodeID, "failed to read message from peer: %v", err)
 		return
 	}
 
 	msg := Message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		common.LogWithID(p.nodeID, "failed to decode message received from peer: %v", err)
+		common.WarnWithID(p.nodeID, "failed to decode message received from peer: %v", err)
 		return
 	}
 
@@ -123,15 +123,14 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.MsgContents)
 	case Rollup:
+		// We check that the rollup decodes correctly.
 		rollup := common.EncryptedRollup{}
-		err = rlp.DecodeBytes(msg.MsgContents, &rollup)
-
-		// We only post the rollup if it decodes correctly.
-		if err == nil {
-			callback.ReceiveRollup(msg.MsgContents)
-		} else {
-			common.LogWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
+		if err = rlp.DecodeBytes(msg.MsgContents, &rollup); err != nil {
+			common.WarnWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
+			return
 		}
+
+		callback.ReceiveRollup(msg.MsgContents)
 	}
 }
 
@@ -157,12 +156,12 @@ func (p *p2pImpl) sendBytes(address string, tx []byte) {
 		defer conn.Close()
 	}
 	if err != nil {
-		common.LogWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
+		common.WarnWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
 		return
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
-		common.LogWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
+		common.WarnWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
 	}
 }
