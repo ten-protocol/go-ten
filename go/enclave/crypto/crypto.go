@@ -22,7 +22,7 @@ const obscuroPrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6
 func GetObscuroKey() *ecdsa.PrivateKey {
 	key, err := crypto.HexToECDSA(obscuroPrivateKeyHex)
 	if err != nil {
-		panic("Failed to create enclave private key")
+		log.Panic("failed to create enclave private key. Cause: %s", err)
 	}
 	return key
 }

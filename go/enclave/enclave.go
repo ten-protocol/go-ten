@@ -391,11 +391,11 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 
 func (e *enclaveImpl) Attestation() *common.AttestationReport {
 	if e.enclavePubKey == nil {
-		panic("public key not initialized, we can't produce the attestation report")
+		log.Panic("public key not initialized, we can't produce the attestation report")
 	}
 	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
-		panic("Failed to produce remote report.")
+		log.Panic("Failed to produce remote report.")
 	}
 	return report
 }
