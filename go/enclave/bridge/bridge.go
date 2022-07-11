@@ -154,7 +154,10 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 		}
 
 		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
-			r := common.DecodeRollupOrPanic(rolTx.Rollup)
+			r, err := common.DecodeRollup(rolTx.Rollup)
+			if err != nil {
+				log.Panic("could not decode rollup. Cause: %s", err)
+			}
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
