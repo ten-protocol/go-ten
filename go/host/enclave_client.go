@@ -171,7 +171,7 @@ func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) []common.BlockSub
 	for _, block := range blocks {
 		encodedBlock, err := common.EncodeBlock(block)
 		if err != nil {
-			log.Panic(">   Agg%d: Failed to ingest blocks. Cause: %s", common.ShortAddress(c.config.ID), err)
+			common.PanicWithID(c.nodeShortID, "Failed to ingest blocks. Cause: %s", err)
 		}
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
