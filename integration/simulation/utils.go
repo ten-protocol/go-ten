@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"time"
+
+	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -200,4 +203,8 @@ func findRollupDups(list []common.L2RootHash) map[common.L2RootHash]int {
 		}
 	}
 	return dups
+}
+
+func SleepRndBtw(min time.Duration, max time.Duration) {
+	time.Sleep(testcommon.RndBtwTime(min, max))
 }

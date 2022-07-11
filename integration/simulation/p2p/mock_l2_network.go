@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
+
 	"github.com/obscuronet/obscuro-playground/go/host"
 
 	"github.com/obscuronet/obscuro-playground/go/common"
@@ -79,5 +81,5 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 
 // delay returns an expected delay on the l2
 func (netw *MockP2P) delay() time.Duration {
-	return common.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)
+	return testcommon.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)
 }

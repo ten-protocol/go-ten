@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
@@ -17,26 +16,6 @@ type (
 	Latency       func() time.Duration
 	ScheduledFunc func()
 )
-
-// TODO -  Move the three methods below into a testutils folder. They are not safe for use in non-test code, due to panics.
-
-func RndBtw(min uint64, max uint64) uint64 {
-	if min >= max {
-		panic(fmt.Sprintf("RndBtw requires min (%d) to be greater than max (%d)", min, max))
-	}
-	return uint64(rand.Int63n(int64(max-min))) + min //nolint:gosec
-}
-
-func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
-	if min <= 0 || max <= 0 {
-		panic("invalid durations")
-	}
-	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
-}
-
-func SleepRndBtw(min time.Duration, max time.Duration) {
-	time.Sleep(RndBtwTime(min, max))
-}
 
 // ScheduleInterrupt runs the function after the delay and can be interrupted
 func ScheduleInterrupt(delay time.Duration, interrupt *int32, fun ScheduledFunc) {
