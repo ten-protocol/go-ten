@@ -11,6 +11,7 @@ services:
     ports:
       - "13000:13000"
       - "13001:13001"
+      - "6061:6061"
     environment:
       MGMTCONTRACTADDR: some_address
       PKSTRING: some_string
@@ -40,6 +41,8 @@ services:
       - /dev/sgx:/dev/sgx
     networks:
       - default
+    ports:
+      - "6060:6060"
     environment:
       MGMTCONTRACTADDR: some_address
       ERC20CONTRACTADDR: some_address
