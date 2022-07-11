@@ -97,11 +97,11 @@ func (db *mempoolManager) CurrentTxs(head *obscurocore.Rollup, resolver db.Rollu
 // todo - inefficient
 func findTxsNotIncluded(head *obscurocore.Rollup, txs []*common.L2Tx, s db.RollupResolver) []*common.L2Tx {
 	// go back only HeightCommittedBlocks blocks to accumulate transactions to be diffed against the mempool
-	to := uint64(0)
+	startAt := uint64(0)
 	if head.NumberU64() > common.HeightCommittedBlocks {
-		to = head.NumberU64() - common.HeightCommittedBlocks
+		startAt = head.NumberU64() - common.HeightCommittedBlocks
 	}
-	included := allIncludedTransactions(head, s, to)
+	included := allIncludedTransactions(head, s, startAt)
 	return removeExisting(txs, included)
 }
 
