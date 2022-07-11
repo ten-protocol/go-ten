@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
+
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/obscuronet/obscuro-playground/go/ethadapter"
@@ -67,7 +69,7 @@ func (n *MockEthNetwork) BroadcastTx(tx *types.Transaction) {
 
 // delay returns an expected delay on the l1 network
 func (n *MockEthNetwork) delay() time.Duration {
-	return common.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
+	return testcommon.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
 }
 
 func printBlock(b *types.Block, m Node) string {

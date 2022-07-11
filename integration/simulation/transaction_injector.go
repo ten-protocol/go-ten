@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
+
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
@@ -209,7 +211,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), common.RndBtw(1, 500), ti.l2Clients[0])
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500), ti.l2Clients[0])
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -231,14 +233,14 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		}
 
 		go ti.Counter.trackTransferL2Tx(signedTx)
-		common.SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 	}
 }
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		v := common.RndBtw(1, 100)
+		v := testcommon.RndBtw(1, 100)
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
 		txData := &ethadapter.L1DepositTx{
@@ -264,14 +266,14 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(v)
 		go ti.Counter.trackL1Tx(txData)
-		common.SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		v := common.RndBtw(1, 100)
+		v := testcommon.RndBtw(1, 100)
 		obsWallet := ti.rndObsWallet()
 		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.rndL2NodeClient())
 		signedTx, err := obsWallet.SignTransaction(tx)
@@ -293,7 +295,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 
 		ti.stats.Withdrawal(v)
 		go ti.Counter.trackWithdrawalL2Tx(signedTx)
-		common.SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
@@ -307,7 +309,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newCustomObscuroWithdrawalTx(common.RndBtw(1, 100))
+		tx := ti.newCustomObscuroWithdrawalTx(testcommon.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
@@ -316,7 +318,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
-		time.Sleep(common.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
+		time.Sleep(testcommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}
 }
 
