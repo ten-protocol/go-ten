@@ -32,14 +32,12 @@ func EncodeRollup(r *EncryptedRollup) EncodedRollup {
 	if err != nil {
 		log.Panic("could not encode rollup. Cause: %s", err)
 	}
-
 	return encoded
 }
 
 func DecodeRollup(encoded EncodedRollup) (*EncryptedRollup, error) {
 	r := new(EncryptedRollup)
 	err := rlp.DecodeBytes(encoded, r)
-
 	return r, err
 }
 
@@ -48,13 +46,11 @@ func EncodeAttestation(att *AttestationReport) EncodedAttestationReport {
 	if err != nil {
 		panic(err)
 	}
-
 	return encoded
 }
 
 func DecodeAttestation(encoded EncodedAttestationReport) (*AttestationReport, error) {
 	att := new(AttestationReport)
 	err := rlp.DecodeBytes(encoded, att)
-
 	return att, err
 }
