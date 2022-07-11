@@ -93,7 +93,8 @@ func NewEnclave(
 	nodeShortID := common.ShortAddress(config.HostID)
 
 	var prof *profiler.Profiler
-	if config.ProfilerEnabled {
+	// don't run a profiler on an attested enclave
+	if !config.WillAttest && config.ProfilerEnabled {
 		prof = profiler.NewProfiler(profiler.DefaultEnclavePort)
 		err := prof.Start()
 		if err != nil {
