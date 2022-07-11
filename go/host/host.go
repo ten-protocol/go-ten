@@ -364,7 +364,10 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			decoded := block.DecodeBlock()
+			decoded, err := block.DecodeBlock()
+			if err != nil {
+				return err
+			}
 			a.processBlock(decoded)
 
 			// submit each block to the enclave for ingestion plus validation
@@ -374,7 +377,10 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	}
 
 	if !result.IngestedBlock {
-		b := blocks[len(blocks)-1].DecodeBlock()
+		b, err := blocks[len(blocks)-1].DecodeBlock()
+		if err != nil {
+			return fmt.Errorf("did not ingest block. Cause: %s", result.BlockNotIngestedCause)
+		}
 		return fmt.Errorf("did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
 	}
 
@@ -657,7 +663,15 @@ func (a *Node) monitorBlocks() {
 			common.ShortHash(blkHeader.Hash()),
 			blkHeader.Number.Uint64(),
 		)
-		a.blockRPCCh <- blockAndParent{common.EncodeBlock(block), common.EncodeBlock(blockParent)}
+		encodedBlock, err := common.EncodeBlock(block)
+		if err != nil {
+			log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+		}
+		encodedBlockParent, err := common.EncodeBlock(blockParent)
+		if err != nil {
+			log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+		}
+		a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
 	}
 }
 
@@ -729,8 +743,12 @@ func (a *Node) awaitSecret() {
 				return
 			}
 
-		case b := <-a.blockRPCCh:
-			if a.checkBlockForSecretResponse(b.b.DecodeBlock()) {
+		case bAndParent := <-a.blockRPCCh:
+			block, err := bAndParent.b.DecodeBlock()
+			if err != nil {
+				log.Panic("failed to decode block received via RPC. Cause: %s:", err)
+			}
+			if a.checkBlockForSecretResponse(block) {
 				return
 			}
 
