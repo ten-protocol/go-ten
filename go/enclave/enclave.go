@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/obscuro-playground/go/common/profiler"
+
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	obscurocrypto "github.com/obscuronet/obscuro-playground/go/enclave/crypto"
@@ -69,6 +71,7 @@ type enclaveImpl struct {
 	obscuroNetworkKey *ecdsa.PrivateKey // this is a key known by all the enclaves. Used by users for encrypting transactions.
 
 	transactionBlobCrypto obscurocrypto.TransactionBlobCrypto
+	profiler              *profiler.Profiler
 }
 
 // NewEnclave creates a new enclave.
@@ -88,6 +91,16 @@ func NewEnclave(
 	// todo - add the delay: N hashes
 
 	nodeShortID := common.ShortAddress(config.HostID)
+
+	var prof *profiler.Profiler
+	// don't run a profiler on an attested enclave
+	if !config.WillAttest && config.ProfilerEnabled {
+		prof = profiler.NewProfiler(profiler.DefaultEnclavePort)
+		err := prof.Start()
+		if err != nil {
+			log.Panic("unable to start the profiler: %s", err)
+		}
+	}
 
 	// Initialise the database
 	backingDB, err := db.CreateDBFromConfig(nodeShortID, config)
@@ -169,6 +182,7 @@ func NewEnclave(
 		enclavePubKey:         serializedEnclavePubKey,
 		obscuroNetworkKey:     obscuroKey,
 		transactionBlobCrypto: transactionBlobCrypto,
+		profiler:              prof,
 	}
 }
 
@@ -478,10 +492,15 @@ func (e *enclaveImpl) Stop() error {
 	if e.config.SpeculativeExecution {
 		e.exitCh <- true
 	}
+
+	if e.profiler != nil {
+		return e.profiler.Stop()
+	}
+
 	return nil
 }
 
-// Todo - reinstate speculative execution afer TN1
+// Todo - reinstate speculative execution after TN1
 /*
 // internal structure to pass information.
 type speculativeWork struct {
