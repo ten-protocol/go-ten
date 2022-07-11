@@ -91,7 +91,7 @@ func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
-				common.WarnWithID(p.nodeID, "host could not from P2P connection: %s", err)
+				common.WarnWithID(p.nodeID, "host could not form P2P connection: %s", err)
 			}
 			return
 		}
@@ -124,8 +124,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 		callback.ReceiveTx(msg.MsgContents)
 	case Rollup:
 		// We check that the rollup decodes correctly.
-		rollup := common.EncryptedRollup{}
-		if err = rlp.DecodeBytes(msg.MsgContents, &rollup); err != nil {
+		if err = rlp.DecodeBytes(msg.MsgContents, &common.EncryptedRollup{}); err != nil {
 			common.WarnWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
 			return
 		}
