@@ -183,7 +183,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+		common.LogWithID(a.shortID, "Could not submit transaction: %s", err)
 		return nil, err
 	}
 
@@ -320,11 +320,10 @@ func (a *Node) startProcessing() {
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := common.DecodeRollup(r)
-			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
-				a.shortID,
+			common.TraceWithID(a.shortID, "Received rollup: r_%d from A%d",
 				common.ShortHash(rol.Hash()),
 				common.ShortAddress(rol.Header.Agg),
-			))
+			)
 			if err != nil {
 				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}

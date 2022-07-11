@@ -252,7 +252,7 @@ func (c *EnclaveRPCClient) Nonce(address gethcommon.Address) uint64 {
 
 	response, err := c.protoClient.Nonce(timeoutCtx, &generated.NonceRequest{Address: address.Bytes()})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to retrieve nonce: %w", common.ShortAddress(c.config.ID), err))
+		log.Panic(">   Agg%d: Failed to retrieve nonce: %s", common.ShortAddress(c.config.ID), err)
 	}
 	return response.Nonce
 }

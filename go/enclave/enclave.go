@@ -418,7 +418,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 		return err
 	}
 	e.storage.StoreSecret(*secret)
-	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeShortID, secret)
+	common.TraceWithID(e.nodeShortID, "Secret decrypted and stored. Secret: %v", secret)
 	return nil
 }
 

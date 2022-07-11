@@ -18,6 +18,12 @@ func WarnWithID(nodeID uint64, msg string, args ...interface{}) {
 	log.Warn(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
 }
 
+// TraceWithID logs a message at TRACE level with the aggregator's identity prepended.
+func TraceWithID(nodeID uint64, msg string, args ...interface{}) {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	log.Trace(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
+}
+
 // ErrorWithID logs a message at ERROR level with the aggregator's identity prepended.
 func ErrorWithID(nodeID uint64, msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
