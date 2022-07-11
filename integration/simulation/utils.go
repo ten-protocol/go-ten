@@ -6,13 +6,14 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/common/log"
+
 	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
 	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
@@ -26,7 +27,7 @@ const (
 )
 
 func setupSimTestLog(simType string) {
-	logutil.SetupTestLog(&logutil.TestLogCfg{
+	log.SetupTestLog(&log.TestLogCfg{
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,
