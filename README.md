@@ -48,7 +48,7 @@ In the current iteration we use [EdglessDB](https://www.edgeless.systems/product
 for confidential computing.
 
 `go-ethereum` uses a key-value store interface, which we implement on top of the SQL database. The reason for this odd choice 
-is that the data needs to be indexed and encrypted befored being sent for storage. And the operation of storing data needs 
+is that the data needs to be indexed and encrypted before being sent for storage. And the operation of storing data needs 
 to be resistant to side-channel analysis which would allow an attacker to infer information on what calculations are being made
 based on what data the Enclave is requesting or storing.
 
@@ -109,17 +109,42 @@ All of the logic of maintaining the current state based on incoming data and of 
 
 #### 7. Cryptography
 
-This is where the Obsuro specific cryptography is implemented. 
-
-- Master seed generation
-- Key derivation
-- Payload encryption/decryption
-
-
+This is where the Obsuro specific cryptography is implemented.
 See [go/enclave/crypto](go/enclave/crypto)
 
-*Note: The current implementation is still very incipient. There are hardcoded keys, no key derivation, etc.*
+These are the main components:
 
+##### a) RPC encryption/decryption
+
+The Obscuro "Wallet extension" encrypts all requests from users (transactions or smart contract method calls) with the "Obscuro public key", which is a key derived from the 
+master seed. 
+The response is in turn encrypted with the "Viewing Key" of the requesting user.
+
+This component manages viewing keys and handles the encryption and decryption.
+
+The transactions received from users are gossiped with the other aggregators encrypted with the "Obscuro Public Key".
+
+*Note: In the current implementation, this key is hardcoded.*
+
+See: [go/enclave/rpcencryptionmanager](go/enclave/rpcencryptionmanager)
+
+##### b) Transaction blob encryption
+
+Transactions are stored as `calldata` blobs in ethereum transactions.
+The component that creates these blobs has to encrypt them with derived keys according to their revelation period.
+
+*Note: In the current implementation the payload is encrypted with a single hardcoded key*
+
+See: [go/enclave/crypto/transaction_blob_crypto.go](go/enclave/crypto/transaction_blob_crypto.go)
+
+
+#### 8. RPC
+
+The enclave exposes an RPC interface generated with [proto-buf](https://developers.google.com/protocol-buffers).
+
+The interface is described in [enclave.proto](go/common/rpc/generated/enclave.proto).
+
+See [go/common/rpc](go/common/rpc)
 
 ### II. The Host
 
@@ -158,43 +183,55 @@ See: [tools/walletextension](tools/walletextension)
 
 
 ## Repository Structure
-```
-|
-| - contracts: This folder contains the source code for the solidity Management contract, which will be deployed on Ethereum.  
-| - go: The "Golang" implementation of the Obscuro protocol.
-|.   |
-|.   | - common: This is a somewhat unstructured package containing base types and utils. Note: It will be cleaned up once more patterns emerged.
-|.   | - config: A place where the default configurations are found.
-|.   | - enclave: This is the component that is loaded up inside SGX.
-|.   |.   | - bridge: 
-|.   |.   | - core: Data
-|.   |.   | - crypto: 
-|.   |.   | - db: 
-|.   |.   | - enclaverunner: 
-|.   |.   | - evm: 
-|.   |.   | - main: 
-|.   |.   | - mempool: 
-|.   |.   | - rollupchain: 
-|.   |.   | - rpcencryptionmanager: 
-|.   |.   |  
-|.   | - ethadapter: 
-|.   | - host: The component that performs the networking duties.
-|.   | - rpcclientlib: Basic RPC library client code.
-|.   | - wallet: 
-| 
-| - integration: The end to end integration tests.
-|
-| - testnet: source code for end to end integration tests. 
-|.   | - azuredeployer: 
-|.   | - contractdeployer: 
-|.   | - networkmanager: 
-|.   | - obscuroscan: 
-|.   | - walletextension: 
-| 
-| - tools:  
 
-```
+<pre>
+root
+├── <a href="./contracts">contracts</a>: : Solidity Management contract, which will be deployed on Ethereum
+├── <a href="./go">go</a>
+│   ├── <a href="./go/common">common</a>: Unstructured package containing base types and utils. Note: It will be cleaned up once more patterns emerged.
+│   ├── <a href="./go/config">config</a>: A place where the default configurations are found.
+│   ├── <a href="./go/enclave">enclave</a>: The component that is loaded up inside SGX.
+│   │   ├── <a href="./go/enclave/bridge">bridge</a>: The platform side of the decentralised bridge logic.
+│   │   ├── <a href="./go/enclave/core">core</a>: Base data structures used only inside the enclave. 
+│   │   ├── <a href="./go/enclave/crypto">crypto</a>: Implementation of the Obscuro cryptography.
+│   │   ├── <a href="./go/enclave/db">db</a>: The database implementations. 
+│   │   ├── <a href="./go/enclave/enclaverunner">enclaverunner</a>: The entry point to the standalone enclave process. 
+│   │   ├── <a href="./go/enclave/evm">evm</a>: Obscuro transaction execution on top of the EVM.
+│   │   ├── <a href="./go/enclave/main">main</a>: Main
+│   │   ├── <a href="./go/enclave/mempool">mempool</a>: The mempool living inside the enclave
+│   │   ├── <a href="./go/enclave/rollupchain">rollupchain</a>: The main logic for calculating the state and the POBI protocol.
+│   │   └── <a href="./go/enclave/rpcencryptionmanager">rpcencryptionmanager</a>: Responsible for encrypting the communication with the wallet extension.
+│   ├── <a href="./go/ethadapter">ethadapter</a>: Responsible for interpreting L1 transactions 
+│   │   ├── <a href="./go/ethadapter/erc20contractlib">erc20contractlib</a>: Understand ERC20 transactions.
+│   │   └── <a href="./go/ethadapter/mgmtcontractlib">mgmtcontractlib</a>: Understand Obscuro Management contrract transactions. 
+│   ├── <a href="./go/host">host</a>: The standalone host process 
+│   │   ├── <a href="./go/host/hostrunner">hostrunner</a>: The entry point.
+│   │   └── <a href="./go/host/p2p">p2p</a>: The P2P communication implementation. 
+│   ├── <a href="./go/rpcclientlib">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
+│   └── <a href="./go/wallet">wallet</a>: Logic around wallets. Used both by the node, which is an ethereum wallet, and by the tests
+├── <a href="./integration">integration</a>: Integration tests that spin up Obscuro networks.
+├── <a href="./testnet">testnet</a>: Utilities for deploying a testnet.
+└── <a href="./tools">tools</a>: Peripheral tooling. 
+│   ├── <a href="./tools/azuredeployer">azuredeployer</a>: Help with deploying obscuro nodes on SGX enabled azure VMs.
+│   ├── <a href="./tools/contractdeployer">contractdeployer</a>: todo - Joel 
+│   ├── <a href="./tools/networkmanager">networkmanager</a>: todo - Joel
+│   ├── <a href="./tools/obscuroscan">obscuroscan</a>: todo - Joel
+│   └── <a href="./tools/walletextension">walletextension</a>: todo - Joel
+
+</pre>
+
+
 
 ## Usage
 Todo
 
+### Compiling
+
+- Install go version > 1.8
+
+### Compiling
+
+
+## Community 
+
+Discussions around development 
