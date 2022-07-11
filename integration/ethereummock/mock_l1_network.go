@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
+
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/obscuronet/obscuro-playground/go/ethadapter"
@@ -39,7 +41,7 @@ func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration,
 
 // BroadcastBlock broadcast a block to the l1 nodes
 func (n *MockEthNetwork) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock) {
-	bl, _ := b.Decode()
+	bl, _ := b.DecodeBlock()
 	for _, m := range n.AllNodes {
 		if m.ID != n.CurrentNode.ID {
 			t := m
@@ -67,7 +69,7 @@ func (n *MockEthNetwork) BroadcastTx(tx *types.Transaction) {
 
 // delay returns an expected delay on the l1 network
 func (n *MockEthNetwork) delay() time.Duration {
-	return common.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
+	return testcommon.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
 }
 
 func printBlock(b *types.Block, m Node) string {
@@ -85,7 +87,10 @@ func printBlock(b *types.Block, m Node) string {
 
 		switch l1Tx := t.(type) {
 		case *ethadapter.L1RollupTx:
-			r := common.DecodeRollupOrPanic(l1Tx.Rollup)
+			r, err := common.DecodeRollup(l1Tx.Rollup)
+			if err != nil {
+				log.Panic("failed to decode rollup")
+			}
 			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
 
 		case *ethadapter.L1DepositTx:

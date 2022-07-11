@@ -46,7 +46,7 @@ const (
 	L2GenesisHeight = uint64(0)
 	L1GenesisHeight = uint64(0)
 	// HeightCommittedBlocks is the number of blocks deep a transaction must be to be considered safe from reorganisations.
-	HeightCommittedBlocks = 20
+	HeightCommittedBlocks = 15
 )
 
 // Header is a public / plaintext struct that holds common properties of the Rollup

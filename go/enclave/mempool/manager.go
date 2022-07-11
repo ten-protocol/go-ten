@@ -76,6 +76,7 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *obscurocore.Rollup, resolver 
 func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) map[gethcommon.Hash]gethcommon.Hash {
 	i := common.HeightCommittedBlocks
 	c := r
+	// todo - create method to return the canonical rollup from height N
 	for {
 		if i == 0 || c.Header.Number.Uint64() == common.L2GenesisHeight {
 			return obscurocore.ToMap(c.Transactions)
@@ -95,16 +96,21 @@ func (db *mempoolManager) CurrentTxs(head *obscurocore.Rollup, resolver db.Rollu
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
 func findTxsNotIncluded(head *obscurocore.Rollup, txs []*common.L2Tx, s db.RollupResolver) []*common.L2Tx {
-	included := allIncludedTransactions(head, s)
+	// go back only HeightCommittedBlocks blocks to accumulate transactions to be diffed against the mempool
+	startAt := uint64(0)
+	if head.NumberU64() > common.HeightCommittedBlocks {
+		startAt = head.NumberU64() - common.HeightCommittedBlocks
+	}
+	included := allIncludedTransactions(head, s, startAt)
 	return removeExisting(txs, included)
 }
 
-func allIncludedTransactions(r *obscurocore.Rollup, s db.RollupResolver) map[gethcommon.Hash]*common.L2Tx {
-	if r.Header.Number.Uint64() == common.L2GenesisHeight {
+func allIncludedTransactions(r *obscurocore.Rollup, s db.RollupResolver, stopAtHeight uint64) map[gethcommon.Hash]*common.L2Tx {
+	if r.Header.Number.Uint64() == stopAtHeight {
 		return obscurocore.MakeMap(r.Transactions)
 	}
 	newMap := make(map[gethcommon.Hash]*common.L2Tx)
-	for k, v := range allIncludedTransactions(s.ParentRollup(r), s) {
+	for k, v := range allIncludedTransactions(s.ParentRollup(r), s, stopAtHeight) {
 		newMap[k] = v
 	}
 	for _, tx := range r.Transactions {

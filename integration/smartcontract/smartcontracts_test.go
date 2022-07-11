@@ -105,8 +105,12 @@ func TestManagementContract(t *testing.T) {
 // nonAttestedNodesCannotCreateRollup issues a rollup from a node that did not receive the secret network key
 func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
 	rollup := datagenerator.RandomRollup()
+	encodedRollup, err := common.EncodeRollup(&rollup)
+	if err != nil {
+		t.Error(err)
+	}
 	txData := mgmtContractLib.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&rollup)},
+		&ethadapter.L1RollupTx{Rollup: encodedRollup},
 		w.GetNonceAndIncrement(),
 	)
 
@@ -640,8 +644,12 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 
 	t.Logf("LAST Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)
 
+	encodedRollup, err := common.EncodeRollup(&r)
+	if err != nil {
+		t.Error(err)
+	}
 	txData = mgmtContractLib.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&r)},
+		&ethadapter.L1RollupTx{Rollup: encodedRollup},
 		w.GetNonceAndIncrement(),
 	)
 
