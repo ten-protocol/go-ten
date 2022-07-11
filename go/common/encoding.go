@@ -1,9 +1,31 @@
 package common
 
 import (
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 )
+
+// EncodedBlock the encoded version of an ExtBlock
+type EncodedBlock []byte
+
+func EncodeBlock(b *types.Block) (EncodedBlock, error) {
+	encoded, err := rlp.EncodeToBytes(b)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode block to bytes. Cause: %w", err)
+	}
+	return encoded, nil
+}
+
+func (eb EncodedBlock) DecodeBlock() (*types.Block, error) {
+	b := types.Block{}
+	if err := rlp.DecodeBytes(eb, &b); err != nil {
+		return nil, fmt.Errorf("could not decode block from bytes. Cause: %w", err)
+	}
+	return &b, nil
+}
 
 func EncodeRollup(r *EncryptedRollup) EncodedRollup {
 	encoded, err := rlp.EncodeToBytes(r)
@@ -19,15 +41,6 @@ func DecodeRollup(encoded EncodedRollup) (*EncryptedRollup, error) {
 	err := rlp.DecodeBytes(encoded, r)
 
 	return r, err
-}
-
-func DecodeRollupOrPanic(rollup EncodedRollup) *EncryptedRollup {
-	r, err := DecodeRollup(rollup)
-	if err != nil {
-		log.Panic("could not decode rollup. Cause: %s", err)
-	}
-
-	return r
 }
 
 func EncodeAttestation(att *AttestationReport) EncodedAttestationReport {
