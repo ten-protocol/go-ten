@@ -155,4 +155,4 @@ jobs:
                --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
                --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} \
                --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
-               --pkstring=${{ secrets[matrix.node_pk_str] }} '
+               --pkstring=${{ secrets[matrix.node_pk_str] }}'
