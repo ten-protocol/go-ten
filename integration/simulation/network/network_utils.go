@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
 
 	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
 
@@ -163,7 +163,7 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum
 			// while everyone else will have higher values.
 			// Over a large number of rounds, the actual average block duration will be around the desired value, while the number of miners who get very close numbers will be limited.
 			span := math.Max(2, float64(nrNodes)) // We handle the special cases of zero or one nodes.
-			return common.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
+			return testcommon.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
 		},
 	}
 }
