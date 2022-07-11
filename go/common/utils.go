@@ -18,6 +18,8 @@ type (
 	ScheduledFunc func()
 )
 
+// TODO -  Move the three methods below into a testutils folder. They are not safe for use in non-test code, due to panics.
+
 func RndBtw(min uint64, max uint64) uint64 {
 	if min >= max {
 		panic(fmt.Sprintf("RndBtw requires min (%d) to be greater than max (%d)", min, max))
