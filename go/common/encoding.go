@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/common/log"
 )
 
 // EncodedBlock the encoded version of an ExtBlock
@@ -27,12 +26,8 @@ func (eb EncodedBlock) DecodeBlock() (*types.Block, error) {
 	return &b, nil
 }
 
-func EncodeRollup(r *EncryptedRollup) EncodedRollup {
-	encoded, err := rlp.EncodeToBytes(r)
-	if err != nil {
-		log.Panic("could not encode rollup. Cause: %s", err)
-	}
-	return encoded
+func EncodeRollup(r *EncryptedRollup) (EncodedRollup, error) {
+	return rlp.EncodeToBytes(r)
 }
 
 func DecodeRollup(encoded EncodedRollup) (*EncryptedRollup, error) {
@@ -41,12 +36,8 @@ func DecodeRollup(encoded EncodedRollup) (*EncryptedRollup, error) {
 	return r, err
 }
 
-func EncodeAttestation(att *AttestationReport) EncodedAttestationReport {
-	encoded, err := rlp.EncodeToBytes(att)
-	if err != nil {
-		panic(err)
-	}
-	return encoded
+func EncodeAttestation(att *AttestationReport) (EncodedAttestationReport, error) {
+	return rlp.EncodeToBytes(att)
 }
 
 func DecodeAttestation(encoded EncodedAttestationReport) (*AttestationReport, error) {
