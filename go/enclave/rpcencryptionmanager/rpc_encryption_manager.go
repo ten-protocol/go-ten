@@ -52,7 +52,13 @@ func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, er
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.
-func (rpc *RPCEncryptionManager) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (rpc *RPCEncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+	// We decrypt the viewing key.
+	viewingKeyBytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedViewingKeyBytes, nil, nil)
+	if err != nil {
+		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
+	}
+
 	// We recalculate the message signed by MetaMask.
 	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
 
