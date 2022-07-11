@@ -124,7 +124,7 @@ func (a *Node) Start() {
 		// Create the shared secret and submit it to the management contract for storage
 		attestation := a.EnclaveClient.Attestation()
 		if attestation.Owner != a.ID {
-			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
+			common.PanicWithID(a.shortID, "genesis node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), attestation.Owner.Hex())
 		}
 
 		encodedAttestation, err := common.EncodeAttestation(attestation)
@@ -187,7 +187,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+		common.LogWithID(a.shortID, "Could not submit transaction: %s", err)
 		return nil, err
 	}
 
@@ -324,11 +324,10 @@ func (a *Node) startProcessing() {
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := common.DecodeRollup(r)
-			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
-				a.shortID,
+			common.TraceWithID(a.shortID, "Received rollup: r_%d from A%d",
 				common.ShortHash(rol.Hash()),
 				common.ShortAddress(rol.Header.Agg),
-			))
+			)
 			if err != nil {
 				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
@@ -528,7 +527,7 @@ func (a *Node) requestSecret() {
 	common.LogWithID(a.shortID, "Requesting secret.")
 	att := a.EnclaveClient.Attestation()
 	if att.Owner != a.ID {
-		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
+		common.PanicWithID(a.shortID, "node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation, err := common.EncodeAttestation(att)
 	if err != nil {
