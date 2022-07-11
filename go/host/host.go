@@ -124,12 +124,16 @@ func (a *Node) Start() {
 		// Create the shared secret and submit it to the management contract for storage
 		attestation := a.EnclaveClient.Attestation()
 		if attestation.Owner != a.ID {
-			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
+			common.PanicWithID(a.shortID, "genesis node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), attestation.Owner.Hex())
 		}
 
+		encodedAttestation, err := common.EncodeAttestation(attestation)
+		if err != nil {
+			log.Panic("could not encode attestation Cause: %s", err)
+		}
 		l1tx := &ethadapter.L1InitializeSecretTx{
 			AggregatorID:  &a.ID,
-			Attestation:   common.EncodeAttestation(attestation),
+			Attestation:   encodedAttestation,
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
 			HostAddress:   a.config.P2PAddress,
 		}
@@ -183,7 +187,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+		common.LogWithID(a.shortID, "Could not submit transaction: %s", err)
 		return nil, err
 	}
 
@@ -320,11 +324,10 @@ func (a *Node) startProcessing() {
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := common.DecodeRollup(r)
-			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
-				a.shortID,
+			common.TraceWithID(a.shortID, "Received rollup: r_%d from A%d",
 				common.ShortHash(rol.Hash()),
 				common.ShortAddress(rol.Header.Agg),
-			))
+			)
 			if err != nil {
 				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
@@ -386,7 +389,11 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 
 	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
 	if result.ProducedRollup.Header != nil {
-		err := a.P2p.BroadcastRollup(common.EncodeRollup(result.ProducedRollup.ToRollup()))
+		encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
+		if err != nil {
+			return fmt.Errorf("could not encode rollup. Cause: %w", err)
+		}
+		err = a.P2p.BroadcastRollup(encodedRollup)
 		if err != nil {
 			return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
 		}
@@ -449,8 +456,12 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 				winnerRollup.Header.Number,
 			)
 
+			encodedRollup, err := common.EncodeRollup(winnerRollup.ToRollup())
+			if err != nil {
+				log.Panic("could not encode rollup. Cause: %s", err)
+			}
 			tx := &ethadapter.L1RollupTx{
-				Rollup: common.EncodeRollup(winnerRollup.ToRollup()),
+				Rollup: encodedRollup,
 			}
 
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
@@ -478,15 +489,19 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
-	// Create the genesis rollup and submit it to the MC
+	// Create the genesis rollup and submit it to the management contract
 	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
 	common.LogWithID(
 		a.shortID,
 		"Initialising network. Genesis rollup r_%d.",
 		common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 	)
+	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())
+	if err != nil {
+		log.Panic("could not encode rollup. Cause: %s", err)
+	}
 	l1tx := &ethadapter.L1RollupTx{
-		Rollup: common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
+		Rollup: encodedRollup,
 	}
 
 	a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
@@ -512,9 +527,12 @@ func (a *Node) requestSecret() {
 	common.LogWithID(a.shortID, "Requesting secret.")
 	att := a.EnclaveClient.Attestation()
 	if att.Owner != a.ID {
-		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
+		common.PanicWithID(a.shortID, "node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), att.Owner.Hex())
 	}
-	encodedAttestation := common.EncodeAttestation(att)
+	encodedAttestation, err := common.EncodeAttestation(att)
+	if err != nil {
+		log.Panic("could not encode attestation. Cause: %s", err)
+	}
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}

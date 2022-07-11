@@ -41,7 +41,7 @@ func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration,
 
 // BroadcastBlock broadcast a block to the l1 nodes
 func (n *MockEthNetwork) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock) {
-	bl, _ := b.Decode()
+	bl, _ := b.DecodeBlock()
 	for _, m := range n.AllNodes {
 		if m.ID != n.CurrentNode.ID {
 			t := m
@@ -87,7 +87,10 @@ func printBlock(b *types.Block, m Node) string {
 
 		switch l1Tx := t.(type) {
 		case *ethadapter.L1RollupTx:
-			r := common.DecodeRollupOrPanic(l1Tx.Rollup)
+			r, err := common.DecodeRollup(l1Tx.Rollup)
+			if err != nil {
+				log.Panic("failed to decode rollup")
+			}
 			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
 
 		case *ethadapter.L1DepositTx:

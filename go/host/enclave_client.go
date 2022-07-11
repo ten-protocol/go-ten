@@ -29,15 +29,18 @@ type EnclaveRPCClient struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
 	config      config.HostConfig
+	nodeShortID uint64
 }
 
 // TODO - Avoid panicking and return errors instead where appropriate.
 
 func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
+	nodeShortID := common.ShortAddress(config.ID)
+
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to connect to enclave RPC service. Cause: %s", common.ShortAddress(config.ID), err)
+		common.PanicWithID(nodeShortID, "Failed to connect to enclave RPC service. Cause: %s", err)
 	}
 
 	// We wait for the RPC connection to be ready.
@@ -54,10 +57,15 @@ func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	}
 
 	if currentState != connectivity.Ready {
-		log.Panic(">   Agg%d: RPC connection failed to establish. Current state is %s", common.ShortAddress(config.ID), currentState)
+		common.PanicWithID(nodeShortID, "RPC connection failed to establish. Current state is %s", currentState)
 	}
 
-	return &EnclaveRPCClient{generated.NewEnclaveProtoClient(connection), connection, config}
+	return &EnclaveRPCClient{
+		generated.NewEnclaveProtoClient(connection),
+		connection,
+		config,
+		nodeShortID,
+	}
 }
 
 func (c *EnclaveRPCClient) StopClient() error {
@@ -88,7 +96,7 @@ func (c *EnclaveRPCClient) Attestation() *common.AttestationReport {
 
 	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to retrieve attestation. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to retrieve attestation. Cause: %s", err)
 	}
 	return rpc.FromAttestationReportMsg(response.AttestationReportMsg)
 }
@@ -99,7 +107,7 @@ func (c *EnclaveRPCClient) GenerateSecret() common.EncryptedSharedEnclaveSecret 
 
 	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to generate secret. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to generate secret. Cause: %s", err)
 	}
 	return response.EncryptedSharedEnclaveSecret
 }
@@ -140,7 +148,7 @@ func (c *EnclaveRPCClient) IsInitialised() bool {
 
 	response, err := c.protoClient.IsInitialised(timeoutCtx, &generated.IsInitialisedRequest{})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to establish enclave initialisation status. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to establish enclave initialisation status. Cause: %s", err)
 	}
 	return response.IsInitialised
 }
@@ -150,7 +158,7 @@ func (c *EnclaveRPCClient) ProduceGenesis(blkHash gethcommon.Hash) common.BlockS
 	defer cancel()
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to produce genesis. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to produce genesis. Cause: %s", err)
 	}
 	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
@@ -163,13 +171,13 @@ func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) []common.BlockSub
 	for _, block := range blocks {
 		encodedBlock, err := common.EncodeBlock(block)
 		if err != nil {
-			log.Panic(">   Agg%d: Failed to ingest blocks. Cause: %s", common.ShortAddress(c.config.ID), err)
+			common.PanicWithID(c.nodeShortID, "Failed to ingest blocks. Cause: %s", err)
 		}
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
 	response, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to ingest blocks. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to ingest blocks. Cause: %s", err)
 	}
 	responses := response.GetBlockSubmissionResponses()
 	result := make([]common.BlockSubmissionResponse, len(responses))
@@ -185,11 +193,11 @@ func (c *EnclaveRPCClient) Start(block types.Block) {
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		log.Panic(">   Agg%d: Failed to encode block. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to encode block. Cause: %s", err)
 	}
 	_, err := c.protoClient.Start(timeoutCtx, &generated.StartRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to start enclave. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to start enclave. Cause: %s", err)
 	}
 }
 
@@ -199,13 +207,13 @@ func (c *EnclaveRPCClient) SubmitBlock(block types.Block) common.BlockSubmission
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		log.Panic(">   Agg%d: Failed to encode block. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to encode block. Cause: %s", err)
 	}
 
 	processTime := time.Now()
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to submit block. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to submit block. Cause: %s", err)
 	}
 	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
 	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
@@ -218,7 +226,7 @@ func (c *EnclaveRPCClient) SubmitRollup(rollup common.ExtRollup) {
 	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
 	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to submit rollup. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to submit rollup. Cause: %s", err)
 	}
 }
 
@@ -255,7 +263,7 @@ func (c *EnclaveRPCClient) Nonce(address gethcommon.Address) uint64 {
 
 	response, err := c.protoClient.Nonce(timeoutCtx, &generated.NonceRequest{Address: address.Bytes()})
 	if err != nil {
-		panic(fmt.Errorf(">   Agg%d: Failed to retrieve nonce: %w", common.ShortAddress(c.config.ID), err))
+		common.PanicWithID(c.nodeShortID, "Failed to retrieve nonce: %s", err)
 	}
 	return response.Nonce
 }
@@ -266,7 +274,7 @@ func (c *EnclaveRPCClient) RoundWinner(parent common.L2RootHash) (common.ExtRoll
 
 	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to determine round winner. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to determine round winner. Cause: %s", err)
 	}
 
 	if response.Winner {
@@ -314,7 +322,7 @@ func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) *common.ExtRo
 
 	response, err := c.protoClient.GetRollup(timeoutCtx, &generated.GetRollupRequest{RollupHash: rollupHash.Bytes()})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to retrieve rollup. Cause: %s", common.ShortAddress(c.config.ID), err)
+		common.PanicWithID(c.nodeShortID, "Failed to retrieve rollup. Cause: %s", err)
 	}
 
 	if !response.Known {
@@ -331,7 +339,7 @@ func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight int64) *common.ExtRoll
 
 	response, err := c.protoClient.GetRollupByHeight(timeoutCtx, &generated.GetRollupByHeightRequest{RollupHeight: rollupHeight})
 	if err != nil {
-		log.Panic(">   Agg%d: Failed to retrieve rollup with height %d. Cause: %s", common.ShortAddress(c.config.ID), rollupHeight, err)
+		common.PanicWithID(c.nodeShortID, "Failed to retrieve rollup with height %d. Cause: %s", rollupHeight, err)
 	}
 
 	if !response.Known {

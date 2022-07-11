@@ -216,11 +216,10 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	}
 
 	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
-	log.Trace(fmt.Sprintf(">   Agg%d: Calc block state b_%d: Found: %t - r_%d, ",
-		rc.nodeID,
+	common.TraceWithID(rc.nodeID, "Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
 		bs.FoundNewRollup,
-		common.ShortHash(bs.HeadRollup)))
+		common.ShortHash(bs.HeadRollup))
 
 	rc.storage.SaveNewHead(bs, head, receipts)
 
@@ -282,7 +281,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.
 		if f {
 			successfulTransactions = append(successfulTransactions, tx)
 		} else {
-			log.Info(">   Agg%d: Excluding transaction %d", common.ShortAddress(rc.hostID), common.ShortHash(tx.Hash()))
+			common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %d", common.ShortHash(tx.Hash()))
 		}
 	}
 
