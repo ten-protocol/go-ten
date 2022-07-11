@@ -1,9 +1,8 @@
 package common
 
 import (
+	"fmt"
 	"math/big"
-
-	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,12 +18,12 @@ var GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transactio
 // EncodedBlock the encoded version of an ExtBlock
 type EncodedBlock []byte
 
-func EncodeBlock(b *types.Block) EncodedBlock {
+func EncodeBlock(b *types.Block) (EncodedBlock, error) {
 	encoded, err := rlp.EncodeToBytes(b)
 	if err != nil {
-		log.Panic("could not encode block to bytes. Cause: %s", err)
+		return nil, fmt.Errorf("could not encode block to bytes. Cause: %w", err)
 	}
-	return encoded
+	return encoded, nil
 }
 
 func (eb EncodedBlock) Decode() (*types.Block, error) {
@@ -33,12 +32,12 @@ func (eb EncodedBlock) Decode() (*types.Block, error) {
 	return &bl, err
 }
 
-func (eb EncodedBlock) DecodeBlock() *types.Block {
+func (eb EncodedBlock) DecodeBlock() (*types.Block, error) {
 	b, err := eb.Decode()
 	if err != nil {
-		log.Panic("could not decode block from bytes. Cause: %s", err)
+		return nil, fmt.Errorf("could not decode block from bytes. Cause: %w", err)
 	}
-	return b
+	return b, nil
 }
 
 // NewBlock - todo - remove this ASAP

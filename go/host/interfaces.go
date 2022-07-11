@@ -17,8 +17,8 @@ type P2P interface {
 	StartListening(callback P2PCallback)
 	StopListening() error
 	UpdatePeerList([]string)
-	BroadcastRollup(r common.EncodedRollup)
-	BroadcastTx(tx common.EncryptedTx)
+	BroadcastRollup(r common.EncodedRollup) error
+	BroadcastTx(tx common.EncryptedTx) error
 }
 
 // RPCServer is the layer responsible for handling RPC requests from Obscuro client applications.
