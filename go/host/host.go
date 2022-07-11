@@ -133,7 +133,7 @@ func (a *Node) Start() {
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
 			HostAddress:   a.config.P2PAddress,
 		}
-		a.broadcastTx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+		a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	} else {
 		a.requestSecret()
@@ -186,7 +186,11 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
 		return nil, err
 	}
-	a.P2p.BroadcastTx(encryptedTx)
+
+	err = a.P2p.BroadcastTx(encryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not broadcast transaction. Cause: %w", err)
+	}
 
 	return encryptedResponse, nil
 }
@@ -302,11 +306,17 @@ func (a *Node) startProcessing() {
 		select {
 		case b := <-a.blockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
+			err := a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
+			if err != nil {
+				common.WarnWithID(a.shortID, "Could not process block received via RPC. Cause: %v", err)
+			}
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			a.processBlocks(f, roundInterrupt)
+			err := a.processBlocks(f, roundInterrupt)
+			if err != nil {
+				common.WarnWithID(a.shortID, "Could not process fork received via RPC. Cause: %v", err)
+			}
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := common.DecodeRollup(r)
@@ -316,7 +326,7 @@ func (a *Node) startProcessing() {
 				common.ShortAddress(rol.Header.Agg),
 			))
 			if err != nil {
-				common.LogWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
+				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
 
 			go a.EnclaveClient.SubmitRollup(common.ExtRollup{
@@ -327,7 +337,7 @@ func (a *Node) startProcessing() {
 
 		case tx := <-a.txP2PCh:
 			if _, err := a.EnclaveClient.SubmitTx(tx); err != nil {
-				log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+				common.WarnWithID(a.shortID, "Could not submit transaction. Cause: %s", err)
 			}
 
 		case <-a.exitNodeCh:
@@ -349,7 +359,7 @@ type blockAndParent struct {
 	p common.EncodedBlock
 }
 
-func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
+func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) error {
 	var result common.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
@@ -365,16 +375,20 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 
 	if !result.IngestedBlock {
 		b := blocks[len(blocks)-1].DecodeBlock()
-		common.LogWithID(a.shortID, "Did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
-		return
+		return fmt.Errorf("did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
 	}
 
 	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
 	if result.ProducedRollup.Header != nil {
-		a.P2p.BroadcastRollup(common.EncodeRollup(result.ProducedRollup.ToRollup()))
+		err := a.P2p.BroadcastRollup(common.EncodeRollup(result.ProducedRollup.ToRollup()))
+		if err != nil {
+			return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
+		}
 
 		common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
 	}
+
+	return nil
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
@@ -436,7 +450,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.DB().WasSubmitted(winnerRollup.Header.Hash()) {
-				a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
 				a.DB().AddSubmittedRollup(winnerRollup.Header.Hash())
 			}
 		}
@@ -469,12 +483,12 @@ func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
 		Rollup: common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
 	}
 
-	a.broadcastTx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	return genesisResponse.ProducedRollup.Header.ParentHash
 }
 
-func (a *Node) broadcastTx(tx types.TxData) {
+func (a *Node) broadcastL1Tx(tx types.TxData) {
 	// TODO add retry and deal with failures
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
@@ -498,7 +512,7 @@ func (a *Node) requestSecret() {
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
-	a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	a.awaitSecret()
 }
@@ -557,7 +571,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		HostAddress: att.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
 }
 
 // Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator

@@ -12,6 +12,12 @@ func LogWithID(nodeID uint64, msg string, args ...interface{}) {
 	log.Info(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
 }
 
+// WarnWithID logs a message at WARN level with the aggregator's identity prepended.
+func WarnWithID(nodeID uint64, msg string, args ...interface{}) {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	log.Warn(fmt.Sprintf(">   Agg%d: %s", nodeID, formattedMsg))
+}
+
 // ErrorWithID logs a message at ERROR level with the aggregator's identity prepended.
 func ErrorWithID(nodeID uint64, msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
