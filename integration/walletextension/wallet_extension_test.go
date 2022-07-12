@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
+
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
@@ -20,8 +22,6 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/wallet"
 	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
 	"github.com/obscuronet/obscuro-playground/integration/simulation"
-
-	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
 
@@ -66,8 +66,8 @@ var (
 	}
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 	// The log file used across all the wallet extension tests.
-	logFile = logutil.SetupTestLog(
-		&logutil.TestLogCfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
+	logFile = testlog.Setup(
+		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
 	)
 )
 
