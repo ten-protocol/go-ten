@@ -7,7 +7,7 @@ An easy-to-read list of essential parameters and configuration settings for Obsc
 
 ## Custom Network for MetaMask
 - **Network Name:** `Obscuro Testnet`
-- **New PRC URL:** `http://127.0.0.1:3000/`
+- **New RPC URL:** `http://127.0.0.1:3000/`
 - **Chain ID:** `777`
 - **Currency Symbol:** `OBX`
 

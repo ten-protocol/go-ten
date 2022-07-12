@@ -631,7 +631,7 @@ func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.A
 	var paramsJSONMap []interface{}
 	err := json.Unmarshal(decryptedParams, &paramsJSONMap)
 	if err != nil {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
+		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(decryptedParams), err)
 	}
 
 	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
@@ -669,7 +669,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	var paramsJSONMap []string
 	err = json.Unmarshal(paramBytes, &paramsJSONMap)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in GetBalance request. Cause: %w", err)
+		return nil, fmt.Errorf("could not parse JSON params in eth_getBalance request. JSON params are: %s. Cause: %w", string(paramBytes), err)
 	}
 	address := gethcommon.HexToAddress(paramsJSONMap[0]) // The first argument is the address, the second the block.
 

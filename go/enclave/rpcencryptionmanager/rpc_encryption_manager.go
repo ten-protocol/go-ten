@@ -108,7 +108,7 @@ func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams common.EncryptedP
 	var paramsJSONList []string
 	err = json.Unmarshal(paramBytes, &paramsJSONList)
 	if err != nil {
-		return gethcommon.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. Cause: %w", err)
+		return gethcommon.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. JSON params are: %s. Cause: %w", string(paramBytes), err)
 	}
 	txHash := gethcommon.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
 	return txHash, err
