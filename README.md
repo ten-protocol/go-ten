@@ -27,7 +27,7 @@ See [go/enclave](go/enclave)
 
 We use [EGo](https://www.edgeless.systems/products/ego/), an open source SDK for developing this confidential component.
 
-The Enclave exposes an [interface](go/common/enclave.go) over RPC which attempts to minimise the Trusted computing base(TCB).
+The Enclave exposes an [interface](go/common/enclave.go) over RPC which attempts to minimise the "trusted computing base"(TCB).
 
 The Enclave component has these main responsibilities:
 
@@ -69,7 +69,7 @@ logic.
 
 
 #### 4. Bridge to Ethereum 
-One of the key aspects of Ethereum Layer 2(L2) solutions is to feature a decentralised bridge that is resistant to 51% attacks.
+One of the key aspects of Ethereum Layer 2 (L2) solutions is to feature a decentralised bridge that is resistant to 51% attacks.
 
 Obscuro features a L2 side of the bridge that is completely under the control of the platform.
 
@@ -161,7 +161,7 @@ The Host service is the equivalent of a typical blockchain node, and is responsi
 - P2P messaging: Gossiping of encrypted transactions and rollups
 - RPC: Exposing an RPC interface similar to the one exposed by normal Ethereum nodes
 - Communicating with an Ethereum node for retrieving blocks and for submitting transactions with data that was generated inside the Enclave.
-  "This means an Ethereum wallet and the control keys to accounts with enough ETH to publish transactions is required.
+  This means an Ethereum wallet and the control keys to accounts with enough ETH to publish transactions is required.
 
 
 See [go/host](go/host)
@@ -210,6 +210,7 @@ root
 │   ├── <a href="./go/rpcclientlib">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
 │   └── <a href="./go/wallet">wallet</a>: Logic around wallets. Used both by the node, which is an ethereum wallet, and by the tests
 ├── <a href="./integration">integration</a>: Integration tests that spin up Obscuro networks.
+│   ├── <a href="./integration/simulation">simulation</a>: A series of tests that simulate running networks with different setups.
 ├── <a href="./testnet">testnet</a>: Utilities for deploying a testnet.
 └── <a href="./tools">tools</a>: Peripheral tooling. 
 │   ├── <a href="./tools/azuredeployer">azuredeployer</a>: Help with deploying obscuro nodes on SGX enabled azure VMs.
@@ -221,6 +222,40 @@ root
 </pre>
 
 
+## Testing
+
+The Obscuro integration tests are found in: [integration/simulation](integration/simulation).
+
+The main tests are "simulations", which means they spin up both an L1 network and an L2 network, and then inject random transactions.
+Due to the non-determinism of both the "mining" protocol in the L1 network and the nondeterminism of POBI, coupled with the random traffic,
+it allows the tests to capture many corner cases without having to explicitly write individual tests for them. 
+
+The first [simulation_in_mem_test](integration/simulation/simulation_in_mem_test.go) runs fully in one single process on top of a 
+mocked L1 network and with the networking components of the Obscuro node swapped out, and is just focused on producing 
+random L1 blocks at very short intervals.  The [ethereummock](integration/ethereummock) implementation is based on the ethereum protocol with the individual nodes 
+gossiping with each other with random latencies, producing blocks at a random interval distributed 
+around a configured ``AvgBlockDuration``, and making decisions about the canonical head based on the longest chain.
+The L2 nodes are each connected to one of these mocked L1 nodes, and receive a slightly different view.
+If this test is run long enough, it verifies the POBI protocol.
+
+There are a number of simulations that gradually become more realistic, but at the cost of a reduction in the number of 
+blocks that can be generated.
+
+The [simulation_geth_in_mem_test](integration/simulation/simulation_geth_in_mem_test.go) replaces the mocked ethereum nodes with a 
+network of geth nodes started in clique mode. The lowest unit of time of producing blocks in that mode is `1 second`.
+
+The [simulation_full_network_test](integration/simulation/simulation_full_network_test.go) starts standalone local processes for
+both the enclave and the obscuro node connected to real geth nodes.
+
+The [simulation_docker_test](integration/simulation/simulation_docker_test.go) goes a step further and runs the enclave in "Simulation mode" 
+in a docker container with the "EGo" library. 
+
+The [simulation_azure_enclaves_test](integration/simulation/simulation_azure_enclaves_test.go) is the ultimate test where the enclaves are deployed 
+in "Real mode" on SGX enabled VMs on Azure.
+
+
+A [transaction injector](integration/simulation/transaction_injector.go) is able to create and inject random transactions in any 
+of these setups by receiving RPC handles to the nodes.
 
 ## Usage
 Todo
