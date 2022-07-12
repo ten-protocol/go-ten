@@ -51,6 +51,7 @@ func ParseConfig() config.EnclaveConfig {
 	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, cfg.ViewingKeysEnabled, ViewingKeysEnabledUsage)
 	edgelessDBHost := flag.String(edgelessDBHostName, cfg.EdgelessDBHost, edgelessDBHostUsage)
 	sqliteDBPath := flag.String(sqliteDBPathName, cfg.SqliteDBPath, sqliteDBPathUsage)
+	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, profilerEnabledUsage)
 
 	flag.Parse()
 
@@ -86,6 +87,7 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.ViewingKeysEnabled = *viewingKeysEnabled
 	cfg.EdgelessDBHost = *edgelessDBHost
 	cfg.SqliteDBPath = *sqliteDBPath
+	cfg.ProfilerEnabled = *profilerEnabled
 
 	return cfg
 }

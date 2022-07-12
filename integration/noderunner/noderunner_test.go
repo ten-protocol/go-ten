@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 
+	"github.com/obscuronet/obscuro-playground/go/common/profiler"
 	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
 
 	"github.com/obscuronet/obscuro-playground/go/config"
@@ -57,11 +59,13 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.EnclaveRPCAddress = enclaveAddr
 	hostConfig.ClientRPCPortHTTP = startPort + 1
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
+	hostConfig.ProfilerEnabled = true
 
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
+	enclaveConfig.ProfilerEnabled = true
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -86,6 +90,17 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		}
 		time.Sleep(time.Second)
 		wait--
+	}
+
+	// Check if the host profiler is up
+	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultHostPort)) //nolint
+	if err != nil {
+		t.Errorf("host profiler is not reachable: %s", err)
+	}
+	// Check if the enclave profiler is up
+	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultEnclavePort)) //nolint
+	if err != nil {
+		t.Errorf("host profiler is not reachable: %s", err)
 	}
 
 	counter := 0

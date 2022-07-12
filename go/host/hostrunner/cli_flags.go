@@ -61,4 +61,7 @@ const (
 
 	obscuroChainIDName  = "obscuroChainID"
 	obscuroChainIDUsage = "An integer representing the unique chain id of the Obscuro chain (default 777)"
+
+	profilerEnabledName  = "profilerEnabled"
+	profilerEnabledUsage = "Runs a profiler instance (Defaults to false)"
 )

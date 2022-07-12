@@ -37,6 +37,11 @@ func StartServer(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	collector StatsCollector,
 ) (func(), error) {
+	tomlConfig, err := toml.Marshal(enclaveConfig)
+	if err != nil {
+		log.Panic("could not print enclave config")
+	}
+
 	lis, err := net.Listen("tcp", enclaveConfig.Address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
@@ -61,12 +66,7 @@ func StartServer(
 		go enclaveServer.Stop(context.Background(), nil) //nolint:errcheck
 	}
 
-	tomlConfig, err := toml.Marshal(enclaveConfig)
-	if err != nil {
-		panic("could not print enclave config")
-	}
 	log.Info("Enclave service started with following config:\n%s", tomlConfig)
-
 	return closeHandle, nil
 }
 
