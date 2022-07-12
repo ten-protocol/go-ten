@@ -223,7 +223,7 @@ root
 
 ## Getting Started
 The following section describes building the reference implementation of the Obscuro protocol, running the unit and 
-integration tests, and deploying an Obscuro node for end-to-end testing. Obscuro is written in [go](https://go.dev) 
+integration tests, and deploying a local testnet for end-to-end testing. Obscuro is written in [go](https://go.dev) 
 with the IDE of choice being [GoLand](https://www.jetbrains.com/go/) from Jetbrains. 
 
 
@@ -233,9 +233,9 @@ Building and running the tests requires the following dependencies.
 - [go](https://go.dev) (version > 1.8)
 - [docker](https://docs.docker.com/get-docker/) (recommend latest version)
 
-Docker is used to create and run a local Obscuro enclave service running in SGX. Certain tests require the image to be
-built and available at test run time. Building the image is described in [dockerfiles](dockerfiles) using the below
-run in the root of the project;
+Docker is used to create and run a local Obscuro enclave running in SGX. Certain tests require the image to be built 
+and available at test run time. Building the image is described in [dockerfiles](dockerfiles) using the below run 
+in the root of the project;
 
 ```
   docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
@@ -248,6 +248,8 @@ To run all unit, integration and simulation tests locally, run the below in the 
 ```
 
 ### Starting a local testnet
+At the moment running a local testnet has an additional dependency on [jq](https://stedolan.github.io/jq/) and should
+therefore be additionally installed prior to starting the local testnet. See the `jq` documentation for installation. 
 A local testnet can be created and started using docker images built using the following;
 
 ```
