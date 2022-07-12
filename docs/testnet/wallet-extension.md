@@ -32,10 +32,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
     * For other OSes and architectures, see `Compiling the binary`, below
 
-2. Open a terminal window of command prompt. Start the wallet extension by running the `wallet_extension` binary with the following flags:
-
-   ```--nodeRPCHTTPAddress=testnet.obscu.ro:13000 --nodeRPCWebsocketAddress=testnet.obscu.ro:13001```
-
+2. Open a terminal window of command prompt and start the wallet extension by running the `wallet_extension` binary. 
    The wallet extension is now listening on `http://127.0.0.1:3000/`
 
 3. Sign into MetaMask
