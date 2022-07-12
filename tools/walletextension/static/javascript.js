@@ -36,7 +36,8 @@ const initialize = () => {
             statusArea.innerText = "No MetaMask accounts found."
             return
         }
-        const account = accounts[0]; // TODO - Allow use of accounts other than the first.
+        // The array only ever contains a single value (per the docs, returns "An array of a single, hexadecimal Ethereum address string.")
+        const account = accounts[0];
 
         const signature = await ethereum.request({
             method: metamaskPersonalSign,
