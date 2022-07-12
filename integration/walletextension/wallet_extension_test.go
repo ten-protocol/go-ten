@@ -66,7 +66,7 @@ var (
 	}
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 	// The log file used across all the wallet extension tests.
-	logFile = testlog.SetupTestLog(
+	logFile = testlog.Setup(
 		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
 	)
 )

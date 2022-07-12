@@ -27,7 +27,7 @@ const (
 )
 
 func setupSimTestLog(simType string) {
-	testlog.SetupTestLog(&testlog.Cfg{
+	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,

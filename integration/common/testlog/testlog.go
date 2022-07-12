@@ -14,8 +14,8 @@ type Cfg struct {
 	TestSubtype string // test subtype (comes after timestamp in filename so sorted file list will show latest of different subtypes together)
 }
 
-// SetupTestLog will direct logs to a timestamped log file with a standard naming pattern, useful for simulations etc.
-func SetupTestLog(cfg *Cfg) *os.File {
+// Setup will direct logs to a timestamped log file with a standard naming pattern, useful for simulations etc.
+func Setup(cfg *Cfg) *os.File {
 	// Create a folder for the logs if none exists.
 	err := os.MkdirAll(cfg.LogDir, 0o700)
 	if err != nil {

@@ -34,7 +34,7 @@ const (
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
-	testlog.SetupTestLog(&testlog.Cfg{
+	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
