@@ -17,7 +17,7 @@ const initialize = () => {
             const json = JSON.parse(await headBlockResp.text())
             blockHeadArea.innerText = JSON.stringify(json, null, "\t");
         } else {
-            blockHeadArea.innerText = "Failed to fetch head block."
+            blockHeadArea.innerText = "Failed to fetch head block. Cause: " + await headBlockResp.text()
         }
     }, 1000);
 
@@ -28,7 +28,7 @@ const initialize = () => {
             const json = JSON.parse(await headRollupResp.text())
             headRollupArea.innerText = JSON.stringify(json, null, "\t");
         } else {
-            headRollupArea.innerText = "Failed to fetch head rollup."
+            headRollupArea.innerText = "Failed to fetch head rollup. Cause: " + await headRollupResp.text()
         }
     }, 1000);
 }

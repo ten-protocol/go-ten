@@ -127,8 +127,14 @@ func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	headRollupHash := headRollupHeader.Hash()
+	if headRollupHash == (gethcommon.Hash{}) {
+		logAndSendErr(resp, "head rollup was retrieved but hash was nil")
+		return
+	}
+
 	var headRollup *common.ExtRollup
-	err = o.client.Call(&headRollup, rpcclientlib.RPCGetRollup, headRollupHeader.Hash())
+	err = o.client.Call(&headRollup, rpcclientlib.RPCGetRollup, headRollupHash)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return
