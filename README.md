@@ -180,7 +180,7 @@ building blocks of the Enclave*
 ### III. The Wallet Extension
 
 The missing link to achieving fully private transactions while allowing end-users to continue using their favourite 
-wallets (like MetaMask). This is a very thin component that is responsible for the encrypting and decrypting traffic 
+wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
 between the Obscuro node and its clients.
 
 For security reasons, this component must be run locally by the user.
