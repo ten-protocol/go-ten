@@ -82,7 +82,7 @@ This logic is part of the consensus of Obscuro, every node receiving the same bl
 
 ##### b) Withdrawals
 Obscuro ERC20 transactions sent to a special "Bridge" address are interpreted as withdrawals. Which means the wrapped tokens are burned
-on the Obscuro side of the brridge and a Withdrawal instruction is added to the rollup header, which will be later executed by the Ethereum side of the bridge.
+on the Obscuro side of the bridge and a Withdrawal instruction is added to the rollup header, which will be later executed by the Ethereum side of the bridge.
 
 This happens deterministically in a post-processing phase, after all Obscuro transactions were executed by the EVM.
 
