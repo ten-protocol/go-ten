@@ -17,7 +17,6 @@ The typical blockchain node runs multiple services in a single process. For exam
 Obscuro uses Trusted Execution Environments (TEE), like Intel SGX, to execute transactions in a confidential environment, which means we diverge from the typical architecture. 
 There are three main components of the architecture, each running as a separate process: the Enclave, the Host and the Wallet Extension.
 
-[//]: # (Todo - @joel - change the diagram to represent the Wallet Extension)
 ![Architecture](design/obscuro_arch.jpeg)
 
 ### I. The Enclave
@@ -180,15 +179,13 @@ building blocks of the Enclave*
 
 ### III. The Wallet Extension
 
-The missing link to achieving fully private transactions, while allowing end users to continue using their favourite wallets
-(like MetaMask) is a very thin component that has to be installed on the user machine.
-This component is responsible for the encryption/decryption of the traffic originating from an Obscuro node. It does that 
-by generating Viewing Keys behind the scenes.
+The missing link to achieving fully private transactions while allowing end-users to continue using their favourite 
+wallets (like MetaMask). This is a very thin component that is responsible for the encrypting and decrypting traffic 
+between the Obscuro node and its clients.
 
-[//]: # (TODO - Joel: want to add anything here)
+For security reasons, this component must be run locally by the user.
 
-See: [tools/walletextension](tools/walletextension)
-
+See [tools/walletextension](tools/walletextension).
 
 ## Repository Structure
 
@@ -221,11 +218,11 @@ root
 │   ├── <a href="./integration/simulation">simulation</a>: A series of tests that simulate running networks with different setups.
 ├── <a href="./testnet">testnet</a>: Utilities for deploying a testnet.
 └── <a href="./tools">tools</a>: Peripheral tooling. 
-│   ├── <a href="./tools/azuredeployer">azuredeployer</a>: Help with deploying obscuro nodes on SGX enabled azure VMs.
-│   ├── <a href="./tools/contractdeployer">contractdeployer</a>: todo - Joel 
-│   ├── <a href="./tools/networkmanager">networkmanager</a>: todo - Joel
-│   ├── <a href="./tools/obscuroscan">obscuroscan</a>: todo - Joel
-│   └── <a href="./tools/walletextension">walletextension</a>: todo - Joel
+│   ├── <a href="./tools/azuredeployer">azuredeployer</a>: Automates deployment of Obscuro nodes to SGX-enabled Azure VMs.
+│   ├── <a href="./tools/contractdeployer">contractdeployer</a>: Automates deployment of ERC20 and management contracts to the L1.
+│   ├── <a href="./tools/networkmanager">networkmanager</a>: Network management tooling. Automates deployment of ERC20 and management contracts to the L1, and allows the injection of transactions into the network to simulate activity.
+│   ├── <a href="./tools/obscuroscan">obscuroscan</a>: Tooling to monitor network transactions.
+│   └── <a href="./tools/walletextension">walletextension</a>: Ensures sensitive messages to and from the Obscuro node are encrypted.
 
 </pre>
 
