@@ -12,7 +12,7 @@ The typical blockchain node runs multiple services in a single process. For exam
 - Data storage
 - Transaction execution
 - Mempool
-- .. 
+- etc 
 
 Obscuro uses Trusted Execution Environments (TEE), like Intel SGX, to execute transactions in a confidential environment, which means we diverge from the typical architecture. 
 There are three main components of the architecture, each running as a separate process: the Enclave, the Host and the Wallet Extension.
