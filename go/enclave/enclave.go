@@ -68,8 +68,6 @@ type enclaveImpl struct {
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
 	enclavePubKey []byte            // the public key of the above
 
-	obscuroNetworkKey *ecdsa.PrivateKey // this is a key known by all the enclaves. Used by users for encrypting transactions.
-
 	transactionBlobCrypto obscurocrypto.TransactionBlobCrypto
 	profiler              *profiler.Profiler
 }
@@ -180,7 +178,6 @@ func NewEnclave(
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
 		enclavePubKey:         serializedEnclavePubKey,
-		obscuroNetworkKey:     obscuroKey,
 		transactionBlobCrypto: transactionBlobCrypto,
 		profiler:              prof,
 	}
@@ -457,12 +454,7 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
-	// todo - this should be done in the rpc encryption manager
-	viewingKeyBytes, err := ecies.ImportECDSA(e.obscuroNetworkKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
-	if err != nil {
-		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
-	}
-	return e.rpcEncryptionManager.AddViewingKey(viewingKeyBytes, signature)
+	return e.rpcEncryptionManager.AddViewingKey(encryptedViewingKeyBytes, signature)
 }
 
 func (e *enclaveImpl) StoreAttestation(att *common.AttestationReport) error {
