@@ -73,11 +73,19 @@ One of the key aspects of Ethereum Layer 2 (L2) solutions is to feature a decent
 
 Obscuro features a L2 side of the bridge that is completely under the control of the platform.
 
+##### a) Deposits
 During processing of the Ethereum blocks, the platform generates synthetic L2 transactions based on every relevant transaction found there.
 For example when Alice deposits 10ABC from her account to the L1 bridge, Obscuro will execute a synthetic L2 transaction (that it deterministically
 generated from the L1 transaction), which moves 10WABC from the L2 bridge to Alice's address on Obscuro. 
 
 This logic is part of the consensus of Obscuro, every node receiving the same block containing the rollup and the deposits, will generate the exact same synthetic transaction.
+
+##### b) Withdrawals
+Obscuro ERC20 transactions sent to a special "Bridge" address are interpreted as withdrawals. Which means the wrapped tokens are burned
+on the Obscuro side of the bridge and a Withdrawal instruction is added to the rollup header, which will be later executed by the Ethereum side of the bridge.
+
+This happens deterministically in a post-processing phase, after all Obscuro transactions were executed by the EVM.
+
 
 See [go/enclave/bridge](go/enclave/bridge)
 
@@ -269,4 +277,4 @@ Todo
 
 ## Community 
 
-Discussions around development 
+Development is discussed by the team and the community on [discord](https://discord.com/channels/916052669955727371/945360340613484684) 
