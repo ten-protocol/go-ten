@@ -56,7 +56,6 @@ services:
                  "--address=:11000",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
-                 "--viewingKeysEnabled=false",
                  "--hostAddress=host:10000",
                  "--willAttest",
                  "--useInMemoryDB=false",

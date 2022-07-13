@@ -52,7 +52,6 @@ services:
                  "--sqliteDBPath=/data/sqlite.db",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
-                 "--viewingKeysEnabled=false",
                  "--hostAddress=host:10000",
                  "--profilerEnabled=$PROFILERENABLED"
     ]
