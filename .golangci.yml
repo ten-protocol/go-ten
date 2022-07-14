@@ -34,7 +34,7 @@ linters:
     - gosec
     - gosimple
     - govet
-#    - ifshort
+    - ifshort
     - importas
     - ineffassign
     - makezero
