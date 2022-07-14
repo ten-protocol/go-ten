@@ -283,8 +283,8 @@ The above will perform all the relevant builds and ensure the images are ready f
 it takes in the order of 4-5 mins to complete. The following images are created;
 
 ```
-testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave            # the enclave built to be SGX enabled  
-testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetwork        # the L1 geth network 
+testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave            # the enclave 
+testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetwork        # the L1 network 
 testnetobscuronet.azurecr.io/obscuronet/obscuro_host               # the host
 testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer   # deploys the management contract to the host
 ```
