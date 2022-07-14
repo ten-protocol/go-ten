@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 	"io/fs"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -78,6 +80,7 @@ type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
 	hostClient       rpcclientlib.Client
+
 	// TODO - Support multiple viewing keys. This will require the enclave to attach metadata on encrypted results
 	//  to indicate which viewing key they were encrypted with.
 	viewingPublicKeyBytes  []byte
@@ -92,6 +95,8 @@ func NewWalletExtension(config Config) *WalletExtension {
 	if err != nil {
 		panic(err)
 	}
+
+	setLogs(config.LogPath)
 
 	return &WalletExtension{
 		enclavePublicKey: ecies.ImportECDSAPublic(enclavePublicKey),
@@ -129,9 +134,21 @@ func (we *WalletExtension) Shutdown() {
 	if we.server != nil {
 		err := we.server.Shutdown(context.Background())
 		if err != nil {
-			fmt.Printf("could not shut down wallet extension: %s", err)
+			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
 	}
+}
+
+// Sets the log file.
+func setLogs(logPath string) {
+	if logPath == "" {
+		return
+	}
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
+	}
+	log.OutputToFile(logFile)
 }
 
 // Used to check whether the server is ready.
@@ -162,7 +179,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 	method := reqJSONMap[reqJSONKeyMethod]
-	fmt.Printf("Received %s request from wallet: %s\n", method, body)
+	log.Info("Received %s request from wallet: %s", method, body)
 
 	reqJSONMap, err = we.ensureCallsHaveFromField(method, reqJSONMap)
 	if err != nil {
@@ -211,7 +228,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not marshal JSON response to present to the client: %s", err))
 		return
 	}
-	fmt.Printf("Received %s response from Obscuro node: %s\n", method, strings.TrimSpace(string(clientResponse)))
+	log.Info("Received %s response from Obscuro node: %s", method, strings.TrimSpace(string(clientResponse)))
 
 	// We write the response to the client.
 	_, err = resp.Write(clientResponse)
@@ -323,6 +340,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 // Logs the error message and sends it as an HTTP error.
 func logAndSendErr(resp http.ResponseWriter, msg string) {
+	log.Error(msg)
 	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
 }
@@ -332,6 +350,7 @@ type Config struct {
 	WalletExtensionPort     int
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
+	LogPath                 string
 }
 
 func forwardMsgOverWebsocket(url string, msg []byte) ([]byte, error) {
@@ -360,7 +379,6 @@ func (we *WalletExtension) encryptParamsIfNeeded(body []byte, method interface{}
 		return body, nil
 	}
 
-	fmt.Println("🔒 Encrypting request from wallet with enclave public key.")
 	params := reqJSONMap[reqJSONKeyParams]
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
@@ -388,7 +406,6 @@ func (we *WalletExtension) decryptResponseIfNeeded(method interface{}, respJSONM
 		return nil, fmt.Errorf("could not decrypt enclave response as no viewing key has been created")
 	}
 
-	fmt.Printf("🔐 Decrypting %s response from Obscuro node with viewing key.\n", method)
 	encryptedResult := common.Hex2Bytes(respJSONMap[RespJSONKeyResult].(string))
 	decryptedResult, err := we.viewingPrivateKeyEcies.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
