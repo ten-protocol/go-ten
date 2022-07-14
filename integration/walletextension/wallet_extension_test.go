@@ -239,11 +239,11 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
-	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
+	balanceOfBytes := erc20contractlib.CreateBalanceOfData(accountAddress)
 	reqParams := map[string]interface{}{
 		reqJSONKeyTo:   bridge.WBtcContract,
 		reqJSONKeyFrom: accountAddress.String(),
-		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
+		reqJSONKeyData: "0x" + common.Bytes2Hex(balanceOfBytes),
 	}
 	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, latestBlock})
 
