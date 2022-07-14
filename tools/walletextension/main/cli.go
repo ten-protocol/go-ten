@@ -22,7 +22,7 @@ const (
 	nodeRPCWebsocketAddressUsage   = "The address on which to connect to the node via RPC using websockets"
 
 	logPathName    = "logPath"
-	logPathDefault = ""
+	logPathDefault = "wallet_extension_logs.txt"
 	logPathUsage   = "The path to use for the wallet extension's log file"
 )
 
