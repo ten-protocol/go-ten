@@ -3,15 +3,18 @@
 #
 # This script downloads and builds the obscuro node
 #
+# Note: Be aware that a network MUST always have AT LEAST ONE Genesis node -> Flag is_genesis=true
+#       Otherwise you might see your node getting stuck in waiting for a secret
+#
 
 help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: (run locally)"
-    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9"
+    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --is_genesis=true"
     echo ""
     echo "   ex: (run connect external)"
-    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0x7e440D3F8a82636529b0A4Fb9a4Ff66f8Bc7141F --erc20contractaddr=0xF63035376a11007DDEBed404405b69F079b17836"
+    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9"
     echo ""
     echo "  host_id            *Required* Set the node ID"
     echo ""
