@@ -23,7 +23,7 @@ import (
 const ViewingKeySignedMsgPrefix = "vk"
 
 // Used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil using ECIES throws an exception.
-var placeholderResult = []byte("<nil result>")
+var placeholderResult = []byte("0x")
 
 // RPCEncryptionManager manages the decryption and encryption of sensitive RPC requests.
 type RPCEncryptionManager struct {
