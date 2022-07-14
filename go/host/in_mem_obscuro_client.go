@@ -69,7 +69,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 			return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetRollup)
 		}
 
-		*result.(**common.ExtRollup) = c.obscuroAPI.GetRollup(hash)
+		extRollup, err := c.obscuroAPI.GetRollup(hash)
+		if err != nil {
+			return fmt.Errorf("`obscuro_getRollup` call failed. Cause: %w", err)
+		}
+		*result.(**common.ExtRollup) = extRollup
 
 	case rpcclientlib.RPCGetTransactionByHash:
 		if len(args) != 1 {
@@ -97,7 +101,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		encryptedResponse, err := c.ethAPI.Call(context.Background(), params)
 		if err != nil {
-			return fmt.Errorf("off-chain call failed. Cause: %w", err)
+			return fmt.Errorf("`eth_call` call failed. Cause: %w", err)
 		}
 		*result.(*string) = encryptedResponse
 
@@ -123,7 +127,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), params)
 		if err != nil {
-			return fmt.Errorf("getTransactionReceipt call failed. Cause: %w", err)
+			return fmt.Errorf("`obscuro_getTransactionReceipt` call failed. Cause: %w", err)
 		}
 		*result.(*string) = encryptedResponse
 

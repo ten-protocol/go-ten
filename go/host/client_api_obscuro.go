@@ -38,7 +38,7 @@ func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 }
 
 // GetRollup returns the rollup with the given hash.
-func (api *ObscuroAPI) GetRollup(hash gethcommon.Hash) *common.ExtRollup {
+func (api *ObscuroAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, error) {
 	return api.host.EnclaveClient.GetRollup(hash)
 }
 

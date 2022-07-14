@@ -363,24 +363,26 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	return encryptedTxReceipt, nil
 }
 
-func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup {
+func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
 	rollup, found := e.storage.FetchRollup(rollupHash)
 	if found {
 		extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
-		return &extRollup
+		return &extRollup, nil
 	}
-	return nil
+	return nil, fmt.Errorf("rollup with hash %s could not be found", rollupHash.Hex())
 }
 
-func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
+func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, error) {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
+	maxRollupHeight := rollup.NumberU64()
+
 	// -1 is used by Ethereum to indicate that we should fetch the head.
 	if rollupHeight != -1 {
 		for {
 			if rollup == nil {
 				// We've reached the head of the chain without finding the block.
-				return nil
+				return nil, fmt.Errorf("rollup with height %d could not be found. Max rollup height was %d", rollupHeight, maxRollupHeight)
 			}
 			if rollup.Number().Int64() == rollupHeight {
 				// We have found the block.
@@ -388,7 +390,7 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 			}
 			if rollup.Number().Int64() < rollupHeight {
 				// The current block number is below the sought number. Continuing to walk up the chain is pointless.
-				return nil
+				return nil, fmt.Errorf("rollup with height %d could not be found. Max rollup height was %d", rollupHeight, maxRollupHeight)
 			}
 
 			// We grab the next rollup and loop.
@@ -397,7 +399,7 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	}
 
 	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
-	return &extRollup
+	return &extRollup, nil
 }
 
 func (e *enclaveImpl) Attestation() *common.AttestationReport {
