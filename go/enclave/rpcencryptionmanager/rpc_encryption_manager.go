@@ -22,9 +22,8 @@ import (
 // signed as-is.
 const ViewingKeySignedMsgPrefix = "vk"
 
-// PlaceholderResult is used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil
-// using ECIES throws an exception.
-var PlaceholderResult = []byte("<nil result>")
+// Used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil using ECIES throws an exception.
+var placeholderResult = []byte("<nil result>")
 
 // RPCEncryptionManager manages the decryption and encryption of sensitive RPC requests.
 type RPCEncryptionManager struct {
@@ -93,7 +92,7 @@ func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Addres
 	}
 
 	if bytes == nil {
-		bytes = PlaceholderResult
+		bytes = placeholderResult
 	}
 
 	encryptedBytes, err := ecies.Encrypt(rand.Reader, viewingKey, bytes, nil, nil)
