@@ -69,10 +69,10 @@ type Enclave interface {
 	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
 
 	// GetRollup returns the rollup with the given hash
-	GetRollup(rollupHash L2RootHash) *ExtRollup
+	GetRollup(rollupHash L2RootHash) (*ExtRollup, error)
 
 	// GetRollupByHeight returns the canonical rollup with the given height.
-	GetRollupByHeight(rollupHeight int64) *ExtRollup
+	GetRollupByHeight(rollupHeight int64) (*ExtRollup, error)
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.

@@ -316,38 +316,30 @@ func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams common.Encrypte
 	return response.EncryptedTxReceipt, nil
 }
 
-func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup {
+func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetRollup(timeoutCtx, &generated.GetRollupRequest{RollupHash: rollupHash.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to retrieve rollup. Cause: %s", err)
-	}
-
-	if !response.Known {
-		return nil
+		return nil, fmt.Errorf("failed to retrieve rollup with hash %s. Cause: %w", rollupHash.Hex(), err)
 	}
 
 	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
-	return &extRollup
+	return &extRollup, nil
 }
 
-func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
+func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetRollupByHeight(timeoutCtx, &generated.GetRollupByHeightRequest{RollupHeight: rollupHeight})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to retrieve rollup with height %d. Cause: %s", rollupHeight, err)
-	}
-
-	if !response.Known {
-		return nil
+		return nil, fmt.Errorf("failed to retrieve rollup with height %d. Cause: %w", rollupHeight, err)
 	}
 
 	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
-	return &extRollup
+	return &extRollup, nil
 }
 
 func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {

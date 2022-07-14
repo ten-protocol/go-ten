@@ -203,23 +203,23 @@ func (s *server) GetTransactionReceipt(_ context.Context, request *generated.Get
 }
 
 func (s *server) GetRollup(_ context.Context, request *generated.GetRollupRequest) (*generated.GetRollupResponse, error) {
-	extRollup := s.enclave.GetRollup(gethcommon.BytesToHash(request.RollupHash))
-	if extRollup == nil {
-		return &generated.GetRollupResponse{Known: false, ExtRollup: nil}, nil
+	extRollup, err := s.enclave.GetRollup(gethcommon.BytesToHash(request.RollupHash))
+	if err != nil {
+		return nil, err
 	}
 
 	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
-	return &generated.GetRollupResponse{Known: true, ExtRollup: &extRollupMsg}, nil
+	return &generated.GetRollupResponse{ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) GetRollupByHeight(_ context.Context, request *generated.GetRollupByHeightRequest) (*generated.GetRollupByHeightResponse, error) {
-	extRollup := s.enclave.GetRollupByHeight(request.RollupHeight)
-	if extRollup == nil {
-		return &generated.GetRollupByHeightResponse{Known: false, ExtRollup: nil}, nil
+	extRollup, err := s.enclave.GetRollupByHeight(request.RollupHeight)
+	if err != nil {
+		return nil, err
 	}
 
 	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
-	return &generated.GetRollupByHeightResponse{Known: true, ExtRollup: &extRollupMsg}, nil
+	return &generated.GetRollupByHeightResponse{ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
