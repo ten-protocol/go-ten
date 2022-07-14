@@ -400,6 +400,8 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 	}
 	sendTxJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodSendRawTx, []interface{}{txBinaryHex})
 
+	time.Sleep(6 * time.Second) // We wait for the deployment of the contract to the Obscuro network.
+
 	// We get the transaction receipt for the Obscuro ERC20 contract deployment.
 	txHash, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
