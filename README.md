@@ -291,8 +291,8 @@ testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer   # deploys the
 
 To start the test network locally run the below scripts. Note that it is recommended to use the scripts with arguments 
 as detailed below. The arguments are set to correspond to valid pre-determined public / private key pair values for 
-contract deployment and roll up publishing (where `pkstring` is the private key pair for the first `pkaddress` supplied in  
-`testnet-local-gethnetwork.sh`). Using these values, and starting with a nonce of zero, means the addresses of the 
+contract deployment and roll up publishing (where `pkstring` is the private key pair for the first `pkaddress` supplied 
+in `testnet-local-gethnetwork.sh`). Using these values, and starting with a nonce of zero, means the addresses of the 
 contracts deployed are known a-priori, and so can be supplied in the `start-obscuro-node.sh` script as shown. As only 
 a single Obscuro node is started, it must be set as a genesis node. 
 
