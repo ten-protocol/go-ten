@@ -638,13 +638,16 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 	if !ok {
 		panic("could not retrieve transaction hash from JSON result")
 	}
+
+	// We check once per second for twenty seconds whether the Obscuro ERC20 contract is deployed.
 	counter := 0
 	for {
 		if counter > 20 {
 			t.Fatalf("could not get receipt for Obscuro ERC20 deployment transaction after 20 seconds")
 		}
 		txReceiptResp := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{txHash})
-		if !strings.Contains(string(txReceiptResp), "could not retrieve transaction with hash") {
+		isTxOnChain := !strings.Contains(string(txReceiptResp), "could not retrieve transaction with hash")
+		if isTxOnChain {
 			break
 		}
 		time.Sleep(1 * time.Second)
