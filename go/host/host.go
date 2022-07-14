@@ -335,8 +335,10 @@ func (a *Node) startProcessing() {
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := common.DecodeRollup(r)
-			common.TraceWithID(a.shortID, "Received rollup: r_%d from A%d",
+			common.TraceWithID(a.shortID, "Received rollup: r_%d(%d) parent: r_%d from A%d",
 				common.ShortHash(rol.Hash()),
+				rol.Header.Number,
+				common.ShortHash(rol.Header.ParentHash),
 				common.ShortAddress(rol.Header.Agg),
 			)
 			if err != nil {

@@ -479,12 +479,14 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	r := rc.produceRollup(&block, blockState)
 
 	rc.signRollup(r)
+
+	// Sanity check the produced rollup
 	rc.checkRollup(r)
 
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
 
-	common.LogWithID(rc.nodeID, "Processed block: b_%d(%d)", common.ShortHash(block.Hash()), block.NumberU64())
+	common.LogWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
 	return rc.newBlockSubmissionResponse(blockState, rc.transactionBlobCrypto.ToExtRollup(r))
 }

@@ -12,8 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -156,7 +154,7 @@ func (h *Header) Hash() L2RootHash {
 	cp.S = nil
 	hash, err := RLPHash(cp)
 	if err != nil {
-		log.Error("err hashing the l2roothash")
+		panic("err hashing a rollup header")
 	}
 	return hash
 }
