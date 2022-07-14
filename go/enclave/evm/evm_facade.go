@@ -4,8 +4,6 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	core2 "github.com/ethereum/go-ethereum/core"
@@ -23,26 +21,27 @@ const prealloc = 750000000000000000
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
-func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainID int64, fromTxIndex int) []*types.Receipt {
+func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainID int64, fromTxIndex int) map[common.TxHash]interface{} {
 	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
 	zero := uint64(0)
 	usedGas := &zero
-	receipts := make([]*types.Receipt, 0)
+	result := map[common.TxHash]interface{}{}
 	for i, t := range txs {
 		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg, fromTxIndex+i)
 		if err != nil {
-			log.Info("Error transaction %d: %s", common.ShortHash(t.Hash()), err)
+			result[t.Hash()] = err
+			common.LogTXExecution(t.Hash(), "Error: %s", err)
 			continue
 		}
-		receipts = append(receipts, r)
+		result[t.Hash()] = r
 		if r.Status == types.ReceiptStatusFailed {
-			log.Info("Unsuccessful (status != 1) tx %s.", t.Hash().Hex())
+			common.LogTXExecution(t.Hash(), "Unsuccessful (status != 1).")
 		} else {
-			log.Info("Successfully executed tx %s.", t.Hash().Hex())
+			common.LogTXExecution(t.Hash(), "Successfully executed.")
 		}
 	}
 	s.Finalise(true)
-	return receipts
+	return result
 }
 
 func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *common.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
@@ -55,16 +54,21 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 	if err != nil {
 		return nil, err
 	}
-	s.AddBalance(sender, big.NewInt(prealloc))
 
 	snap := s.Snapshot()
+
+	// Add some balance to the sender to avoid gas issues.
+	// Todo - this has to be removed once the gas logic is sorted.
+	s.AddBalance(sender, big.NewInt(prealloc))
+
 	// todo - Author?
 	receipt, err := core2.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), t, usedGas, vmCfg)
-	if err == nil {
-		return receipt, nil
+	if err != nil {
+		s.RevertToSnapshot(snap)
+		return nil, err
 	}
-	s.RevertToSnapshot(snap)
-	return nil, err
+
+	return receipt, nil
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract

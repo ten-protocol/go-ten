@@ -3,10 +3,15 @@ package common
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 )
 
-const logPattern = ">   Agg%d: %s"
+const (
+	logPattern    = ">   Agg%d: %s"
+	txExecPattern = "!Tx %s: %s"
+)
 
 // LogWithID logs a message at INFO level with the aggregator's identity prepended.
 func LogWithID(nodeID uint64, msg string, args ...interface{}) {
@@ -36,4 +41,10 @@ func ErrorWithID(nodeID uint64, msg string, args ...interface{}) {
 func PanicWithID(nodeID uint64, msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	log.Panic(logPattern, nodeID, formattedMsg)
+}
+
+// LogTXExecution - logs at INFO level with the tx hash prepended
+func LogTXExecution(txHash common.Hash, msg string, args ...interface{}) {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	log.Info(txExecPattern, txHash.Hex(), formattedMsg)
 }
