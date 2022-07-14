@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"sync"
 
+	"github.com/obscuronet/obscuro-playground/go/common/log"
+
 	"github.com/obscuronet/obscuro-playground/go/common"
 
 	"github.com/obscuronet/obscuro-playground/go/enclave/core"
@@ -159,7 +161,7 @@ func removeCommittedTransactions(
 
 		p, f := resolver.ParentBlock(b)
 		if !f {
-			panic("wtf")
+			log.Panic("Should not happen. Parent not found")
 		}
 
 		b = p

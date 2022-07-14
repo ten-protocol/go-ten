@@ -103,7 +103,7 @@ func printBlock(b *types.Block, m Node) string {
 	}
 	p, f := m.Resolver.ParentBlock(b)
 	if !f {
-		panic("wtf")
+		log.Panic("Should not happen. Parent not found")
 	}
 
 	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[parent=b_%d]. Txs: %v",
