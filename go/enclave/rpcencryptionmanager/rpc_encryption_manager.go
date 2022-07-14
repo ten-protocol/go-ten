@@ -44,10 +44,12 @@ func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ec
 
 // DecryptBytes decrypts the bytes with the enclave's private key if viewing keys are enabled.
 func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
-	if !rpc.viewingKeysEnabled {
-		return encryptedBytes, nil
+	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
 	}
-	return rpc.decryptWithEnclavePrivateKey(encryptedBytes)
+
+	return bytes, nil
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.
@@ -129,12 +131,9 @@ func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcomm
 }
 
 func (rpc *RPCEncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
-	var err error
-	if rpc.viewingKeysEnabled {
-		encodedTx, err = rpc.decryptWithEnclavePrivateKey(encodedTx)
-		if err != nil {
-			return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
-		}
+	encodedTx, err := rpc.DecryptBytes(encodedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
 	}
 
 	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
@@ -148,14 +147,4 @@ func (rpc *RPCEncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.
 	}
 
 	return tx, nil
-}
-
-// Decrypts the bytes with the enclave's private key.
-func (rpc *RPCEncryptionManager) decryptWithEnclavePrivateKey(encryptedBytes []byte) ([]byte, error) {
-	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
-	}
-
-	return bytes, nil
 }
