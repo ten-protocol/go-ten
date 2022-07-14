@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
@@ -55,6 +57,9 @@ const (
 	nodeRPCHTTPPort  = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCHTTPOffset
 	nodeRPCWSPort    = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	httpProtocol     = "http://"
+
+	// Returned by the EVM to indicate a zero balance.
+	zeroResult = "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
 )
 
 var (
@@ -226,7 +231,8 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	time.Sleep(2 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
+	// todo - joel - smarter way to wait
+	time.Sleep(10 * time.Second) // We wait for the deployment of the ERC20 contract to the Obscuro network.
 
 	// We submit a viewing key for a random account.
 	privateKey, err := crypto.GenerateKey()
@@ -239,16 +245,17 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
-	balanceOfBytes := erc20contractlib.CreateBalanceOfData(accountAddress)
+	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
+	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.WBtcContract,
+		reqJSONKeyTo:   bridge.WBtcContract.Hex(),
 		reqJSONKeyFrom: accountAddress.String(),
-		reqJSONKeyData: "0x" + common.Bytes2Hex(balanceOfBytes),
+		reqJSONKeyData: convertedData,
 	}
 	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, latestBlock})
 
-	if callJSON[walletextension.RespJSONKeyResult] != string(rpcencryptionmanager.PlaceholderResult) {
-		t.Fatalf("Expected call result of %s, got %s", rpcencryptionmanager.PlaceholderResult, callJSON[walletextension.RespJSONKeyResult])
+	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
+		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -279,15 +286,16 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
-	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
+	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
+	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
 		reqJSONKeyTo:   bridge.WBtcContract,
-		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
+		reqJSONKeyData: convertedData,
 	}
 	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, latestBlock})
 
-	if callJSON[walletextension.RespJSONKeyResult] != string(rpcencryptionmanager.PlaceholderResult) {
-		t.Fatalf("Expected call result of %s, got %s", rpcencryptionmanager.PlaceholderResult, callJSON[walletextension.RespJSONKeyResult])
+	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
+		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -316,12 +324,13 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
-	transferTxBytes := erc20contractlib.CreateTransferTxData(dummyAccountAddress, 0)
+	balanceData := erc20contractlib.CreateBalanceOfData(dummyAccountAddress)
+	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
 		reqJSONKeyTo: bridge.WBtcContract,
 		// We send the request from a different address than the one we created a viewing key for.
 		reqJSONKeyFrom: dummyAccountAddress.Hex(),
-		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
+		reqJSONKeyData: convertedData,
 	}
 	respBody := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodCall, []interface{}{reqParams, latestBlock})
 
