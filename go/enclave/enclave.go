@@ -287,7 +287,11 @@ func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.ExtRollup, b
 }
 
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	return e.chain.ExecuteOffChainTransaction(encryptedParams)
+	resp, err := e.chain.ExecuteOffChainTransaction(encryptedParams)
+	if err != nil {
+		common.LogWithID(e.nodeShortID, "Could not execute off chain call. Cause: %s", err)
+	}
+	return resp, err
 }
 
 func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
