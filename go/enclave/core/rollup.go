@@ -23,7 +23,9 @@ type Rollup struct {
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
 func (r *Rollup) Hash() common.L2RootHash {
-	// Temporarily disabling the caching of the hash because it's causing bugs
+	// Temporarily disabling the caching of the hash because it's causing bugs.
+	// Transforming a Rollup to an ExtRollup and then back to a Rollup will generate a different hash if caching is enabled.
+	// Todo - re-enable
 	//if hash := r.hash.Load(); hash != nil {
 	//	return hash.(common.L2RootHash)
 	//}
