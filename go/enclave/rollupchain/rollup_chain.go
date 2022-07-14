@@ -276,6 +276,8 @@ func (c sortByTxIndex) Len() int           { return len(c) }
 func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
 
+const nonceTooHigh = "nonce too high"
+
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
@@ -284,7 +286,6 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.
 	var txReceipts []*types.Receipt
 
 	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, 0)
-	// todo - only transactions that fail because of the nonce should be excluded
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -296,7 +297,8 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.
 			txReceipts = append(txReceipts, rec)
 		} else {
 			err := result.(error)
-			if strings.Contains(err.Error(), "nonce") {
+			// only transactions that fail because of the nonce are excluded and left in the mempool
+			if strings.Contains(err.Error(), nonceTooHigh) {
 				common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d", tx.Hash().Hex(), common.ShortHash(rollup.Hash()))
 			} else {
 				executedTransactions = append(executedTransactions, tx)
@@ -403,7 +405,7 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 	// calculate the state to compare with what is in the Rollup
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
-		panic("Sanity check. All transactions that are included in a rollup must be executed and produce a receipt.")
+		panic("Sanity check. All transactions that are included in a rollup must be executed.")
 	}
 
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
