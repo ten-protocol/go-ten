@@ -232,6 +232,8 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			continue
 		}
 
+		// todo - retrieve receipt
+
 		go ti.Counter.trackTransferL2Tx(signedTx)
 		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 	}
@@ -302,6 +304,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
 func (ti *TransactionInjector) issueInvalidL2Txs() {
+	// todo - also issue transactions with insufficient gas
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
@@ -371,10 +374,11 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 }
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
+	gas := uint64(1_000_000)
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      1_000_000,
+		Gas:      gas,
 		GasPrice: gethcommon.Big0,
 		Data:     data,
 		To:       ti.wallets.Tokens[bridge.BTC].L2ContractAddress,
