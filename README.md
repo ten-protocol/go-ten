@@ -248,8 +248,7 @@ separately for the host, enclave, and wallet extension  i.e.
 Running `go build ./...` to build all packages at the root level will build all packages, but it will discard the 
 resulting artifacts; it therefore serves only as a check that the packages _can_ be built. Note that building the 
 enclave using `go` will compile it for a non-SGX mode and allow it to be run for test purposes. Compiling for SGX mode 
-requires `ego-go ` from [Ego](https://www.edgeless.systems/products/ego/) to be used in placement. When building and 
-running a local testnet, this is performed using a specific `ego-dev` docker image as described in later steps here. 
+requires `ego-go ` from [Ego](https://www.edgeless.systems/products/ego/) to be used in placement.  
 
 
 ### Running the tests
@@ -269,12 +268,12 @@ To run all unit, integration and simulation tests locally, run the below in the 
 
 ### Starting a local testnet
 At the moment running a local testnet has an additional dependency on [jq](https://stedolan.github.io/jq/) and the module 
-should therefore be additionally installed prior to starting the local testnet. See the `jq` documentation for installation
+should be additionally installed prior to starting the local testnet. See the `jq` documentation for installation
 instructions. 
 
-The testnet is constructed from docker images that have all executables built and available ready for running. The images
-are created from the working directory of the repository checkout. To build the images and to add them into the docker 
-images repository use;
+The testnet is constructed from docker images that have all executables built, installed and available for running. The 
+images are created from the working directory of the repository checkout. To build the images and to add them into the 
+docker images repository use;
 
 ```
   cd ./testnet && ./testnet-local-build_images.sh 
@@ -290,12 +289,17 @@ testnetobscuronet.azurecr.io/obscuronet/obscuro_host               # the host
 testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer   # deploys the management contract to the host
 ```
 
-The test network can be started using the following;
+To start the test network locally run the below scripts. Note that it is recommended to use the scripts with arguments 
+as detailed below. The arguments are set to correspond to valid pre-determined public / private key pair values for 
+contract deployment and roll up publishing (where `pkstring` is the private key pair for the first `pkaddress` supplied in  
+`testnet-local-gethnetwork.sh`). Using these values, and starting with a nonce of zero, means the addresses of the 
+contracts deployed are known a-priori, and so can be supplied in the `start-obscuro-node.sh` script as shown. As only 
+a single Obscuro node is started, it must be set as a genesis node. 
 
 ```
   ./testnet-local-gethnetwork.sh --pkaddresses=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B
   ./testnet-deploy-contracts.sh --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
-  ./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --profiler_enabled=true
+  ./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --is_genesis=true 
 ```
 
 ## Community 
