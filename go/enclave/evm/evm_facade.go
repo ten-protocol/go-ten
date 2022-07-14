@@ -55,7 +55,7 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 		return nil, err
 	}
 
-	snap := s.Snapshot()
+	snap := s.Snapshot() //nolint
 
 	// Add some balance to the sender to avoid gas issues.
 	// Todo - this has to be removed once the gas logic is sorted.
