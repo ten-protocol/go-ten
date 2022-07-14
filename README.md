@@ -223,9 +223,9 @@ root
 
 ## Getting Started
 The following section describes building the reference implementation of the Obscuro protocol, running the unit and 
-integration tests, and deploying a local testnet for end-to-end testing. Obscuro is written in [go](https://go.dev) 
-with the IDE of choice being [GoLand](https://www.jetbrains.com/go/) from Jetbrains. Unless otherwise stated, all paths
-stated herein are relative to the root of the `go-obscuro` checkout.
+integration tests, and deploying a local testnet for end-to-end testing. The reference implementation of Obscuro is 
+written in [go](https://go.dev) with the IDE of choice being [GoLand](https://www.jetbrains.com/go/) from Jetbrains. 
+Unless otherwise stated, all paths stated herein are relative to the root of the `go-obscuro` checkout.
 
 
 ### Dependencies
@@ -257,7 +257,7 @@ docker images repository. Building the image is described in [dockerfiles](docke
 below in the root of the project;
 
 ```
-docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
+docker build -t obscuro_enclave -f ./dockerfiles/enclave.Dockerfile .
 ```
 
 To run all unit, integration and simulation tests locally, run the below in the root of the project;
