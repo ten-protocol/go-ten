@@ -2,7 +2,10 @@ package host
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -35,12 +38,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCSendRawTransaction, len(args))
 		}
-		tx, ok := args[0].(common.EncryptedParamsSendRawTx)
-		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type EncryptedParamsSendRawTx", rpcclientlib.RPCSendRawTransaction)
+		bytes, err := json.Marshal(args)
+		if err != nil {
+			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCSendRawTransaction, err)
 		}
-
-		_, err := c.ethAPI.SendRawTransaction(context.Background(), tx)
+		_, err = c.ethAPI.SendRawTransaction(context.Background(), bytes)
 		return err
 
 	case rpcclientlib.RPCGetCurrentBlockHead:
@@ -53,10 +55,12 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetRollupHeader, len(args))
 		}
-		hash, ok := args[0].(gethcommon.Hash)
+		// we expect a hex string representation of the hash, since that's what gets sent over RPC
+		hashStr, ok := args[0].(string)
 		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetRollupHeader)
+			return fmt.Errorf("arg to %s was not of expected type string", rpcclientlib.RPCGetRollupHeader)
 		}
+		hash := gethcommon.HexToHash(hashStr)
 
 		*result.(**common.Header) = c.obscuroAPI.GetRollupHeader(hash)
 
@@ -79,12 +83,12 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTransactionByHash, len(args))
 		}
-		params, ok := args[0].([]byte)
-		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type []byte", rpcclientlib.RPCGetTransactionByHash)
+		bytes, err := json.Marshal(args)
+		if err != nil {
+			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTransactionByHash, err)
 		}
 
-		encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), params)
+		encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), bytes)
 		if err != nil {
 			return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
 		}
@@ -94,12 +98,12 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCCall, len(args))
 		}
-		params, ok := args[0].([]byte)
-		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type []byte]", rpcclientlib.RPCCall)
+		bytes, err := json.Marshal(args)
+		if err != nil {
+			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCCall, err)
 		}
 
-		encryptedResponse, err := c.ethAPI.Call(context.Background(), params)
+		encryptedResponse, err := c.ethAPI.Call(context.Background(), bytes)
 		if err != nil {
 			return fmt.Errorf("`eth_call` call failed. Cause: %w", err)
 		}
@@ -120,12 +124,12 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if len(args) != 1 {
 			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTxReceipt, len(args))
 		}
-		params, ok := args[0].([]byte)
-		if !ok {
-			return fmt.Errorf("arg 1 to %s was not of expected type []byte", rpcclientlib.RPCGetTxReceipt)
+		bytes, err := json.Marshal(args)
+		if err != nil {
+			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTxReceipt, err)
 		}
 
-		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), params)
+		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), bytes)
 		if err != nil {
 			return fmt.Errorf("`obscuro_getTransactionReceipt` call failed. Cause: %w", err)
 		}
@@ -143,4 +147,12 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 func (c *inMemObscuroClient) Stop() {
 	// There is no RPC connection to close.
+}
+
+func (c *inMemObscuroClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
+	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
+}
+
+func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
+	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
 }

@@ -128,15 +128,17 @@ func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcomm
 	return rpc.EncryptWithViewingKey(address, txReceiptBytes)
 }
 
-// DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
-func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*common.L2Tx, error) {
-	txBinaryListJSON, err := rpc.decryptWithEnclavePrivateKey(encryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
+func (rpc *RPCEncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
+	var err error
+	if rpc.viewingKeysEnabled {
+		encodedTx, err = rpc.decryptWithEnclavePrivateKey(encodedTx)
+		if err != nil {
+			return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
+		}
 	}
 
 	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
-	txBinary := txBinaryListJSON[4 : len(txBinaryListJSON)-2]
+	txBinary := encodedTx[4 : len(encodedTx)-2]
 	txBytes := gethcommon.Hex2Bytes(string(txBinary))
 
 	tx := &common.L2Tx{}
