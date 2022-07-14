@@ -29,7 +29,6 @@ if [[ -z "${ipconfig_id}" ]]; then
     exit 0
 fi
 
-# This command MIGHT fail if for example there isn't an
 az network nic ip-config address-pool remove \
    --address-pool Backend-Pool-Obscuro-Testnet \
    --ip-config-name "${ipconfig_id}" \
@@ -38,4 +37,4 @@ az network nic ip-config address-pool remove \
    --lb-name testnet-loadbalancer \
    
 
-echo 'Load balancer removed sucessfully'
+echo 'Load balancer removed successfully'
