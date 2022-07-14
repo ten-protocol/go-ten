@@ -8,12 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/obscuro-playground/go/common/log"
 	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/obscuronet/obscuro-playground/go/common/log"
 
 	"github.com/ethereum/go-ethereum/accounts"
 
