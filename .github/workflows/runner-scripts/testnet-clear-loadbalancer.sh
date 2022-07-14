@@ -5,9 +5,6 @@
 #
 #
 
-# Ensure any fail is loud and explicit
-set -euo pipefail
-
 nic_id=$(az network lb address-pool show \
     --resource-group Testnet \
     --lb-name testnet-loadbalancer \
@@ -22,11 +19,23 @@ ipconfig_id=$(az network lb address-pool show \
     --query backendIpConfigurations \
     --output tsv | cut -f5 | cut -d "/" -f 11)
 
+if [[ -z "${nic_id}" ]]; then
+  echo "No Nic found in the load balancer"
+  exit 0
+fi
+
+if [[ -z "${ipconfig_id}" ]]; then
+    echo "No Ip config found in the load balancer"
+    exit 0
+fi
+
+# This command MIGHT fail if for example there isn't an
 az network nic ip-config address-pool remove \
    --address-pool Backend-Pool-Obscuro-Testnet \
    --ip-config-name "${ipconfig_id}" \
    --nic-name "${nic_id}" \
    --resource-group Testnet \
-   --lb-name testnet-loadbalancer
+   --lb-name testnet-loadbalancer \
+   
 
 echo 'Load balancer removed sucessfully'
