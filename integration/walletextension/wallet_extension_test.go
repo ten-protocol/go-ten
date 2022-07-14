@@ -660,7 +660,7 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 		if counter > 20 {
 			t.Fatalf("could not get receipt for Obscuro ERC20 deployment transaction after 20 seconds")
 		}
-		txReceiptResp := makeEthJSONReq(t, walletExtensionAddr, walletextension.ReqJSONMethodGetTxReceipt, []string{txHash})
+		txReceiptResp := makeEthJSONReq(t, walletExtensionAddr, rpcclientlib.RPCGetTxReceipt, []string{txHash})
 		isTxOnChain := !strings.Contains(string(txReceiptResp), "could not retrieve transaction with hash")
 		if isTxOnChain {
 			break
