@@ -115,11 +115,11 @@ func (c *networkClient) Call(result interface{}, method string, args ...interfac
 	var encryptedParams []byte
 	encryptedParams, err = c.encryptArgs(args...)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt args for rpc call - %w", err)
+		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
 	err = c.rpcClient.Call(&rawResult, method, encryptedParams)
 	if err != nil {
-		return fmt.Errorf("rpc call failed - %w", err)
+		return fmt.Errorf("%s rpc call failed - %w", method, err)
 	}
 
 	// if caller not interested in response, we're done
@@ -130,13 +130,13 @@ func (c *networkClient) Call(result interface{}, method string, args ...interfac
 	// method is sensitive, so we decrypt it before unmarshalling the result
 	decrypted, err := c.decryptResponse(rawResult)
 	if err != nil {
-		return fmt.Errorf("failed to decrypt args for rpc call - %w", err)
+		return fmt.Errorf("failed to decrypt args for %s call - %w", method, err)
 	}
 
 	// process the decrypted result to get the desired type and set it on the result pointer
 	err = c.setResult(decrypted, result)
 	if err != nil {
-		return fmt.Errorf("failed to extract result from RPC response: %w", err)
+		return fmt.Errorf("failed to extract result from %s response: %w", method, err)
 	}
 
 	return nil
@@ -158,7 +158,7 @@ func (c *networkClient) encryptArgs(args ...interface{}) ([]byte, error) {
 func (c *networkClient) encryptParamBytes(params []byte) ([]byte, error) {
 	encryptedParams, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, params, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not encrypt request params with enclave public key: %w", err)
+		return nil, fmt.Errorf("could not encrypt request params: %s, with enclave public key, error: %w", params, err)
 	}
 	return encryptedParams, nil
 }
@@ -177,10 +177,14 @@ func (c *networkClient) decryptResponse(resultBlob interface{}) ([]byte, error) 
 		// todo: remove this when we no longer support disabling viewing keys for testing
 		return unencrypted, nil
 	}
-	encryptedResult := common.Hex2Bytes(resultBlob.(string))
+	resultStr, ok := resultBlob.(string)
+	if !ok {
+		return nil, fmt.Errorf("expected hex string but result was not a string, it was (%t) %s", resultBlob, resultBlob)
+	}
+	encryptedResult := common.Hex2Bytes(resultStr)
 	decryptedResult, err := c.viewingPrivKey.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt enclave response with viewing key: %w", err)
+		return nil, fmt.Errorf("could not decrypt response: %s, with viewing key, error: %w", resultStr, err)
 	}
 
 	return decryptedResult, nil
