@@ -2,8 +2,10 @@ package host
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 
@@ -15,16 +17,30 @@ import (
 	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
 )
 
+const (
+	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
+	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+)
+
 // An in-memory implementation of `rpcclientlib.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
-	obscuroAPI ObscuroAPI
-	ethAPI     EthereumAPI
+	obscuroAPI       ObscuroAPI
+	ethAPI           EthereumAPI
+	enclavePublicKey *ecies.PublicKey
 }
 
 func NewInMemObscuroClient(host *Node) rpcclientlib.Client {
+	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
+	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
+	if err != nil {
+		panic(err)
+	}
+	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
+
 	return &inMemObscuroClient{
-		obscuroAPI: *NewObscuroAPI(host),
-		ethAPI:     *NewEthereumAPI(host),
+		obscuroAPI:       *NewObscuroAPI(host),
+		ethAPI:           *NewEthereumAPI(host),
+		enclavePublicKey: enclPubKey,
 	}
 }
 
@@ -42,7 +58,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if err != nil {
 			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCSendRawTransaction, err)
 		}
-		_, err = c.ethAPI.SendRawTransaction(context.Background(), bytes)
+		enc, err := c.encryptParamBytes(bytes)
+		if err != nil {
+			return err
+		}
+		_, err = c.ethAPI.SendRawTransaction(context.Background(), enc)
 		return err
 
 	case rpcclientlib.RPCGetCurrentBlockHead:
@@ -87,8 +107,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if err != nil {
 			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTransactionByHash, err)
 		}
-
-		encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), bytes)
+		enc, err := c.encryptParamBytes(bytes)
+		if err != nil {
+			return err
+		}
+		encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
 		if err != nil {
 			return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
 		}
@@ -102,8 +125,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if err != nil {
 			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCCall, err)
 		}
-
-		encryptedResponse, err := c.ethAPI.Call(context.Background(), bytes)
+		enc, err := c.encryptParamBytes(bytes)
+		if err != nil {
+			return err
+		}
+		encryptedResponse, err := c.ethAPI.Call(context.Background(), enc)
 		if err != nil {
 			return fmt.Errorf("`eth_call` call failed. Cause: %w", err)
 		}
@@ -128,8 +154,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		if err != nil {
 			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTxReceipt, err)
 		}
-
-		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), bytes)
+		enc, err := c.encryptParamBytes(bytes)
+		if err != nil {
+			return err
+		}
+		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
 		if err != nil {
 			return fmt.Errorf("`obscuro_getTransactionReceipt` call failed. Cause: %w", err)
 		}
@@ -155,4 +184,12 @@ func (c *inMemObscuroClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
 
 func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
+}
+
+func (c *inMemObscuroClient) encryptParamBytes(params []byte) ([]byte, error) {
+	encryptedParams, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, params, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt request params with enclave public key: %w", err)
+	}
+	return encryptedParams, nil
 }
