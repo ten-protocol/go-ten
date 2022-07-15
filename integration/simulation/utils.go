@@ -6,17 +6,17 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
-	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 )
 
 const (

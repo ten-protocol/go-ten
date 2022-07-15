@@ -7,18 +7,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"google.golang.org/grpc/connectivity"
 
-	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/go-obscuro/go/config"
 
-	"github.com/obscuronet/obscuro-playground/go/common/rpc"
-	"github.com/obscuronet/obscuro-playground/go/common/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/common/rpc"
+	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

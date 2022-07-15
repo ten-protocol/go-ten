@@ -5,9 +5,9 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	obscurorawdb "github.com/obscuronet/obscuro-playground/go/enclave/db/rawdb"
+	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
 
 	"github.com/ethereum/go-ethereum/params"
 
@@ -16,8 +16,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 type storageImpl struct {

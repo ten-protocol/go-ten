@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/common/log"
-	"github.com/obscuronet/obscuro-playground/tools/contractdeployer"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
 )
 
 func main() {

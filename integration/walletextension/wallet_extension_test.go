@@ -15,33 +15,33 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
-	"github.com/obscuronet/obscuro-playground/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/wallet"
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
-	"github.com/obscuronet/obscuro-playground/integration/simulation"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/integration/simulation"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/rpcencryptionmanager"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
-	"github.com/obscuronet/obscuro-playground/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/ethereummock"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 const (

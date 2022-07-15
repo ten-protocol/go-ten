@@ -3,12 +3,12 @@ package params
 import (
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/obscuro-playground/go/wallet"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 )
 
 // SimToken - mapping between the ERC20s on Ethereum and Obscuro. This holds both the contract addresses and the keys of the contract owners,

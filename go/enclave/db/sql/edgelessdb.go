@@ -22,11 +22,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/common/httputil"
+	"github.com/obscuronet/go-obscuro/go/common/httputil"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/core/egoutils"
+	"github.com/obscuronet/go-obscuro/go/enclave/core/egoutils"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/go-sql-driver/mysql"
