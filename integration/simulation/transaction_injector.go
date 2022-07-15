@@ -1,8 +1,6 @@
 package simulation
 
 import (
-	cryptorand "crypto/rand"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -187,8 +185,8 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
-	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+
+	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
 	}
@@ -223,10 +221,9 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			common.ShortAddress(toWallet.Address()),
 		)
 
-		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 		ti.stats.Transfer()
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -287,9 +284,8 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(obsWallet.Address()),
 		)
-		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -315,9 +311,8 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		tx := ti.newCustomObscuroWithdrawalTx(testcommon.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
-		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 
-		err := ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+		err := ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
@@ -416,8 +411,8 @@ func NextNonce(cl rpcclientlib.Client, w wallet.Wallet) uint64 {
 	}
 }
 
-// Formats a transaction for sending to the enclave and encrypts it using the enclave's public key.
-func encryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) common.EncryptedParamsSendRawTx {
+// Formats a transaction for sending to the enclave
+func encodeTx(tx *common.L2Tx) string {
 	txBinary, err := tx.MarshalBinary()
 	if err != nil {
 		panic(err)
@@ -425,17 +420,8 @@ func encryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) common.Encryp
 
 	// We convert the transaction binary to the form expected for sending transactions via RPC.
 	txBinaryHex := gethcommon.Bytes2Hex(txBinary)
-	txBinaryListJSON, err := json.Marshal([]string{"0x" + txBinaryHex})
-	if err != nil {
-		panic(err)
-	}
 
-	encryptedTxBytes, err := ecies.Encrypt(cryptorand.Reader, enclavePublicKey, txBinaryListJSON, nil, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return encryptedTxBytes
+	return "0x" + txBinaryHex
 }
 
 // Indicates whether to keep issuing transactions, or halt.

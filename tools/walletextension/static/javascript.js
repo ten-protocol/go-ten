@@ -49,7 +49,7 @@ const initialize = () => {
             return
         }
 
-        const signedViewingKeyJson = {"signature": signature}
+        const signedViewingKeyJson = {"address": account, "signature": signature}
         const submitViewingKeyResp = await fetch(
             pathSubmitViewingKey, {
                 method: methodPost,
