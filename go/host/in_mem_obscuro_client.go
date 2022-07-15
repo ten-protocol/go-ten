@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -45,25 +46,13 @@ func NewInMemObscuroClient(host *Node) rpcclientlib.Client {
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error { //nolint:gocognit
+func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case rpcclientlib.RPCGetID:
 		*result.(*gethcommon.Address) = c.obscuroAPI.GetID()
 
 	case rpcclientlib.RPCSendRawTransaction:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCSendRawTransaction, len(args))
-		}
-		bytes, err := json.Marshal(args)
-		if err != nil {
-			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCSendRawTransaction, err)
-		}
-		enc, err := c.encryptParamBytes(bytes)
-		if err != nil {
-			return err
-		}
-		_, err = c.ethAPI.SendRawTransaction(context.Background(), enc)
-		return err
+		return c.sendRawTransaction(args)
 
 	case rpcclientlib.RPCGetCurrentBlockHead:
 		*result.(**types.Header) = c.obscuroAPI.GetCurrentBlockHead()
@@ -72,97 +61,22 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		*result.(**common.Header) = c.obscuroAPI.GetCurrentRollupHead()
 
 	case rpcclientlib.RPCGetRollupHeader:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetRollupHeader, len(args))
-		}
-		// we expect a hex string representation of the hash, since that's what gets sent over RPC
-		hashStr, ok := args[0].(string)
-		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type string", rpcclientlib.RPCGetRollupHeader)
-		}
-		hash := gethcommon.HexToHash(hashStr)
-
-		*result.(**common.Header) = c.obscuroAPI.GetRollupHeader(hash)
+		return c.getRollupHeader(result, args)
 
 	case rpcclientlib.RPCGetRollup:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetRollup, len(args))
-		}
-		hash, ok := args[0].(gethcommon.Hash)
-		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetRollup)
-		}
-
-		extRollup, err := c.obscuroAPI.GetRollup(hash)
-		if err != nil {
-			return fmt.Errorf("`obscuro_getRollup` call failed. Cause: %w", err)
-		}
-		*result.(**common.ExtRollup) = extRollup
+		return c.getRollup(result, args)
 
 	case rpcclientlib.RPCGetTransactionByHash:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTransactionByHash, len(args))
-		}
-		bytes, err := json.Marshal(args)
-		if err != nil {
-			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTransactionByHash, err)
-		}
-		enc, err := c.encryptParamBytes(bytes)
-		if err != nil {
-			return err
-		}
-		encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
-		if err != nil {
-			return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
-		}
-		*result.(*string) = encryptedTx
+		return c.getTransactionByHash(result, args)
 
 	case rpcclientlib.RPCCall:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCCall, len(args))
-		}
-		bytes, err := json.Marshal(args)
-		if err != nil {
-			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCCall, err)
-		}
-		enc, err := c.encryptParamBytes(bytes)
-		if err != nil {
-			return err
-		}
-		encryptedResponse, err := c.ethAPI.Call(context.Background(), enc)
-		if err != nil {
-			return fmt.Errorf("`eth_call` call failed. Cause: %w", err)
-		}
-		*result.(*string) = encryptedResponse
+		return c.rpcCall(result, args)
 
 	case rpcclientlib.RPCNonce:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCNonce, len(args))
-		}
-		address, ok := args[0].(gethcommon.Address)
-		if !ok {
-			return fmt.Errorf("arg to %s was not of expected type common.Address", rpcclientlib.RPCNonce)
-		}
-
-		*result.(*uint64) = c.obscuroAPI.Nonce(address)
+		return c.getNonce(result, args)
 
 	case rpcclientlib.RPCGetTxReceipt:
-		if len(args) != 1 {
-			return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTxReceipt, len(args))
-		}
-		bytes, err := json.Marshal(args)
-		if err != nil {
-			return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTxReceipt, err)
-		}
-		enc, err := c.encryptParamBytes(bytes)
-		if err != nil {
-			return err
-		}
-		encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
-		if err != nil {
-			return fmt.Errorf("`obscuro_getTransactionReceipt` call failed. Cause: %w", err)
-		}
-		*result.(*string) = encryptedResponse
+		return c.getTransactionReceipt(result, args)
 
 	case rpcclientlib.RPCStopHost:
 		c.obscuroAPI.StopHost()
@@ -171,6 +85,127 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
 
+	return nil
+}
+
+func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCSendRawTransaction, len(args))
+	}
+	bytes, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCSendRawTransaction, err)
+	}
+	enc, err := c.encryptParamBytes(bytes)
+	if err != nil {
+		return err
+	}
+	_, err = c.ethAPI.SendRawTransaction(context.Background(), enc)
+	return err
+}
+
+func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTransactionByHash, len(args))
+	}
+	bytes, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTransactionByHash, err)
+	}
+	enc, err := c.encryptParamBytes(bytes)
+	if err != nil {
+		return err
+	}
+	encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
+	if err != nil {
+		return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
+	}
+	*result.(*string) = encryptedTx
+	return nil
+}
+
+func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCCall, len(args))
+	}
+	bytes, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCCall, err)
+	}
+	enc, err := c.encryptParamBytes(bytes)
+	if err != nil {
+		return err
+	}
+	encryptedResponse, err := c.ethAPI.Call(context.Background(), enc)
+	if err != nil {
+		return fmt.Errorf("`eth_call` call failed. Cause: %w", err)
+	}
+	*result.(*string) = encryptedResponse
+	return nil
+}
+
+func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTxReceipt, len(args))
+	}
+	bytes, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTxReceipt, err)
+	}
+	enc, err := c.encryptParamBytes(bytes)
+	if err != nil {
+		return err
+	}
+	encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
+	if err != nil {
+		return fmt.Errorf("`obscuro_getTransactionReceipt` call failed. Cause: %w", err)
+	}
+	*result.(*string) = encryptedResponse
+	return nil
+}
+
+func (c *inMemObscuroClient) getRollupHeader(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetRollupHeader, len(args))
+	}
+	// we expect a hex string representation of the hash, since that's what gets sent over RPC
+	hashStr, ok := args[0].(string)
+	if !ok {
+		return fmt.Errorf("arg to %s was not of expected type string", rpcclientlib.RPCGetRollupHeader)
+	}
+	hash := gethcommon.HexToHash(hashStr)
+
+	*result.(**common.Header) = c.obscuroAPI.GetRollupHeader(hash)
+	return nil
+}
+
+func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetRollup, len(args))
+	}
+	hash, ok := args[0].(gethcommon.Hash)
+	if !ok {
+		return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetRollup)
+	}
+
+	extRollup, err := c.obscuroAPI.GetRollup(hash)
+	if err != nil {
+		return fmt.Errorf("`obscuro_getRollup` call failed. Cause: %w", err)
+	}
+	*result.(**common.ExtRollup) = extRollup
+	return nil
+}
+
+func (c *inMemObscuroClient) getNonce(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCNonce, len(args))
+	}
+	address, ok := args[0].(gethcommon.Address)
+	if !ok {
+		return fmt.Errorf("arg to %s was not of expected type common.Address", rpcclientlib.RPCNonce)
+	}
+
+	*result.(*uint64) = c.obscuroAPI.Nonce(address)
 	return nil
 }
 
