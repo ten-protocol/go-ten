@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -637,6 +639,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if err != nil {
 		return nil, fmt.Errorf("aborting `eth_call` request. Cause: %w", err)
 	}
+	log.Info("!OffChain call: contractAddress=%s, from=%s, data=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data))
 
 	hs := rc.storage.FetchHeadState()
 	if hs == nil {
@@ -653,9 +656,11 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, err
 	}
 	if result.Failed() {
-		log.Info("Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
+		log.Info("!OffChain: Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
 		return nil, result.Err
 	}
+
+	log.Info("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData))
 
 	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(from, result.ReturnData)
 	if err != nil {
