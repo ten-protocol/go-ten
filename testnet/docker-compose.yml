@@ -60,7 +60,8 @@ services:
                  "--willAttest",
                  "--useInMemoryDB=false",
                  "--edgelessDBHost=edgelessdb",
-                 "--profilerEnabled=$PROFILERENABLED"
+                 "--profilerEnabled=$PROFILERENABLED",
+                 "--viewingKeysEnabled=true"
     ]
 
   edgelessdb:
