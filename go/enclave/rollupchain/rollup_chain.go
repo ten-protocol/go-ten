@@ -344,7 +344,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
-		dump := stateDB.Dump(&state.DumpConfig{})
+		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 		log.Error("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts)
 		return false
@@ -469,7 +469,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 		return common.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	common.LogWithID(rc.nodeID, "Update state: %d", common.ShortHash(block.Hash()))
+	common.LogWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
 	blockState := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
@@ -564,8 +564,8 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	}
 
 	// Uncomment this if you want to debug issues related to root state hashes not matching
-	// dump := newRollupState.Dump(&state.DumpConfig{})
-	// log.Info("Create rollup. State: %s", dump)
+	dump := strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
+	log.Info("Create rollup. State: %s", dump)
 
 	return r
 }
