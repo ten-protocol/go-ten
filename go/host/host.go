@@ -146,7 +146,7 @@ func (a *Node) Start() {
 			AggregatorID:  &a.ID,
 			Attestation:   encodedAttestation,
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
-			HostAddress:   a.config.P2PAddress,
+			HostAddress:   a.config.P2PBindAddress,
 		}
 		a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
@@ -635,7 +635,7 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	var filteredHostAddresses []string //nolint:prealloc
 	for _, hostAddress := range hostAddresses {
 		// We exclude our own address.
-		if hostAddress == a.config.P2PAddress {
+		if hostAddress == a.config.P2PBindAddress {
 			continue
 		}
 

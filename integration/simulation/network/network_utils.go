@@ -129,7 +129,7 @@ func createSocketObscuroNode(
 		ClientRPCTimeout:       ClientRPCTimeout,
 		EnclaveRPCTimeout:      ClientRPCTimeout,
 		EnclaveRPCAddress:      enclaveAddr,
-		P2PAddress:             p2pAddr,
+		P2PBindAddress:         p2pAddr,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
 	}

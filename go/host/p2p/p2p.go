@@ -35,7 +35,7 @@ type Message struct {
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
 func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 	return &p2pImpl{
-		ourAddress:    config.P2PAddress,
+		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		nodeID:        common.ShortAddress(config.ID),
 	}
