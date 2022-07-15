@@ -167,8 +167,8 @@ jobs:
                --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
                --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} \
                --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
-               --pkstring=${{ secrets[matrix.node_pk_str] }}' \
-               --p2p_public_address=obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+               --pkstring=${{ secrets[matrix.node_pk_str] }} \
+               --p2p_public_address=obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com'
 
 
   update:
