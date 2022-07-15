@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 )
 
 func TestSign(t *testing.T) {

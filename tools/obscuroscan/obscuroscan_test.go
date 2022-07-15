@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 func TestCanDecryptTxBlob(t *testing.T) {

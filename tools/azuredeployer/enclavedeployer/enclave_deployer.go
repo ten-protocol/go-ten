@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/tools/azuredeployer"
+	"github.com/obscuronet/go-obscuro/tools/azuredeployer"
 )
 
 const (
@@ -11,8 +11,8 @@ const (
 		sudo apt-get update
 		sudo apt-get install -y docker.io
 		sudo systemctl enable --now docker
-		if ! [ -d "obscuro-playground" ]; then git clone https://github.com/obscuronet/obscuro-playground; else :; fi
-		sudo docker build -t obscuro_enclave - < obscuro-playground/dockerfiles/enclave.Dockerfile`
+		if ! [ -d "go-obscuro" ]; then git clone https://github.com/obscuronet/go-obscuro; else :; fi
+		sudo docker build -t obscuro_enclave - < go-obscuro/dockerfiles/enclave.Dockerfile`
 )
 
 func main() {

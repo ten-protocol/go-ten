@@ -11,23 +11,23 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/obscuro-playground/go/enclave/crypto"
-	"github.com/obscuronet/obscuro-playground/go/enclave/rpcencryptionmanager"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
-	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/enclave/evm"
-	"github.com/obscuronet/obscuro-playground/go/enclave/mempool"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
+	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
 const (

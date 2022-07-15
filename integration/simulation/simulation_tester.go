@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	stats2 "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	stats2 "github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	"github.com/google/uuid"
 )

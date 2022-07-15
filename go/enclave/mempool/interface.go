@@ -1,9 +1,9 @@
 package mempool
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/common"
-	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/common"
+	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 type Manager interface {

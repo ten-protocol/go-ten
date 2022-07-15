@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
 
 const (

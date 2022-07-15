@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
 type Cfg struct {

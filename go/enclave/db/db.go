@@ -3,12 +3,12 @@ package db
 import (
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/db/sql"
+	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/config"
 )
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config

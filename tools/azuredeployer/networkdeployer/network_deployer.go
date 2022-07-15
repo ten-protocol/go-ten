@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/tools/azuredeployer"
+	"github.com/obscuronet/go-obscuro/tools/azuredeployer"
 )
 
 const (

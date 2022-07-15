@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/obscuronet/obscuro-playground/tools/networkmanager"
+	"github.com/obscuronet/go-obscuro/tools/networkmanager"
 )
 
 func main() {

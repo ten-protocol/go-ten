@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"time"
 
-	testcommon "github.com/obscuronet/obscuro-playground/integration/common"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/host"
+	"github.com/obscuronet/go-obscuro/go/host"
 )
 
 // MockEthNetwork - models a full network including artificial random latencies
