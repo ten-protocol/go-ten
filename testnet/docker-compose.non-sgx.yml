@@ -53,5 +53,6 @@ services:
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
                  "--hostAddress=host:10000",
-                 "--profilerEnabled=$PROFILERENABLED"
+                 "--profilerEnabled=$PROFILERENABLED",
+                 "--viewingKeysEnabled=true"
     ]
