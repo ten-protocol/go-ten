@@ -36,8 +36,9 @@ const initialize = () => {
             statusArea.innerText = "No MetaMask accounts found."
             return
         }
-        // The array only ever contains a single value (per the docs, returns "An array of a single, hexadecimal Ethereum address string.")
-        const account = accounts[0];
+        // The array returns "An array of a single, hexadecimal Ethereum address string.")
+        // We use the last created account for the viewing key since it makes most sense for testing.
+        const account = accounts[accounts.length - 1];
 
         const signature = await ethereum.request({
             method: metamaskPersonalSign,
