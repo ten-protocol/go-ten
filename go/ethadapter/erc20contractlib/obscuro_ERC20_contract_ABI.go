@@ -6,8 +6,6 @@ import (
 
 	"github.com/obscuronet/obscuro-playground/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -36,7 +34,7 @@ func DecodeTransferTx(t *types.Transaction) (bool, *gethcommon.Address, *big.Int
 	}
 	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:methodBytesLen])
 	if err != nil {
-		log.Info("Could not decode tx %d, Err: %s", common.ShortHash(t.Hash()), err)
+		log.Trace("Could not decode tx %s, Err: %s", t.Hash().Hex(), err)
 		return false, nil, nil
 	}
 
