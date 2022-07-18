@@ -52,7 +52,7 @@ func ParseConfig() config.HostConfig {
 	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, uint64(cfg.ClientRPCTimeout.Seconds()), clientRPCTimeoutSecsUsage)
 	enclaveRPCAddress := flag.String(enclaveRPCAddressName, cfg.EnclaveRPCAddress, enclaveRPCAddressUsage)
 	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(cfg.EnclaveRPCTimeout.Seconds()), enclaveRPCTimeoutSecsUsage)
-	p2pBoundAddress := flag.String(p2pBindAddressName, cfg.P2PBindAddress, p2pBindAddressUsage)
+	p2pBindAddress := flag.String(p2pBindAddressName, cfg.P2PBindAddress, p2pBindAddressUsage)
 	p2pPublicAddress := flag.String(p2pPublicAddressName, cfg.P2PPublicAddress, p2pPublicAddressUsage)
 	l1NodeHost := flag.String(l1NodeHostName, cfg.L1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(cfg.L1NodeWebsocketPort), l1NodePortUsage)
@@ -82,7 +82,7 @@ func ParseConfig() config.HostConfig {
 	cfg.ClientRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
 	cfg.EnclaveRPCAddress = *enclaveRPCAddress
 	cfg.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
-	cfg.P2PBindAddress = *p2pBoundAddress
+	cfg.P2PBindAddress = *p2pBindAddress
 	cfg.P2PPublicAddress = *p2pPublicAddress
 	cfg.L1NodeHost = *l1NodeHost
 	cfg.L1NodeWebsocketPort = uint(*l1NodePort)
