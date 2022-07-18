@@ -56,8 +56,7 @@ jobs:
           echo "ERC20CONTRACTADDR=ERC20CONTRACTADDR" >> $GITHUB_ENV
           echo "Contracts deployed to $MGMTCONTRACTADDR and $ERC20CONTRACTADDR"
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
-          echo "::set-output name=erc20ContractAddr::$ERC20CONTRACTADDR"
-  
+          echo "::set-output name=erc20ContractAddr::$ERC20CONTRACTADDR"    
 
   deploy:
     needs: build
@@ -106,6 +105,19 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: 'Create VM LoadBalancing NIC Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} \
+            --vnet-name ObscuroHostTestnet01VNET --subnet ObscuroHostTestnet01Subnet \
+            --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
+            --public-ip-sku Basic --authentication-type password
+
+
       - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
@@ -122,7 +134,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001 
+            az vm open-port -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061 
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
@@ -156,3 +168,29 @@ jobs:
                --erc20contractaddr=${{needs.build.outputs.erc20ContractAddr}} \
                --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }}'
+
+
+  update:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Remove existing backend nodes from the load balancer'
+        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh
+
+      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az network nic ip-config address-pool add \
+              --address-pool Backend-Pool-Obscuro-Testnet \
+              --ip-config-name ipconfigObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --resource-group Testnet \
+              --lb-name testnet-loadbalancer

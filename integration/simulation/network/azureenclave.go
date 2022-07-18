@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 const enclavePort = 11000

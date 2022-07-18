@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // OutputStats decouples the processing of data and the collection of statistics
@@ -64,7 +66,10 @@ func (o *OutputStats) countBlockChain() {
 
 			switch l1Tx := t.(type) {
 			case *ethadapter.L1RollupTx:
-				r := common.DecodeRollupOrPanic(l1Tx.Rollup)
+				r, err := common.DecodeRollup(l1Tx.Rollup)
+				if err != nil {
+					log.Panic("could not decode rollup. Cause: %s", err)
+				}
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
 					o.l2RollupTxCountInL1Blocks += len(r.Transactions)

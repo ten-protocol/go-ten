@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/status-im/keycard-go/hexutils"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) *core.Rollup {
@@ -115,7 +117,7 @@ func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) core
 // WriteBodyRLP stores an RLP encoded block body into the database.
 func WriteBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, rlp rlp.RawValue) {
 	if err := db.Put(rollupBodyKey(number, hash), rlp); err != nil {
-		log.Panic("could not put block body into DB. Cause: %s", err)
+		log.Panic("could not put rollup body into DB. Cause: %s", err)
 	}
 }
 
@@ -123,7 +125,7 @@ func WriteBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, 
 func ReadBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) rlp.RawValue {
 	data, err := db.Get(rollupBodyKey(number, hash))
 	if err != nil {
-		log.Panic("could not retrieve block body from DB. Cause: %s", err)
+		log.Panic("could not retrieve rollup body :r_%d from DB. Cause: %s. Key: %s", common.ShortHash(hash), err, hexutils.BytesToHex(rollupBodyKey(number, hash)))
 	}
 	return data
 }

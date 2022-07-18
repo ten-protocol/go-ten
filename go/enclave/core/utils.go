@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -35,7 +35,7 @@ func PrintTxs(txs []*common.L2Tx) (txsString []string) {
 }
 
 func printTx(t *common.L2Tx, txsString []string) []string {
-	txsString = append(txsString, fmt.Sprintf("%d,", common.ShortHash(t.Hash())))
+	txsString = append(txsString, fmt.Sprintf("%s,", t.Hash().Hex()))
 	return txsString
 }
 

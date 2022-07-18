@@ -5,29 +5,29 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/go-obscuro/go/config"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/integration"
-	simp2p "github.com/obscuronet/obscuro-playground/integration/simulation/p2p"
+	"github.com/obscuronet/go-obscuro/go/enclave"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/integration"
+	simp2p "github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 
-	"github.com/obscuronet/obscuro-playground/go/wallet"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/host"
-	"github.com/obscuronet/obscuro-playground/go/host/p2p"
-	ethereum_mock "github.com/obscuronet/obscuro-playground/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/go/host/p2p"
+	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
 const (
@@ -163,7 +163,7 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum
 			// while everyone else will have higher values.
 			// Over a large number of rounds, the actual average block duration will be around the desired value, while the number of miners who get very close numbers will be limited.
 			span := math.Max(2, float64(nrNodes)) // We handle the special cases of zero or one nodes.
-			return common.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
+			return testcommon.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
 		},
 	}
 }

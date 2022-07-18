@@ -5,16 +5,18 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 const (
@@ -157,7 +159,10 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 				deposits = append(deposits, tx.Hash())
 				totalDeposited += l1tx.Amount
 			case *ethadapter.L1RollupTx:
-				r := common.DecodeRollupOrPanic(l1tx.Rollup)
+				r, err := common.DecodeRollup(l1tx.Rollup)
+				if err != nil {
+					log.Panic("could not decode rollup. Cause: %s", err)
+				}
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch

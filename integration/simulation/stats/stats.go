@@ -6,7 +6,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.

@@ -7,28 +7,30 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
 
-	obscurocrypto "github.com/obscuronet/obscuro-playground/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
-	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
+	obscurocrypto "github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/rpcencryptionmanager"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/go-obscuro/go/config"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/enclave/mempool"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/common"
+	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )
 
 // StatsCollector Todo - replace with a proper framework
@@ -66,9 +68,8 @@ type enclaveImpl struct {
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
 	enclavePubKey []byte            // the public key of the above
 
-	obscuroNetworkKey *ecdsa.PrivateKey // this is a key known by all the enclaves. Used by users for encrypting transactions.
-
 	transactionBlobCrypto obscurocrypto.TransactionBlobCrypto
+	profiler              *profiler.Profiler
 }
 
 // NewEnclave creates a new enclave.
@@ -88,6 +89,16 @@ func NewEnclave(
 	// todo - add the delay: N hashes
 
 	nodeShortID := common.ShortAddress(config.HostID)
+
+	var prof *profiler.Profiler
+	// don't run a profiler on an attested enclave
+	if !config.WillAttest && config.ProfilerEnabled {
+		prof = profiler.NewProfiler(profiler.DefaultEnclavePort)
+		err := prof.Start()
+		if err != nil {
+			log.Panic("unable to start the profiler: %s", err)
+		}
+	}
 
 	// Initialise the database
 	backingDB, err := db.CreateDBFromConfig(nodeShortID, config)
@@ -167,8 +178,8 @@ func NewEnclave(
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
 		enclavePubKey:         serializedEnclavePubKey,
-		obscuroNetworkKey:     obscuroKey,
 		transactionBlobCrypto: transactionBlobCrypto,
+		profiler:              prof,
 	}
 }
 
@@ -241,7 +252,7 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
-	decryptedTx, err := e.rpcEncryptionManager.DecryptTx(tx)
+	decryptedTx, err := e.rpcEncryptionManager.ExtractTxFromBinary(tx)
 	if err != nil {
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
@@ -276,7 +287,11 @@ func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.ExtRollup, b
 }
 
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	return e.chain.ExecuteOffChainTransaction(encryptedParams)
+	resp, err := e.chain.ExecuteOffChainTransaction(encryptedParams)
+	if err != nil {
+		common.LogWithID(e.nodeShortID, "Could not execute off chain call. Cause: %s", err)
+	}
+	return resp, err
 }
 
 func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
@@ -352,24 +367,26 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	return encryptedTxReceipt, nil
 }
 
-func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) *common.ExtRollup {
+func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
 	rollup, found := e.storage.FetchRollup(rollupHash)
 	if found {
 		extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
-		return &extRollup
+		return &extRollup, nil
 	}
-	return nil
+	return nil, fmt.Errorf("rollup with hash %s could not be found", rollupHash.Hex())
 }
 
-func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
+func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, error) {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
+	maxRollupHeight := rollup.NumberU64()
+
 	// -1 is used by Ethereum to indicate that we should fetch the head.
 	if rollupHeight != -1 {
 		for {
 			if rollup == nil {
 				// We've reached the head of the chain without finding the block.
-				return nil
+				return nil, fmt.Errorf("rollup with height %d could not be found. Max rollup height was %d", rollupHeight, maxRollupHeight)
 			}
 			if rollup.Number().Int64() == rollupHeight {
 				// We have found the block.
@@ -377,7 +394,7 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 			}
 			if rollup.Number().Int64() < rollupHeight {
 				// The current block number is below the sought number. Continuing to walk up the chain is pointless.
-				return nil
+				return nil, fmt.Errorf("rollup with height %d could not be found. Max rollup height was %d", rollupHeight, maxRollupHeight)
 			}
 
 			// We grab the next rollup and loop.
@@ -386,16 +403,16 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) *common.ExtRollup {
 	}
 
 	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
-	return &extRollup
+	return &extRollup, nil
 }
 
 func (e *enclaveImpl) Attestation() *common.AttestationReport {
 	if e.enclavePubKey == nil {
-		panic("public key not initialized, we can't produce the attestation report")
+		log.Panic("public key not initialized, we can't produce the attestation report")
 	}
 	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
-		panic("Failed to produce remote report.")
+		log.Panic("Failed to produce remote report.")
 	}
 	return report
 }
@@ -418,7 +435,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 		return err
 	}
 	e.storage.StoreSecret(*secret)
-	log.Trace(">   Agg%d: Secret decrypted and stored. Secret: %v", e.nodeShortID, secret)
+	common.TraceWithID(e.nodeShortID, "Secret decrypted and stored. Secret: %v", secret)
 	return nil
 }
 
@@ -443,12 +460,7 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
-	// todo - this should be done in the rpc encryption manager
-	viewingKeyBytes, err := ecies.ImportECDSA(e.obscuroNetworkKey).Decrypt(encryptedViewingKeyBytes, nil, nil)
-	if err != nil {
-		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
-	}
-	return e.rpcEncryptionManager.AddViewingKey(viewingKeyBytes, signature)
+	return e.rpcEncryptionManager.AddViewingKey(encryptedViewingKeyBytes, signature)
 }
 
 func (e *enclaveImpl) StoreAttestation(att *common.AttestationReport) error {
@@ -478,10 +490,15 @@ func (e *enclaveImpl) Stop() error {
 	if e.config.SpeculativeExecution {
 		e.exitCh <- true
 	}
+
+	if e.profiler != nil {
+		return e.profiler.Stop()
+	}
+
 	return nil
 }
 
-// Todo - reinstate speculative execution afer TN1
+// Todo - reinstate speculative execution after TN1
 /*
 // internal structure to pass information.
 type speculativeWork struct {
@@ -521,8 +538,7 @@ func (e *enclaveImpl) start(block types.Block) {
 			env.header = obscurocore.NewHeader(&hash, winnerRollup.Header.Number.Uint64()+1, e.config.HostID)
 			env.headRollup = winnerRollup
 			env.state = e.storage.CreateStateDB(winnerRollup.Hash())
-			log.Trace(fmt.Sprintf(">   Agg%d: Create new speculative env  r_%d(%d).",
-				e.nodeShortID,
+			common.TraceWithID(e.nodeShortID, "Create new speculative env  r_%d(%d).",
 				obscurocommon.ShortHash(winnerRollup.Header.Hash()),
 				winnerRollup.Header.Number,
 			))

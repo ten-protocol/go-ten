@@ -36,7 +36,9 @@ const initialize = () => {
             statusArea.innerText = "No MetaMask accounts found."
             return
         }
-        const account = accounts[0]; // TODO - Allow use of accounts other than the first.
+        // The array returns "An array of a single, hexadecimal Ethereum address string.")
+        // We use the last created account for the viewing key since it makes most sense for testing.
+        const account = accounts[accounts.length - 1];
 
         const signature = await ethereum.request({
             method: metamaskPersonalSign,
@@ -48,7 +50,7 @@ const initialize = () => {
             return
         }
 
-        const signedViewingKeyJson = {"signature": signature}
+        const signedViewingKeyJson = {"address": account, "signature": signature}
         const submitViewingKeyResp = await fetch(
             pathSubmitViewingKey, {
                 method: methodPost,

@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 // obscuroPrivateKeyHex is the private key used for sensitive communication with the enclave.
@@ -22,7 +22,7 @@ const obscuroPrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6
 func GetObscuroKey() *ecdsa.PrivateKey {
 	key, err := crypto.HexToECDSA(obscuroPrivateKeyHex)
 	if err != nil {
-		panic("Failed to create enclave private key")
+		log.Panic("failed to create enclave private key. Cause: %s", err)
 	}
 	return key
 }

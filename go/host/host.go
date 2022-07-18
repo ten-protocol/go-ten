@@ -9,17 +9,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/naoina/toml"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/config"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/wallet"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
 // Node this will become the Obscuro "Node" type
@@ -104,6 +106,15 @@ func NewHost(
 		host.rpcServer = NewRPCServer(config, host)
 	}
 
+	var prof *profiler.Profiler
+	if config.ProfilerEnabled {
+		prof = profiler.NewProfiler(profiler.DefaultHostPort)
+		err := prof.Start()
+		if err != nil {
+			log.Panic("unable to start the profiler: %s", err)
+		}
+	}
+
 	return host
 }
 
@@ -124,16 +135,20 @@ func (a *Node) Start() {
 		// Create the shared secret and submit it to the management contract for storage
 		attestation := a.EnclaveClient.Attestation()
 		if attestation.Owner != a.ID {
-			log.Panic(">   Agg%d: genesis node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), attestation.Owner.Hex())
+			common.PanicWithID(a.shortID, "genesis node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), attestation.Owner.Hex())
 		}
 
+		encodedAttestation, err := common.EncodeAttestation(attestation)
+		if err != nil {
+			log.Panic("could not encode attestation Cause: %s", err)
+		}
 		l1tx := &ethadapter.L1InitializeSecretTx{
 			AggregatorID:  &a.ID,
-			Attestation:   common.EncodeAttestation(attestation),
+			Attestation:   encodedAttestation,
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
 			HostAddress:   a.config.P2PAddress,
 		}
-		a.broadcastTx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+		a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	} else {
 		a.requestSecret()
@@ -183,10 +198,14 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+		common.LogWithID(a.shortID, "Could not submit transaction: %s", err)
 		return nil, err
 	}
-	a.P2p.BroadcastTx(encryptedTx)
+
+	err = a.P2p.BroadcastTx(encryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not broadcast transaction. Cause: %w", err)
+	}
 
 	return encryptedResponse, nil
 }
@@ -302,21 +321,28 @@ func (a *Node) startProcessing() {
 		select {
 		case b := <-a.blockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
+			err := a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
+			if err != nil {
+				common.WarnWithID(a.shortID, "Could not process block received via RPC. Cause: %v", err)
+			}
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			a.processBlocks(f, roundInterrupt)
+			err := a.processBlocks(f, roundInterrupt)
+			if err != nil {
+				common.WarnWithID(a.shortID, "Could not process fork received via RPC. Cause: %v", err)
+			}
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := common.DecodeRollup(r)
-			log.Trace(fmt.Sprintf(">   Agg%d: Received rollup: r_%d from A%d",
-				a.shortID,
+			common.TraceWithID(a.shortID, "Received rollup: r_%d(%d) parent: r_%d from A%d",
 				common.ShortHash(rol.Hash()),
+				rol.Header.Number,
+				common.ShortHash(rol.Header.ParentHash),
 				common.ShortAddress(rol.Header.Agg),
-			))
+			)
 			if err != nil {
-				common.LogWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
+				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
 
 			go a.EnclaveClient.SubmitRollup(common.ExtRollup{
@@ -327,7 +353,7 @@ func (a *Node) startProcessing() {
 
 		case tx := <-a.txP2PCh:
 			if _, err := a.EnclaveClient.SubmitTx(tx); err != nil {
-				log.Info(fmt.Sprintf(">   Agg%d: Could not submit transaction: %s", a.shortID, err))
+				common.WarnWithID(a.shortID, "Could not submit transaction. Cause: %s", err)
 			}
 
 		case <-a.exitNodeCh:
@@ -349,12 +375,15 @@ type blockAndParent struct {
 	p common.EncodedBlock
 }
 
-func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
+func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) error {
 	var result common.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block != nil {
-			decoded := block.DecodeBlock()
+			decoded, err := block.DecodeBlock()
+			if err != nil {
+				return err
+			}
 			a.processBlock(decoded)
 
 			// submit each block to the enclave for ingestion plus validation
@@ -364,17 +393,28 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) {
 	}
 
 	if !result.IngestedBlock {
-		b := blocks[len(blocks)-1].DecodeBlock()
-		common.LogWithID(a.shortID, "Did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
-		return
+		b, err := blocks[len(blocks)-1].DecodeBlock()
+		if err != nil {
+			return fmt.Errorf("did not ingest block. Cause: %s", result.BlockNotIngestedCause)
+		}
+		return fmt.Errorf("did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
 	}
 
 	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
 	if result.ProducedRollup.Header != nil {
-		a.P2p.BroadcastRollup(common.EncodeRollup(result.ProducedRollup.ToRollup()))
+		encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
+		if err != nil {
+			return fmt.Errorf("could not encode rollup. Cause: %w", err)
+		}
+		err = a.P2p.BroadcastRollup(encodedRollup)
+		if err != nil {
+			return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
+		}
 
 		common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
 	}
+
+	return nil
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
@@ -429,14 +469,18 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 				winnerRollup.Header.Number,
 			)
 
+			encodedRollup, err := common.EncodeRollup(winnerRollup.ToRollup())
+			if err != nil {
+				log.Panic("could not encode rollup. Cause: %s", err)
+			}
 			tx := &ethadapter.L1RollupTx{
-				Rollup: common.EncodeRollup(winnerRollup.ToRollup()),
+				Rollup: encodedRollup,
 			}
 
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.DB().WasSubmitted(winnerRollup.Header.Hash()) {
-				a.broadcastTx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
 				a.DB().AddSubmittedRollup(winnerRollup.Header.Hash())
 			}
 		}
@@ -458,23 +502,27 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
-	// Create the genesis rollup and submit it to the MC
+	// Create the genesis rollup and submit it to the management contract
 	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
 	common.LogWithID(
 		a.shortID,
 		"Initialising network. Genesis rollup r_%d.",
 		common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 	)
+	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())
+	if err != nil {
+		log.Panic("could not encode rollup. Cause: %s", err)
+	}
 	l1tx := &ethadapter.L1RollupTx{
-		Rollup: common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup()),
+		Rollup: encodedRollup,
 	}
 
-	a.broadcastTx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	return genesisResponse.ProducedRollup.Header.ParentHash
 }
 
-func (a *Node) broadcastTx(tx types.TxData) {
+func (a *Node) broadcastL1Tx(tx types.TxData) {
 	// TODO add retry and deal with failures
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
@@ -492,13 +540,16 @@ func (a *Node) requestSecret() {
 	common.LogWithID(a.shortID, "Requesting secret.")
 	att := a.EnclaveClient.Attestation()
 	if att.Owner != a.ID {
-		log.Panic(">   Agg%d: node has ID %s, but its enclave produced an attestation using ID %s", a.shortID, a.ID.Hex(), att.Owner.Hex())
+		common.PanicWithID(a.shortID, "node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), att.Owner.Hex())
 	}
-	encodedAttestation := common.EncodeAttestation(att)
+	encodedAttestation, err := common.EncodeAttestation(att)
+	if err != nil {
+		log.Panic("could not encode attestation. Cause: %s", err)
+	}
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
-	a.broadcastTx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 
 	a.awaitSecret()
 }
@@ -557,7 +608,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		HostAddress: att.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	a.broadcastTx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
 }
 
 // Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
@@ -643,7 +694,15 @@ func (a *Node) monitorBlocks() {
 			common.ShortHash(blkHeader.Hash()),
 			blkHeader.Number.Uint64(),
 		)
-		a.blockRPCCh <- blockAndParent{common.EncodeBlock(block), common.EncodeBlock(blockParent)}
+		encodedBlock, err := common.EncodeBlock(block)
+		if err != nil {
+			log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+		}
+		encodedBlockParent, err := common.EncodeBlock(blockParent)
+		if err != nil {
+			log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+		}
+		a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
 	}
 }
 
@@ -715,8 +774,12 @@ func (a *Node) awaitSecret() {
 				return
 			}
 
-		case b := <-a.blockRPCCh:
-			if a.checkBlockForSecretResponse(b.b.DecodeBlock()) {
+		case bAndParent := <-a.blockRPCCh:
+			block, err := bAndParent.b.DecodeBlock()
+			if err != nil {
+				log.Panic("failed to decode block received via RPC. Cause: %s:", err)
+			}
+			if a.checkBlockForSecretResponse(block) {
 				return
 			}
 

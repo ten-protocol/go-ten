@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"os"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 
@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

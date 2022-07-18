@@ -5,9 +5,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/host"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/host"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // MockP2P - models a full network of in memory nodes including artificial random latencies
@@ -47,9 +49,9 @@ func (netw *MockP2P) UpdatePeerList([]string) {
 }
 
 // BroadcastRollup Broadcasts the rollup to all L2 peers
-func (netw *MockP2P) BroadcastRollup(r common.EncodedRollup) {
+func (netw *MockP2P) BroadcastRollup(r common.EncodedRollup) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
-		return
+		return nil
 	}
 
 	for _, a := range netw.Nodes {
@@ -58,11 +60,13 @@ func (netw *MockP2P) BroadcastRollup(r common.EncodedRollup) {
 			common.Schedule(netw.delay(), func() { t.ReceiveRollup(r) })
 		}
 	}
+
+	return nil
 }
 
-func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) {
+func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
-		return
+		return nil
 	}
 
 	for _, a := range netw.Nodes {
@@ -71,9 +75,11 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) {
 			common.Schedule(netw.delay()/2, func() { t.ReceiveTx(tx) })
 		}
 	}
+
+	return nil
 }
 
 // delay returns an expected delay on the l2
 func (netw *MockP2P) delay() time.Duration {
-	return common.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)
+	return testcommon.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)
 }

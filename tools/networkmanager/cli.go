@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum/common"
 )

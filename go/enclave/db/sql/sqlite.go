@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work

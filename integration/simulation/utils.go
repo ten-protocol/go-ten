@@ -4,15 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
-	"github.com/obscuronet/obscuro-playground/go/enclave/rollupchain"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 )
 
 const (
@@ -23,7 +27,7 @@ const (
 )
 
 func setupSimTestLog(simType string) {
-	logutil.SetupTestLog(&logutil.TestLogCfg{
+	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,
@@ -78,7 +82,7 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 	method := rpcclientlib.RPCGetRollupHeader
 
 	var result *common.Header
-	err := client.Call(&result, method, hash)
+	err := client.Call(&result, method, hash.Hex())
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
@@ -88,13 +92,8 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 
 // Uses the client to retrieve the transaction with the matching hash.
 func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) map[string]interface{} {
-	paramsJSON, err := json.Marshal([]string{txHash.Hex()})
-	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not marshal JSON param to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
-	}
-
 	var encryptedResponse string
-	err = client.Call(&encryptedResponse, rpcclientlib.RPCGetTransactionByHash, paramsJSON)
+	err := client.Call(&encryptedResponse, rpcclientlib.RPCGetTransactionByHash, txHash.Hex())
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
 	}
@@ -110,13 +109,8 @@ func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) map[stri
 
 // Returns the transaction receipt for the given transaction hash.
 func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) map[string]interface{} {
-	paramsJSON, err := json.Marshal([]string{txHash.Hex()})
-	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not marshall JSON param to %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
-	}
-
 	var encryptedResponse string
-	err = client.Call(&encryptedResponse, rpcclientlib.RPCGetTxReceipt, paramsJSON)
+	err := client.Call(&encryptedResponse, rpcclientlib.RPCGetTxReceipt, txHash.Hex())
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
 	}
@@ -141,13 +135,9 @@ func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractA
 		rollupchain.CallFieldTo:   l2ContractAddress.Hex(),
 		rollupchain.CallFieldData: convertedData,
 	}
-	jsonParams, err := json.Marshal([]interface{}{params})
-	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not marshall JSON param to %s RPC call. Cause: %w", method, err))
-	}
 
 	var encryptedResponse string
-	err = client.Call(&encryptedResponse, method, jsonParams)
+	err := client.Call(&encryptedResponse, method, params)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
@@ -200,4 +190,8 @@ func findRollupDups(list []common.L2RootHash) map[common.L2RootHash]int {
 		}
 	}
 	return dups
+}
+
+func SleepRndBtw(min time.Duration, max time.Duration) {
+	time.Sleep(testcommon.RndBtwTime(min, max))
 }

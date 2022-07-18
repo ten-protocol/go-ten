@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"fmt"
 
-	generatedManagementContract "github.com/obscuronet/obscuro-playground/contracts/compiledcontracts/generatedManagementContract"
+	generatedManagementContract "github.com/obscuronet/go-obscuro/contracts/compiledcontracts/generatedManagementContract"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	ethereumclient "github.com/ethereum/go-ethereum/ethclient"
@@ -37,8 +37,12 @@ func newDebugMgmtContractLib(address gethcommon.Address, client *ethereumclient.
 
 // AwaitedIssueRollup speeds ups the issuance of rollup, await of tx to be minted and makes sure the values are correctly stored
 func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.EncryptedRollup, client ethadapter.EthClient, w *debugWallet) error {
+	encodedRollup, err := common.EncodeRollup(&rollup)
+	if err != nil {
+		return err
+	}
 	txData := d.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&rollup)},
+		&ethadapter.L1RollupTx{Rollup: encodedRollup},
 		w.GetNonceAndIncrement(),
 	)
 

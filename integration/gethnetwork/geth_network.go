@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
 const (
@@ -59,6 +59,9 @@ const (
 	// syncModeFlag defines the node block sync approach
 	// snap (the default) mode does not work well for small, rapidly deployed private networks
 	syncModeFlag = "--syncmode=full"
+
+	// blockProductionIntervalFlag defines what is the block production period in seconds
+	blockProductionIntervalFlag = "--dev.period"
 
 	// We pre-allocate a wallet matching the private key used in the tests, plus an account per clique member.
 	genesisJSONTemplate = `{
@@ -114,6 +117,7 @@ type GethNetwork struct {
 	WebSocketPorts   []uint // Ports exposed by the geth nodes for
 	commStartPort    int
 	wsStartPort      int
+	blockTimeSecs    int
 }
 
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
@@ -170,6 +174,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		WebSocketPorts:   make([]uint, numNodes),
 		commStartPort:    portStart,
 		wsStartPort:      websocketPortStart,
+		blockTimeSecs:    blockTimeSecs,
 	}
 
 	// We create an account for each node.
@@ -347,6 +352,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 		network.passwordFilePath, mineFlag, rpcFeeCapFlag, syncModeFlag,
 		httpEnableFlag, httpPortFlag, strconv.Itoa(httpPort), httpEnableApis, allowedAPIs, allowCORSDomain, "*",
 		httpAddrFlag, "0.0.0.0", wsAddrFlag, "0.0.0.0", httpVhostsFlag, "*", gasLimitFlag,
+		blockProductionIntervalFlag, strconv.Itoa(network.blockTimeSecs),
 	}
 	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
 

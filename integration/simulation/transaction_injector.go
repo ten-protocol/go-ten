@@ -1,38 +1,38 @@
 package simulation
 
 import (
-	cryptorand "crypto/rand"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
-	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/wallet"
-	simstats "github.com/obscuronet/obscuro-playground/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	simstats "github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 const (
@@ -185,8 +185,8 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	if err != nil {
 		panic(err)
 	}
-	encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
-	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+
+	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
 	}
@@ -209,7 +209,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), common.RndBtw(1, 500), ti.l2Clients[0])
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500), ti.rndL2NodeClient())
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -221,24 +221,25 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			common.ShortAddress(toWallet.Address()),
 		)
 
-		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 		ti.stats.Transfer()
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
 		}
 
+		// todo - retrieve receipt
+
 		go ti.Counter.trackTransferL2Tx(signedTx)
-		common.SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 	}
 }
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		v := common.RndBtw(1, 100)
+		v := testcommon.RndBtw(1, 100)
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
 		txData := &ethadapter.L1DepositTx{
@@ -264,14 +265,14 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(v)
 		go ti.Counter.trackL1Tx(txData)
-		common.SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		v := common.RndBtw(1, 100)
+		v := testcommon.RndBtw(1, 100)
 		obsWallet := ti.rndObsWallet()
 		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.rndL2NodeClient())
 		signedTx, err := obsWallet.SignTransaction(tx)
@@ -283,9 +284,8 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(obsWallet.Address()),
 		)
-		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -293,13 +293,14 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 
 		ti.stats.Withdrawal(v)
 		go ti.Counter.trackWithdrawalL2Tx(signedTx)
-		common.SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
 func (ti *TransactionInjector) issueInvalidL2Txs() {
+	// todo - also issue transactions with insufficient gas
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
@@ -307,16 +308,15 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newCustomObscuroWithdrawalTx(common.RndBtw(1, 100))
+		tx := ti.newCustomObscuroWithdrawalTx(testcommon.RndBtw(1, 100))
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
-		encryptedTx := encryptTx(signedTx, ti.enclavePublicKey)
 
-		err := ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encryptedTx)
+		err := ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
-		time.Sleep(common.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
+		time.Sleep(testcommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}
 }
 
@@ -369,10 +369,11 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 }
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
+	gas := uint64(1_000_000)
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      1_000_000,
+		Gas:      gas,
 		GasPrice: gethcommon.Big0,
 		Data:     data,
 		To:       ti.wallets.Tokens[bridge.BTC].L2ContractAddress,
@@ -410,8 +411,8 @@ func NextNonce(cl rpcclientlib.Client, w wallet.Wallet) uint64 {
 	}
 }
 
-// Formats a transaction for sending to the enclave and encrypts it using the enclave's public key.
-func encryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) common.EncryptedParamsSendRawTx {
+// Formats a transaction for sending to the enclave
+func encodeTx(tx *common.L2Tx) string {
 	txBinary, err := tx.MarshalBinary()
 	if err != nil {
 		panic(err)
@@ -419,17 +420,8 @@ func encryptTx(tx *common.L2Tx, enclavePublicKey *ecies.PublicKey) common.Encryp
 
 	// We convert the transaction binary to the form expected for sending transactions via RPC.
 	txBinaryHex := gethcommon.Bytes2Hex(txBinary)
-	txBinaryListJSON, err := json.Marshal([]string{"0x" + txBinaryHex})
-	if err != nil {
-		panic(err)
-	}
 
-	encryptedTxBytes, err := ecies.Encrypt(cryptorand.Reader, enclavePublicKey, txBinaryListJSON, nil, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return encryptedTxBytes
+	return "0x" + txBinaryHex
 }
 
 // Indicates whether to keep issuing transactions, or halt.

@@ -4,24 +4,26 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log/logutil"
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
-	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/go-obscuro/go/config"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/integration"
+	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/enclave/enclaverunner"
-	"github.com/obscuronet/obscuro-playground/go/host/hostrunner"
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/go/enclave/enclaverunner"
+	"github.com/obscuronet/go-obscuro/go/host/hostrunner"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
 // TODO - Use the HostRunner/EnclaveRunner methods in the socket-based integration tests, and retire this smoketest.
@@ -34,7 +36,7 @@ const (
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
-	logutil.SetupTestLog(&logutil.TestLogCfg{
+	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
@@ -57,11 +59,13 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.EnclaveRPCAddress = enclaveAddr
 	hostConfig.ClientRPCPortHTTP = startPort + 1
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
+	hostConfig.ProfilerEnabled = true
 
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
+	enclaveConfig.ProfilerEnabled = true
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -86,6 +90,17 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		}
 		time.Sleep(time.Second)
 		wait--
+	}
+
+	// Check if the host profiler is up
+	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultHostPort)) //nolint
+	if err != nil {
+		t.Errorf("host profiler is not reachable: %s", err)
+	}
+	// Check if the enclave profiler is up
+	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultEnclavePort)) //nolint
+	if err != nil {
+		t.Errorf("host profiler is not reachable: %s", err)
 	}
 
 	counter := 0

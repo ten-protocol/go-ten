@@ -25,6 +25,7 @@ jobs:
       - name: Build Docker images
         run:  docker build -t obscuro_enclave -f dockerfiles/enclave.Dockerfile .
 
+      # Makes sure the artifacts are built correctly
       - name: Build
         run: go build -v ./...
 

@@ -14,20 +14,20 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/obscuronet/obscuro-playground/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
-	"github.com/obscuronet/obscuro-playground/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 )
 
 const (
@@ -127,8 +127,14 @@ func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	headRollupHash := headRollupHeader.Hash()
+	if headRollupHash == (gethcommon.Hash{}) {
+		logAndSendErr(resp, "head rollup was retrieved but hash was nil")
+		return
+	}
+
 	var headRollup *common.ExtRollup
-	err = o.client.Call(&headRollup, rpcclientlib.RPCGetRollup, headRollupHeader.Hash())
+	err = o.client.Call(&headRollup, rpcclientlib.RPCGetRollup, headRollupHash)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return

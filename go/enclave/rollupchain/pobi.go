@@ -3,8 +3,8 @@ package rollupchain
 import (
 	"bytes"
 
-	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
+	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 // FindWinner - implements the logic of determining the canonical chain rollup.

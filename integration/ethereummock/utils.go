@@ -3,10 +3,12 @@ package ethereummock
 import (
 	"bytes"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 // LCA - returns the least common ancestor of the 2 blocks
@@ -20,25 +22,25 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) *t
 	if blockA.NumberU64() > blockB.NumberU64() {
 		p, f := resolver.ParentBlock(blockA)
 		if !f {
-			panic("wtf")
+			log.Panic("Should not happen. Parent not found")
 		}
 		return LCA(p, blockB, resolver)
 	}
 	if blockB.NumberU64() > blockA.NumberU64() {
 		p, f := resolver.ParentBlock(blockB)
 		if !f {
-			panic("wtf")
+			log.Panic("Should not happen. Parent not found")
 		}
 
 		return LCA(blockA, p, resolver)
 	}
 	parentBlockA, f := resolver.ParentBlock(blockA)
 	if !f {
-		panic("wtf")
+		log.Panic("Should not happen. Parent not found")
 	}
 	parentBlockB, f := resolver.ParentBlock(blockB)
 	if !f {
-		panic("wtf")
+		log.Panic("Should not happen. Parent not found")
 	}
 
 	return LCA(parentBlockA, parentBlockB, resolver)
@@ -62,7 +64,7 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[co
 	newMap := make(map[common.TxHash]*types.Transaction)
 	p, f := r.ParentBlock(b)
 	if !f {
-		panic("wtf")
+		log.Panic("Should not happen. Parent not found")
 	}
 	for k, v := range allIncludedTransactions(p, r, db) {
 		newMap[k] = v

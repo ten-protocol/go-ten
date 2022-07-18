@@ -12,12 +12,11 @@ The typical blockchain node runs multiple services in a single process. For exam
 - Data storage
 - Transaction execution
 - Mempool
-- .. 
+- etc 
 
 Obscuro uses Trusted Execution Environments (TEE), like Intel SGX, to execute transactions in a confidential environment, which means we diverge from the typical architecture. 
 There are three main components of the architecture, each running as a separate process: the Enclave, the Host and the Wallet Extension.
 
-[//]: # (Todo - @joel - change the diagram to represent the Wallet Extension)
 ![Architecture](design/obscuro_arch.jpeg)
 
 ### I. The Enclave
@@ -27,7 +26,7 @@ See [go/enclave](go/enclave)
 
 We use [EGo](https://www.edgeless.systems/products/ego/), an open source SDK for developing this confidential component.
 
-The Enclave exposes an [interface](go/common/enclave.go) over RPC which attempts to minimise the Trusted computing base(TCB).
+The Enclave exposes an [interface](go/common/enclave.go) over RPC which attempts to minimise the "trusted computing base"(TCB).
 
 The Enclave component has these main responsibilities:
 
@@ -69,15 +68,23 @@ logic.
 
 
 #### 4. Bridge to Ethereum 
-One of the key aspects of Ethereum Layer 2(L2) solutions is to feature a decentralised bridge that is resistant to 51% attacks.
+One of the key aspects of Ethereum Layer 2 (L2) solutions is to feature a decentralised bridge that is resistant to 51% attacks.
 
 Obscuro features a L2 side of the bridge that is completely under the control of the platform.
 
+##### a) Deposits
 During processing of the Ethereum blocks, the platform generates synthetic L2 transactions based on every relevant transaction found there.
 For example when Alice deposits 10ABC from her account to the L1 bridge, Obscuro will execute a synthetic L2 transaction (that it deterministically
 generated from the L1 transaction), which moves 10WABC from the L2 bridge to Alice's address on Obscuro. 
 
 This logic is part of the consensus of Obscuro, every node receiving the same block containing the rollup and the deposits, will generate the exact same synthetic transaction.
+
+##### b) Withdrawals
+Obscuro ERC20 transactions sent to a special "Bridge" address are interpreted as withdrawals. Which means the wrapped tokens are burned
+on the Obscuro side of the bridge and a Withdrawal instruction is added to the rollup header, which will be later executed by the Ethereum side of the bridge.
+
+This happens deterministically in a post-processing phase, after all Obscuro transactions were executed by the EVM.
+
 
 See [go/enclave/bridge](go/enclave/bridge)
 
@@ -161,7 +168,7 @@ The Host service is the equivalent of a typical blockchain node, and is responsi
 - P2P messaging: Gossiping of encrypted transactions and rollups
 - RPC: Exposing an RPC interface similar to the one exposed by normal Ethereum nodes
 - Communicating with an Ethereum node for retrieving blocks and for submitting transactions with data that was generated inside the Enclave.
-  "This means an Ethereum wallet and the control keys to accounts with enough ETH to publish transactions is required.
+  This means an Ethereum wallet and the control keys to accounts with enough ETH to publish transactions is required.
 
 
 See [go/host](go/host)
@@ -172,14 +179,11 @@ building blocks of the Enclave*
 
 ### III. The Wallet Extension
 
-The missing link to achieving fully private transactions, while allowing end users to continue using their favourite wallets
-(like MetaMask) is a very thin component that has to be installed on the user machine.
-This component is responsible for the encryption/decryption of the traffic originating from an Obscuro node. It does that 
-by generating Viewing Keys behind the scenes.
+The missing link to achieving fully private transactions while allowing end-users to continue using their favourite 
+wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
+between the Obscuro node and its clients.
 
-[//]: # (TODO - Joel: want to add anything here)
-
-See: [tools/walletextension](tools/walletextension)
+See the [docs](https://docs.obscu.ro/testnet/wallet-extension.html) for more information.
 
 
 ## Repository Structure
@@ -210,15 +214,52 @@ root
 │   ├── <a href="./go/rpcclientlib">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
 │   └── <a href="./go/wallet">wallet</a>: Logic around wallets. Used both by the node, which is an ethereum wallet, and by the tests
 ├── <a href="./integration">integration</a>: Integration tests that spin up Obscuro networks.
+│   ├── <a href="./integration/simulation">simulation</a>: A series of tests that simulate running networks with different setups.
 ├── <a href="./testnet">testnet</a>: Utilities for deploying a testnet.
 └── <a href="./tools">tools</a>: Peripheral tooling. 
-│   ├── <a href="./tools/azuredeployer">azuredeployer</a>: Help with deploying obscuro nodes on SGX enabled azure VMs.
-│   ├── <a href="./tools/contractdeployer">contractdeployer</a>: todo - Joel 
-│   ├── <a href="./tools/networkmanager">networkmanager</a>: todo - Joel
-│   ├── <a href="./tools/obscuroscan">obscuroscan</a>: todo - Joel
-│   └── <a href="./tools/walletextension">walletextension</a>: todo - Joel
+│   ├── <a href="./tools/azuredeployer">azuredeployer</a>: Automates deployment of Obscuro nodes to SGX-enabled Azure VMs.
+│   ├── <a href="./tools/contractdeployer">contractdeployer</a>: Automates deployment of ERC20 and management contracts to the L1.
+│   ├── <a href="./tools/networkmanager">networkmanager</a>: Network management tooling. Automates deployment of ERC20 and management contracts to the L1, and allows the injection of transactions into the network to simulate activity.
+│   ├── <a href="./tools/obscuroscan">obscuroscan</a>: Tooling to monitor network transactions.
+│   └── <a href="./tools/walletextension">walletextension</a>: Ensures sensitive messages to and from the Obscuro node are encrypted.
 
 </pre>
+
+
+## Testing
+
+The Obscuro integration tests are found in: [integration/simulation](integration/simulation).
+
+The main tests are "simulations", which means they spin up both an L1 network and an L2 network, and then inject random transactions.
+Due to the non-determinism of both the "mining" protocol in the L1 network and the nondeterminism of POBI, coupled with the random traffic,
+it allows the tests to capture many corner cases without having to explicitly write individual tests for them. 
+
+The first [simulation_in_mem_test](integration/simulation/simulation_in_mem_test.go) runs fully in one single process on top of a 
+mocked L1 network and with the networking components of the Obscuro node swapped out, and is just focused on producing 
+random L1 blocks at very short intervals.  The [ethereummock](integration/ethereummock) implementation is based on the ethereum protocol with the individual nodes 
+gossiping with each other with random latencies, producing blocks at a random interval distributed 
+around a configured ``AvgBlockDuration``, and making decisions about the canonical head based on the longest chain.
+The L2 nodes are each connected to one of these mocked L1 nodes, and receive a slightly different view.
+If this test is run long enough, it verifies the POBI protocol.
+
+There are a number of simulations that gradually become more realistic, but at the cost of a reduction in the number of 
+blocks that can be generated.
+
+The [simulation_geth_in_mem_test](integration/simulation/simulation_geth_in_mem_test.go) replaces the mocked ethereum nodes with a 
+network of geth nodes started in clique mode. The lowest unit of time of producing blocks in that mode is `1 second`.
+
+The [simulation_full_network_test](integration/simulation/simulation_full_network_test.go) starts standalone local processes for
+both the enclave and the obscuro node connected to real geth nodes.
+
+The [simulation_docker_test](integration/simulation/simulation_docker_test.go) goes a step further and runs the enclave in "Simulation mode" 
+in a docker container with the "EGo" library. 
+
+The [simulation_azure_enclaves_test](integration/simulation/simulation_azure_enclaves_test.go) is the ultimate test where the enclaves are deployed 
+in "Real mode" on SGX enabled VMs on Azure.
+
+
+A [transaction injector](integration/simulation/transaction_injector.go) is able to create and inject random transactions in any 
+of these setups by receiving RPC handles to the nodes.
 
 
 ## Getting Started
@@ -324,4 +365,4 @@ account on the L1 network used to deploy the Obscuro Management and the ERC20 co
 
 ## Community 
 
-Discussions around development 
+Development is discussed by the team and the community on [discord](https://discord.com/channels/916052669955727371/945360340613484684) 

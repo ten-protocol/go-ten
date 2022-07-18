@@ -9,6 +9,7 @@ services:
     ports:
       - "13000:13000"
       - "13001:13001"
+      - "6061:6061"
     environment:
       MGMTCONTRACTADDR: some_address
       PKSTRING: some_string
@@ -16,6 +17,7 @@ services:
       L1PORT: some_port
       HOSTID: some_address
       ISGENESIS: some_bool
+      PROFILERENABLED: some_bool
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -27,16 +29,20 @@ services:
       "--privateKey=$PKSTRING",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
-      "--logLevel=debug"
+      "--logLevel=debug",
+      "--profilerEnabled=$PROFILERENABLED"
     ]
 
   enclave:
     networks:
       - default
+    ports:
+      - "6060:6060"
     environment:
       MGMTCONTRACTADDR: some_address
       ERC20CONTRACTADDR: some_address
       HOSTID: some_address
+      PROFILERENABLED: some_bool
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -46,6 +52,7 @@ services:
                  "--sqliteDBPath=/data/sqlite.db",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
-                 "--viewingKeysEnabled=false",
-                 "--hostAddress=host:10000"
+                 "--hostAddress=host:10000",
+                 "--profilerEnabled=$PROFILERENABLED",
+                 "--viewingKeysEnabled=true"
     ]

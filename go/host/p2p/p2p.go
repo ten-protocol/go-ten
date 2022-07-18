@@ -1,18 +1,19 @@
 package p2p
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
 	"sync/atomic"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/config"
+	"github.com/obscuronet/go-obscuro/go/config"
 
-	"github.com/obscuronet/obscuro-playground/go/host"
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // TODO - Provide configurable timeouts on P2P connections.
@@ -76,12 +77,12 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 	p.peerAddresses = newPeers
 }
 
-func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) {
-	p.broadcast(Tx, tx, p.peerAddresses)
+func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
+	return p.broadcast(Tx, tx, p.peerAddresses)
 }
 
-func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) {
-	p.broadcast(Rollup, r, p.peerAddresses)
+func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) error {
+	return p.broadcast(Rollup, r, p.peerAddresses)
 }
 
 // Listens for connections and handles them in a separate goroutine.
@@ -90,7 +91,7 @@ func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
-				log.Panic("host could not handle P2P connection: %s", err)
+				common.WarnWithID(p.nodeID, "host could not form P2P connection: %s", err)
 			}
 			return
 		}
@@ -106,14 +107,14 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 
 	encodedMsg, err := ioutil.ReadAll(conn)
 	if err != nil {
-		common.LogWithID(p.nodeID, "failed to read message from peer: %v", err)
+		common.WarnWithID(p.nodeID, "failed to read message from peer: %v", err)
 		return
 	}
 
 	msg := Message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		common.LogWithID(p.nodeID, "failed to decode message received from peer: %v", err)
+		common.WarnWithID(p.nodeID, "failed to decode message received from peer: %v", err)
 		return
 	}
 
@@ -122,29 +123,29 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.MsgContents)
 	case Rollup:
-		rollup := common.EncryptedRollup{}
-		err = rlp.DecodeBytes(msg.MsgContents, &rollup)
-
-		// We only post the rollup if it decodes correctly.
-		if err == nil {
-			callback.ReceiveRollup(msg.MsgContents)
-		} else {
-			common.LogWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
+		// We check that the rollup decodes correctly.
+		if err = rlp.DecodeBytes(msg.MsgContents, &common.EncryptedRollup{}); err != nil {
+			common.WarnWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
+			return
 		}
+
+		callback.ReceiveRollup(msg.MsgContents)
 	}
 }
 
 // Creates a P2P message and broadcasts it to all peers.
-func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) {
+func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) error {
 	msg := Message{Type: msgType, MsgContents: bytes}
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
-		log.Panic("could not encode message. Cause: %s", err)
+		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
 
 	for _, address := range toAddresses {
 		p.sendBytes(address, msgEncoded)
 	}
+
+	return nil
 }
 
 // sendBytes Sends the bytes over P2P to the given address.
@@ -154,12 +155,12 @@ func (p *p2pImpl) sendBytes(address string, tx []byte) {
 		defer conn.Close()
 	}
 	if err != nil {
-		common.LogWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
+		common.WarnWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
 		return
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
-		common.LogWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
+		common.WarnWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
 	}
 }

@@ -7,19 +7,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )
 
 type L1Network interface {
@@ -163,7 +163,15 @@ func (m *Node) Start() {
 				if !found {
 					panic("noo")
 				}
-				m.Network.BroadcastBlock(common.EncodeBlock(mb), common.EncodeBlock(p))
+				encodedBlock, err := common.EncodeBlock(mb)
+				if err != nil {
+					panic(fmt.Errorf("could not encode block. Cause: %w", err))
+				}
+				encodedParentBlock, err := common.EncodeBlock(p)
+				if err != nil {
+					panic(fmt.Errorf("could not encode parent block. Cause: %w", err))
+				}
+				m.Network.BroadcastBlock(encodedBlock, encodedParentBlock)
 			}
 		case <-m.headInCh:
 			m.headOutCh <- head
@@ -212,14 +220,22 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	// notify the clients
 	for _, c := range m.clients {
 		t := c
+		encodedBlock, err := common.EncodeBlock(b)
+		if err != nil {
+			panic(fmt.Errorf("could not encode block. Cause: %w", err))
+		}
 		if b.NumberU64() == common.L1GenesisHeight {
-			go t.MockedNewHead(common.EncodeBlock(b), nil)
+			go t.MockedNewHead(encodedBlock, nil)
 		} else {
 			p, f := m.Resolver.ParentBlock(b)
 			if !f {
 				panic("This should not happen")
 			}
-			go t.MockedNewHead(common.EncodeBlock(b), common.EncodeBlock(p))
+			encodedParentBlock, err := common.EncodeBlock(p)
+			if err != nil {
+				panic(fmt.Errorf("could not encode parent block. Cause: %w", err))
+			}
+			go t.MockedNewHead(encodedBlock, encodedParentBlock)
 		}
 	}
 	m.canonicalCh <- b
@@ -235,7 +251,11 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 
 	fork := make([]common.EncodedBlock, len(blocks))
 	for i, block := range blocks {
-		fork[i] = common.EncodeBlock(block)
+		encodedBlock, err := common.EncodeBlock(block)
+		if err != nil {
+			panic(fmt.Errorf("could not encode block. Cause: %w", err))
+		}
+		fork[i] = encodedBlock
 	}
 
 	// notify the clients
@@ -253,8 +273,16 @@ func (m *Node) P2PReceiveBlock(b common.EncodedBlock, p common.EncodedBlock) {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return
 	}
-	m.p2pCh <- p.DecodeBlock()
-	m.p2pCh <- b.DecodeBlock()
+	decodedBlock, err := b.DecodeBlock()
+	if err != nil {
+		panic(fmt.Errorf("could not decode block. Cause: %w", err))
+	}
+	decodedParentBlock, err := p.DecodeBlock()
+	if err != nil {
+		panic(fmt.Errorf("could not decode parent block. Cause: %w", err))
+	}
+	m.p2pCh <- decodedParentBlock
+	m.p2pCh <- decodedBlock
 }
 
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it

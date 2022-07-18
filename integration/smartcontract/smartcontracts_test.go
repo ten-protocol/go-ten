@@ -8,15 +8,15 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/config"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/wallet"
-	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/datagenerator"
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -105,8 +105,12 @@ func TestManagementContract(t *testing.T) {
 // nonAttestedNodesCannotCreateRollup issues a rollup from a node that did not receive the secret network key
 func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
 	rollup := datagenerator.RandomRollup()
+	encodedRollup, err := common.EncodeRollup(&rollup)
+	if err != nil {
+		t.Error(err)
+	}
 	txData := mgmtContractLib.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&rollup)},
+		&ethadapter.L1RollupTx{Rollup: encodedRollup},
 		w.GetNonceAndIncrement(),
 	)
 
@@ -640,8 +644,12 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 
 	t.Logf("LAST Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)
 
+	encodedRollup, err := common.EncodeRollup(&r)
+	if err != nil {
+		t.Error(err)
+	}
 	txData = mgmtContractLib.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: common.EncodeRollup(&r)},
+		&ethadapter.L1RollupTx{Rollup: encodedRollup},
 		w.GetNonceAndIncrement(),
 	)
 

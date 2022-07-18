@@ -36,6 +36,7 @@ tools/obscuroscan/main/main
 # Logs files
 **/enclave_logs.txt
 **/host_logs.txt
+**/wallet_extension_logs.txt
 
 # Temp env files
 testnet/.env

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/obscuro-playground/integration"
-	"github.com/obscuronet/obscuro-playground/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	"github.com/obscuronet/obscuro-playground/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 )
 
 const azureTestEnv = "AZURE_TEST_ENABLED"

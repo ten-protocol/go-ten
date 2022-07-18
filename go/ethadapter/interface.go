@@ -3,7 +3,7 @@ package ethadapter
 import (
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum"
 

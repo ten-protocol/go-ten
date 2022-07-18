@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/obscuro-playground/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 // ReadTxLookupEntry retrieves the positional metadata associated with a transaction

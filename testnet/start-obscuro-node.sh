@@ -3,15 +3,18 @@
 #
 # This script downloads and builds the obscuro node
 #
+# Note: Be aware that a network MUST always have AT LEAST ONE Genesis node -> Flag is_genesis=true
+#       Otherwise you might see your node getting stuck in waiting for a secret
+#
 
 help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: (run locally)"
-    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9"
+    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --is_genesis=true"
     echo ""
     echo "   ex: (run connect external)"
-    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0x7e440D3F8a82636529b0A4Fb9a4Ff66f8Bc7141F --erc20contractaddr=0xF63035376a11007DDEBed404405b69F079b17836"
+    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9"
     echo ""
     echo "  host_id            *Required* Set the node ID"
     echo ""
@@ -31,6 +34,8 @@ help_and_exit() {
     echo ""
     echo "  is_genesis         *Optional* Set the node as genesis node. Defaults to false"
     echo ""
+    echo "  profiler_enabled   *Optional* Enables the profiler in the host + enclave. Defaults to false"
+    echo ""
     echo ""
     echo ""
     exit 1  # Exit with error explicitly
@@ -45,6 +50,7 @@ testnet_path="${start_path}"
 # Define defaults
 l1_port=9000
 is_genesis=false
+profiler_enabled=false
 pk_address=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
 pk_string=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 
@@ -65,6 +71,7 @@ do
             --pkstring)                 pk_string=${value} ;;
             --sgx_enabled)              sgx_enabled=${value} ;;
             --is_genesis)               is_genesis=${value} ;;
+            --profiler_enabled)         profiler_enabled=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac
@@ -85,6 +92,7 @@ echo "ERC20CONTRACTADDR=${erc20_contract_addr}"  >> "${testnet_path}/.env"
 echo "L1HOST=${l1_host}" >> "${testnet_path}/.env"
 echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
 echo "ISGENESIS=${is_genesis}" >> "${testnet_path}/.env"
+echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 
 
 if ${sgx_enabled} ;

@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
@@ -22,9 +22,8 @@ import (
 // signed as-is.
 const ViewingKeySignedMsgPrefix = "vk"
 
-// PlaceholderResult is used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil
-// using ECIES throws an exception.
-var PlaceholderResult = []byte("<nil result>")
+// Used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil using ECIES throws an exception.
+var placeholderResult = []byte("0x")
 
 // RPCEncryptionManager manages the decryption and encryption of sensitive RPC requests.
 type RPCEncryptionManager struct {
@@ -45,14 +44,22 @@ func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ec
 
 // DecryptBytes decrypts the bytes with the enclave's private key if viewing keys are enabled.
 func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
-	if !rpc.viewingKeysEnabled {
-		return encryptedBytes, nil
+	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
 	}
-	return rpc.decryptWithEnclavePrivateKey(encryptedBytes)
+
+	return bytes, nil
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.
-func (rpc *RPCEncryptionManager) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (rpc *RPCEncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+	// We decrypt the viewing key.
+	viewingKeyBytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedViewingKeyBytes, nil, nil)
+	if err != nil {
+		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
+	}
+
 	// We recalculate the message signed by MetaMask.
 	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
 
@@ -87,7 +94,7 @@ func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Addres
 	}
 
 	if bytes == nil {
-		bytes = PlaceholderResult
+		bytes = placeholderResult
 	}
 
 	encryptedBytes, err := ecies.Encrypt(rand.Reader, viewingKey, bytes, nil, nil)
@@ -108,7 +115,7 @@ func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams common.EncryptedP
 	var paramsJSONList []string
 	err = json.Unmarshal(paramBytes, &paramsJSONList)
 	if err != nil {
-		return gethcommon.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. Cause: %w", err)
+		return gethcommon.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. JSON params are: %s. Cause: %w", string(paramBytes), err)
 	}
 	txHash := gethcommon.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
 	return txHash, err
@@ -123,15 +130,14 @@ func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcomm
 	return rpc.EncryptWithViewingKey(address, txReceiptBytes)
 }
 
-// DecryptTx decrypts an L2 transaction encrypted with the enclave's public key.
-func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*common.L2Tx, error) {
-	txBinaryListJSON, err := rpc.decryptWithEnclavePrivateKey(encryptedTx)
+func (rpc *RPCEncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
+	encodedTx, err := rpc.DecryptBytes(encodedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
 	}
 
 	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
-	txBinary := txBinaryListJSON[4 : len(txBinaryListJSON)-2]
+	txBinary := encodedTx[4 : len(encodedTx)-2]
 	txBytes := gethcommon.Hex2Bytes(string(txBinary))
 
 	tx := &common.L2Tx{}
@@ -141,14 +147,4 @@ func (rpc *RPCEncryptionManager) DecryptTx(encryptedTx common.EncryptedTx) (*com
 	}
 
 	return tx, nil
-}
-
-// Decrypts the bytes with the enclave's private key.
-func (rpc *RPCEncryptionManager) decryptWithEnclavePrivateKey(encryptedBytes []byte) ([]byte, error) {
-	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
-	}
-
-	return bytes, nil
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -46,14 +46,14 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	extRollup := api.host.EnclaveClient.GetRollupByHeight(number.Int64())
-	return extRollupToBlock(extRollup), nil
+	extRollup, err := api.host.EnclaveClient.GetRollupByHeight(number.Int64())
+	return extRollupToBlock(extRollup), err
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	extRollup := api.host.EnclaveClient.GetRollup(hash)
-	return extRollupToBlock(extRollup), nil
+	extRollup, err := api.host.EnclaveClient.GetRollup(hash)
+	return extRollupToBlock(extRollup), err
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -100,9 +100,9 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	rollupHeight, ok := blockNrOrHash.Number()
 	if ok {
-		rollup := api.host.EnclaveClient.GetRollupByHeight(rollupHeight.Int64())
-		if rollup == nil {
-			return nil, errors.New("invalid arguments; rollup with given height does not exist")
+		rollup, err := api.host.EnclaveClient.GetRollupByHeight(rollupHeight.Int64())
+		if err != nil {
+			return nil, err
 		}
 		rollupHash := rollup.Header.Hash()
 		return api.host.EnclaveClient.GetCode(address, &rollupHash)

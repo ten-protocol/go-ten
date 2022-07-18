@@ -3,7 +3,7 @@ package host
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.
@@ -38,7 +38,7 @@ func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 }
 
 // GetRollup returns the rollup with the given hash.
-func (api *ObscuroAPI) GetRollup(hash gethcommon.Hash) *common.ExtRollup {
+func (api *ObscuroAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, error) {
 	return api.host.EnclaveClient.GetRollup(hash)
 }
 

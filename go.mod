@@ -1,4 +1,4 @@
-module github.com/obscuronet/obscuro-playground
+module github.com/obscuronet/go-obscuro
 
 go 1.17
 
@@ -11,9 +11,9 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/edgelesssys/ego v0.5.0
 	github.com/ethereum/go-ethereum v1.10.16
+	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.3.0
-	github.com/gorilla/websocket v1.4.2
 	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/rs/zerolog v1.26.1
@@ -49,13 +49,14 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
-	github.com/go-kit/kit v0.10.0 // indirect
+	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect

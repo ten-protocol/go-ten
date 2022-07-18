@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/obscuronet/obscuro-playground/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
 // Spins up a new Geth network.
@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	gethNetwork := gethnetwork.NewGethNetwork(config.startPort, config.websocketStartPort, gethBinaryPath, config.numNodes, 1, config.prefundedAddrs)
+	gethNetwork := gethnetwork.NewGethNetwork(config.startPort, config.websocketStartPort, gethBinaryPath, config.numNodes, config.blockTimeSecs, config.prefundedAddrs)
 	fmt.Println("Geth network started.")
 
 	handleInterrupt(gethNetwork)

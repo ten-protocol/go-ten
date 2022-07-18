@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/obscuronet/obscuro-playground/go/host/hostrunner"
+	"github.com/obscuronet/go-obscuro/go/host/hostrunner"
 )
 
 // Runs an Obscuro host as a standalone process.

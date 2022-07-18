@@ -7,25 +7,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
+	"strings"
 	"sync"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/status-im/keycard-go/hexutils"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/obscuro-playground/go/enclave/crypto"
-	"github.com/obscuronet/obscuro-playground/go/enclave/rpcencryptionmanager"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	"github.com/obscuronet/obscuro-playground/go/enclave/bridge"
-	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/enclave/evm"
-	"github.com/obscuronet/obscuro-playground/go/enclave/mempool"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
+	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
 const (
@@ -216,11 +220,10 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	}
 
 	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
-	log.Trace(fmt.Sprintf(">   Agg%d: Calc block state b_%d: Found: %t - r_%d, ",
-		rc.nodeID,
+	common.TraceWithID(rc.nodeID, "Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
 		bs.FoundNewRollup,
-		common.ShortHash(bs.HeadRollup)))
+		common.ShortHash(bs.HeadRollup))
 
 	rc.storage.SaveNewHead(bs, head, receipts)
 
@@ -269,20 +272,39 @@ func (rc *RollupChain) findRoundWinner(receivedRollups []*obscurocore.Rollup, pa
 	return headRollup
 }
 
+type sortByTxIndex []*types.Receipt
+
+func (c sortByTxIndex) Len() int           { return len(c) }
+func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
+
+const nonceTooHigh = "nonce too high"
+
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
 func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.L2Txs, stateDB *state.StateDB) (gethcommon.Hash, obscurocore.L2Txs, []*types.Receipt, []*types.Receipt) {
-	var successfulTransactions obscurocore.L2Txs
-	txReceipts := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, 0)
-	txReceiptsMap := toReceiptMap(txReceipts)
-	// todo - only transactions that fail because of the nonce should be excluded
+	var executedTransactions obscurocore.L2Txs
+	var txReceipts []*types.Receipt
+
+	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, 0)
 	for _, tx := range txs {
-		_, f := txReceiptsMap[tx.Hash()]
-		if f {
-			successfulTransactions = append(successfulTransactions, tx)
+		result, f := txResults[tx.Hash()]
+		if !f {
+			log.Panic("There should be an entry for each transaction ")
+		}
+		rec, ok := result.(*types.Receipt)
+		if ok {
+			executedTransactions = append(executedTransactions, tx)
+			txReceipts = append(txReceipts, rec)
 		} else {
-			log.Info(">   Agg%d: Excluding transaction %d", common.ShortAddress(rc.hostID), common.ShortHash(tx.Hash()))
+			err := result.(error)
+			// only transactions that fail because of the nonce are excluded and left in the mempool
+			if strings.Contains(err.Error(), nonceTooHigh) {
+				common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d", tx.Hash().Hex(), common.ShortHash(rollup.Hash()))
+			} else {
+				executedTransactions = append(executedTransactions, tx)
+			}
 		}
 	}
 
@@ -295,23 +317,37 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.
 		stateDB,
 	)
 
-	depositReceipts := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, len(successfulTransactions))
-	if len(depositReceipts) != len(depositTxs) {
+	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, len(executedTransactions))
+	depositReceipts := make([]*types.Receipt, len(depositResponses))
+	if len(depositResponses) != len(depositTxs) {
 		log.Panic("Sanity check. Some deposit transactions failed.")
+	}
+	i := 0
+	for _, resp := range depositResponses {
+		rec, ok := resp.(*types.Receipt)
+		if !ok {
+			log.Panic("Sanity check. Should be a receipt.")
+		}
+		depositReceipts[i] = rec
+		i++
 	}
 
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		log.Panic("could not commit to state DB. Cause: %s", err)
 	}
-	return rootHash, successfulTransactions, txReceipts, depositReceipts
+
+	sort.Sort(sortByTxIndex(txReceipts))
+	sort.Sort(sortByTxIndex(depositReceipts))
+
+	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
-		dump := stateDB.Dump(&state.DumpConfig{})
-		log.Info("Calculated a different state. This should not happen as there are no malicious actors yet. Rollup: r_%d, \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
+		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
+		log.Error("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts)
 		return false
 	}
@@ -321,20 +357,21 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	for i, w := range withdrawals {
 		hw := h.Withdrawals[i]
 		if hw.Amount != w.Amount || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			log.Panic("Withdrawals don't match")
+			log.Error("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(rollup.Hash()))
+			return false
 		}
 	}
 
 	rec := allReceipts(txReceipts, depositReceipts)
 	rbloom := types.CreateBloom(rec)
 	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
-		log.Info("invalid bloom (remote: %x  local: %x)", h.Bloom, rbloom)
+		log.Error("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(rollup.Hash()), h.Bloom, rbloom)
 		return false
 	}
 
 	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
 	if !bytes.Equal(receiptSha.Bytes(), h.ReceiptHash.Bytes()) {
-		log.Info("invalid receipt root hash (remote: %x local: %x)", h.ReceiptHash, receiptSha)
+		log.Error("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(rollup.Hash()), h.ReceiptHash, receiptSha)
 		return false
 	}
 
@@ -370,7 +407,7 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 	// calculate the state to compare with what is in the Rollup
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
-		panic("Sanity check. All transactions that are included in a rollup must be executed and produce a receipt.")
+		panic("Sanity check. All transactions that are included in a rollup must be executed.")
 	}
 
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
@@ -434,7 +471,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 		return common.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	common.LogWithID(rc.nodeID, "Update state: %d", common.ShortHash(block.Hash()))
+	common.LogWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
 	blockState := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
@@ -444,12 +481,14 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	r := rc.produceRollup(&block, blockState)
 
 	rc.signRollup(r)
+
+	// Sanity check the produced rollup
 	rc.checkRollup(r)
 
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
 
-	common.LogWithID(rc.nodeID, "Processed block: b_%d(%d)", common.ShortHash(block.Hash()), block.NumberU64())
+	common.LogWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
 	return rc.newBlockSubmissionResponse(blockState, rc.transactionBlobCrypto.ToExtRollup(r))
 }
@@ -526,8 +565,9 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 		r.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
 	}
 
-	// dump := newRollupState.Dump(&state.DumpConfig{})
-	// log.Info("Create rollup. State: %s", dump)
+	// Uncomment this if you want to debug issues related to root state hashes not matching
+	dump := strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
+	log.Info("Create rollup. State: %s", dump)
 
 	return r
 }
@@ -599,6 +639,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if err != nil {
 		return nil, fmt.Errorf("aborting `eth_call` request. Cause: %w", err)
 	}
+	log.Info("!OffChain call: contractAddress=%s, from=%s, data=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data))
 
 	hs := rc.storage.FetchHeadState()
 	if hs == nil {
@@ -615,9 +656,11 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, err
 	}
 	if result.Failed() {
-		log.Info("Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
+		log.Info("!OffChain: Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
 		return nil, result.Err
 	}
+
+	log.Info("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData))
 
 	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(from, result.ReturnData)
 	if err != nil {
@@ -632,7 +675,7 @@ func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.A
 	var paramsJSONMap []interface{}
 	err := json.Unmarshal(decryptedParams, &paramsJSONMap)
 	if err != nil {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not parse JSON params in Call request. Cause: %w", err)
+		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(decryptedParams), err)
 	}
 
 	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
@@ -670,7 +713,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	var paramsJSONMap []string
 	err = json.Unmarshal(paramBytes, &paramsJSONMap)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in GetBalance request. Cause: %w", err)
+		return nil, fmt.Errorf("could not parse JSON params in eth_getBalance request. JSON params are: %s. Cause: %w", string(paramBytes), err)
 	}
 	address := gethcommon.HexToAddress(paramsJSONMap[0]) // The first argument is the address, the second the block.
 

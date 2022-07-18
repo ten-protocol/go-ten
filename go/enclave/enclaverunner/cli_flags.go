@@ -52,4 +52,7 @@ const (
 
 	sqliteDBPathName  = "sqliteDBPath"
 	sqliteDBPathUsage = "filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB or if using attestation/EdgelessDB)"
+
+	profilerEnabledName  = "profilerEnabled"
+	profilerEnabledUsage = "Runs a profiler instance (Defaults to false)"
 )

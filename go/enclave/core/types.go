@@ -2,7 +2,7 @@ package core
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/obscuro-playground/go/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 const SharedSecretLen = 32

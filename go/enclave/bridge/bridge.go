@@ -4,22 +4,22 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/obscuronet/obscuro-playground/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/obscuro-playground/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	crypto2 "github.com/obscuronet/obscuro-playground/go/enclave/crypto"
+	crypto2 "github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/obscuro-playground/go/common"
-	obscurocore "github.com/obscuronet/obscuro-playground/go/enclave/core"
-	"github.com/obscuronet/obscuro-playground/go/enclave/db"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/obscuro-playground/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/obscuro-playground/go/wallet"
+	"github.com/obscuronet/go-obscuro/go/common"
+	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
 // Todo - remove all hardcoded values in the next iteration.
@@ -154,7 +154,10 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 		}
 
 		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
-			r := common.DecodeRollupOrPanic(rolTx.Rollup)
+			r, err := common.DecodeRollup(rolTx.Rollup)
+			if err != nil {
+				log.Panic("could not decode rollup. Cause: %s", err)
+			}
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork

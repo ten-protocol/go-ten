@@ -37,7 +37,7 @@ func defaultHostConfig() gethConfig {
 		startPort:          12000,
 		websocketStartPort: 12100,
 		prefundedAddrs:     []string{},
-		blockTimeSecs:      6,
+		blockTimeSecs:      1,
 	}
 }
 
