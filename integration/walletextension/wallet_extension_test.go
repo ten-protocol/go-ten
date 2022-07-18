@@ -557,13 +557,13 @@ func makeEthJSONReqAsJSON(t *testing.T, walletExtensionAddr string, method strin
 
 // Generates a signed viewing key and submits it to the wallet extension.
 func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) {
-	viewingKey := generateViewingKey(t, walletExtensionAddr)
+	viewingKey := generateViewingKey(t, walletExtensionAddr, accountAddr)
 	signature := signViewingKey(t, accountPrivateKey, viewingKey)
 
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		"address":          accountAddr,
 		"signature":        hex.EncodeToString(signature),
-		"publicViewingKey": viewingKey,
+		"publicViewingKey": string(viewingKey),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -583,9 +583,9 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 }
 
 // Generates a viewing key.
-func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
+func generateViewingKey(t *testing.T, walletExtensionAddr string, accountAddr string) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		"address": walletExtensionAddr,
+		"address": accountAddr,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -649,7 +649,7 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 		GasPrice: common.Big0,
 		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
 	}
-	generateAndSubmitViewingKey(t, walletExtensionAddr, walletExtensionAddr, txWallet.PrivateKey())
+	generateAndSubmitViewingKey(t, walletExtensionAddr, txWallet.Address().String(), txWallet.PrivateKey())
 	txBinaryHex, err := formatTxForSubmission(txWallet, &deployContractTx)
 	if err != nil {
 		return obscuroNetwork.TearDown, err

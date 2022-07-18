@@ -53,7 +53,7 @@ type Client interface {
 
 	// RegisterViewingKey takes a signature for the public key, it verifies the signed public key matches the currently set private viewing key
 	//	and then submits it to the enclave
-	RegisterViewingKey(signerAddr common.Address, signature []byte, viewingPubKeyBytes []byte) error
+	RegisterViewingKey(signature []byte, viewingPubKeyBytes []byte) error
 }
 
 // RPCClient is a Client implementation that wraps rpc.Client to make calls.
@@ -219,11 +219,7 @@ func (c *networkClient) SetViewingKey(viewingKeyAddr common.Address, viewingKey 
 	c.viewingPrivKey = viewingKey
 }
 
-func (c *networkClient) RegisterViewingKey(signerAddr common.Address, signature []byte, viewingPubKeyBytes []byte) error {
-	if signerAddr != c.viewingKeyAddr {
-		return fmt.Errorf("client only registers viewing keys for its current user address, currAddress: %s, but signerAddress: %s",
-			c.viewingKeyAddr, signerAddr)
-	}
+func (c *networkClient) RegisterViewingKey(signature []byte, viewingPubKeyBytes []byte) error {
 	// We encrypt the viewing key bytes
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, viewingPubKeyBytes, nil, nil)
 	if err != nil {

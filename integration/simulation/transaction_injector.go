@@ -193,12 +193,13 @@ func (ti *TransactionInjector) generateAndRegisterViewingKey(w wallet.Wallet) {
 
 	signature := signViewingKey(viewingKeyHex, w.PrivateKey())
 
-	err = ti.rndL2NodeClient(w).RegisterViewingKey(w.Address(), signature, []byte(viewingKeyHex))
+	err = ti.rndL2NodeClient(w).RegisterViewingKey(signature, viewingKeyBytes)
 	if err != nil {
 		panic(err)
 	}
 }
 
+// signViewingKey mimics the back-and-forth with the wallet extension and the user in metamask
 func signViewingKey(viewingPublicKey string, walletPrivKey *ecdsa.PrivateKey) []byte {
 	msgToSign := rpcencryptionmanager.ViewingKeySignedMsgPrefix + viewingPublicKey
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), walletPrivKey)
@@ -210,7 +211,18 @@ func signViewingKey(viewingPublicKey string, walletPrivKey *ecdsa.PrivateKey) []
 	signature[64] += 27
 	signatureWithLeadBytes := append([]byte("0"), signature...)
 
-	return signatureWithLeadBytes
+	// this string encoded signature is what the wallet extension would receive after it is signed by metamask
+	sigStr := hex.EncodeToString(signatureWithLeadBytes)
+	// and then we extract the signature bytes in the same way as the wallet extension
+	outputSig, err := hex.DecodeString(sigStr[2:])
+	if err != nil {
+		panic(err)
+	}
+	// This same change is made in geth internals, for legacy reasons to be able to recover the address:
+	//	https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	outputSig[64] -= 27
+	
+	return outputSig
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.

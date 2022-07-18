@@ -260,8 +260,14 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	//	https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
+	viewingPubKey, err := hex.DecodeString(reqJSONMap["publicViewingKey"])
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not decode public viewing key from req: %s", err))
+		return
+	}
+
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
-	err = we.hostClient.RegisterViewingKey(common.HexToAddress(reqJSONMap["address"]), signature, []byte(reqJSONMap["publicViewingKey"]))
+	err = we.hostClient.RegisterViewingKey(signature, viewingPubKey)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("RPC request to register viewing key failed: %s", err))
 		return
