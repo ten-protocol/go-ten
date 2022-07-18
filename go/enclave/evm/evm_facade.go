@@ -77,7 +77,7 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 
 	blockContext := core2.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, s, cc, vmCfg)
-	// use ToMessage
+	// todo use ToMessage
 	msg := types.NewMessage(from, &to, 0, gethcommon.Big0, 100_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
 	result, err := core2.ApplyMessage(vmenv, msg, gp)
 	if err != nil {
