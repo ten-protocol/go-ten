@@ -15,4 +15,4 @@ Decrypting transaction blobs is only possible on Testnet to help you understand 
 
 1. From the [ObscuroScan landing page](http://obscuroscan-01.uksouth.azurecontainer.io/) click _Decrypt rollup transaction blobs (testnet only!)_ to go to the decryption page.
 
-1. Paste the contents of the _Encrypted Transaction Blob_ field from the L1 block monitor page into the decryption box and click `Submit` to see the content of the transaction as unencrypted plain text.
+1. Paste the contents of the _EncryptedTxBlob_ field from the L1 block monitor page into the decryption box and click `Submit` to see the content of the transaction as unencrypted plain text.
