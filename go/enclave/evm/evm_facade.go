@@ -89,6 +89,7 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 
 func initParams(rollupResolver db.RollupResolver, chainID int64) (*ObscuroChainContext, *params.ChainConfig, vm.Config, *core2.GasPool) {
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
+	// TODO - Consolidate this config with the one used in storage.go.
 	cc := &params.ChainConfig{
 		ChainID:     big.NewInt(chainID),
 		LondonBlock: gethcommon.Big0,

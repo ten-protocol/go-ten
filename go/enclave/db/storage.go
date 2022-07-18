@@ -30,7 +30,7 @@ type storageImpl struct {
 
 func NewStorage(backingDB ethdb.Database, nodeID uint64, obscuroChainID int64) Storage {
 	chainConfig := params.ChainConfig{
-		ChainID:     big.NewInt(777),
+		ChainID:     big.NewInt(obscuroChainID),
 		LondonBlock: gethcommon.Big0,
 	}
 
