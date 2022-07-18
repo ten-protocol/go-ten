@@ -105,7 +105,7 @@ func NewEnclave(
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
-	storage := db.NewStorage(backingDB, nodeShortID)
+	storage := db.NewStorage(backingDB, nodeShortID, config.ObscuroChainID)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// Todo - check the minimum difficulty parameter

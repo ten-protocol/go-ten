@@ -185,6 +185,7 @@ between the Obscuro node and its clients.
 
 See the [docs](https://docs.obscu.ro/testnet/wallet-extension.html) for more information.
 
+
 ## Repository Structure
 
 <pre>
@@ -260,15 +261,107 @@ in "Real mode" on SGX enabled VMs on Azure.
 A [transaction injector](integration/simulation/transaction_injector.go) is able to create and inject random transactions in any 
 of these setups by receiving RPC handles to the nodes.
 
-## Usage
-Todo
 
-### Compiling
+## Getting Started
+The following section describes building the reference implementation of the Obscuro protocol, running the unit and 
+integration tests, and deploying a local testnet for end-to-end testing. The reference implementation of Obscuro is 
+written in [go](https://go.dev). Unless otherwise stated, all paths stated herein are relative to the root of the 
+`go-obscuro` checkout.
 
-- Install go version > 1.8
 
-### Compiling
+### Dependencies
+The following dependencies are required to be installed locally;
 
+- [go](https://go.dev) (version > 1.18)
+- [docker](https://docs.docker.com/get-docker/) (recommend latest version)
+- [docker compose](https://docs.docker.com/compose/install/) (recommend latest version)
+
+Whilst the recommended version of go is > 1.18, the reference implementation uses _only_ language features up to and 
+including 1.17. Using 1.18 is recommended for easier setup and installation and is backwards compatible with all 1.17 
+language features. 
+
+
+### Building
+To create the build artifacts local to the checkout of the repository the easiest approach is to build each component 
+separately for the host, enclave, and wallet extension  i.e. 
+
+```
+cd ./go/host/main && go build && cd -
+cd ./go/enclave/main && go build && cd -
+cd ./tools/walletextension/main && go build && cd -
+```
+
+Running `go build ./...` to build all packages at the root level will build all packages, but it will discard the 
+resulting artifacts; it therefore serves only as a check that the packages _can_ be built. Note that building the 
+enclave using `go` will compile it for a non-SGX mode and allow it to be run for test purposes. Compiling for SGX mode 
+requires `ego-go ` from [Ego](https://www.edgeless.systems/products/ego/) to be used in placement. This is done using 
+a docker image as defined in [dockerfiles/enclave.Dockerfile](dockerfiles/enclave.Dockerfile). Note that building 
+the host and enclave is included here for information only; when building to run a local or remote component, docker 
+is used and the creation of the docker images automated as described in [Building and running a local testnet](#Building and running a local testnet). 
+
+
+### Running the tests
+The tests require an Obscuro enclave to be locally running, and as such the image should first be created and added to the 
+docker images repository. Building the image is described in [dockerfiles](dockerfiles) and can be performed using the 
+below in the root of the project;
+
+```
+docker build -t obscuro_enclave -f ./dockerfiles/enclave.Dockerfile .
+```
+
+To run all unit, integration and simulation tests locally, run the below in the root of the project;
+
+```
+go test ./...
+```
+
+### Building and running a local testnet
+At the moment running a local testnet has an additional dependency on [jq](https://stedolan.github.io/jq/) and the module 
+should be additionally installed prior to starting the local testnet. See the `jq` documentation for installation
+instructions. 
+
+The testnet is constructed from docker images that have all executables built, installed and available for running. The 
+images are created from the working directory of the repository checkout. To build the images and to add them into the 
+docker images repository use;
+
+```
+cd ./testnet && ./testnet-local-build_images.sh 
+```
+
+The above will perform all the relevant builds and ensure the images are ready for running each component, and takes 
+~4-5 mins to complete. The following images are created;
+
+```
+testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave            # the enclave 
+testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetwork        # the L1 network 
+testnetobscuronet.azurecr.io/obscuronet/obscuro_host               # the host
+testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer   # deploys the management contract to the host
+```
+
+To start the test network locally run the below scripts. Note that it is recommended to use the scripts with arguments 
+as detailed below. The arguments are set to correspond to valid pre-determined public / private key pair values for 
+contract deployment and roll up publishing. Using these values, and starting with a nonce of zero, means the addresses 
+of the contracts deployed are known a-priori, and so can be supplied in the `start-obscuro-node.sh` script as shown. As 
+only a single Obscuro node is started, it must be set as a genesis node. 
+
+```
+./testnet-local-gethnetwork.sh --pkaddresses=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B
+./testnet-deploy-contracts.sh --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
+./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --erc20contractaddr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --is_genesis=true 
+```
+
+where;
+
+- `0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944` is the public address of the pre-funded account on the L1 network used 
+to deploy the Obscuro Management and the ERC20 contracts
+- `0x0654D8B60033144D567f25bF41baC1FB0D60F23B` is the public address of the pre-funded account on the L1 network used to 
+pay for Obscuro rollup transactions
+- `f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb` is the private key of the pre-funded 
+account on the L1 network used to deploy the Obscuro Management and the ERC20 contracts
+- `0x0000000000000000000000000000000000000001` is the host id of the Obscuro node when starting in a local mode
+- `0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF` is the address of the Obscuro Management contract which is known a-priori as a nonce of 0 is used 
+- `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which is known a-priori as a nonce of 1 is used
+                                             
 
 ## Community 
 
