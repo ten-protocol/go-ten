@@ -74,6 +74,7 @@ func (p *p2pImpl) StopListening() error {
 }
 
 func (p *p2pImpl) UpdatePeerList(newPeers []string) {
+	log.Info("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers)
 	p.peerAddresses = newPeers
 }
 

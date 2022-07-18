@@ -51,6 +51,7 @@ services:
       HOSTID: some_address
       OE_SIMULATION: 0
       PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -63,7 +64,8 @@ services:
                  "--useInMemoryDB=false",
                  "--edgelessDBHost=edgelessdb",
                  "--profilerEnabled=$PROFILERENABLED",
-                 "--viewingKeysEnabled=true"
+                 "--viewingKeysEnabled=true",
+                 "--hostAddress=$P2PPUBLICADDRESS"
     ]
 
   edgelessdb:

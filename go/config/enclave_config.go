@@ -8,7 +8,7 @@ import (
 type EnclaveConfig struct {
 	// The identity of the host the enclave service is tied to
 	HostID common.Address
-	// The peer-to-peer IP address of the host the enclave service is tied to
+	// The p2p address of the host the enclave service is tied to
 	HostAddress string
 	// The address on which to serve requests
 	Address string

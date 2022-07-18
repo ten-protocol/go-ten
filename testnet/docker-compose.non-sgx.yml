@@ -45,6 +45,7 @@ services:
       ERC20CONTRACTADDR: some_address
       HOSTID: some_address
       PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -56,5 +57,6 @@ services:
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
                  "--hostAddress=host:10000",
                  "--profilerEnabled=$PROFILERENABLED",
-                 "--viewingKeysEnabled=true"
+                 "--viewingKeysEnabled=true",
+                 "--hostAddress=$P2PPUBLICADDRESS"
     ]

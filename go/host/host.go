@@ -146,7 +146,7 @@ func (a *Node) Start() {
 			AggregatorID:  &a.ID,
 			Attestation:   encodedAttestation,
 			InitialSecret: a.EnclaveClient.GenerateSecret(),
-			HostAddress:   a.config.P2PBindAddress,
+			HostAddress:   a.config.P2PPublicAddress,
 		}
 		a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
 		common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
