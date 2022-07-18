@@ -158,7 +158,7 @@ func (c *networkClient) encryptArgs(args ...interface{}) ([]byte, error) {
 func (c *networkClient) encryptParamBytes(params []byte) ([]byte, error) {
 	encryptedParams, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, params, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not encrypt request params: %s, with enclave public key, error: %w", params, err)
+		return nil, fmt.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %w", params, err)
 	}
 	return encryptedParams, nil
 }
@@ -179,12 +179,12 @@ func (c *networkClient) decryptResponse(resultBlob interface{}) ([]byte, error) 
 	}
 	resultStr, ok := resultBlob.(string)
 	if !ok {
-		return nil, fmt.Errorf("expected hex string but result was not a string, it was (%t) %s", resultBlob, resultBlob)
+		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
 	}
 	encryptedResult := common.Hex2Bytes(resultStr)
 	decryptedResult, err := c.viewingPrivKey.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt response: %s, with viewing key, error: %w", resultStr, err)
+		return nil, fmt.Errorf("could not decrypt the following response with viewing key: %s. Cause: %w", resultStr, err)
 	}
 
 	return decryptedResult, nil
