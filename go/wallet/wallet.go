@@ -2,9 +2,10 @@ package wallet
 
 import (
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"math/big"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 

@@ -591,8 +591,7 @@ func generateViewingKey(t *testing.T, walletExtensionAddr string, accountAddr st
 		t.Fatal(err)
 	}
 	generateVKBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
-	url := httpProtocol + walletExtensionAddr + walletextension.PathGenerateViewingKey
-	resp, err := http.Post(url, "application/json", generateVKBody) //nolint:noctx
+	resp, err := http.Post(httpProtocol+walletExtensionAddr+walletextension.PathGenerateViewingKey, "application/json", generateVKBody) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}

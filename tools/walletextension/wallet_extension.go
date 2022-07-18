@@ -298,7 +298,7 @@ func readJSONRequest(req *http.Request) (map[string]string, error) {
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal viewing key and signature from client to JSON: %s", err)
+		return nil, fmt.Errorf("could not unmarshal viewing key and signature from client to JSON: %w", err)
 	}
 	return reqJSONMap, nil
 }

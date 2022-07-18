@@ -4,12 +4,13 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
