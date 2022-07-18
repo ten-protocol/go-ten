@@ -313,7 +313,7 @@ where;
 
 - `0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944` is the public address of the pre-funded account on the L1 network used 
 to deploy the Obscuro Management and the ERC20 contracts
-- `0x0654D8B60033144D567f25bF41baC1FB0D60F23B` is the public added of the pre-funded account on the L1 network used to 
+- `0x0654D8B60033144D567f25bF41baC1FB0D60F23B` is the public address of the pre-funded account on the L1 network used to 
 pay for Obscuro rollup transactions
 - `f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb` is the private key of the pre-funded 
 account on the L1 network used to deploy the Obscuro Management and the ERC20 contracts
