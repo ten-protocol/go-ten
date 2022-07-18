@@ -1,7 +1,11 @@
 package simulation
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
@@ -122,27 +126,10 @@ func (ti *TransactionInjector) Start() {
 	// enough time to process everywhere
 	time.Sleep(ti.avgBlockDuration * 6)
 
-	// deposit some initial amount into every simulation wallet
+	// prepare wallets for simulation
 	for _, w := range ti.wallets.SimEthWallets {
-		addr := w.Address()
-		txData := &ethadapter.L1DepositTx{
-			Amount:        initialBalance,
-			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
-			Sender:        &addr,
-		}
-		tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
-		signedTx, err := w.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		err = ti.rndL1NodeClient().SendTransaction(signedTx)
-		if err != nil {
-			panic(err)
-		}
-
-		ti.stats.Deposit(initialBalance)
-		go ti.Counter.trackL1Tx(txData)
+		ti.depositInitialBalance(w)
+		ti.generateAndRegisterViewingKey(w)
 	}
 
 	// start transactions issuance
@@ -171,6 +158,61 @@ func (ti *TransactionInjector) Start() {
 	ti.fullyStoppedChan <- true
 }
 
+func (ti *TransactionInjector) depositInitialBalance(w wallet.Wallet) {
+	addr := w.Address()
+	txData := &ethadapter.L1DepositTx{
+		Amount:        initialBalance,
+		To:            ti.mgmtContractAddr,
+		TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
+		Sender:        &addr,
+	}
+	tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
+	signedTx, err := w.SignTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+	err = ti.rndL1NodeClient().SendTransaction(signedTx)
+	if err != nil {
+		panic(err)
+	}
+
+	ti.stats.Deposit(initialBalance)
+	go ti.Counter.trackL1Tx(txData)
+}
+
+func (ti *TransactionInjector) generateAndRegisterViewingKey(w wallet.Wallet) {
+	viewingKeyPrivate, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
+	w.SetViewingPrivKey(viewingPrivateKeyEcies)
+
+	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
+	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
+
+	signature := signViewingKey(viewingKeyHex, w.PrivateKey())
+
+	err = ti.rndL2NodeClient(w).RegisterViewingKey(w.Address(), signature, []byte(viewingKeyHex))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func signViewingKey(viewingPublicKey string, walletPrivKey *ecdsa.PrivateKey) []byte {
+	msgToSign := rpcencryptionmanager.ViewingKeySignedMsgPrefix + viewingPublicKey
+	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), walletPrivKey)
+	if err != nil {
+		panic(err)
+	}
+
+	// We have to transform the V from 0/1 to 27/28, and add the leading "0".
+	signature[64] += 27
+	signatureWithLeadBytes := append([]byte("0"), signature...)
+
+	return signatureWithLeadBytes
+}
+
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
 func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	// deploy the ERC20
@@ -186,7 +228,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		panic(err)
 	}
 
-	err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+	err = ti.rndL2NodeClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
 	}
@@ -209,7 +251,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500), ti.rndL2NodeClient())
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500), ti.rndL2NodeClient(fromWallet))
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -223,7 +265,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rndL2NodeClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -274,7 +316,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		v := testcommon.RndBtw(1, 100)
 		obsWallet := ti.rndObsWallet()
-		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.rndL2NodeClient())
+		tx := ti.newObscuroWithdrawalTx(obsWallet, v, ti.rndL2NodeClient(obsWallet))
 		signedTx, err := obsWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -285,7 +327,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			common.ShortAddress(obsWallet.Address()),
 		)
 
-		err = ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rndL2NodeClient(obsWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -312,7 +354,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		err := ti.rndL2NodeClient().Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err := ti.rndL2NodeClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
@@ -347,8 +389,12 @@ func (ti *TransactionInjector) rndL1NodeClient() ethadapter.EthClient {
 	return ti.l1Clients[rand.Intn(len(ti.l1Clients))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) rndL2NodeClient() rpcclientlib.Client {
-	return ti.l2Clients[rand.Intn(len(ti.l2Clients))] //nolint:gosec
+func (ti *TransactionInjector) rndL2NodeClient(wal wallet.Wallet) rpcclientlib.Client {
+	client := ti.l2Clients[rand.Intn(len(ti.l2Clients))] //nolint:gosec
+	// todo: if client is used in parallel for requests across multiple wallets this won't work...
+	// client is shared between many wallets, before the request we set viewing key on the client
+	client.SetViewingKey(wal.Address(), wal.GetViewingPrivKey())
+	return client
 }
 
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, client rpcclientlib.Client) types.TxData {

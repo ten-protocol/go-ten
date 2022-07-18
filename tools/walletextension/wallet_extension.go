@@ -149,7 +149,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	rpcReq, err := parseRequest(body)
+	rpcReq, err := parseRPCRequest(body)
 	if err != nil {
 		logAndSendErr(resp, err.Error())
 		return
@@ -181,7 +181,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 }
 
-func parseRequest(body []byte) (*rpcRequest, error) {
+func parseRPCRequest(body []byte) (*rpcRequest, error) {
 	// We unmarshall the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
@@ -217,15 +217,20 @@ func parseRequest(body []byte) (*rpcRequest, error) {
 }
 
 // Generates a new viewing key.
-func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ *http.Request) {
+func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
+	reqJSONMap, err := readJSONRequest(req)
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
+	}
+
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
-	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-	we.hostClient.SetViewingKey(viewingPrivateKeyEcies, viewingPublicKeyBytes)
+	we.hostClient.SetViewingKey(common.HexToAddress(reqJSONMap["address"]), viewingPrivateKeyEcies)
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
@@ -239,16 +244,9 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	body, err := ioutil.ReadAll(req.Body)
+	reqJSONMap, err := readJSONRequest(req)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signature from client: %s", err))
-		return
-	}
-
-	var reqJSONMap map[string]string
-	err = json.Unmarshal(body, &reqJSONMap)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		logAndSendErr(resp, err.Error())
 		return
 	}
 
@@ -263,7 +261,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	signature[64] -= 27
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
-	err = we.hostClient.RegisterViewingKey(common.HexToAddress(reqJSONMap["address"]), signature)
+	err = we.hostClient.RegisterViewingKey(common.HexToAddress(reqJSONMap["address"]), signature, []byte(reqJSONMap["publicViewingKey"]))
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("RPC request to register viewing key failed: %s", err))
 		return
@@ -283,4 +281,18 @@ type Config struct {
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
+}
+
+func readJSONRequest(req *http.Request) (map[string]string, error) {
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return nil, fmt.Errorf("could not read viewing key and signature from client: %w", err)
+	}
+
+	var reqJSONMap map[string]string
+	err = json.Unmarshal(body, &reqJSONMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal viewing key and signature from client to JSON: %s", err)
+	}
+	return reqJSONMap, nil
 }

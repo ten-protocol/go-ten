@@ -213,11 +213,11 @@ func (c *inMemObscuroClient) Stop() {
 	// There is no RPC connection to close.
 }
 
-func (c *inMemObscuroClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
+func (c *inMemObscuroClient) SetViewingKey(_ gethcommon.Address, _ *ecies.PrivateKey) {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
 }
 
-func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
+func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte, _ []byte) error {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
 }
 

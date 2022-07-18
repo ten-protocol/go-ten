@@ -561,8 +561,9 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 	signature := signViewingKey(t, accountPrivateKey, viewingKey)
 
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		"address":   accountAddr,
-		"signature": hex.EncodeToString(signature),
+		"address":          accountAddr,
+		"signature":        hex.EncodeToString(signature),
+		"publicViewingKey": viewingKey,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -583,7 +584,15 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 
 // Generates a viewing key.
 func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
-	resp, err := http.Get(httpProtocol + walletExtensionAddr + walletextension.PathGenerateViewingKey) //nolint:noctx
+	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
+		"address": walletExtensionAddr,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	generateVKBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
+	url := httpProtocol + walletExtensionAddr + walletextension.PathGenerateViewingKey
+	resp, err := http.Post(url, "application/json", generateVKBody) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}

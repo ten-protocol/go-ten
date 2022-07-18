@@ -49,11 +49,11 @@ type Client interface {
 	Stop()
 
 	// SetViewingKey sets the current viewing key on the client to be used for all sensitive request decryption
-	SetViewingKey(viewingKey *ecies.PrivateKey, pubKeyBytes []byte)
+	SetViewingKey(viewingKeyAddr common.Address, viewingKey *ecies.PrivateKey)
 
 	// RegisterViewingKey takes a signature for the public key, it verifies the signed public key matches the currently set private viewing key
 	//	and then submits it to the enclave
-	RegisterViewingKey(signerAddr common.Address, signature []byte) error
+	RegisterViewingKey(signerAddr common.Address, signature []byte, viewingPubKeyBytes []byte) error
 }
 
 // RPCClient is a Client implementation that wraps rpc.Client to make calls.
@@ -62,7 +62,6 @@ type networkClient struct {
 	enclavePublicKey *ecies.PublicKey
 	// todo: add support for multiple keys on the same client?
 	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
-	viewingPubKey  []byte            // public viewing key, submitted to the enclave
 	viewingKeyAddr common.Address    // address that generated the public key
 }
 
@@ -215,16 +214,18 @@ func (c *networkClient) Stop() {
 	c.rpcClient.Close()
 }
 
-func (c *networkClient) SetViewingKey(viewingKey *ecies.PrivateKey, viewingPubKeyBytes []byte) {
+func (c *networkClient) SetViewingKey(viewingKeyAddr common.Address, viewingKey *ecies.PrivateKey) {
+	c.viewingKeyAddr = viewingKeyAddr
 	c.viewingPrivKey = viewingKey
-	c.viewingPubKey = viewingPubKeyBytes
 }
 
-func (c *networkClient) RegisterViewingKey(signerAddr common.Address, signature []byte) error {
-	c.viewingKeyAddr = signerAddr
-
+func (c *networkClient) RegisterViewingKey(signerAddr common.Address, signature []byte, viewingPubKeyBytes []byte) error {
+	if signerAddr != c.viewingKeyAddr {
+		return fmt.Errorf("client only registers viewing keys for its current user address, currAddress: %s, but signerAddress: %s",
+			c.viewingKeyAddr, signerAddr)
+	}
 	// We encrypt the viewing key bytes
-	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingPubKey, nil, nil)
+	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, viewingPubKeyBytes, nil, nil)
 	if err != nil {
 		return fmt.Errorf("could not encrypt viewing key with enclave public key: %w", err)
 	}

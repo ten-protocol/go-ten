@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"crypto/ecdsa"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"math/big"
 	"sync/atomic"
 
@@ -29,6 +30,12 @@ type Wallet interface {
 
 	// PrivateKey returns the wallets private key
 	PrivateKey() *ecdsa.PrivateKey
+
+	// SetViewingPrivKey and GetViewingPrivKey and wallet can cache its current registered viewing private key here.
+	//
+	// In testing we may need to set VK on the rpc client before each request as clients are shared between many wallets
+	SetViewingPrivKey(viewingPrivKey *ecies.PrivateKey)
+	GetViewingPrivKey() *ecies.PrivateKey
 }
 
 type inMemoryWallet struct {
@@ -37,6 +44,8 @@ type inMemoryWallet struct {
 	pubKeyAddr common.Address
 	nonce      uint64
 	chainID    *big.Int
+
+	viewingPrivKey *ecies.PrivateKey
 }
 
 func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
@@ -85,4 +94,12 @@ func (m *inMemoryWallet) SetNonce(nonce uint64) {
 
 func (m *inMemoryWallet) PrivateKey() *ecdsa.PrivateKey {
 	return m.prvKey
+}
+
+func (m *inMemoryWallet) GetViewingPrivKey() *ecies.PrivateKey {
+	return m.viewingPrivKey
+}
+
+func (m *inMemoryWallet) SetViewingPrivKey(viewingPrivKey *ecies.PrivateKey) {
+	m.viewingPrivKey = viewingPrivKey
 }
