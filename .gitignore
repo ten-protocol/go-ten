@@ -16,6 +16,7 @@
 
 # GoLand files
 .idea/
+go-obscuro.iml
 
 # Simulation files
 .build/

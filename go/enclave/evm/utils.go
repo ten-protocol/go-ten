@@ -1,8 +1,6 @@
 package evm
 
 import (
-	"time"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -27,7 +25,7 @@ func convertToEthHeader(h *common.Header) *types.Header {
 		Number:      h.Number,
 		GasLimit:    1_000_000_000,
 		GasUsed:     0,
-		Time:        uint64(time.Now().Unix()),
+		Time:        uint64(0), // todo - pass in the block used as proof to get the timestamp
 		Extra:       obscuroHeader,
 		MixDigest:   gethcommon.Hash{},
 		Nonce:       types.BlockNonce{},

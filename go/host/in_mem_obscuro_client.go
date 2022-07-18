@@ -217,6 +217,7 @@ func (c *inMemObscuroClient) Stop() {
 func (c *inMemObscuroClient) SetViewingKey(_ gethcommon.Address, _ *ecies.PrivateKey) {
 	// viewing key encryption/decryption is not currently supported by in-memory obscuro-client
 }
+
 func (c *inMemObscuroClient) RegisterViewingKey(_ []byte, _ []byte) error {
 	// viewing key encryption/decryption is not currently supported by in-memory obscuro-client
 	return nil
