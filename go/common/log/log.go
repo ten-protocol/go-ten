@@ -11,7 +11,7 @@ import (
 func init() { //nolint:gochecknoinits
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	zerolog.SetGlobalLevel(TraceLevel)
-	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli}).With().Timestamp().Logger()
+	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli, NoColor: true}).With().Timestamp().Logger()
 }
 
 // Errors will always show
