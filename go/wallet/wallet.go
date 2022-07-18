@@ -63,7 +63,7 @@ func NewInMemoryWalletFromConfig(config config.HostConfig) Wallet {
 
 // SignTransaction returns a signed transaction
 func (m *inMemoryWallet) SignTransaction(tx types.TxData) (*types.Transaction, error) {
-	return types.SignNewTx(m.prvKey, types.NewEIP155Signer(m.chainID), tx)
+	return types.SignNewTx(m.prvKey, types.NewLondonSigner(m.chainID), tx)
 }
 
 // Address returns the current wallet address

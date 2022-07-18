@@ -12,6 +12,7 @@ services:
       - "13000:13000"
       - "13001:13001"
       - "6061:6061"
+      - "10000:10000"
     environment:
       MGMTCONTRACTADDR: some_address
       PKSTRING: some_string
@@ -20,6 +21,7 @@ services:
       HOSTID: some_address
       ISGENESIS: some_bool
       PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -32,7 +34,8 @@ services:
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
       "--logLevel=debug",
-      "--profilerEnabled=$PROFILERENABLED"
+      "--profilerEnabled=$PROFILERENABLED",
+      "--p2pPublicAddress=$P2PPUBLICADDRESS"
     ]
 
   enclave:
@@ -49,6 +52,7 @@ services:
       HOSTID: some_address
       OE_SIMULATION: 0
       PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -61,7 +65,8 @@ services:
                  "--useInMemoryDB=false",
                  "--edgelessDBHost=edgelessdb",
                  "--profilerEnabled=$PROFILERENABLED",
-                 "--viewingKeysEnabled=true"
+                 "--viewingKeysEnabled=true",
+                 "--hostAddress=$P2PPUBLICADDRESS"
     ]
 
   edgelessdb:

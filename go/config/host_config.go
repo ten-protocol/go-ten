@@ -35,8 +35,10 @@ type HostConfig struct {
 	EnclaveRPCAddress string
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
-	// Our network for P2P communication with peer Obscuro nodes
-	P2PAddress string
+	// P2PBindAddress is the address where the P2P server is bound to
+	P2PBindAddress string
+	// P2PPublicAddress is the advertised P2P server address
+	P2PPublicAddress string
 	// The host of the connected L1 node
 	L1NodeHost string
 	// The websocket port of the connected L1 node
@@ -73,7 +75,8 @@ func DefaultHostConfig() HostConfig {
 		ClientRPCTimeout:       time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		EnclaveRPCAddress:      "127.0.0.1:11000",
 		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
-		P2PAddress:             "127.0.0.1:10000",
+		P2PBindAddress:         "0.0.0.0:10000",
+		P2PPublicAddress:       "127.0.0.1:10000",
 		L1NodeHost:             "127.0.0.1",
 		L1NodeWebsocketPort:    8546,
 		L1ConnectionTimeout:    time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,

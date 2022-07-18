@@ -32,8 +32,11 @@ const (
 	enclaveRPCTimeoutSecsName  = "enclaveRPCTimeoutSecs"
 	enclaveRPCTimeoutSecsUsage = "The timeout for host <-> enclave RPC communication"
 
-	p2pAddressName  = "p2pAddress"
-	p2pAddressUsage = "The P2P address for our node"
+	p2pBindAddressName  = "p2pBindAddress"
+	p2pBindAddressUsage = "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000"
+
+	p2pPublicAddressName  = "p2pPublicAddress"
+	p2pPublicAddressUsage = "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000"
 
 	l1NodeHostName  = "l1NodeHost"
 	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
