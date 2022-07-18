@@ -213,10 +213,10 @@ func (c *inMemObscuroClient) Stop() {
 	// There is no RPC connection to close.
 }
 
+// viewing key encryption must be disabled on the enclave if using the in-memory client, it doesn't support viewing keys yet
 func (c *inMemObscuroClient) SetViewingKey(_ gethcommon.Address, _ *ecies.PrivateKey) {
 	// viewing key encryption/decryption is not currently supported by in-memory obscuro-client
 }
-
 func (c *inMemObscuroClient) RegisterViewingKey(_ []byte, _ []byte) error {
 	// viewing key encryption/decryption is not currently supported by in-memory obscuro-client
 	return nil
