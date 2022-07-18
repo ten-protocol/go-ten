@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -655,7 +654,6 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	}
 
 	a.P2p.UpdatePeerList(filteredHostAddresses)
-	common.LogWithID(a.shortID, "Updated peer list to %s", strings.Join(filteredHostAddresses, ", "))
 	return nil
 }
 
