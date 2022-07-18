@@ -221,7 +221,7 @@ func signViewingKey(viewingPublicKey string, walletPrivKey *ecdsa.PrivateKey) []
 	// This same change is made in geth internals, for legacy reasons to be able to recover the address:
 	//	https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	outputSig[64] -= 27
-	
+
 	return outputSig
 }
 
