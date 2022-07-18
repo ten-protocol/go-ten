@@ -141,8 +141,12 @@ func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractA
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
+	bytes, err := hexutil.Decode(string(gethcommon.Hex2Bytes(encryptedResponse)))
+	if err != nil {
+		panic(fmt.Errorf("could not decode ERC20 balance response for node. Response was %s. Cause: %w", encryptedResponse, err))
+	}
 	r := new(big.Int)
-	r = r.SetBytes(gethcommon.Hex2Bytes(encryptedResponse))
+	r = r.SetBytes(bytes)
 	return r.Uint64()
 }
 

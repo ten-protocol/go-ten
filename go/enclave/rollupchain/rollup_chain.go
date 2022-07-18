@@ -662,7 +662,8 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 
 	log.Info("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData))
 
-	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(from, result.ReturnData)
+	encodedResult := hexutil.Encode(result.ReturnData)
+	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(from, []byte(encodedResult))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}
