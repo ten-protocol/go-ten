@@ -639,7 +639,6 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if err != nil {
 		return nil, fmt.Errorf("aborting `eth_call` request. Cause: %w", err)
 	}
-	log.Info("!OffChain call: contractAddress=%s, from=%s, data=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data))
 
 	hs := rc.storage.FetchHeadState()
 	if hs == nil {
@@ -650,6 +649,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if !f {
 		panic("not found")
 	}
+	log.Info("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
 	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, rc.storage, rc.obscuroChainID)
 	if err != nil {

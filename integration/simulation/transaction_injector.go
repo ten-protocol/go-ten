@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -22,8 +24,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/integration"
 
@@ -175,11 +175,10 @@ func (ti *TransactionInjector) Start() {
 func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	// deploy the ERC20
 	contractBytes := gethcommon.Hex2Bytes(erc20contract.ContractByteCode)
-	deployContractTx := types.LegacyTx{
-		Nonce:    NextNonce(ti.l2Clients[0], owner),
-		Gas:      1025_000_000,
-		GasPrice: gethcommon.Big0,
-		Data:     contractBytes,
+	deployContractTx := types.DynamicFeeTx{
+		Nonce: NextNonce(ti.l2Clients[0], owner),
+		Gas:   1025_000_000,
+		Data:  contractBytes,
 	}
 	signedTx, err := owner.SignTransaction(&deployContractTx)
 	if err != nil {

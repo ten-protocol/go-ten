@@ -37,7 +37,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 		if r.Status == types.ReceiptStatusFailed {
 			common.LogTXExecution(t.Hash(), "Unsuccessful (status != 1).")
 		} else {
-			common.LogTXExecution(t.Hash(), "Successfully executed.")
+			common.LogTXExecution(t.Hash(), "Successfully executed. Address: %s", r.ContractAddress.Hex())
 		}
 	}
 	s.Finalise(true)
@@ -77,13 +77,14 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 
 	blockContext := core2.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, s, cc, vmCfg)
-
+	// todo use ToMessage
 	msg := types.NewMessage(from, &to, 0, gethcommon.Big0, 100_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
 	result, err := core2.ApplyMessage(vmenv, msg, gp)
 	if err != nil {
 		return nil, err
 	}
-	s.Finalise(true)
+	// todo - find out why this was called since it's not being called in geth
+	// s.Finalise(true)
 	return result, nil
 }
 
