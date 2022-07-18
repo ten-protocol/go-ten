@@ -35,7 +35,7 @@ type Message struct {
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
 func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 	return &p2pImpl{
-		ourAddress:    config.P2PAddress,
+		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		nodeID:        common.ShortAddress(config.ID),
 	}
@@ -74,6 +74,7 @@ func (p *p2pImpl) StopListening() error {
 }
 
 func (p *p2pImpl) UpdatePeerList(newPeers []string) {
+	log.Info("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers)
 	p.peerAddresses = newPeers
 }
 

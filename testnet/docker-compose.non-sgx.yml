@@ -10,6 +10,7 @@ services:
       - "13000:13000"
       - "13001:13001"
       - "6061:6061"
+      - "10000:10000"
     environment:
       MGMTCONTRACTADDR: some_address
       PKSTRING: some_string
@@ -18,6 +19,7 @@ services:
       HOSTID: some_address
       ISGENESIS: some_bool
       PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -30,7 +32,8 @@ services:
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
       "--logLevel=debug",
-      "--profilerEnabled=$PROFILERENABLED"
+      "--profilerEnabled=$PROFILERENABLED",
+      "--p2pPublicAddress=$P2PPUBLICADDRESS"
     ]
 
   enclave:
@@ -43,6 +46,7 @@ services:
       ERC20CONTRACTADDR: some_address
       HOSTID: some_address
       PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -54,5 +58,6 @@ services:
                  "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
                  "--hostAddress=host:10000",
                  "--profilerEnabled=$PROFILERENABLED",
-                 "--viewingKeysEnabled=true"
+                 "--viewingKeysEnabled=true",
+                 "--hostAddress=$P2PPUBLICADDRESS"
     ]
