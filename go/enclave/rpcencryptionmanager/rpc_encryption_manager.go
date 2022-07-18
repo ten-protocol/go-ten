@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -127,6 +129,7 @@ func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcomm
 	if err != nil {
 		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+	log.Info("Tx receipt: %s", string(txReceiptBytes))
 	return rpc.EncryptWithViewingKey(address, txReceiptBytes)
 }
 

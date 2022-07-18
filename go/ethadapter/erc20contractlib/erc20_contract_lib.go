@@ -98,7 +98,7 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Tran
 		panic("amount not found for transfer")
 	}
 
-	signer := types.NewEIP155Signer(tx.ChainId())
+	signer := types.NewLondonSigner(tx.ChainId())
 	sender, err := signer.Sender(tx)
 	if err != nil {
 		panic(err)
