@@ -10,6 +10,7 @@ services:
       - "13000:13000"
       - "13001:13001"
       - "6061:6061"
+      - "10000:10000"
     environment:
       MGMTCONTRACTADDR: some_address
       PKSTRING: some_string
