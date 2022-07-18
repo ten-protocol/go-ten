@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -21,16 +22,23 @@ import (
 )
 
 type storageImpl struct {
-	db      ethdb.Database
-	stateDB state.Database
-	nodeID  uint64
+	db          ethdb.Database
+	stateDB     state.Database
+	nodeID      uint64
+	chainConfig *params.ChainConfig
 }
 
-func NewStorage(backingDB ethdb.Database, nodeID uint64) Storage {
+func NewStorage(backingDB ethdb.Database, nodeID uint64, obscuroChainID int64) Storage {
+	chainConfig := params.ChainConfig{
+		ChainID:     big.NewInt(obscuroChainID),
+		LondonBlock: gethcommon.Big0,
+	}
+
 	return &storageImpl{
-		db:      backingDB,
-		stateDB: state.NewDatabase(backingDB),
-		nodeID:  nodeID,
+		db:          backingDB,
+		stateDB:     state.NewDatabase(backingDB),
+		nodeID:      nodeID,
+		chainConfig: &chainConfig,
 	}
 }
 
@@ -261,8 +269,7 @@ func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
 	if number == nil {
 		return nil
 	}
-	// todo - proper ChainConfig, instead of empty object
-	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, &params.ChainConfig{})
+	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig)
 	return receipts
 }
 
