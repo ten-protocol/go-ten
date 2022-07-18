@@ -634,7 +634,7 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	var filteredHostAddresses []string //nolint:prealloc
 	for _, hostAddress := range hostAddresses {
 		// We exclude our own address.
-		if hostAddress == a.config.P2PBindAddress {
+		if hostAddress == a.config.P2PPublicAddress {
 			continue
 		}
 
