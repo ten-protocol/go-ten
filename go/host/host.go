@@ -667,6 +667,7 @@ func (a *Node) monitorBlocks() {
 		select {
 		case err := <-subs.Err():
 			log.Error("Restarting L1 block monitoring. Errored with: %s", err)
+			// todo this is a very simple way of reconnecting the node, it might need catching up logic
 			listener, subs = a.ethClient.BlockListener()
 
 		case blkHeader := <-listener:
@@ -710,6 +711,7 @@ func (a *Node) monitorBlocks() {
 
 	log.Info("Stopped monitoring for l1 blocks")
 	// make sure it cleanly unsubscribes
+	// todo this should be defered when the errors are upstreamed instead of panic'd
 	subs.Unsubscribe()
 }
 
@@ -775,6 +777,7 @@ func (a *Node) awaitSecret() {
 		select {
 		case err := <-subs.Err():
 			log.Error("Restarting L1 block monitoring while awaiting for secret. Errored with: %s", err)
+			// todo this is a very simple way of reconnecting the node, it might need catching up logic
 			listener, subs = a.ethClient.BlockListener()
 
 		// todo: find a way to get rid of this case and only listen for blocks on the expected channels
@@ -784,6 +787,7 @@ func (a *Node) awaitSecret() {
 				log.Panic("failed to retrieve block. Cause: %s:", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
+				// todo this should be defered when the errors are upstreamed instead of panic'd
 				subs.Unsubscribe()
 				return
 			}
