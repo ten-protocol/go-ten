@@ -108,8 +108,19 @@ func NewEnclave(
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
 	chainConfig := params.ChainConfig{
-		ChainID:     big.NewInt(config.ObscuroChainID),
-		LondonBlock: gethcommon.Big0,
+		ChainID:             big.NewInt(config.ObscuroChainID),
+		HomesteadBlock:      gethcommon.Big0,
+		DAOForkBlock:        gethcommon.Big0,
+		EIP150Block:         gethcommon.Big0,
+		EIP155Block:         gethcommon.Big0,
+		EIP158Block:         gethcommon.Big0,
+		ByzantiumBlock:      gethcommon.Big0,
+		ConstantinopleBlock: gethcommon.Big0,
+		PetersburgBlock:     gethcommon.Big0,
+		IstanbulBlock:       gethcommon.Big0,
+		MuirGlacierBlock:    gethcommon.Big0,
+		BerlinBlock:         gethcommon.Big0,
+		LondonBlock:         gethcommon.Big0,
 	}
 	storage := db.NewStorage(backingDB, nodeShortID, &chainConfig)
 
