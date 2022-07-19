@@ -659,49 +659,58 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 
 // monitors the L1 client for new blocks and injects them into the aggregator
 func (a *Node) monitorBlocks() {
-	listener := a.ethClient.BlockListener()
+	listener, subs := a.ethClient.BlockListener()
 	common.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
 
 	// only process blocks if the node is running
 	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
-		blkHeader := <-listener
+		select {
+		case err := <-subs.Err():
+			log.Error("Restarting L1 block monitoring. Errored with: %s", err)
+			listener, subs = a.ethClient.BlockListener()
 
-		// don't process blocks if the node is stopping
-		if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
-			return
-		}
+		case blkHeader := <-listener:
+			// don't process blocks if the node is stopping
+			if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+				break
+			}
 
-		// ignore blocks if bootstrapping is happening
-		if atomic.LoadInt32(a.bootstrappingComplete) == 0 {
-			log.Trace("Node in bootstrap - ignoring block %s", blkHeader.Hash())
-			continue
-		}
+			// ignore blocks if bootstrapping is happening
+			if atomic.LoadInt32(a.bootstrappingComplete) == 0 {
+				log.Trace("Node in bootstrap - ignoring block %s", blkHeader.Hash())
+				continue
+			}
 
-		block, err := a.ethClient.BlockByHash(blkHeader.Hash())
-		if err != nil {
-			log.Panic("could not fetch block for hash %s. Cause: %s", blkHeader.Hash().String(), err)
-		}
-		blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
-		if err != nil {
-			log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
-		}
+			block, err := a.ethClient.BlockByHash(blkHeader.Hash())
+			if err != nil {
+				log.Panic("could not fetch block for hash %s. Cause: %s", blkHeader.Hash().String(), err)
+			}
+			blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
+			if err != nil {
+				log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+			}
 
-		common.LogWithID(
-			a.shortID,
-			"Received a new block b_%d(%d)",
-			common.ShortHash(blkHeader.Hash()),
-			blkHeader.Number.Uint64(),
-		)
-		encodedBlock, err := common.EncodeBlock(block)
-		if err != nil {
-			log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+			common.LogWithID(
+				a.shortID,
+				"Received a new block b_%d(%d)",
+				common.ShortHash(blkHeader.Hash()),
+				blkHeader.Number.Uint64(),
+			)
+			encodedBlock, err := common.EncodeBlock(block)
+			if err != nil {
+				log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+			}
+			encodedBlockParent, err := common.EncodeBlock(blockParent)
+			if err != nil {
+				log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+			}
+			a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
 		}
-		encodedBlockParent, err := common.EncodeBlock(blockParent)
-		if err != nil {
-			log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
-		}
-		a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
 	}
+
+	log.Info("Stopped monitoring for l1 blocks")
+	// make sure it cleanly unsubscribes
+	subs.Unsubscribe()
 }
 
 func (a *Node) bootstrapNode() types.Block {
@@ -760,15 +769,22 @@ func (a *Node) bootstrapNode() types.Block {
 
 func (a *Node) awaitSecret() {
 	// start listening for l1 blocks that contain the response to the request
+	listener, subs := a.ethClient.BlockListener()
+
 	for {
 		select {
+		case err := <-subs.Err():
+			log.Error("Restarting L1 block monitoring while awaiting for secret. Errored with: %s", err)
+			listener, subs = a.ethClient.BlockListener()
+
 		// todo: find a way to get rid of this case and only listen for blocks on the expected channels
-		case header := <-a.ethClient.BlockListener():
+		case header := <-listener:
 			block, err := a.ethClient.BlockByHash(header.Hash())
 			if err != nil {
 				log.Panic("failed to retrieve block. Cause: %s:", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
+				subs.Unsubscribe()
 				return
 			}
 
@@ -778,6 +794,7 @@ func (a *Node) awaitSecret() {
 				log.Panic("failed to decode block received via RPC. Cause: %s:", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
+				subs.Unsubscribe()
 				return
 			}
 
@@ -786,6 +803,7 @@ func (a *Node) awaitSecret() {
 			common.LogWithID(a.shortID, "Still waiting for secret from the L1...")
 
 		case <-a.exitNodeCh:
+			subs.Unsubscribe()
 			return
 		}
 	}

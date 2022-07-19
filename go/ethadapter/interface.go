@@ -26,7 +26,7 @@ type EthClient interface {
 	BlocksBetween(block *types.Block, head *types.Block) []*types.Block // returns the blocks between two blocks
 	IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool   // returns if the node considers a block the ancestor
 	RPCBlockchainFeed() []*types.Block                                  // returns all blocks from genesis to head
-	BlockListener() chan *types.Header                                  // subscribes to new blocks and returns a listener with the blocks heads
+	BlockListener() (chan *types.Header, ethereum.Subscription)         // subscribes to new blocks and returns a listener with the blocks heads
 
 	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
