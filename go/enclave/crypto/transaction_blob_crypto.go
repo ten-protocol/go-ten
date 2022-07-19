@@ -69,7 +69,7 @@ func (t TransactionBlobCryptoImpl) ToEnclaveRollup(r *common.EncryptedRollup) *c
 }
 
 // TODO - Modify this logic so that transactions with different reveal periods are in different blobs, as per the whitepaper.
-func (t TransactionBlobCryptoImpl) encrypt(transactions core.L2Txs) common.EncryptedTransactions {
+func (t TransactionBlobCryptoImpl) encrypt(transactions []*common.L2Tx) common.EncryptedTransactions {
 	encodedTxs, err := rlp.EncodeToBytes(transactions)
 	if err != nil {
 		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
@@ -78,13 +78,13 @@ func (t TransactionBlobCryptoImpl) encrypt(transactions core.L2Txs) common.Encry
 	return t.transactionCipher.Seal(nil, []byte(RollupCipherNonce), encodedTxs, nil)
 }
 
-func (t TransactionBlobCryptoImpl) decrypt(encryptedTxs common.EncryptedTransactions) core.L2Txs {
+func (t TransactionBlobCryptoImpl) decrypt(encryptedTxs common.EncryptedTransactions) []*common.L2Tx {
 	encodedTxs, err := t.transactionCipher.Open(nil, []byte(RollupCipherNonce), encryptedTxs, nil)
 	if err != nil {
 		log.Panic("could not decrypt encrypted L2 transactions. Cause: %s", err)
 	}
 
-	txs := core.L2Txs{}
+	var txs []*common.L2Tx
 	if err := rlp.DecodeBytes(encodedTxs, &txs); err != nil {
 		log.Panic("could not decode encoded L2 transactions. Cause: %s", err)
 	}

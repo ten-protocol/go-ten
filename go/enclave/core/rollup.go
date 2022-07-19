@@ -17,7 +17,7 @@ type Rollup struct {
 	hash atomic.Value
 	// size   atomic.Value
 
-	Transactions L2Txs
+	Transactions []*common.L2Tx
 }
 
 // Hash returns the keccak256 hash of b's header.

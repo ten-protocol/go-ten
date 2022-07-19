@@ -93,7 +93,7 @@ func ReadHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64)
 	return data
 }
 
-func WriteBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, body core.L2Txs) {
+func WriteBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, body []*common.L2Tx) {
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {
 		log.Panic("could not encode L2 transactions. Cause: %s", err)
@@ -102,12 +102,12 @@ func WriteBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, bod
 }
 
 // ReadBody retrieves the rollup body corresponding to the hash.
-func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) core.L2Txs {
+func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) []*common.L2Tx {
 	data := ReadBodyRLP(db, hash, number)
 	if len(data) == 0 {
 		return nil
 	}
-	body := new(core.L2Txs)
+	body := new([]*common.L2Tx)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
 		log.Panic("could not decode L2 transactions. Cause: %s", err)
 	}
