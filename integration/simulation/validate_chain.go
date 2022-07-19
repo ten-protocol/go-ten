@@ -167,7 +167,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					s.Stats.NewRollup(node.Info().ID, r)
+					s.Stats.NewRollup(node.Info().ID)
 				}
 			}
 		}
