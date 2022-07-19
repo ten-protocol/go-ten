@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
@@ -12,14 +13,17 @@ const (
 	walletExtensionPortDefault = 3000
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension"
 
-	// TODO - Use one flag for the shared HTTP + RPC host, and two other flags for the ports.
-	nodeRPCHTTPAddressName    = "nodeRPCHTTPAddress"
-	nodeRPCHTTPAddressDefault = "testnet.obscu.ro:13000"
-	nodeRPCHTTPAddressUsage   = "The address on which to connect to the node via RPC using HTTP"
+	nodeHostName    = "nodeHost"
+	nodeHostDefault = "testnet.obscu.ro"
+	nodeHostUsage   = "The host on which to connect to the Obscuro node"
 
-	nodeRPCWebsocketAddressName    = "nodeRPCWebsocketAddress"
-	nodeRPCWebsocketAddressDefault = "testnet.obscu.ro:13001"
-	nodeRPCWebsocketAddressUsage   = "The address on which to connect to the node via RPC using websockets"
+	nodeHTTPPortName    = "nodePortHTTP"
+	nodeHTTPPortDefault = 13000
+	nodeHTTPPortUsage   = "The port on which to connect to the Obscuro node via RPC over HTTP"
+
+	nodeWebsocketPortName    = "nodePortWS"
+	nodeWebsocketPortDefault = 13001
+	nodeWebsocketPortUsage   = "The port on which to connect to the Obscuro node via RPC over websockets"
 
 	logPathName    = "logPath"
 	logPathDefault = "wallet_extension_logs.txt"
@@ -28,15 +32,16 @@ const (
 
 func parseCLIArgs() walletextension.Config {
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
-	nodeRPCHTTPAddress := flag.String(nodeRPCHTTPAddressName, nodeRPCHTTPAddressDefault, nodeRPCHTTPAddressUsage)
-	nodeRPCWebsocketAddress := flag.String(nodeRPCWebsocketAddressName, nodeRPCWebsocketAddressDefault, nodeRPCWebsocketAddressUsage)
+	nodeHost := flag.String(nodeHostName, nodeHostDefault, nodeHostUsage)
+	nodeHTTPPort := flag.Int(nodeHTTPPortName, nodeHTTPPortDefault, nodeHTTPPortUsage)
+	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
 	logPath := flag.String(logPathName, logPathDefault, logPathUsage)
 	flag.Parse()
 
 	return walletextension.Config{
 		WalletExtensionPort:     *walletExtensionPort,
-		NodeRPCHTTPAddress:      *nodeRPCHTTPAddress,
-		NodeRPCWebsocketAddress: *nodeRPCWebsocketAddress,
+		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, nodeHTTPPort),
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, nodeWebsocketPort),
 		LogPath:                 *logPath,
 	}
 }
