@@ -15,7 +15,7 @@ The wallet extension should be run locally so that no sensitive data leaves the 
 1. Open a command line or terminal window on your local machine.
 1. Run `walletextension/main/main()` with the following flags to start the wallet extension:
 
-    ```--nodeRPCHTTPAddress=testnet-http.obscu.ro --nodeRPCWebsocketAddress=testnet-ws.obscu.ro```
+    ```--nodeHost=<Obscuro node's host> --nodePortHTTP=<Obscuro node's HTTP RPC address> --nodePortWS=<Obscuro node's websockets RPC address>```
 
     The wallet extension is now listening on `http://localhost:3000/`
 
