@@ -38,6 +38,8 @@ Your wallet is now configured for the Obscuro Testnet which allows you to view e
 
 Congratulations, your smart contract is now deployed to Obscuro Testnet!
 
+> **Be prepared to redeploy your smart contract to Obscuro Testnet often. The Testnet is likely to be restarted without warning!** As Testnet matures and new features are added it will become more and more stable, but in the early days do expect some turbulence.
+
 Because Obscuro provides full privacy, the details of your transaction are encrypted and only visible to you, as the holder of your wallet's private key.
 
 Now head over to the [ObscuroScan page](./obscuroscan.md) to see how you can view the transaction details.
