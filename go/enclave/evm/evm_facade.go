@@ -21,13 +21,13 @@ const prealloc = 750000000000000000
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
-func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainID int64, fromTxIndex int) map[common.TxHash]interface{} {
-	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
+func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig, fromTxIndex int) map[common.TxHash]interface{} {
+	chain, vmCfg, gp := initParams(rollupResolver)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 	for i, t := range txs {
-		r, err := executeTransaction(s, cc, chain, gp, header, t, usedGas, vmCfg, fromTxIndex+i)
+		r, err := executeTransaction(s, chainConfig, chain, gp, header, t, usedGas, vmCfg, fromTxIndex+i)
 		if err != nil {
 			result[t.Hash()] = err
 			common.LogTXExecution(t.Hash(), "Error: %s", err)
@@ -72,11 +72,11 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainID int64) (*core2.ExecutionResult, error) {
-	chain, cc, vmCfg, gp := initParams(rollupResolver, chainID)
+func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig) (*core2.ExecutionResult, error) {
+	chain, vmCfg, gp := initParams(rollupResolver)
 
 	blockContext := core2.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
-	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, s, cc, vmCfg)
+	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, s, chainConfig, vmCfg)
 	// todo use ToMessage
 	msg := types.NewMessage(from, &to, 0, gethcommon.Big0, 100_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
 	result, err := core2.ApplyMessage(vmenv, msg, gp)
@@ -88,16 +88,11 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 	return result, nil
 }
 
-func initParams(rollupResolver db.RollupResolver, chainID int64) (*ObscuroChainContext, *params.ChainConfig, vm.Config, *core2.GasPool) {
+func initParams(rollupResolver db.RollupResolver) (*ObscuroChainContext, vm.Config, *core2.GasPool) {
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
-	// TODO - Consolidate this config with the one used in storage.go.
-	cc := &params.ChainConfig{
-		ChainID:     big.NewInt(chainID),
-		LondonBlock: gethcommon.Big0,
-	}
 	vmCfg := vm.Config{
 		NoBaseFee: true,
 	}
 	gp := core2.GasPool(math.MaxUint64)
-	return chain, cc, vmCfg, &gp
+	return chain, vmCfg, &gp
 }

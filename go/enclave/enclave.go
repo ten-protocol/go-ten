@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -105,7 +107,11 @@ func NewEnclave(
 	if err != nil {
 		log.Panic("Failed to connect to backing database - %s", err)
 	}
-	storage := db.NewStorage(backingDB, nodeShortID, config.ObscuroChainID)
+	chainConfig := params.ChainConfig{
+		ChainID:     big.NewInt(config.ObscuroChainID),
+		LondonBlock: gethcommon.Big0,
+	}
+	storage := db.NewStorage(backingDB, nodeShortID, &chainConfig)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// Todo - check the minimum difficulty parameter
@@ -157,7 +163,7 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, enclaveKey, config.ObscuroChainID, config.L1ChainID)
+	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, enclaveKey, config.L1ChainID, &chainConfig)
 
 	return &enclaveImpl{
 		config:                config,

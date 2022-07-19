@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -28,17 +27,12 @@ type storageImpl struct {
 	chainConfig *params.ChainConfig
 }
 
-func NewStorage(backingDB ethdb.Database, nodeID uint64, obscuroChainID int64) Storage {
-	chainConfig := params.ChainConfig{
-		ChainID:     big.NewInt(obscuroChainID),
-		LondonBlock: gethcommon.Big0,
-	}
-
+func NewStorage(backingDB ethdb.Database, nodeID uint64, chainConfig *params.ChainConfig) Storage {
 	return &storageImpl{
 		db:          backingDB,
 		stateDB:     state.NewDatabase(backingDB),
 		nodeID:      nodeID,
-		chainConfig: &chainConfig,
+		chainConfig: chainConfig,
 	}
 }
 
