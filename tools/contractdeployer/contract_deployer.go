@@ -37,7 +37,7 @@ func (cd *ContractDeployer) Run() error {
 	// load the wallet
 	w := wallet.NewInMemoryWalletFromPK(cd.config.EthChainID, privateKey)
 	// connect to the l1
-	client, err := ethadapter.NewEthClient(cd.config.L1NodeHost, cd.config.L1NodePort, 30*time.Second)
+	client, err := ethadapter.NewEthClient(cd.config.L1NodeHost, cd.config.L1NodePort, 30*time.Second, common.HexToAddress("0x0"))
 	if err != nil {
 		return fmt.Errorf("unable to connect to the l1 host: %w", err)
 	}

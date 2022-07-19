@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -14,7 +16,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
-	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -24,13 +25,8 @@ import (
 )
 
 func InjectTransactions(cfg Config, args []string) {
-	hostConfig := config.HostConfig{
-		L1NodeHost:          cfg.l1NodeHost,
-		L1NodeWebsocketPort: cfg.l1NodeWebsocketPort,
-		L1ConnectionTimeout: cfg.l1ConnectionTimeout,
-	}
 	println("Connecting to L1 node...")
-	l1Client, err := ethadapter.NewEthClientFromConfig(hostConfig)
+	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeHost, cfg.l1NodeWebsocketPort, cfg.l1ConnectionTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
