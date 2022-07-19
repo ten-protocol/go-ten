@@ -21,11 +21,11 @@ import (
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
 	client *ethclient.Client  // the underlying eth rpc client
-	id     gethcommon.Address // TODO remove the id common.Address
+	id     gethcommon.Address // the address of the Obscuro node this client is for
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
-func NewEthClient(ipaddress string, port uint, timeout time.Duration) (EthClient, error) {
+func NewEthClient(ipaddress string, port uint, timeout time.Duration, id gethcommon.Address) (EthClient, error) {
 	client, err := connect(ipaddress, port, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)

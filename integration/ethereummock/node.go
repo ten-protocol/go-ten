@@ -38,7 +38,7 @@ type TxDB interface {
 }
 
 type StatsCollector interface {
-	// Register when a miner has to process a reorg (a winning block from a fork)
+	// L1Reorg registers when a miner has to process a reorg (a winning block from a fork)
 	L1Reorg(id gethcommon.Address)
 }
 

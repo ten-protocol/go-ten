@@ -43,7 +43,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	)
 
 	// connect to the first host to deploy
-	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1ConnectionTimeout)
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1ConnectionTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +65,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
 	for i := 0; i < nrNodes; i++ {
-		ethClients[i] = createEthClientConnection(gethNetwork.WebSocketPorts[i])
+		ethClients[i] = createEthClientConnection(int64(i), gethNetwork.WebSocketPorts[i])
 	}
 
 	return mgmtContractAddr, erc20ContractAddr[0], erc20ContractAddr[1], ethClients, gethNetwork
@@ -119,8 +119,8 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	return nil, fmt.Errorf("failed to mine contract deploy tx into a block after %s. Aborting", time.Since(start))
 }
 
-func createEthClientConnection(port uint) ethadapter.EthClient {
-	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1ConnectionTimeout)
+func createEthClientConnection(id int64, port uint) ethadapter.EthClient {
+	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1ConnectionTimeout, common.BigToAddress(big.NewInt(id)))
 	if err != nil {
 		panic(err)
 	}
