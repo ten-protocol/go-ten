@@ -16,11 +16,9 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -199,7 +197,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
 	}
 
-	cleartextTxs := core.L2Txs{}
+	var cleartextTxs []*common.L2Tx
 	if err = rlp.DecodeBytes(encodedTxs, &cleartextTxs); err != nil {
 		return nil, fmt.Errorf("could not decode encoded L2 transactions. Cause: %w", err)
 	}

@@ -285,8 +285,8 @@ const nonceTooHigh = "nonce too high"
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
-func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.L2Txs, stateDB *state.StateDB) (gethcommon.Hash, obscurocore.L2Txs, []*types.Receipt, []*types.Receipt) {
-	var executedTransactions obscurocore.L2Txs
+func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
 	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0)
@@ -502,7 +502,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	}
 
 	// These variables will be used to create the new rollup
-	var newRollupTxs obscurocore.L2Txs
+	var newRollupTxs []*common.L2Tx
 	var newRollupState *state.StateDB
 
 	/*

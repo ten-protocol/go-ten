@@ -6,20 +6,20 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/core/types"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type (
-	StateRoot             = gethcommon.Hash
-	L1RootHash            = gethcommon.Hash
-	L2RootHash            = gethcommon.Hash
-	TxHash                = gethcommon.Hash
+	StateRoot             = common.Hash
+	L1RootHash            = common.Hash
+	L2RootHash            = common.Hash
+	TxHash                = common.Hash
 	L2Tx                  = types.Transaction
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
@@ -51,14 +51,14 @@ const (
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Header struct {
 	ParentHash  L2RootHash
-	Agg         gethcommon.Address
+	Agg         common.Address
 	Nonce       Nonce
 	L1Proof     L1RootHash // the L1 block where the Parent was published
 	Root        StateRoot
-	TxHash      gethcommon.Hash // todo - include the synthetic deposits
-	Number      *big.Int        // the rollup height
+	TxHash      common.Hash // todo - include the synthetic deposits
+	Number      *big.Int    // the rollup height
 	Bloom       types.Bloom
-	ReceiptHash gethcommon.Hash
+	ReceiptHash common.Hash
 	Extra       []byte
 	R, S        *big.Int // signature values
 	Withdrawals []Withdrawal
@@ -68,14 +68,14 @@ type Header struct {
 type Withdrawal struct {
 	// Type      uint8 // the type of withdrawal. For now only ERC20. Todo - add this once more ERCs are supported
 	Amount    uint64
-	Recipient gethcommon.Address // the user account that will receive the money
-	Contract  gethcommon.Address // the contract
+	Recipient common.Address // the user account that will receive the money
+	Contract  common.Address // the contract
 }
 
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
 	Header          *Header
-	TxHashes        []gethcommon.Hash // The hashes of the transactions included in the rollup
+	TxHashes        []common.Hash // The hashes of the transactions included in the rollup
 	EncryptedTxBlob EncryptedTransactions
 }
 
@@ -83,17 +83,17 @@ type ExtRollup struct {
 // This parallels the Block/extblock split in Go Ethereum.
 type EncryptedRollup struct {
 	Header       *Header
-	TxHashes     []gethcommon.Hash // The hashes of the transactions included in the rollup
+	TxHashes     []common.Hash // The hashes of the transactions included in the rollup
 	Transactions EncryptedTransactions
 	hash         atomic.Value
 }
 
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {
-	Report      []byte             // the signed bytes of the report which includes some encrypted identifying data
-	PubKey      []byte             // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
-	Owner       gethcommon.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
-	HostAddress string             // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
+	Report      []byte         // the signed bytes of the report which includes some encrypted identifying data
+	PubKey      []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
+	Owner       common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
+	HostAddress string         // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
 }
 
 func (er ExtRollup) ToRollup() *EncryptedRollup {
@@ -114,8 +114,8 @@ var hasherPool = sync.Pool{
 }
 
 // RLPHash encodes value, hashes the encoded bytes and returns the hash.
-func RLPHash(value interface{}) (gethcommon.Hash, error) {
-	var hash gethcommon.Hash
+func RLPHash(value interface{}) (common.Hash, error) {
+	var hash common.Hash
 
 	sha := hasherPool.Get().(crypto.KeccakState)
 	defer hasherPool.Put(sha)

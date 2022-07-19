@@ -15,7 +15,7 @@ import (
 // sortByNonce a very primitive way to implement mempool logic that
 // adds transactions sorted by the nonce in the rollup
 // which is what the EVM expects
-type sortByNonce obscurocore.L2Txs
+type sortByNonce []*common.L2Tx
 
 func (c sortByNonce) Len() int           { return len(c) }
 func (c sortByNonce) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
@@ -87,7 +87,7 @@ func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) map[gethcomm
 }
 
 // CurrentTxs - Calculate transactions to be included in the current rollup
-func (db *mempoolManager) CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) obscurocore.L2Txs {
+func (db *mempoolManager) CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) []*common.L2Tx {
 	txs := findTxsNotIncluded(head, db.FetchMempoolTxs(), resolver)
 	sort.Sort(sortByNonce(txs))
 	return txs

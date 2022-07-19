@@ -8,15 +8,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 type txInjectorCounter struct {
 	l1TransactionsLock       sync.RWMutex
 	L1Transactions           []ethadapter.L1Transaction
 	l2TransactionsLock       sync.RWMutex
-	TransferL2Transactions   core.L2Txs
-	WithdrawalL2Transactions core.L2Txs
+	TransferL2Transactions   []*common.L2Tx
+	WithdrawalL2Transactions []*common.L2Tx
 }
 
 func newCounter() *txInjectorCounter {
@@ -54,7 +53,7 @@ func (m *txInjectorCounter) GetL1Transactions() []ethadapter.L1Transaction {
 }
 
 // GetL2Transactions returns all generated non-WithdrawalTx transactions
-func (m *txInjectorCounter) GetL2Transactions() (core.L2Txs, core.L2Txs) {
+func (m *txInjectorCounter) GetL2Transactions() ([]*common.L2Tx, []*common.L2Tx) {
 	return m.TransferL2Transactions, m.WithdrawalL2Transactions
 }
 
