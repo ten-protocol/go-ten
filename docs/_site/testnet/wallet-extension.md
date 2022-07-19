@@ -32,13 +32,13 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
     * For other OSes and architectures, see `Compiling the binary`, below
 
-3. Start the wallet extension by running the `wallet_extension` binary with the following flags:
+2. Start the wallet extension by running the `wallet_extension` binary with the following flags:
 
-   ```--nodeRPCHTTPAddress=<Obscuro host RPC HTTP address> --nodeRPCWebsocketAddress=<Obscuro host RPC websocket address>```
+   ```--nodeHost=<Obscuro node's host> --nodePortHTTP=<Obscuro node's HTTP RPC address> --nodePortWS=<Obscuro node's websockets RPC address>```
 
    The wallet extension is now listening on `http://127.0.0.1:3000/`
 
-4. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
+3. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
    the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and
    responses for the network will now automatically pass through the wallet extension, with all outbound requests
    encrypted with the enclave public key
@@ -46,7 +46,7 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
     * At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such
       as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`
 
-5. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Sign the viewing key when prompted by
+4. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Sign the viewing key when prompted by
    MetaMask. Responses to sensitive RPC requests will be now be encrypted with the viewing key and decrypted
    automatically by the wallet extension
 
