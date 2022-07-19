@@ -40,3 +40,6 @@ tools/obscuroscan/main/main
 
 # Temp env files
 testnet/.env
+
+# Docs build files
+docs/_site
