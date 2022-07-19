@@ -63,14 +63,14 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag testnetlatest=true --query '[]."id"' -o tsv | xargs -l az resource delete --verbose -g Testnet --ids) || true
+            $(az resource list --tag testnetlatest=true --query '[]."id"' -o tsv | xargs -d\\n -n1 az resource delete --verbose -g Testnet --ids) || true
 
       # This will clean up any lingering dependencies
       - name: 'Delete VMs dependencies'
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az resource list --tag testnetlatest=true --query '[]."id"' -o tsv | xargs -l az resource delete --verbose -g Testnet --ids
+            az resource list --tag testnetlatest=true --query '[]."id"' -o tsv | xargs -d\\n -n1 az resource delete --verbose -g Testnet --ids
 
   deploy:
     needs: build
