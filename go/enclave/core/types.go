@@ -1,7 +1,7 @@
 package core
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const SharedSecretLen = 32
@@ -11,7 +11,7 @@ type SharedEnclaveSecret [SharedSecretLen]byte
 
 // BlockState - Represents the state after an L1 Block was processed.
 type BlockState struct {
-	Block          gethcommon.Hash
-	HeadRollup     gethcommon.Hash
+	Block          common.Hash
+	HeadRollup     common.Hash
 	FoundNewRollup bool
 }
