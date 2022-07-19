@@ -21,7 +21,7 @@ import (
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
 	client *ethclient.Client  // the underlying eth rpc client
-	id     gethcommon.Address // the address of the Obscuro node this client is for
+	l2ID   gethcommon.Address // the address of the Obscuro node this client is dedicated to
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -47,7 +47,7 @@ func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 
 func (e *gethRPCClient) Info() Info {
 	return Info{
-		ID: e.id,
+		L2ID: e.l2ID,
 	}
 }
 

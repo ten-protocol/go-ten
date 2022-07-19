@@ -48,7 +48,7 @@ type NotifyNewBlock interface {
 }
 
 type Node struct {
-	ID       gethcommon.Address
+	l2ID     gethcommon.Address // the address of the Obscuro node this client is dedicated to
 	cfg      MiningConfig
 	clients  []NotifyNewBlock
 	Network  L1Network
@@ -128,7 +128,7 @@ func (m *Node) FetchHeadBlock() *types.Block {
 
 func (m *Node) Info() ethadapter.Info {
 	return ethadapter.Info{
-		ID: m.ID,
+		L2ID: m.l2ID,
 	}
 }
 
@@ -187,7 +187,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 
 	// only proceed if the parent is available
 	if !f {
-		log.Info(fmt.Sprintf("> M%d: Parent block not found=b_%d", common.ShortAddress(m.ID), common.ShortHash(b.Header().ParentHash)))
+		log.Info(fmt.Sprintf("> M%d: Parent block not found=b_%d", common.ShortAddress(m.l2ID), common.ShortHash(b.Header().ParentHash)))
 		return head
 	}
 
@@ -198,14 +198,14 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 
 	// Check for Reorgs
 	if !m.Resolver.IsAncestor(b, head) {
-		m.stats.L1Reorg(m.ID)
+		m.stats.L1Reorg(m.l2ID)
 		fork := LCA(head, b, m.Resolver)
-		log.Info(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortAddress(m.ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
+		log.Info(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortAddress(m.l2ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
 		return m.setFork(m.BlocksBetween(fork, b))
 	}
 
 	if b.NumberU64() > (head.NumberU64() + 1) {
-		panic(fmt.Sprintf("> M%d: Should not happen", common.ShortAddress(m.ID)))
+		panic(fmt.Sprintf("> M%d: Should not happen", common.ShortAddress(m.l2ID)))
 	}
 
 	return m.setHead(b)
@@ -288,7 +288,7 @@ func (m *Node) P2PReceiveBlock(b common.EncodedBlock, p common.EncodedBlock) {
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it
 // on the miningCh channel
 func (m *Node) startMining() {
-	log.Info(fmt.Sprintf("Node-%d: starting miner...", common.ShortAddress(m.ID)))
+	log.Info(fmt.Sprintf("Node-%d: starting miner...", common.ShortAddress(m.l2ID)))
 	// stores all transactions seen from the beginning of time.
 	mempool := make([]*types.Transaction, 0)
 	z := int32(0)
@@ -321,7 +321,7 @@ func (m *Node) startMining() {
 					return
 				}
 
-				m.miningCh <- common.NewBlock(canonicalBlock, m.ID, toInclude)
+				m.miningCh <- common.NewBlock(canonicalBlock, m.l2ID, toInclude)
 			})
 		}
 	}
@@ -399,7 +399,7 @@ func NewMiner(
 	statsCollector StatsCollector,
 ) *Node {
 	return &Node{
-		ID:               id,
+		l2ID:             id,
 		mining:           true,
 		cfg:              cfg,
 		stats:            statsCollector,

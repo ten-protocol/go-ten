@@ -43,7 +43,7 @@ func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration,
 func (n *MockEthNetwork) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock) {
 	bl, _ := b.DecodeBlock()
 	for _, m := range n.AllNodes {
-		if m.ID != n.CurrentNode.ID {
+		if m.Info().L2ID != n.CurrentNode.Info().L2ID {
 			t := m
 			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
@@ -57,7 +57,7 @@ func (n *MockEthNetwork) BroadcastBlock(b common.EncodedBlock, p common.EncodedB
 // BroadcastTx Broadcasts the L1 tx containing the rollup to the L1 network
 func (n *MockEthNetwork) BroadcastTx(tx *types.Transaction) {
 	for _, m := range n.AllNodes {
-		if m.ID != n.CurrentNode.ID {
+		if m.Info().L2ID != n.CurrentNode.Info().L2ID {
 			t := m
 			// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 			// todo - find a better way to express this
@@ -107,5 +107,5 @@ func printBlock(b *types.Block, m Node) string {
 	}
 
 	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[parent=b_%d]. Txs: %v",
-		common.ShortAddress(m.ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortNonce(b.Header().Nonce), common.ShortHash(p.Hash()), txs)
+		common.ShortAddress(m.Info().L2ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortNonce(b.Header().Nonce), common.ShortHash(p.Hash()), txs)
 }

@@ -37,5 +37,5 @@ type EthClient interface {
 
 // Info forces the RPC EthClient to return the data in the same format (independently of its implementation)
 type Info struct {
-	ID gethcommon.Address
+	L2ID gethcommon.Address // the address of the Obscuro node this client is dedicated to
 }
