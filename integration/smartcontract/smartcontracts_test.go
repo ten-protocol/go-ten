@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -50,12 +49,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	)
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClientFromConfig(config.HostConfig{
-		ID:                  gethcommon.Address{1},
-		L1NodeHost:          "127.0.0.1",
-		L1NodeWebsocketPort: gethNetwork.WebSocketPorts[0],
-		L1ConnectionTimeout: 30 * time.Second,
-	})
+	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second)
 	if err != nil {
 		return nil
 	}

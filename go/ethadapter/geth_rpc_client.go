@@ -13,8 +13,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 
-	"github.com/obscuronet/go-obscuro/go/config"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -24,21 +22,6 @@ import (
 type gethRPCClient struct {
 	client *ethclient.Client  // the underlying eth rpc client
 	id     gethcommon.Address // TODO remove the id common.Address
-}
-
-// NewEthClientFromConfig instantiates a new ethadapter.EthClient that connects to an ethereum node
-// TODO Refactor this according with https://github.com/obscuronet/go-obscuro/pull/310#discussion_r910705504
-func NewEthClientFromConfig(config config.HostConfig) (EthClient, error) {
-	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1ConnectionTimeout)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
-	}
-
-	log.Trace("Initialized eth node connection - port: %d - id: %s", config.L1NodeWebsocketPort, config.ID)
-	return &gethRPCClient{
-		client: client,
-		id:     config.ID,
-	}, nil
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node

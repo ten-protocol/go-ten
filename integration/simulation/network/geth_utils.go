@@ -12,7 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -44,12 +43,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	)
 
 	// connect to the first host to deploy
-	tmpHostConfig := config.HostConfig{
-		L1NodeHost:          Localhost,
-		L1NodeWebsocketPort: gethNetwork.WebSocketPorts[0],
-		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
-	}
-	tmpEthClient, err := ethadapter.NewEthClientFromConfig(tmpHostConfig)
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1ConnectionTimeout)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +65,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
 	for i := 0; i < nrNodes; i++ {
-		ethClients[i] = createEthClientConnection(int64(i), gethNetwork.WebSocketPorts[i])
+		ethClients[i] = createEthClientConnection(gethNetwork.WebSocketPorts[i])
 	}
 
 	return mgmtContractAddr, erc20ContractAddr[0], erc20ContractAddr[1], ethClients, gethNetwork
@@ -125,14 +119,8 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	return nil, fmt.Errorf("failed to mine contract deploy tx into a block after %s. Aborting", time.Since(start))
 }
 
-func createEthClientConnection(id int64, port uint) ethadapter.EthClient {
-	hostConfig := config.HostConfig{
-		ID:                  common.BigToAddress(big.NewInt(id)),
-		L1NodeHost:          Localhost,
-		L1NodeWebsocketPort: port,
-		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
-	}
-	ethnode, err := ethadapter.NewEthClientFromConfig(hostConfig)
+func createEthClientConnection(port uint) ethadapter.EthClient {
+	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1ConnectionTimeout)
 	if err != nil {
 		panic(err)
 	}
