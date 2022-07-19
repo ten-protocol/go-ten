@@ -160,7 +160,6 @@ func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 
 func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
 	ch := make(chan *types.Header, 1)
-	// TODO this should return the subscription and cleanly Unsubscribe() when the node shutsdown
 	sub, err := e.client.SubscribeNewHead(context.Background(), ch)
 	if err != nil {
 		log.Panic("could not subscribe for new head blocks. Cause: %s", err)
