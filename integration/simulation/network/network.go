@@ -1,8 +1,11 @@
 package network
 
 import (
+	"math/rand"
+
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
@@ -17,6 +20,26 @@ type Network interface {
 	// Create - returns the started Ethereum nodes and the started Obscuro node clients.
 	// Responsible with spinning up all resources required for the test
 	// Return an error in case it cannot start for an expected reason. Otherwise it panics.
-	Create(params *params.SimParams, stats *stats.Stats) ([]ethadapter.EthClient, []rpcclientlib.Client, error)
+	Create(params *params.SimParams, stats *stats.Stats) (*Clients, error)
 	TearDown()
+}
+
+type Clients struct {
+	EthClients     []ethadapter.EthClient         // an eth client per eth node in the network
+	ObscuroClients []rpcclientlib.Client          // an obscuro client per obscuro node in the network
+	WalletClients  map[string]rpcclientlib.Client // an obscuro client per wallet (configured with viewing key where applicable)
+}
+
+func (n *Clients) RndEthClient() ethadapter.EthClient {
+	return n.EthClients[rand.Intn(len(n.EthClients))] //nolint:gosec
+}
+
+func (n *Clients) RndObscuroClient() rpcclientlib.Client {
+	return n.ObscuroClients[rand.Intn(len(n.ObscuroClients))] //nolint:gosec
+}
+
+// ObscuroWalletClient fetches client for given wallet if it exists, or adds it to the cache if not
+func (n *Clients) ObscuroWalletClient(wallet wallet.Wallet) rpcclientlib.Client {
+	addr := wallet.Address().String()
+	return n.WalletClients[addr]
 }

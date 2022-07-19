@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -21,8 +21,7 @@ const initialBalance = 5000
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	EthClients       []ethadapter.EthClient // the list of mock ethereum clients
-	ObscuroClients   []rpcclientlib.Client  // the list of Obscuro host clients
+	NetworkClients   *network.Clients
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -63,7 +62,7 @@ func (s *Simulation) Stop() {
 
 func (s *Simulation) WaitForObscuroGenesis() {
 	// grab an L1 client
-	client := s.EthClients[0]
+	client := s.NetworkClients.EthClients[0]
 
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived

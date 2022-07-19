@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -41,13 +42,16 @@ func InjectTransactions(cfg Config, args []string) {
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress)
 	avgBlockDuration := time.Second
 
+	netwClients := &network.Clients{
+		EthClients:     []ethadapter.EthClient{l1Client},
+		ObscuroClients: []rpcclientlib.Client{l2Client},
+	}
 	txInjector := simulation.NewTransactionInjector(
 		avgBlockDuration,
 		simStats,
-		[]ethadapter.EthClient{l1Client},
+		netwClients,
 		createWallets(cfg, l1Client, l2Client),
 		&cfg.mgmtContractAddress,
-		[]rpcclientlib.Client{l2Client},
 		mgmtContractLib,
 		erc20ContractLib,
 		parseNumOfTxs(args),

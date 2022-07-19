@@ -1,10 +1,18 @@
 package network
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -21,7 +29,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpcclientlib.Client {
+func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string]rpcclientlib.Client) {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -61,11 +69,31 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 		obscuroClients[i] = host.NewInMemObscuroClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
-	return obscuroClients
+
+	walletClients := setupWalletClientsWithoutViewingKeys(params, obscuroClients)
+
+	return obscuroClients, walletClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) []rpcclientlib.Client {
+// setupWalletClientsWithoutViewingKeys round-robin the wallets onto the different obscuro nodes, register them each a viewing key
+func setupWalletClientsWithoutViewingKeys(params *params.SimParams, obscuroClients []rpcclientlib.Client) map[string]rpcclientlib.Client {
+	walletClients := make(map[string]rpcclientlib.Client)
+	var i int
+	for _, w := range params.Wallets.SimObsWallets {
+		walletClients[w.Address().String()] = obscuroClients[i%len(obscuroClients)]
+		i++
+	}
+	for _, t := range params.Wallets.Tokens {
+		w := t.L2Owner
+		walletClients[w.Address().String()] = obscuroClients[i%len(obscuroClients)]
+		i++
+	}
+	return walletClients
+}
+
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string]rpcclientlib.Client) {
 	// handle to the obscuro clients
+	nodeRPCAddresses := make([]string, params.NumberOfNodes)
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 
@@ -92,8 +120,8 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			gethClients[i],
 		)
 
-		nodeRPCAddress := fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		obscuroClients[i] = rpcclientlib.NewClient(nodeRPCAddress)
+		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
+		obscuroClients[i] = rpcclientlib.NewClient(nodeRPCAddresses[i])
 	}
 
 	// start each obscuro node
@@ -116,7 +144,66 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		}
 	}
 
-	return obscuroClients
+	// round-robin the wallets onto the different obscuro nodes, register them each a viewing key
+	walletClients := make(map[string]rpcclientlib.Client)
+	var i int
+	for _, w := range params.Wallets.SimObsWallets {
+		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
+		registerViewingKey(walletClients[w.Address().String()], w)
+		i++
+	}
+	for _, t := range params.Wallets.Tokens {
+		w := t.L2Owner
+		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
+		registerViewingKey(walletClients[w.Address().String()], w)
+		i++
+	}
+
+	return obscuroClients, walletClients
+}
+
+func registerViewingKey(cli rpcclientlib.Client, wal wallet.Wallet) {
+	vk, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	viewingPrivateKeyEcies := ecies.ImportECDSA(vk)
+	viewingPubKey := crypto.CompressPubkey(&vk.PublicKey)
+	cli.SetViewingKey(viewingPrivateKeyEcies, viewingPubKey)
+
+	viewingKeyHex := hex.EncodeToString(viewingPubKey)
+
+	signature := signViewingKey(viewingKeyHex, wal.PrivateKey())
+
+	err = cli.RegisterViewingKey(wal.Address(), signature)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func signViewingKey(viewingKey string, signerKey *ecdsa.PrivateKey) []byte {
+	msgToSign := rpcencryptionmanager.ViewingKeySignedMsgPrefix + viewingKey
+	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), signerKey)
+	if err != nil {
+		panic(err)
+	}
+
+	// We have to transform the V from 0/1 to 27/28, and add the leading "0".
+	signature[64] += 27
+	signatureWithLeadBytes := append([]byte("0"), signature...)
+
+	// this string encoded signature is what the wallet extension would receive after it is signed by metamask
+	sigStr := hex.EncodeToString(signatureWithLeadBytes)
+	// and then we extract the signature bytes in the same way as the wallet extension
+	outputSig, err := hex.DecodeString(sigStr[2:])
+	if err != nil {
+		panic(err)
+	}
+	// This same change is made in geth internals, for legacy reasons to be able to recover the address:
+	//	https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	outputSig[64] -= 27
+
+	return outputSig
 }
 
 func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {

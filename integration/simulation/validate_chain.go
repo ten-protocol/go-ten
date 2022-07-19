@@ -57,8 +57,8 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 	// Sanity check number for a minimum height
 	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
-	heights := make([]uint64, len(s.EthClients))
-	for i, node := range s.EthClients {
+	heights := make([]uint64, len(s.NetworkClients.EthClients))
+	for i, node := range s.NetworkClients.EthClients {
 		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s)
 	}
 
@@ -83,10 +83,10 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
 	// process the blockchain of each node in parallel to minimize the difference between them since they are still running
-	heights := make([]uint64, len(s.ObscuroClients))
+	heights := make([]uint64, len(s.NetworkClients.ObscuroClients))
 	var wg sync.WaitGroup
-	for idx := range s.ObscuroClients {
-		obscuroClient := s.ObscuroClients[idx]
+	for idx := range s.NetworkClients.ObscuroClients {
+		obscuroClient := s.NetworkClients.ObscuroClients[idx]
 		wg.Add(1)
 		go checkBlockchainOfObscuroNode(t, obscuroClient, minHeight, maxL1Height, s, &wg, heights, idx)
 	}

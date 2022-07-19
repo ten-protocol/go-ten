@@ -30,7 +30,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) ([]ethadapter.EthClient, []rpcclientlib.Client, error) {
+func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*Clients, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
@@ -99,7 +99,13 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	return l1Clients, n.obscuroClients, nil
+	walletClients := setupWalletClientsWithoutViewingKeys(params, n.obscuroClients)
+
+	return &Clients{
+		EthClients:     l1Clients,
+		ObscuroClients: n.obscuroClients,
+		WalletClients:  walletClients,
+	}, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
