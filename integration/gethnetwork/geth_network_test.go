@@ -11,8 +11,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/obscuronet/go-obscuro/go/config"
-
 	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum"
@@ -112,12 +110,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	hostConfig := config.HostConfig{
-		L1NodeHost:          localhost,
-		L1NodeWebsocketPort: network.WebSocketPorts[0],
-		L1ConnectionTimeout: defaultL1ConnectionTimeout,
-	}
-	ethClient, err := ethadapter.NewEthClientFromConfig(hostConfig)
+	ethClient, err := ethadapter.NewEthClient(localhost, network.WebSocketPorts[0], defaultL1ConnectionTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}

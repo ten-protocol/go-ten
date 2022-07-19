@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -47,8 +49,8 @@ const (
 type RollupChain struct {
 	hostID          gethcommon.Address
 	nodeID          uint64
-	obscuroChainID  int64
 	ethereumChainID int64
+	chainConfig     *params.ChainConfig
 
 	storage               db.Storage
 	l1Blockchain          *core.BlockChain
@@ -61,7 +63,7 @@ type RollupChain struct {
 	blockProcessingMutex sync.Mutex
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, privateKey *ecdsa.PrivateKey, obscuroChainID int64, ethereumChainID int64) *RollupChain {
+func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
 	return &RollupChain{
 		nodeID:                nodeID,
 		hostID:                hostID,
@@ -72,8 +74,8 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		mempool:               mempool,
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
-		obscuroChainID:        obscuroChainID,
 		ethereumChainID:       ethereumChainID,
+		chainConfig:           chainConfig,
 		blockProcessingMutex:  sync.Mutex{},
 	}
 }
@@ -283,11 +285,11 @@ const nonceTooHigh = "nonce too high"
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
-func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.L2Txs, stateDB *state.StateDB) (gethcommon.Hash, obscurocore.L2Txs, []*types.Receipt, []*types.Receipt) {
-	var executedTransactions obscurocore.L2Txs
+func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, 0)
+	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -317,7 +319,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs obscurocore.
 		stateDB,
 	)
 
-	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.obscuroChainID, len(executedTransactions))
+	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions))
 	depositReceipts := make([]*types.Receipt, len(depositResponses))
 	if len(depositResponses) != len(depositTxs) {
 		log.Panic("Sanity check. Some deposit transactions failed.")
@@ -500,7 +502,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	}
 
 	// These variables will be used to create the new rollup
-	var newRollupTxs obscurocore.L2Txs
+	var newRollupTxs []*common.L2Tx
 	var newRollupState *state.StateDB
 
 	/*
@@ -651,7 +653,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	}
 	log.Info("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, rc.storage, rc.obscuroChainID)
+	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, rc.storage, rc.chainConfig)
 	if err != nil {
 		return nil, err
 	}

@@ -14,5 +14,5 @@ type Manager interface {
 	// RemoveMempoolTxs removes transactions that are considered immune to re-orgs
 	RemoveMempoolTxs(r *obscurocore.Rollup, resolver db.RollupResolver)
 	// CurrentTxs Returns the transactions that should be included in the current rollup
-	CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) obscurocore.L2Txs
+	CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) []*common.L2Tx
 }

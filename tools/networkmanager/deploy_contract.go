@@ -30,14 +30,11 @@ func DeployContract(config Config) {
 	}
 
 	hostConfig := obscuroconfig.HostConfig{
-		L1NodeHost:          config.l1NodeHost,
-		L1NodeWebsocketPort: config.l1NodeWebsocketPort,
-		L1ConnectionTimeout: config.l1ConnectionTimeout,
-		PrivateKeyString:    config.privateKeys[0], // We deploy the contract using the first private key.
-		L1ChainID:           config.l1ChainID,
+		PrivateKeyString: config.privateKeys[0], // We deploy the contract using the first private key.
+		L1ChainID:        config.l1ChainID,
 	}
 
-	l1Client, err := ethadapter.NewEthClientFromConfig(hostConfig)
+	l1Client, err := ethadapter.NewEthClient(config.l1NodeHost, config.l1NodeWebsocketPort, config.l1ConnectionTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}
