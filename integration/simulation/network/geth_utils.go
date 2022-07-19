@@ -12,7 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -44,12 +43,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	)
 
 	// connect to the first host to deploy
-	tmpHostConfig := config.HostConfig{
-		L1NodeHost:          Localhost,
-		L1NodeWebsocketPort: gethNetwork.WebSocketPorts[0],
-		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
-	}
-	tmpEthClient, err := ethadapter.NewEthClientFromConfig(tmpHostConfig)
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1ConnectionTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}
@@ -126,13 +120,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 }
 
 func createEthClientConnection(id int64, port uint) ethadapter.EthClient {
-	hostConfig := config.HostConfig{
-		ID:                  common.BigToAddress(big.NewInt(id)),
-		L1NodeHost:          Localhost,
-		L1NodeWebsocketPort: port,
-		L1ConnectionTimeout: DefaultL1ConnectionTimeout,
-	}
-	ethnode, err := ethadapter.NewEthClientFromConfig(hostConfig)
+	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1ConnectionTimeout, common.BigToAddress(big.NewInt(id)))
 	if err != nil {
 		panic(err)
 	}

@@ -13,8 +13,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 
-	"github.com/obscuronet/go-obscuro/go/config"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -23,26 +21,11 @@ import (
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
 	client *ethclient.Client  // the underlying eth rpc client
-	id     gethcommon.Address // TODO remove the id common.Address
-}
-
-// NewEthClientFromConfig instantiates a new ethadapter.EthClient that connects to an ethereum node
-// TODO Refactor this according with https://github.com/obscuronet/go-obscuro/pull/310#discussion_r910705504
-func NewEthClientFromConfig(config config.HostConfig) (EthClient, error) {
-	client, err := connect(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1ConnectionTimeout)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
-	}
-
-	log.Trace("Initialized eth node connection - port: %d - id: %s", config.L1NodeWebsocketPort, config.ID)
-	return &gethRPCClient{
-		client: client,
-		id:     config.ID,
-	}, nil
+	l2ID   gethcommon.Address // the address of the Obscuro node this client is dedicated to
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
-func NewEthClient(ipaddress string, port uint, timeout time.Duration) (EthClient, error) {
+func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethcommon.Address) (EthClient, error) {
 	client, err := connect(ipaddress, port, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
@@ -51,6 +34,7 @@ func NewEthClient(ipaddress string, port uint, timeout time.Duration) (EthClient
 	log.Trace("Initialized eth node connection - addr: %s port: %d", ipaddress, port)
 	return &gethRPCClient{
 		client: client,
+		l2ID:   l2ID,
 	}, nil
 }
 
@@ -64,7 +48,7 @@ func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 
 func (e *gethRPCClient) Info() Info {
 	return Info{
-		ID: e.id,
+		L2ID: e.l2ID,
 	}
 }
 

@@ -99,7 +99,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation) uint64 {
-	nodeAddr := common.ShortAddress(node.Info().ID)
+	nodeAddr := common.ShortAddress(node.Info().L2ID)
 	head := node.FetchHeadBlock()
 	height := head.NumberU64()
 
@@ -128,7 +128,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	}
 
 	// compare the number of reorgs for this node against the height
-	reorgs := s.Stats.NoL1Reorgs[node.Info().ID]
+	reorgs := s.Stats.NoL1Reorgs[node.Info().L2ID]
 	eff := float64(reorgs) / float64(height)
 	if eff > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeAddr, reorgs)
@@ -167,7 +167,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					s.Stats.NewRollup(node.Info().ID, r)
+					s.Stats.NewRollup(node.Info().L2ID)
 				}
 			}
 		}
