@@ -2,12 +2,11 @@ package networkmanager
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
 	"strconv"
 	"time"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -26,7 +25,7 @@ import (
 
 func InjectTransactions(cfg Config, args []string) {
 	println("Connecting to L1 node...")
-	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeHost, cfg.l1NodeWebsocketPort, cfg.l1ConnectionTimeout, gethcommon.HexToAddress("0x0"))
+	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeHost, cfg.l1NodeWebsocketPort, cfg.l1ConnectionTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
