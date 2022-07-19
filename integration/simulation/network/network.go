@@ -38,7 +38,7 @@ func (n *Clients) RndObscuroClient() rpcclientlib.Client {
 	return n.ObscuroClients[rand.Intn(len(n.ObscuroClients))] //nolint:gosec
 }
 
-// ObscuroWalletClient fetches client for given wallet if it exists, or adds it to the cache if not
+// ObscuroWalletClient fetches client for given wallet if it exists
 func (n *Clients) ObscuroWalletClient(wallet wallet.Wallet) rpcclientlib.Client {
 	addr := wallet.Address().String()
 	return n.WalletClients[addr]

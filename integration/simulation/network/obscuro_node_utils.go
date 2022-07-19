@@ -75,7 +75,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	return obscuroClients, walletClients
 }
 
-// setupWalletClientsWithoutViewingKeys round-robin the wallets onto the different obscuro nodes, register them each a viewing key
+// setupWalletClientsWithoutViewingKeys will round-robin wallets onto the existing obscuro clients, no viewing keys registered.
 func setupWalletClientsWithoutViewingKeys(params *params.SimParams, obscuroClients []rpcclientlib.Client) map[string]rpcclientlib.Client {
 	walletClients := make(map[string]rpcclientlib.Client)
 	var i int
