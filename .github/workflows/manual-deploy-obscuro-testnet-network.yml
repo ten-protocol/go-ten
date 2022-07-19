@@ -58,6 +58,20 @@ jobs:
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
           echo "::set-output name=erc20ContractAddr::$ERC20CONTRACTADDR"    
 
+      # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
+      - name: 'Delete deployed VMs'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            $(az resource list --tag testnetlatest=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+      # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
+      - name: 'Delete VMs dependencies'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            $(az resource list --tag testnetlatest=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -112,7 +126,7 @@ jobs:
             az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} \
+            --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} testnetlatest=true \
             --vnet-name ObscuroHostTestnet01VNET --subnet ObscuroHostTestnet01Subnet \
             --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
             --public-ip-sku Basic --authentication-type password
@@ -125,7 +139,7 @@ jobs:
             az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} \
+            --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}  testnetlatest=true \
             --vnet-name ObscuroHostTestnet01VNET --subnet ObscuroHostTestnet01Subnet \
             --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
             --public-ip-sku Basic --authentication-type password
