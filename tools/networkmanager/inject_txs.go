@@ -2,11 +2,12 @@ package networkmanager
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 	"math/big"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"

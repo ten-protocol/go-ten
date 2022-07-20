@@ -3,6 +3,7 @@ package viewkey
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
