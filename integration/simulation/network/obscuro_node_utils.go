@@ -88,6 +88,7 @@ func setupWalletClientsWithoutViewingKeys(params *params.SimParams, obscuroClien
 	return walletClients
 }
 
+// todo: this method is quite heavy, should refactor to separate out the creation of the nodes, starting of the nodes, setup of the RPC clients etc.
 func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string]rpcclientlib.Client) {
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)

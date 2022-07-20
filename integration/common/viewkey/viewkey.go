@@ -12,21 +12,36 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
-// GenerateAndRegisterViewingKey take an obscuro client and a wallet, it generates a keypair, simulates signing the key,
-//	configures it on the client and registers the viewing key with the enclave
+// This package contains viewing key utils for testing and simulations
+
+// GenerateAndRegisterViewingKey takes a wallet and the client that will be used for that wallet's transactions.
+//
+//	It sets up a viewing key for that client (without using a wallet extension) with the following steps:
+//	1. generate a "viewing" keypair
+//	2. simulates signing the key with metamask
+//	3. sets the private key on the client (to decrypt enclave responses)
+//	4. registers the public viewing key with the enclave (to encrypt enclave responses)
 func GenerateAndRegisterViewingKey(cli rpcclientlib.Client, wal wallet.Wallet) {
+	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
 	vk, err := crypto.GenerateKey()
 	if err != nil {
 		panic(err)
 	}
-	viewingPrivateKeyEcies := ecies.ImportECDSA(vk)
-	viewingPubKey := crypto.CompressPubkey(&vk.PublicKey)
-	cli.SetViewingKey(viewingPrivateKeyEcies, viewingPubKey)
 
-	viewingKeyHex := hex.EncodeToString(viewingPubKey)
+	// get key in ECIES format
+	viewingPrivateKeyECIES := ecies.ImportECDSA(vk)
 
+	// encode public key as bytes
+	viewingPubKeyBytes := crypto.CompressPubkey(&vk.PublicKey)
+
+	// set key pair on the RPC client
+	cli.SetViewingKey(viewingPrivateKeyECIES, viewingPubKeyBytes)
+
+	// sign hex-encoded public key string with the wallet's private key
+	viewingKeyHex := hex.EncodeToString(viewingPubKeyBytes)
 	signature := signViewingKey(viewingKeyHex, wal.PrivateKey())
 
+	// submit the signed public key to the enclave so it can encrypt sensitive responses
 	err = cli.RegisterViewingKey(wal.Address(), signature)
 	if err != nil {
 		panic(err)
