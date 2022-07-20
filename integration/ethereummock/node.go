@@ -7,8 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rpc"
-
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -92,9 +90,22 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }
 
+// implements the ethereum.Subscription
+type mockSubscription struct {
+}
+
+func (sub *mockSubscription) Err() <-chan error {
+	return make(chan error)
+}
+
+// Unsubscribe unsubscribes the notification and closes the error channel.
+// It can safely be called more than once.
+func (sub *mockSubscription) Unsubscribe() {
+}
+
 // BlockListener is not used in the mock
 func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
-	return make(chan *types.Header), &rpc.ClientSubscription{}
+	return make(chan *types.Header), &mockSubscription{}
 }
 
 func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
