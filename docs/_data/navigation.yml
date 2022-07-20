@@ -29,6 +29,8 @@ pages:
         url: testnet/wallet-extension.html
       - title: ObscuroScan
         url: testnet/obscuroscan.html
+      - title: Handling Sensitive Data
+        url: testnet/handling-sensitive-data.html
       #- title: Troubleshooting
       #  url: testnet/troubleshooting.html
       - title: Change Log

@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -91,8 +93,8 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 }
 
 // BlockListener is not used in the mock
-func (m *Node) BlockListener() chan *types.Header {
-	return make(chan *types.Header)
+func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
+	return make(chan *types.Header), &rpc.ClientSubscription{}
 }
 
 func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
