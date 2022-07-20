@@ -59,7 +59,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	return &Clients{
 		EthClients:     n.gethClients,
 		ObscuroClients: n.obscuroClients,
-		WalletClients:  walletClients,
+		walletClients:  walletClients,
 	}, nil
 }
 

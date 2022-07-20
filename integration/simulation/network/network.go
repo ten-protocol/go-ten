@@ -27,7 +27,7 @@ type Network interface {
 type Clients struct {
 	EthClients     []ethadapter.EthClient         // an eth client per eth node in the network
 	ObscuroClients []rpcclientlib.Client          // an obscuro client per obscuro node in the network
-	WalletClients  map[string]rpcclientlib.Client // an obscuro client per wallet (configured with viewing key where applicable)
+	walletClients  map[string]rpcclientlib.Client // an obscuro client per wallet (configured with viewing key where applicable)
 }
 
 func (n *Clients) RndEthClient() ethadapter.EthClient {
@@ -41,5 +41,5 @@ func (n *Clients) RndObscuroClient() rpcclientlib.Client {
 // ObscuroWalletClient fetches client for given wallet if it exists
 func (n *Clients) ObscuroWalletClient(wallet wallet.Wallet) rpcclientlib.Client {
 	addr := wallet.Address().String()
-	return n.WalletClients[addr]
+	return n.walletClients[addr]
 }

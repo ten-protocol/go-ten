@@ -104,7 +104,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	return &Clients{
 		EthClients:     l1Clients,
 		ObscuroClients: n.obscuroClients,
-		WalletClients:  walletClients,
+		walletClients:  walletClients,
 	}, nil
 }
 
