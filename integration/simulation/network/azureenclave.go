@@ -76,7 +76,7 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 	return &Clients{
 		EthClients:     n.gethClients,
 		ObscuroClients: n.obscuroClients,
-		walletClients:  walletClients,
+		WalletClients:  walletClients,
 	}, nil
 }
 

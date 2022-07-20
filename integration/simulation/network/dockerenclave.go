@@ -84,7 +84,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	return &Clients{
 		EthClients:     n.gethClients,
 		ObscuroClients: obscuroClients,
-		walletClients:  walletClients,
+		WalletClients:  walletClients,
 	}, nil
 }
 

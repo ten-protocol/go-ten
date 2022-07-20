@@ -1,18 +1,11 @@
 package network
 
 import (
-	"crypto/ecdsa"
-	"encoding/hex"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 	"math/big"
 	"sync"
 	"time"
-
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
-	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -152,61 +145,17 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	var i int
 	for _, w := range params.Wallets.SimObsWallets {
 		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
-		registerViewingKey(walletClients[w.Address().String()], w)
+		viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
 		i++
 	}
 	for _, t := range params.Wallets.Tokens {
 		w := t.L2Owner
 		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
-		registerViewingKey(walletClients[w.Address().String()], w)
+		viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
 		i++
 	}
 
 	return obscuroClients, walletClients
-}
-
-func registerViewingKey(cli rpcclientlib.Client, wal wallet.Wallet) {
-	vk, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
-	viewingPrivateKeyEcies := ecies.ImportECDSA(vk)
-	viewingPubKey := crypto.CompressPubkey(&vk.PublicKey)
-	cli.SetViewingKey(viewingPrivateKeyEcies, viewingPubKey)
-
-	viewingKeyHex := hex.EncodeToString(viewingPubKey)
-
-	signature := signViewingKey(viewingKeyHex, wal.PrivateKey())
-
-	err = cli.RegisterViewingKey(wal.Address(), signature)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func signViewingKey(viewingKey string, signerKey *ecdsa.PrivateKey) []byte {
-	msgToSign := rpcencryptionmanager.ViewingKeySignedMsgPrefix + viewingKey
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), signerKey)
-	if err != nil {
-		panic(err)
-	}
-
-	// We have to transform the V from 0/1 to 27/28, and add the leading "0".
-	signature[64] += 27
-	signatureWithLeadBytes := append([]byte("0"), signature...)
-
-	// this string encoded signature is what the wallet extension would receive after it is signed by metamask
-	sigStr := hex.EncodeToString(signatureWithLeadBytes)
-	// and then we extract the signature bytes in the same way as the wallet extension
-	outputSig, err := hex.DecodeString(sigStr[2:])
-	if err != nil {
-		panic(err)
-	}
-	// This same change is made in geth internals, for legacy reasons to be able to recover the address:
-	//	https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	outputSig[64] -= 27
-
-	return outputSig
 }
 
 func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {

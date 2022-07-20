@@ -2,6 +2,7 @@ package networkmanager
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 	"math/big"
 	"os"
 	"strconv"
@@ -42,15 +43,20 @@ func InjectTransactions(cfg Config, args []string) {
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress)
 	avgBlockDuration := time.Second
 
+	wallets := createWallets(cfg, l1Client, l2Client)
+	walletClients := createWalletRPCClients(wallets, cfg.obscuroClientAddress)
+
 	netwClients := &network.Clients{
 		EthClients:     []ethadapter.EthClient{l1Client},
 		ObscuroClients: []rpcclientlib.Client{l2Client},
+		WalletClients:  walletClients,
 	}
+
 	txInjector := simulation.NewTransactionInjector(
 		avgBlockDuration,
 		simStats,
 		netwClients,
-		createWallets(cfg, l1Client, l2Client),
+		wallets,
 		&cfg.mgmtContractAddress,
 		mgmtContractLib,
 		erc20ContractLib,
@@ -70,6 +76,22 @@ func InjectTransactions(cfg Config, args []string) {
 	checkL2TxsSuccessful(l2Client, txInjector)
 
 	os.Exit(0)
+}
+
+func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) map[string]rpcclientlib.Client {
+	clients := make(map[string]rpcclientlib.Client)
+
+	for _, w := range wallets.SimObsWallets {
+		clients[w.Address().String()] = rpcclientlib.NewClient(obscuroNodeAddr)
+		viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+	}
+	for _, t := range wallets.Tokens {
+		w := t.L2Owner
+		clients[w.Address().String()] = rpcclientlib.NewClient(obscuroNodeAddr)
+		viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+	}
+
+	return clients
 }
 
 func createWallets(nmConfig Config, l1Client ethadapter.EthClient, l2Client rpcclientlib.Client) *params.SimWallets {

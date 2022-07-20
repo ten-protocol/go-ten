@@ -45,7 +45,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	return &Clients{
 		EthClients:     n.gethClients,
 		ObscuroClients: n.obscuroClients,
-		walletClients:  walletClients,
+		WalletClients:  walletClients,
 	}, nil
 }
 
