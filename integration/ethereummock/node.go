@@ -90,19 +90,6 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }
 
-// implements the ethereum.Subscription
-type mockSubscription struct {
-}
-
-func (sub *mockSubscription) Err() <-chan error {
-	return make(chan error)
-}
-
-// Unsubscribe unsubscribes the notification and closes the error channel.
-// It can safely be called more than once.
-func (sub *mockSubscription) Unsubscribe() {
-}
-
 // BlockListener is not used in the mock
 func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 	return make(chan *types.Header), &mockSubscription{}
@@ -431,4 +418,14 @@ func NewMiner(
 		erc20ContractLib: NewERC20ContractLibMock(),
 		mgmtContractLib:  NewMgmtContractLibMock(),
 	}
+}
+
+// implements the ethereum.Subscription
+type mockSubscription struct {
+}
+
+func (sub *mockSubscription) Err() <-chan error {
+	return make(chan error)
+}
+func (sub *mockSubscription) Unsubscribe() {
 }
