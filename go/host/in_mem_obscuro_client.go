@@ -25,8 +25,8 @@ const (
 
 // An in-memory implementation of `rpcclientlib.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
-	obscuroAPI       ObscuroAPI
-	ethAPI           EthereumAPI
+	obscuroAPI       *ObscuroAPI
+	ethAPI           *EthereumAPI
 	enclavePublicKey *ecies.PublicKey
 }
 
@@ -39,8 +39,8 @@ func NewInMemObscuroClient(host *Node) rpcclientlib.Client {
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	return &inMemObscuroClient{
-		obscuroAPI:       *NewObscuroAPI(host),
-		ethAPI:           *NewEthereumAPI(host),
+		obscuroAPI:       NewObscuroAPI(host),
+		ethAPI:           NewEthereumAPI(host),
 		enclavePublicKey: enclPubKey,
 	}
 }
