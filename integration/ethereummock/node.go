@@ -421,11 +421,11 @@ func NewMiner(
 }
 
 // implements the ethereum.Subscription
-type mockSubscription struct {
-}
+type mockSubscription struct{}
 
 func (sub *mockSubscription) Err() <-chan error {
 	return make(chan error)
 }
+
 func (sub *mockSubscription) Unsubscribe() {
 }
