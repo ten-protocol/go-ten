@@ -280,8 +280,6 @@ func (c sortByTxIndex) Len() int           { return len(c) }
 func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
 
-const nonceTooHigh = "nonce too high"
-
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
