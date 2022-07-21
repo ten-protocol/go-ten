@@ -300,9 +300,8 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 			executedTransactions = append(executedTransactions, tx)
 			txReceipts = append(txReceipts, rec)
 		} else {
-			err := result.(error)
 			// Exclude all errors
-			common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), err)
+			common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), result)
 		}
 	}
 

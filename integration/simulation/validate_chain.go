@@ -240,7 +240,7 @@ func checkBlockchainOfObscuroNode(
 			nodeAddr, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
 	}
 
-	checkTransactionReceipts(t, nodeClient, s.TxInjector)
+	checkTransactionReceipts(nodeClient, s.TxInjector)
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
@@ -305,7 +305,7 @@ func FindNotIncludedL2Txs(l2Client rpcclientlib.Client, txInjector *TransactionI
 }
 
 // Checks that there is a receipt available for each L2 transaction.
-func checkTransactionReceipts(t *testing.T, l2Client rpcclientlib.Client, txInjector *TransactionInjector) {
+func checkTransactionReceipts(l2Client rpcclientlib.Client, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
 
 	for _, tx := range l2Txs {
