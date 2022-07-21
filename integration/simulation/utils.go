@@ -21,7 +21,6 @@ import (
 
 const (
 	testLogs             = "../.build/simulations/"
-	jsonKeyRoot          = "root"
 	jsonKeyStatus        = "status"
 	receiptStatusFailure = "0x0"
 )

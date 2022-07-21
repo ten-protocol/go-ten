@@ -280,8 +280,6 @@ func (c sortByTxIndex) Len() int           { return len(c) }
 func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
 
-const nonceTooHigh = "nonce too high"
-
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
@@ -295,18 +293,13 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		if !f {
 			log.Panic("There should be an entry for each transaction ")
 		}
-		rec, ok := result.(*types.Receipt)
-		if ok {
+		rec, foundReceipt := result.(*types.Receipt)
+		if foundReceipt {
 			executedTransactions = append(executedTransactions, tx)
 			txReceipts = append(txReceipts, rec)
 		} else {
-			err := result.(error)
-			// only transactions that fail because of the nonce are excluded and left in the mempool
-			if strings.Contains(err.Error(), nonceTooHigh) {
-				common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d", tx.Hash().Hex(), common.ShortHash(rollup.Hash()))
-			} else {
-				executedTransactions = append(executedTransactions, tx)
-			}
+			// Exclude all errors
+			common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), result)
 		}
 	}
 
@@ -342,6 +335,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	sort.Sort(sortByTxIndex(txReceipts))
 	sort.Sort(sortByTxIndex(depositReceipts))
 
+	// todo - handle the tx execution logs
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
