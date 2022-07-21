@@ -47,10 +47,10 @@ func InjectTransactions(cfg Config, args []string) {
 	wallets := createWallets(cfg, l1Client, l2Client)
 	walletClients := createWalletRPCClients(wallets, cfg.obscuroClientAddress)
 
-	netwClients := &network.Clients{
-		EthClients:     []ethadapter.EthClient{l1Client},
-		ObscuroClients: []rpcclientlib.Client{l2Client},
-		WalletClients:  walletClients,
+	netwClients := &network.RPCHandles{
+		EthClients:                    []ethadapter.EthClient{l1Client},
+		ObscuroClients:                []rpcclientlib.Client{l2Client},
+		VirtualWalletExtensionClients: walletClients,
 	}
 
 	txInjector := simulation.NewTransactionInjector(

@@ -41,7 +41,7 @@ func NewNetworkWithAzureEnclaves(enclaveIps []string, wallets *params.SimWallets
 	}
 }
 
-func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) (*Clients, error) {
+func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
@@ -73,10 +73,10 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 	obscuroClients, walletClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 
-	return &Clients{
-		EthClients:     n.gethClients,
-		ObscuroClients: n.obscuroClients,
-		WalletClients:  walletClients,
+	return &RPCHandles{
+		EthClients:                    n.gethClients,
+		ObscuroClients:                n.obscuroClients,
+		VirtualWalletExtensionClients: walletClients,
 	}, nil
 }
 

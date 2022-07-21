@@ -33,7 +33,7 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 	}
 }
 
-func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) (*Clients, error) {
+func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
 	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
@@ -56,10 +56,10 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	obscuroClients, walletClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 
-	return &Clients{
-		EthClients:     n.gethClients,
-		ObscuroClients: n.obscuroClients,
-		WalletClients:  walletClients,
+	return &RPCHandles{
+		EthClients:                    n.gethClients,
+		ObscuroClients:                n.obscuroClients,
+		VirtualWalletExtensionClients: walletClients,
 	}, nil
 }
 

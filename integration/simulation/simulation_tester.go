@@ -49,7 +49,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	)
 
 	simulation := Simulation{
-		NetworkClients:   networkClients,
+		RPCHandles:       networkClients,
 		AvgBlockDuration: uint64(params.AvgBlockDuration),
 		TxInjector:       txInjector,
 		SimulationTime:   params.SimulationTime,

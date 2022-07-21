@@ -53,7 +53,7 @@ func NewBasicNetworkOfNodesWithDockerEnclave(wallets *params.SimWallets) Network
 
 // Create initializes Obscuro nodes with their own Dockerised enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 // TODO - Use individual Docker containers for the Obscuro nodes and Ethereum nodes.
-func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) (*Clients, error) {
+func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	// We create Docker client, and finish early if docker or the enclave image are not available.
 	if err := n.setupAndCheckDocker(); err != nil {
 		return nil, err
@@ -81,10 +81,10 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	obscuroClients, walletClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 
-	return &Clients{
-		EthClients:     n.gethClients,
-		ObscuroClients: obscuroClients,
-		WalletClients:  walletClients,
+	return &RPCHandles{
+		EthClients:                    n.gethClients,
+		ObscuroClients:                obscuroClients,
+		VirtualWalletExtensionClients: walletClients,
 	}, nil
 }
 

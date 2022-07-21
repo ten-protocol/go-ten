@@ -20,26 +20,32 @@ type Network interface {
 	// Create - returns the started Ethereum nodes and the started Obscuro node clients.
 	// Responsible with spinning up all resources required for the test
 	// Return an error in case it cannot start for an expected reason. Otherwise it panics.
-	Create(params *params.SimParams, stats *stats.Stats) (*Clients, error)
+	Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error)
 	TearDown()
 }
 
-type Clients struct {
-	EthClients     []ethadapter.EthClient         // an eth client per eth node in the network
-	ObscuroClients []rpcclientlib.Client          // an obscuro client per obscuro node in the network
-	WalletClients  map[string]rpcclientlib.Client // an obscuro client per wallet (configured with viewing key where applicable)
+type RPCHandles struct {
+	// an eth client per eth node in the network
+	EthClients []ethadapter.EthClient
+
+	// an obscuro client per obscuro node in the network (used for things like validation rather than transactions on behalf of sim accounts)
+	ObscuroClients []rpcclientlib.Client
+
+	// an RPC client per wallet, with a viewing key setup (on the client and registered on its corresponding host enclave),
+	//	to mimic user acc interaction via a wallet extension
+	VirtualWalletExtensionClients map[string]rpcclientlib.Client // an obscuro client per wallet (configured with viewing key where applicable)
 }
 
-func (n *Clients) RndEthClient() ethadapter.EthClient {
+func (n *RPCHandles) RndEthClient() ethadapter.EthClient {
 	return n.EthClients[rand.Intn(len(n.EthClients))] //nolint:gosec
 }
 
-func (n *Clients) RndObscuroClient() rpcclientlib.Client {
+func (n *RPCHandles) RndObscuroClient() rpcclientlib.Client {
 	return n.ObscuroClients[rand.Intn(len(n.ObscuroClients))] //nolint:gosec
 }
 
 // ObscuroWalletClient fetches client for given wallet if it exists
-func (n *Clients) ObscuroWalletClient(wallet wallet.Wallet) rpcclientlib.Client {
+func (n *RPCHandles) ObscuroWalletClient(wallet wallet.Wallet) rpcclientlib.Client {
 	addr := wallet.Address().String()
-	return n.WalletClients[addr]
+	return n.VirtualWalletExtensionClients[addr]
 }

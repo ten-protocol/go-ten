@@ -21,7 +21,7 @@ const initialBalance = 5000
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
-	NetworkClients   *network.Clients
+	RPCHandles       *network.RPCHandles
 	AvgBlockDuration uint64
 	TxInjector       *TransactionInjector
 	SimulationTime   time.Duration
@@ -62,7 +62,7 @@ func (s *Simulation) Stop() {
 
 func (s *Simulation) WaitForObscuroGenesis() {
 	// grab an L1 client
-	client := s.NetworkClients.EthClients[0]
+	client := s.RPCHandles.EthClients[0]
 
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived

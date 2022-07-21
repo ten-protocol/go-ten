@@ -57,7 +57,7 @@ type TransactionInjector struct {
 	wallets *params.SimWallets
 
 	// connections
-	netwClients *network.Clients
+	rpcHandles *network.RPCHandles
 
 	// addrs and libs
 	mgmtContractAddr *gethcommon.Address
@@ -79,7 +79,7 @@ type TransactionInjector struct {
 func NewTransactionInjector(
 	avgBlockDuration time.Duration,
 	stats *simstats.Stats,
-	networkClients *network.Clients,
+	rpcHandles *network.RPCHandles,
 	wallets *params.SimWallets,
 	mgmtContractAddr *gethcommon.Address,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
@@ -98,7 +98,7 @@ func NewTransactionInjector(
 	return &TransactionInjector{
 		avgBlockDuration: avgBlockDuration,
 		stats:            stats,
-		netwClients:      networkClients,
+		rpcHandles:       rpcHandles,
 		interruptRun:     &interrupt,
 		fullyStoppedChan: make(chan bool, 1),
 		mgmtContractAddr: mgmtContractAddr,
@@ -135,7 +135,7 @@ func (ti *TransactionInjector) Start() {
 		if err != nil {
 			panic(err)
 		}
-		err = ti.netwClients.RndEthClient().SendTransaction(signedTx)
+		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
@@ -175,7 +175,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	// deploy the ERC20
 	contractBytes := gethcommon.Hex2Bytes(erc20contract.ContractByteCode)
 	deployContractTx := types.DynamicFeeTx{
-		Nonce: NextNonce(ti.netwClients, owner),
+		Nonce: NextNonce(ti.rpcHandles, owner),
 		Gas:   1025_000_000,
 		Data:  contractBytes,
 	}
@@ -184,7 +184,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		panic(err)
 	}
 
-	err = ti.netwClients.ObscuroWalletClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+	err = ti.rpcHandles.ObscuroWalletClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
 	}
@@ -221,7 +221,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = ti.netwClients.ObscuroWalletClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rpcHandles.ObscuroWalletClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -256,7 +256,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(ethWallet.Address()),
 		)
-		err = ti.netwClients.RndEthClient().SendTransaction(signedTx)
+		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
@@ -283,7 +283,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			common.ShortAddress(obsWallet.Address()),
 		)
 
-		err = ti.netwClients.ObscuroWalletClient(obsWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rpcHandles.ObscuroWalletClient(obsWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -310,7 +310,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		err := ti.netwClients.ObscuroWalletClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err := ti.rpcHandles.ObscuroWalletClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
@@ -343,13 +343,13 @@ func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
 
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
-	t := ti.newTx(data, NextNonce(ti.netwClients, from))
+	t := ti.newTx(data, NextNonce(ti.rpcHandles, from))
 	return t
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
-	t := ti.newTx(transferERC20data, NextNonce(ti.netwClients, from))
+	t := ti.newTx(transferERC20data, NextNonce(ti.rpcHandles, from))
 	return t
 }
 
@@ -379,7 +379,7 @@ func readNonce(cl rpcclientlib.Client, a gethcommon.Address) uint64 {
 	return result
 }
 
-func NextNonce(clients *network.Clients, w wallet.Wallet) uint64 {
+func NextNonce(clients *network.RPCHandles, w wallet.Wallet) uint64 {
 	counter := 0
 
 	// only returns the nonce when the previous transaction was recorded
