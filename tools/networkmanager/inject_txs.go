@@ -7,7 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
+
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -41,13 +44,21 @@ func InjectTransactions(cfg Config, args []string) {
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&cfg.mgmtContractAddress, &cfg.erc20ContractAddress)
 	avgBlockDuration := time.Second
 
+	wallets := createWallets(cfg, l1Client, l2Client)
+	walletClients := createWalletRPCClients(wallets, cfg.obscuroClientAddress)
+
+	netwClients := &network.RPCHandles{
+		EthClients:                    []ethadapter.EthClient{l1Client},
+		ObscuroClients:                []rpcclientlib.Client{l2Client},
+		VirtualWalletExtensionClients: walletClients,
+	}
+
 	txInjector := simulation.NewTransactionInjector(
 		avgBlockDuration,
 		simStats,
-		[]ethadapter.EthClient{l1Client},
-		createWallets(cfg, l1Client, l2Client),
+		netwClients,
+		wallets,
 		&cfg.mgmtContractAddress,
-		[]rpcclientlib.Client{l2Client},
 		mgmtContractLib,
 		erc20ContractLib,
 		parseNumOfTxs(args),
@@ -66,6 +77,22 @@ func InjectTransactions(cfg Config, args []string) {
 	checkL2TxsSuccessful(l2Client, txInjector)
 
 	os.Exit(0)
+}
+
+func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) map[string]rpcclientlib.Client {
+	clients := make(map[string]rpcclientlib.Client)
+
+	for _, w := range wallets.SimObsWallets {
+		clients[w.Address().String()] = rpcclientlib.NewClient(obscuroNodeAddr)
+		viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+	}
+	for _, t := range wallets.Tokens {
+		w := t.L2Owner
+		clients[w.Address().String()] = rpcclientlib.NewClient(obscuroNodeAddr)
+		viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+	}
+
+	return clients
 }
 
 func createWallets(nmConfig Config, l1Client ethadapter.EthClient, l2Client rpcclientlib.Client) *params.SimWallets {

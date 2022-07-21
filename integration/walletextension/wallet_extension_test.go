@@ -627,7 +627,7 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
-	_, l2Clients, err := obscuroNetwork.Create(&simParams, simStats)
+	clients, err := obscuroNetwork.Create(&simParams, simStats)
 	if err != nil {
 		return obscuroNetwork.TearDown, err
 	}
@@ -635,7 +635,7 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 	// Deploy an ERC20 contract to the Obscuro network.
 	txWallet := wallets.Tokens[bridge.BTC].L2Owner
 	deployContractTx := types.LegacyTx{
-		Nonce:    simulation.NextNonce(l2Clients[0], txWallet),
+		Nonce:    simulation.NextNonce(clients, txWallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
 		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
