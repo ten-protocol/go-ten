@@ -280,6 +280,7 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 	if tx == nil {
 		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction with hash %s", txHash.Hex())
 	}
+	// todo - make the signer a field of the rollup chain
 	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)

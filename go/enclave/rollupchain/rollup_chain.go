@@ -295,18 +295,14 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		if !f {
 			log.Panic("There should be an entry for each transaction ")
 		}
-		rec, ok := result.(*types.Receipt)
-		if ok {
+		rec, foundReceipt := result.(*types.Receipt)
+		if foundReceipt {
 			executedTransactions = append(executedTransactions, tx)
 			txReceipts = append(txReceipts, rec)
 		} else {
 			err := result.(error)
-			// only transactions that fail because of the nonce are excluded and left in the mempool
-			if strings.Contains(err.Error(), nonceTooHigh) {
-				common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d", tx.Hash().Hex(), common.ShortHash(rollup.Hash()))
-			} else {
-				executedTransactions = append(executedTransactions, tx)
-			}
+			// Exclude all errors
+			common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), err)
 		}
 	}
 
@@ -342,6 +338,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	sort.Sort(sortByTxIndex(txReceipts))
 	sort.Sort(sortByTxIndex(depositReceipts))
 
+	// todo - handle the tx execution logs
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 

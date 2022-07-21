@@ -45,8 +45,8 @@ const (
 // TransactionInjector is a structure that generates, issues and tracks transactions
 type TransactionInjector struct {
 	// counters
-	Counter *txInjectorCounter
-	stats   *simstats.Stats
+	TxTracker *txInjectorTracker
+	stats     *simstats.Stats
 
 	// settings
 	avgBlockDuration time.Duration
@@ -106,7 +106,7 @@ func NewTransactionInjector(
 		mgmtContractLib:  mgmtContractLib,
 		erc20ContractLib: erc20ContractLib,
 		wallets:          wallets,
-		Counter:          newCounter(),
+		TxTracker:        newCounter(),
 		enclavePublicKey: enclavePublicKeyEcies,
 		txsToIssue:       txsToIssue,
 	}
@@ -142,7 +142,7 @@ func (ti *TransactionInjector) Start() {
 		}
 
 		ti.stats.Deposit(initialBalance)
-		go ti.Counter.trackL1Tx(txData)
+		go ti.TxTracker.trackL1Tx(txData)
 	}
 
 	// start transactions issuance
@@ -230,7 +230,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		// todo - retrieve receipt
 
-		go ti.Counter.trackTransferL2Tx(signedTx)
+		go ti.TxTracker.trackTransferL2Tx(signedTx)
 		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 	}
 }
@@ -263,7 +263,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		}
 
 		ti.stats.Deposit(v)
-		go ti.Counter.trackL1Tx(txData)
+		go ti.TxTracker.trackL1Tx(txData)
 		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
@@ -291,7 +291,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		}
 
 		ti.stats.Withdrawal(v)
-		go ti.Counter.trackWithdrawalL2Tx(signedTx)
+		go ti.TxTracker.trackWithdrawalL2Tx(signedTx)
 		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
@@ -369,9 +369,16 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	gas := uint64(1_000_000)
+	value := gethcommon.Big0
+
+	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
+	//max := big.NewInt(1_000_000_000_000_000_000)
+	//if nonce%3 == 0 {
+	//	value = max
+	//}
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		Value:    gethcommon.Big0,
+		Value:    value,
 		Gas:      gas,
 		GasPrice: gethcommon.Big0,
 		Data:     data,
