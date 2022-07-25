@@ -53,7 +53,8 @@ fi
 echo "Deploying contracts to the geth network..."
 docker network create --driver bridge node_network || true
 
-# deploy Obscuro management contract
+# deploy Obscuro management contract\
+echo "Deploying Obscuro management contract to L1 network"
 docker run --name=mgmtcontractdeployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
@@ -65,8 +66,10 @@ docker run --name=mgmtcontractdeployer \
 # storing the contract address to the .env file (note: this first contract creates/overwrites the .env file)
 mgmtContractAddr=$(docker logs --tail 1 mgmtcontractdeployer)
 echo "MGMTCONTRACTADDR=${mgmtContractAddr}" > "${testnet_path}/.env"
+echo ""
 
 # deploy ERC20 contract
+echo "Deploying ERC20 contract to L1 network"
 docker run --name=erc20deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
@@ -78,4 +81,4 @@ docker run --name=erc20deployer \
 # storing the contract address to the .env file
 erc20ContractAddr=$(docker logs --tail 1 erc20deployer)
 echo "ERC20CONTRACTADDR=${erc20ContractAddr}" >> "${testnet_path}/.env"
-
+echo ""
