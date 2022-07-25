@@ -361,7 +361,34 @@ account on the L1 network used to deploy the Obscuro Management and the ERC20 co
 - `0x0000000000000000000000000000000000000001` is the host id of the Obscuro node when starting in a local mode
 - `0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF` is the address of the Obscuro Management contract which is known a-priori as a nonce of 0 is used 
 - `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which is known a-priori as a nonce of 1 is used
-                                             
+                                
+
+### Deploying contracts into a local testnet
+Deploying and interacting with contracts on Obscuro requires the wallet extension to be running. The wallet extension is the Obscuro 
+component that ensures that sensitive information in RPC requests between client applications and Obscuro cannot be seen by third parties. 
+The wallet extension should be run local to the client application and is described in more detail at 
+[docs/testnet/wallet-extension.md](docs/testnet/wallet-extension.md).
+
+To start the wallet extension to run against a local testnet use the below;
+
+```
+cd ./tools/walletextension/main/
+go build -o wallet_extension 
+./wallet_extension -nodeHost 127.0.0.1 -nodePortHTTP 13000 -nodePortWS 13001
+```
+
+Once the wallet extension is running, a contract can be deployed and interacted with either manually using Metamask and Remix (see 
+[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-smart-contract.md)) or programmatically e.g. using web3.py
+(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
+
+Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet extension using 
+the default parameters, where the `nodeHost` will default to the testnet host URL `testnet.obscu.ro` i.e. 
+
+```
+cd ./tools/walletextension/main/
+go build -o wallet_extension 
+./wallet_extension 
+```
 
 ## Community 
 
