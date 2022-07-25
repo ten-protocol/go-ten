@@ -30,8 +30,10 @@ integration/simulation/cmd/cmd
 go/host/main/main
 go/enclave/main/main
 tools/walletextension/main/main
+tools/walletextension/main/wallet_extension
 tools/networkmanager/main/main
 tools/obscuroscan/main/main
+
 
 # Logs files
 **/enclave_logs.txt
