@@ -15,4 +15,4 @@ Contract is a string value to select the contract bytecode to deploy, currently 
 
 * Example arguments to deploy an L1 contract:
 
-  `--nodeHost=<x> --nodePort=<x> --privateKey=<x> --contract=MGMT --l1Deployment`
+  `--nodeHost=<x> --nodePort=<x> --privateKey=<x> --contract=MGMT`
