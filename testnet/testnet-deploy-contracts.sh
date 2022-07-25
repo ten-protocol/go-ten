@@ -60,7 +60,7 @@ docker run --name=contractdeployer \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
-    --contract=MGMT \
+    --contractName="MGMT" \
     --privateKey=${pkstring}
 # storing the contract address to the .env file (note: this first contract creates/overwrites the .env file)
 mgmtContractAddr=$(docker logs --tail 1 contractdeployer)
@@ -73,7 +73,7 @@ docker run --name=contractdeployer \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
-    --contract=ERC20 \
+    --contractName="ERC20" \
     --privateKey=${pkstring}
 # storing the contract address to the .env file
 mgmtContractAddr=$(docker logs --tail 1 contractdeployer)

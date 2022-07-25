@@ -121,7 +121,7 @@ func setupClient(cfg *Config, _ wallet.Wallet) (ethadapter.EthClient, error) {
 }
 
 func getContractCode(cfg *Config) ([]byte, error) {
-	switch cfg.Contract {
+	switch cfg.ContractName {
 	case mgmtContract:
 		return common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode), nil
 
@@ -129,6 +129,6 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		return common.Hex2Bytes(erc20contractlib.ERC20ContractABI), nil
 
 	default:
-		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.Contract)
+		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)
 	}
 }
