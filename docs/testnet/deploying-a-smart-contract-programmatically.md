@@ -34,7 +34,7 @@ extension to facilitate requesting a viewing key, and to sign and return it to t
 ```
 
 ## Compile the contract and build the local deployment transaction
-A contract can be built using solc and a transaction created for deploying the contract. Construction of the transaction 
+A contract can be compiled using solc and a transaction created for deploying the contract. Construction of the transaction 
 requires `gasPrice` and `gas` to be explicitly defined (the need to perform this will be removed in a later 
 release). An arbitrary `gasPrice` should be given e.g. the current price on the Ropsten test network. 
 ```python 
