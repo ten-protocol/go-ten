@@ -2,18 +2,18 @@ package contractdeployer
 
 // Flag names, defaults and usages.
 const (
-	l1NodeHostName  = "l1NodeHost"
-	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
+	nodeHostName  = "nodeHost"
+	nodeHostUsage = "The host on which to connect the RPC client"
 
-	l1NodePortName  = "l1NodePort"
-	l1NodePortUsage = "The port on which to connect to the Ethereum client"
+	nodePortName  = "nodePort"
+	nodePortUsage = "The port on which to connect the RPC client"
 
-	mgmtContractPathName  = "mgmtContractPath"
-	mgmtContractPathUsage = "The path of the management contract path"
+	contractName  = "contract"
+	contractUsage = "The name of the contract bytecode to be deploy (e.g. `MGMT` or `ERC20`)"
 
 	privateKeyName  = "privateKey"
-	privateKeyUsage = "The private key for the L1 node account"
+	privateKeyUsage = "The private key for the node account"
 
 	chainIDName  = "chainID"
-	chainIDUsage = "The ID of the L1 chain"
+	chainIDUsage = "The ID of the chain"
 )

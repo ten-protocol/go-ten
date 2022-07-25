@@ -1,0 +1,18 @@
+# Contract deployer
+
+Deploys contracts to both the obscuro network (L2) and eth network (L1)
+
+## Usage
+
+All commands are executed by running `contractdeployer/main/main()`.
+
+Contract is a string value to select the contract bytecode to deploy, currently only ERC20 and MGMT are supported
+(an ERC20 contract and the obscuro management contract, respectively)
+
+* Example arguments to deploy an L2 contract:
+
+  `--nodeHost=<x> --nodePort=<x> --privateKey=<x> --contract=ERC20`
+
+* Example arguments to deploy an L1 contract:
+
+  `--nodeHost=<x> --nodePort=<x> --privateKey=<x> --contract=MGMT --l1Deployment`
