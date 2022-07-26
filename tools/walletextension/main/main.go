@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
@@ -17,8 +18,10 @@ func main() {
 
 	walletExtensionAddr := fmt.Sprintf("%s:%d", localhost, config.WalletExtensionPort)
 	go walletExtension.Serve(walletExtensionAddr)
-	fmt.Printf("Wallet extension started.\n💡 Visit %s/viewingkeys/ to generate an ephemeral viewing key. "+
-		"Without a viewing key, you will not be able to decrypt the enclave's secure responses to sensitive requests.\n", walletExtensionAddr)
+	s, _ := json.MarshalIndent(config, "", "  ")
+	fmt.Printf("Wallet extension config: \n%s", string(s))
+	fmt.Println()
+	fmt.Printf("Wallet extension started.\n💡 Visit http://%s/viewingkeys/ to generate an ephemeral viewing key.\n", walletExtensionAddr)
 
 	select {}
 }
