@@ -35,9 +35,9 @@ type SimParams struct {
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddr *common.Address
 
-	// BtcErc20Address - the address of the "Btc" ERC20
-	BtcErc20Address *common.Address
-	// EthErc20Address - the address of the "Eth" ERC20
+	// ObxErc20Address - the address of the "OBX" ERC20
+	ObxErc20Address *common.Address
+	// EthErc20Address - the address of the "ETH" ERC20
 	EthErc20Address *common.Address
 
 	// Contains all the wallets required by the simulation

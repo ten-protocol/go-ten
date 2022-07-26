@@ -42,20 +42,20 @@ func NewNetworkWithAzureEnclaves(enclaveIps []string, wallets *params.SimWallets
 }
 
 func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
-	params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
 	)
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr)
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.BtcErc20Address, params.EthErc20Address)
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
 	fmt.Printf("Please start the edgeless DB instances. Then start the docker image on the azure server with below cmds:\n")
 	for i := 0; i < len(n.azureEnclaveIps); i++ {
 		fmt.Printf("sudo docker run --net enclavenet --name enclave -h enclave -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p %d:%d/tcp obscuro_enclave --willAttest --useInMemoryDB=false "+
 			"--edgelessDBHost obscuroedb --hostID %d --address :11000 --managementContractAddress %s  --erc20ContractAddresses %s,%s\n",
-			enclavePort, enclavePort, i, params.MgmtContractAddr.Hex(), params.BtcErc20Address.Hex(), params.EthErc20Address.Hex())
+			enclavePort, enclavePort, i, params.MgmtContractAddr.Hex(), params.ObxErc20Address.Hex(), params.EthErc20Address.Hex())
 	}
 	time.Sleep(10 * time.Second)
 

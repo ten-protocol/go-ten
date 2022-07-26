@@ -34,19 +34,19 @@ import (
 type ERC20 int
 
 const (
-	BTC ERC20 = iota
+	OBX ERC20 = iota
 	ETH
 )
 
-var WBtcOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")
+var WOBXOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")
 
-// WBtcContract X- address of the deployed "btc" erc20 on the L2
-var WBtcContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"))
+// WOBXContract X- address of the deployed "obx" erc20 on the L2
+var WOBXContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"))
 
-var WEthOnwer, _ = crypto.HexToECDSA("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8")
+var WETHOwner, _ = crypto.HexToECDSA("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8")
 
-// WEthContract - address of the deployed "eth" erc20 on the L2
-var WEthContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("9802F661d17c65527D7ABB59DAAD5439cb125a67"))
+// WETHContract - address of the deployed "eth" erc20 on the L2
+var WETHContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("9802F661d17c65527D7ABB59DAAD5439cb125a67"))
 
 // BridgeAddress - address of the virtual bridge
 var BridgeAddress = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
@@ -79,7 +79,7 @@ type Bridge struct {
 }
 
 func New(
-	btcAddress *gethcommon.Address,
+	obxAddress *gethcommon.Address,
 	ethAddress *gethcommon.Address,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
@@ -90,18 +90,18 @@ func New(
 ) *Bridge {
 	tokens := make(map[ERC20]*ERC20Mapping, 0)
 
-	tokens[BTC] = &ERC20Mapping{
-		Name:      BTC,
-		L1Address: btcAddress,
-		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), WBtcOwner),
-		L2Address: &WBtcContract,
+	tokens[OBX] = &ERC20Mapping{
+		Name:      OBX,
+		L1Address: obxAddress,
+		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), WOBXOwner),
+		L2Address: &WOBXContract,
 	}
 
 	tokens[ETH] = &ERC20Mapping{
 		Name:      ETH,
 		L1Address: ethAddress,
-		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), WEthOnwer),
-		L2Address: &WEthContract,
+		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), WETHOwner),
+		L2Address: &WETHContract,
 	}
 
 	return &Bridge{
@@ -173,7 +173,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 	return rollups
 }
 
-// this function creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
+// NewDepositTx creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
 // Todo - has to go through a few more iterations
 func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcommon.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64) *common.L2Tx {
 	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
@@ -255,7 +255,6 @@ func (bridge *Bridge) ExtractDeposits(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-// this belongs in the bridge
 func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
