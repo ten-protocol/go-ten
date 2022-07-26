@@ -52,20 +52,33 @@ fi
 # deploy contracts to the geth network
 echo "Deploying contracts to the geth network..."
 docker network create --driver bridge node_network || true
-docker run --name=contractdeployer \
+
+# deploy Obscuro management contract\
+echo "Deploying Obscuro management contract to L1 network"
+docker run --name=mgmtcontractdeployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
-    --l1NodeHost=${l1host} \
-    --l1NodePort=${l1port} \
+    --nodeHost=${l1host} \
+    --nodePort=${l1port} \
+    --contractName="MGMT" \
     --privateKey=${pkstring}
-
-# storing the contract addresses to the .env file
-log_output=$(docker logs --tail 1 contractdeployer)
-json_output=$(echo ${log_output} | awk -F"[{}]" '{print "{"$2"}"}')
-mgmtContractAddr=$(echo "${json_output}"  | jq .MgmtContractAddr)
-erc20ContractAddr=$(echo "${json_output}" | jq .ERC20ContractAddr)
-
+# storing the contract address to the .env file (note: this first contract creates/overwrites the .env file)
+mgmtContractAddr=$(docker logs --tail 1 mgmtcontractdeployer)
 echo "MGMTCONTRACTADDR=${mgmtContractAddr}" > "${testnet_path}/.env"
-echo "ERC20CONTRACTADDR=${erc20ContractAddr}" >> "${testnet_path}/.env"
+echo ""
 
+# deploy ERC20 contract
+echo "Deploying ERC20 contract to L1 network"
+docker run --name=erc20deployer \
+    --network=node_network \
+    --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
+     testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
+    --nodeHost=${l1host} \
+    --nodePort=${l1port} \
+    --contractName="ERC20" \
+    --privateKey=${pkstring}
+# storing the contract address to the .env file
+erc20ContractAddr=$(docker logs --tail 1 erc20deployer)
+echo "ERC20CONTRACTADDR=${erc20ContractAddr}" >> "${testnet_path}/.env"
+echo ""
