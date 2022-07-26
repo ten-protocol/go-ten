@@ -272,7 +272,7 @@ func checkBlockchainOfObscuroNode(
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
-		total += balance(nodeClient, wallet.Address(), s.Params.Wallets.Tokens[bridge.BTC].L2ContractAddress)
+		total += balance(nodeClient, wallet.Address(), s.Params.Wallets.Tokens[bridge.OBX].L2ContractAddress)
 	}
 
 	if total != totalAmountInSystem {

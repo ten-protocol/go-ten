@@ -54,17 +54,17 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	mcOwnerWallet := datagenerator.RandomWallet(ethereumChainID)
 
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
-	btc := SimToken{
-		Name:              bridge.BTC,
+	obx := SimToken{
+		Name:              bridge.OBX,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WBtcOwner),
-		L2ContractAddress: &bridge.WBtcContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WOBXOwner),
+		L2ContractAddress: &bridge.WOBXContract,
 	}
 	eth := SimToken{
 		Name:              bridge.ETH,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WEthOnwer),
-		L2ContractAddress: &bridge.WEthContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WETHOwner),
+		L2ContractAddress: &bridge.WETHContract,
 	}
 
 	return &SimWallets{
@@ -73,7 +73,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 		SimEthWallets: simEthWallets,
 		SimObsWallets: simObsWallets,
 		Tokens: map[bridge.ERC20]*SimToken{
-			bridge.BTC: &btc,
+			bridge.OBX: &obx,
 			bridge.ETH: &eth,
 		},
 	}
@@ -89,7 +89,7 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 
 func (w *SimWallets) AllEthAddresses() []*common.Address {
 	addresses := make([]*common.Address, 0)
-	addresses = append(addresses, w.Tokens[bridge.BTC].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[bridge.OBX].L1ContractAddress)
 	addresses = append(addresses, w.Tokens[bridge.ETH].L1ContractAddress)
 	return addresses
 }

@@ -206,7 +206,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.WBtcContract,
+		reqJSONKeyTo:   bridge.WOBXContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -246,7 +246,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
 	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.WBtcContract.Hex(),
+		reqJSONKeyTo:   bridge.WOBXContract.Hex(),
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: convertedData,
 	}
@@ -285,7 +285,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
 	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.WBtcContract,
+		reqJSONKeyTo:   bridge.WOBXContract,
 		reqJSONKeyData: convertedData,
 	}
 	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCCall, []interface{}{reqParams, latestBlock})
@@ -322,7 +322,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	balanceData := erc20contractlib.CreateBalanceOfData(dummyAccountAddress)
 	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo: bridge.WBtcContract,
+		reqJSONKeyTo: bridge.WOBXContract,
 		// We send the request from a different address than the one we created a viewing key for.
 		reqJSONKeyFrom: dummyAccountAddress.Hex(),
 		reqJSONKeyData: convertedData,
@@ -633,7 +633,7 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 	}
 
 	// Deploy an ERC20 contract to the Obscuro network.
-	txWallet := wallets.Tokens[bridge.BTC].L2Owner
+	txWallet := wallets.Tokens[bridge.OBX].L2Owner
 	deployContractTx := types.LegacyTx{
 		Nonce:    simulation.NextNonce(clients, txWallet),
 		Gas:      1025_000_000,
