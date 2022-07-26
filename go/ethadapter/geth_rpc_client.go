@@ -143,6 +143,8 @@ func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 }
 
 func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
+	// this channel holds blocks that have been received from the geth network but not yet processed by the host,
+	// with more than 1 capacity the buffer provides resilience in case of intermittent RPC or processing issues
 	ch := make(chan *types.Header, 100)
 	sub, err := e.client.SubscribeNewHead(context.Background(), ch)
 	if err != nil {

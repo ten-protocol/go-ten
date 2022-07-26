@@ -676,14 +676,14 @@ func (a *Node) monitorBlocks() {
 			// get the latest known blk
 			lastBlk, err := a.ethClient.BlockByNumber(lastBlkNumber)
 			if err != nil {
-				log.Panic("%s", err)
+				log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
 			}
 
 			// iterate from the tip (last known block) to the last one known by the node
 			for lastBlk.Hash().Hex() != lastKnownBlkHash.Hex() {
 				blockParent, err := a.ethClient.BlockByHash(lastBlk.ParentHash())
 				if err != nil {
-					log.Panic("could not fetch block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
+					log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
 				}
 
 				// issue the block to the ingestion channel
