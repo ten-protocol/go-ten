@@ -686,15 +686,8 @@ func (a *Node) monitorBlocks() {
 					log.Panic("could not fetch block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
 				}
 
-				encodedBlock, err := common.EncodeBlock(lastBlk)
-				if err != nil {
-					log.Panic("could not encode block with hash %s. Cause: %s", lastBlk.Hash(), err)
-				}
-				encodedBlockParent, err := common.EncodeBlock(blockParent)
-				if err != nil {
-					log.Panic("could not encode block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
-				}
-				a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+				// issue the block to the ingestion channel
+				a.encodeAndIngest(lastBlk, blockParent)
 				lastBlk = blockParent
 			}
 
@@ -725,15 +718,9 @@ func (a *Node) monitorBlocks() {
 				common.ShortHash(blkHeader.Hash()),
 				blkHeader.Number.Uint64(),
 			)
-			encodedBlock, err := common.EncodeBlock(block)
-			if err != nil {
-				log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
-			}
-			encodedBlockParent, err := common.EncodeBlock(blockParent)
-			if err != nil {
-				log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
-			}
-			a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+
+			// issue the block to the ingestion channel
+			a.encodeAndIngest(block, blockParent)
 			lastKnownBlkHash = block.Hash()
 		}
 	}
@@ -742,6 +729,18 @@ func (a *Node) monitorBlocks() {
 	// make sure it cleanly unsubscribes
 	// todo this should be defered when the errors are upstreamed instead of panic'd
 	subs.Unsubscribe()
+}
+
+func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) {
+	encodedBlock, err := common.EncodeBlock(block)
+	if err != nil {
+		log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+	}
+	encodedBlockParent, err := common.EncodeBlock(blockParent)
+	if err != nil {
+		log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+	}
+	a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
 }
 
 func (a *Node) bootstrapNode() types.Block {
