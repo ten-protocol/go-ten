@@ -659,6 +659,7 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 
 // monitors the L1 client for new blocks and injects them into the aggregator
 func (a *Node) monitorBlocks() {
+	var lastKnownBlkHash gethcommon.Hash
 	listener, subs := a.ethClient.BlockListener()
 	common.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
 
@@ -667,8 +668,35 @@ func (a *Node) monitorBlocks() {
 		select {
 		case err := <-subs.Err():
 			log.Error("Restarting L1 block monitoring. Errored with: %s", err)
-			// todo this is a very simple way of reconnecting the node, it might need catching up logic
+			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
 			listener, subs = a.ethClient.BlockListener()
+
+			// catch up any missed blocks
+			var lastBlkNumber *big.Int
+			// get the latest known blk
+			lastBlk, err := a.ethClient.BlockByNumber(lastBlkNumber)
+			if err != nil {
+				log.Panic("%s", err)
+			}
+
+			// iterate from the tip (last known block) to the last one known by the node
+			for lastBlk.Hash().Hex() != lastKnownBlkHash.Hex() {
+				blockParent, err := a.ethClient.BlockByHash(lastBlk.ParentHash())
+				if err != nil {
+					log.Panic("could not fetch block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
+				}
+
+				encodedBlock, err := common.EncodeBlock(lastBlk)
+				if err != nil {
+					log.Panic("could not encode block with hash %s. Cause: %s", lastBlk.Hash(), err)
+				}
+				encodedBlockParent, err := common.EncodeBlock(blockParent)
+				if err != nil {
+					log.Panic("could not encode block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
+				}
+				a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+				lastBlk = blockParent
+			}
 
 		case blkHeader := <-listener:
 			// don't process blocks if the node is stopping
@@ -706,6 +734,7 @@ func (a *Node) monitorBlocks() {
 				log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
 			}
 			a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+			lastKnownBlkHash = block.Hash()
 		}
 	}
 
