@@ -30,7 +30,6 @@ const (
 	RPCChainID              = "eth_chainId"
 	RPCGetBalance           = "eth_getBalance"
 	RPCGetTransactionByHash = "eth_getTransactionByHash"
-	RPCGetTxCount           = "eth_getTransactionCount"
 	RPCGetTxReceipt         = "eth_getTransactionReceipt"
 	RPCSendRawTransaction   = "eth_sendRawTransaction"
 

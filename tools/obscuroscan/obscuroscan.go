@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
@@ -29,6 +30,7 @@ import (
 )
 
 const (
+	pathNumBlocks     = "/numblocks/"
 	pathHeadBlock     = "/headblock/"
 	pathHeadRollup    = "/headrollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
@@ -63,12 +65,10 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
-	// Handle requests for block head height.
-	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
-	// Handle requests for the head rollup.
-	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)
-	// Handle requests to decrypt a transaction blob.
-	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)
+	serveMux.HandleFunc(pathNumBlocks, o.getNumBlocks)      // Get the number of L1 blocks.
+	serveMux.HandleFunc(pathHeadBlock, o.getHeadBlock)      // Get the head L1 block.
+	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)    // Get the head rollup.
+	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob) // Decrypt a transaction blob.
 
 	// Serves the web assets for the user interface.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
@@ -94,8 +94,26 @@ func (o *Obscuroscan) Shutdown() {
 	}
 }
 
+// Retrieves the current number of L1 blocks.
+func (o *Obscuroscan) getNumBlocks(resp http.ResponseWriter, _ *http.Request) {
+	var headBlock *types.Header
+	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block. Cause: %s", err))
+		return
+	}
+
+	numOfBlocks := headBlock.Number.Int64()
+	numOfBlocksStr := strconv.Itoa(int(numOfBlocks))
+	_, err = resp.Write([]byte(numOfBlocksStr))
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return number of blocks to client. Cause: %s", err))
+		return
+	}
+}
+
 // Retrieves the current block header for the Obscuro network.
-func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
+func (o *Obscuroscan) getHeadBlock(resp http.ResponseWriter, _ *http.Request) {
 	var headBlock *types.Header
 	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
 	if err != nil {
