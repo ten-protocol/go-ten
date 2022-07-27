@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -114,56 +115,60 @@ func (o *Obscuroscan) getNumBlocks(resp http.ResponseWriter, _ *http.Request) {
 
 // Retrieves the L1 block header with the given number.
 func (o *Obscuroscan) getBlock(resp http.ResponseWriter, _ *http.Request) {
-	var headBlock *types.Header
-	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
+	number := big.NewInt(10) // todo - joel - stop hardcoding this
+
+	var blockHeader *types.Header
+	err := o.client.Call(&blockHeader, rpcclientlib.RPCGetBlockHeaderByNumber, number)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve block %d. Cause: %s", number, err))
 		return
 	}
 
-	jsonBlock, err := json.Marshal(headBlock)
+	jsonBlock, err := json.Marshal(blockHeader)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head block to client. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return block %d to client. Cause: %s", number, err))
 		return
 	}
 	_, err = resp.Write(jsonBlock)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head block to client. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return block %d to client. Cause: %s", number, err))
 		return
 	}
 }
 
 // Retrieves the rollup with the given number.
 func (o *Obscuroscan) getRollup(resp http.ResponseWriter, _ *http.Request) {
-	// TODO - If required, consolidate the two calls below into a single RPCGetHeadRollup call to minimise round trips.
-	var headRollupHeader *common.Header
-	err := o.client.Call(&headRollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
+	number := big.NewInt(10) // todo - joel - stop hardcoding this
+
+	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
+	var rollupHeader *common.Header
+	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup header. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup header %d. Cause: %s", number, err))
 		return
 	}
 
-	headRollupHash := headRollupHeader.Hash()
-	if headRollupHash == (gethcommon.Hash{}) {
-		logAndSendErr(resp, "head rollup was retrieved but hash was nil")
+	rollupHash := rollupHeader.Hash()
+	if rollupHash == (gethcommon.Hash{}) {
+		logAndSendErr(resp, fmt.Sprintf("rollup %d was retrieved but hash was nil", number))
 		return
 	}
 
-	var headRollup *common.ExtRollup
-	err = o.client.Call(&headRollup, rpcclientlib.RPCGetRollup, headRollupHash)
+	var rollup *common.ExtRollup
+	err = o.client.Call(&rollup, rpcclientlib.RPCGetRollup, rollupHash)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup %d. Cause: %s", number, err))
 		return
 	}
 
-	jsonRollup, err := json.Marshal(headRollup)
+	jsonRollup, err := json.Marshal(rollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return rollup %d to client. Cause: %s", number, err))
 		return
 	}
 	_, err = resp.Write(jsonRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return rollup %d to client. Cause: %s", number, err))
 		return
 	}
 }
