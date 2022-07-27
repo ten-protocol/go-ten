@@ -226,21 +226,6 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// RPCExecuteOffChainTransaction allows execution of off chain transactions
-func (a *Node) RPCExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	return a.EnclaveClient.ExecuteOffChainTransaction(encryptedParams)
-}
-
-// RPCCurrentBlockHead returns the current head of the blocks (l1)
-func (a *Node) RPCCurrentBlockHead() *types.Header {
-	return a.nodeDB.GetCurrentBlockHead()
-}
-
-// RPCCurrentRollupHead returns the current head of the rollups (l2)
-func (a *Node) RPCCurrentRollupHead() *common.Header {
-	return a.nodeDB.GetCurrentRollupHead()
-}
-
 // DB returns the DB of the node
 func (a *Node) DB() *DB {
 	return a.nodeDB

@@ -10,20 +10,37 @@
 
 <body>
 
-<h2>Monitor L1 blocks and Obscuro rollups via the connected Obscuro node</h2>
-
-<hr>
+<h2>View Obscuro rollups and L1 blocks</h2>
 
 <p>
-<div>Current head L1 block:</div>
-<pre id="headBlock">Fetching...</pre>
+Number of rollups:
+<div id="numRollups">Fetching...</div>
+
+<form id="form-get-rollup">
+    <p>
+        <label>Fetch rollup:</label>
+        <input id="rollupNumber" placeholder="Rollup number"></input>
+    </p>
+
+    <p>
+        <button type="submit">Submit</button>
+    </p>
+</form>
+
 </p>
 
 <hr>
 
 <p>
-<div>Current head Obscuro rollup:</div>
-<pre id="headRollup">Fetching...</pre>
+L1 block:
+<pre id="block">N/A</pre>
+</p>
+
+<hr>
+
+<p>
+Obscuro rollup:
+<pre id="rollup">N/A</pre>
 </p>
 
 </body>
