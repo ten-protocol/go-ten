@@ -1,12 +1,16 @@
 "use strict";
 
 const eventDomLoaded = "DOMContentLoaded";
+const typeSubmit = "submit";
 const idNumBlocks = "numBlocks";
+const idFormGetBlock = "form-get-block";
+const idBlockNumber = "blockNumber";
 const idBlock = "block";
 const idRollup = "rollup";
 const pathNumBlocks = "/numblocks/";
 const pathBlock = "/block/";
 const pathRollup = "/rollup/";
+const methodPost = "POST";
 
 const initialize = () => {
     const numBlocksField = document.getElementById(idNumBlocks);
@@ -23,8 +27,15 @@ const initialize = () => {
         }
     }, 1000);
 
-    setInterval(async () => {
-        const blockResp = await fetch(pathBlock);
+    document.getElementById(idFormGetBlock).addEventListener(typeSubmit, async (event) => {
+        event.preventDefault();
+
+        const number = document.getElementById(idBlockNumber).value;
+
+        const blockResp = await fetch(pathBlock, {
+            method: methodPost,
+            body: number
+        });
 
         if (blockResp.ok) {
             const json = JSON.parse(await blockResp.text())
@@ -32,10 +43,11 @@ const initialize = () => {
         } else {
             blockArea.innerText = "Failed to fetch block. Cause: " + await blockResp.text()
         }
-    }, 1000);
 
-    setInterval(async () => {
-        const rollupResp = await fetch(pathRollup);
+        const rollupResp = await fetch(pathRollup, {
+            method: methodPost,
+            body: number
+        });
 
         if (rollupResp.ok) {
             const json = JSON.parse(await rollupResp.text())
@@ -43,7 +55,7 @@ const initialize = () => {
         } else {
             rollupArea.innerText = "Failed to fetch rollup. Cause: " + await rollupResp.text()
         }
-    }, 1000);
+    });
 }
 
 window.addEventListener(eventDomLoaded, initialize);
