@@ -31,8 +31,8 @@ import (
 
 const (
 	pathNumBlocks     = "/numblocks/"
-	pathHeadBlock     = "/headblock/"
-	pathHeadRollup    = "/headrollup/"
+	pathBlock         = "/block/"
+	pathRollup        = "/rollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
 	staticDir         = "static"
 	pathRoot          = "/"
@@ -66,8 +66,8 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
 	serveMux.HandleFunc(pathNumBlocks, o.getNumBlocks)      // Get the number of L1 blocks.
-	serveMux.HandleFunc(pathHeadBlock, o.getHeadBlock)      // Get the head L1 block.
-	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)    // Get the head rollup.
+	serveMux.HandleFunc(pathBlock, o.getBlock)              // Get the L1 block with the given number.
+	serveMux.HandleFunc(pathRollup, o.getRollup)            // Get the rollup with the given number.
 	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob) // Decrypt a transaction blob.
 
 	// Serves the web assets for the user interface.
@@ -94,7 +94,7 @@ func (o *Obscuroscan) Shutdown() {
 	}
 }
 
-// Retrieves the current number of L1 blocks.
+// Retrieves the number of existing L1 blocks.
 func (o *Obscuroscan) getNumBlocks(resp http.ResponseWriter, _ *http.Request) {
 	var headBlock *types.Header
 	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
@@ -112,8 +112,8 @@ func (o *Obscuroscan) getNumBlocks(resp http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// Retrieves the current block header for the Obscuro network.
-func (o *Obscuroscan) getHeadBlock(resp http.ResponseWriter, _ *http.Request) {
+// Retrieves the L1 block header with the given number.
+func (o *Obscuroscan) getBlock(resp http.ResponseWriter, _ *http.Request) {
 	var headBlock *types.Header
 	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
 	if err != nil {
@@ -133,8 +133,8 @@ func (o *Obscuroscan) getHeadBlock(resp http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// Retrieves the head rollup for the Obscuro network.
-func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
+// Retrieves the rollup with the given number.
+func (o *Obscuroscan) getRollup(resp http.ResponseWriter, _ *http.Request) {
 	// TODO - If required, consolidate the two calls below into a single RPCGetHeadRollup call to minimise round trips.
 	var headRollupHeader *common.Header
 	err := o.client.Call(&headRollupHeader, rpcclientlib.RPCGetCurrentRollupHead)

@@ -2,16 +2,16 @@
 
 const eventDomLoaded = "DOMContentLoaded";
 const idNumBlocks = "numBlocks";
-const idBlockHead = "headBlock";
-const idHeadRollup = "headRollup";
+const idBlock = "block";
+const idRollup = "rollup";
 const pathNumBlocks = "/numblocks/";
-const pathHeadBlock = "/headblock/";
-const pathHeadRollup = "/headrollup/";
+const pathBlock = "/block/";
+const pathRollup = "/rollup/";
 
 const initialize = () => {
     const numBlocksField = document.getElementById(idNumBlocks);
-    const blockHeadArea = document.getElementById(idBlockHead);
-    const headRollupArea = document.getElementById(idHeadRollup);
+    const blockArea = document.getElementById(idBlock);
+    const rollupArea = document.getElementById(idRollup);
 
     setInterval(async () => {
         const numBlocksResp = await fetch(pathNumBlocks);
@@ -24,24 +24,24 @@ const initialize = () => {
     }, 1000);
 
     setInterval(async () => {
-        const headBlockResp = await fetch(pathHeadBlock);
+        const blockResp = await fetch(pathBlock);
 
-        if (headBlockResp.ok) {
-            const json = JSON.parse(await headBlockResp.text())
-            blockHeadArea.innerText = JSON.stringify(json, null, "\t");
+        if (blockResp.ok) {
+            const json = JSON.parse(await blockResp.text())
+            blockArea.innerText = JSON.stringify(json, null, "\t");
         } else {
-            blockHeadArea.innerText = "Failed to fetch head block. Cause: " + await headBlockResp.text()
+            blockArea.innerText = "Failed to fetch block. Cause: " + await blockResp.text()
         }
     }, 1000);
 
     setInterval(async () => {
-        const headRollupResp = await fetch(pathHeadRollup);
+        const rollupResp = await fetch(pathRollup);
 
-        if (headRollupResp.ok) {
-            const json = JSON.parse(await headRollupResp.text())
-            headRollupArea.innerText = JSON.stringify(json, null, "\t");
+        if (rollupResp.ok) {
+            const json = JSON.parse(await rollupResp.text())
+            rollupArea.innerText = JSON.stringify(json, null, "\t");
         } else {
-            headRollupArea.innerText = "Failed to fetch head rollup. Cause: " + await headRollupResp.text()
+            rollupArea.innerText = "Failed to fetch rollup. Cause: " + await rollupResp.text()
         }
     }, 1000);
 }
