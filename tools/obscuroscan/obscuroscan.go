@@ -114,36 +114,50 @@ func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 
 // Retrieves the L1 block header with the given number.
 func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
-	number, err := readNumber(req)
+	body := req.Body
+	defer body.Close()
+	buffer := new(bytes.Buffer)
+	_, err := buffer.ReadFrom(body)
 	if err != nil {
-		logAndSendErr(resp, err.Error())
+		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
 		return
 	}
+	blockHashStr := buffer.String()
+	blockHash := gethcommon.HexToHash(blockHashStr)
 
 	var blockHeader *types.Header
-	err = o.client.Call(&blockHeader, rpcclientlib.RPCGetBlockHeaderByNumber, number)
+	err = o.client.Call(&blockHeader, rpcclientlib.RPCGetBlockHeaderByHash, blockHash)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve block %d. Cause: %s", number, err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve block with hash %s. Cause: %s", blockHash, err))
 		return
 	}
 
 	jsonBlock, err := json.Marshal(blockHeader)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return block %d to client. Cause: %s", number, err))
+		logAndSendErr(resp, fmt.Sprintf("could not return block to client. Cause: %s", err))
 		return
 	}
 	_, err = resp.Write(jsonBlock)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return block %d to client. Cause: %s", number, err))
+		logAndSendErr(resp, fmt.Sprintf("could not return block to client. Cause: %s", err))
 		return
 	}
 }
 
 // Retrieves the rollup with the given number.
 func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
-	number, err := readNumber(req)
+	body := req.Body
+	defer body.Close()
+	buffer := new(bytes.Buffer)
+	_, err := buffer.ReadFrom(body)
 	if err != nil {
-		logAndSendErr(resp, err.Error())
+		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
+		return
+	}
+	bufferStr := buffer.String()
+	number, err := strconv.Atoi(bufferStr)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not parse \"%s\" as an integer", bufferStr))
 		return
 	}
 
@@ -151,31 +165,31 @@ func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
 	var rollupHeader *common.Header
 	err = o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup header %d. Cause: %s", number, err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup with number %d. Cause: %s", number, err))
 		return
 	}
 
 	rollupHash := rollupHeader.Hash()
 	if rollupHash == (gethcommon.Hash{}) {
-		logAndSendErr(resp, fmt.Sprintf("rollup %d was retrieved but hash was nil", number))
+		logAndSendErr(resp, fmt.Sprintf("rollup was retrieved but hash was nil"))
 		return
 	}
 
 	var rollup *common.ExtRollup
 	err = o.client.Call(&rollup, rpcclientlib.RPCGetRollup, rollupHash)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup %d. Cause: %s", number, err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup. Cause: %s", err))
 		return
 	}
 
 	jsonRollup, err := json.Marshal(rollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return rollup %d to client. Cause: %s", number, err))
+		logAndSendErr(resp, fmt.Sprintf("could not return rollup to client. Cause: %s", err))
 		return
 	}
 	_, err = resp.Write(jsonRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return rollup %d to client. Cause: %s", number, err))
+		logAndSendErr(resp, fmt.Sprintf("could not return rollup to client. Cause: %s", err))
 		return
 	}
 }
@@ -244,21 +258,4 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
-}
-
-// Reads the number from the request's POST body.
-func readNumber(req *http.Request) (int, error) {
-	body := req.Body
-	defer body.Close()
-	buffer := new(bytes.Buffer)
-	_, err := buffer.ReadFrom(body)
-	if err != nil {
-		return 0, fmt.Errorf("could not read request body. Cause: %w", err)
-	}
-	bufferStr := buffer.String()
-	number, err := strconv.Atoi(bufferStr)
-	if err != nil {
-		return 0, fmt.Errorf("could not parse \"%s\" as an integer", bufferStr)
-	}
-	return number, nil
 }

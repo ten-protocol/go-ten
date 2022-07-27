@@ -20,7 +20,7 @@ const (
 
 	RPCGetID                   = "obscuro_getID"
 	RPCGetCurrentBlockHead     = "obscuro_getCurrentBlockHead"
-	RPCGetBlockHeaderByNumber  = "obscuro_getBlockHeaderByNumber"
+	RPCGetBlockHeaderByHash    = "obscuro_getBlockHeaderByHash"
 	RPCGetCurrentRollupHead    = "obscuro_getCurrentRollupHead"
 	RPCGetRollupHeader         = "obscuro_getRollupHeader"
 	RPCGetRollupHeaderByNumber = "obscuro_getRollupHeaderByNumber"

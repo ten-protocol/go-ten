@@ -9,6 +9,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+// TODO - Some methods return nil for an unfound block/rollup, while others return an error. Harmonise.
+
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.
 type ObscuroAPI struct {
 	host *Node
@@ -30,29 +32,13 @@ func (api *ObscuroAPI) GetCurrentBlockHead() *types.Header {
 	return api.host.nodeDB.GetCurrentBlockHead()
 }
 
-// GetBlockHeaderByNumber returns the header for the block with the given number.
-func (api *ObscuroAPI) GetBlockHeaderByNumber(number *big.Int) (*types.Header, error) {
-	err := fmt.Errorf("no block with number %d is stored", number.Int64())
-
-	// TODO - Provide a more efficient method on node DB to retrieve a block by number.
-	// We walk the chain back to the requested block.
-	blockHeader := api.host.nodeDB.GetCurrentBlockHead()
-	for {
-		cmp := blockHeader.Number.Cmp(number)
-		// We have found the block we're looking for.
-		if cmp == 0 {
-			return blockHeader, nil
-		}
-		// The current block has a lower number than we are looking for. We stop walking the chain and return an error.
-		if cmp == -1 {
-			return nil, err
-		}
-
-		blockHeader = api.host.nodeDB.GetBlockHeader(blockHeader.ParentHash)
-		if blockHeader == nil {
-			return nil, err
-		}
+// GetBlockHeaderByHash returns the header for the block with the given number.
+func (api *ObscuroAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
+	blockHeader := api.host.nodeDB.GetBlockHeader(blockHash)
+	if blockHeader == nil {
+		return nil, fmt.Errorf("no block with hash %s is stored", blockHash)
 	}
+	return blockHeader, nil
 }
 
 // GetCurrentRollupHead returns the current head rollup's header.
