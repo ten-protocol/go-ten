@@ -169,7 +169,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	// TODO fix this upstream on the decode
-	if result, found := respMap["result"]; found {
+	if result, found := respMap["result"]; found { // nolint
 		if resultMap, ok := result.(map[string]interface{}); ok {
 			if val, foundRoot := resultMap["root"]; foundRoot {
 				if val == "0x" {
