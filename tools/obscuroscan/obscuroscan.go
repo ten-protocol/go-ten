@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	pathNumBlocks     = "/numblocks/"
+	pathNumRollups    = "/numrollups/"
 	pathBlock         = "/block/"
 	pathRollup        = "/rollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
@@ -65,7 +65,7 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
-	serveMux.HandleFunc(pathNumBlocks, o.getNumBlocks)      // Get the number of L1 blocks.
+	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)    // Get the number of published rollups.
 	serveMux.HandleFunc(pathBlock, o.getBlock)              // Get the L1 block with the given number.
 	serveMux.HandleFunc(pathRollup, o.getRollup)            // Get the rollup with the given number.
 	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob) // Decrypt a transaction blob.
@@ -94,20 +94,20 @@ func (o *Obscuroscan) Shutdown() {
 	}
 }
 
-// Retrieves the number of existing L1 blocks.
-func (o *Obscuroscan) getNumBlocks(resp http.ResponseWriter, _ *http.Request) {
-	var headBlock *types.Header
-	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
+// Retrieves the number of published rollups.
+func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
+	var rollupHeader *common.Header
+	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return
 	}
 
-	numOfBlocks := headBlock.Number.Int64()
-	numOfBlocksStr := strconv.Itoa(int(numOfBlocks))
-	_, err = resp.Write([]byte(numOfBlocksStr))
+	numOfRollups := rollupHeader.Number.Int64()
+	numOfRollupsStr := strconv.Itoa(int(numOfRollups))
+	_, err = resp.Write([]byte(numOfRollupsStr))
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return number of blocks to client. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return number of rollups to client. Cause: %s", err))
 		return
 	}
 }

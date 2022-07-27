@@ -2,28 +2,28 @@
 
 const eventDomLoaded = "DOMContentLoaded";
 const typeSubmit = "submit";
-const idNumBlocks = "numBlocks";
+const idNumRollups = "numRollups";
 const idFormGetBlock = "form-get-block";
 const idBlockNumber = "blockNumber";
 const idBlock = "block";
 const idRollup = "rollup";
-const pathNumBlocks = "/numblocks/";
+const pathNumRollups = "/numrollups/";
 const pathBlock = "/block/";
 const pathRollup = "/rollup/";
 const methodPost = "POST";
 
 const initialize = () => {
-    const numBlocksField = document.getElementById(idNumBlocks);
+    const numRollupsField = document.getElementById(idNumRollups);
     const blockArea = document.getElementById(idBlock);
     const rollupArea = document.getElementById(idRollup);
 
     setInterval(async () => {
-        const numBlocksResp = await fetch(pathNumBlocks);
+        const numRollupsResp = await fetch(pathNumRollups);
 
-        if (numBlocksResp.ok) {
-            numBlocksField.innerText = await numBlocksResp.text();
+        if (numRollupsResp.ok) {
+            numRollupsField.innerText = await numRollupsResp.text();
         } else {
-            numBlocksField.innerText = "Failed to fetch number of blocks. Cause: " + await numBlocksResp.text()
+            numRollupsField.innerText = "Failed to fetch number of rollups. Cause: " + await numRollupsResp.text()
         }
     }, 1000);
 
