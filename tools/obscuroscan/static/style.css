@@ -13,6 +13,14 @@ a {
     color: white;
 }
 
+input {
+    color: white;
+    background-color: black;
+    font-family: sans-serif;
+    border: solid 1px white;
+    border-radius: 3px;
+}
+
 textarea {
     color: white;
     background-color: black;
@@ -28,7 +36,7 @@ button {
     border-radius: 3px;
 }
 
-/*Formats the block-decoder form.*/
 form  { display: table;      }
 label { display: table-cell; }
 input { display: table-cell; }
+textarea { display: table-cell; }
