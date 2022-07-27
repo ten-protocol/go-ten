@@ -672,12 +672,12 @@ func (a *Node) monitorBlocks() {
 			listener, subs = a.ethClient.BlockListener()
 
 			// catch up any missed blocks
-			var lastBlkNumber *big.Int
-			// get the latest known blk
-			lastBlk, err := a.ethClient.BlockByNumber(lastBlkNumber)
+			// get the tip blk
+			lastBlk, err := a.ethClient.BlockByNumber(nil)
 			if err != nil {
 				log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
 			}
+			log.Trace("catching up on missed blocks - lastKnownBlk: %s, tipBlk: %s", lastKnownBlkHash, lastBlk.Hash())
 
 			// iterate from the tip (last known block) to the last one known by the node
 			for lastBlk.Hash().Hex() != lastKnownBlkHash.Hex() {
@@ -689,6 +689,7 @@ func (a *Node) monitorBlocks() {
 				// issue the block to the ingestion channel
 				a.encodeAndIngest(lastBlk, blockParent)
 				lastBlk = blockParent
+				log.Trace("catching up on missed blocks - lastKnownBlk: %s, tipBlk: %s", lastKnownBlkHash, lastBlk.Hash())
 			}
 
 		case blkHeader := <-listener:
