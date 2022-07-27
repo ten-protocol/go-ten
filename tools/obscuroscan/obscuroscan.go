@@ -171,7 +171,7 @@ func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
 
 	rollupHash := rollupHeader.Hash()
 	if rollupHash == (gethcommon.Hash{}) {
-		logAndSendErr(resp, fmt.Sprintf("rollup was retrieved but hash was nil"))
+		logAndSendErr(resp, "rollup was retrieved but hash was nil")
 		return
 	}
 
