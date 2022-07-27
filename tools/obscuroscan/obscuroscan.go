@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -114,11 +113,15 @@ func (o *Obscuroscan) getNumBlocks(resp http.ResponseWriter, _ *http.Request) {
 }
 
 // Retrieves the L1 block header with the given number.
-func (o *Obscuroscan) getBlock(resp http.ResponseWriter, _ *http.Request) {
-	number := big.NewInt(10) // todo - joel - stop hardcoding this
+func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
+	number, err := readNumber(req)
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
+	}
 
 	var blockHeader *types.Header
-	err := o.client.Call(&blockHeader, rpcclientlib.RPCGetBlockHeaderByNumber, number)
+	err = o.client.Call(&blockHeader, rpcclientlib.RPCGetBlockHeaderByNumber, number)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve block %d. Cause: %s", number, err))
 		return
@@ -137,12 +140,16 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, _ *http.Request) {
 }
 
 // Retrieves the rollup with the given number.
-func (o *Obscuroscan) getRollup(resp http.ResponseWriter, _ *http.Request) {
-	number := big.NewInt(10) // todo - joel - stop hardcoding this
+func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
+	number, err := readNumber(req)
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
+	}
 
 	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
 	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
+	err = o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup header %d. Cause: %s", number, err))
 		return
@@ -181,7 +188,7 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 	buffer := new(bytes.Buffer)
 	_, err := buffer.ReadFrom(body)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read request body: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
 		return
 	}
 
@@ -227,7 +234,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 
 	jsonRollup, err := json.Marshal(cleartextTxs)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt transaction blob: %w", err)
+		return nil, fmt.Errorf("could not decrypt transaction blob. Cause: %w", err)
 	}
 
 	return jsonRollup, nil
@@ -237,4 +244,21 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
+}
+
+// Reads the number from the request's POST body.
+func readNumber(req *http.Request) (int, error) {
+	body := req.Body
+	defer body.Close()
+	buffer := new(bytes.Buffer)
+	_, err := buffer.ReadFrom(body)
+	if err != nil {
+		return 0, fmt.Errorf("could not read request body. Cause: %w", err)
+	}
+	bufferStr := buffer.String()
+	number, err := strconv.Atoi(bufferStr)
+	if err != nil {
+		return 0, fmt.Errorf("could not parse \"%s\" as an integer", bufferStr)
+	}
+	return number, nil
 }
