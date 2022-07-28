@@ -1,6 +1,6 @@
 FROM golang:1.17-alpine
 
-# Debug image which installs and runs delve
+# Debug image which installs and runs delve and runs the enclave package without eGo
 #
 # on the container:
 #   /data                    contains working files for the enclave
