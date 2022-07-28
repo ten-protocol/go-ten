@@ -63,8 +63,9 @@ func (c *obscuroWalletRPCClient) TransactionReceipt(hash gethcommon.Hash) (*type
 }
 
 func (c *obscuroWalletRPCClient) Nonce(address gethcommon.Address) (uint64, error) {
-	// TODO implement me
-	panic("implement me")
+	var result uint64
+	err := c.client.Call(&result, rpcclientlib.RPCNonce, address)
+	return result, err
 }
 
 func (c *obscuroWalletRPCClient) Info() Info {
