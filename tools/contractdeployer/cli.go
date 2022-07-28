@@ -41,7 +41,8 @@ func ParseConfig() *Config {
 	isL1Deployment := flag.Bool(isL1DeploymentName, defaultConfig.IsL1Deployment, isL1DeploymentUsage)
 	contractName := flag.String(contractNameName, defaultConfig.ContractName, contractNameUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKey, privateKeyUsage)
-	overrideChainID := flag.Int64(chainIDName, defaultConfig.ChainID.Int64(), chainIDUsage)
+	// if this flag has a non-zero value it will be used instead of the default chain IDs
+	overrideChainID := flag.Int64(chainIDName, 0, chainIDUsage)
 
 	flag.Parse()
 
@@ -49,11 +50,13 @@ func ParseConfig() *Config {
 	defaultConfig.NodePort = uint(*nodePort)
 	defaultConfig.IsL1Deployment = *isL1Deployment
 	defaultConfig.PrivateKey = *privateKeyStr
-	if *isL1Deployment {
+	if defaultConfig.IsL1Deployment {
 		// for L1 deployment we default the chain ID to the L1 chain (it will still be overridden if arg was set by caller)
 		defaultConfig.ChainID = defaultL1ChainId
 	}
-	defaultConfig.ChainID = big.NewInt(*overrideChainID)
+	if *overrideChainID != 0 {
+		defaultConfig.ChainID = big.NewInt(*overrideChainID)
+	}
 	defaultConfig.ContractName = *contractName
 
 	return defaultConfig

@@ -8,11 +8,13 @@ help_and_exit() {
     echo ""
     echo "Usage: $(basename "${0}") --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
     echo ""
-    echo "  l1host             *Required* Set the l1 host address"
+    echo "  l2host             *Required* Set the l2 host address"
     echo ""
-    echo "  pkstring           *Required* Set the pkstring to deploy contracts"
+    echo "  obxpkstring           *Required* Set the pkstring to deploy OBX contract"
     echo ""
-    echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
+    echo "  ethpkstring           *Required* Set the pkstring to deploy ETH contract"
+    echo ""
+    echo "  l2port             *Optional* Set the l2 port. Defaults to 10000"
     echo ""
     echo ""
     echo ""
@@ -47,7 +49,7 @@ do
 done
 
 # ensure required fields
-if [[ -z ${l1host:-} || -z ${obxpkstring:-} || -z ${ethpkstring:-}  ]];
+if [[ -z ${l2host:-} || -z ${obxpkstring:-} || -z ${ethpkstring:-}  ]];
 then
     help_and_exit
 fi
@@ -55,21 +57,23 @@ fi
 # deploy contracts to the obscuro network
 echo "Deploying OBX ERC20 contract to the obscuro network..."
 docker network create --driver bridge node_network || true
-docker run --name=contractdeployer \
+docker run --name=obxL2deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
-    --l2NodeHost=${l2host} \
-    --l2NodePort=${l2port} \
+    --nodeHost=${l2host} \
+    --nodePort=${l2port} \
+    --contractName="ERC20" \
     --privateKey=${obxpkstring}
 
 echo "Deploying ETH ERC20 contract to the obscuro network..."
 docker network create --driver bridge node_network || true
-docker run --name=contractdeployer \
+docker run --name=ethL2deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
-    --l2NodeHost=${l2host} \
-    --l2NodePort=${l2port} \
+    --nodeHost=${l2host} \
+    --nodePort=${l2port} \
+    --contractName="ERC20" \
     --privateKey=${ethpkstring}
 

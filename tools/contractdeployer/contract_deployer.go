@@ -2,6 +2,7 @@ package contractdeployer
 
 // TODO we might merge this with the network manager package
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
@@ -29,6 +30,8 @@ type ContractDeployer struct {
 }
 
 func NewContractDeployer(config *Config) (*ContractDeployer, error) {
+	cfgStr, _ := json.MarshalIndent(config, "", "  ")
+	fmt.Printf("Preparing contract deployer with config: %s\n", cfgStr)
 	wallet, err := setupWallet(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup wallet - %w", err)
@@ -52,7 +55,7 @@ func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 func (cd *ContractDeployer) Run() error {
 	nonce, err := cd.client.Nonce(cd.wallet.Address())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch wallet nonce: %w", err)
 	}
 	cd.wallet.SetNonce(nonce)
 
@@ -65,12 +68,12 @@ func (cd *ContractDeployer) Run() error {
 
 	signedTx, err := cd.wallet.SignTransaction(&deployContractTx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to sign contract deploy transaction: %w", err)
 	}
 
 	err = cd.client.SendTransaction(signedTx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send contract deploy transaction: %w", err)
 	}
 
 	var start time.Time
