@@ -55,6 +55,43 @@
     </div>
 </div>
 
+<div class="container">
+    <div class="card shadow p-3 mb-5 bg-body rounded">
+        <div class="card-body">
+            <h2 class="card-title">Decrypt transaction blobs</h2>
+
+            <p>
+                Note that decrypting transaction blobs is only possible on testnet, for which the rollup encryption key
+                is
+                long-lived and well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or
+                anything -
+                other than the Obscuro enclaves.
+            </p>
+
+            <hr>
+
+            <form id="form-decrypt-tx-blob">
+                <p>
+                    <label for="encryptedTxBlob">Transaction blob to decrypt:</label>
+                </p>
+
+                <p>
+                    <textarea rows="10" cols="80" id="encryptedTxBlob"></textarea>
+                </p>
+
+                <p>
+                    <button type="submit" class="btn btn-outline-dark">Submit</button>
+                </p>
+            </form>
+
+            <p>
+                Decrypted transactions:
+            <pre id="decryptedTxs">N/A</pre>
+            </p>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
         crossorigin="anonymous"></script>

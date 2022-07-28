@@ -10,10 +10,10 @@
 
 <body>
 
-<h2>Decrypt transaction blobs retrieved from the rollups</h2>
+<h2>Decrypt transaction blobs</h2>
 
 <p>
-    Note that decrypting transaction blobs is only possible on testnet, for which the rollup encryption key is
+    Decrypting transaction blobs is only possible on testnet, for which the rollup encryption key is
     long-lived and well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or anything -
     other than the Obscuro enclaves.
 </p>
@@ -22,7 +22,7 @@
 
 <form id="form-decrypt-tx-blob">
     <p>
-        <label>Transaction blob to decrypt (encoded in Base64):</label>
+        <label>Transaction blob to decrypt:</label>
         <textarea rows="10" cols="80" id="encryptedTxBlob"></textarea>
     </p>
 
