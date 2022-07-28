@@ -66,10 +66,15 @@ TODO
   * TALK ABOUT BENEFIT OF SHARED ARCH + LIBS FOR PUBLIC + PRIVATE EXPLORERS
   * TALK ABOUT BENEFIT OF REUSING EXISTING STACK (GOLANG)
 
-### Fork BlockScout for the public block explorer
+### Fork an existing block explorer for the public block explorer
 
-[BlockScout](https://github.com/blockscout/blockscout) is an open-source block explorer, used by Secret Network among 
-others (see [here](https://explorer.secret.dev/)).
+The only suitable, open-source block explorer that we are aware of is 
+[BlockScout](https://github.com/blockscout/blockscout).
+
+#### Fork BlockScout
+
+BlockScout is an open-source block explorer, used by Secret Network among others (see 
+[here](https://explorer.secret.dev/)).
 
 In theory, this would give us a block explorer "for free". In practice, we'd need to customise BlockScout to some 
 extent because it cannot handle the fact that some information about the Obscuro chain is returned in an encrypted 
