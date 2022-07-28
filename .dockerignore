@@ -1,0 +1,47 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+.vendor/
+
+# GoLand files
+.idea/
+go-obscuro.iml
+
+# Simulation files
+.build/
+simulation_result.txt
+
+# macOS files
+**/.DS_Store
+
+# generated binaries
+integration/simulation/cmd/cmd
+go/host/main/main
+go/enclave/main/main
+tools/walletextension/main/main
+tools/walletextension/main/wallet_extension
+tools/networkmanager/main/main
+tools/obscuroscan/main/main
+
+
+# Logs files
+**/enclave_logs.txt
+**/host_logs.txt
+**/wallet_extension_logs.txt
+
+# Temp env files
+testnet/.env
+
+# Docs build files
+docs/_site
