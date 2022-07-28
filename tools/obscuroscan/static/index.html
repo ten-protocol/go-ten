@@ -32,14 +32,11 @@
 
             <p>
             <form id="form-get-rollup">
-                <p>
-                    <label for="rollupNumber">Fetch rollup:</label>
-                    <input id="rollupNumber" placeholder="Rollup number">
-                </p>
-
-                <p>
-                    <button type="submit" class="btn btn-outline-dark">Submit</button>
-                </p>
+                <div class="mb-3">
+                    <input class="form-control" id="rollupNumber"
+                           placeholder="Search by rollup number or transaction hash">
+                </div>
+                <button type="submit" class="btn btn-outline-dark">Submit</button>
             </form>
             <hr>
 
@@ -67,14 +64,13 @@
             </p>
 
             <form id="form-decrypt-tx-blob">
-                <p>
-                    <textarea rows="5" cols="80" id="encryptedTxBlob" placeholder="Transaction blob to decrypt"></textarea>
-                </p>
-
-                <p>
-                    <button type="submit" class="btn btn-outline-dark">Submit</button>
-                </p>
+                <div class="mb-3">
+                    <textarea class="form-control" rows="5" cols="80" id="encryptedTxBlob"
+                              placeholder="Transaction blob to decrypt"></textarea>
+                </div>
+                <button type="submit" class="btn btn-outline-dark">Submit</button>
             </form>
+            <hr>
 
             <p>
                 Decrypted transactions:
