@@ -3,12 +3,12 @@ package host
 import (
 	"context"
 	"errors"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
