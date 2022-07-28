@@ -154,32 +154,24 @@ func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
 		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
 		return
 	}
-	bufferStr := buffer.String()
-	number, err := strconv.Atoi(bufferStr)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not parse \"%s\" as an integer", bufferStr))
-		return
-	}
-
-	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
-	var rollupHeader *common.Header
-	err = o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup with number %d. Cause: %s", number, err))
-		return
-	}
-
-	rollupHash := rollupHeader.Hash()
-	if rollupHash == (gethcommon.Hash{}) {
-		logAndSendErr(resp, "rollup was retrieved but hash was nil")
-		return
-	}
 
 	var rollup *common.ExtRollup
-	err = o.client.Call(&rollup, rpcclientlib.RPCGetRollup, rollupHash)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup. Cause: %s", err))
-		return
+	if strings.HasPrefix(buffer.String(), "0x") {
+		// A "0x" prefix indicates that we should retrieve the rollup by transaction hash.
+		txHash := gethcommon.HexToHash(buffer.String())
+
+		err = o.client.Call(&rollup, rpcclientlib.RPCGetRollupForTx, txHash)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup. Cause: %s", err))
+			return
+		}
+	} else {
+		// Otherwise, we treat the input as a rollup number.
+		rollup, err = o.getRollupByNumber(buffer.String())
+		if err != nil {
+			logAndSendErr(resp, err.Error())
+			return
+		}
 	}
 
 	jsonRollup, err := json.Marshal(rollup)
@@ -217,6 +209,33 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 		logAndSendErr(resp, fmt.Sprintf("could not write decrypted transactions to client. Cause: %s", err))
 		return
 	}
+}
+
+// Parses numberStr as a number and returns the rollup with that number.
+func (o *Obscuroscan) getRollupByNumber(numberStr string) (*common.ExtRollup, error) {
+	number, err := strconv.Atoi(numberStr)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse \"%s\" as an integer", numberStr)
+	}
+
+	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
+	var rollupHeader *common.Header
+	err = o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", number, err)
+	}
+
+	rollupHash := rollupHeader.Hash()
+	if rollupHash == (gethcommon.Hash{}) {
+		return nil, fmt.Errorf("rollup was retrieved but hash was nil")
+	}
+
+	var rollup *common.ExtRollup
+	err = o.client.Call(&rollup, rpcclientlib.RPCGetRollup, rollupHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup. Cause: %w", err)
+	}
+	return rollup, nil
 }
 
 // Decrypts the transaction blob and returns it as JSON.
