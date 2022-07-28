@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
@@ -29,8 +30,9 @@ import (
 )
 
 const (
-	pathHeadBlock     = "/headblock/"
-	pathHeadRollup    = "/headrollup/"
+	pathNumRollups    = "/numrollups/"
+	pathBlock         = "/block/"
+	pathRollup        = "/rollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
 	staticDir         = "static"
 	pathRoot          = "/"
@@ -63,12 +65,10 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
-	// Handle requests for block head height.
-	serveMux.HandleFunc(pathHeadBlock, o.getBlockHead)
-	// Handle requests for the head rollup.
-	serveMux.HandleFunc(pathHeadRollup, o.getHeadRollup)
-	// Handle requests to decrypt a transaction blob.
-	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)
+	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)    // Get the number of published rollups.
+	serveMux.HandleFunc(pathBlock, o.getBlock)              // Get the L1 block with the given number.
+	serveMux.HandleFunc(pathRollup, o.getRollup)            // Get the rollup with the given number.
+	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob) // Decrypt a transaction blob.
 
 	// Serves the web assets for the user interface.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
@@ -94,58 +94,102 @@ func (o *Obscuroscan) Shutdown() {
 	}
 }
 
-// Retrieves the current block header for the Obscuro network.
-func (o *Obscuroscan) getBlockHead(resp http.ResponseWriter, _ *http.Request) {
-	var headBlock *types.Header
-	err := o.client.Call(&headBlock, rpcclientlib.RPCGetCurrentBlockHead)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head block. Cause: %s", err))
-		return
-	}
-
-	jsonBlock, err := json.Marshal(headBlock)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head block to client. Cause: %s", err))
-		return
-	}
-	_, err = resp.Write(jsonBlock)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head block to client. Cause: %s", err))
-		return
-	}
-}
-
-// Retrieves the head rollup for the Obscuro network.
-func (o *Obscuroscan) getHeadRollup(resp http.ResponseWriter, _ *http.Request) {
-	// TODO - If required, consolidate the two calls below into a single RPCGetHeadRollup call to minimise round trips.
-	var headRollupHeader *common.Header
-	err := o.client.Call(&headRollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup header. Cause: %s", err))
-		return
-	}
-
-	headRollupHash := headRollupHeader.Hash()
-	if headRollupHash == (gethcommon.Hash{}) {
-		logAndSendErr(resp, "head rollup was retrieved but hash was nil")
-		return
-	}
-
-	var headRollup *common.ExtRollup
-	err = o.client.Call(&headRollup, rpcclientlib.RPCGetRollup, headRollupHash)
+// Retrieves the number of published rollups.
+func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
+	var rollupHeader *common.Header
+	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
 		return
 	}
 
-	jsonRollup, err := json.Marshal(headRollup)
+	numOfRollups := rollupHeader.Number.Int64()
+	numOfRollupsStr := strconv.Itoa(int(numOfRollups))
+	_, err = resp.Write([]byte(numOfRollupsStr))
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return number of rollups to client. Cause: %s", err))
+		return
+	}
+}
+
+// Retrieves the L1 block header with the given number.
+func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
+	body := req.Body
+	defer body.Close()
+	buffer := new(bytes.Buffer)
+	_, err := buffer.ReadFrom(body)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
+		return
+	}
+	blockHashStr := buffer.String()
+	blockHash := gethcommon.HexToHash(blockHashStr)
+
+	var blockHeader *types.Header
+	err = o.client.Call(&blockHeader, rpcclientlib.RPCGetBlockHeaderByHash, blockHash)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve block with hash %s. Cause: %s", blockHash, err))
+		return
+	}
+
+	jsonBlock, err := json.Marshal(blockHeader)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return block to client. Cause: %s", err))
+		return
+	}
+	_, err = resp.Write(jsonBlock)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return block to client. Cause: %s", err))
+		return
+	}
+}
+
+// Retrieves the rollup with the given number.
+func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
+	body := req.Body
+	defer body.Close()
+	buffer := new(bytes.Buffer)
+	_, err := buffer.ReadFrom(body)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
+		return
+	}
+	bufferStr := buffer.String()
+	number, err := strconv.Atoi(bufferStr)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not parse \"%s\" as an integer", bufferStr))
+		return
+	}
+
+	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
+	var rollupHeader *common.Header
+	err = o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup with number %d. Cause: %s", number, err))
+		return
+	}
+
+	rollupHash := rollupHeader.Hash()
+	if rollupHash == (gethcommon.Hash{}) {
+		logAndSendErr(resp, "rollup was retrieved but hash was nil")
+		return
+	}
+
+	var rollup *common.ExtRollup
+	err = o.client.Call(&rollup, rpcclientlib.RPCGetRollup, rollupHash)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup. Cause: %s", err))
+		return
+	}
+
+	jsonRollup, err := json.Marshal(rollup)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return rollup to client. Cause: %s", err))
 		return
 	}
 	_, err = resp.Write(jsonRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return head rollup to client. Cause: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not return rollup to client. Cause: %s", err))
 		return
 	}
 }
@@ -158,7 +202,7 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 	buffer := new(bytes.Buffer)
 	_, err := buffer.ReadFrom(body)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read request body: %s", err))
+		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
 		return
 	}
 
@@ -204,7 +248,7 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 
 	jsonRollup, err := json.Marshal(cleartextTxs)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt transaction blob: %w", err)
+		return nil, fmt.Errorf("could not decrypt transaction blob. Cause: %w", err)
 	}
 
 	return jsonRollup, nil

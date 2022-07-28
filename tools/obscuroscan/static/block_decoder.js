@@ -1,8 +1,8 @@
 "use strict";
 
 const eventDomLoaded = "DOMContentLoaded";
-const typeSubmit = "submit"
-const idFormDecryptTxBlob = "form-decrypt-tx-blob"
+const typeSubmit = "submit";
+const idFormDecryptTxBlob = "form-decrypt-tx-blob";
 const idDecryptedTxs = "decryptedTxs";
 const idEncryptedTxBlob = "encryptedTxBlob";
 const pathDecryptTxBlob = "/decrypttxblob/";
