@@ -91,6 +91,31 @@ func (api *ObscuroAPI) AddViewingKey(viewingKeyBytes []byte, signature []byte) e
 	return api.host.EnclaveClient.AddViewingKey(viewingKeyBytes, signature)
 }
 
+// GetRollupForTx returns the rollup containing a given transaction hash. Required for ObscuroScan.
+func (api *ObscuroAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup, error) {
+	// TODO - Provide a more efficient method on node DB to retrieve a rollup by transaction hash.
+	// We walk the chain back until we find the requested transaction hash.
+	rollupHeader := api.host.nodeDB.GetCurrentRollupHead()
+	rollup, err := api.host.EnclaveClient.GetRollup(rollupHeader.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("could not find rollup containing transaction. Cause: %w", err)
+	}
+	for {
+		// We check whether the transaction is in the current rollup, and return it if so.
+		for _, rollupTxHash := range rollup.TxHashes {
+			if rollupTxHash == txHash {
+				return rollup, nil
+			}
+		}
+
+		// We get the next rollup in the chain, to be checked in turn.
+		rollup, err = api.host.EnclaveClient.GetRollup(rollup.Header.ParentHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not find rollup containing transaction. Cause: %w", err)
+		}
+	}
+}
+
 // StopHost gracefully stops the host.
 func (api *ObscuroAPI) StopHost() {
 	go api.host.Stop()
