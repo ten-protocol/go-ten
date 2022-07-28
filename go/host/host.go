@@ -667,7 +667,8 @@ func (a *Node) monitorBlocks() {
 	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
 		select {
 		case err := <-subs.Err():
-			log.Error("Restarting L1 block monitoring. Errored with: %s", err)
+			log.Error("L1 block monitoring error: %s", err)
+			log.Info("Restarting L1 block Monitoring...")
 			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
 			listener, subs = a.ethClient.BlockListener()
 
@@ -677,7 +678,7 @@ func (a *Node) monitorBlocks() {
 			if err != nil {
 				log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
 			}
-			log.Trace("catching up on missed blocks - lastKnownBlk: %s, tipBlk: %s", lastKnownBlkHash, lastBlk.Hash())
+			log.Debug("catching up on missed blocks - lastKnownBlk: %s, tipBlk: %s", lastKnownBlkHash, lastBlk.Hash())
 
 			// iterate from the tip (last known block) to the last one known by the node
 			for lastBlk.Hash().Hex() != lastKnownBlkHash.Hex() {
@@ -689,7 +690,7 @@ func (a *Node) monitorBlocks() {
 				// issue the block to the ingestion channel
 				a.encodeAndIngest(lastBlk, blockParent)
 				lastBlk = blockParent
-				log.Trace("catching up on missed blocks - lastKnownBlk: %s, tipBlk: %s", lastKnownBlkHash, lastBlk.Hash())
+				log.Debug("catching up on missed blocks - lastKnownBlk: %s, tipBlk: %s", lastKnownBlkHash, lastBlk.Hash())
 			}
 
 		case blkHeader := <-listener:
