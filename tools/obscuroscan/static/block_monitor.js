@@ -23,7 +23,7 @@ const initialize = () => {
         const numRollupsResp = await fetch(pathNumRollups);
 
         if (numRollupsResp.ok) {
-            numRollupsField.innerText = "Number of rollups: " + await numRollupsResp.text();
+            numRollupsField.innerText = "Total rollups: " + await numRollupsResp.text();
         } else {
             numRollupsField.innerText = "Failed to fetch number of rollups. Cause: " + await numRollupsResp.text()
         }
