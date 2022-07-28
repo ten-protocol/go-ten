@@ -7,9 +7,13 @@ const idFormGetRollup = "form-get-rollup";
 const idRollupNumber = "rollupNumber";
 const idBlock = "block";
 const idRollup = "rollup";
+const idFormDecryptTxBlob = "form-decrypt-tx-blob";
+const idDecryptedTxs = "decryptedTxs";
+const idEncryptedTxBlob = "encryptedTxBlob";
 const pathNumRollups = "/numrollups/";
 const pathBlock = "/block/";
 const pathRollup = "/rollup/";
+const pathDecryptTxBlob = "/decrypttxblob/";
 const methodPost = "POST";
 const jsonKeyHeader = "Header";
 const jsonKeyL1Proof = "L1Proof";
@@ -18,12 +22,13 @@ const initialize = () => {
     const numRollupsField = document.getElementById(idNumRollups);
     const blockArea = document.getElementById(idBlock);
     const rollupArea = document.getElementById(idRollup);
+    const decryptedTxsArea = document.getElementById(idDecryptedTxs);
 
     setInterval(async () => {
         const numRollupsResp = await fetch(pathNumRollups);
 
         if (numRollupsResp.ok) {
-            numRollupsField.innerText = await numRollupsResp.text();
+            numRollupsField.innerText = "Total rollups: " + await numRollupsResp.text();
         } else {
             numRollupsField.innerText = "Failed to fetch number of rollups. Cause: " + await numRollupsResp.text()
         }
@@ -59,6 +64,23 @@ const initialize = () => {
             blockArea.innerText = "Failed to fetch block. Cause: " + await blockResp.text()
         }
     });
+
+    document.getElementById(idFormDecryptTxBlob).addEventListener(typeSubmit, async (event) => {
+        event.preventDefault();
+
+        const encryptedTxBlob = document.getElementById(idEncryptedTxBlob).value
+        const decryptTxBlobResp = await fetch(pathDecryptTxBlob, {
+            method: methodPost,
+            body: encryptedTxBlob
+        });
+
+        if (decryptTxBlobResp.ok) {
+            const json = JSON.parse(await decryptTxBlobResp.text())
+            decryptedTxsArea.innerText = JSON.stringify(json, null, "\t");
+        } else {
+            decryptedTxsArea.innerText = "Failed to decrypt transaction blob. Cause: " + await decryptTxBlobResp.text()
+        }
+    })
 }
 
 window.addEventListener(eventDomLoaded, initialize);
