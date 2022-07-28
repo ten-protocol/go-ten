@@ -111,13 +111,12 @@ func setupWallet(cfg *Config) (wallet.Wallet, error) {
 	return wallet.NewInMemoryWalletFromPK(cfg.ChainID, privateKey), nil
 }
 
-func setupClient(cfg *Config, _ wallet.Wallet) (ethadapter.EthClient, error) {
-	// connect to the l1
-	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"))
-	if err != nil {
-		return nil, err
+func setupClient(cfg *Config, wal wallet.Wallet) (ethadapter.EthClient, error) {
+	if cfg.IsL1Deployment {
+		// return a connection to the l1
+		return ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"))
 	}
-	return client, nil
+	return ethadapter.NewObscuroRPCClient(cfg.NodeHost, cfg.NodePort, wal)
 }
 
 func getContractCode(cfg *Config) ([]byte, error) {
