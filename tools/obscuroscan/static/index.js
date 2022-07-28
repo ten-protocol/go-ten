@@ -4,7 +4,7 @@ const eventDomLoaded = "DOMContentLoaded";
 const typeSubmit = "submit";
 const idNumRollups = "numRollups";
 const idFormGetRollup = "form-get-rollup";
-const idRollupNumber = "rollupNumber";
+const idRollupID = "rollupID";
 const idBlock = "block";
 const idRollup = "rollup";
 const idFormDecryptTxBlob = "form-decrypt-tx-blob";
@@ -37,7 +37,7 @@ const initialize = () => {
     document.getElementById(idFormGetRollup).addEventListener(typeSubmit, async (event) => {
         event.preventDefault();
 
-        const rollupNumber = document.getElementById(idRollupNumber).value;
+        const rollupNumber = document.getElementById(idRollupID).value;
         const rollupResp = await fetch(pathRollup, {
             method: methodPost,
             body: rollupNumber

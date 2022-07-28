@@ -33,7 +33,7 @@
             <p>
             <form id="form-get-rollup">
                 <div class="mb-3">
-                    <input class="form-control" id="rollupNumber"
+                    <input class="form-control" id="rollupID"
                            placeholder="Search by rollup number or transaction hash">
                 </div>
                 <button type="submit" class="btn btn-outline-dark">Submit</button>
@@ -58,9 +58,9 @@
             <h2 class="card-title">Decrypt transaction blobs</h2>
 
             <p>
-                Note that decrypting transaction blobs is only possible on testnet, for which the rollup encryption key
-                is long-lived and well-known. On mainnet, rollups will use rotating keys that are not known to anyone -
-                or anything - other than the Obscuro enclaves.
+                Decrypting transaction blobs is only possible on testnet, for which the rollup encryption key is
+                long-lived and well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or
+                anything - other than the Obscuro enclaves.
             </p>
 
             <form id="form-decrypt-tx-blob">
