@@ -267,7 +267,7 @@ message ExtRollupMsg {
 message HeaderMsg {
   bytes ParentHash = 1;
   bytes Node = 2;
-  uint64 Nonce = 3;
+  bytes Nonce = 3;
   bytes Proof = 4;
   bytes Root = 5;
   bytes TxHash = 6;
@@ -278,6 +278,15 @@ message HeaderMsg {
   bytes R = 11;
   bytes S = 12;
   repeated WithdrawalMsg Withdrawals = 13;
+  bytes UncleHash = 14;
+  bytes Coinbase = 15;
+  uint64 Difficulty = 16;
+  uint64 GasLimit = 17;
+  uint64 GasUsed = 18;
+  uint64 Time = 19;
+  bytes MixDigest = 20;
+  uint64 BaseFee = 21;
+  uint64 RollupNonce = 22;
 }
 
 message WithdrawalMsg {
