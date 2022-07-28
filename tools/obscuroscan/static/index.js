@@ -34,8 +34,6 @@ const initialize = () => {
     }, 1000);
 
     document.getElementById(idFormGetRollup).addEventListener(typeSubmit, async (event) => {
-        event.preventDefault();
-
         const rollupNumber = document.getElementById(idRollupID).value;
         const rollupResp = await fetch(pathRollup, {
             method: methodPost,

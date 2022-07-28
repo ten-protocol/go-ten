@@ -11,10 +11,7 @@
     <script type="text/javascript" src="index.js"></script>
 </head>
 
-<!-- This padding is required to prevent the navbar from overlapping the page contents. -->
-<body style="padding-top: 100px;">
-
-<nav class="navbar fixed-top bg-dark">
+<nav class="navbar bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="#">
             <img src="logo.png" alt="" height="36">
@@ -22,7 +19,7 @@
     </div>
 </nav>
 
-<div class="container">
+<div class="container" style="padding-top: 25px;">
     <div class="card shadow p-3 mb-5 bg-body rounded">
         <div class="card-body">
             <h2 class="card-title">Obscuro rollup viewer</h2>
@@ -30,7 +27,7 @@
             <div id="numRollups">Total rollups: Fetching...</div>
 
             <p>
-            <form id="form-get-rollup">
+            <form action="#result" id="form-get-rollup">
                 <div class="mb-3">
                     <input class="form-control" id="rollupID"
                            placeholder="Search by rollup number or transaction hash">
@@ -39,20 +36,19 @@
             </form>
             <hr>
 
-            <p>
-                Obscuro rollup:
+            <!-- We jump down to this div after requesting a new rollup, to display the results. -->
+            <div id="result"></div>
+
+            <h5>Obscuro rollup</h5>
             <pre id="rollup">N/A</pre>
             <hr>
 
-            <p>
-                L1 block:
+            <h5>L1 block</h5>
             <pre id="block">N/A</pre>
             <hr>
 
-            <p>
-                Decrypted transaction blob:
+            <h5>Decrypted transaction blob</h5>
             <pre id="decryptedTxs">N/A</pre>
-            </p>
 
             <p>
             <div class="alert alert-secondary" role="alert">
