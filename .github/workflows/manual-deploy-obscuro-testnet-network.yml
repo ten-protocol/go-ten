@@ -242,4 +242,4 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-l2-contracts.sh --l2host=ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} --obxpkstring=${{ secrets.OBX_DEPLOY_PKSTR }} --ethpkstring=${{ secrets.ETH_DEPLOY_PKSTR }}
+          ./testnet/testnet-deploy-l2-contracts.sh --l2host=ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }}
