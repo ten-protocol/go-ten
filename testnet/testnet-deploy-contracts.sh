@@ -61,6 +61,7 @@ docker run --name=mgmtcontractdeployer \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
+    --l1Deployment \
     --contractName="MGMT" \
     --privateKey=${pkstring}
 # storing the contract address to the .env file (note: this first contract creates/overwrites the .env file)
