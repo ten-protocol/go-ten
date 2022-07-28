@@ -15,11 +15,15 @@ that also displays private information belonging to that user.
   * Anyone can access the public block explorer via their browser
   * The public block explorer does not decrypt any information using viewing keys
   * The public block explorer displays the following information:
-    * Encrypted transactions in mempool
-    * Encrypted transactions validated
-    * Fees, timestamps and other metadata [TODO: CLARIFY WHAT OTHER METADATA]
+    * Encrypted transactions in mempool [TODO: IS THIS A NUMBER OR A LIST?]
+    * Encrypted transactions validated [TODO: IS THIS A NUMBER OR A LIST?]
+    * Transaction metadata:
+      * Fees 
+      * Timestamps
+      * Block number
+      * Transaction status
     * (Should) Average number of transactions per rollup
-    * (Should) Any contracts that have been deployed [TODO: CLARIFY WHAT SHOULD BE SHOWN]
+    * (Should) The bytecode and optionally sourcecode (via GitHub) of any deployed contracts
   * [TODO: WHAT DECRYPTION CAPABILITIES FOR THE PUBLIC BLOCK EXPLORER? ANY REQUIREMENT TO EMBED THESE CAPABILITIES IN THE TOOL?]
 * Private block explorer
   * The private block explorer is run locally
@@ -34,7 +38,7 @@ that also displays private information belonging to that user.
       * State [TODO: CLARIFY WHAT THIS IS]
       * Timestamp
     * Number of transactions
-    * Any contracts that have been deployed [TODO: CLARIFY WHAT SHOULD BE SHOWN, AND WHETHER THIS IS JUST FOR CURRENT USER]
+    * The bytecode and optionally sourcecode (via GitHub) of any deployed contracts [TODO: CLARIFY WHETHER THIS IS JUST FOR CURRENT USER]
     * Ability to search for transactions by: [TODO: ADD SOME REQUIREMENT HERE AROUND SPEED AND NOT RESCANNING ENTIRE BLOCKCHAIN - I ASSUME THIS IS WHERE A LOT OF COMPLEXITY COMES IN?]
       * Address
       * Transaction hash
