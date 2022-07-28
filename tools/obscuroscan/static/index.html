@@ -48,33 +48,19 @@
             <p>
                 L1 block:
             <pre id="block">N/A</pre>
-        </div>
-    </div>
-</div>
-
-<div class="container">
-    <div class="card shadow p-3 mb-5 bg-body rounded">
-        <div class="card-body">
-            <h2 class="card-title">Decrypt transaction blobs</h2>
-
-            <p>
-                Decrypting transaction blobs is only possible on testnet, for which the rollup encryption key is
-                long-lived and well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or
-                anything - other than the Obscuro enclaves.
-            </p>
-
-            <form id="form-decrypt-tx-blob">
-                <div class="mb-3">
-                    <textarea class="form-control" rows="5" cols="80" id="encryptedTxBlob"
-                              placeholder="Transaction blob to decrypt"></textarea>
-                </div>
-                <button type="submit" class="btn btn-outline-dark">Submit</button>
-            </form>
             <hr>
 
             <p>
-                Decrypted transactions:
+                Decrypted transaction blob:
             <pre id="decryptedTxs">N/A</pre>
+            </p>
+
+            <p>
+            <div class="alert alert-secondary" role="alert">
+                Decrypting transaction blobs is only possible on testnet, where the rollup encryption key is
+                long-lived and well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or
+                anything - other than the Obscuro enclaves.
+            </div>
             </p>
         </div>
     </div>
