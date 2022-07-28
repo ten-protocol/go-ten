@@ -2,6 +2,8 @@ package ethadapter
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -10,7 +12,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
-	"math/big"
 )
 
 // obscuroWalletRPCClient implements the EthClient interface, it's bound to a single wallet (viewing key and address)
@@ -24,7 +25,7 @@ type obscuroWalletRPCClient struct {
 	wallet wallet.Wallet
 }
 
-//NewObscuroRPCClient creates an obscuro RPC client for a given wallet, it will create and register a viewing key for the wallet as part of this setup
+// NewObscuroRPCClient creates an obscuro RPC client for a given wallet, it will create and register a viewing key for the wallet as part of this setup
 func NewObscuroRPCClient(ipaddress string, port uint, wallet wallet.Wallet) (EthClient, error) {
 	client := rpcclientlib.NewClient(fmt.Sprintf("%s:%d", ipaddress, port))
 	viewkey.GenerateAndRegisterViewingKey(client, wallet)
@@ -35,12 +36,12 @@ func NewObscuroRPCClient(ipaddress string, port uint, wallet wallet.Wallet) (Eth
 }
 
 func (c *obscuroWalletRPCClient) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -62,42 +63,42 @@ func (c *obscuroWalletRPCClient) TransactionReceipt(hash gethcommon.Hash) (*type
 }
 
 func (c *obscuroWalletRPCClient) Nonce(address gethcommon.Address) (uint64, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) Info() Info {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) FetchHeadBlock() *types.Block {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) RPCBlockchainFeed() []*types.Block {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (c *obscuroWalletRPCClient) CallContract(msg ethereum.CallMsg) ([]byte, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -106,7 +107,7 @@ func (c *obscuroWalletRPCClient) Stop() {
 }
 
 func (c *obscuroWalletRPCClient) EthClient() *ethclient.Client {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 

@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	defaultL1ChainId = big.NewInt(1337)
-	defaultL2ChainId = big.NewInt(777)
+	defaultL1ChainID = big.NewInt(1337)
+	defaultL2ChainID = big.NewInt(777)
 )
 
 // DefaultConfig stores the contract deployer default config
@@ -17,7 +17,7 @@ func DefaultConfig() *Config {
 		NodePort:       0,
 		IsL1Deployment: false,
 		PrivateKey:     "",
-		ChainID:        defaultL2ChainId,
+		ChainID:        defaultL2ChainID,
 		ContractName:   "",
 	}
 }
@@ -52,7 +52,7 @@ func ParseConfig() *Config {
 	defaultConfig.PrivateKey = *privateKeyStr
 	if defaultConfig.IsL1Deployment {
 		// for L1 deployment we default the chain ID to the L1 chain (it will still be overridden if arg was set by caller)
-		defaultConfig.ChainID = defaultL1ChainId
+		defaultConfig.ChainID = defaultL1ChainID
 	}
 	if *overrideChainID != 0 {
 		defaultConfig.ChainID = big.NewInt(*overrideChainID)
