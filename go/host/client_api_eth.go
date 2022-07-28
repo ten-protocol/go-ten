@@ -3,9 +3,8 @@ package host
 import (
 	"context"
 	"errors"
-	"math/big"
-
 	"github.com/obscuronet/go-obscuro/go/common"
+	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -137,14 +136,22 @@ func extRollupToBlock(extRollup *common.ExtRollup) map[string]interface{} {
 	return map[string]interface{}{
 		"number":           (*hexutil.Big)(extRollup.Header.Number),
 		"hash":             extRollup.Header.Hash(),
-		"parenthash":       extRollup.Header.ParentHash,
+		"parentHash":       extRollup.Header.ParentHash,
 		"nonce":            extRollup.Header.Nonce,
-		"logsbloom":        extRollup.Header.Bloom,
-		"stateroot":        extRollup.Header.Root,
-		"receiptsroot":     extRollup.Header.ReceiptHash,
+		"logsBloom":        extRollup.Header.Bloom,
+		"stateRoot":        extRollup.Header.Root,
+		"receiptsRoot":     extRollup.Header.ReceiptHash,
 		"miner":            extRollup.Header.Agg,
-		"extradata":        hexutil.Bytes(extRollup.Header.Extra),
-		"transactionsroot": extRollup.Header.TxHash,
+		"extraData":        hexutil.Bytes(extRollup.Header.Extra),
+		"transactionsRoot": extRollup.Header.TxHash,
 		"transactions":     extRollup.TxHashes,
+
+		"sha3Uncles":    extRollup.Header.UncleHash,
+		"difficulty":    extRollup.Header.Difficulty,
+		"gasLimit":      extRollup.Header.GasLimit,
+		"gasUsed":       extRollup.Header.GasUsed,
+		"timestamp":     extRollup.Header.Time,
+		"mixHash":       extRollup.Header.MixDigest,
+		"baseFeePerGas": extRollup.Header.BaseFee,
 	}
 }

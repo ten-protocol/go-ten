@@ -52,8 +52,9 @@ const (
 type Header struct {
 	ParentHash  L2RootHash
 	Agg         common.Address
-	Nonce       Nonce
-	L1Proof     L1RootHash // the L1 block where the Parent was published
+	RollupNonce Nonce            // RollupNonce holds the lottery rollup nonce
+	Nonce       types.BlockNonce // Nonce ensure compatibility with ethereum
+	L1Proof     L1RootHash       // the L1 block where the Parent was published
 	Root        StateRoot
 	TxHash      common.Hash // todo - include the synthetic deposits
 	Number      *big.Int    // the rollup height
@@ -62,6 +63,17 @@ type Header struct {
 	Extra       []byte
 	R, S        *big.Int // signature values
 	Withdrawals []Withdrawal
+
+	// Specification fields - not used for now but are expected to be available
+	UncleHash  common.Hash    `json:"sha3Uncles"`
+	Coinbase   common.Address `json:"miner"      `
+	Difficulty *big.Int       `json:"difficulty" `
+	GasLimit   uint64         `json:"gasLimit"  `
+	GasUsed    uint64         `json:"gasUsed"    `
+	Time       uint64         `json:"timestamp"   `
+	MixDigest  common.Hash    `json:"mixHash"`
+	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
+	BaseFee *big.Int `json:"baseFeePerGas"`
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header
