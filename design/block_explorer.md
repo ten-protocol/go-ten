@@ -45,12 +45,36 @@ that also displays private information belonging to that user.
 
 ## Design
 
-TBD
+TBD - Will depend on which alternative we select from the below.
 
 ## Known limitations
 
-TBD
+TBD - Will depend on which alternative we select from the below.
 
 ## Alternatives considered
 
-TBD
+### Build our own private and public block explorers
+
+TODO
+
+  * DOCUMENT WHAT'S EXPENSIVE FROM AN ENG PERSPECTIVE (DIGESTING CHAIN INTO DB, GETTING CONTRACTS?)
+  * TALK ABOUT NEED FOR DESIGN WORK, NO CURRENT CAPABILITY IN-HOUSE
+  * TALK ABOUT BENEFIT OF SHARED ARCH + LIBS FOR PUBLIC + PRIVATE EXPLORERS
+  * TALK ABOUT BENEFIT OF REUSING EXISTING STACK (GOLANG)
+
+### Fork BlockScout for the public block explorer
+
+[BlockScout](https://github.com/blockscout/blockscout) is an open-source block explorer, used by Secret Network among 
+others (see [here](https://explorer.secret.dev/)).
+
+In theory, this would give us a block explorer "for free". In practice, we'd need to customise BlockScout to some 
+extent because it cannot handle the fact that some information about the Obscuro chain is returned in an encrypted 
+form. For example, vanilla BlockScout correctly displays the number of Obscuro blocks, but it considers every block to 
+have zero transactions, because it chokes on the encrypted transaction contents being returned.
+
+Forking BlockScout would require us to develop skills we don't have currently (e.g. it is written in Elixir), and would 
+require us to maintain the fork. Blockscout is currently c. 270k lines of code, 20% larger than the Obscuro codebase as 
+of this writing.
+
+Meanwhile, we'd also have to develop the private block explorer, so we'd be maintaining two block explorers with no 
+common architecture.
