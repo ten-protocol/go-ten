@@ -66,6 +66,7 @@ docker run --name=obxL2deployer \
     --nodePort=${l2port} \
     --contractName="ERC20" \
     --privateKey=${obxpkstring}
+echo ""
 
 echo "Deploying ETH ERC20 contract to the obscuro network..."
 docker network create --driver bridge node_network || true
@@ -77,4 +78,4 @@ docker run --name=ethL2deployer \
     --nodePort=${l2port} \
     --contractName="ERC20" \
     --privateKey=${ethpkstring}
-
+echo ""

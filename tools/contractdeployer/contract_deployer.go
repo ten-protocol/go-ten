@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	mgmtContract           = "MGMT"
-	erc20Contract          = "ERC20"
-	timeoutWaitForReceipt  = 80 * time.Second
-	waitForReceiptInterval = 2 * time.Second
+	mgmtContract  = "MGMT"
+	erc20Contract = "ERC20"
+	timeoutWait   = 80 * time.Second
+	retryInterval = 2 * time.Second
 )
 
 type ContractDeployer struct {
@@ -38,10 +38,17 @@ func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup wallet - %w", err)
 	}
-	client, err := setupClient(config, wallet)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup client - %w", err)
+
+	var client ethadapter.EthClient
+	startConnectingTime := time.Now()
+	// since the nodes we are connecting to may have only just started we retry connection until it is successful
+	for client == nil && time.Since(startConnectingTime) < timeoutWait {
+		client, err = setupClient(config, wallet)
 	}
+	if client == nil {
+		return nil, fmt.Errorf("failed to initialise client connection after retrying for %s", timeoutWait)
+	}
+
 	contractCode, err := getContractCode(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find contract bytecode to deploy - %w", err)
@@ -81,7 +88,7 @@ func (cd *ContractDeployer) Run() error {
 	var start time.Time
 	var receipt *types.Receipt
 	var contractAddr *common.Address
-	for start = time.Now(); time.Since(start) < timeoutWaitForReceipt; time.Sleep(waitForReceiptInterval) {
+	for start = time.Now(); time.Since(start) < timeoutWait; time.Sleep(retryInterval) {
 		receipt, err = cd.client.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
