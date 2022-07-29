@@ -77,6 +77,9 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 	if err != nil {
 		return nil, err
 	}
+	if encryptedResponse == nil {
+		return nil, err
+	}
 	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
 	return &encryptedResponseHex, nil
 }
