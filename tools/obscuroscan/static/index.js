@@ -3,6 +3,11 @@
 const eventDomLoaded = "DOMContentLoaded";
 const typeSubmit = "submit";
 const typeClick = "click";
+const methodPost = "POST";
+const jsonKeyHeader = "Header";
+const jsonKeyL1Proof = "L1Proof";
+const jsonKeyEncryptedTxBlob = "EncryptedTxBlob";
+
 const idNumRollups = "numRollups";
 const idFormGetRollup = "form-get-rollup";
 const idRollupID = "rollupID";
@@ -15,18 +20,22 @@ const idRollupTwo = "rollupTwo";
 const idRollupThree = "rollupThree";
 const idRollupFour = "rollupFour";
 const idRollupFive = "rollupFive";
+const idTxOne = "txOne";
+const idTxTwo = "txTwo";
+const idTxThree = "txThree";
+const idTxFour = "txFour";
+const idTxFive = "txFive";
+
 const pathNumRollups = "/numrollups/";
 const pathLatestRollups = "/latestrollups/";
 const pathBlock = "/block/";
 const pathRollup = "/rollup/";
 const pathDecryptTxBlob = "/decrypttxblob/";
-const methodPost = "POST";
-const jsonKeyHeader = "Header";
-const jsonKeyL1Proof = "L1Proof";
-const jsonKeyEncryptedTxBlob = "EncryptedTxBlob";
 
 // Updates the displayed stats.
-async function updateStats(numRollupsField) {
+async function updateStats() {
+    const numRollupsField = document.getElementById(idNumRollups);
+
     const numRollupsResp = await fetch(pathNumRollups);
 
     if (numRollupsResp.ok) {
@@ -37,7 +46,13 @@ async function updateStats(numRollupsField) {
 }
 
 // Updates the list of latest rollups.
-async function updateLatestRollups(rollupOneField, rollupTwoField, rollupThreeField, rollupFourField, rollupFiveField) {
+async function updateLatestRollups() {
+    const rollupOneField = document.getElementById(idRollupOne);
+    const rollupTwoField = document.getElementById(idRollupTwo);
+    const rollupThreeField = document.getElementById(idRollupThree);
+    const rollupFourField = document.getElementById(idRollupFour);
+    const rollupFiveField = document.getElementById(idRollupFive);
+
     const latestRollupsResp = await fetch(pathLatestRollups);
 
     if (latestRollupsResp.ok) {
@@ -52,8 +67,8 @@ async function updateLatestRollups(rollupOneField, rollupTwoField, rollupThreeFi
     }
 }
 
-// Displays the rollup that has been clicked on.
-async function displayClickedRollup(event) {
+// Displays the rollup based on the rollup number or transaction hash that has been clicked on.
+async function displayClickedItem(event) {
     event.preventDefault();
     const rollupNumber = document.getElementById(event.target.id).innerText;
     await displayRollup(rollupNumber);
@@ -109,30 +124,30 @@ async function displayRollup(rollupID) {
 }
 
 const initialize = () => {
-    const numRollupsField = document.getElementById(idNumRollups);
-
-    const rollupOneField = document.getElementById(idRollupOne);
-    const rollupTwoField = document.getElementById(idRollupTwo);
-    const rollupThreeField = document.getElementById(idRollupThree);
-    const rollupFourField = document.getElementById(idRollupFour);
-    const rollupFiveField = document.getElementById(idRollupFive);
-
+    // Updates the page's stats and latest rollups and transactions.
     setInterval(async () => {
-        await updateStats(numRollupsField);
-        await updateLatestRollups(rollupOneField, rollupTwoField, rollupThreeField, rollupFourField, rollupFiveField);
+        await updateStats();
+        await updateLatestRollups();
     }, 1000);
 
+    // Handles searches for rollups.
     document.getElementById(idFormGetRollup).addEventListener(typeSubmit, async (event) => {
         event.preventDefault();
         const rollupNumber = document.getElementById(idRollupID).value;
         await displayRollup(rollupNumber);
     });
 
-    document.getElementById(idRollupOne).addEventListener(typeClick, displayClickedRollup);
-    document.getElementById(idRollupTwo).addEventListener(typeClick, displayClickedRollup);
-    document.getElementById(idRollupThree).addEventListener(typeClick, displayClickedRollup);
-    document.getElementById(idRollupFour).addEventListener(typeClick, displayClickedRollup);
-    document.getElementById(idRollupFive).addEventListener(typeClick, displayClickedRollup);
+    // Handles clicks on the latest rollups or transactions.
+    document.getElementById(idRollupOne).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idRollupTwo).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idRollupThree).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idRollupFour).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idRollupFive).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idTxOne).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idTxTwo).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idTxThree).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idTxFour).addEventListener(typeClick, displayClickedItem);
+    document.getElementById(idTxFive).addEventListener(typeClick, displayClickedItem);
 }
 
 window.addEventListener(eventDomLoaded, initialize);
