@@ -726,7 +726,7 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
 		blk = blockParent
 	}
 
-	// make to have the last ingested block available
+	// make sure to have the last ingested block available for ingestion (because we always ingest ( blk, blk_parent)
 	lastKnownBlk, err := a.ethClient.BlockByHash(lastKnownBlkHash)
 	if err != nil {
 		log.Panic("catching up on missed blocks, unable to feth last known block - reason: %s", err)
