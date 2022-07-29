@@ -32,6 +32,7 @@ import (
 const (
 	pathNumRollups    = "/numrollups/"
 	pathLatestRollups = "/latestrollups/"
+	pathLatestTxs     = "/latesttxs/"
 	pathBlock         = "/block/"
 	pathRollup        = "/rollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
@@ -67,9 +68,10 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
 	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)       // Get the number of published rollups.
-	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups) // Get the latest rollup hashes.
+	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups) // Get the latest rollup numbers.
+	serveMux.HandleFunc(pathLatestTxs, o.getLatestTxs)         // Get the latest transaction hashes.
+	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)  // Get the rollup given its number or the hash of a transaction it contains.
 	serveMux.HandleFunc(pathBlock, o.getBlock)                 // Get the L1 block with the given number.
-	serveMux.HandleFunc(pathRollup, o.getRollup)               // Get the rollup with the given number.
 	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)    // Decrypt a transaction blob.
 
 	// Serves the web assets for the user interface.
@@ -98,14 +100,12 @@ func (o *Obscuroscan) Shutdown() {
 
 // Retrieves the number of published rollups.
 func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
-	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
+	numOfRollups, err := o.getLatestRollupNumber()
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
+		logAndSendErr(resp, err.Error())
 		return
 	}
 
-	numOfRollups := rollupHeader.Number.Int64()
 	numOfRollupsStr := strconv.Itoa(int(numOfRollups))
 	_, err = resp.Write([]byte(numOfRollupsStr))
 	if err != nil {
@@ -114,20 +114,24 @@ func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// Retrieves the numbers of the last five rollups.
+// Retrieves the last five rollup numbers.
 func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request) {
-	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
+	latestRollupNum, err := o.getLatestRollupNumber()
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
+		logAndSendErr(resp, err.Error())
 		return
 	}
 
-	latestRollupNum := rollupHeader.Number.Int64()
-	// TODO - Handle case where there are less than five rollups in total.
+	// We walk the chain of rollups, getting the number for the most recent five.
 	rollupNums := make([]string, 5)
 	for idx := 0; idx < 5; idx++ {
-		rollupNums[idx] = strconv.Itoa(int(latestRollupNum) - idx)
+		rollupNum := int(latestRollupNum) - idx
+		if rollupNum < 0 {
+			// If there are less than five rollups, we return an N/A.
+			rollupNums[idx] = "N/A"
+		} else {
+			rollupNums[idx] = strconv.Itoa(rollupNum)
+		}
 	}
 
 	jsonRollupNums, err := json.Marshal(rollupNums)
@@ -138,6 +142,52 @@ func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request
 	_, err = resp.Write(jsonRollupNums)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not return latest rollups to client. Cause: %s", err))
+		return
+	}
+}
+
+// Retrieves the last five transaction hashes.
+func (o *Obscuroscan) getLatestTxs(resp http.ResponseWriter, _ *http.Request) {
+	rollupNum, err := o.getLatestRollupNumber()
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
+	}
+
+	// We walk the chain of rollups, getting the transaction hashes until we've hit at least five.
+	var txHashes []string
+	for {
+		rollup, err := o.getRollupByNumber(int(rollupNum))
+		if err != nil {
+			logAndSendErr(resp, err.Error())
+			return
+		}
+
+		for _, txHash := range rollup.TxHashes {
+			txHashes = append(txHashes, txHash.String())
+		}
+		if len(txHashes) >= 5 {
+			// It's fine if we return more than five transaction hashes; the front-end will ignore the later ones.
+			break
+		}
+
+		rollupNum--
+		if rollupNum < 0 {
+			for idx := 0; idx < 5-len(txHashes); idx++ {
+				txHashes = append(txHashes, "N/A")
+			}
+			break
+		}
+	}
+
+	jsonTxHashes, err := json.Marshal(txHashes)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return latest transaction hashes to client. Cause: %s", err))
+		return
+	}
+	_, err = resp.Write(jsonTxHashes)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return latest transaction hashes to client. Cause: %s", err))
 		return
 	}
 }
@@ -174,8 +224,8 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Retrieves the rollup with the given number.
-func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
+// Retrieves a rollup given its number or the hash of a transaction it contains.
+func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http.Request) {
 	body := req.Body
 	defer body.Close()
 	buffer := new(bytes.Buffer)
@@ -197,7 +247,12 @@ func (o *Obscuroscan) getRollup(resp http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		// Otherwise, we treat the input as a rollup number.
-		rollup, err = o.getRollupByNumber(buffer.String())
+		rollupNumber, err := strconv.Atoi(buffer.String())
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not parse \"%s\" as an integer", buffer.String()))
+			return
+		}
+		rollup, err = o.getRollupByNumber(rollupNumber)
 		if err != nil {
 			logAndSendErr(resp, err.Error())
 			return
@@ -241,18 +296,25 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 	}
 }
 
-// Parses numberStr as a number and returns the rollup with that number.
-func (o *Obscuroscan) getRollupByNumber(numberStr string) (*common.ExtRollup, error) {
-	number, err := strconv.Atoi(numberStr)
+// Returns the number of the latest rollup.
+func (o *Obscuroscan) getLatestRollupNumber() (int64, error) {
+	var rollupHeader *common.Header
+	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse \"%s\" as an integer", numberStr)
+		return 0, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
 	}
 
+	latestRollupNum := rollupHeader.Number.Int64()
+	return latestRollupNum, nil
+}
+
+// Parses numberStr as a number and returns the rollup with that number.
+func (o *Obscuroscan) getRollupByNumber(rollupNumber int) (*common.ExtRollup, error) {
 	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
 	var rollupHeader *common.Header
-	err = o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, number)
+	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetRollupHeaderByNumber, rollupNumber)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", number, err)
+		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
 	}
 
 	rollupHash := rollupHeader.Hash()

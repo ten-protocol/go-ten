@@ -28,6 +28,7 @@ const idTxFive = "txFive";
 
 const pathNumRollups = "/numrollups/";
 const pathLatestRollups = "/latestrollups/";
+const pathLatestTxs = "/latesttxs/";
 const pathBlock = "/block/";
 const pathRollup = "/rollup/";
 const pathDecryptTxBlob = "/decrypttxblob/";
@@ -64,6 +65,38 @@ async function updateLatestRollups() {
         rollupFiveField.innerText = latestRollupsJSON[4];
     } else {
         rollupOneField.innerText = "Failed to fetch latest rollups. Cause: " + await latestRollupsResp.text();
+        rollupTwoField.innerText = "Failed to fetch latest rollups. Cause: " + await latestRollupsResp.text();
+        rollupThreeField.innerText = "Failed to fetch latest rollups. Cause: " + await latestRollupsResp.text();
+        rollupFourField.innerText = "Failed to fetch latest rollups. Cause: " + await latestRollupsResp.text();
+        rollupFiveField.innerText = "Failed to fetch latest rollups. Cause: " + await latestRollupsResp.text();
+    }
+}
+
+// Updates the list of latest transactions.
+async function updateLatestTxs() {
+    const txOneField = document.getElementById(idTxOne);
+    const txTwoField = document.getElementById(idTxTwo);
+    const txThreeField = document.getElementById(idTxThree);
+    const txFourField = document.getElementById(idTxFour);
+    const txFiveField = document.getElementById(idTxFive);
+
+    const latestTxsResp = await fetch(pathLatestTxs);
+
+    if (latestTxsResp.ok) {
+        console.log("ok")
+        const latestTxsJSON = JSON.parse(await latestTxsResp.text());
+        console.log(latestTxsJSON[0])
+        txOneField.innerText = latestTxsJSON[0];
+        txTwoField.innerText = latestTxsJSON[1];
+        txThreeField.innerText = latestTxsJSON[2];
+        txFourField.innerText = latestTxsJSON[3];
+        txFiveField.innerText = latestTxsJSON[4];
+    } else {
+        txOneField.innerText = "Failed to fetch latest rollups. Cause: " + await latestTxsResp.text();
+        txTwoField.innerText = "Failed to fetch latest rollups. Cause: " + await latestTxsResp.text();
+        txThreeField.innerText = "Failed to fetch latest rollups. Cause: " + await latestTxsResp.text();
+        txFourField.innerText = "Failed to fetch latest rollups. Cause: " + await latestTxsResp.text();
+        txFiveField.innerText = "Failed to fetch latest rollups. Cause: " + await latestTxsResp.text();
     }
 }
 
@@ -128,6 +161,7 @@ const initialize = () => {
     setInterval(async () => {
         await updateStats();
         await updateLatestRollups();
+        await updateLatestTxs();
     }, 1000);
 
     // Handles searches for rollups.
