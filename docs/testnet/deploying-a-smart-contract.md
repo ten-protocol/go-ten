@@ -3,12 +3,12 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 
 ## Prerequisites
 * [MetaMask](https://metamask.io/) wallet installed in your browser.
-* A local copy of the [Obscuro MetaMask wallet extension](wallet-extension.md)
+* A local copy of the [Obscuro MetaMask wallet extension](../wallet-extension/wallet-extension.md)
 
 ## Prepare Your MetaMask Wallet for Obscuro Testnet
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
 
-Follow the steps [here](wallet-extension.md) to configure and start the MetaMask wallet extension and generate a 
+Follow the steps [here](../wallet-extension/wallet-extension.md) to configure and start the MetaMask wallet extension and generate a 
 viewing key, then return to this page. If you do not have the Obscuro wallet extension running MetaMask will not be 
 able to communicate with the Obscuro Testnet.
 
