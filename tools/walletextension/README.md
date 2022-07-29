@@ -4,8 +4,6 @@ See the documentation [here](https://docsstage.obscu.ro/testnet/wallet-extension
 
 # Developer notes
 
-## Compiling the binary for your own computer
-
 The precompiled binaries for macOS ARM64, macOS AMD64, Windows AMD64 and Linux AMD64 can be built by running the 
 following commands from the `tools/walletextension/main` folder:
 
