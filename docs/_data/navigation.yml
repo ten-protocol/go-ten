@@ -38,9 +38,9 @@ pages:
   - title: Wallet Extension
     children:
       - title: Wallet Extension
-        url: testnet/wallet-extension.html
+        url: wallet-extension/wallet-extension.html
       - title: Handling Sensitive Data
-        url: testnet/handling-sensitive-data.html
+        url: wallet-extension/handling-sensitive-data.html
   - title: Whitepaper
     children:
       - title: Abstract
