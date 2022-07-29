@@ -19,8 +19,10 @@ import (
 )
 
 const (
-	mgmtContract  = "MGMT"
-	erc20Contract = "ERC20"
+	mgmtContract           = "MGMT"
+	erc20Contract          = "ERC20"
+	timeoutWaitForReceipt  = 80 * time.Second
+	waitForReceiptInterval = 2 * time.Second
 )
 
 type ContractDeployer struct {
@@ -79,7 +81,7 @@ func (cd *ContractDeployer) Run() error {
 	var start time.Time
 	var receipt *types.Receipt
 	var contractAddr *common.Address
-	for start = time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
+	for start = time.Now(); time.Since(start) < timeoutWaitForReceipt; time.Sleep(waitForReceiptInterval) {
 		receipt, err = cd.client.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
