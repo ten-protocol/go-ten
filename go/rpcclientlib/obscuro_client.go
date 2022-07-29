@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
 type RPCMethod uint8
@@ -68,23 +67,23 @@ type networkClient struct {
 	viewingKeyAddr common.Address    // address that generated the public key
 }
 
-func NewClient(address string) Client {
+func NewClient(address string) (Client, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to decompress key for RPC client: %w", err)
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	rpcClient, err := rpc.Dial(http + address)
 	if err != nil {
-		log.Panic("could not create RPC client on %s. Cause: %s", http+address, err)
+		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", http+address, err)
 	}
 
 	return &networkClient{
 		rpcClient:        rpcClient,
 		enclavePublicKey: enclavePublicKey,
-	}
+	}, nil
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and

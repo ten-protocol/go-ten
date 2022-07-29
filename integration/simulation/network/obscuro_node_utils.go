@@ -119,7 +119,11 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		obscuroClients[i] = rpcclientlib.NewClient(nodeRPCAddresses[i])
+		cli, err := rpcclientlib.NewClient(nodeRPCAddresses[i])
+		if err != nil {
+			panic(err)
+		}
+		obscuroClients[i] = cli
 	}
 
 	// start each obscuro node
@@ -146,14 +150,28 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	walletClients := make(map[string]rpcclientlib.Client)
 	var i int
 	for _, w := range params.Wallets.SimObsWallets {
-		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
-		viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
+		cli, err := rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
+		if err != nil {
+			panic(err)
+		}
+		walletClients[w.Address().String()] = cli
+		err = viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
+		if err != nil {
+			panic(err)
+		}
 		i++
 	}
 	for _, t := range params.Wallets.Tokens {
 		w := t.L2Owner
-		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
-		viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
+		cli, err := rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
+		if err != nil {
+			panic(err)
+		}
+		walletClients[w.Address().String()] = cli
+		err = viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
+		if err != nil {
+			panic(err)
+		}
 		i++
 	}
 

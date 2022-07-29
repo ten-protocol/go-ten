@@ -50,7 +50,10 @@ type Obscuroscan struct {
 }
 
 func NewObscuroscan(address string) *Obscuroscan {
-	client := rpcclientlib.NewClient(address)
+	client, err := rpcclientlib.NewClient(address)
+	if err != nil {
+		panic(err)
+	}
 	contractABI, err := abi.JSON(strings.NewReader(mgmtcontractlib.MgmtContractABI))
 	if err != nil {
 		panic("could not parse management contract ABI to decrypt rollups")
