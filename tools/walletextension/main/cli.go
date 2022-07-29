@@ -14,7 +14,7 @@ const (
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension"
 
 	nodeHostName    = "nodeHost"
-	nodeHostDefault = "testnet.obscu.ro"
+	nodeHostDefault = "127.0.0.1"
 	nodeHostUsage   = "The host on which to connect to the Obscuro node"
 
 	nodeHTTPPortName    = "nodePortHTTP"
