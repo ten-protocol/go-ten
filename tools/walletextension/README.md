@@ -1,6 +1,6 @@
 # 👛 The Obscuro wallet extension
 
-See the documentation [here](https://docsstage.obscu.ro/testnet/wallet-extension.html).
+See the documentation [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html).
 
 # Developer notes
 
