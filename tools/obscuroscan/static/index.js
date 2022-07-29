@@ -83,9 +83,7 @@ async function updateLatestTxs() {
     const latestTxsResp = await fetch(pathLatestTxs);
 
     if (latestTxsResp.ok) {
-        console.log("ok")
         const latestTxsJSON = JSON.parse(await latestTxsResp.text());
-        console.log(latestTxsJSON[0])
         txOneField.innerText = latestTxsJSON[0];
         txTwoField.innerText = latestTxsJSON[1];
         txThreeField.innerText = latestTxsJSON[2];
