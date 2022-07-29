@@ -652,29 +652,12 @@ func (a *Node) monitorBlocks() {
 	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
 		select {
 		case err := <-subs.Err():
-			log.Error("Restarting L1 block monitoring. Errored with: %s", err)
+			log.Error("L1 block monitoring error: %s", err)
+			log.Info("Restarting L1 block Monitoring...")
 			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
 			listener, subs = a.ethClient.BlockListener()
 
-			// catch up any missed blocks
-			var lastBlkNumber *big.Int
-			// get the latest known blk
-			lastBlk, err := a.ethClient.BlockByNumber(lastBlkNumber)
-			if err != nil {
-				log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
-			}
-
-			// iterate from the tip (last known block) to the last one known by the node
-			for lastBlk.Hash().Hex() != lastKnownBlkHash.Hex() {
-				blockParent, err := a.ethClient.BlockByHash(lastBlk.ParentHash())
-				if err != nil {
-					log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
-				}
-
-				// issue the block to the ingestion channel
-				a.encodeAndIngest(lastBlk, blockParent)
-				lastBlk = blockParent
-			}
+			a.catchupMissedBlocks(lastKnownBlkHash)
 
 		case blkHeader := <-listener:
 			// don't process blocks if the node is stopping
@@ -714,6 +697,47 @@ func (a *Node) monitorBlocks() {
 	// make sure it cleanly unsubscribes
 	// todo this should be defered when the errors are upstreamed instead of panic'd
 	subs.Unsubscribe()
+}
+
+func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
+	var lastBlkNumber *big.Int
+	var reingestBlocks []*types.Block
+
+	// get the blockchain tip block
+	blk, err := a.ethClient.BlockByNumber(lastBlkNumber)
+	if err != nil {
+		log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
+	}
+
+	if blk.Hash().Hex() == lastKnownBlkHash.Hex() {
+		// if no new blocks have been issued then nothing to catchup
+		return
+	}
+	reingestBlocks = append(reingestBlocks, blk)
+
+	// get all blocks from the blockchain tip to the last block ingested by the node
+	for blk.Hash().Hex() != lastKnownBlkHash.Hex() {
+		blockParent, err := a.ethClient.BlockByHash(blk.ParentHash())
+		if err != nil {
+			log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", blk.ParentHash(), err)
+		}
+
+		reingestBlocks = append(reingestBlocks, blockParent)
+		blk = blockParent
+	}
+
+	// make sure to have the last ingested block available for ingestion (because we always ingest ( blk, blk_parent)
+	lastKnownBlk, err := a.ethClient.BlockByHash(lastKnownBlkHash)
+	if err != nil {
+		log.Panic("catching up on missed blocks, unable to feth last known block - reason: %s", err)
+	}
+	reingestBlocks = append(reingestBlocks, lastKnownBlk)
+
+	// issue the block to the ingestion channel in reverse, with the parent attached too
+	for i := len(reingestBlocks) - 2; i >= 0; i-- {
+		log.Debug("Ingesting %s and %s blocks of %v", reingestBlocks[i].Hash(), reingestBlocks[i+1].Hash(), reingestBlocks)
+		a.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
+	}
 }
 
 func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) {
