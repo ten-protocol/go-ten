@@ -20,7 +20,7 @@ func FindWinner(parent *obscurocore.Rollup, rollups []*obscurocore.Rollup, block
 		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
 		case blockResolver.ProofHeight(r) > blockResolver.ProofHeight(rollups[win]): // newer rollups win
 			win = i
-		case r.Header.Nonce < rollups[win].Header.Nonce: // for rollups with the same proof, the one with the lowest nonce wins
+		case r.Header.RollupNonce < rollups[win].Header.RollupNonce: // for rollups with the same proof, the one with the lowest nonce wins
 			win = i
 		}
 	}
