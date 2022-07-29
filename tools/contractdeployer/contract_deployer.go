@@ -41,9 +41,10 @@ func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 
 	var client ethadapter.EthClient
 	startConnectingTime := time.Now()
-	// since the nodes we are connecting to may have only just started we retry connection until it is successful
+	// since the nodes we are connecting to may have only just started, we retry connection until it is successful
 	for client == nil && time.Since(startConnectingTime) < timeoutWait {
 		client, err = setupClient(config, wal)
+		time.Sleep(retryInterval)
 	}
 	if client == nil {
 		return nil, fmt.Errorf("failed to initialise client connection after retrying for %s, %w", timeoutWait, err)
