@@ -44,6 +44,10 @@ func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 	// since the nodes we are connecting to may have only just started, we retry connection until it is successful
 	for client == nil && time.Since(startConnectingTime) < timeoutWait {
 		client, err = setupClient(config, wal)
+		if err == nil {
+			break // success
+		}
+		// if there was an error we'll retry, if we timeout the last seen error will display
 		time.Sleep(retryInterval)
 	}
 	if client == nil {
