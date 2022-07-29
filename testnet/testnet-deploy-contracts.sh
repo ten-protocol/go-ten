@@ -81,8 +81,8 @@ docker run --name=obxerc20deployer \
     --contractName="ERC20" \
     --privateKey=${pkstring}
 # storing the contract address to the .env file
-obxAddr=$(docker logs --tail 1 obxerc20deployer)
-echo "OBXERC20ADDR=${obxAddr}" >> "${testnet_path}/.env"
+obxErc20Addr=$(docker logs --tail 1 obxerc20deployer)
+echo "OBXERC20ADDR=${obxErc20Addr}" >> "${testnet_path}/.env"
 echo ""
 
 # deploy ETH ERC20 contract
@@ -97,6 +97,6 @@ docker run --name=etherc20deployer \
     --contractName="ERC20" \
     --privateKey=${pkstring}
 # storing the contract address to the .env file
-ethAddr=$(docker logs --tail 1 etherc20deployer)
-echo "ETHERC20ADDR=${ethAddr}" >> "${testnet_path}/.env"
+ethErc20Addr=$(docker logs --tail 1 etherc20deployer)
+echo "ETHERC20ADDR=${ethErc20Addr}" >> "${testnet_path}/.env"
 echo ""

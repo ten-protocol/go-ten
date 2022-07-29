@@ -57,8 +57,8 @@ jobs:
           echo "ETHERC20ADDR=ETHERC20ADDR" >> $GITHUB_ENV
           echo "Contracts deployed to $MGMTCONTRACTADDR and $OBXERC20ADDR and $ETHERC20ADDR"
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
-          echo "::set-output name=obxErc20Addr::OBXERC20ADDR"   
-          echo "::set-output name=ethErc20Addr::ETHERC20ADDR"    
+          echo "::set-output name=obxErc20Addr::$OBXERC20ADDR"   
+          echo "::set-output name=ethErc20Addr::$ETHERC20ADDR"    
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
