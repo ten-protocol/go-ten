@@ -6,13 +6,13 @@
 
 help_and_exit() {
     echo ""
-    echo "Usage: $(basename "${0}") --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+    echo "Usage: $(basename "${0}") --l2host=testnet-host-1"
     echo ""
     echo "  l2host             *Required* Set the l2 host address"
     echo ""
-    echo "  obxpkstring           *Required* Set the pkstring to deploy OBX contract"
+    echo "  obxpkstring           *Optional* Set the pkstring to deploy OBX contract"
     echo ""
-    echo "  ethpkstring           *Required* Set the pkstring to deploy ETH contract"
+    echo "  ethpkstring           *Optional* Set the pkstring to deploy ETH contract"
     echo ""
     echo "  l2port             *Optional* Set the l2 port. Defaults to 10000"
     echo ""
