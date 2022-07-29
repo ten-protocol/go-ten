@@ -1,0 +1,71 @@
+version: "3.9"
+networks:
+  default:
+    name: node_network
+services:
+  host:
+    networks:
+      - default
+    ports:
+      - "13000:13000"
+      - "13001:13001"
+      - "6061:6061"
+      - "10000:10000"
+    environment:
+      MGMTCONTRACTADDR: some_address
+      PKSTRING: some_string
+      L1HOST: some_host
+      L1PORT: some_port
+      HOSTID: some_address
+      ISGENESIS: some_bool
+      PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
+    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
+    entrypoint: [
+      "/home/go-obscuro/go/host/main/main",
+      "--l1NodeHost=$L1HOST",
+      "--l1NodePort=$L1PORT",
+      "--id=$HOSTID",
+      "--enclaveRPCAddress=enclave:11000",
+      "--rollupContractAddress=$MGMTCONTRACTADDR",
+      "--privateKey=$PKSTRING",
+      "--clientRPCHost=0.0.0.0",
+      "--isGenesis=$ISGENESIS",
+      "--logLevel=debug",
+      "--profilerEnabled=$PROFILERENABLED",
+      "--p2pPublicAddress=$P2PPUBLICADDRESS"
+    ]
+
+  enclave:
+    networks:
+      - default
+    ports:
+      - "6060:6060"
+      - "2345:2345"
+    environment:
+      MGMTCONTRACTADDR: some_address
+      ERC20CONTRACTADDR: some_address
+      HOSTID: some_address
+      PROFILERENABLED: some_bool
+      P2PPUBLICADDRESS: some_string
+    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave_debug:latest
+    entrypoint: [
+      "dlv",
+      "--listen=:2345",
+      "--headless=true",
+      "--log=true",
+      "--api-version=2",
+      "debug",
+      "/home/obscuro/go-obscuro/go/enclave/main",
+      "--",
+      "--hostID=$HOSTID",
+      "--address=:11000",
+      "--useInMemoryDB=false",
+      "--sqliteDBPath=/data/sqlite.db",
+      "--managementContractAddress=$MGMTCONTRACTADDR",
+      "--erc20ContractAddresses=$ERC20CONTRACTADDR,$ERC20CONTRACTADDR",
+      "--hostAddress=host:10000",
+      "--profilerEnabled=$PROFILERENABLED",
+      "--viewingKeysEnabled=true",
+      "--hostAddress=$P2PPUBLICADDRESS"
+    ]

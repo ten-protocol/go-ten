@@ -30,15 +30,17 @@ help_and_exit() {
     echo ""
     echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
     echo ""
-    echo "  pkaddress          *Optional* Set the pk address. Defaults to 0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
+    echo "  pkaddress          *Optional* Set the pk address. Defaults to 0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
     echo ""
-    echo "  pkstring           *Optional* Set the pk string. Defaults to f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+    echo "  pkstring           *Optional* Set the pk string. Defaults to 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"
     echo ""
     echo "  is_genesis         *Optional* Set the node as genesis node. Defaults to false"
     echo ""
     echo "  p2p_public_address *Optional* Set host p2p public address. Defaults to 127.0.0.1:10000"
     echo ""
     echo "  profiler_enabled   *Optional* Enables the profiler in the host + enclave. Defaults to false"
+    echo ""
+    echo "  debug_enclave      *Optional* Dev mode, with a dlv debugger remote attach on port 2345"
     echo ""
     echo ""
     echo ""
@@ -56,8 +58,9 @@ l1_port=9000
 is_genesis=false
 profiler_enabled=false
 p2p_public_address="127.0.0.1:10000"
-pk_address=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
-pk_string=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
+debug_enclave=false
+pk_address=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
+pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 
 
 # Fetch options
@@ -79,6 +82,8 @@ do
             --is_genesis)               is_genesis=${value} ;;
             --profiler_enabled)         profiler_enabled=${value} ;;
             --p2p_public_address)       p2p_public_address=${value} ;;
+            --debug_enclave)            debug_enclave=${value} ;;
+
             --help)                     help_and_exit ;;
             *)
     esac
@@ -103,6 +108,13 @@ echo "ISGENESIS=${is_genesis}" >> "${testnet_path}/.env"
 echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
 
+
+if ${debug_enclave} ;
+then
+  echo "Starting DEBUG enclave and host..."
+  docker compose -f docker-compose.debug.yml up enclave host -d
+  exit 0
+fi
 
 if ${sgx_enabled} ;
 then

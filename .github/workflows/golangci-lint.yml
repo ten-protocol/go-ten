@@ -3,6 +3,7 @@ on:
   push:
     paths-ignore:
       - 'docs/**'
+      - 'design/**'
     tags:
       - v*
     branches:

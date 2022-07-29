@@ -106,6 +106,6 @@ func printBlock(b *types.Block, m Node) string {
 		log.Panic("Should not happen. Parent not found")
 	}
 
-	return fmt.Sprintf("> M%d: create b_%d(Height=%d, Nonce=%d)[parent=b_%d]. Txs: %v",
+	return fmt.Sprintf("> M%d: create b_%d(Height=%d, RollupNonce=%d)[parent=b_%d]. Txs: %v",
 		common.ShortAddress(m.Info().L2ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortNonce(b.Header().Nonce), common.ShortHash(p.Hash()), txs)
 }

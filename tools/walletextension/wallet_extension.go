@@ -167,6 +167,18 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	respMap[resJSONKeyRPCVer] = jsonrpc.Version
 	respMap[RespJSONKeyResult] = rpcResp
 
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+	// TODO fix this upstream on the decode
+	if result, found := respMap["result"]; found { // nolint
+		if resultMap, ok := result.(map[string]interface{}); ok {
+			if val, foundRoot := resultMap["root"]; foundRoot {
+				if val == "0x" {
+					respMap["result"].(map[string]interface{})["root"] = nil
+				}
+			}
+		}
+	}
+
 	rpcRespToSend, err := json.Marshal(respMap)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
