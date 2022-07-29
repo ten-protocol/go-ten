@@ -16,23 +16,18 @@
         <a class="navbar-brand" href="#">
             <img src="logo.png" alt="" height="36">
         </a>
+        <form class="d-flex" role="search" id="form-get-rollup">
+            <input class="form-control me-2" type="search" id="rollupID" placeholder="Rollup # or tx hash">
+            <button type="submit" class="btn btn-outline-light">Search</button>
+        </form>
     </div>
 </nav>
 
 <div class="container" style="padding-top: 25px;">
     <div class="card shadow p-3 mb-5 bg-body rounded">
         <div class="card-body">
-            <h2 class="card-title">Search the Obscuro chain</h2>
-
+            <h2 class="card-title">Obscuro block explorer</h2>
             <div id="numRollups">Total rollups: Fetching...</div>
-
-            <form id="form-get-rollup">
-                <div class="mb-3">
-                    <label for="rollupID"></label>
-                    <input class="form-control" id="rollupID" placeholder="Search by rollup number or transaction hash">
-                </div>
-                <button type="submit" class="btn btn-outline-dark">Submit</button>
-            </form>
         </div>
     </div>
 </div>
@@ -45,11 +40,11 @@
                     <h2 class="card-title">Latest rollups</h2>
 
                     <ul class="list-group list-group-flush">
-                        <a id="rollupOne" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="rollupTwo" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="rollupThree" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="rollupFour" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="rollupFive" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
+                        <a id="rollupOne" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="rollupTwo" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="rollupThree" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="rollupFour" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="rollupFive" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
                     </ul>
                 </div>
             </div>
@@ -60,11 +55,11 @@
                     <h2 class="card-title">Latest transactions</h2>
 
                     <ul class="list-group list-group-flush">
-                        <a id="txOne" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="txTwo" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="txThree" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="txFour" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
-                        <a id="txFive" href="#" class="list-group-item list-group-item-action py-1">N/A</a>
+                        <a id="txOne" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="txTwo" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="txThree" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="txFour" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
+                        <a id="txFive" href="#" class="list-group-item list-group-item-action py-1">Fetching...</a>
                     </ul>
                 </div>
             </div>

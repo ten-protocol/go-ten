@@ -114,7 +114,7 @@ func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// Retrieves the number of published rollups.
+// Retrieves the numbers of the last five rollups.
 func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request) {
 	var rollupHeader *common.Header
 	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
@@ -123,22 +123,19 @@ func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request
 		return
 	}
 
-	numOfRollups := rollupHeader.Number.Int64()
-
-	fakeHashes := []string{
-		"0x000" + strconv.Itoa(int(numOfRollups)),
-		"0x000" + strconv.Itoa(int(numOfRollups)+1),
-		"0x000" + strconv.Itoa(int(numOfRollups)+2),
-		"0x000" + strconv.Itoa(int(numOfRollups)+3),
-		"0x000" + strconv.Itoa(int(numOfRollups)+4),
+	latestRollupNum := rollupHeader.Number.Int64()
+	// TODO - Handle case where there are less than five rollups in total.
+	rollupNums := make([]string, 5)
+	for idx := 0; idx < 5; idx++ {
+		rollupNums[idx] = strconv.Itoa(int(latestRollupNum) - idx)
 	}
 
-	jsonRollupHashes, err := json.Marshal(fakeHashes)
+	jsonRollupNums, err := json.Marshal(rollupNums)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not return latest rollups to client. Cause: %s", err))
 		return
 	}
-	_, err = resp.Write(jsonRollupHashes)
+	_, err = resp.Write(jsonRollupNums)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not return latest rollups to client. Cause: %s", err))
 		return
