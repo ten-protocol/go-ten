@@ -10,11 +10,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"io/fs"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
