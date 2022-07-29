@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"io/fs"
 	"net/http"
 	"strconv"
@@ -102,14 +103,16 @@ func (o *Obscuroscan) Shutdown() {
 func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 	numOfRollups, err := o.getLatestRollupNumber()
 	if err != nil {
-		logAndSendErr(resp, err.Error())
+		log.Error(err.Error())
+		logAndSendErr(resp, "Could not fetch number of rollups.")
 		return
 	}
 
 	numOfRollupsStr := strconv.Itoa(int(numOfRollups))
 	_, err = resp.Write([]byte(numOfRollupsStr))
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return number of rollups to client. Cause: %s", err))
+		log.Error("could not return number of rollups to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch number of rollups.")
 		return
 	}
 }
@@ -118,7 +121,8 @@ func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request) {
 	latestRollupNum, err := o.getLatestRollupNumber()
 	if err != nil {
-		logAndSendErr(resp, err.Error())
+		log.Error(err.Error())
+		logAndSendErr(resp, "Could not fetch latest rollups.")
 		return
 	}
 
@@ -136,12 +140,14 @@ func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request
 
 	jsonRollupNums, err := json.Marshal(rollupNums)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return latest rollups to client. Cause: %s", err))
+		log.Error("could not return latest rollups to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch latest rollups.")
 		return
 	}
 	_, err = resp.Write(jsonRollupNums)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return latest rollups to client. Cause: %s", err))
+		log.Error("could not return latest rollups to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch latest rollups.")
 		return
 	}
 }
@@ -150,7 +156,8 @@ func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request
 func (o *Obscuroscan) getLatestTxs(resp http.ResponseWriter, _ *http.Request) {
 	rollupNum, err := o.getLatestRollupNumber()
 	if err != nil {
-		logAndSendErr(resp, err.Error())
+		log.Error(err.Error())
+		logAndSendErr(resp, "Could not fetch latest transactions.")
 		return
 	}
 
@@ -159,7 +166,8 @@ func (o *Obscuroscan) getLatestTxs(resp http.ResponseWriter, _ *http.Request) {
 	for {
 		rollup, err := o.getRollupByNumber(int(rollupNum))
 		if err != nil {
-			logAndSendErr(resp, err.Error())
+			log.Error(err.Error())
+			logAndSendErr(resp, "Could not fetch latest transactions.")
 			return
 		}
 
@@ -182,12 +190,14 @@ func (o *Obscuroscan) getLatestTxs(resp http.ResponseWriter, _ *http.Request) {
 
 	jsonTxHashes, err := json.Marshal(txHashes)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return latest transaction hashes to client. Cause: %s", err))
+		log.Error("could not return latest transaction hashes to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch latest transactions.")
 		return
 	}
 	_, err = resp.Write(jsonTxHashes)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return latest transaction hashes to client. Cause: %s", err))
+		log.Error("could not return latest transaction hashes to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch latest transactions.")
 		return
 	}
 }
@@ -199,7 +209,8 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
 	buffer := new(bytes.Buffer)
 	_, err := buffer.ReadFrom(body)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
+		log.Error("could not read request body. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch block.")
 		return
 	}
 	blockHashStr := buffer.String()
@@ -208,18 +219,21 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
 	var blockHeader *types.Header
 	err = o.client.Call(&blockHeader, rpcclientlib.RPCGetBlockHeaderByHash, blockHash)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not retrieve block with hash %s. Cause: %s", blockHash, err))
+		log.Error("could not retrieve block with hash %s. Cause: %s", blockHash, err)
+		logAndSendErr(resp, "Could not fetch block.")
 		return
 	}
 
 	jsonBlock, err := json.Marshal(blockHeader)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return block to client. Cause: %s", err))
+		log.Error("could not return block to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch block.")
 		return
 	}
 	_, err = resp.Write(jsonBlock)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return block to client. Cause: %s", err))
+		log.Error("could not return block to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch block.")
 		return
 	}
 }
@@ -231,7 +245,8 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 	buffer := new(bytes.Buffer)
 	_, err := buffer.ReadFrom(body)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
+		log.Error("could not read request body. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch rollup.")
 		return
 	}
 
@@ -242,31 +257,36 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 
 		err = o.client.Call(&rollup, rpcclientlib.RPCGetRollupForTx, txHash)
 		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not retrieve rollup. Cause: %s", err))
+			log.Error("could not retrieve rollup. Cause: %s", err)
+			logAndSendErr(resp, "Could not fetch rollup.")
 			return
 		}
 	} else {
 		// Otherwise, we treat the input as a rollup number.
 		rollupNumber, err := strconv.Atoi(buffer.String())
 		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not parse \"%s\" as an integer", buffer.String()))
+			log.Error("could not parse \"%s\" as an integer", buffer.String())
+			logAndSendErr(resp, "Could not fetch rollup.")
 			return
 		}
 		rollup, err = o.getRollupByNumber(rollupNumber)
 		if err != nil {
-			logAndSendErr(resp, err.Error())
+			log.Error(err.Error())
+			logAndSendErr(resp, "Could not fetch rollup.")
 			return
 		}
 	}
 
 	jsonRollup, err := json.Marshal(rollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return rollup to client. Cause: %s", err))
+		log.Error("could not return rollup to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch rollup.")
 		return
 	}
 	_, err = resp.Write(jsonRollup)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return rollup to client. Cause: %s", err))
+		log.Error("could not return rollup to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch rollup.")
 		return
 	}
 }
@@ -279,19 +299,22 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 	buffer := new(bytes.Buffer)
 	_, err := buffer.ReadFrom(body)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read request body. Cause: %s", err))
+		log.Error("could not read request body. Cause: %s", err)
+		logAndSendErr(resp, "Could not decrypt transaction blob.")
 		return
 	}
 
 	jsonTxs, err := decryptTxBlob(buffer.Bytes())
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not decrypt transaction blob. Cause: %s", err))
+		log.Error("could not decrypt transaction blob. Cause: %s", err)
+		logAndSendErr(resp, "Could not decrypt transaction blob.")
 		return
 	}
 
 	_, err = resp.Write(jsonTxs)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not write decrypted transactions to client. Cause: %s", err))
+		log.Error("could not write decrypted transactions to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not decrypt transaction blob.")
 		return
 	}
 }
