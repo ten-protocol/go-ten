@@ -4,35 +4,37 @@ const eventDomLoaded = "DOMContentLoaded";
 const typeSubmit = "submit";
 const idNumRollups = "numRollups";
 const idFormGetRollup = "form-get-rollup";
-const idRollupNumber = "rollupNumber";
+const idRollupID = "rollupID";
 const idBlock = "block";
 const idRollup = "rollup";
+const idDecryptedTxs = "decryptedTxs";
 const pathNumRollups = "/numrollups/";
 const pathBlock = "/block/";
 const pathRollup = "/rollup/";
+const pathDecryptTxBlob = "/decrypttxblob/";
 const methodPost = "POST";
 const jsonKeyHeader = "Header";
 const jsonKeyL1Proof = "L1Proof";
+const jsonKeyEncryptedTxBlob = "EncryptedTxBlob";
 
 const initialize = () => {
     const numRollupsField = document.getElementById(idNumRollups);
     const blockArea = document.getElementById(idBlock);
     const rollupArea = document.getElementById(idRollup);
+    const decryptedTxsArea = document.getElementById(idDecryptedTxs);
 
     setInterval(async () => {
         const numRollupsResp = await fetch(pathNumRollups);
 
         if (numRollupsResp.ok) {
-            numRollupsField.innerText = await numRollupsResp.text();
+            numRollupsField.innerText = "Total rollups: " + await numRollupsResp.text();
         } else {
             numRollupsField.innerText = "Failed to fetch number of rollups. Cause: " + await numRollupsResp.text()
         }
     }, 1000);
 
     document.getElementById(idFormGetRollup).addEventListener(typeSubmit, async (event) => {
-        event.preventDefault();
-
-        const rollupNumber = document.getElementById(idRollupNumber).value;
+        const rollupNumber = document.getElementById(idRollupID).value;
         const rollupResp = await fetch(pathRollup, {
             method: methodPost,
             body: rollupNumber
@@ -57,6 +59,19 @@ const initialize = () => {
             blockArea.innerText = JSON.stringify(json, null, "\t");
         } else {
             blockArea.innerText = "Failed to fetch block. Cause: " + await blockResp.text()
+        }
+
+        const encryptedTxBlob = rollupJSON[jsonKeyEncryptedTxBlob]
+        const decryptTxBlobResp = await fetch(pathDecryptTxBlob, {
+            method: methodPost,
+            body: encryptedTxBlob
+        });
+
+        if (decryptTxBlobResp.ok) {
+            const json = JSON.parse(await decryptTxBlobResp.text())
+            decryptedTxsArea.innerText = JSON.stringify(json, null, "\t");
+        } else {
+            decryptedTxsArea.innerText = "Failed to decrypt transaction blob. Cause: " + await decryptTxBlobResp.text()
         }
     });
 }
