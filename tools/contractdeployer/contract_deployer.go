@@ -34,7 +34,7 @@ type ContractDeployer struct {
 func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 	cfgStr, _ := json.MarshalIndent(config, "", "  ")
 	fmt.Printf("Preparing contract deployer with config: %s\n", cfgStr)
-	wallet, err := setupWallet(config)
+	wal, err := setupWallet(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup wallet - %w", err)
 	}
@@ -43,10 +43,10 @@ func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 	startConnectingTime := time.Now()
 	// since the nodes we are connecting to may have only just started we retry connection until it is successful
 	for client == nil && time.Since(startConnectingTime) < timeoutWait {
-		client, err = setupClient(config, wallet)
+		client, err = setupClient(config, wal)
 	}
 	if client == nil {
-		return nil, fmt.Errorf("failed to initialise client connection after retrying for %s", timeoutWait)
+		return nil, fmt.Errorf("failed to initialise client connection after retrying for %s, %w", timeoutWait, err)
 	}
 
 	contractCode, err := getContractCode(config)
@@ -56,7 +56,7 @@ func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 
 	return &ContractDeployer{
 		client:       client,
-		wallet:       wallet,
+		wallet:       wal,
 		contractCode: contractCode,
 	}, nil
 }
