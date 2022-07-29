@@ -45,7 +45,8 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
    * `nodePortWS` (default: `13001`): The Obscuro node's websockets RPC port
    * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs
 
-   The wallet extension is now listening on the specified host and port.
+   The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
+   assume that the default port of `3000` was selected.
 
 3. Sign in to MetaMask.
 
