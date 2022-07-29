@@ -22,24 +22,25 @@
 <div class="container" style="padding-top: 25px;">
     <div class="card shadow p-3 mb-5 bg-body rounded">
         <div class="card-body">
-            <h2 class="card-title">Obscuro rollup viewer</h2>
+            <h2 class="card-title">Search the Obscuro chain</h2>
 
             <div id="numRollups">Total rollups: Fetching...</div>
 
-            <p>
-            <form action="#result" id="form-get-rollup">
+            <form id="form-get-rollup">
                 <div class="mb-3">
-                    <input class="form-control" id="rollupID"
-                           placeholder="Search by rollup number or transaction hash">
+                    <label for="rollupID"></label>
+                    <input class="form-control" id="rollupID" placeholder="Search by rollup number or transaction hash">
                 </div>
                 <button type="submit" class="btn btn-outline-dark">Submit</button>
             </form>
-            <hr>
+        </div>
+    </div>
+</div>
 
-            <!-- We jump down to this div after requesting a new rollup, to display the results. -->
-            <div id="result"></div>
-
-            <h5>Obscuro rollup</h5>
+<div class="container">
+    <div class="card shadow p-3 mb-5 bg-body rounded">
+        <div class="card-body" id="result">
+            <h2 class="card-title">Obscuro rollup</h2>
             <pre id="rollup">N/A</pre>
             <hr>
 
@@ -56,7 +57,6 @@
                 long-lived and well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or
                 anything - other than the Obscuro enclaves.
             </div>
-            </p>
         </div>
     </div>
 </div>

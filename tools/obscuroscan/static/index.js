@@ -5,6 +5,7 @@ const typeSubmit = "submit";
 const idNumRollups = "numRollups";
 const idFormGetRollup = "form-get-rollup";
 const idRollupID = "rollupID";
+const idResult = "result";
 const idBlock = "block";
 const idRollup = "rollup";
 const idDecryptedTxs = "decryptedTxs";
@@ -19,6 +20,7 @@ const jsonKeyEncryptedTxBlob = "EncryptedTxBlob";
 
 const initialize = () => {
     const numRollupsField = document.getElementById(idNumRollups);
+    const resultPane = document.getElementById(idResult);
     const blockArea = document.getElementById(idBlock);
     const rollupArea = document.getElementById(idRollup);
     const decryptedTxsArea = document.getElementById(idDecryptedTxs);
@@ -34,6 +36,8 @@ const initialize = () => {
     }, 1000);
 
     document.getElementById(idFormGetRollup).addEventListener(typeSubmit, async (event) => {
+        event.preventDefault();
+
         const rollupNumber = document.getElementById(idRollupID).value;
         const rollupResp = await fetch(pathRollup, {
             method: methodPost,
@@ -73,6 +77,8 @@ const initialize = () => {
         } else {
             decryptedTxsArea.innerText = "Failed to decrypt transaction blob. Cause: " + await decryptTxBlobResp.text()
         }
+
+        resultPane.scrollIntoView();
     });
 }
 
