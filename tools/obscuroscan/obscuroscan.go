@@ -31,6 +31,7 @@ import (
 
 const (
 	pathNumRollups    = "/numrollups/"
+	pathLatestRollups = "/latestrollups/"
 	pathBlock         = "/block/"
 	pathRollup        = "/rollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
@@ -65,10 +66,11 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
-	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)    // Get the number of published rollups.
-	serveMux.HandleFunc(pathBlock, o.getBlock)              // Get the L1 block with the given number.
-	serveMux.HandleFunc(pathRollup, o.getRollup)            // Get the rollup with the given number.
-	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob) // Decrypt a transaction blob.
+	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)       // Get the number of published rollups.
+	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups) // Get the latest rollup hashes.
+	serveMux.HandleFunc(pathBlock, o.getBlock)                 // Get the L1 block with the given number.
+	serveMux.HandleFunc(pathRollup, o.getRollup)               // Get the rollup with the given number.
+	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)    // Decrypt a transaction blob.
 
 	// Serves the web assets for the user interface.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
@@ -108,6 +110,37 @@ func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 	_, err = resp.Write([]byte(numOfRollupsStr))
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not return number of rollups to client. Cause: %s", err))
+		return
+	}
+}
+
+// Retrieves the number of published rollups.
+func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request) {
+	var rollupHeader *common.Header
+	err := o.client.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not retrieve head rollup. Cause: %s", err))
+		return
+	}
+
+	numOfRollups := rollupHeader.Number.Int64()
+
+	fakeHashes := []string{
+		"0x000" + strconv.Itoa(int(numOfRollups)),
+		"0x000" + strconv.Itoa(int(numOfRollups)+1),
+		"0x000" + strconv.Itoa(int(numOfRollups)+2),
+		"0x000" + strconv.Itoa(int(numOfRollups)+3),
+		"0x000" + strconv.Itoa(int(numOfRollups)+4),
+	}
+
+	jsonRollupHashes, err := json.Marshal(fakeHashes)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return latest rollups to client. Cause: %s", err))
+		return
+	}
+	_, err = resp.Write(jsonRollupHashes)
+	if err != nil {
+		logAndSendErr(resp, fmt.Sprintf("could not return latest rollups to client. Cause: %s", err))
 		return
 	}
 }
