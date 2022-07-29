@@ -27,15 +27,27 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 ## Usage
 
-1. Precompiled binaries for the wallet extension are available for macOS ARM64, macOS AMD64, Windows AMD64 and Linux
-   AMD64 on the project's [releases page](https://github.com/obscuronet/go-obscuro/releases/).
+1. Compile the wallet extension binary by cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro)
+   and running the following command from the root of the repository:
 
-    * For other OSes and architectures, see `Compiling the Binary`, below.
+   ```
+   cd tools/walletextension/main && go build -o wallet_extension .
+   ```
 
-2. Open a terminal window of command prompt and start the wallet extension by running the `wallet_extension` binary. 
-   The wallet extension is now listening on `http://127.0.0.1:3000/`.
+   This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`.
 
-3. Sign into MetaMask.
+2. Open a command prompt and start the wallet extension by running the `wallet_extension` binary. The wallet extension 
+   supports the following flags:
+
+   * `port` (default: `3000`): The local port on which to serve the wallet extension
+   * `nodeHost` (default: `testnet.obscu.ro`): The host machine for the Obscuro node
+   * `nodePortHTTP` (default: `13000`): The Obscuro node's HTTP RPC port
+   * `nodePortWS` (default: `13001`): The Obscuro node's websockets RPC port
+   * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs
+
+   The wallet extension is now listening on the specified host and port.
+
+3. Sign in to MetaMask.
 
 4. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
    the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and
@@ -56,16 +68,3 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 # Auditing the source
 
 The source code for the wallet extension can be found [here](https://github.com/obscuronet/go-obscuro/tree/main/tools/walletextension).
-
-# Compiling the Binary
-
-If the precompiled binaries are not suitable for your system, the wallet extension binary can be built by cloning the 
-[Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following commands from the root of the 
-repository:
-
-```
-cd tools/walletextension/main
-go build -o wallet_extension .
-```
-
-This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`.
