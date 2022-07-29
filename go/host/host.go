@@ -703,27 +703,27 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
 	var lastBlkNumber *big.Int
 	var reingestBlocks []*types.Block
 
-	// get the tip block
-	lastBlk, err := a.ethClient.BlockByNumber(lastBlkNumber)
+	// get the blockchain tip block
+	blk, err := a.ethClient.BlockByNumber(lastBlkNumber)
 	if err != nil {
 		log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
 	}
 
-	if lastBlk.Hash().Hex() == lastKnownBlkHash.Hex() {
-		// no new blocks have been issued
+	if blk.Hash().Hex() == lastKnownBlkHash.Hex() {
+		// if no new blocks have been issued then nothing to catchup
 		return
 	}
-	reingestBlocks = append(reingestBlocks, lastBlk)
+	reingestBlocks = append(reingestBlocks, blk)
 
-	// iterate from the tip (last block produced) to the last block ingested by the node
-	for lastBlk.Hash().Hex() != lastKnownBlkHash.Hex() {
-		blockParent, err := a.ethClient.BlockByHash(lastBlk.ParentHash())
+	// get all blocks from the blockchain tip to the last block ingested by the node
+	for blk.Hash().Hex() != lastKnownBlkHash.Hex() {
+		blockParent, err := a.ethClient.BlockByHash(blk.ParentHash())
 		if err != nil {
-			log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", lastBlk.ParentHash(), err)
+			log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", blk.ParentHash(), err)
 		}
 
 		reingestBlocks = append(reingestBlocks, blockParent)
-		lastBlk = blockParent
+		blk = blockParent
 	}
 
 	// make to have the last ingested block available
