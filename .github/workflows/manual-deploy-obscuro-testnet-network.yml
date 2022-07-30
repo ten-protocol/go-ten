@@ -23,7 +23,8 @@ jobs:
     # Map a step output to a job output
     outputs:
       mgmtContractAddr: ${{ steps.deployContracts.outputs.mgmtContractAddr }}
-      erc20ContractAddr: ${{ steps.deployContracts.outputs.erc20ContractAddr }}
+      obxErc20Addr: ${{ steps.deployContracts.outputs.obxErc20Addr }}
+      ethErc20Addr: ${{ steps.deployContracts.outputs.ethErc20Addr }}
     steps:
       - uses: actions/checkout@v2
 
