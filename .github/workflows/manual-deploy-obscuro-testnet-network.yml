@@ -53,8 +53,8 @@ jobs:
           ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
-          echo "OBXERC20ADDR=OBXERC20ADDR" >> $GITHUB_ENV
-          echo "ETHERC20ADDR=ETHERC20ADDR" >> $GITHUB_ENV
+          echo "OBXERC20ADDR=$OBXERC20ADDR" >> $GITHUB_ENV
+          echo "ETHERC20ADDR=$ETHERC20ADDR" >> $GITHUB_ENV
           echo "Contracts deployed to $MGMTCONTRACTADDR and $OBXERC20ADDR and $ETHERC20ADDR"
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
           echo "::set-output name=obxErc20Addr::$OBXERC20ADDR"   
