@@ -165,6 +165,11 @@ func (c *networkClient) encryptParamBytes(params []byte) ([]byte, error) {
 }
 
 func (c *networkClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
+	// For some RPC operations, a nil is a valid response (e.g. the transaction for an unrecognised transaction hash).
+	if resultBlob == nil {
+		return nil, nil
+	}
+
 	if c.viewingPrivKey == nil {
 		// todo: remove this non-decryption part when we make viewing key encryption mandatory across all tests
 		// extract result from the data as-is, in case we can't decrypt/process it below
