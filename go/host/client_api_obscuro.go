@@ -59,6 +59,9 @@ func (api *ObscuroAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header,
 	// We walk the chain back to the requested rollup.
 	rollupHeader := api.host.nodeDB.GetCurrentRollupHead()
 	for {
+		if rollupHeader == nil {
+			return nil, err
+		}
 		cmp := rollupHeader.Number.Cmp(number)
 		// We have found the rollup we're looking for.
 		if cmp == 0 {
@@ -70,9 +73,6 @@ func (api *ObscuroAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header,
 		}
 
 		rollupHeader = api.host.nodeDB.GetRollupHeader(rollupHeader.ParentHash)
-		if rollupHeader == nil {
-			return nil, err
-		}
 	}
 }
 
@@ -96,6 +96,10 @@ func (api *ObscuroAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup
 	// TODO - Provide a more efficient method on node DB to retrieve a rollup by transaction hash.
 	// We walk the chain back until we find the requested transaction hash.
 	rollupHeader := api.host.nodeDB.GetCurrentRollupHead()
+	if rollupHeader == nil {
+		return nil, nil //nolint:nilnil
+	}
+
 	rollup, err := api.host.EnclaveClient.GetRollup(rollupHeader.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not find rollup containing transaction. Cause: %w", err)
@@ -114,6 +118,39 @@ func (api *ObscuroAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup
 			return nil, fmt.Errorf("could not find rollup containing transaction. Cause: %w", err)
 		}
 	}
+}
+
+// GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
+func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
+	rollupHeader := api.host.nodeDB.GetCurrentRollupHead()
+	if rollupHeader == nil {
+		return nil, nil
+	}
+	nextRollupHash := rollupHeader.Hash()
+
+	// We walk the chain until we've collected sufficient transactions.
+	var txHashes []gethcommon.Hash
+	for {
+		rollup, err := api.host.EnclaveClient.GetRollup(nextRollupHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve rollup for hash. Cause: %w", err)
+		}
+
+		for _, txHash := range rollup.TxHashes {
+			txHashes = append(txHashes, txHash)
+			if len(txHashes) >= num {
+				return txHashes, nil
+			}
+		}
+
+		// If we have reached the top of the chain (i.e. the current rollup's number is one), we stop walking.
+		if rollup.Header.Number.Cmp(big.NewInt(0)) == 0 {
+			break
+		}
+		nextRollupHash = rollup.Header.ParentHash
+	}
+
+	return txHashes, nil
 }
 
 // StopHost gracefully stops the host.

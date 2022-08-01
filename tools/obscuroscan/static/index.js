@@ -55,17 +55,16 @@ async function updateLatestRollups() {
     const rollupFiveField = document.getElementById(idRollupFive);
 
     const latestRollupsResp = await fetch(pathLatestRollups);
-    const latestRollupsRespText = await latestRollupsResp.text()
 
     if (latestRollupsResp.ok) {
-        const latestRollupsJSON = JSON.parse(latestRollupsRespText);
+        const latestRollupsJSON = JSON.parse(await latestRollupsResp.text());
         rollupOneField.innerText = latestRollupsJSON[0];
         rollupTwoField.innerText = latestRollupsJSON[1];
         rollupThreeField.innerText = latestRollupsJSON[2];
         rollupFourField.innerText = latestRollupsJSON[3];
         rollupFiveField.innerText = latestRollupsJSON[4];
     } else {
-        const errMsg = "Failed to fetch latest rollups. Cause: " + latestRollupsRespText
+        const errMsg = "Failed to fetch latest rollups."
         rollupOneField.innerText = errMsg;
         rollupTwoField.innerText = errMsg;
         rollupThreeField.innerText = errMsg;
@@ -83,17 +82,16 @@ async function updateLatestTxs() {
     const txFiveField = document.getElementById(idTxFive);
 
     const latestTxsResp = await fetch(pathLatestTxs);
-    const latestTxsRespText = await latestTxsResp.text();
 
     if (latestTxsResp.ok) {
-        const latestTxsJSON = JSON.parse(latestTxsRespText);
+        const latestTxsJSON = JSON.parse(await latestTxsResp.text());
         txOneField.innerText = latestTxsJSON[0];
         txTwoField.innerText = latestTxsJSON[1];
         txThreeField.innerText = latestTxsJSON[2];
         txFourField.innerText = latestTxsJSON[3];
         txFiveField.innerText = latestTxsJSON[4];
     } else {
-        const errMsg = "Failed to fetch latest rollups. Cause: " + latestTxsRespText
+        const errMsg = "Failed to fetch latest rollups."
         txOneField.innerText = errMsg;
         txTwoField.innerText = errMsg;
         txThreeField.innerText = errMsg;
