@@ -334,11 +334,12 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	txHash := gethcommon.HexToHash(paramList[0])
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index := e.storage.GetTransaction(txHash)
-
-	if tx == nil {
-		// If there's no transaction, there's no `from` field we can use to determine which key to use to encrypt the response.
-		return nil, fmt.Errorf("transaction does not exist")
+	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
+	if err != nil {
+		if errors.Is(err, db.ErrTxNotFound) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	// Unlike in the Geth impl, we hardcode the use of a London signer.

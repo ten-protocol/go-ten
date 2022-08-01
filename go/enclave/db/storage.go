@@ -271,15 +271,18 @@ func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
 	return receipts
 }
 
-func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64) {
+func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
 	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash)
-	return tx, blockHash, blockNumber, index
+	if tx == nil {
+		return nil, gethcommon.Hash{}, 0, 0, ErrTxNotFound
+	}
+	return tx, blockHash, blockNumber, index, nil
 }
 
 func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, error) {
-	tx, _, _, _ := s.GetTransaction(txHash) //nolint:dogsled
-	if tx == nil {
-		return gethcommon.Address{}, ErrTxNotFound
+	tx, _, _, _, err := s.GetTransaction(txHash) //nolint:dogsled
+	if err != nil {
+		return gethcommon.Address{}, err
 	}
 	// todo - make the signer a field of the rollup chain
 	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
@@ -290,9 +293,9 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
-	tx, blockHash, _, index := obscurorawdb.ReadTransaction(s.db, txHash)
-	if tx == nil {
-		return nil, ErrTxNotFound
+	_, blockHash, _, index, err := s.GetTransaction(txHash)
+	if err != nil {
+		return nil, err
 	}
 
 	receipts := s.GetReceiptsByHash(blockHash)
