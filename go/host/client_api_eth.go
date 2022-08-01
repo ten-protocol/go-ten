@@ -46,6 +46,9 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	extRollup, err := api.host.EnclaveClient.GetRollupByHeight(number.Int64())
+	if extRollup == nil {
+		return nil, err
+	}
 	return extRollupToBlock(extRollup), err
 }
 
@@ -78,7 +81,7 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 		return nil, err
 	}
 	if encryptedResponse == nil {
-		return nil, err
+		return nil, nil //nolint:nilnil
 	}
 	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
 	return &encryptedResponseHex, nil
