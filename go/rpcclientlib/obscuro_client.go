@@ -27,6 +27,7 @@ const (
 	RPCNonce                   = "obscuro_nonce"
 	RPCAddViewingKey           = "obscuro_addViewingKey"
 	RPCGetRollupForTx          = "obscuro_getRollupForTx"
+	RPCGetLatestTxs            = "obscuro_getLatestTransactions"
 	RPCStopHost                = "obscuro_stopHost"
 	RPCCall                    = "eth_call"
 	RPCChainID                 = "eth_chainId"

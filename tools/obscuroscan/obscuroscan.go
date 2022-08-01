@@ -159,37 +159,22 @@ func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request
 
 // Retrieves the last five transaction hashes.
 func (o *Obscuroscan) getLatestTxs(resp http.ResponseWriter, _ *http.Request) {
-	rollupNum, err := o.getLatestRollupNumber()
+	numTransactions := 5
+
+	var txHashes []gethcommon.Hash
+	err := o.client.Call(&txHashes, rpcclientlib.RPCGetLatestTxs, numTransactions)
 	if err != nil {
 		log.Error(err.Error())
 		logAndSendErr(resp, "Could not fetch latest transactions.")
-		return
 	}
 
-	// We walk the chain of rollups, getting the transaction hashes until we've hit at least five.
-	var txHashes []string
-	for {
-		rollup, err := o.getRollupByNumber(int(rollupNum))
-		if err != nil {
-			log.Error(err.Error())
-			logAndSendErr(resp, "Could not fetch latest transactions.")
-			return
-		}
-
-		for _, txHash := range rollup.TxHashes {
-			txHashes = append(txHashes, txHash.String())
-		}
-		if len(txHashes) >= 5 {
-			// It's fine if we return more than five transaction hashes; the front-end will ignore the later ones.
-			break
-		}
-
-		rollupNum--
-		if rollupNum < 0 {
-			for idx := 0; idx < 5-len(txHashes); idx++ {
-				txHashes = append(txHashes, "N/A")
-			}
-			break
+	// We convert the hashes to strings and pad with N/As as needed.
+	txHashStrings := make([]string, numTransactions)
+	for idx := 0; idx < numTransactions; idx++ {
+		if idx < len(txHashes) {
+			txHashStrings[idx] = txHashes[idx].String()
+		} else {
+			txHashStrings[idx] = "N/A"
 		}
 	}
 
