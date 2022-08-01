@@ -300,6 +300,6 @@ func readRollupHash(db ethdb.KeyValueReader, number *big.Int) *gethcommon.Hash {
 	if len(data) == 0 {
 		return nil
 	}
-	hash := gethcommon.HexToHash(string(data))
+	hash := gethcommon.BytesToHash(data)
 	return &hash
 }
