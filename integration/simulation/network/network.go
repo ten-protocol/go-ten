@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"math/rand"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -31,9 +32,10 @@ type RPCHandles struct {
 	// an obscuro client per obscuro node in the network (used for things like validation rather than transactions on behalf of sim accounts)
 	ObscuroClients []rpcclientlib.Client
 
-	// an RPC client per wallet, with a viewing key setup (on the client and registered on its corresponding host enclave),
+	// an RPC client per node per wallet, with a viewing key setup (on the client and registered on its corresponding host enclave),
 	//	to mimic user acc interaction via a wallet extension
-	VirtualWalletExtensionClients map[string]rpcclientlib.Client // an obscuro client per wallet (configured with viewing key where applicable)
+	// map of address hex string -> slice of clients (indexed by node)
+	VirtualWalletExtensionClients map[string][]rpcclientlib.Client
 }
 
 func (n *RPCHandles) RndEthClient() ethadapter.EthClient {
@@ -44,8 +46,15 @@ func (n *RPCHandles) RndObscuroClient() rpcclientlib.Client {
 	return n.ObscuroClients[rand.Intn(len(n.ObscuroClients))] //nolint:gosec
 }
 
-// ObscuroWalletClient fetches client for given wallet if it exists
-func (n *RPCHandles) ObscuroWalletClient(wallet wallet.Wallet) rpcclientlib.Client {
+// ObscuroWalletRndClient fetches a random client for given wallet
+func (n *RPCHandles) ObscuroWalletRndClient(wallet wallet.Wallet) rpcclientlib.Client {
 	addr := wallet.Address().String()
-	return n.VirtualWalletExtensionClients[addr]
+	clients := n.VirtualWalletExtensionClients[addr]
+	return clients[rand.Intn(len(clients))]
+}
+
+// ObscuroWalletClient fetches a client for a given wallet address, for a specific node
+func (n *RPCHandles) ObscuroWalletClient(walletAddress common.Address, nodeIdx int) rpcclientlib.Client {
+	clients := n.VirtualWalletExtensionClients[walletAddress.String()]
+	return clients[nodeIdx]
 }

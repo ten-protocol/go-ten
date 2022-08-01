@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 	"math/big"
 	"sync"
 	"time"
@@ -23,7 +24,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string]rpcclientlib.Client) {
+func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string][]rpcclientlib.Client) {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -72,24 +73,24 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 // setupWalletClientsWithoutViewingKeys will configure the existing obscuro clients to be used as wallet clients,
 // (we typically keep a client per wallet so their viewing keys are available and registered but they can share clients
 // 	if no viewing keys are in use)
-func setupWalletClientsWithoutViewingKeys(params *params.SimParams, obscuroClients []rpcclientlib.Client) map[string]rpcclientlib.Client {
-	walletClients := make(map[string]rpcclientlib.Client)
+func setupWalletClientsWithoutViewingKeys(params *params.SimParams, obscuroClients []rpcclientlib.Client) map[string][]rpcclientlib.Client {
+	walletClients := make(map[string][]rpcclientlib.Client)
 	var i int
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
 	for _, w := range params.Wallets.SimObsWallets {
-		walletClients[w.Address().String()] = obscuroClients[i%len(obscuroClients)]
+		walletClients[w.Address().String()] = obscuroClients
 		i++
 	}
 	for _, t := range params.Wallets.Tokens {
 		w := t.L2Owner
-		walletClients[w.Address().String()] = obscuroClients[i%len(obscuroClients)]
+		walletClients[w.Address().String()] = obscuroClients
 		i++
 	}
 	return walletClients
 }
 
 // todo: this method is quite heavy, should refactor to separate out the creation of the nodes, starting of the nodes, setup of the RPC clients etc.
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string]rpcclientlib.Client) {
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string][]rpcclientlib.Client) {
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
@@ -143,21 +144,27 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	}
 
 	// round-robin the wallets onto the different obscuro nodes, register them each a viewing key
-	walletClients := make(map[string]rpcclientlib.Client)
-	var i int
+	walletClients := make(map[string][]rpcclientlib.Client)
 	for _, w := range params.Wallets.SimObsWallets {
-		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
-		viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
-		i++
+		walletClients[w.Address().String()] = createAuthenticatedClientsForWallet(nodeRPCAddresses, w)
 	}
 	for _, t := range params.Wallets.Tokens {
 		w := t.L2Owner
-		walletClients[w.Address().String()] = rpcclientlib.NewClient(nodeRPCAddresses[i%len(nodeRPCAddresses)])
-		viewkey.GenerateAndRegisterViewingKey(walletClients[w.Address().String()], w)
-		i++
+		walletClients[w.Address().String()] = createAuthenticatedClientsForWallet(nodeRPCAddresses, w)
 	}
 
 	return obscuroClients, walletClients
+}
+
+// createAuthenticatedClientsForWallet takes a wallet and sets up a client for it for every node
+func createAuthenticatedClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []rpcclientlib.Client {
+	clients := make([]rpcclientlib.Client, len(nodeRPCAddresses))
+	for i, addr := range nodeRPCAddresses {
+		c := rpcclientlib.NewClient(addr)
+		viewkey.GenerateAndRegisterViewingKey(c, wal)
+		clients[i] = c
+	}
+	return clients
 }
 
 func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {

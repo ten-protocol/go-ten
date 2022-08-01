@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
@@ -86,9 +88,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	heights := make([]uint64, len(s.RPCHandles.ObscuroClients))
 	var wg sync.WaitGroup
 	for idx := range s.RPCHandles.ObscuroClients {
-		obscuroClient := s.RPCHandles.ObscuroClients[idx]
 		wg.Add(1)
-		go checkBlockchainOfObscuroNode(t, obscuroClient, minHeight, maxL1Height, s, &wg, heights, idx)
+		go checkBlockchainOfObscuroNode(t, s.RPCHandles, minHeight, maxL1Height, s, &wg, heights, idx)
 	}
 	wg.Wait()
 	min, max := minMax(heights)
@@ -175,18 +176,10 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 	return deposits, rollups, totalDeposited, len(blockchain)
 }
 
-func checkBlockchainOfObscuroNode(
-	t *testing.T,
-	nodeClient rpcclientlib.Client,
-	minObscuroHeight uint64,
-	maxEthereumHeight uint64,
-	s *Simulation,
-	wg *sync.WaitGroup,
-	heights []uint64,
-	nodeIdx int,
-) {
+func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
 	defer wg.Done()
 	var nodeID gethcommon.Address
+	nodeClient := rpcHandles.ObscuroClients[nodeIdx]
 	err := nodeClient.Call(&nodeID, rpcclientlib.RPCGetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
@@ -230,7 +223,7 @@ func checkBlockchainOfObscuroNode(
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
 
-	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(nodeClient, s.TxInjector)
+	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
 			nodeAddr, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))
@@ -285,23 +278,35 @@ func checkBlockchainOfObscuroNode(
 }
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
-func FindNotIncludedL2Txs(l2Client rpcclientlib.Client, txInjector *TransactionInjector) (int, int) {
+func FindNotIncludedL2Txs(nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int) {
 	transfers, withdrawals := txInjector.TxTracker.GetL2Transactions()
 	notFoundTransfers := 0
 	for _, tx := range transfers {
-		if l2tx := getTransaction(l2Client, tx.Hash()); l2tx == nil {
+		sender := getSender(tx)
+		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
+		if l2tx := getTransaction(rpcHandles.ObscuroWalletClient(sender, nodeIdx), tx.Hash()); l2tx == nil {
 			notFoundTransfers++
 		}
 	}
 
 	notFoundWithdrawals := 0
 	for _, tx := range withdrawals {
-		if l2tx := getTransaction(l2Client, tx.Hash()); l2tx == nil {
+		sender := getSender(tx)
+		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
+		if l2tx := getTransaction(rpcHandles.ObscuroWalletClient(sender, nodeIdx), tx.Hash()); l2tx == nil {
 			notFoundWithdrawals++
 		}
 	}
 
 	return notFoundTransfers, notFoundWithdrawals
+}
+
+func getSender(tx *common.L2Tx) gethcommon.Address {
+	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
+	if err != nil {
+		panic(fmt.Errorf("couldn't find sender to verify transaction - %w", err))
+	}
+	return msg.From()
 }
 
 // Checks that there is a receipt available for each L2 transaction.
