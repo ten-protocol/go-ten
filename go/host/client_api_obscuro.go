@@ -57,7 +57,7 @@ func (api *ObscuroAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header,
 	if rollupHash == nil {
 		return nil, fmt.Errorf("no rollup with number %d is stored", number.Int64())
 	}
-	
+
 	rollupHeader := api.host.nodeDB.GetRollupHeader(*rollupHash)
 	if rollupHeader == nil {
 		return nil, fmt.Errorf("storage indicates that rollup %d has hash %s, but no such rollup is stored", number.Int64(), rollupHash)
