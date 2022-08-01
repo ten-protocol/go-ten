@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -86,7 +87,7 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	}
 	serveMux.Handle(pathRoot, http.FileServer(http.FS(noPrefixStaticFiles)))
 
-	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
+	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
 
 	err = o.server.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
