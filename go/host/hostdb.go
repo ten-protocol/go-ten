@@ -95,9 +95,9 @@ func (db *DB) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 func (db *DB) AddRollupHeader(header *common.Header, txHashes []gethcommon.Hash) {
 	b := db.kvStore.NewBatch()
 	writeRollupHeader(b, header)
-	writeRollupHashByNumber(b, header)
+	writeRollupHash(b, header)
 	for _, txHash := range txHashes {
-		writeRollupHashByTxHash(b, txHash, header)
+		writeRollupNumber(b, txHash, header)
 	}
 
 	// update the head if the new height is greater than the existing one
@@ -126,25 +126,25 @@ func (db *DB) WasSubmitted(hash gethcommon.Hash) bool {
 	return f
 }
 
-// GetRollupHashByNumber returns the hash of a rollup given its number
-func (db *DB) GetRollupHashByNumber(number *big.Int) *gethcommon.Hash {
-	return readRollupHashByNumber(db.kvStore, number)
+// GetRollupHash returns the hash of a rollup given its number
+func (db *DB) GetRollupHash(number *big.Int) *gethcommon.Hash {
+	return readRollupHash(db.kvStore, number)
 }
 
-// GetRollupHashByTxHash returns the hash of a rollup given the hash of a transaction it contains
-func (db *DB) GetRollupHashByTxHash(txHash gethcommon.Hash) *gethcommon.Hash {
-	return readRollupHashByTxHash(db.kvStore, txHash)
+// GetRollupNumber returns the number of the rollup containing the given transaction hash
+func (db *DB) GetRollupNumber(txHash gethcommon.Hash) *big.Int {
+	return readRollupNumber(db.kvStore, txHash)
 }
 
 // schema
 var (
-	blockHeaderPrefix      = []byte("b")
-	rollupHeaderPrefix     = []byte("r")
-	headBlock              = []byte("hb")
-	headRollup             = []byte("hr")
-	submittedRollupPrefix  = []byte("s")
-	rollupHashNumberPrefix = []byte("rhn")
-	rollupHashTxHashPrefix = []byte("rht")
+	blockHeaderPrefix     = []byte("b")
+	rollupHeaderPrefix    = []byte("r")
+	headBlock             = []byte("hb")
+	headRollup            = []byte("hr")
+	submittedRollupPrefix = []byte("s")
+	rollupHashPrefix      = []byte("rh")
+	rollupNumberPrefix    = []byte("rn")
 )
 
 // headerKey = rollupHeaderPrefix  + hash
@@ -162,14 +162,14 @@ func submittedRollupHeaderKey(hash gethcommon.Hash) []byte {
 	return append(submittedRollupPrefix, hash.Bytes()...)
 }
 
-// headerKey = rollupHashNumberPrefix + number
-func rollupHashNumberKey(num *big.Int) []byte {
-	return append(rollupHashNumberPrefix, []byte(num.String())...)
+// headerKey = rollupHashPrefix + number
+func rollupHashKey(num *big.Int) []byte {
+	return append(rollupHashPrefix, []byte(num.String())...)
 }
 
-// headerKey = rollupHashTxHashPrefix + hash
-func rollupHashTxHashKey(txHash gethcommon.Hash) []byte {
-	return append(rollupHashTxHashPrefix, txHash.Bytes()...)
+// headerKey = rollupNumberPrefix + hash
+func rollupNumberKey(txHash gethcommon.Hash) []byte {
+	return append(rollupNumberPrefix, txHash.Bytes()...)
 }
 
 // WriteBlockHeader stores a block header into the database
@@ -291,31 +291,34 @@ func writeHeadRollup(db ethdb.KeyValueWriter, val gethcommon.Hash) {
 }
 
 // Stores the hash of a rollup into the database, keyed by the rollup's number
-func writeRollupHashByNumber(db ethdb.KeyValueWriter, header *common.Header) {
-	key := rollupHashNumberKey(header.Number)
+func writeRollupHash(db ethdb.KeyValueWriter, header *common.Header) {
+	key := rollupHashKey(header.Number)
 	if err := db.Put(key, header.Hash().Bytes()); err != nil {
 		log.Panic("could not put header in DB. Cause: %s", err)
 	}
 }
 
 // Stores the hash of a rollup into the database, keyed by the hashes of the transactions in the rollup
-func writeRollupHashByTxHash(db ethdb.KeyValueWriter, txHash gethcommon.Hash, header *common.Header) {
-	key := rollupHashTxHashKey(txHash)
-	if err := db.Put(key, header.Hash().Bytes()); err != nil {
-		log.Panic("could not put header in DB. Cause: %s", err)
+func writeRollupNumber(db ethdb.KeyValueWriter, txHash gethcommon.Hash, header *common.Header) {
+	key := rollupNumberKey(txHash)
+	// TODO - Investigate this off-by-one issue. The tx hashes that are in the `BlockSubmissionResponse` for rollup #1
+	//  are actually the transactions for rollup #2.
+	number := big.NewInt(0).Add(header.Number, big.NewInt(1))
+	if err := db.Put(key, number.Bytes()); err != nil {
+		log.Panic("could not put rollup number in DB. Cause: %s", err)
 	}
 }
 
 // Retrieves the hash for the rollup with the given number.
-func readRollupHashByNumber(db ethdb.KeyValueReader, number *big.Int) *gethcommon.Hash {
-	f, err := db.Has(rollupHashNumberKey(number))
+func readRollupHash(db ethdb.KeyValueReader, number *big.Int) *gethcommon.Hash {
+	f, err := db.Has(rollupHashKey(number))
 	if err != nil {
 		log.Panic("could not retrieve rollup hash. Cause: %s", err)
 	}
 	if !f {
 		return nil
 	}
-	data, err := db.Get(rollupHashNumberKey(number))
+	data, err := db.Get(rollupHashKey(number))
 	if err != nil {
 		log.Panic("could not retrieve rollup hash. Cause: %s", err)
 	}
@@ -326,22 +329,22 @@ func readRollupHashByNumber(db ethdb.KeyValueReader, number *big.Int) *gethcommo
 	return &hash
 }
 
-// Retrieves the hash for the rollup containing the transaction with the given hash.
-func readRollupHashByTxHash(db ethdb.KeyValueReader, txHash gethcommon.Hash) *gethcommon.Hash {
-	f, err := db.Has(rollupHashTxHashKey(txHash))
+// Retrieves the number of the rollup containing the transaction with the given hash.
+func readRollupNumber(db ethdb.KeyValueReader, txHash gethcommon.Hash) *big.Int {
+	f, err := db.Has(rollupNumberKey(txHash))
 	if err != nil {
-		log.Panic("could not retrieve rollup hash. Cause: %s", err)
+		log.Panic("could not retrieve rollup number. Cause: %s", err)
 	}
 	if !f {
 		return nil
 	}
-	data, err := db.Get(rollupHashTxHashKey(txHash))
+	data, err := db.Get(rollupNumberKey(txHash))
 	if err != nil {
-		log.Panic("could not retrieve rollup hash. Cause: %s", err)
+		log.Panic("could not retrieve rollup number. Cause: %s", err)
 	}
 	if len(data) == 0 {
 		return nil
 	}
-	hash := gethcommon.BytesToHash(data)
-	return &hash
+	number := big.NewInt(0).SetBytes(data)
+	return number
 }

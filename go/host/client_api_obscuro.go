@@ -53,7 +53,7 @@ func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 
 // GetRollupHeaderByNumber returns the header for the rollup with the given number.
 func (api *ObscuroAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header, error) {
-	rollupHash := api.host.nodeDB.GetRollupHashByNumber(number)
+	rollupHash := api.host.nodeDB.GetRollupHash(number)
 	if rollupHash == nil {
 		return nil, fmt.Errorf("no rollup with number %d is stored", number.Int64())
 	}
@@ -83,31 +83,22 @@ func (api *ObscuroAPI) AddViewingKey(viewingKeyBytes []byte, signature []byte) e
 
 // GetRollupForTx returns the rollup containing a given transaction hash. Required for ObscuroScan.
 func (api *ObscuroAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup, error) {
-	// TODO - Provide a more efficient method on node DB to retrieve a rollup by transaction hash.
-	// We walk the chain back until we find the requested transaction hash.
-	rollupHeader := api.host.nodeDB.GetCurrentRollupHead()
-	if rollupHeader == nil {
-		return nil, nil //nolint:nilnil
+	rollupNumber := api.host.nodeDB.GetRollupNumber(txHash)
+	if rollupNumber == nil {
+		return nil, fmt.Errorf("no rollup containing a transaction with hash %s is stored", txHash)
 	}
 
-	rollup, err := api.host.EnclaveClient.GetRollup(rollupHeader.Hash())
+	rollupHash := api.host.nodeDB.GetRollupHash(rollupNumber)
+	if rollupHash == nil {
+		return nil, fmt.Errorf("no rollup with number %d is stored", rollupNumber.Int64())
+	}
+
+	rollup, err := api.host.EnclaveClient.GetRollup(*rollupHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not find rollup containing transaction. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve rollup with hash %s. Cause: %w", rollupNumber, err)
 	}
-	for {
-		// We check whether the transaction is in the current rollup, and return it if so.
-		for _, rollupTxHash := range rollup.TxHashes {
-			if rollupTxHash == txHash {
-				return rollup, nil
-			}
-		}
 
-		// We get the next rollup in the chain, to be checked in turn.
-		rollup, err = api.host.EnclaveClient.GetRollup(rollup.Header.ParentHash)
-		if err != nil {
-			return nil, fmt.Errorf("could not find rollup containing transaction. Cause: %w", err)
-		}
-	}
+	return rollup, nil
 }
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
