@@ -77,10 +77,14 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 	setLogs(config.LogPath)
 
+	client, err := rpcclientlib.NewClient(config.NodeRPCHTTPAddress)
+	if err != nil {
+		panic(err)
+	}
 	return &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
 		hostAddr:         config.NodeRPCWebsocketAddress,
-		hostClient:       rpcclientlib.NewClient(config.NodeRPCHTTPAddress),
+		hostClient:       client,
 	}
 }
 

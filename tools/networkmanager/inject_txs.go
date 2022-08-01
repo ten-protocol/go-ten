@@ -34,7 +34,10 @@ func InjectTransactions(cfg Config, args []string) {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
 	println("Connecting to Obscuro node...")
-	l2Client := rpcclientlib.NewClient(cfg.obscuroClientAddress)
+	l2Client, err := rpcclientlib.NewClient(cfg.obscuroClientAddress)
+	if err != nil {
+		panic(err)
+	}
 
 	// We store the block at which we start injecting transactions.
 	startBlock := l1Client.FetchHeadBlock()
@@ -83,13 +86,28 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 	clients := make(map[string]rpcclientlib.Client)
 
 	for _, w := range wallets.SimObsWallets {
-		clients[w.Address().String()] = rpcclientlib.NewClient(obscuroNodeAddr)
-		viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+		cli, err := rpcclientlib.NewClient(obscuroNodeAddr)
+		if err != nil {
+			panic(err)
+		}
+		clients[w.Address().String()] = cli
+
+		err = viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+		if err != nil {
+			panic(err)
+		}
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
-		clients[w.Address().String()] = rpcclientlib.NewClient(obscuroNodeAddr)
-		viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+		cli, err := rpcclientlib.NewClient(obscuroNodeAddr)
+		if err != nil {
+			panic(err)
+		}
+		clients[w.Address().String()] = cli
+		err = viewkey.GenerateAndRegisterViewingKey(clients[w.Address().String()], w)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return clients

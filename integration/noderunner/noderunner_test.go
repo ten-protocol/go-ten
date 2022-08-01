@@ -76,7 +76,10 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
-	obscuroClient := rpcclientlib.NewClient(rpcServerAddr)
+	obscuroClient, err := rpcclientlib.NewClient(rpcServerAddr)
+	if err != nil {
+		panic(err)
+	}
 	defer teardown(obscuroClient, rpcServerAddr)
 
 	// We sleep to give the network time to produce some blocks.
