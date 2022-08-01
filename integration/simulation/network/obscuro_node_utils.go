@@ -2,10 +2,11 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/wallet"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 

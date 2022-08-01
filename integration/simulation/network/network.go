@@ -1,8 +1,9 @@
 package network
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"math/rand"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
@@ -46,11 +47,11 @@ func (n *RPCHandles) RndObscuroClient() rpcclientlib.Client {
 	return n.ObscuroClients[rand.Intn(len(n.ObscuroClients))] //nolint:gosec
 }
 
-// ObscuroWalletRndClient fetches a random client for given wallet
+// ObscuroWalletRndClient fetches a client for a given wallet connected to a random node
 func (n *RPCHandles) ObscuroWalletRndClient(wallet wallet.Wallet) rpcclientlib.Client {
 	addr := wallet.Address().String()
 	clients := n.VirtualWalletExtensionClients[addr]
-	return clients[rand.Intn(len(clients))]
+	return clients[rand.Intn(len(clients))] //nolint:gosec
 }
 
 // ObscuroWalletClient fetches a client for a given wallet address, for a specific node
