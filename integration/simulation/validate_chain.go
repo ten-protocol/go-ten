@@ -233,7 +233,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 			nodeAddr, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
 	}
 
-	checkTransactionReceipts(nodeClient, s.TxInjector)
+	checkTransactionReceipts(nodeIdx, rpcHandles, s.TxInjector)
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
@@ -265,7 +265,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
-		total += balance(nodeClient, wallet.Address(), s.Params.Wallets.Tokens[bridge.OBX].L2ContractAddress)
+		total += balance(rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx), wallet.Address(), s.Params.Wallets.Tokens[bridge.OBX].L2ContractAddress)
 	}
 
 	if total != totalAmountInSystem {
@@ -310,13 +310,14 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 }
 
 // Checks that there is a receipt available for each L2 transaction.
-func checkTransactionReceipts(l2Client rpcclientlib.Client, txInjector *TransactionInjector) {
+func checkTransactionReceipts(nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
 
 	for _, tx := range l2Txs {
+		sender := getSender(tx)
 		// We check that there is a receipt available for each transaction
-		txReceiptJSONMap := getTransactionReceipt(l2Client, tx.Hash())
-		if txReceiptJSONMap[jsonKeyStatus] == receiptStatusFailure {
+		rec := getTransactionReceipt(rpcHandles.ObscuroWalletClient(sender, nodeIdx), tx.Hash())
+		if rec.Status == types.ReceiptStatusFailed {
 			log.Info("Transaction %s has failed.", tx.Hash().Hex())
 		}
 	}
