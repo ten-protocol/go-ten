@@ -53,27 +53,17 @@ func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 
 // GetRollupHeaderByNumber returns the header for the rollup with the given number.
 func (api *ObscuroAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header, error) {
-	err := fmt.Errorf("no rollup with number %d is stored", number.Int64())
-
-	// TODO - Provide a more efficient method on node DB to retrieve a rollup by number.
-	// We walk the chain back to the requested rollup.
-	rollupHeader := api.host.nodeDB.GetCurrentRollupHead()
-	for {
-		if rollupHeader == nil {
-			return nil, err
-		}
-		cmp := rollupHeader.Number.Cmp(number)
-		// We have found the rollup we're looking for.
-		if cmp == 0 {
-			return rollupHeader, nil
-		}
-		// The current rollup has a lower number than we are looking for. We stop walking the chain and return an error.
-		if cmp == -1 {
-			return nil, err
-		}
-
-		rollupHeader = api.host.nodeDB.GetRollupHeader(rollupHeader.ParentHash)
+	rollupHash := api.host.nodeDB.GetRollupHash(number)
+	if rollupHash == nil {
+		return nil, fmt.Errorf("no rollup with number %d is stored", number.Int64())
 	}
+	
+	rollupHeader := api.host.nodeDB.GetRollupHeader(*rollupHash)
+	if rollupHeader == nil {
+		return nil, fmt.Errorf("storage indicates that rollup %d has hash %s, but no such rollup is stored", number.Int64(), rollupHash)
+	}
+
+	return rollupHeader, nil
 }
 
 // GetRollup returns the rollup with the given hash.
