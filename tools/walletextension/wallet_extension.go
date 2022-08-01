@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -105,7 +106,7 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 	}
 	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
-	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
+	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
 
 	err = we.server.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
