@@ -120,7 +120,7 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	if err != nil {
 		return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
 	}
-	*result.(*string) = encryptedTx
+	*result.(*string) = *encryptedTx
 	return nil
 }
 

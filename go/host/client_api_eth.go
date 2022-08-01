@@ -46,6 +46,9 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	extRollup, err := api.host.EnclaveClient.GetRollupByHeight(number.Int64())
+	if extRollup == nil {
+		return nil, err
+	}
 	return extRollupToBlock(extRollup), err
 }
 
@@ -71,14 +74,14 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 }
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
-// corresponding to the original transaction submitter and encoded as hex.
+// corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
 	encryptedResponse, err := api.host.EnclaveClient.GetTransactionReceipt(encryptedParams)
 	if err != nil {
 		return nil, err
 	}
 	if encryptedResponse == nil {
-		return nil, err
+		return nil, nil //nolint:nilnil
 	}
 	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
 	return &encryptedResponseHex, nil
@@ -126,13 +129,17 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommo
 }
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
-// `from` field and encoded as hex.
-func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (string, error) {
+// `from` field and encoded as hex, or nil if no matching transaction exists.
+func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
 	encryptedResponse, err := api.host.EnclaveClient.GetTransaction(encryptedParams)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return gethcommon.Bytes2Hex(encryptedResponse), nil
+	if encryptedResponse == nil {
+		return nil, err
+	}
+	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
+	return &encryptedResponseHex, nil
 }
 
 // Maps an external rollup to a block.
