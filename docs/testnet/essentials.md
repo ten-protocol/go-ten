@@ -12,5 +12,5 @@ An easy-to-read list of essential parameters and configuration settings for Obsc
 - **Currency Symbol:** `OBX`
 
 ## ObscuroScan
-- **URL:** http://obscuroscan-01.uksouth.azurecontainer.io/
+- **URL:** http://testnet-obscuroscan.uksouth.azurecontainer.io/
 
