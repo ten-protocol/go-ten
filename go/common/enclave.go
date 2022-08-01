@@ -68,10 +68,10 @@ type Enclave interface {
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
 	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
 
-	// GetRollup returns the rollup with the given hash
+	// GetRollup returns the rollup with the given hash, or nil if no such rollup exists.
 	GetRollup(rollupHash L2RootHash) (*ExtRollup, error)
 
-	// GetRollupByHeight returns the canonical rollup with the given height.
+	// GetRollupByHeight returns the canonical rollup with the given height, or nil if no such rollup exists.
 	GetRollupByHeight(rollupHeight int64) (*ExtRollup, error)
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
