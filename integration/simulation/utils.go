@@ -3,6 +3,7 @@ package simulation
 import (
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -124,13 +125,13 @@ func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractA
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
-	bytes, err := hexutil.Decode(string(gethcommon.Hex2Bytes(response)))
-	if err != nil {
-		panic(fmt.Errorf("could not decode ERC20 balance response for node. Response was %s. Cause: %w", response, err))
+	if !strings.HasPrefix(response, "0x") {
+		panic(fmt.Errorf("expected hex formatted balance string but was: %s", response))
 	}
-	r := new(big.Int)
-	r = r.SetBytes(bytes)
-	return r.Uint64()
+
+	b := new(big.Int)
+	b.SetString(response[2:], 16)
+	return b.Uint64()
 }
 
 // FindHashDups - returns a map of all hashes that appear multiple times, and how many times
