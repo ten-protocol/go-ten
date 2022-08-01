@@ -2,6 +2,7 @@ package host
 
 import (
 	"bytes"
+	"math/big"
 	"os"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -94,6 +95,7 @@ func (db *DB) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 func (db *DB) AddRollupHeader(header *common.Header) {
 	b := db.kvStore.NewBatch()
 	writeRollupHeader(b, header)
+	writeRollupHash(b, header)
 
 	// update the head if the new height is greater than the existing one
 	currentRollupHead := db.GetCurrentRollupHead()
@@ -121,6 +123,11 @@ func (db *DB) WasSubmitted(hash gethcommon.Hash) bool {
 	return f
 }
 
+// GetRollupHash returns the hash of a rollup given its number
+func (db *DB) GetRollupHash(number *big.Int) *gethcommon.Hash {
+	return readRollupHash(db.kvStore, number)
+}
+
 // schema
 var (
 	blockHeaderPrefix     = []byte("b")
@@ -128,6 +135,7 @@ var (
 	headBlock             = []byte("hb")
 	headRollup            = []byte("hr")
 	submittedRollupPrefix = []byte("s")
+	rollupHashPrefix      = []byte("rh")
 )
 
 // headerKey = rollupHeaderPrefix  + hash
@@ -135,14 +143,19 @@ func rollupHeaderKey(hash gethcommon.Hash) []byte {
 	return append(rollupHeaderPrefix, hash.Bytes()...)
 }
 
-// headerKey = rollupHeaderPrefix  + hash
+// headerKey = blockHeaderPrefix  + hash
 func blockHeaderKey(hash gethcommon.Hash) []byte {
 	return append(blockHeaderPrefix, hash.Bytes()...)
 }
 
-// headerKey = rollupHeaderPrefix  + hash
+// headerKey = submittedRollupPrefix  + hash
 func submittedRollupHeaderKey(hash gethcommon.Hash) []byte {
 	return append(submittedRollupPrefix, hash.Bytes()...)
+}
+
+// headerKey = rollupHashPrefix + number
+func rollupHashKey(num *big.Int) []byte {
+	return append(rollupHashPrefix, []byte(num.String())...)
 }
 
 // WriteBlockHeader stores a block header into the database
@@ -261,4 +274,32 @@ func writeHeadRollup(db ethdb.KeyValueWriter, val gethcommon.Hash) {
 	if err != nil {
 		log.Panic("could not write head rollup. Cause: %s", err)
 	}
+}
+
+// Stores the hash of a rollup into the database
+func writeRollupHash(db ethdb.KeyValueWriter, header *common.Header) {
+	key := rollupHashKey(header.Number)
+	if err := db.Put(key, header.Hash().Bytes()); err != nil {
+		log.Panic("could not put header in DB. Cause: %s", err)
+	}
+}
+
+// Retrieves the hash for the rollup with the given number.
+func readRollupHash(db ethdb.KeyValueReader, number *big.Int) *gethcommon.Hash {
+	f, err := db.Has(rollupHashKey(number))
+	if err != nil {
+		log.Panic("could not retrieve rollup hash. Cause: %s", err)
+	}
+	if !f {
+		return nil
+	}
+	data, err := db.Get(rollupHashKey(number))
+	if err != nil {
+		log.Panic("could not retrieve rollup hash. Cause: %s", err)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	hash := gethcommon.BytesToHash(data)
+	return &hash
 }
