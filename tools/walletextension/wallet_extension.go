@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -77,10 +78,14 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 	setLogs(config.LogPath)
 
+	client, err := rpcclientlib.NewClient(config.NodeRPCHTTPAddress)
+	if err != nil {
+		panic(err)
+	}
 	return &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
 		hostAddr:         config.NodeRPCWebsocketAddress,
-		hostClient:       rpcclientlib.NewClient(config.NodeRPCHTTPAddress),
+		hostClient:       client,
 	}
 }
 
@@ -101,7 +106,7 @@ func (we *WalletExtension) Serve(hostAndPort string) {
 	}
 	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
-	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux}
+	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
 
 	err = we.server.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
@@ -166,6 +171,18 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	respMap[resJSONKeyID] = rpcReq.id
 	respMap[resJSONKeyRPCVer] = jsonrpc.Version
 	respMap[RespJSONKeyResult] = rpcResp
+
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+	// TODO fix this upstream on the decode
+	if result, found := respMap["result"]; found { // nolint
+		if resultMap, ok := result.(map[string]interface{}); ok {
+			if val, foundRoot := resultMap["root"]; foundRoot {
+				if val == "0x" {
+					respMap["result"].(map[string]interface{})["root"] = nil
+				}
+			}
+		}
+	}
 
 	rpcRespToSend, err := json.Marshal(respMap)
 	if err != nil {

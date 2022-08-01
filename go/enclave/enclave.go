@@ -84,7 +84,7 @@ func NewEnclave(
 	collector StatsCollector,
 ) common.Enclave {
 	if len(config.ERC20ContractAddresses) < 2 {
-		log.Panic("failed to initialise enclave. At least two ERC20 contract addresses are required - the BTC " +
+		log.Panic("failed to initialise enclave. At least two ERC20 contract addresses are required - the OBX " +
 			"ERC20 address and the ETH ERC20 address")
 	}
 
@@ -336,12 +336,10 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve transaction. Cause: %w", err)
-	}
-
-	if tx == nil {
-		// If there's no transaction, there's no `from` field we can use to determine which key to use to encrypt the response.
-		return nil, fmt.Errorf("transaction does not exist")
+		if errors.Is(err, db.ErrTxNotFound) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
@@ -363,17 +361,18 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 
 	viewingKeyAddress, err := e.storage.GetSender(txHash)
 	if err != nil {
+		if errors.Is(err, db.ErrTxNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
+		if errors.Is(err, db.ErrTxNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	// If the poststate is set, the status should be set to successful.
-	if len(txReceipt.PostState) == 32 {
-		txReceipt.Status = types.ReceiptStatusSuccessful
 	}
 
 	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptTxReceiptWithViewingKey(viewingKeyAddress, txReceipt)
@@ -386,24 +385,23 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 
 func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
 	rollup, found := e.storage.FetchRollup(rollupHash)
-	if found {
-		extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
-		return &extRollup, nil
+	if !found {
+		return nil, nil //nolint:nilnil
 	}
-	return nil, fmt.Errorf("rollup with hash %s could not be found", rollupHash.Hex())
+	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
+	return &extRollup, nil
 }
 
 func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, error) {
 	// TODO - Consider improving efficiency by directly fetching rollup by number.
 	rollup := e.storage.FetchHeadRollup()
-	maxRollupHeight := rollup.NumberU64()
 
 	// -1 is used by Ethereum to indicate that we should fetch the head.
 	if rollupHeight != -1 {
 		for {
 			if rollup == nil {
 				// We've reached the head of the chain without finding the block.
-				return nil, fmt.Errorf("rollup with height %d could not be found. Max rollup height was %d", rollupHeight, maxRollupHeight)
+				return nil, nil //nolint:nilnil
 			}
 			if rollup.Number().Int64() == rollupHeight {
 				// We have found the block.
@@ -411,7 +409,7 @@ func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, 
 			}
 			if rollup.Number().Int64() < rollupHeight {
 				// The current block number is below the sought number. Continuing to walk up the chain is pointless.
-				return nil, fmt.Errorf("rollup with height %d could not be found. Max rollup height was %d", rollupHeight, maxRollupHeight)
+				return nil, nil //nolint:nilnil
 			}
 
 			// We grab the next rollup and loop.

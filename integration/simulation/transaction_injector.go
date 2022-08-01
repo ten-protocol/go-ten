@@ -115,7 +115,7 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
-	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.BTC].L2Owner)
+	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
 
 	// enough time to process everywhere
@@ -127,7 +127,7 @@ func (ti *TransactionInjector) Start() {
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
 			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
+			TokenContract: ti.wallets.Tokens[bridge.OBX].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
@@ -243,7 +243,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		txData := &ethadapter.L1DepositTx{
 			Amount:        v,
 			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[bridge.BTC].L1ContractAddress,
+			TokenContract: ti.wallets.Tokens[bridge.OBX].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
@@ -373,7 +373,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 		Gas:      gas,
 		GasPrice: gethcommon.Big0,
 		Data:     data,
-		To:       ti.wallets.Tokens[bridge.BTC].L2ContractAddress,
+		To:       ti.wallets.Tokens[bridge.OBX].L2ContractAddress,
 	}
 }
 

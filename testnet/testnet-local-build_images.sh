@@ -24,5 +24,6 @@ command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetw
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest -f "${root_path}/dockerfiles/host.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest -f "${testnet_path}/contractdeployer.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest -f "${root_path}/dockerfiles/enclave.Dockerfile" "${root_path}" &
+command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave_debug:latest -f "${root_path}/dockerfiles/enclave.debug.Dockerfile" "${root_path}" &
 
 wait

@@ -226,21 +226,6 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// RPCExecuteOffChainTransaction allows execution of off chain transactions
-func (a *Node) RPCExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	return a.EnclaveClient.ExecuteOffChainTransaction(encryptedParams)
-}
-
-// RPCCurrentBlockHead returns the current head of the blocks (l1)
-func (a *Node) RPCCurrentBlockHead() *types.Header {
-	return a.nodeDB.GetCurrentBlockHead()
-}
-
-// RPCCurrentRollupHead returns the current head of the rollups (l2)
-func (a *Node) RPCCurrentRollupHead() *common.Header {
-	return a.nodeDB.GetCurrentRollupHead()
-}
-
 // DB returns the DB of the node
 func (a *Node) DB() *DB {
 	return a.nodeDB
@@ -659,6 +644,7 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 
 // monitors the L1 client for new blocks and injects them into the aggregator
 func (a *Node) monitorBlocks() {
+	var lastKnownBlkHash gethcommon.Hash
 	listener, subs := a.ethClient.BlockListener()
 	common.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
 
@@ -666,9 +652,12 @@ func (a *Node) monitorBlocks() {
 	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
 		select {
 		case err := <-subs.Err():
-			log.Error("Restarting L1 block monitoring. Errored with: %s", err)
-			// todo this is a very simple way of reconnecting the node, it might need catching up logic
+			log.Error("L1 block monitoring error: %s", err)
+			log.Info("Restarting L1 block Monitoring...")
+			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
 			listener, subs = a.ethClient.BlockListener()
+
+			a.catchupMissedBlocks(lastKnownBlkHash)
 
 		case blkHeader := <-listener:
 			// don't process blocks if the node is stopping
@@ -697,15 +686,10 @@ func (a *Node) monitorBlocks() {
 				common.ShortHash(blkHeader.Hash()),
 				blkHeader.Number.Uint64(),
 			)
-			encodedBlock, err := common.EncodeBlock(block)
-			if err != nil {
-				log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
-			}
-			encodedBlockParent, err := common.EncodeBlock(blockParent)
-			if err != nil {
-				log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
-			}
-			a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+
+			// issue the block to the ingestion channel
+			a.encodeAndIngest(block, blockParent)
+			lastKnownBlkHash = block.Hash()
 		}
 	}
 
@@ -713,6 +697,59 @@ func (a *Node) monitorBlocks() {
 	// make sure it cleanly unsubscribes
 	// todo this should be defered when the errors are upstreamed instead of panic'd
 	subs.Unsubscribe()
+}
+
+func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
+	var lastBlkNumber *big.Int
+	var reingestBlocks []*types.Block
+
+	// get the blockchain tip block
+	blk, err := a.ethClient.BlockByNumber(lastBlkNumber)
+	if err != nil {
+		log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
+	}
+
+	if blk.Hash().Hex() == lastKnownBlkHash.Hex() {
+		// if no new blocks have been issued then nothing to catchup
+		return
+	}
+	reingestBlocks = append(reingestBlocks, blk)
+
+	// get all blocks from the blockchain tip to the last block ingested by the node
+	for blk.Hash().Hex() != lastKnownBlkHash.Hex() {
+		blockParent, err := a.ethClient.BlockByHash(blk.ParentHash())
+		if err != nil {
+			log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", blk.ParentHash(), err)
+		}
+
+		reingestBlocks = append(reingestBlocks, blockParent)
+		blk = blockParent
+	}
+
+	// make sure to have the last ingested block available for ingestion (because we always ingest ( blk, blk_parent)
+	lastKnownBlk, err := a.ethClient.BlockByHash(lastKnownBlkHash)
+	if err != nil {
+		log.Panic("catching up on missed blocks, unable to feth last known block - reason: %s", err)
+	}
+	reingestBlocks = append(reingestBlocks, lastKnownBlk)
+
+	// issue the block to the ingestion channel in reverse, with the parent attached too
+	for i := len(reingestBlocks) - 2; i >= 0; i-- {
+		log.Debug("Ingesting %s and %s blocks of %v", reingestBlocks[i].Hash(), reingestBlocks[i+1].Hash(), reingestBlocks)
+		a.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
+	}
+}
+
+func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) {
+	encodedBlock, err := common.EncodeBlock(block)
+	if err != nil {
+		log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+	}
+	encodedBlockParent, err := common.EncodeBlock(blockParent)
+	if err != nil {
+		log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+	}
+	a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
 }
 
 func (a *Node) bootstrapNode() types.Block {

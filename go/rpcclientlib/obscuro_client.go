@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
 type RPCMethod uint8
@@ -18,21 +17,24 @@ const (
 	http           = "http://"
 	reqJSONKeyFrom = "from"
 
-	RPCGetID                = "obscuro_getID"
-	RPCGetCurrentBlockHead  = "obscuro_getCurrentBlockHead"
-	RPCGetCurrentRollupHead = "obscuro_getCurrentRollupHead"
-	RPCGetRollupHeader      = "obscuro_getRollupHeader"
-	RPCGetRollup            = "obscuro_getRollup"
-	RPCNonce                = "obscuro_nonce"
-	RPCAddViewingKey        = "obscuro_addViewingKey"
-	RPCStopHost             = "obscuro_stopHost"
-	RPCCall                 = "eth_call"
-	RPCChainID              = "eth_chainId"
-	RPCGetBalance           = "eth_getBalance"
-	RPCGetTransactionByHash = "eth_getTransactionByHash"
-	RPCGetTxCount           = "eth_getTransactionCount"
-	RPCGetTxReceipt         = "eth_getTransactionReceipt"
-	RPCSendRawTransaction   = "eth_sendRawTransaction"
+	RPCGetID                   = "obscuro_getID"
+	RPCGetCurrentBlockHead     = "obscuro_getCurrentBlockHead"
+	RPCGetBlockHeaderByHash    = "obscuro_getBlockHeaderByHash"
+	RPCGetCurrentRollupHead    = "obscuro_getCurrentRollupHead"
+	RPCGetRollupHeader         = "obscuro_getRollupHeader"
+	RPCGetRollupHeaderByNumber = "obscuro_getRollupHeaderByNumber"
+	RPCGetRollup               = "obscuro_getRollup"
+	RPCNonce                   = "obscuro_nonce"
+	RPCAddViewingKey           = "obscuro_addViewingKey"
+	RPCGetRollupForTx          = "obscuro_getRollupForTx"
+	RPCGetLatestTxs            = "obscuro_getLatestTransactions"
+	RPCStopHost                = "obscuro_stopHost"
+	RPCCall                    = "eth_call"
+	RPCChainID                 = "eth_chainId"
+	RPCGetBalance              = "eth_getBalance"
+	RPCGetTransactionByHash    = "eth_getTransactionByHash"
+	RPCGetTxReceipt            = "eth_getTransactionReceipt"
+	RPCSendRawTransaction      = "eth_sendRawTransaction"
 
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -66,23 +68,23 @@ type networkClient struct {
 	viewingKeyAddr common.Address    // address that generated the public key
 }
 
-func NewClient(address string) Client {
+func NewClient(address string) (Client, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to decompress key for RPC client: %w", err)
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	rpcClient, err := rpc.Dial(http + address)
 	if err != nil {
-		log.Panic("could not create RPC client on %s. Cause: %s", http+address, err)
+		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", http+address, err)
 	}
 
 	return &networkClient{
 		rpcClient:        rpcClient,
 		enclavePublicKey: enclavePublicKey,
-	}
+	}, nil
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
@@ -164,6 +166,11 @@ func (c *networkClient) encryptParamBytes(params []byte) ([]byte, error) {
 }
 
 func (c *networkClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
+	// For some RPC operations, a nil is a valid response (e.g. the transaction for an unrecognised transaction hash).
+	if resultBlob == nil {
+		return nil, nil
+	}
+
 	if c.viewingPrivKey == nil {
 		return nil, fmt.Errorf("cannot decrypt response, viewing key has not been setup")
 	}

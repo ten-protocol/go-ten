@@ -5,11 +5,10 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
@@ -47,6 +46,9 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	extRollup, err := api.host.EnclaveClient.GetRollupByHeight(number.Int64())
+	if extRollup == nil {
+		return nil, err
+	}
 	return extRollupToBlock(extRollup), err
 }
 
@@ -72,13 +74,17 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 }
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
-// corresponding to the original transaction submitter and encoded as hex.
-func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (string, error) {
+// corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
+func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
 	encryptedResponse, err := api.host.EnclaveClient.GetTransactionReceipt(encryptedParams)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return gethcommon.Bytes2Hex(encryptedResponse), nil
+	if encryptedResponse == nil {
+		return nil, nil //nolint:nilnil
+	}
+	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
+	return &encryptedResponseHex, nil
 }
 
 // EstimateGas is a placeholder for an RPC method required by MetaMask/Remix.
@@ -123,13 +129,17 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommo
 }
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
-// `from` field and encoded as hex.
-func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (string, error) {
+// `from` field and encoded as hex, or nil if no matching transaction exists.
+func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
 	encryptedResponse, err := api.host.EnclaveClient.GetTransaction(encryptedParams)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return gethcommon.Bytes2Hex(encryptedResponse), nil
+	if encryptedResponse == nil {
+		return nil, err
+	}
+	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
+	return &encryptedResponseHex, nil
 }
 
 // Maps an external rollup to a block.
@@ -137,14 +147,22 @@ func extRollupToBlock(extRollup *common.ExtRollup) map[string]interface{} {
 	return map[string]interface{}{
 		"number":           (*hexutil.Big)(extRollup.Header.Number),
 		"hash":             extRollup.Header.Hash(),
-		"parenthash":       extRollup.Header.ParentHash,
+		"parentHash":       extRollup.Header.ParentHash,
 		"nonce":            extRollup.Header.Nonce,
-		"logsbloom":        extRollup.Header.Bloom,
-		"stateroot":        extRollup.Header.Root,
-		"receiptsroot":     extRollup.Header.ReceiptHash,
+		"logsBloom":        extRollup.Header.Bloom,
+		"stateRoot":        extRollup.Header.Root,
+		"receiptsRoot":     extRollup.Header.ReceiptHash,
 		"miner":            extRollup.Header.Agg,
-		"extradata":        hexutil.Bytes(extRollup.Header.Extra),
-		"transactionsroot": extRollup.Header.TxHash,
+		"extraData":        hexutil.Bytes(extRollup.Header.Extra),
+		"transactionsRoot": extRollup.Header.TxHash,
 		"transactions":     extRollup.TxHashes,
+
+		"sha3Uncles":    extRollup.Header.UncleHash,
+		"difficulty":    extRollup.Header.Difficulty,
+		"gasLimit":      extRollup.Header.GasLimit,
+		"gasUsed":       extRollup.Header.GasUsed,
+		"timestamp":     extRollup.Header.Time,
+		"mixHash":       extRollup.Header.MixDigest,
+		"baseFeePerGas": extRollup.Header.BaseFee,
 	}
 }

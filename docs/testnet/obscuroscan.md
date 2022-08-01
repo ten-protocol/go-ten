@@ -1,18 +1,19 @@
 # ObscuroScan
-[ObscuroScan](http://obscuroscan-01.uksouth.azurecontainer.io/) is Obscuro's equivalent of Etherscan. ObscuroScan is a blockchain explorer for the Obscuro Testnet. At the moment it is rudimentary and over time it will be improved to provide more functionality and look better.
+[ObscuroScan](http://obscuroscan-01.uksouth.azurecontainer.io/) is a blockchain explorer for the Obscuro Testnet - 
+Obscuro's equivalent of Etherscan. ObscuroScan allows you to view the latest rollups and transactions on the Testnet, 
+as well as search for historical rollups and transactions. Its functionality will be expanded over time.
 
-ObscuroScan allows you to decrypt rollup transactions blobs on Testnet. You can also monitor in realtime the L1 blocks and the Obscuro rollups via an Obscuro node connected to the Testnet.
+## Usage
 
-## How to Monitor L1 Blocks and Obscuro Rollups
-1. From the [ObscuroScan landing page](http://obscuroscan-01.uksouth.azurecontainer.io/) click _Monitor L1 blocks and Obscuro rollups via the connected Obscuro node_ to go to the monitoring page.
+1. Go to the [ObscuroScan landing page](http://testnet-obscuroscan.uksouth.azurecontainer.io/)
+2. Observe the feed of latest rollups and transactions. Click on any rollup number or transaction hash to see the 
+   details of the corresponding rollup and the L1 block where it was published
+3. From the search bar in the top right, search for any rollup (using its number, e.g. `2453`) or transaction (using 
+   its hash, which will start with `0x`, e.g. `0x5476edbf2c6cc1279d2334b2c80e26333d0eaca6c1807c7d8a2945b1a9d58f07`)
 
-1. Observe in realtime the current head L1 block and the current Obscuro rollup.
+## Decryption of Transaction Blobs
 
-Notice the _Encrypted Transaction Blob_ field. You can copy and paste the field contents into ObscuroScan's _Decrypt rollup transaction blobs (testnet only!)_ page to see the content of the transaction in unencrypted plain text. This is a feature of Testnet. In contrast, on Mainnet, rollups will use rotating keys that are not known to anyone, or anything, other than the Obscuro enclaves.
-
-## How to Decrypt Transaction Blobs
-Decrypting transaction blobs is only possible on Testnet to help you understand how Obscuro works. ObscuroScan on Testnet uses a rollup encryption key which is long-lived and well-known.
-
-1. From the [ObscuroScan landing page](http://obscuroscan-01.uksouth.azurecontainer.io/) click _Decrypt rollup transaction blobs (testnet only!)_ to go to the decryption page.
-
-1. Paste the contents of the _EncryptedTxBlob_ field from the L1 block monitor page into the decryption box and click `Submit` to see the content of the transaction as unencrypted plain text.
+Notice the _Decrypted transaction blob_ section for each rollup. This allows you to see the normally-encrypted 
+transactions in unencrypted plain text. This is a feature of Testnet aimed at helping you understand how Obscuro works, 
+and is only possible because Testnet uses a rollup encryption key that is long-lived and well-known. On Mainnet, 
+rollups will be encrypted with rotating keys that are not known to anyone, or anything, other than the Obscuro enclaves.

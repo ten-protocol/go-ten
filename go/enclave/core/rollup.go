@@ -39,11 +39,11 @@ func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
 
 func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) *Rollup {
 	h := common.Header{
-		Agg:        agg,
-		ParentHash: parent.Hash(),
-		L1Proof:    blkHash,
-		Nonce:      nonce,
-		Number:     big.NewInt(int64(parent.Number.Uint64() + 1)),
+		Agg:         agg,
+		ParentHash:  parent.Hash(),
+		L1Proof:     blkHash,
+		RollupNonce: nonce,
+		Number:      big.NewInt(int64(parent.Number.Uint64() + 1)),
 	}
 	r := Rollup{
 		Header: &h,
@@ -61,7 +61,7 @@ func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcom
 		Agg:         a,
 		ParentHash:  parentHash,
 		L1Proof:     blkHash,
-		Nonce:       nonce,
+		RollupNonce: nonce,
 		Root:        state,
 		TxHash:      types.EmptyRootHash,
 		Number:      big.NewInt(int64(height)),

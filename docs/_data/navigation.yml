@@ -25,20 +25,22 @@ pages:
         url: testnet/essentials.html
       - title: Deploying a Smart Contract
         url: testnet/deploying-a-smart-contract.html
-      - title: Wallet Extension
-        url: testnet/wallet-extension.html
       - title: ObscuroScan
         url: testnet/obscuroscan.html
-      - title: Handling Sensitive Data
-        url: testnet/handling-sensitive-data.html
-      #- title: Troubleshooting
-      #  url: testnet/troubleshooting.html
       - title: Change Log
         url: testnet/changelog.html
+      #- title: Troubleshooting
+      #  url: testnet/troubleshooting.html
       #- title: Create a New Node
       #  url: testnet/create-a-new-node.html
       #- title: Uninstall
       #  url: testnet/uninstall.html
+  - title: Wallet Extension
+    children:
+      - title: Wallet Extension
+        url: wallet-extension/wallet-extension.html
+      - title: Handling Sensitive Data
+        url: wallet-extension/handling-sensitive-data.html
   - title: Whitepaper
     children:
       - title: Abstract

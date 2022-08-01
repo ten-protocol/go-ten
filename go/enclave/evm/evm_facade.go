@@ -16,7 +16,7 @@ import (
 )
 
 // The balance allocated to the sender when they perform a transaction, to ensure they have enough gas.
-const prealloc = 750000000000000000
+const prealloc = 7500000000000000000
 
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included

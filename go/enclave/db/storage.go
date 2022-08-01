@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -26,6 +27,9 @@ type storageImpl struct {
 	nodeID      uint64
 	chainConfig *params.ChainConfig
 }
+
+// ErrTxNotFound indicates that a transaction could not be found.
+var ErrTxNotFound = errors.New("transaction not found")
 
 func NewStorage(backingDB ethdb.Database, nodeID uint64, chainConfig *params.ChainConfig) Storage {
 	return &storageImpl{
@@ -269,16 +273,16 @@ func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
 	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash)
+	if tx == nil {
+		return nil, gethcommon.Hash{}, 0, 0, ErrTxNotFound
+	}
 	return tx, blockHash, blockNumber, index, nil
 }
 
 func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, error) {
 	tx, _, _, _, err := s.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction with hash %s. Cause: %w", txHash.Hex(), err)
-	}
-	if tx == nil {
-		return gethcommon.Address{}, fmt.Errorf("could not retrieve transaction with hash %s", txHash.Hex())
+		return gethcommon.Address{}, err
 	}
 	// todo - make the signer a field of the rollup chain
 	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
@@ -289,7 +293,11 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
-	_, blockHash, _, index := obscurorawdb.ReadTransaction(s.db, txHash)
+	_, blockHash, _, index, err := s.GetTransaction(txHash)
+	if err != nil {
+		return nil, err
+	}
+
 	receipts := s.GetReceiptsByHash(blockHash)
 	if len(receipts) <= int(index) {
 		return nil, fmt.Errorf("receipt index not matching the transactions in block: %s", blockHash.Hex())
