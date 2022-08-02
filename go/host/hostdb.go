@@ -78,7 +78,7 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 }
 
 // GetCurrentRollupHead returns the current rollup header (head) of the Node
-func (db *DB) GetCurrentRollupHead() *common.Header {
+func (db *DB) GetCurrentRollupHead() *common.HeaderWithTxHashes {
 	head := readHeadRollup(db.kvStore)
 	if head == nil {
 		return nil
@@ -87,23 +87,24 @@ func (db *DB) GetCurrentRollupHead() *common.Header {
 }
 
 // GetRollupHeader returns the rollup header given the Hash
-func (db *DB) GetRollupHeader(hash gethcommon.Hash) *common.Header {
+func (db *DB) GetRollupHeader(hash gethcommon.Hash) *common.HeaderWithTxHashes {
 	return readRollupHeader(db.kvStore, hash)
 }
 
 // AddRollupHeader adds a RollupHeader to the known headers
-func (db *DB) AddRollupHeader(header *common.Header, txHashes []gethcommon.Hash) {
+func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	b := db.kvStore.NewBatch()
-	writeRollupHeader(b, header)
-	writeRollupHash(b, header)
-	for _, txHash := range txHashes {
-		writeRollupNumber(b, txHash, header)
+	writeRollupHeader(b, headerWithHashes)
+	writeRollupHash(b, headerWithHashes.Header)
+	for _, txHash := range headerWithHashes.TxHashes {
+		writeRollupNumber(b, txHash, headerWithHashes.Header.Number)
 	}
 
 	// update the head if the new height is greater than the existing one
-	currentRollupHead := db.GetCurrentRollupHead()
-	if currentRollupHead == nil || currentRollupHead.Number.Int64() <= header.Number.Int64() {
-		writeHeadRollup(b, header.Hash())
+	currentRollupHeaderWithHashes := db.GetCurrentRollupHead()
+	if currentRollupHeaderWithHashes == nil ||
+		currentRollupHeaderWithHashes.Header.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
+		writeHeadRollup(b, headerWithHashes.Header.Hash())
 	}
 
 	if err := b.Write(); err != nil {
@@ -209,20 +210,20 @@ func readBlockHeader(db ethdb.KeyValueReader, hash gethcommon.Hash) *types.Heade
 }
 
 // WriteRollupHeader stores a rollup header into the database
-func writeRollupHeader(db ethdb.KeyValueWriter, header *common.Header) {
+func writeRollupHeader(db ethdb.KeyValueWriter, headerWithHashes *common.HeaderWithTxHashes) {
 	// Write the encoded header
-	data, err := rlp.EncodeToBytes(header)
+	data, err := rlp.EncodeToBytes(headerWithHashes)
 	if err != nil {
 		log.Panic("could not encode rollup header. Cause: %s", err)
 	}
-	key := rollupHeaderKey(header.Hash())
+	key := rollupHeaderKey(headerWithHashes.Header.Hash())
 	if err := db.Put(key, data); err != nil {
 		log.Panic("could not put header in DB. Cause: %s", err)
 	}
 }
 
 // ReadRollupHeader retrieves the rollup header corresponding to the hash.
-func readRollupHeader(db ethdb.KeyValueReader, hash gethcommon.Hash) *common.Header {
+func readRollupHeader(db ethdb.KeyValueReader, hash gethcommon.Hash) *common.HeaderWithTxHashes {
 	f, err := db.Has(rollupHeaderKey(hash))
 	if err != nil {
 		log.Panic("could not retrieve rollup header. Cause: %s", err)
@@ -237,7 +238,7 @@ func readRollupHeader(db ethdb.KeyValueReader, hash gethcommon.Hash) *common.Hea
 	if len(data) == 0 {
 		return nil
 	}
-	header := new(common.Header)
+	header := new(common.HeaderWithTxHashes)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		log.Panic("could not decode rollup header. Cause: %s", err)
 	}
@@ -299,11 +300,11 @@ func writeRollupHash(db ethdb.KeyValueWriter, header *common.Header) {
 }
 
 // Stores the hash of a rollup into the database, keyed by the hashes of the transactions in the rollup
-func writeRollupNumber(db ethdb.KeyValueWriter, txHash gethcommon.Hash, header *common.Header) {
+func writeRollupNumber(db ethdb.KeyValueWriter, txHash gethcommon.Hash, rollupNumber *big.Int) {
 	key := rollupNumberKey(txHash)
 	// TODO - Investigate this off-by-one issue. The tx hashes that are in the `BlockSubmissionResponse` for rollup #1
 	//  are actually the transactions for rollup #2.
-	number := big.NewInt(0).Add(header.Number, big.NewInt(1))
+	number := big.NewInt(0).Add(rollupNumber, big.NewInt(1))
 	if err := db.Put(key, number.Bytes()); err != nil {
 		log.Panic("could not put rollup number in DB. Cause: %s", err)
 	}

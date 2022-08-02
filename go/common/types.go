@@ -76,6 +76,12 @@ type Header struct {
 	BaseFee *big.Int `json:"baseFeePerGas"`
 }
 
+// HeaderWithTxHashes represents a rollup header and the hashes of the transactions in the rollup.
+type HeaderWithTxHashes struct {
+	Header   *Header
+	TxHashes []TxHash
+}
+
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header
 type Withdrawal struct {
 	// Type      uint8 // the type of withdrawal. For now only ERC20. Todo - add this once more ERCs are supported
@@ -87,7 +93,7 @@ type Withdrawal struct {
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
 	Header          *Header
-	TxHashes        []common.Hash // The hashes of the transactions included in the rollup
+	TxHashes        []TxHash // The hashes of the transactions included in the rollup
 	EncryptedTxBlob EncryptedTransactions
 }
 
@@ -95,7 +101,7 @@ type ExtRollup struct {
 // This parallels the Block/extblock split in Go Ethereum.
 type EncryptedRollup struct {
 	Header       *Header
-	TxHashes     []common.Hash // The hashes of the transactions included in the rollup
+	TxHashes     []TxHash // The hashes of the transactions included in the rollup
 	Transactions EncryptedTransactions
 	hash         atomic.Value
 }

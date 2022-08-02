@@ -43,12 +43,12 @@ func (api *ObscuroAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.H
 
 // GetCurrentRollupHead returns the current head rollup's header.
 func (api *ObscuroAPI) GetCurrentRollupHead() *common.Header {
-	return api.host.nodeDB.GetCurrentRollupHead()
+	return api.host.nodeDB.GetCurrentRollupHead().Header
 }
 
 // GetRollupHeader returns the header of the rollup with the given hash.
 func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
-	return api.host.nodeDB.GetRollupHeader(hash)
+	return api.host.nodeDB.GetRollupHeader(hash).Header
 }
 
 // GetRollupHeaderByNumber returns the header for the rollup with the given number.
@@ -63,7 +63,7 @@ func (api *ObscuroAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header,
 		return nil, fmt.Errorf("storage indicates that rollup %d has hash %s, but no such rollup is stored", number.Int64(), rollupHash)
 	}
 
-	return rollupHeader, nil
+	return rollupHeader.Header, nil
 }
 
 // GetRollup returns the rollup with the given hash.
@@ -103,11 +103,11 @@ func (api *ObscuroAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
 func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
-	rollupHeader := api.host.nodeDB.GetCurrentRollupHead()
-	if rollupHeader == nil {
+	rollupHeaderWithHashes := api.host.nodeDB.GetCurrentRollupHead()
+	if rollupHeaderWithHashes == nil {
 		return nil, nil
 	}
-	nextRollupHash := rollupHeader.Hash()
+	nextRollupHash := rollupHeaderWithHashes.Header.Hash()
 
 	// We walk the chain until we've collected sufficient transactions.
 	var txHashes []gethcommon.Hash

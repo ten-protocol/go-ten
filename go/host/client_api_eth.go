@@ -30,7 +30,8 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head rollup.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	return hexutil.Uint64(api.host.nodeDB.GetCurrentRollupHead().Number.Uint64())
+	number := api.host.nodeDB.GetCurrentRollupHead().Header.Number.Uint64()
+	return hexutil.Uint64(number)
 }
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
@@ -45,17 +46,18 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	extRollup, err := api.host.EnclaveClient.GetRollupByHeight(number.Int64())
-	if extRollup == nil {
-		return nil, err
-	}
-	return extRollupToBlock(extRollup), err
+	rollupHash := api.host.nodeDB.GetRollupHash(big.NewInt(int64(number)))
+	// todo - joel - check if hash is nil
+	rollupHeaderWithHashes := api.host.nodeDB.GetRollupHeader(*rollupHash)
+	// todo - joel - check if rollup is nil
+	return headerWithHashesToBlock(rollupHeaderWithHashes), nil
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	extRollup, err := api.host.EnclaveClient.GetRollup(hash)
-	return extRollupToBlock(extRollup), err
+	rollupHeaderWithHashes := api.host.nodeDB.GetRollupHeader(hash)
+	// todo - joel - check if rollup is nil
+	return headerWithHashesToBlock(rollupHeaderWithHashes), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -143,26 +145,27 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams 
 }
 
 // Maps an external rollup to a block.
-func extRollupToBlock(extRollup *common.ExtRollup) map[string]interface{} {
+func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
+	header := headerWithHashes.Header
 	return map[string]interface{}{
-		"number":           (*hexutil.Big)(extRollup.Header.Number),
-		"hash":             extRollup.Header.Hash(),
-		"parentHash":       extRollup.Header.ParentHash,
-		"nonce":            extRollup.Header.Nonce,
-		"logsBloom":        extRollup.Header.Bloom,
-		"stateRoot":        extRollup.Header.Root,
-		"receiptsRoot":     extRollup.Header.ReceiptHash,
-		"miner":            extRollup.Header.Agg,
-		"extraData":        hexutil.Bytes(extRollup.Header.Extra),
-		"transactionsRoot": extRollup.Header.TxHash,
-		"transactions":     extRollup.TxHashes,
+		"number":           (*hexutil.Big)(header.Number),
+		"hash":             header.Hash(),
+		"parentHash":       header.ParentHash,
+		"nonce":            header.Nonce,
+		"logsBloom":        header.Bloom,
+		"stateRoot":        header.Root,
+		"receiptsRoot":     header.ReceiptHash,
+		"miner":            header.Agg,
+		"extraData":        hexutil.Bytes(header.Extra),
+		"transactionsRoot": header.TxHash,
+		"transactions":     headerWithHashes.TxHashes,
 
-		"sha3Uncles":    extRollup.Header.UncleHash,
-		"difficulty":    extRollup.Header.Difficulty,
-		"gasLimit":      extRollup.Header.GasLimit,
-		"gasUsed":       extRollup.Header.GasUsed,
-		"timestamp":     extRollup.Header.Time,
-		"mixHash":       extRollup.Header.MixDigest,
-		"baseFeePerGas": extRollup.Header.BaseFee,
+		"sha3Uncles":    header.UncleHash,
+		"difficulty":    header.Difficulty,
+		"gasLimit":      header.GasLimit,
+		"gasUsed":       header.GasUsed,
+		"timestamp":     header.Time,
+		"mixHash":       header.MixDigest,
+		"baseFeePerGas": header.BaseFee,
 	}
 }
