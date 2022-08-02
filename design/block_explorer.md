@@ -82,7 +82,9 @@ extent, even for the public block explorer, for two reasons:
 * Every advanced block explorer has some customised handling of standard contracts. For example, for ERC-20, it will 
   process the chain to allow a given address to see its entire holdings of various tokens. In Obscuro, this processing 
   would have to happen inside the enclave, since the block explorer would not have access to the transaction contents. 
-  Since BlockScout is not written with this in mind, it would entail a large amount of custom code
+  Since BlockScout is not written with this in mind, it would entail a large amount of custom code. This is especially
+  true since the logical place to do this sensitive processing is inside the enclave, but BlockScout is not written in 
+  Go, and thus it's logic is not reusable
 
 Even further customisations would be required for the private block explorer, where we would have to introduce handling 
 of viewing keys.
