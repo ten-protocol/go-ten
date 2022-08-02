@@ -108,12 +108,11 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	rollupHeight, ok := blockNrOrHash.Number()
 	if ok {
-		rollup, err := api.host.EnclaveClient.GetRollupByHeight(rollupHeight.Int64())
-		if err != nil {
-			return nil, err
+		rollupHash := api.host.nodeDB.GetRollupHash(big.NewInt(rollupHeight.Int64()))
+		if rollupHash != nil {
+			return nil, nil
 		}
-		rollupHash := rollup.Header.Hash()
-		return api.host.EnclaveClient.GetCode(address, &rollupHash)
+		return api.host.EnclaveClient.GetCode(address, rollupHash)
 	}
 
 	rollupHash, ok := blockNrOrHash.Hash()
