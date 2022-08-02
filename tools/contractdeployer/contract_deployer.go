@@ -4,11 +4,11 @@ package contractdeployer
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -142,7 +142,7 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		return common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode), nil
 
 	case erc20Contract:
-		return common.Hex2Bytes(erc20contractlib.ERC20ContractABI), nil
+		return common.Hex2Bytes(erc20contract.ContractByteCode), nil
 
 	default:
 		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)
