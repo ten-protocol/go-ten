@@ -4,9 +4,10 @@ package contractdeployer
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
