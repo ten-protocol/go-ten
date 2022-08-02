@@ -43,12 +43,20 @@ func (api *ObscuroAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.H
 
 // GetCurrentRollupHead returns the current head rollup's header.
 func (api *ObscuroAPI) GetCurrentRollupHead() *common.Header {
-	return api.host.nodeDB.GetCurrentRollupHead().Header
+	headerWithHashes := api.host.nodeDB.GetCurrentRollupHead()
+	if headerWithHashes == nil {
+		return nil
+	}
+	return headerWithHashes.Header
 }
 
 // GetRollupHeader returns the header of the rollup with the given hash.
 func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
-	return api.host.nodeDB.GetRollupHeader(hash).Header
+	headerWithHashes := api.host.nodeDB.GetRollupHeader(hash)
+	if headerWithHashes == nil {
+		return nil
+	}
+	return headerWithHashes.Header
 }
 
 // GetRollupHeaderByNumber returns the header for the rollup with the given number.
