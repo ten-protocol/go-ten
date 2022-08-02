@@ -122,6 +122,8 @@ async function displayRollup(rollupID) {
     if (!rollupResp.ok) {
         rollupArea.innerText = "Failed to fetch rollup."
         blockArea.innerText = "Failed to fetch block."
+        decryptedTxsArea.innerText = "Failed to decrypt transaction blob."
+        resultPane.scrollIntoView();
         return
     }
 
