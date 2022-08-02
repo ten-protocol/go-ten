@@ -360,7 +360,8 @@ pay for Obscuro rollup transactions
 account on the L1 network used to deploy the Obscuro Management and the ERC20 contracts
 - `0x0000000000000000000000000000000000000001` is the host id of the Obscuro node when starting in a local mode
 - `0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF` is the address of the Obscuro Management contract which is known a-priori as a nonce of 0 is used 
-- `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which is known a-priori as a nonce of 1 is used
+- `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which represents OBX and is known a-priori as a nonce of 1 is used
+- `0x51D43a3Ca257584E770B6188232b199E76B022A2` is the address of the ERC20 contract which represents ETH and is known a-priori as a nonce of 2 is used
                                 
 
 ### Deploying contracts into a local testnet
