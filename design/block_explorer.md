@@ -8,65 +8,61 @@ that also displays private information belonging to that user.
 
 ## Requirements
 
-[TODO: HARMONISE INFO SHOWN ACROSS PUBLIC AND PRIVATE EXPLORER?]
-[TODO: DO WE WANT TO DISPLAY ROLLUPS?]
-
 * Public block explorer
-  * Anyone can access the public block explorer via their browser
-  * The public block explorer does not decrypt any information using viewing keys
+  * The public block explorer is hosted online and can be accessed by anyone via their browser
   * The public block explorer displays the following information:
-    * Encrypted transactions in mempool [TODO: IS THIS A NUMBER OR A LIST?]
-    * Encrypted transactions validated [TODO: IS THIS A NUMBER OR A LIST?]
-    * Transaction metadata:
-      * Fees 
-      * Timestamps
-      * Block number
-      * Transaction status
-    * (Should) Average number of transactions per rollup
+    * Network statistics
+      * Number of rollups
+      * (Should) Number of transactions
+      * (Should) Average time per rollup
+      * (Should) Number of wallet addresses
+    * A feed of the latest rollups and the latest transactions
     * (Should) The bytecode and optionally sourcecode (via GitHub) of any deployed contracts
-  * [TODO: WHAT DECRYPTION CAPABILITIES FOR THE PUBLIC BLOCK EXPLORER? ANY REQUIREMENT TO EMBED THESE CAPABILITIES IN THE TOOL?]
+  * Any rollup can be retrieved and displayed, alongside its associated L1 block and (for TestNet only) its decrypted 
+    transaction blob. A rollup can be retrieved in any of the following ways:
+    * Clicking on a rollup in the list of latest rollups
+    * Clicking on a transaction in the list of latest transaction (the rollup containing the transaction is shown)
+    * Searching for a rollup by number
+    * Searching for a transaction by hash (the rollup containing the transaction is shown)
+
 * Private block explorer
   * The private block explorer is run locally
   * The private block explorer is tied to a specific user, and uses their viewing key to decrypt information in a 
     secure way
-  * The private block explorer should display the following information (highest priority first):
-    * Latest blocks and their aggregator [TODO: SHOULD THE BLOCKS HAVE THEIR TXS DECRYPTED AUTOMATICALLY? ON DEMAND?]
-    * Latest transactions [TODO: CLARIFY THAT THIS IS JUST FOR THE CURRENT USER], with information on [TODO: I ASSUME THIS INFO IS DECRYPTED?]:
-      * Status
-      * From
-      * To
-      * State [TODO: CLARIFY WHAT THIS IS]
-      * Timestamp
-    * Number of transactions
-    * The bytecode and optionally sourcecode (via GitHub) of any deployed contracts [TODO: CLARIFY WHETHER THIS IS JUST FOR CURRENT USER]
-    * Ability to search for transactions by: [TODO: ADD SOME REQUIREMENT HERE AROUND SPEED AND NOT RESCANNING ENTIRE BLOCKCHAIN - I ASSUME THIS IS WHERE A LOT OF COMPLEXITY COMES IN?]
-      * Address
-      * Transaction hash
-      * Block
-      * Token [TODO: CLARIFY WHAT THIS MEANS]
-    * Network health (e.g. time to complete gossip)
-    * Revelation periods and associated transactions and contracts [TODO: CLARIFY WHAT THIS MEANS]
+  * The private block explorer has the same capabilities as the public block explorer. In addition, it allows the 
+    following:
+    * Displaying the decrypted transaction and transaction receipt if the user is allowed to view them
+    * Searching for transactions by:
+      * Address [TODO: CLARIFY WHAT THIS MEANS]
+      * Token symbol [TODO: CLARIFY WHAT THIS MEANS]
 
 ## Design
 
-TBD - Will depend on which alternative we select from the below.
+We will build our own private and public block explorers.
+
+Design is TBD.
 
 ## Known limitations
 
-TBD - Will depend on which alternative we select from the below.
+TBD
 
 ## Alternatives considered
 
 ### Build our own private and public block explorers
 
-TODO
+The downside of this approach is that we'd have to write all the block explorer logic from scratch. While displaying 
+individual rollups and transactions is relatively simple, the complexity emerges when processing the data to present a 
+useful view to the customer. For example, a user may wish to view all the transfers to their address by an ERC-20 
+contract, which requires walking the chain and storing the results locally so that they don't have to be continuously 
+recomputed.
 
-  * DOCUMENT WHAT'S EXPENSIVE FROM AN ENG PERSPECTIVE (DIGESTING CHAIN INTO DB, GETTING CONTRACTS?)
-  * TALK ABOUT NEED FOR DESIGN WORK, NO CURRENT CAPABILITY IN-HOUSE
-  * TALK ABOUT BENEFIT OF SHARED ARCH + LIBS FOR PUBLIC + PRIVATE EXPLORERS
-  * TALK ABOUT BENEFIT OF REUSING EXISTING STACK (GOLANG)
+However, a decisive upside of building our own block explorers is that Obscuro's rules about data visibility mean that 
+an off-the-shelf block explorer is unlikely to be fit for purpose in various ways, and will require extensive 
+customisation. We talk about that in section `Fork an existing block explorer for the public block explorer`, below.
 
-### Fork an existing block explorer for the public block explorer
+By writing our own block explorers, we can also reuse our existing stack (i.e. Go).
+
+### Fork an existing block explorer
 
 The only suitable, open-source block explorer that we are aware of is 
 [BlockScout](https://github.com/blockscout/blockscout).
@@ -76,14 +72,22 @@ The only suitable, open-source block explorer that we are aware of is
 BlockScout is an open-source block explorer, used by Secret Network among others (see 
 [here](https://explorer.secret.dev/)).
 
-In theory, this would give us a block explorer "for free". In practice, we'd need to customise BlockScout to some 
-extent because it cannot handle the fact that some information about the Obscuro chain is returned in an encrypted 
-form. For example, vanilla BlockScout correctly displays the number of Obscuro blocks, but it considers every block to 
-have zero transactions, because it chokes on the encrypted transaction contents being returned.
+In theory, this would give us a block explorer "for free". In practice, we'd need to customise BlockScout to a large  
+extent, even for the public block explorer, for two reasons:
 
-Forking BlockScout would require us to develop skills we don't have currently (e.g. it is written in Elixir), and would 
-require us to maintain the fork. Blockscout is currently c. 270k lines of code, 20% larger than the Obscuro codebase as 
-of this writing.
+* It cannot handle the fact that some information about the Obscuro chain is returned in an encrypted form. For 
+  example, if vanilla BlockScout is connected to an Obscuro host, it correctly displays the number of Obscuro blocks, 
+  but it considers every block to have zero transactions, because it chokes on the encrypted transaction contents being 
+  returned
+* Every advanced block explorer has some customised handling of standard contracts. For example, for ERC-20, it will 
+  process the chain to allow a given address to see its entire holdings of various tokens. In Obscuro, this processing 
+  would have to happen inside the enclave, since the block explorer would not have access to the transaction contents. 
+  Since BlockScout is not written with this in mind, it would entail a large amount of custom code
 
-Meanwhile, we'd also have to develop the private block explorer, so we'd be maintaining two block explorers with no 
-common architecture.
+Even further customisations would be required for the private block explorer, where we would have to introduce handling 
+of viewing keys.
+
+Forking BlockScout would require us to develop skills we don't have currently (e.g. it is written in Elixir).
+
+Once BlockScout was forked, we'd have to maintain the fork. Blockscout is currently c. 270k lines of code, 20% larger 
+than the Obscuro codebase as of this writing.
