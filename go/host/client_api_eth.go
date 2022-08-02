@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -47,16 +48,22 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	rollupHash := api.host.nodeDB.GetRollupHash(big.NewInt(int64(number)))
-	// todo - joel - check if hash is nil
+	if rollupHash == nil {
+		return nil, nil //nolint:nilnil
+	}
 	rollupHeaderWithHashes := api.host.nodeDB.GetRollupHeader(*rollupHash)
-	// todo - joel - check if rollup is nil
+	if rollupHeaderWithHashes == nil {
+		return nil, fmt.Errorf("could not retrieve header for stored rollup with number %d and hash %s", number, rollupHash)
+	}
 	return headerWithHashesToBlock(rollupHeaderWithHashes), nil
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
 	rollupHeaderWithHashes := api.host.nodeDB.GetRollupHeader(hash)
-	// todo - joel - check if rollup is nil
+	if rollupHeaderWithHashes == nil {
+		return nil, nil //nolint:nilnil
+	}
 	return headerWithHashesToBlock(rollupHeaderWithHashes), nil
 }
 

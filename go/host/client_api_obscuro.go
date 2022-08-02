@@ -111,21 +111,21 @@ func (api *ObscuroAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
 func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
-	rollupHeaderWithHashes := api.host.nodeDB.GetCurrentRollupHead()
-	if rollupHeaderWithHashes == nil {
+	currentRollupHeaderWithHashes := api.host.nodeDB.GetCurrentRollupHead()
+	if currentRollupHeaderWithHashes == nil {
 		return nil, nil
 	}
-	nextRollupHash := rollupHeaderWithHashes.Header.Hash()
+	nextRollupHash := currentRollupHeaderWithHashes.Header.Hash()
 
 	// We walk the chain until we've collected sufficient transactions.
 	var txHashes []gethcommon.Hash
 	for {
-		rollup, err := api.host.EnclaveClient.GetRollup(nextRollupHash)
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve rollup for hash. Cause: %w", err)
+		rollupHeaderWithHashes := api.host.nodeDB.GetRollupHeader(nextRollupHash)
+		if rollupHeaderWithHashes == nil {
+			return nil, fmt.Errorf("could not retrieve rollup for hash %s", nextRollupHash)
 		}
 
-		for _, txHash := range rollup.TxHashes {
+		for _, txHash := range rollupHeaderWithHashes.TxHashes {
 			txHashes = append(txHashes, txHash)
 			if len(txHashes) >= num {
 				return txHashes, nil
@@ -133,10 +133,10 @@ func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error)
 		}
 
 		// If we have reached the top of the chain (i.e. the current rollup's number is one), we stop walking.
-		if rollup.Header.Number.Cmp(big.NewInt(0)) == 0 {
+		if rollupHeaderWithHashes.Header.Number.Cmp(big.NewInt(0)) == 0 {
 			break
 		}
-		nextRollupHash = rollup.Header.ParentHash
+		nextRollupHash = rollupHeaderWithHashes.Header.ParentHash
 	}
 
 	return txHashes, nil
