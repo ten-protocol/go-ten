@@ -31,6 +31,7 @@ contract Guess {
         owner = payable(msg.sender);
         size = _size;
         erc20 = IERC20(_tokenAddress);
+        setNewTarget();
     }
 
     function attempt(uint8 guess) public payable {
