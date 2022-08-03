@@ -43,7 +43,6 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
-			params.ViewingKeysEnabled,
 			params.Wallets,
 		)
 	}
@@ -62,7 +61,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	// Create a handle to each node
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	for i, node := range obscuroNodes {
-		obscuroClients[i] = host.NewInMemObscuroClient(node)
+		obscuroClients[i] = host.NewInMemoryViewingKeyClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 
@@ -194,7 +193,6 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 			GenesisJSON:            nil,
 			UseInMemoryDB:          false,
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
-			ViewingKeysEnabled:     params.ViewingKeysEnabled,
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {

@@ -63,7 +63,6 @@ func createInMemObscuroNode(
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
-	viewingKeysEnabled bool,
 	wallets *params.SimWallets,
 ) *host.Node {
 	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
@@ -83,7 +82,6 @@ func createInMemObscuroNode(
 		ValidateL1Blocks:       validateBlocks,
 		GenesisJSON:            genesisJSON,
 		UseInMemoryDB:          true,
-		ViewingKeysEnabled:     viewingKeysEnabled,
 		ERC20ContractAddresses: wallets.AllEthAddresses(),
 	}
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)

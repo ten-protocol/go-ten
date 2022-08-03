@@ -158,7 +158,7 @@ func NewEnclave(
 	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey))
 
 	obscuroKey := obscurocrypto.GetObscuroKey()
-	rpcem := rpcencryptionmanager.NewRPCEncryptionManager(config.ViewingKeysEnabled, ecies.ImportECDSA(obscuroKey))
+	rpcem := rpcencryptionmanager.NewRPCEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
 	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
 

@@ -45,6 +45,15 @@ func NewInMemObscuroClient(host *Node) rpcclientlib.Client {
 	}
 }
 
+func NewInMemoryViewingKeyClient(host *Node) *rpcclientlib.ViewingKeyClient {
+	inMemClient := NewInMemObscuroClient(host)
+	vkClient, err := rpcclientlib.NewViewingKeyClient(inMemClient)
+	if err != nil {
+		panic(err)
+	}
+	return vkClient
+}
+
 // Call bypasses RPC, and invokes methods on the node directly.
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {

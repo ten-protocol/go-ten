@@ -60,10 +60,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			nil,
 			params.Wallets.NodeWallets[i],
 			miner,
-			params.ViewingKeysEnabled,
 			params.Wallets,
 		)
-		obscuroClient := host.NewInMemObscuroClient(agg)
+		obscuroClient := host.NewInMemoryViewingKeyClient(agg)
 
 		// and connect them to each other
 		miner.AddClient(agg)

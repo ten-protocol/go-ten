@@ -67,6 +67,5 @@ services:
       "--erc20ContractAddresses=$OBXERC20ADDR,$ETHERC20ADDR",
       "--hostAddress=host:10000",
       "--profilerEnabled=$PROFILERENABLED",
-      "--viewingKeysEnabled=true",
       "--hostAddress=$P2PPUBLICADDRESS"
     ]

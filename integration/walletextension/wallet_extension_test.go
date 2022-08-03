@@ -616,14 +616,13 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 	simParams := params.SimParams{
-		NumberOfNodes:      numberOfNodes,
-		AvgBlockDuration:   1 * time.Second,
-		AvgGossipPeriod:    1 * time.Second / 3,
-		MgmtContractLib:    ethereummock.NewMgmtContractLibMock(),
-		ERC20ContractLib:   ethereummock.NewERC20ContractLibMock(),
-		Wallets:            wallets,
-		StartPort:          int(networkStartPort),
-		ViewingKeysEnabled: true,
+		NumberOfNodes:    numberOfNodes,
+		AvgBlockDuration: 1 * time.Second,
+		AvgGossipPeriod:  1 * time.Second / 3,
+		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
+		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
+		Wallets:          wallets,
+		StartPort:        int(networkStartPort),
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)

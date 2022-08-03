@@ -26,7 +26,6 @@ type EnclaveConfigToml struct {
 	LogLevel                  string
 	LogPath                   string
 	UseInMemoryDB             bool
-	ViewingKeysEnabled        bool
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -48,7 +47,6 @@ func ParseConfig() config.EnclaveConfig {
 	loglevel := flag.String(logLevelName, cfg.LogLevel, logLevelUsage)
 	logPath := flag.String(logPathName, cfg.LogPath, logPathUsage)
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, useInMemoryDBUsage)
-	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, cfg.ViewingKeysEnabled, ViewingKeysEnabledUsage)
 	edgelessDBHost := flag.String(edgelessDBHostName, cfg.EdgelessDBHost, edgelessDBHostUsage)
 	sqliteDBPath := flag.String(sqliteDBPathName, cfg.SqliteDBPath, sqliteDBPathUsage)
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, profilerEnabledUsage)
@@ -84,7 +82,6 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.LogLevel = *loglevel
 	cfg.LogPath = *logPath
 	cfg.UseInMemoryDB = *useInMemoryDB
-	cfg.ViewingKeysEnabled = *viewingKeysEnabled
 	cfg.EdgelessDBHost = *edgelessDBHost
 	cfg.SqliteDBPath = *sqliteDBPath
 	cfg.ProfilerEnabled = *profilerEnabled
@@ -125,6 +122,5 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
-		ViewingKeysEnabled:        tomlConfig.ViewingKeysEnabled,
 	}
 }

@@ -65,7 +65,7 @@ type ViewingKeyClient struct {
 func (c *ViewingKeyClient) Call(result interface{}, method string, args ...interface{}) error {
 	if !isSensitive(method) {
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
-		return c.obscuroClient.Call(&result, method, args...)
+		return c.obscuroClient.Call(result, method, args...)
 	}
 
 	// we setup a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
