@@ -22,7 +22,7 @@ import (
 //	2. simulates signing the key with metamask
 //	3. sets the private key on the client (to decrypt enclave responses)
 //	4. registers the public viewing key with the enclave (to encrypt enclave responses)
-func GenerateAndRegisterViewingKey(cli rpcclientlib.Client, wal wallet.Wallet) error {
+func GenerateAndRegisterViewingKey(cli *rpcclientlib.ViewingKeyClient, wal wallet.Wallet) error {
 	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
 	vk, err := crypto.GenerateKey()
 	if err != nil {

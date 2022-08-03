@@ -8,33 +8,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ethereum/go-ethereum/rpc"
 )
-
-type RPCMethod uint8
 
 const (
 	http           = "http://"
 	reqJSONKeyFrom = "from"
-
-	RPCGetID                   = "obscuro_getID"
-	RPCGetCurrentBlockHead     = "obscuro_getCurrentBlockHead"
-	RPCGetBlockHeaderByHash    = "obscuro_getBlockHeaderByHash"
-	RPCGetCurrentRollupHead    = "obscuro_getCurrentRollupHead"
-	RPCGetRollupHeader         = "obscuro_getRollupHeader"
-	RPCGetRollupHeaderByNumber = "obscuro_getRollupHeaderByNumber"
-	RPCGetRollup               = "obscuro_getRollup"
-	RPCNonce                   = "obscuro_nonce"
-	RPCAddViewingKey           = "obscuro_addViewingKey"
-	RPCGetRollupForTx          = "obscuro_getRollupForTx"
-	RPCGetLatestTxs            = "obscuro_getLatestTransactions"
-	RPCStopHost                = "obscuro_stopHost"
-	RPCCall                    = "eth_call"
-	RPCChainID                 = "eth_chainId"
-	RPCGetBalance              = "eth_getBalance"
-	RPCGetTransactionByHash    = "eth_getTransactionByHash"
-	RPCGetTxReceipt            = "eth_getTransactionReceipt"
-	RPCSendRawTransaction      = "eth_sendRawTransaction"
 
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -43,32 +21,7 @@ const (
 // for these methods, the RPC method's requests and responses should be encrypted
 var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTxReceipt, RPCSendRawTransaction, RPCGetTransactionByHash}
 
-// Client is used by client applications to interact with the Obscuro node.
-type Client interface {
-	// Call executes the named method via RPC.
-	Call(result interface{}, method string, args ...interface{}) error
-	// Stop closes the client.
-	Stop()
-
-	// SetViewingKey sets the current viewing key on the client to be used for all sensitive request decryption
-	SetViewingKey(viewingKey *ecies.PrivateKey, pubKeyBytes []byte)
-
-	// RegisterViewingKey takes a signature for the public key, it verifies the signed public key matches the currently set private viewing key
-	//	and then submits it to the enclave
-	RegisterViewingKey(signerAddr common.Address, signature []byte) error
-}
-
-// RPCClient is a Client implementation that wraps rpc.Client to make calls.
-type networkClient struct {
-	rpcClient        *rpc.Client
-	enclavePublicKey *ecies.PublicKey
-	// todo: add support for multiple keys on the same client?
-	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
-	viewingPubKey  []byte            // public viewing key, submitted to the enclave
-	viewingKeyAddr common.Address    // address that generated the public key
-}
-
-func NewClient(address string) (Client, error) {
+func NewViewingKeyClient(client Client) (*ViewingKeyClient, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
@@ -76,24 +29,43 @@ func NewClient(address string) (Client, error) {
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	rpcClient, err := rpc.Dial(http + address)
-	if err != nil {
-		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", http+address, err)
-	}
-
-	return &networkClient{
-		rpcClient:        rpcClient,
+	return &ViewingKeyClient{
+		obscuroClient:    client,
 		enclavePublicKey: enclavePublicKey,
 	}, nil
+}
+
+// NewViewingKeyNetworkClient returns a network RPC client with Viewing Key encryption/decryption
+func NewViewingKeyNetworkClient(rpcAddress string) (*ViewingKeyClient, error) {
+	rpcClient, err := NewNetworkClient(rpcAddress)
+	if err != nil {
+		return nil, err
+	}
+	vkClient, err := NewViewingKeyClient(rpcClient)
+	if err != nil {
+		return nil, err
+	}
+	return vkClient, nil
+}
+
+// ViewingKeyClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
+type ViewingKeyClient struct {
+	obscuroClient Client
+
+	enclavePublicKey *ecies.PublicKey
+	// todo: add support for multiple keys on the same client?
+	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
+	viewingPubKey  []byte            // public viewing key, submitted to the enclave
+	viewingKeyAddr common.Address    // address that generated the public key
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
 //	then decrypts the response before returning.
 // The result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
-func (c *networkClient) Call(result interface{}, method string, args ...interface{}) error {
+func (c *ViewingKeyClient) Call(result interface{}, method string, args ...interface{}) error {
 	if !isSensitive(method) {
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
-		return c.rpcClient.Call(&result, method, args...)
+		return c.obscuroClient.Call(&result, method, args...)
 	}
 
 	// we setup a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
@@ -119,7 +91,7 @@ func (c *networkClient) Call(result interface{}, method string, args ...interfac
 	if err != nil {
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
-	err = c.rpcClient.Call(&rawResult, method, encryptedParams)
+	err = c.obscuroClient.Call(&rawResult, method, encryptedParams)
 	if err != nil {
 		return fmt.Errorf("%s rpc call failed - %w", method, err)
 	}
@@ -144,7 +116,7 @@ func (c *networkClient) Call(result interface{}, method string, args ...interfac
 	return nil
 }
 
-func (c *networkClient) encryptArgs(args ...interface{}) ([]byte, error) {
+func (c *ViewingKeyClient) encryptArgs(args ...interface{}) ([]byte, error) {
 	if len(args) == 0 {
 		return nil, nil
 	}
@@ -157,7 +129,7 @@ func (c *networkClient) encryptArgs(args ...interface{}) ([]byte, error) {
 	return c.encryptParamBytes(paramsJSON)
 }
 
-func (c *networkClient) encryptParamBytes(params []byte) ([]byte, error) {
+func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 	encryptedParams, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, params, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %w", params, err)
@@ -165,7 +137,7 @@ func (c *networkClient) encryptParamBytes(params []byte) ([]byte, error) {
 	return encryptedParams, nil
 }
 
-func (c *networkClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
+func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
 	// For some RPC operations, a nil is a valid response (e.g. the transaction for an unrecognised transaction hash).
 	if resultBlob == nil {
 		return nil, nil
@@ -198,7 +170,7 @@ func (c *networkClient) decryptResponse(resultBlob interface{}) ([]byte, error) 
 }
 
 // setResult tries to cast/unmarshal data into the result pointer, based on its type
-func (c *networkClient) setResult(data []byte, result interface{}) error {
+func (c *ViewingKeyClient) setResult(data []byte, result interface{}) error {
 	switch result := result.(type) {
 	case *string:
 		*result = string(data)
@@ -218,16 +190,16 @@ func (c *networkClient) setResult(data []byte, result interface{}) error {
 	}
 }
 
-func (c *networkClient) Stop() {
-	c.rpcClient.Close()
+func (c *ViewingKeyClient) Stop() {
+	c.obscuroClient.Stop()
 }
 
-func (c *networkClient) SetViewingKey(viewingKey *ecies.PrivateKey, viewingPubKeyBytes []byte) {
+func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, viewingPubKeyBytes []byte) {
 	c.viewingPrivKey = viewingKey
 	c.viewingPubKey = viewingPubKeyBytes
 }
 
-func (c *networkClient) RegisterViewingKey(signerAddr common.Address, signature []byte) error {
+func (c *ViewingKeyClient) RegisterViewingKey(signerAddr common.Address, signature []byte) error {
 	c.viewingKeyAddr = signerAddr
 
 	// We encrypt the viewing key bytes
@@ -245,7 +217,7 @@ func (c *networkClient) RegisterViewingKey(signerAddr common.Address, signature 
 }
 
 // enclave requires a from address to be set for the viewing key encryption but sources like metamask often don't set it
-func (c *networkClient) ensureCallParamsHaveFromAddress(method string, args []interface{}) ([]interface{}, error) {
+func (c *ViewingKeyClient) ensureCallParamsHaveFromAddress(method string, args []interface{}) ([]interface{}, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
 	}
