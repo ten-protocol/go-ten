@@ -59,7 +59,7 @@ var staticFiles embed.FS
 type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
-	hostClient       rpcclientlib.Client
+	hostClient       *rpcclientlib.ViewingKeyClient
 	server           *http.Server
 }
 
@@ -78,7 +78,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 	setLogs(config.LogPath)
 
-	client, err := rpcclientlib.NewClient(config.NodeRPCHTTPAddress)
+	client, err := rpcclientlib.NewViewingKeyNetworkClient(config.NodeRPCHTTPAddress)
 	if err != nil {
 		panic(err)
 	}

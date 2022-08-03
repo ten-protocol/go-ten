@@ -27,7 +27,7 @@ type obscuroWalletRPCClient struct {
 
 // NewObscuroRPCClient creates an obscuro RPC client for a given wallet, it will create and register a viewing key for the wallet as part of this setup
 func NewObscuroRPCClient(ipaddress string, port uint, wallet wallet.Wallet) (EthClient, error) {
-	client, err := rpcclientlib.NewClient(fmt.Sprintf("%s:%d", ipaddress, port))
+	client, err := rpcclientlib.NewViewingKeyNetworkClient(fmt.Sprintf("%s:%d", ipaddress, port))
 	if err != nil {
 		return nil, err
 	}
