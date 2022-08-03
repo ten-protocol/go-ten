@@ -2,7 +2,7 @@
 
 See the documentation [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html).
 
-# Developer notes
+## Developer notes
 
 The precompiled binaries for macOS ARM64, macOS AMD64, Windows AMD64 and Linux AMD64 can be built by running the 
 following commands from the `tools/walletextension/main` folder:
