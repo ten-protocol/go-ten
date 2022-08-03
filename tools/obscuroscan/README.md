@@ -1,16 +1,12 @@
 # Obscuroscan
 
-A webapp that connects to a running Obscuro network, displays network statistics, and decodes encrypted rollups on 
-testnet.
+See the documentation [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html).
 
-## Usage
+## Developer notes
 
-* Get the client server address for an Obscuro host on a running Obscuro network
+### Updating the guessing game
 
-* Run `obscuroscan/main/main()` with the following flags to start Obscuroscan:
-
-  ```--rpcServerAddress=<client server address>```
-
-  This will create an Obscuroscan instance listening on `http://localhost:3000/`
-
-* Visit `http://localhost:3000/`
+* Clone the source: `https://github.com/obscuronet/number-guessing-game`
+* Compile the source: `npm install && npx hardhat compile && npm run build`
+* Rename `public/index.html` to `public/game.html`
+* Copy the contents of the `public` folder into `tools/obscuroscan/static`
