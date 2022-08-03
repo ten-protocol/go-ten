@@ -70,9 +70,6 @@ service EnclaveProto {
   // GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
   rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
 
-  // GetBlock returns a rollup given its height
-  rpc GetRollupByHeight(GetRollupByHeightRequest) returns (GetRollupByHeightResponse) {}
-
   // AddViewingKey adds a viewing key to the enclave
   rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
 
@@ -208,13 +205,6 @@ message GetRollupRequest {
   bytes rollupHash = 1;
 }
 message GetRollupResponse {
-  ExtRollupMsg extRollup = 2;
-}
-
-message GetRollupByHeightRequest {
-  int64 rollupHeight = 1;
-}
-message GetRollupByHeightResponse {
   ExtRollupMsg extRollup = 2;
 }
 

@@ -329,19 +329,6 @@ func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) (*common.ExtR
 	return &extRollup, nil
 }
 
-func (c *EnclaveRPCClient) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetRollupByHeight(timeoutCtx, &generated.GetRollupByHeightRequest{RollupHeight: rollupHeight})
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve rollup with height %d. Cause: %w", rollupHeight, err)
-	}
-
-	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
-	return &extRollup, nil
-}
-
 func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

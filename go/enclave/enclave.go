@@ -392,35 +392,6 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup
 	return &extRollup, nil
 }
 
-func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, error) {
-	// TODO - Consider improving efficiency by directly fetching rollup by number.
-	rollup := e.storage.FetchHeadRollup()
-
-	// -1 is used by Ethereum to indicate that we should fetch the head.
-	if rollupHeight != -1 {
-		for {
-			if rollup == nil {
-				// We've reached the head of the chain without finding the block.
-				return nil, nil //nolint:nilnil
-			}
-			if rollup.Number().Int64() == rollupHeight {
-				// We have found the block.
-				break
-			}
-			if rollup.Number().Int64() < rollupHeight {
-				// The current block number is below the sought number. Continuing to walk up the chain is pointless.
-				return nil, nil //nolint:nilnil
-			}
-
-			// We grab the next rollup and loop.
-			rollup = e.storage.ParentRollup(rollup)
-		}
-	}
-
-	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
-	return &extRollup, nil
-}
-
 func (e *enclaveImpl) Attestation() *common.AttestationReport {
 	if e.enclavePubKey == nil {
 		log.Panic("public key not initialized, we can't produce the attestation report")
