@@ -119,7 +119,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		cli, err := rpcclientlib.NewNetworkClient(nodeRPCAddresses[i])
+		cli, err := rpcclientlib.NewViewingKeyNetworkClient(nodeRPCAddresses[i])
 		if err != nil {
 			panic(err)
 		}

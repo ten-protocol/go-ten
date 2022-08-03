@@ -35,7 +35,7 @@ func NewViewingKeyClient(client Client) (*ViewingKeyClient, error) {
 	}, nil
 }
 
-// ViewingKeyClient is a Client wrapper that manages viewing key registration and decryption
+// ViewingKeyClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type ViewingKeyClient struct {
 	obscuroClient Client
 
