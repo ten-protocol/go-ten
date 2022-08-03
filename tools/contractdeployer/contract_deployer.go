@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/guessinggame"
+
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -20,10 +22,11 @@ import (
 )
 
 const (
-	mgmtContract  = "MGMT"
-	erc20Contract = "ERC20"
-	timeoutWait   = 80 * time.Second
-	retryInterval = 2 * time.Second
+	mgmtContract         = "MGMT"
+	erc20Contract        = "ERC20"
+	guessingGameContract = "GUESS"
+	timeoutWait          = 80 * time.Second
+	retryInterval        = 2 * time.Second
 )
 
 type ContractDeployer struct {
@@ -144,6 +147,9 @@ func getContractCode(cfg *Config) ([]byte, error) {
 
 	case erc20Contract:
 		return common.Hex2Bytes(erc20contract.ContractByteCode), nil
+
+	case guessingGameContract:
+		return common.Hex2Bytes(guessinggame.ContractByteCode), nil
 
 	default:
 		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)
