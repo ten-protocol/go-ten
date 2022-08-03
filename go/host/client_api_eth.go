@@ -150,6 +150,17 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams 
 	return &encryptedResponseHex, nil
 }
 
+// FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
+func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
+	// TODO - Return a non-dummy fee history.
+	return &FeeHistoryResult{
+		OldestBlock:  (*hexutil.Big)(big.NewInt(0)),
+		Reward:       [][]*hexutil.Big{},
+		BaseFee:      []*hexutil.Big{},
+		GasUsedRatio: []float64{},
+	}, nil
+}
+
 // Maps an external rollup to a block.
 func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
 	header := headerWithHashes.Header
@@ -174,4 +185,12 @@ func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[st
 		"mixHash":       header.MixDigest,
 		"baseFeePerGas": header.BaseFee,
 	}
+}
+
+// FeeHistoryResult is the structure returned by Geth `eth_feeHistory` API.
+type FeeHistoryResult struct {
+	OldestBlock  *hexutil.Big     `json:"oldestBlock"`
+	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
+	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
+	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
