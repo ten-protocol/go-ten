@@ -6,7 +6,7 @@ Deploys contracts to both the obscuro network (L2) and eth network (L1)
 
 All commands are executed by running `contractdeployer/main/main()`.
 
-Contract is a string value to select the contract bytecode to deploy, currently only ERC20 and MGMT are supported
+Contract is a string value to select the contract bytecode to deploy, currently ERC20, MGMT and GUESS are supported
 (an ERC20 contract and the obscuro management contract, respectively)
 
 * Example arguments to deploy an L2 contract:
