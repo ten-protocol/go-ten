@@ -80,7 +80,7 @@ docker run --name=ethL2deployer \
 echo ""
 
 echo "Deploying Guessing game contract to the obscuro network..."
-docker run --name=ethL2deployer \
+docker run --name=guessingGameL2deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
