@@ -360,7 +360,10 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %w", err)
 	}
 
-	encodedTxs, err := transactionCipher.Open(nil, []byte(crypto.RollupCipherNonce), encryptedTxBytes, nil)
+	// The nonce is prepended to the ciphertext.
+	nonce := encryptedTxBytes[0:crypto.NonceLength]
+	ciphertext := encryptedTxBytes[crypto.NonceLength:]
+	encodedTxs, err := transactionCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
 	}

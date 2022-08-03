@@ -21,7 +21,7 @@ const (
 	// TODO - Replace this fixed key with derived, rotating keys.
 	RollupEncryptionKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c"
 	// The nonce's length in bytes.
-	nonceLength = 12
+	NonceLength = 12
 )
 
 // TransactionBlobCrypto handles the encryption and decryption of the transaction blobs stored inside a rollup.
@@ -77,7 +77,7 @@ func (t TransactionBlobCryptoImpl) encrypt(transactions []*common.L2Tx) common.E
 		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
 	}
 
-	nonce := make([]byte, nonceLength)
+	nonce := make([]byte, NonceLength)
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		log.Panic("could not generate nonce to encrypt transactions. Cause: %s", err)
 	}
@@ -85,13 +85,13 @@ func (t TransactionBlobCryptoImpl) encrypt(transactions []*common.L2Tx) common.E
 	// TODO - Ensure this nonce is not used too many times (2^32?) with the same key, to avoid risk of repeat.
 	ciphertext := t.transactionCipher.Seal(nil, nonce, encodedTxs, nil)
 	// We prepend the nonce to the ciphertext, so that it can be retrieved when decrypting.
-	return append(nonce, ciphertext...)
+	return append(nonce, ciphertext...) //nolint:makezero
 }
 
 func (t TransactionBlobCryptoImpl) decrypt(encryptedTxs common.EncryptedTransactions) []*common.L2Tx {
 	// The nonce is prepended to the ciphertext.
-	nonce := encryptedTxs[0:nonceLength]
-	ciphertext := encryptedTxs[nonceLength:]
+	nonce := encryptedTxs[0:NonceLength]
+	ciphertext := encryptedTxs[NonceLength:]
 
 	encodedTxs, err := t.transactionCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
