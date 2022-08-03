@@ -28,15 +28,3 @@ type Client interface {
 	// Stop closes the client.
 	Stop()
 }
-
-func NewViewingKeyNetworkClient(rpcAddress string) (*ViewingKeyClient, error) {
-	rpcClient, err := NewNetworkClient(rpcAddress)
-	if err != nil {
-		return nil, err
-	}
-	vkClient, err := NewViewingKeyClient(rpcClient)
-	if err != nil {
-		return nil, err
-	}
-	return vkClient, nil
-}

@@ -35,6 +35,19 @@ func NewViewingKeyClient(client Client) (*ViewingKeyClient, error) {
 	}, nil
 }
 
+// NewViewingKeyNetworkClient returns a network RPC client with Viewing Key encryption/decryption
+func NewViewingKeyNetworkClient(rpcAddress string) (*ViewingKeyClient, error) {
+	rpcClient, err := NewNetworkClient(rpcAddress)
+	if err != nil {
+		return nil, err
+	}
+	vkClient, err := NewViewingKeyClient(rpcClient)
+	if err != nil {
+		return nil, err
+	}
+	return vkClient, nil
+}
+
 // ViewingKeyClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type ViewingKeyClient struct {
 	obscuroClient Client
