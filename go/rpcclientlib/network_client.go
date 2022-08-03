@@ -2,6 +2,7 @@ package rpcclientlib
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/rpc"
 )
 

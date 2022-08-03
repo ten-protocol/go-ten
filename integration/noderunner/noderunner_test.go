@@ -76,7 +76,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
-	obscuroClient, err := rpcclientlib.NewClient(rpcServerAddr)
+	obscuroClient, err := rpcclientlib.NewNetworkClient(rpcServerAddr)
 	if err != nil {
 		panic(err)
 	}

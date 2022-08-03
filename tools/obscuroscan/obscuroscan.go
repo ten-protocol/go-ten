@@ -55,7 +55,7 @@ type Obscuroscan struct {
 }
 
 func NewObscuroscan(address string) *Obscuroscan {
-	client, err := rpcclientlib.NewClient(address)
+	client, err := rpcclientlib.NewNetworkClient(address)
 	if err != nil {
 		panic(err)
 	}
