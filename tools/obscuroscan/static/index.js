@@ -42,7 +42,7 @@ async function updateStats() {
     if (numRollupsResp.ok) {
         numRollupsField.innerText = "Total rollups: " + await numRollupsResp.text();
     } else {
-        numRollupsField.innerText = "Failed to fetch number of rollups. Cause: " + await numRollupsResp.text()
+        numRollupsField.innerText = "Failed to fetch number of rollups."
     }
 }
 
@@ -120,8 +120,10 @@ async function displayRollup(rollupID) {
     });
 
     if (!rollupResp.ok) {
-        rollupArea.innerText = "Failed to fetch rollup. Cause: " + await rollupResp.text()
-        blockArea.innerText = "Failed to fetch block. Cause: Could not retrieve rollup."
+        rollupArea.innerText = "Failed to fetch rollup."
+        blockArea.innerText = "Failed to fetch block."
+        decryptedTxsArea.innerText = "Failed to decrypt transaction blob."
+        resultPane.scrollIntoView();
         return
     }
 
@@ -137,7 +139,7 @@ async function displayRollup(rollupID) {
         const json = JSON.parse(await blockResp.text())
         blockArea.innerText = JSON.stringify(json, null, "\t");
     } else {
-        blockArea.innerText = "Failed to fetch block. Cause: " + await blockResp.text()
+        blockArea.innerText = "Failed to fetch block."
     }
 
     const encryptedTxBlob = rollupJSON[jsonKeyEncryptedTxBlob]
@@ -150,7 +152,7 @@ async function displayRollup(rollupID) {
         const json = JSON.parse(await decryptTxBlobResp.text())
         decryptedTxsArea.innerText = JSON.stringify(json, null, "\t");
     } else {
-        decryptedTxsArea.innerText = "Failed to decrypt transaction blob. Cause: " + await decryptTxBlobResp.text()
+        decryptedTxsArea.innerText = "Failed to decrypt transaction blob."
     }
 
     resultPane.scrollIntoView();

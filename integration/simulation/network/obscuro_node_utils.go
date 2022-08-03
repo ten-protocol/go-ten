@@ -121,11 +121,11 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		cli, err := rpcclientlib.NewClient(nodeRPCAddresses[i])
+		client, err := rpcclientlib.NewViewingKeyNetworkClient(nodeRPCAddresses[i])
 		if err != nil {
 			panic(err)
 		}
-		obscuroClients[i] = cli
+		obscuroClients[i] = client
 	}
 
 	// start each obscuro node
@@ -165,7 +165,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 func createAuthenticatedClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []rpcclientlib.Client {
 	clients := make([]rpcclientlib.Client, len(nodeRPCAddresses))
 	for i, addr := range nodeRPCAddresses {
-		c, err := rpcclientlib.NewClient(addr)
+		c, err := rpcclientlib.NewViewingKeyNetworkClient(addr)
 		if err != nil {
 			panic(err)
 		}

@@ -55,7 +55,7 @@ type Obscuroscan struct {
 }
 
 func NewObscuroscan(address string) *Obscuroscan {
-	client, err := rpcclientlib.NewClient(address)
+	client, err := rpcclientlib.NewNetworkClient(address)
 	if err != nil {
 		panic(err)
 	}
@@ -178,7 +178,7 @@ func (o *Obscuroscan) getLatestTxs(resp http.ResponseWriter, _ *http.Request) {
 		}
 	}
 
-	jsonTxHashes, err := json.Marshal(txHashes)
+	jsonTxHashes, err := json.Marshal(txHashStrings)
 	if err != nil {
 		log.Error("could not return latest transaction hashes to client. Cause: %s", err)
 		logAndSendErr(resp, "Could not fetch latest transactions.")

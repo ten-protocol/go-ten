@@ -475,7 +475,7 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	// only update the node rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
-		a.DB().AddRollupHeader(result.RollupHead)
+		a.DB().AddRollupHeader(result.RollupHead, result.ProducedRollup.TxHashes)
 	}
 
 	// adding a header will update the head if it has a higher height
