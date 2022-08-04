@@ -12,6 +12,7 @@ const (
 	RPCAddViewingKey           = "obscuro_addViewingKey"
 	RPCGetRollupForTx          = "obscuro_getRollupForTx"
 	RPCGetLatestTxs            = "obscuro_getLatestTransactions"
+	RPCGetTotalTxs             = "obscuro_getTotalTransactions"
 	RPCStopHost                = "obscuro_stopHost"
 	RPCCall                    = "eth_call"
 	RPCChainID                 = "eth_chainId"

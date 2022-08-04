@@ -9,6 +9,7 @@ const jsonKeyL1Proof = "L1Proof";
 const jsonKeyEncryptedTxBlob = "EncryptedTxBlob";
 
 const idNumRollups = "numRollups";
+const idNumTxs = "numTxs";
 const idFormGetRollup = "form-get-rollup";
 const idRollupID = "rollupID";
 const idResult = "result";
@@ -27,6 +28,7 @@ const idTxFour = "txFour";
 const idTxFive = "txFive";
 
 const pathNumRollups = "/numrollups/";
+const pathNumTxs = "/numtxs/";
 const pathLatestRollups = "/latestrollups/";
 const pathLatestTxs = "/latesttxs/";
 const pathBlock = "/block/";
@@ -36,13 +38,20 @@ const pathDecryptTxBlob = "/decrypttxblob/";
 // Updates the displayed stats.
 async function updateStats() {
     const numRollupsField = document.getElementById(idNumRollups);
+    const numTransactionsField = document.getElementById(idNumTxs);
 
     const numRollupsResp = await fetch(pathNumRollups);
-
     if (numRollupsResp.ok) {
         numRollupsField.innerText = "Total rollups: " + await numRollupsResp.text();
     } else {
-        numRollupsField.innerText = "Failed to fetch number of rollups."
+        numRollupsField.innerText = "Failed to fetch number of rollups.";
+    }
+
+    const numTransactionsResp = await fetch(pathNumTxs);
+    if (numTransactionsResp.ok) {
+        numTransactionsField.innerText = "Total transactions: " + await numTransactionsResp.text();
+    } else {
+        numTransactionsField.innerText = "Failed to fetch number of transactions.";
     }
 }
 

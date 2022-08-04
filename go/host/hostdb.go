@@ -99,6 +99,10 @@ func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	for _, txHash := range headerWithHashes.TxHashes {
 		writeRollupNumber(b, txHash, headerWithHashes.Header.Number)
 	}
+	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
+	currentTotal := readTotalTransactions(db.kvStore)
+	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(headerWithHashes.TxHashes))))
+	writeTotalTransactions(b, newTotal)
 
 	// update the head if the new height is greater than the existing one
 	currentRollupHeaderWithHashes := db.GetCurrentRollupHead()
@@ -137,6 +141,11 @@ func (db *DB) GetRollupNumber(txHash gethcommon.Hash) *big.Int {
 	return readRollupNumber(db.kvStore, txHash)
 }
 
+// GetTotalTransactions returns the total number of rolled-up transactions.
+func (db *DB) GetTotalTransactions() *big.Int {
+	return readTotalTransactions(db.kvStore)
+}
+
 // schema
 var (
 	blockHeaderPrefix     = []byte("b")
@@ -146,6 +155,7 @@ var (
 	submittedRollupPrefix = []byte("s")
 	rollupHashPrefix      = []byte("rh")
 	rollupNumberPrefix    = []byte("rn")
+	totalTransactionsKey  = []byte("t")
 )
 
 // headerKey = rollupHeaderPrefix  + hash
@@ -310,6 +320,13 @@ func writeRollupNumber(db ethdb.KeyValueWriter, txHash gethcommon.Hash, rollupNu
 	}
 }
 
+func writeTotalTransactions(db ethdb.KeyValueWriter, newTotal *big.Int) {
+	err := db.Put(totalTransactionsKey, newTotal.Bytes())
+	if err != nil {
+		log.Panic("Could not save total transactions. Cause: %s", err)
+	}
+}
+
 // Retrieves the hash for the rollup with the given number.
 func readRollupHash(db ethdb.KeyValueReader, number *big.Int) *gethcommon.Hash {
 	f, err := db.Has(rollupHashKey(number))
@@ -346,6 +363,24 @@ func readRollupNumber(db ethdb.KeyValueReader, txHash gethcommon.Hash) *big.Int 
 	if len(data) == 0 {
 		return nil
 	}
-	number := big.NewInt(0).SetBytes(data)
-	return number
+	return big.NewInt(0).SetBytes(data)
+}
+
+// Retrieves the total number of rolled-up transactions.
+func readTotalTransactions(db ethdb.KeyValueReader) *big.Int {
+	f, err := db.Has(totalTransactionsKey)
+	if err != nil {
+		log.Panic("could not retrieve total transactions. Cause: %s", err)
+	}
+	if !f {
+		return big.NewInt(0)
+	}
+	data, err := db.Get(totalTransactionsKey)
+	if err != nil {
+		log.Panic("could not retrieve total transactions. Cause: %s", err)
+	}
+	if len(data) == 0 {
+		return big.NewInt(0)
+	}
+	return big.NewInt(0).SetBytes(data)
 }
