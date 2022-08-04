@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -29,9 +30,7 @@ func GetObscuroKey() *ecdsa.PrivateKey {
 
 func GenerateEntropy() core.SharedEnclaveSecret {
 	secret := make([]byte, core.SharedSecretLen)
-	// todo - check if there is a better way to do this in ego.
-	n, err := rand.Read(secret)
-	if n != core.SharedSecretLen || err != nil {
+	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
 		log.Panic("could not generate secret. Cause: %s", err)
 	}
 	var temp [core.SharedSecretLen]byte
