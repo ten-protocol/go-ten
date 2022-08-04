@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -49,6 +50,9 @@ func TestConfigFieldsMatchTomlConfigFields(t *testing.T) {
 		cfgTomlFields[i] = cfgTomlReflection.Field(i).Name
 	}
 
+	sort.Strings(cfgFields)
+	sort.Strings(cfgTomlFields)
+
 	if !reflect.DeepEqual(cfgFields, cfgTomlFields) {
 		t.Fatalf("config file supports the following fields: %s, but .toml config file supports the following fields: %s", cfgFields, cfgTomlFields)
 	}
@@ -72,6 +76,9 @@ func TestConfigFlagsMatchConfigFields(t *testing.T) {
 		cliFlags[i] = strings.ToLower(key)
 		i++
 	}
+
+	sort.Strings(cfgFields)
+	sort.Strings(cliFlags)
 
 	if !reflect.DeepEqual(cfgFields, cliFlags) {
 		t.Fatalf("config file supports the following fields: %s, but there are CLI flags for the following fields: %s", cfgFields, cliFlags)

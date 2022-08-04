@@ -27,6 +27,10 @@ type EnclaveConfigToml struct {
 	LogPath                   string
 	UseInMemoryDB             bool
 	ViewingKeysEnabled        bool
+	GenesisJSON               string
+	EdgelessDBHost            string
+	SqliteDBPath              string
+	ProfilerEnabled           bool
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -126,5 +130,9 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		LogPath:                   tomlConfig.LogPath,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
 		ViewingKeysEnabled:        tomlConfig.ViewingKeysEnabled,
+		GenesisJSON:               []byte(tomlConfig.GenesisJSON),
+		EdgelessDBHost:            tomlConfig.EdgelessDBHost,
+		SqliteDBPath:              tomlConfig.SqliteDBPath,
+		ProfilerEnabled:           tomlConfig.ProfilerEnabled,
 	}
 }
