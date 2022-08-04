@@ -103,7 +103,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	// Check if the enclave profiler is up
 	_, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d", profiler.DefaultEnclavePort)) //nolint
 	if err != nil {
-		t.Errorf("host profiler is not reachable: %s", err)
+		t.Errorf("enclave profiler is not reachable: %s", err)
 	}
 
 	counter := 0
