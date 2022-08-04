@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ import (
 
 const (
 	pathNumRollups    = "/numrollups/"
+	pathNumTxs        = "/numtxs/"
 	pathLatestRollups = "/latestrollups/"
 	pathLatestTxs     = "/latesttxs/"
 	pathBlock         = "/block/"
@@ -74,6 +76,7 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
 	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)       // Get the number of published rollups.
+	serveMux.HandleFunc(pathNumTxs, o.getNumTransactions)      // Get the number of rolled-up transactions.
 	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups) // Get the latest rollup numbers.
 	serveMux.HandleFunc(pathLatestTxs, o.getLatestTxs)         // Get the latest transaction hashes.
 	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)  // Get the rollup given its number or the hash of a transaction it contains.
@@ -117,6 +120,24 @@ func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 	_, err = resp.Write([]byte(numOfRollupsStr))
 	if err != nil {
 		log.Error("could not return number of rollups to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch number of rollups.")
+		return
+	}
+}
+
+// Retrieves the total number of transactions.
+func (o *Obscuroscan) getNumTransactions(resp http.ResponseWriter, _ *http.Request) {
+	var numTransactions *big.Int
+	err := o.client.Call(&numTransactions, rpcclientlib.RPCGetTotalTxs)
+	if err != nil {
+		log.Error(err.Error())
+		logAndSendErr(resp, "Could not fetch total transactions.")
+		return
+	}
+
+	_, err = resp.Write([]byte(numTransactions.String()))
+	if err != nil {
+		log.Error("could not return total number of transactions to client. Cause: %s", err)
 		logAndSendErr(resp, "Could not fetch number of rollups.")
 		return
 	}

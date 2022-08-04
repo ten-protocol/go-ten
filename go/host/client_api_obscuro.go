@@ -142,6 +142,12 @@ func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error)
 	return txHashes, nil
 }
 
+// GetTotalTransactions returns the number of recorded transactions on the network.
+func (api *ObscuroAPI) GetTotalTransactions() *big.Int {
+	totalTransactions := api.host.nodeDB.GetTotalTransactions()
+	return totalTransactions
+}
+
 // StopHost gracefully stops the host.
 func (api *ObscuroAPI) StopHost() {
 	go api.host.Stop()
