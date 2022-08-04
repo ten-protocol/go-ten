@@ -3,6 +3,7 @@ package core
 import (
 	"math/big"
 	"sync/atomic"
+	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -44,6 +45,7 @@ func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcomm
 		L1Proof:     blkHash,
 		RollupNonce: nonce,
 		Number:      big.NewInt(int64(parent.Number.Uint64() + 1)),
+		Time:        uint64(time.Now().Unix()),
 	}
 	r := Rollup{
 		Header: &h,
@@ -67,6 +69,7 @@ func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcom
 		Number:      big.NewInt(int64(height)),
 		Withdrawals: withdrawals,
 		ReceiptHash: types.EmptyRootHash,
+		Time:        uint64(time.Now().Unix()),
 	}
 	r := Rollup{
 		Header:       &h,
