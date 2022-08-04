@@ -36,6 +36,7 @@ import (
 const (
 	pathNumRollups    = "/numrollups/"
 	pathNumTxs        = "/numtxs/"
+	pathGetRollupTime = "/rolluptime/"
 	pathLatestRollups = "/latestrollups/"
 	pathLatestTxs     = "/latesttxs/"
 	pathBlock         = "/block/"
@@ -77,6 +78,7 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 
 	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)       // Get the number of published rollups.
 	serveMux.HandleFunc(pathNumTxs, o.getNumTransactions)      // Get the number of rolled-up transactions.
+	serveMux.HandleFunc(pathGetRollupTime, o.getRollupTime)    // Get the average rollup time.
 	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups) // Get the latest rollup numbers.
 	serveMux.HandleFunc(pathLatestTxs, o.getLatestTxs)         // Get the latest transaction hashes.
 	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)  // Get the rollup given its number or the hash of a transaction it contains.
@@ -138,7 +140,39 @@ func (o *Obscuroscan) getNumTransactions(resp http.ResponseWriter, _ *http.Reque
 	_, err = resp.Write([]byte(numTransactions.String()))
 	if err != nil {
 		log.Error("could not return total number of transactions to client. Cause: %s", err)
-		logAndSendErr(resp, "Could not fetch number of rollups.")
+		logAndSendErr(resp, "Could not fetch total transactions.")
+		return
+	}
+}
+
+// Retrieves the average rollup time, as (time last rollup - time first rollup)/number of rollups
+func (o *Obscuroscan) getRollupTime(resp http.ResponseWriter, _ *http.Request) {
+	numLatestRollup, err := o.getLatestRollupNumber()
+	if err != nil {
+		log.Error(err.Error())
+		logAndSendErr(resp, "Could not fetch average rollup time.")
+		return
+	}
+
+	firstRollup, err := o.getRollupByNumber(0)
+	if err != nil {
+		log.Error(err.Error())
+		logAndSendErr(resp, "Could not fetch average rollup time.")
+		return
+	}
+
+	latestRollup, err := o.getRollupByNumber(int(numLatestRollup))
+	if err != nil {
+		log.Error(err.Error())
+		logAndSendErr(resp, "Could not fetch average rollup time.")
+		return
+	}
+
+	avgRollupTime := float64(latestRollup.Header.Time-firstRollup.Header.Time) / float64(numLatestRollup)
+	_, err = resp.Write([]byte(fmt.Sprintf("%.2f", avgRollupTime)))
+	if err != nil {
+		log.Error("could not return average rollup time to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not fetch average rollup time.")
 		return
 	}
 }
