@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -54,5 +55,32 @@ func TestConfigFieldsMatchTomlConfigFields(t *testing.T) {
 
 	if !reflect.DeepEqual(cfgFields, cfgTomlFields) {
 		t.Fatalf("config file supports the following fields: %s, but .toml config file supports the following fields: %s", cfgFields, cfgTomlFields)
+	}
+}
+
+func TestConfigFlagsMatchConfigFields(t *testing.T) {
+	t.Skip("TODO - Reenable test when it's less disruptive to rename the CLI flags for consistency.")
+
+	// We get all the config fields.
+	cfgReflection := reflect.TypeOf(config.HostConfig{})
+	cfgFields := make([]string, cfgReflection.NumField())
+	for i := 0; i < cfgReflection.NumField(); i++ {
+		cfgFields[i] = strings.ToLower(cfgReflection.Field(i).Name)
+	}
+
+	// We get all the CLI flags via the usages map.
+	flagUsageMap := getFlagUsageMap()
+	i := 0
+	cliFlags := make([]string, len(flagUsageMap))
+	for key := range flagUsageMap {
+		cliFlags[i] = strings.ToLower(key)
+		i++
+	}
+
+	sort.Strings(cfgFields)
+	sort.Strings(cliFlags)
+
+	if !reflect.DeepEqual(cfgFields, cliFlags) {
+		t.Fatalf("config file supports the following fields: %s, but there are CLI flags for the following fields: %s", cfgFields, cliFlags)
 	}
 }

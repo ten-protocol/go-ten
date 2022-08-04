@@ -1,6 +1,6 @@
 package hostrunner
 
-// Flag names and usages.
+// Flag names.
 const (
 	configName                  = "config"
 	nodeIDName                  = "id"
