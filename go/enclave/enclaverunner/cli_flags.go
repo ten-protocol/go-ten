@@ -1,6 +1,6 @@
 package enclaverunner
 
-// Flag names, defaults and usages.
+// Flag names and usages.
 const (
 	configName  = "config"
 	configUsage = "The path to the node's config file. Overrides all other flags"

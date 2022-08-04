@@ -1,8 +1,6 @@
 package hostrunner
 
-// todo - joel - use reflection for flags, keyed map for usage info?
-
-// Flag names, defaults and usages.
+// Flag names and usages.
 const (
 	configName  = "config"
 	configUsage = "The path to the node's config file. Overrides all other flags"
