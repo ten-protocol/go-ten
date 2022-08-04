@@ -45,7 +45,8 @@ func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcomm
 		L1Proof:     blkHash,
 		RollupNonce: nonce,
 		Number:      big.NewInt(int64(parent.Number.Uint64() + 1)),
-		Time:        uint64(time.Now().Unix()),
+		// TODO - Consider how this time should align with the time of the L1 block used as proof.
+		Time: uint64(time.Now().Unix()),
 	}
 	r := Rollup{
 		Header: &h,
