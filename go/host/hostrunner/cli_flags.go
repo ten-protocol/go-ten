@@ -1,5 +1,7 @@
 package hostrunner
 
+// todo - joel - use reflection for flags, keyed map for usage info?
+
 // Flag names, defaults and usages.
 const (
 	configName  = "config"

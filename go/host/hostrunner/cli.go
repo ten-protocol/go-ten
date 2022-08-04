@@ -15,26 +15,29 @@ import (
 
 // HostConfigToml is the structure that a host's .toml config is parsed into.
 type HostConfigToml struct {
-	ID                      string
-	IsGenesis               bool
-	GossipRoundNanos        int
-	ClientRPCPortHTTP       uint
-	ClientRPCPortWS         uint
-	ClientRPCHost           string
-	ClientRPCTimeoutSecs    int
-	EnclaveRPCAddress       string
-	EnclaveRPCTimeoutSecs   int
-	P2PBindAddress          string
-	P2PPublicAddress        string
-	L1NodeHost              string
-	L1NodePort              uint
-	L1ConnectionTimeoutSecs int
-	RollupContractAddress   string
-	LogPath                 string
-	PrivateKey              string
-	L1ChainID               int64
-	ObscuroChainID          int64
-	ProfilerEnabled         bool
+	ID                     string
+	IsGenesis              bool
+	GossipRoundDuration    int
+	HasClientRPCHTTP       bool
+	ClientRPCPortHTTP      uint
+	HasClientRPCWebsockets bool
+	ClientRPCPortWS        uint
+	ClientRPCHost          string
+	ClientRPCTimeout       int
+	EnclaveRPCAddress      string
+	EnclaveRPCTimeout      int
+	P2PBindAddress         string
+	P2PPublicAddress       string
+	L1NodeHost             string
+	L1NodeWebsocketPort    uint
+	L1ConnectionTimeout    int
+	RollupContractAddress  string
+	LogLevel               string
+	LogPath                string
+	PrivateKeyString       string
+	L1ChainID              int64
+	ObscuroChainID         int64
+	ProfilerEnabled        bool
 }
 
 // ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
@@ -114,23 +117,24 @@ func fileBasedConfig(configPath string) config.HostConfig {
 	return config.HostConfig{
 		ID:                     common.HexToAddress(tomlConfig.ID),
 		IsGenesis:              tomlConfig.IsGenesis,
-		GossipRoundDuration:    time.Duration(tomlConfig.GossipRoundNanos),
-		HasClientRPCHTTP:       true,
+		GossipRoundDuration:    time.Duration(tomlConfig.GossipRoundDuration),
+		HasClientRPCHTTP:       tomlConfig.HasClientRPCHTTP,
 		ClientRPCPortHTTP:      uint64(tomlConfig.ClientRPCPortHTTP),
-		HasClientRPCWebsockets: true,
+		HasClientRPCWebsockets: tomlConfig.HasClientRPCWebsockets,
 		ClientRPCPortWS:        uint64(tomlConfig.ClientRPCPortWS),
 		ClientRPCHost:          tomlConfig.ClientRPCHost,
-		ClientRPCTimeout:       time.Duration(tomlConfig.ClientRPCTimeoutSecs) * time.Second,
+		ClientRPCTimeout:       time.Duration(tomlConfig.ClientRPCTimeout) * time.Second,
 		EnclaveRPCAddress:      tomlConfig.EnclaveRPCAddress,
-		EnclaveRPCTimeout:      time.Duration(tomlConfig.EnclaveRPCTimeoutSecs) * time.Second,
+		EnclaveRPCTimeout:      time.Duration(tomlConfig.EnclaveRPCTimeout) * time.Second,
 		P2PBindAddress:         tomlConfig.P2PBindAddress,
 		P2PPublicAddress:       tomlConfig.P2PPublicAddress,
 		L1NodeHost:             tomlConfig.L1NodeHost,
-		L1NodeWebsocketPort:    tomlConfig.L1NodePort,
-		L1ConnectionTimeout:    time.Duration(tomlConfig.L1ConnectionTimeoutSecs) * time.Second,
+		L1NodeWebsocketPort:    tomlConfig.L1NodeWebsocketPort,
+		L1ConnectionTimeout:    time.Duration(tomlConfig.L1ConnectionTimeout) * time.Second,
 		RollupContractAddress:  common.HexToAddress(tomlConfig.RollupContractAddress),
+		LogLevel:               tomlConfig.LogLevel,
 		LogPath:                tomlConfig.LogPath,
-		PrivateKeyString:       tomlConfig.PrivateKey,
+		PrivateKeyString:       tomlConfig.PrivateKeyString,
 		L1ChainID:              tomlConfig.L1ChainID,
 		ObscuroChainID:         tomlConfig.ObscuroChainID,
 		ProfilerEnabled:        tomlConfig.ProfilerEnabled,
