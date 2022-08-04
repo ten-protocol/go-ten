@@ -1,7 +1,6 @@
 package hostrunner
 
 import (
-	"github.com/obscuronet/go-obscuro/go/config"
 	"os"
 	"path"
 	"reflect"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/config"
 )
 
 const testToml = "/test.toml"

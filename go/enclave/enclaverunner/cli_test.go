@@ -1,7 +1,6 @@
 package enclaverunner
 
 import (
-	"github.com/obscuronet/go-obscuro/go/config"
 	"os"
 	"path"
 	"reflect"
@@ -9,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/obscuronet/go-obscuro/go/config"
 )
 
 const (
