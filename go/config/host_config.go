@@ -86,5 +86,6 @@ func DefaultHostConfig() HostConfig {
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:              1337,
 		ObscuroChainID:         777,
+		ProfilerEnabled:        false,
 	}
 }

@@ -24,7 +24,7 @@ const (
 	deployERC20ContractName = "deployERC20Contract"
 	injectTxsName           = "injectTransactions"
 
-	// Flag names, defaults and usages.
+	// Flag names and usages.
 	l1NodeHostName  = "l1NodeHost"
 	l1NodeHostUsage = "The host on which to connect to the Ethereum client"
 

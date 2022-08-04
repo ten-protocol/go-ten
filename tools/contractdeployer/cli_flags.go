@@ -1,6 +1,6 @@
 package contractdeployer
 
-// Flag names, defaults and usages.
+// Flag names and usages.
 const (
 	nodeHostName  = "nodeHost"
 	nodeHostUsage = "The host on which to connect the RPC client"

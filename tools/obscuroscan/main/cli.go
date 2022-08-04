@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	// Flag names, defaults and usages.
+	// Flag names and usages.
 	nodeIDName  = "nodeID"
 	nodeIDUsage = "The 20 bytes of the node's address"
 
