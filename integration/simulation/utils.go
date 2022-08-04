@@ -114,6 +114,10 @@ func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) m
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
 	}
 
+	if encryptedResponse == "" {
+		panic(fmt.Errorf("simulation failed because there was no receipt for transaction %s", txHash))
+	}
+
 	var responseJSONMap map[string]interface{}
 	err = json.Unmarshal(gethcommon.Hex2Bytes(encryptedResponse), &responseJSONMap)
 	if err != nil {
