@@ -10,6 +10,7 @@ const jsonKeyEncryptedTxBlob = "EncryptedTxBlob";
 
 const idNumRollups = "numRollups";
 const idNumTxs = "numTxs";
+const idRollupTime = "rollupTime";
 const idFormGetRollup = "form-get-rollup";
 const idRollupID = "rollupID";
 const idResult = "result";
@@ -29,6 +30,7 @@ const idTxFive = "txFive";
 
 const pathNumRollups = "/numrollups/";
 const pathNumTxs = "/numtxs/";
+const pathRollupTime = "/rolluptime/";
 const pathLatestRollups = "/latestrollups/";
 const pathLatestTxs = "/latesttxs/";
 const pathBlock = "/block/";
@@ -39,6 +41,7 @@ const pathDecryptTxBlob = "/decrypttxblob/";
 async function updateStats() {
     const numRollupsField = document.getElementById(idNumRollups);
     const numTransactionsField = document.getElementById(idNumTxs);
+    const rollupTimeField = document.getElementById(idRollupTime);
 
     const numRollupsResp = await fetch(pathNumRollups);
     if (numRollupsResp.ok) {
@@ -52,6 +55,13 @@ async function updateStats() {
         numTransactionsField.innerText = "Total transactions: " + await numTransactionsResp.text();
     } else {
         numTransactionsField.innerText = "Failed to fetch number of transactions.";
+    }
+
+    const rollupTimeResp = await fetch(pathRollupTime);
+    if (rollupTimeResp.ok) {
+        rollupTimeField.innerText = `Avg. rollup time: ${await rollupTimeResp.text()} secs`;
+    } else {
+        rollupTimeField.innerText = "Failed to fetch average rollup time.";
     }
 }
 
@@ -73,7 +83,7 @@ async function updateLatestRollups() {
         rollupFourField.innerText = latestRollupsJSON[3];
         rollupFiveField.innerText = latestRollupsJSON[4];
     } else {
-        const errMsg = "Failed to fetch latest rollups."
+        const errMsg = "Failed to fetch latest rollups.";
         rollupOneField.innerText = errMsg;
         rollupTwoField.innerText = errMsg;
         rollupThreeField.innerText = errMsg;
@@ -100,7 +110,7 @@ async function updateLatestTxs() {
         txFourField.innerText = latestTxsJSON[3];
         txFiveField.innerText = latestTxsJSON[4];
     } else {
-        const errMsg = "Failed to fetch latest rollups."
+        const errMsg = "Failed to fetch latest transactions.";
         txOneField.innerText = errMsg;
         txTwoField.innerText = errMsg;
         txThreeField.innerText = errMsg;
@@ -124,44 +134,44 @@ async function displayRollup(rollupID) {
     const decryptedTxsArea = document.getElementById(idDecryptedTxs);
 
     const rollupResp = await fetch(pathRollup, {
-        method: methodPost,
-        body: rollupID
+        body: rollupID,
+        method: methodPost
     });
 
     if (!rollupResp.ok) {
-        rollupArea.innerText = "Failed to fetch rollup."
-        blockArea.innerText = "Failed to fetch block."
-        decryptedTxsArea.innerText = "Failed to decrypt transaction blob."
+        rollupArea.innerText = "Failed to fetch rollup.";
+        blockArea.innerText = "Failed to fetch block.";
+        decryptedTxsArea.innerText = "Failed to decrypt transaction blob.";
         resultPane.scrollIntoView();
-        return
+        return;
     }
 
-    const rollupJSON = JSON.parse(await rollupResp.text())
+    const rollupJSON = JSON.parse(await rollupResp.text());
     rollupArea.innerText = JSON.stringify(rollupJSON, null, "\t");
 
     const blockResp = await fetch(pathBlock, {
-        method: methodPost,
-        body: rollupJSON[jsonKeyHeader][jsonKeyL1Proof]
+        body: rollupJSON[jsonKeyHeader][jsonKeyL1Proof],
+        method: methodPost
     });
 
     if (blockResp.ok) {
-        const json = JSON.parse(await blockResp.text())
-        blockArea.innerText = JSON.stringify(json, null, "\t");
+        const blockJSON = JSON.parse(await blockResp.text());
+        blockArea.innerText = JSON.stringify(blockJSON, null, "\t");
     } else {
-        blockArea.innerText = "Failed to fetch block."
+        blockArea.innerText = "Failed to fetch block.";
     }
 
     const encryptedTxBlob = rollupJSON[jsonKeyEncryptedTxBlob]
     const decryptTxBlobResp = await fetch(pathDecryptTxBlob, {
-        method: methodPost,
-        body: encryptedTxBlob
+        body: encryptedTxBlob,
+        method: methodPost
     });
 
     if (decryptTxBlobResp.ok) {
-        const json = JSON.parse(await decryptTxBlobResp.text())
-        decryptedTxsArea.innerText = JSON.stringify(json, null, "\t");
+        const txBlobJSON = JSON.parse(await decryptTxBlobResp.text());
+        decryptedTxsArea.innerText = JSON.stringify(txBlobJSON, null, "\t");
     } else {
-        decryptedTxsArea.innerText = "Failed to decrypt transaction blob."
+        decryptedTxsArea.innerText = "Failed to decrypt transaction blob.";
     }
 
     resultPane.scrollIntoView();
