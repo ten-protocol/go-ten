@@ -183,7 +183,7 @@ The missing link to achieving fully private transactions while allowing end-user
 wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
 between the Obscuro node and its clients.
 
-See the [docs](https://docs.obscu.ro/testnet/wallet-extension.html) for more information.
+See the [docs](https://docs.obscu.ro/wallet-extension/wallet-extension.html) for more information.
 
 
 ## Repository Structure
