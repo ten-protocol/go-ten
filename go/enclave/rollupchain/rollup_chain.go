@@ -120,7 +120,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 			log.Panic(msgNoRollup)
 		}
 
-		rollup = rc.transactionBlobCrypto.ToExtRollup(hr)
+		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
 	}
 	return rc.newBlockSubmissionResponse(bs, rollup)
 }
@@ -486,7 +486,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 
 	common.LogWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
-	return rc.newBlockSubmissionResponse(blockState, rc.transactionBlobCrypto.ToExtRollup(r))
+	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto))
 }
 
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
@@ -620,7 +620,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 			obscurocore.PrintTxs(winnerRollup.Transactions),
 			winnerRollup.Header.Root,
 		)
-		return rc.transactionBlobCrypto.ToExtRollup(winnerRollup), true, nil
+		return winnerRollup.ToExtRollup(rc.transactionBlobCrypto), true, nil
 	}
 	return common.ExtRollup{}, false, nil
 }

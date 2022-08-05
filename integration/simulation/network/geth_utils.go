@@ -6,6 +6,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
@@ -13,9 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
@@ -48,14 +49,18 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		panic(err)
 	}
 
-	mgmtContractAddr, err := DeployContract(tmpEthClient, wallets.MCOwnerWallet, common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+	bytecode, err := managementcontract.Bytecode()
+	if err != nil {
+		panic(err)
+	}
+	mgmtContractAddr, err := DeployContract(tmpEthClient, wallets.MCOwnerWallet, bytecode)
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
 
 	erc20ContractAddr := make([]*common.Address, 0)
 	for _, token := range wallets.Tokens {
-		address, err := DeployContract(tmpEthClient, token.L1Owner, common.Hex2Bytes(erc20contract.ContractByteCode))
+		address, err := DeployContract(tmpEthClient, token.L1Owner, erc20contract.BytecodeWithDefaultSupply(string(token.Name)))
 		if err != nil {
 			panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
 		}

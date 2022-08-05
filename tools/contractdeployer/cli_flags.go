@@ -19,4 +19,7 @@ const (
 
 	chainIDName  = "chainID"
 	chainIDUsage = "The ID of the chain (defaults to 777 for L2 deployment and 1337 for L1)"
+
+	constructorParamsName  = "constructorParams"
+	constructorParamsUsage = "A comma separated list of strings that will be passed to the deployer. Defaults to empty."
 )

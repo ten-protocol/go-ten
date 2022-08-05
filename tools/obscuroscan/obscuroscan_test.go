@@ -42,6 +42,6 @@ func TestThrowsIfEncryptedRollupIsInvalid(t *testing.T) {
 // Generates an encrypted transaction blob in Base64 encoding.
 func generateEncryptedTxBlob(txs []*common.L2Tx) []byte {
 	rollup := core.Rollup{Header: &common.Header{}, Transactions: txs}
-	txBlob := crypto.NewTransactionBlobCryptoImpl().ToExtRollup(&rollup).EncryptedTxBlob
+	txBlob := rollup.ToExtRollup(crypto.NewTransactionBlobCryptoImpl()).EncryptedTxBlob
 	return []byte(base64.StdEncoding.EncodeToString(txBlob))
 }

@@ -12,7 +12,7 @@ An easy-to-read list of essential parameters and configuration settings for Obsc
 - **Currency Symbol:** `OBX`
 
 ## ObscuroScan
-- **URL:** http://testnet-obscuroscan.uksouth.azurecontainer.io/
+- **URL:** [http://testnet-obscuroscan.uksouth.azurecontainer.io/](http://testnet-obscuroscan.uksouth.azurecontainer.io/)
 
 ## Rollup Encryption/Decryption Key
 The symmetric key used to encrypt and decrypt transaction blobs in rollups on the Obscuro Testnet:

@@ -21,6 +21,8 @@ pages:
     children:
       - title: Introduction
         url: testnet/Introduction.html
+      - title: Example Dapps on Testnet
+        url: testnet/example-dapps.html
       - title: Essential Information
         url: testnet/essentials.html
       - title: Deploying a Smart Contract

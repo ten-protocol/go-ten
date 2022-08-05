@@ -222,7 +222,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
 	return common.BlockSubmissionResponse{
-		ProducedRollup: e.transactionBlobCrypto.ToExtRollup(rolGenesis),
+		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
 		IngestedBlock:  true,
 	}
@@ -257,7 +257,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) common.BlockSubmissionRespo
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
-	r := e.transactionBlobCrypto.ToEnclaveRollup(rollup.ToRollup())
+	r := obscurocore.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
 
 	// only store if the parent exists
 	_, found := e.storage.FetchRollup(r.Header.ParentHash)
@@ -388,7 +388,7 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
-	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
+	extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
 	return &extRollup, nil
 }
 

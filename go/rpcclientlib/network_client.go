@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-// NewNetworkClient returns a client that can make RPC calls to an obscuro node
+// NewNetworkClient returns a client that can make RPC calls to an Obscuro node
 func NewNetworkClient(address string) (Client, error) {
 	rpcClient, err := rpc.Dial(http + address)
 	if err != nil {
@@ -18,7 +18,7 @@ func NewNetworkClient(address string) (Client, error) {
 	}, nil
 }
 
-// networkClient is a Client implementation that wraps eth's rpc.Client to make calls to the obscuro node
+// networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
 type networkClient struct {
 	rpcClient *rpc.Client
 }
