@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -16,7 +18,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-// TODO - Provide configurable timeouts on P2P connections.
+const (
+	tcp = "tcp"
+)
 
 // A P2P message's type.
 type msgType uint8
@@ -38,6 +42,7 @@ func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		nodeID:        common.ShortAddress(config.ID),
+		p2pTimeout:    config.P2PConnectionTimeout,
 	}
 }
 
@@ -47,6 +52,7 @@ type p2pImpl struct {
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 	nodeID            uint64
+	p2pTimeout        time.Duration
 }
 
 func (p *p2pImpl) StartListening(callback host.P2PCallback) {
@@ -142,17 +148,22 @@ func (p *p2pImpl) broadcast(msg Message) error {
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
-
+	
+	var wg sync.WaitGroup
 	for _, address := range p.peerAddresses {
-		p.sendBytes(address, msgEncoded)
+		wg.Add(1)
+		go p.sendBytes(&wg, address, msgEncoded)
 	}
+	wg.Wait()
 
 	return nil
 }
 
 // sendBytes Sends the bytes over P2P to the given address.
-func (p *p2pImpl) sendBytes(address string, tx []byte) {
-	conn, err := net.Dial("tcp", address)
+func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
+	defer wg.Done()
+
+	conn, err := net.DialTimeout(tcp, address, p.p2pTimeout)
 	if conn != nil {
 		defer conn.Close()
 	}
