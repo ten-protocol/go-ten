@@ -5,11 +5,11 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 )
 
-func ReadSharedSecret(db ethdb.KeyValueReader) *core.SharedEnclaveSecret {
-	var ss core.SharedEnclaveSecret
+func ReadSharedSecret(db ethdb.KeyValueReader) *crypto.SharedEnclaveSecret {
+	var ss crypto.SharedEnclaveSecret
 
 	enc, _ := db.Get(sharedSecret)
 	if len(enc) == 0 {
@@ -22,7 +22,7 @@ func ReadSharedSecret(db ethdb.KeyValueReader) *core.SharedEnclaveSecret {
 	return &ss
 }
 
-func WriteSharedSecret(db ethdb.KeyValueWriter, ss core.SharedEnclaveSecret) {
+func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret) {
 	enc, err := rlp.EncodeToBytes(ss)
 	if err != nil {
 		log.Panic("could not encode shared secret. Cause: %s", err)

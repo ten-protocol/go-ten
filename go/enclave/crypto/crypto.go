@@ -13,12 +13,17 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-// obscuroPrivateKeyHex is the private key used for sensitive communication with the enclave.
-// TODO - Replace this fixed key with a key derived from the master seed.
-const obscuroPrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
+const (
+	// obscuroPrivateKeyHex is the private key used for sensitive communication with the enclave.
+	// TODO - Replace this fixed key with a key derived from the master seed.
+	obscuroPrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
+	SharedSecretLen      = 32
+)
+
+// SharedEnclaveSecret - the entropy
+type SharedEnclaveSecret [SharedSecretLen]byte
 
 func GetObscuroKey() *ecdsa.PrivateKey {
 	key, err := crypto.HexToECDSA(obscuroPrivateKeyHex)
@@ -28,12 +33,12 @@ func GetObscuroKey() *ecdsa.PrivateKey {
 	return key
 }
 
-func GenerateEntropy() core.SharedEnclaveSecret {
-	secret := make([]byte, core.SharedSecretLen)
+func GenerateEntropy() SharedEnclaveSecret {
+	secret := make([]byte, SharedSecretLen)
 	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
 		log.Panic("could not generate secret. Cause: %s", err)
 	}
-	var temp [core.SharedSecretLen]byte
+	var temp [SharedSecretLen]byte
 	copy(temp[:], secret)
 	return temp
 }
@@ -56,7 +61,7 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 	return plaintext, nil
 }
 
-func DecryptSecret(secret common.EncryptedSharedEnclaveSecret, privateKey *ecdsa.PrivateKey) (*core.SharedEnclaveSecret, error) {
+func DecryptSecret(secret common.EncryptedSharedEnclaveSecret, privateKey *ecdsa.PrivateKey) (*SharedEnclaveSecret, error) {
 	if privateKey == nil {
 		return nil, errors.New("private key not found - shouldn't happen")
 	}
@@ -64,12 +69,12 @@ func DecryptSecret(secret common.EncryptedSharedEnclaveSecret, privateKey *ecdsa
 	if err != nil {
 		return nil, err
 	}
-	var temp core.SharedEnclaveSecret
+	var temp SharedEnclaveSecret
 	copy(temp[:], value)
 	return &temp, nil
 }
 
-func EncryptSecret(pubKeyEncoded []byte, secret core.SharedEnclaveSecret, nodeShortID uint64) (common.EncryptedSharedEnclaveSecret, error) {
+func EncryptSecret(pubKeyEncoded []byte, secret SharedEnclaveSecret, nodeShortID uint64) (common.EncryptedSharedEnclaveSecret, error) {
 	common.LogWithID(nodeShortID, "Encrypting secret with public key %s", gethcommon.Bytes2Hex(pubKeyEncoded))
 	key, err := crypto.DecompressPubkey(pubKeyEncoded)
 	if err != nil {

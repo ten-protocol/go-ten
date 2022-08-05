@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 
@@ -135,7 +135,7 @@ var hasherPool = sync.Pool{
 func RLPHash(value interface{}) (common.Hash, error) {
 	var hash common.Hash
 
-	sha := hasherPool.Get().(crypto.KeccakState)
+	sha := hasherPool.Get().(gethcrypto.KeccakState)
 	defer hasherPool.Put(sha)
 	sha.Reset()
 

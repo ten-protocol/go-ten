@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -37,6 +39,26 @@ func (r *Rollup) Hash() common.L2RootHash {
 
 func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
 func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
+
+func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto) common.ExtRollup {
+	txHashes := make([]gethcommon.Hash, len(r.Transactions))
+	for idx, tx := range r.Transactions {
+		txHashes[idx] = tx.Hash()
+	}
+
+	return common.ExtRollup{
+		Header:          r.Header,
+		TxHashes:        txHashes,
+		EncryptedTxBlob: transactionBlobCrypto.Encrypt(r.Transactions),
+	}
+}
+
+func ToEnclaveRollup(encryptedRollup *common.EncryptedRollup, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+	return &Rollup{
+		Header:       encryptedRollup.Header,
+		Transactions: transactionBlobCrypto.Decrypt(encryptedRollup.Transactions),
+	}
+}
 
 func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) *Rollup {
 	h := common.Header{

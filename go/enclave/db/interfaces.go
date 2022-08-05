@@ -3,6 +3,8 @@ package db
 import (
 	"crypto/ecdsa"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -62,9 +64,9 @@ type BlockStateStorage interface {
 
 type SharedSecretStorage interface {
 	// FetchSecret returns the enclave's secret, returns nil if not found
-	FetchSecret() *core.SharedEnclaveSecret
+	FetchSecret() *crypto.SharedEnclaveSecret
 	// StoreSecret stores a secret in the enclave
-	StoreSecret(secret core.SharedEnclaveSecret)
+	StoreSecret(secret crypto.SharedEnclaveSecret)
 }
 
 type TransactionStorage interface {
