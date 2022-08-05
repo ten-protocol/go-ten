@@ -1,6 +1,6 @@
 package mgmtcontractlib
 
-import ManagementContract "github.com/obscuronet/go-obscuro/contracts/compiledcontracts/generatedManagementContract"
+import "github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 
 const (
 	AddRollupMethod        = "AddRollup"
@@ -10,7 +10,4 @@ const (
 	GetHostAddressesMethod = "GetHostAddresses"
 )
 
-var (
-	MgmtContractByteCode = ManagementContract.ManagementContractMetaData.Bin[2:]
-	MgmtContractABI      = ManagementContract.ManagementContractMetaData.ABI
-)
+var MgmtContractABI = ManagementContract.ManagementContractMetaData.ABI

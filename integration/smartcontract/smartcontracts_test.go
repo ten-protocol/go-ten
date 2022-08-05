@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -80,8 +82,12 @@ func TestManagementContract(t *testing.T) {
 		"detectSimpleFork":                   detectSimpleFork,
 	} {
 		t.Run(name, func(t *testing.T) {
+			bytecode, err := managementcontract.Bytecode()
+			if err != nil {
+				panic(err)
+			}
 			// deploy the same contract to a new address
-			contractAddr, err := network.DeployContract(client, w, gethcommon.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode))
+			contractAddr, err := network.DeployContract(client, w, bytecode)
 			if err != nil {
 				t.Error(err)
 			}
