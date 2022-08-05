@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# This script builds the guessing game from solidity to a go generated package
+# This script builds the ERC20 from solidity to a go generated package
 #
 
 # Ensure any fail is loud and explicit
