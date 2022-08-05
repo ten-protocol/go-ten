@@ -27,7 +27,7 @@ pages:
         url: testnet/essentials.html
       - title: Deploying a Smart Contract
         url: testnet/deploying-a-smart-contract.html
-      - title: Deploying a Smart Contract Programmatically
+      - title: Programmatic Deployment
         url: testnet/deploying-a-smart-contract-programmatically.html
       - title: ObscuroScan
         url: testnet/obscuroscan.html
