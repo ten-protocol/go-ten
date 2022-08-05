@@ -69,7 +69,7 @@ type Node struct {
 
 func NewHost(
 	config config.HostConfig,
-	collector StatsCollector,
+	stats StatsCollector,
 	p2p P2P,
 	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
@@ -88,7 +88,7 @@ func NewHost(
 		EnclaveClient: enclaveClient,
 
 		// statistics and metrics
-		stats: collector,
+		stats: stats,
 
 		// lifecycle channels
 		exitNodeCh:            make(chan bool),
