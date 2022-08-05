@@ -162,7 +162,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, bridge.TransactionBlobCrypto.ToEnclaveRollup(r))
+				rollups = append(rollups, obscurocore.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
 				common.LogWithID(bridge.NodeID, "Extracted Rollup r_%d from block b_%d",
 					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),
