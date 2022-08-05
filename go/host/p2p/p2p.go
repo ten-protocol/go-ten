@@ -148,7 +148,7 @@ func (p *p2pImpl) broadcast(msg Message) error {
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
-	
+
 	var wg sync.WaitGroup
 	for _, address := range p.peerAddresses {
 		wg.Add(1)
