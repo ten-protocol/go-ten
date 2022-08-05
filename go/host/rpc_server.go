@@ -9,11 +9,6 @@ import (
 
 const (
 	allOrigins = "*"
-
-	apiNamespaceObscuro  = "obscuro"
-	apiNamespaceEthereum = "eth"
-	apiNamespaceNetwork  = "net"
-	apiVersion1          = "1.0"
 )
 
 // An implementation of `host.RPCServer` that reuses the Geth `node` package for client communication.
@@ -21,7 +16,7 @@ type rpcServerImpl struct {
 	node *node.Node
 }
 
-func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
+func NewRPCServer(config config.HostConfig, rpcAPIs []rpc.API) RPCServer {
 	rpcConfig := node.Config{}
 	if config.HasClientRPCHTTP {
 		rpcConfig.HTTPHost = config.ClientRPCHost
@@ -39,27 +34,6 @@ func NewRPCServer(config config.HostConfig, host *Node) RPCServer {
 	rpcServerNode, err := node.New(&rpcConfig)
 	if err != nil {
 		log.Panic("could not create new client server. Cause: %s", err)
-	}
-
-	rpcAPIs := []rpc.API{
-		{
-			Namespace: apiNamespaceObscuro,
-			Version:   apiVersion1,
-			Service:   NewObscuroAPI(host),
-			Public:    true,
-		},
-		{
-			Namespace: apiNamespaceEthereum,
-			Version:   apiVersion1,
-			Service:   NewEthereumAPI(host),
-			Public:    true,
-		},
-		{
-			Namespace: apiNamespaceNetwork,
-			Version:   apiVersion1,
-			Service:   NewNetworkAPI(host),
-			Public:    true,
-		},
 	}
 	rpcServerNode.RegisterAPIs(rpcAPIs)
 

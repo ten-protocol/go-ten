@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -21,6 +23,13 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+)
+
+const (
+	apiVersion1          = "1.0"
+	apiNamespaceObscuro  = "obscuro"
+	apiNamespaceEthereum = "eth"
+	apiNamespaceNetwork  = "net"
 )
 
 // Node this will become the Obscuro "Node" type
@@ -102,7 +111,27 @@ func NewHost(
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
-		host.rpcServer = NewRPCServer(config, host)
+		rpcAPIs := []rpc.API{
+			{
+				Namespace: apiNamespaceObscuro,
+				Version:   apiVersion1,
+				Service:   NewObscuroAPI(host),
+				Public:    true,
+			},
+			{
+				Namespace: apiNamespaceEthereum,
+				Version:   apiVersion1,
+				Service:   NewEthereumAPI(host),
+				Public:    true,
+			},
+			{
+				Namespace: apiNamespaceNetwork,
+				Version:   apiVersion1,
+				Service:   NewNetworkAPI(host),
+				Public:    true,
+			},
+		}
+		host.rpcServer = NewRPCServer(config, rpcAPIs)
 	}
 
 	var prof *profiler.Profiler
