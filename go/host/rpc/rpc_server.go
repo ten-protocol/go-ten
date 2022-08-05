@@ -1,4 +1,4 @@
-package host
+package rpc
 
 import (
 	"github.com/ethereum/go-ethereum/node"
@@ -11,12 +11,18 @@ const (
 	allOrigins = "*"
 )
 
-// An implementation of `host.RPCServer` that reuses the Geth `node` package for client communication.
+// Server is the layer responsible for handling RPC requests from Obscuro client applications.
+type Server interface {
+	Start()
+	Stop() error
+}
+
+// An implementation of `host.Server` that reuses the Geth `node` package for client communication.
 type rpcServerImpl struct {
 	node *node.Node
 }
 
-func NewRPCServer(config config.HostConfig, rpcAPIs []rpc.API) RPCServer {
+func NewRPCServer(config config.HostConfig, rpcAPIs []rpc.API) Server {
 	rpcConfig := node.Config{}
 	if config.HasClientRPCHTTP {
 		rpcConfig.HTTPHost = config.ClientRPCHost

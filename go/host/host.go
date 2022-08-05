@@ -8,7 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/host/rpc"
+
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 
@@ -41,7 +43,7 @@ type Node struct {
 	P2p           P2P                  // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	EnclaveClient common.Enclave       // For communication with the enclave
-	rpcServer     RPCServer            // For communication with Obscuro client applications
+	rpcServer     rpc.Server           // For communication with Obscuro client applications
 
 	stats StatsCollector
 
@@ -111,7 +113,7 @@ func NewHost(
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
-		rpcAPIs := []rpc.API{
+		rpcAPIs := []gethrpc.API{
 			{
 				Namespace: apiNamespaceObscuro,
 				Version:   apiVersion1,
@@ -131,7 +133,7 @@ func NewHost(
 				Public:    true,
 			},
 		}
-		host.rpcServer = NewRPCServer(config, rpcAPIs)
+		host.rpcServer = rpc.NewRPCServer(config, rpcAPIs)
 	}
 
 	var prof *profiler.Profiler
