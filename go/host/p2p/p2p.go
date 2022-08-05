@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -16,7 +17,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-// TODO - Provide configurable timeouts on P2P connections.
+const (
+	tcp = "tcp"
+)
 
 // Type indicates the type of a P2P message.
 type Type uint8
@@ -38,6 +41,7 @@ func NewSocketP2PLayer(config config.HostConfig) host.P2P {
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		nodeID:        common.ShortAddress(config.ID),
+		p2pTimeout:    config.P2PConnectionTimeout,
 	}
 }
 
@@ -47,6 +51,7 @@ type p2pImpl struct {
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 	nodeID            uint64
+	p2pTimeout        time.Duration
 }
 
 func (p *p2pImpl) StartListening(callback host.P2PCallback) {
@@ -151,7 +156,7 @@ func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) er
 
 // sendBytes Sends the bytes over P2P to the given address.
 func (p *p2pImpl) sendBytes(address string, tx []byte) {
-	conn, err := net.Dial("tcp", address)
+	conn, err := net.DialTimeout(tcp, address, p.p2pTimeout)
 	if conn != nil {
 		defer conn.Close()
 	}
