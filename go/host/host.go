@@ -257,11 +257,6 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// DB returns the DB of the node
-func (a *Node) DB() *DB {
-	return a.nodeDB
-}
-
 // Stop gracefully stops the node execution
 func (a *Node) Stop() {
 	// block all requests
@@ -494,9 +489,9 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
-			if !a.DB().WasSubmitted(winnerRollup.Header.Hash()) {
+			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
 				a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
-				a.DB().AddSubmittedRollup(winnerRollup.Header.Hash())
+				a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
 			}
 		}
 	}
@@ -507,12 +502,12 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
 		headerWithHashes := common.HeaderWithTxHashes{Header: result.RollupHead, TxHashes: result.ProducedRollup.TxHashes}
-		a.DB().AddRollupHeader(&headerWithHashes)
+		a.nodeDB.AddRollupHeader(&headerWithHashes)
 	}
 
 	// adding a header will update the head if it has a higher height
 	if result.IngestedBlock {
-		a.DB().AddBlockHeader(result.BlockHeader)
+		a.nodeDB.AddBlockHeader(result.BlockHeader)
 	}
 }
 
