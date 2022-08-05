@@ -18,7 +18,7 @@ import (
 
 // TODO - Provide configurable timeouts on P2P connections.
 
-// msgType indicates the type of a P2P message.
+// msgType indicates a P2P message's type.
 type msgType uint8
 
 const (
