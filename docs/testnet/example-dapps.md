@@ -10,7 +10,7 @@ Building the guessing game in Obscuro addresses both scenarios described above. 
 
 ### How to Play
 1. Start up the wallet extension. Follow instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html) and start the wallet extension using the following flags:
-`--nodeHost=testnet.obscu.ro --nodePortHTTP=13000 --nodePortWS=13001`
+`--nodeHost=testnet.obscu.ro --nodePortHTTP=13000 --nodePortWS=13001 --port=3000`
 1. Sign in to MetaMask.
 1. If this is the first time connecting to Obscuro Testnet then in MetaMask add a new custom network called _Obscuro Testnet_. Add `http://127.0.0.1:3000/` as the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit).
 1. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Connect and sign the viewing key when prompted by MetaMask.
