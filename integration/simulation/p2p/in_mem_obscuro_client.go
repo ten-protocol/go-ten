@@ -1,10 +1,12 @@
-package host
+package p2p
 
 import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -25,12 +27,12 @@ const (
 
 // An in-memory implementation of `rpcclientlib.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
-	obscuroAPI       *ObscuroAPI
-	ethAPI           *EthereumAPI
+	obscuroAPI       *host.ObscuroAPI
+	ethAPI           *host.EthereumAPI
 	enclavePublicKey *ecies.PublicKey
 }
 
-func NewInMemObscuroClient(host *Node) rpcclientlib.Client {
+func NewInMemObscuroClient(nodeHost *host.Node) rpcclientlib.Client {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
@@ -39,8 +41,8 @@ func NewInMemObscuroClient(host *Node) rpcclientlib.Client {
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	return &inMemObscuroClient{
-		obscuroAPI:       NewObscuroAPI(host),
-		ethAPI:           NewEthereumAPI(host),
+		obscuroAPI:       host.NewObscuroAPI(nodeHost),
+		ethAPI:           host.NewEthereumAPI(nodeHost),
 		enclavePublicKey: enclPubKey,
 	}
 }

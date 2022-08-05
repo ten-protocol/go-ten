@@ -60,7 +60,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	// Create a handle to each node
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	for i, node := range obscuroNodes {
-		obscuroClients[i] = host.NewInMemObscuroClient(node)
+		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 

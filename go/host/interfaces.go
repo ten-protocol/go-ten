@@ -21,12 +21,6 @@ type P2P interface {
 	BroadcastTx(tx common.EncryptedTx) error
 }
 
-// RPCServer is the layer responsible for handling RPC requests from Obscuro client applications.
-type RPCServer interface {
-	Start()
-	Stop() error
-}
-
 type StatsCollector interface {
 	// L2Recalc - called when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id gethcommon.Address)

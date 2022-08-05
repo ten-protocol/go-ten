@@ -8,6 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/rpc"
+
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -23,6 +27,13 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
+const (
+	apiVersion1          = "1.0"
+	apiNamespaceObscuro  = "obscuro"
+	apiNamespaceEthereum = "eth"
+	apiNamespaceNetwork  = "net"
+)
+
 // Node this will become the Obscuro "Node" type
 type Node struct {
 	config  config.HostConfig
@@ -32,7 +43,7 @@ type Node struct {
 	P2p           P2P                  // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	EnclaveClient common.Enclave       // For communication with the enclave
-	rpcServer     RPCServer            // For communication with Obscuro client applications
+	rpcServer     rpc.Server           // For communication with Obscuro client applications
 
 	stats StatsCollector
 
@@ -58,7 +69,7 @@ type Node struct {
 
 func NewHost(
 	config config.HostConfig,
-	collector StatsCollector,
+	stats StatsCollector,
 	p2p P2P,
 	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
@@ -77,7 +88,7 @@ func NewHost(
 		EnclaveClient: enclaveClient,
 
 		// statistics and metrics
-		stats: collector,
+		stats: stats,
 
 		// lifecycle channels
 		exitNodeCh:            make(chan bool),
@@ -102,7 +113,27 @@ func NewHost(
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
-		host.rpcServer = NewRPCServer(config, host)
+		rpcAPIs := []gethrpc.API{
+			{
+				Namespace: apiNamespaceObscuro,
+				Version:   apiVersion1,
+				Service:   NewObscuroAPI(host),
+				Public:    true,
+			},
+			{
+				Namespace: apiNamespaceEthereum,
+				Version:   apiVersion1,
+				Service:   NewEthereumAPI(host),
+				Public:    true,
+			},
+			{
+				Namespace: apiNamespaceNetwork,
+				Version:   apiVersion1,
+				Service:   NewNetworkAPI(host),
+				Public:    true,
+			},
+		}
+		host.rpcServer = rpc.NewRPCServer(config, rpcAPIs)
 	}
 
 	var prof *profiler.Profiler
@@ -224,11 +255,6 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 		return
 	}
 	a.txP2PCh <- tx
-}
-
-// DB returns the DB of the node
-func (a *Node) DB() *DB {
-	return a.nodeDB
 }
 
 // Stop gracefully stops the node execution
@@ -463,9 +489,9 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
-			if !a.DB().WasSubmitted(winnerRollup.Header.Hash()) {
+			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
 				a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
-				a.DB().AddSubmittedRollup(winnerRollup.Header.Hash())
+				a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
 			}
 		}
 	}
@@ -476,12 +502,12 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
 		headerWithHashes := common.HeaderWithTxHashes{Header: result.RollupHead, TxHashes: result.ProducedRollup.TxHashes}
-		a.DB().AddRollupHeader(&headerWithHashes)
+		a.nodeDB.AddRollupHeader(&headerWithHashes)
 	}
 
 	// adding a header will update the head if it has a higher height
 	if result.IngestedBlock {
-		a.DB().AddBlockHeader(result.BlockHeader)
+		a.nodeDB.AddBlockHeader(result.BlockHeader)
 	}
 }
 

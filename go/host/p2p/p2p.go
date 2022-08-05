@@ -22,18 +22,18 @@ const (
 	tcp = "tcp"
 )
 
-// Type indicates the type of a P2P message.
-type Type uint8
+// A P2P message's type.
+type msgType uint8
 
 const (
-	Tx Type = iota
-	Rollup
+	msgTypeTx msgType = iota
+	msgTypeRollup
 )
 
 // Message associates an encoded message to its type.
 type Message struct {
-	Type        Type
-	MsgContents []byte
+	Type     msgType
+	Contents []byte
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
@@ -62,7 +62,7 @@ func (p *p2pImpl) StartListening(callback host.P2PCallback) {
 		log.Panic("could not listen for P2P connections on %s. Cause: %s", p.ourAddress, err)
 	}
 
-	common.LogWithID(p.nodeID, "Start listening on port: %s", p.ourAddress)
+	common.LogWithID(p.nodeID, "Started listening on port: %s", p.ourAddress)
 	i := int32(0)
 	p.listenerInterrupt = &i
 	p.listener = listener
@@ -85,11 +85,13 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 }
 
 func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
-	return p.broadcast(Tx, tx, p.peerAddresses)
+	msg := Message{Type: msgTypeTx, Contents: tx}
+	return p.broadcast(msg)
 }
 
 func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) error {
-	return p.broadcast(Rollup, r, p.peerAddresses)
+	msg := Message{Type: msgTypeRollup, Contents: r}
+	return p.broadcast(msg)
 }
 
 // Listens for connections and handles them in a separate goroutine.
@@ -126,30 +128,29 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
 	}
 
 	switch msg.Type {
-	case Tx:
+	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
-		callback.ReceiveTx(msg.MsgContents)
-	case Rollup:
+		callback.ReceiveTx(msg.Contents)
+	case msgTypeRollup:
 		// We check that the rollup decodes correctly.
-		if err = rlp.DecodeBytes(msg.MsgContents, &common.EncryptedRollup{}); err != nil {
+		if err = rlp.DecodeBytes(msg.Contents, &common.EncryptedRollup{}); err != nil {
 			common.WarnWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
 			return
 		}
 
-		callback.ReceiveRollup(msg.MsgContents)
+		callback.ReceiveRollup(msg.Contents)
 	}
 }
 
-// Creates a P2P message and broadcasts it to all peers.
-func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) error {
-	msg := Message{Type: msgType, MsgContents: bytes}
+// Broadcasts a message to all peers.
+func (p *p2pImpl) broadcast(msg Message) error {
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
 
 	var wg sync.WaitGroup
-	for _, address := range toAddresses {
+	for _, address := range p.peerAddresses {
 		wg.Add(1)
 		go p.sendBytes(&wg, address, msgEncoded)
 	}
