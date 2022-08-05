@@ -51,6 +51,9 @@ const (
 
 	obscuroClientAddressName  = "obscuroClientAddress"
 	obscuroClientAddressUsage = "The address at which clients connect to the Obscuro node"
+
+	erc20TokenName  = "erc20Token" //nolint:gosec
+	erc20TokenUsage = "The name of the ERC20 token. Default: TST"
 )
 
 type Config struct {
@@ -64,6 +67,7 @@ type Config struct {
 	mgmtContractAddress  common.Address
 	erc20ContractAddress common.Address
 	obscuroClientAddress string
+	erc20Token           string
 }
 
 func defaultNetworkManagerConfig() Config {
@@ -78,6 +82,7 @@ func defaultNetworkManagerConfig() Config {
 		mgmtContractAddress:  common.BytesToAddress([]byte("")),
 		erc20ContractAddress: common.BytesToAddress([]byte("")),
 		obscuroClientAddress: "127.0.0.1:13000",
+		erc20Token:           "TST",
 	}
 }
 
@@ -94,6 +99,7 @@ func ParseCLIArgs() (Config, []string) {
 	mgmtContractAddress := flag.String(mgmtContractAddressName, defaultConfig.mgmtContractAddress.Hex(), mgmtContractAddressUsage)
 	erc20ContractAddress := flag.String(erc20ContractAddressName, defaultConfig.erc20ContractAddress.Hex(), erc20ContractAddressUsage)
 	obscuroClientAddress := flag.String(obscuroClientAddressName, defaultConfig.obscuroClientAddress, obscuroClientAddressUsage)
+	erc20Token := flag.String(erc20TokenName, defaultConfig.obscuroClientAddress, erc20TokenUsage)
 
 	flag.Parse()
 
@@ -106,6 +112,7 @@ func ParseCLIArgs() (Config, []string) {
 	defaultConfig.mgmtContractAddress = common.HexToAddress(*mgmtContractAddress)
 	defaultConfig.erc20ContractAddress = common.HexToAddress(*erc20ContractAddress)
 	defaultConfig.obscuroClientAddress = *obscuroClientAddress
+	defaultConfig.erc20Token = *erc20Token
 
 	command := flag.Arg(0)
 	var args []string

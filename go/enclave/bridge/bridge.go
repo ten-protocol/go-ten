@@ -31,11 +31,11 @@ import (
 
 // ERC20 - the supported ERC20 tokens. A list of made-up tokens used for testing.
 // Todo - this will be removed together will all the keys and addresses.
-type ERC20 int
+type ERC20 string
 
 const (
-	OBX ERC20 = iota
-	ETH
+	OBX ERC20 = "OBX"
+	ETH ERC20 = "ETH"
 )
 
 var WOBXOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")

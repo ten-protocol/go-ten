@@ -3,6 +3,7 @@ package contractdeployer
 import (
 	"flag"
 	"math/big"
+	"strings"
 )
 
 var (
@@ -13,23 +14,25 @@ var (
 // DefaultConfig stores the contract deployer default config
 func DefaultConfig() *Config {
 	return &Config{
-		NodeHost:       "",
-		NodePort:       0,
-		IsL1Deployment: false,
-		PrivateKey:     "",
-		ChainID:        defaultL2ChainID,
-		ContractName:   "",
+		NodeHost:          "",
+		NodePort:          0,
+		IsL1Deployment:    false,
+		PrivateKey:        "",
+		ChainID:           defaultL2ChainID,
+		ContractName:      "",
+		ConstructorParams: []string{},
 	}
 }
 
 // Config is the structure that a contract deployer config is parsed into.
 type Config struct {
-	NodeHost       string   // host for the client connection
-	NodePort       uint     // port for client connection
-	IsL1Deployment bool     // flag for L1/Eth contract deployment (rather than Obscuro/L2 deployment)
-	PrivateKey     string   // private key to be used for the contract deployer address
-	ChainID        *big.Int // chain ID we're deploying too
-	ContractName   string   // the name of the contract to deploy (e.g. ERC20 or MGMT)
+	NodeHost          string   // host for the client connection
+	NodePort          uint     // port for client connection
+	IsL1Deployment    bool     // flag for L1/Eth contract deployment (rather than Obscuro/L2 deployment)
+	PrivateKey        string   // private key to be used for the contract deployer address
+	ChainID           *big.Int // chain ID we're deploying too
+	ContractName      string   // the name of the contract to deploy (e.g. ERC20 or MGMT)
+	ConstructorParams []string // parameters sent to the constructor
 }
 
 // ParseConfig returns a Config after parsing all available flags
@@ -43,6 +46,7 @@ func ParseConfig() *Config {
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKey, privateKeyUsage)
 	// if this flag has a non-zero value it will be used instead of the default chain IDs
 	overrideChainID := flag.Int64(chainIDName, 0, chainIDUsage)
+	constructorParams := flag.String(constructorParamsName, "", constructorParamsUsage)
 
 	flag.Parse()
 
@@ -58,6 +62,8 @@ func ParseConfig() *Config {
 		defaultConfig.ChainID = big.NewInt(*overrideChainID)
 	}
 	defaultConfig.ContractName = *contractName
+
+	defaultConfig.ConstructorParams = strings.Split(*constructorParams, ",")
 
 	return defaultConfig
 }

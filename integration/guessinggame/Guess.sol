@@ -3,11 +3,15 @@ pragma solidity ^0.8.0;
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
+
     function balanceOf(address account) external view returns (uint256);
+
     function allowance(address owner, address spender) external view returns (uint256);
 
     function transfer(address recipient, uint256 amount) external returns (bool);
+
     function approve(address spender, uint256 amount) external returns (bool);
+
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -18,20 +22,19 @@ contract Guess {
     address payable owner;
     uint8 private target;
     uint16 public guesses;
+    uint8 public size;
     IERC20 public erc20;
-
-    uint8 public size = 100;
-    address public tokenAddress = 0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC;
+    address public tokenAddress;
 
     modifier onlyOwner {
         require(msg.sender == owner, "Only owner can call this function.");
         _;
     }
 
-    // For now we use hardcoded values to simplify deploying.
-    constructor(){
+    constructor(uint8 _size, address _tokenAddress) {
         owner = payable(msg.sender);
-        erc20 = IERC20(tokenAddress);
+        size = _size;
+        erc20 = IERC20(_tokenAddress);
         setNewTarget();
     }
 
@@ -54,8 +57,7 @@ contract Guess {
     }
 
     function setNewTarget() private {
-        // We call this in the constructor.
-        //        require(erc20.balanceOf(address(this)) == 0, "Balance must be zero to set a new target.");
+        //        require (erc20.balanceOf(address(this)) == 0, "Balance must be zero to set a new target.");
         target = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % size);
     }
 }
