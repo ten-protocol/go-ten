@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -147,15 +148,20 @@ func (p *p2pImpl) broadcast(msgType Type, bytes []byte, toAddresses []string) er
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
 
+	var wg sync.WaitGroup
 	for _, address := range toAddresses {
-		p.sendBytes(address, msgEncoded)
+		wg.Add(1)
+		go p.sendBytes(&wg, address, msgEncoded)
 	}
+	wg.Wait()
 
 	return nil
 }
 
 // sendBytes Sends the bytes over P2P to the given address.
-func (p *p2pImpl) sendBytes(address string, tx []byte) {
+func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
+	defer wg.Done()
+
 	conn, err := net.DialTimeout(tcp, address, p.p2pTimeout)
 	if conn != nil {
 		defer conn.Close()
