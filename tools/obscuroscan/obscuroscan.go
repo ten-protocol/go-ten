@@ -10,14 +10,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/edgelesssys/ego/enclave"
 	"io/fs"
 	"math/big"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
-
-	egoattestation "github.com/edgelesssys/ego/attestation"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -404,12 +406,9 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 		return
 	}
 
-	// todo - joel - switch back to displaying real data
-	//attestationReport, err := enclave.VerifyRemoteReport(attestation.Report)
-	attestationReport := egoattestation.Report{
-		Data:            []byte("abc"),
-		SecurityVersion: 3,
-	}
+	// If DCAP isn't set up, a SIGSYS signal will be sent. We catch this, so that it doesn't crash the program.
+	signal.Notify(make(chan os.Signal, 1), syscall.SIGSYS)
+	attestationReport, err := enclave.VerifyRemoteReport(attestation.Report)
 	if err != nil {
 		log.Error("could not verify node's attestation. Cause: %s", err)
 		logAndSendErr(resp, "Could not verify node's attestation.")
