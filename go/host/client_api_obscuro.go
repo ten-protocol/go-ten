@@ -24,6 +24,7 @@ func NewObscuroAPI(host *Node) *ObscuroAPI {
 
 // GetID returns the ID of the host.
 func (api *ObscuroAPI) GetID() gethcommon.Address {
+	api.host.EnclaveClient.Attestation()
 	return api.host.ID
 }
 
@@ -146,6 +147,11 @@ func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error)
 func (api *ObscuroAPI) GetTotalTransactions() *big.Int {
 	totalTransactions := api.host.nodeDB.GetTotalTransactions()
 	return totalTransactions
+}
+
+// Attestation returns the node's attestation details.
+func (api *ObscuroAPI) Attestation() *common.AttestationReport {
+	return api.host.EnclaveClient.Attestation()
 }
 
 // StopHost gracefully stops the host.

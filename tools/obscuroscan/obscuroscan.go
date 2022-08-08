@@ -42,6 +42,7 @@ const (
 	pathBlock         = "/block/"
 	pathRollup        = "/rollup/"
 	pathDecryptTxBlob = "/decrypttxblob/"
+	pathAttestation   = "/attestation/"
 	staticDir         = "static"
 	pathRoot          = "/"
 	httpCodeErr       = 500
@@ -84,6 +85,7 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)  // Get the rollup given its number or the hash of a transaction it contains.
 	serveMux.HandleFunc(pathBlock, o.getBlock)                 // Get the L1 block with the given number.
 	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)    // Decrypt a transaction blob.
+	serveMux.HandleFunc(pathAttestation, o.attestation)        // Retrieve the node's attestation report.
 
 	// Serves the web assets for the user interface.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
@@ -360,6 +362,30 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 	if err != nil {
 		log.Error("could not write decrypted transactions to client. Cause: %s", err)
 		logAndSendErr(resp, "Could not decrypt transaction blob.")
+		return
+	}
+}
+
+// Retrieves the node's attestation report.
+func (o *Obscuroscan) attestation(resp http.ResponseWriter, _ *http.Request) {
+	var attestation *common.AttestationReport
+	err := o.client.Call(&attestation, rpcclientlib.RPCAttestation)
+	if err != nil {
+		log.Error("could not retrieve node's attestation. Cause: %s", err)
+		logAndSendErr(resp, "Could not retrieve node's attestation.")
+		return
+	}
+
+	jsonAttestation, err := json.Marshal(attestation)
+	if err != nil {
+		log.Error("could not convert node's attestation to JSON. Cause: %s", err)
+		logAndSendErr(resp, "Could not retrieve node's attestation.")
+		return
+	}
+	_, err = resp.Write(jsonAttestation)
+	if err != nil {
+		log.Error("could not return JSON attestation to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not retrieve node's attestation.")
 		return
 	}
 }
