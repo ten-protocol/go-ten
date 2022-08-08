@@ -1,10 +1,12 @@
-package host
+package clientapi
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -15,10 +17,10 @@ import (
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
 // corresponding Geth implementations.
 type EthereumAPI struct {
-	host *Node
+	host host.Host
 }
 
-func NewEthereumAPI(host *Node) *EthereumAPI {
+func NewEthereumAPI(host host.Host) *EthereumAPI {
 	return &EthereumAPI{
 		host: host,
 	}
@@ -26,19 +28,19 @@ func NewEthereumAPI(host *Node) *EthereumAPI {
 
 // ChainId returns the Obscuro chain ID.
 func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
-	return (*hexutil.Big)(big.NewInt(api.host.config.ObscuroChainID)), nil
+	return (*hexutil.Big)(big.NewInt(api.host.Config().ObscuroChainID)), nil
 }
 
 // BlockNumber returns the height of the current head rollup.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	number := api.host.nodeDB.GetCurrentRollupHead().Header.Number.Uint64()
+	number := api.host.DB().GetCurrentRollupHead().Header.Number.Uint64()
 	return hexutil.Uint64(number)
 }
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
 // `address` field and encoded as hex.
 func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (string, error) {
-	encryptedBalance, err := api.host.EnclaveClient.GetBalance(encryptedParams)
+	encryptedBalance, err := api.host.EnclaveClient().GetBalance(encryptedParams)
 	if err != nil {
 		return "", err
 	}
@@ -47,11 +49,11 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash := api.host.nodeDB.GetRollupHash(big.NewInt(int64(number)))
+	rollupHash := api.host.DB().GetRollupHash(big.NewInt(int64(number)))
 	if rollupHash == nil {
 		return nil, nil //nolint:nilnil
 	}
-	rollupHeaderWithHashes := api.host.nodeDB.GetRollupHeader(*rollupHash)
+	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(*rollupHash)
 	if rollupHeaderWithHashes == nil {
 		return nil, fmt.Errorf("could not retrieve header for stored rollup with number %d and hash %s", number, rollupHash)
 	}
@@ -60,7 +62,7 @@ func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumb
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeaderWithHashes := api.host.nodeDB.GetRollupHeader(hash)
+	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(hash)
 	if rollupHeaderWithHashes == nil {
 		return nil, nil //nolint:nilnil
 	}
@@ -75,7 +77,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (string, error) {
-	encryptedResponse, err := api.host.EnclaveClient.ExecuteOffChainTransaction(encryptedParams)
+	encryptedResponse, err := api.host.EnclaveClient().ExecuteOffChainTransaction(encryptedParams)
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +87,7 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
 // corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
-	encryptedResponse, err := api.host.EnclaveClient.GetTransactionReceipt(encryptedParams)
+	encryptedResponse, err := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
 	if err != nil {
 		return nil, err
 	}
@@ -115,16 +117,16 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	rollupHeight, ok := blockNrOrHash.Number()
 	if ok {
-		rollupHash := api.host.nodeDB.GetRollupHash(big.NewInt(rollupHeight.Int64()))
+		rollupHash := api.host.DB().GetRollupHash(big.NewInt(rollupHeight.Int64()))
 		if rollupHash != nil {
 			return nil, nil
 		}
-		return api.host.EnclaveClient.GetCode(address, rollupHash)
+		return api.host.EnclaveClient().GetCode(address, rollupHash)
 	}
 
 	rollupHash, ok := blockNrOrHash.Hash()
 	if ok {
-		return api.host.EnclaveClient.GetCode(address, &rollupHash)
+		return api.host.EnclaveClient().GetCode(address, &rollupHash)
 	}
 
 	return nil, errors.New("invalid arguments; neither rollup height nor rollup hash specified")
@@ -132,14 +134,14 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 
 // TODO - Temporary. Will be replaced by encrypted implementation.
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
-	nonce := api.host.EnclaveClient.Nonce(address)
+	nonce := api.host.EnclaveClient().Nonce(address)
 	return (*hexutil.Uint64)(&nonce), nil
 }
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
 // `from` field and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
-	encryptedResponse, err := api.host.EnclaveClient.GetTransaction(encryptedParams)
+	encryptedResponse, err := api.host.EnclaveClient().GetTransaction(encryptedParams)
 	if err != nil {
 		return nil, err
 	}
