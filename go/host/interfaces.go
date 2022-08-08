@@ -31,8 +31,10 @@ type Host interface {
 type MockHost interface {
 	Host
 
+	// TODO - Remove this method.
 	P2P() P2P
 	// MockedNewHead receives the notification of new blocks.
+	// TODO - Remove this method.
 	MockedNewHead(b common.EncodedBlock, p common.EncodedBlock)
 	// MockedNewFork receives the notification of a new fork.
 	MockedNewFork(b []common.EncodedBlock)

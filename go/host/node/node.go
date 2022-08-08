@@ -39,7 +39,7 @@ const (
 	apiNamespaceNetwork  = "net"
 )
 
-// Node is an implementation of hostinterfaces.Host.
+// Node is an implementation of host.Host.
 type Node struct {
 	config  config.HostConfig
 	shortID uint64
