@@ -408,8 +408,12 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 	}
 
 	// If DCAP isn't set up, a SIGSYS signal will be sent. We catch this, so that it doesn't crash the program.
-	signal.Notify(make(chan os.Signal, 1), syscall.SIGSYS)
+	sigChannel := make(chan os.Signal, 1)
+	defer signal.Stop(sigChannel)
+	signal.Notify(sigChannel, syscall.SIGSYS)
 	attestationReport, err := enclave.VerifyRemoteReport(attestation.Report)
+	signal.Stop(sigChannel)
+	
 	if err != nil {
 		log.Error("could not verify node's attestation. Cause: %s", err)
 		logAndSendErr(resp, "Could not verify node's attestation.")
