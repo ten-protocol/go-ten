@@ -152,7 +152,7 @@ func (api *ObscuroAPI) GetTotalTransactions() *big.Int {
 
 // Attestation returns the node's attestation details.
 func (api *ObscuroAPI) Attestation() *common.AttestationReport {
-	return api.host.EnclaveClient.Attestation()
+	return api.host.EnclaveClient().Attestation()
 }
 
 // StopHost gracefully stops the host.
