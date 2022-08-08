@@ -11,19 +11,19 @@ const (
 	// Flag names, defaults and usages.
 	walletExtensionPortName    = "port"
 	walletExtensionPortDefault = 3000
-	walletExtensionPortUsage   = "The port on which to serve the wallet extension"
+	walletExtensionPortUsage   = "The port on which to serve the wallet extension. Default: 3000."
 
 	nodeHostName    = "nodeHost"
-	nodeHostDefault = "127.0.0.1"
-	nodeHostUsage   = "The host on which to connect to the Obscuro node"
+	nodeHostDefault = "testnet.obscu.ro"
+	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `testnet.obscu.ro`."
 
 	nodeHTTPPortName    = "nodePortHTTP"
 	nodeHTTPPortDefault = 13000
-	nodeHTTPPortUsage   = "The port on which to connect to the Obscuro node via RPC over HTTP"
+	nodeHTTPPortUsage   = "The port on which to connect to the Obscuro node via RPC over HTTP. Default: 13000."
 
 	nodeWebsocketPortName    = "nodePortWS"
 	nodeWebsocketPortDefault = 13001
-	nodeWebsocketPortUsage   = "The port on which to connect to the Obscuro node via RPC over websockets"
+	nodeWebsocketPortUsage   = "The port on which to connect to the Obscuro node via RPC over websockets. Default: 13001."
 
 	logPathName    = "logPath"
 	logPathDefault = "wallet_extension_logs.txt"
