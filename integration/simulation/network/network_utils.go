@@ -69,7 +69,7 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	viewingKeysEnabled bool,
 	wallets *params.SimWallets,
-) host.Host {
+) host.MockHost {
 	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	hostConfig := config.HostConfig{

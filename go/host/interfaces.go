@@ -25,8 +25,11 @@ type Host interface {
 	ReceiveTx(tx common.EncryptedTx)
 	// Stop gracefully stops the host execution.
 	Stop()
+}
 
-	/// The following methods are only used for integration testing.
+// MockHost extends Host with additional methods that are only used for integration testing.
+type MockHost interface {
+	Host
 
 	P2P() P2P
 	// MockedNewHead receives the notification of new blocks.

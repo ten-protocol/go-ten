@@ -26,7 +26,7 @@ import (
 
 func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string]rpcclientlib.Client) {
 	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]host.Host, params.NumberOfNodes)
+	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 		obscuroNodes[i] = createInMemObscuroNode(

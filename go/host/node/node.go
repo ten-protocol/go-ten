@@ -78,7 +78,7 @@ func NewHost(
 	enclaveClient common.Enclave,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-) host.Host {
+) host.MockHost {
 	node := &Node{
 		// config
 		config:  config,
