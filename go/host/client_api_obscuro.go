@@ -24,7 +24,6 @@ func NewObscuroAPI(host *Node) *ObscuroAPI {
 
 // GetID returns the ID of the host.
 func (api *ObscuroAPI) GetID() gethcommon.Address {
-	api.host.EnclaveClient.Attestation()
 	return api.host.ID
 }
 

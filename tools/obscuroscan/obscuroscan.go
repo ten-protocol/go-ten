@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/edgelesssys/ego/enclave"
 	"io/fs"
 	"math/big"
 	"net/http"
@@ -20,6 +19,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/edgelesssys/ego/enclave"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
