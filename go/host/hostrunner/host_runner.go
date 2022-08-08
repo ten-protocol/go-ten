@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -42,7 +44,7 @@ func RunHost(config config.HostConfig) {
 	}
 	ethWallet.SetNonce(nonce)
 
-	enclaveClient := host.NewEnclaveRPCClient(config)
+	enclaveClient := enclaverpc.NewClient(config)
 	aggP2P := p2p.NewSocketP2PLayer(config)
 	agg := host.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
 

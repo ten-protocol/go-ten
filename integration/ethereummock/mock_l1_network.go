@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -13,7 +15,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/host"
 )
 
 // MockEthNetwork - models a full network including artificial random latencies
@@ -27,11 +28,11 @@ type MockEthNetwork struct {
 	avgLatency       time.Duration
 	avgBlockDuration time.Duration
 
-	Stats host.StatsCollector
+	Stats interfaces.StatsCollector
 }
 
 // NewMockEthNetwork returns an instance of a configured L1 Network (no nodes)
-func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration, stats host.StatsCollector) *MockEthNetwork {
+func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration, stats interfaces.StatsCollector) *MockEthNetwork {
 	return &MockEthNetwork{
 		Stats:            stats,
 		avgLatency:       avgLatency,

@@ -8,9 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host/rpc"
+	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	api2 "github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 
@@ -37,15 +40,14 @@ const (
 // Node this will become the Obscuro "Node" type
 type Node struct {
 	config  config.HostConfig
-	ID      gethcommon.Address
 	shortID uint64
 
-	P2p           P2P                  // For communication with other Obscuro nodes
+	P2p           interfaces.P2P       // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
-	EnclaveClient common.Enclave       // For communication with the enclave
-	rpcServer     rpc.Server           // For communication with Obscuro client applications
+	enclaveClient common.Enclave       // For communication with the enclave
+	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
-	stats StatsCollector
+	stats interfaces.StatsCollector
 
 	// control the host lifecycle
 	exitNodeCh            chan bool
@@ -57,7 +59,7 @@ type Node struct {
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
 
-	nodeDB       *DB    // Stores the node's publicly-available data
+	nodeDB       *db.DB // Stores the node's publicly-available data
 	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
 
 	// library to handle Management Contract lib operations
@@ -69,8 +71,8 @@ type Node struct {
 
 func NewHost(
 	config config.HostConfig,
-	stats StatsCollector,
-	p2p P2P,
+	stats interfaces.StatsCollector,
+	p2p interfaces.P2P,
 	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
 	ethWallet wallet.Wallet,
@@ -79,13 +81,12 @@ func NewHost(
 	host := &Node{
 		// config
 		config:  config,
-		ID:      config.ID,
 		shortID: common.ShortAddress(config.ID),
 
 		// Communication layers.
 		P2p:           p2p,
 		ethClient:     ethClient,
-		EnclaveClient: enclaveClient,
+		enclaveClient: enclaveClient,
 
 		// statistics and metrics
 		stats: stats,
@@ -103,7 +104,7 @@ func NewHost(
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
-		nodeDB:       NewInMemoryDB(),
+		nodeDB:       db.NewInMemoryDB(),
 		readyForWork: new(int32),
 
 		// library that provides a handler for Management Contract
@@ -113,27 +114,27 @@ func NewHost(
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
-		rpcAPIs := []gethrpc.API{
+		rpcAPIs := []rpc.API{
 			{
 				Namespace: apiNamespaceObscuro,
 				Version:   apiVersion1,
-				Service:   NewObscuroAPI(host),
+				Service:   api2.NewObscuroAPI(host),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceEthereum,
 				Version:   apiVersion1,
-				Service:   NewEthereumAPI(host),
+				Service:   api2.NewEthereumAPI(host),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceNetwork,
 				Version:   apiVersion1,
-				Service:   NewNetworkAPI(host),
+				Service:   api2.NewNetworkAPI(host),
 				Public:    true,
 			},
 		}
-		host.rpcServer = rpc.NewRPCServer(config, rpcAPIs)
+		host.rpcServer = clientrpc.NewServer(config, rpcAPIs)
 	}
 
 	var prof *profiler.Profiler
@@ -163,9 +164,9 @@ func (a *Node) Start() {
 	if a.config.IsGenesis {
 		common.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
 		// Create the shared secret and submit it to the management contract for storage
-		attestation := a.EnclaveClient.Attestation()
-		if attestation.Owner != a.ID {
-			common.PanicWithID(a.shortID, "genesis node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), attestation.Owner.Hex())
+		attestation := a.enclaveClient.Attestation()
+		if attestation.Owner != a.config.ID {
+			common.PanicWithID(a.shortID, "genesis node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), attestation.Owner.Hex())
 		}
 
 		encodedAttestation, err := common.EncodeAttestation(attestation)
@@ -173,9 +174,9 @@ func (a *Node) Start() {
 			log.Panic("could not encode attestation Cause: %s", err)
 		}
 		l1tx := &ethadapter.L1InitializeSecretTx{
-			AggregatorID:  &a.ID,
+			AggregatorID:  &a.config.ID,
 			Attestation:   encodedAttestation,
-			InitialSecret: a.EnclaveClient.GenerateSecret(),
+			InitialSecret: a.enclaveClient.GenerateSecret(),
 			HostAddress:   a.config.P2PPublicAddress,
 		}
 		a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
@@ -191,7 +192,7 @@ func (a *Node) Start() {
 	latestBlock := a.bootstrapNode()
 
 	// start the enclave speculative work from last block
-	a.EnclaveClient.Start(latestBlock)
+	a.enclaveClient.Start(latestBlock)
 
 	if a.config.IsGenesis {
 		a.initialiseProtocol(&latestBlock)
@@ -226,7 +227,7 @@ func (a *Node) MockedNewFork(b []common.EncodedBlock) {
 
 func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
-	encryptedResponse, err := a.EnclaveClient.SubmitTx(encryptedTx)
+	encryptedResponse, err := a.enclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
 		common.LogWithID(a.shortID, "Could not submit transaction: %s", err)
 		return nil, err
@@ -265,11 +266,11 @@ func (a *Node) Stop() {
 	if err := a.P2p.StopListening(); err != nil {
 		common.ErrorWithID(a.shortID, "failed to close transaction P2P listener cleanly: %s", err)
 	}
-	if err := a.EnclaveClient.Stop(); err != nil {
+	if err := a.enclaveClient.Stop(); err != nil {
 		common.ErrorWithID(a.shortID, "could not stop enclave server. Cause: %s", err)
 	}
 
-	if err := a.EnclaveClient.StopClient(); err != nil {
+	if err := a.enclaveClient.StopClient(); err != nil {
 		common.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
 	if a.rpcServer != nil {
@@ -293,10 +294,22 @@ func (a *Node) IsReady() bool {
 	return atomic.LoadInt32(a.readyForWork) == 1
 }
 
+func (a *Node) Config() *config.HostConfig {
+	return &a.config
+}
+
+func (a *Node) DB() *db.DB {
+	return a.nodeDB
+}
+
+func (a *Node) EnclaveClient() common.Enclave {
+	return a.enclaveClient
+}
+
 // Waits for enclave to be available, printing a wait message every two seconds.
 func (a *Node) waitForEnclave() {
 	counter := 0
-	for err := a.EnclaveClient.IsReady(); err != nil; {
+	for err := a.enclaveClient.IsReady(); err != nil; {
 		if counter >= 20 {
 			common.LogWithID(a.shortID, "Waiting for enclave on %s. Latest connection attempt failed with: %v", a.config.EnclaveRPCAddress, err)
 			counter = 0
@@ -355,14 +368,14 @@ func (a *Node) startProcessing() {
 				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
 
-			go a.EnclaveClient.SubmitRollup(common.ExtRollup{
+			go a.enclaveClient.SubmitRollup(common.ExtRollup{
 				Header:          rol.Header,
 				TxHashes:        rol.TxHashes,
 				EncryptedTxBlob: rol.Transactions,
 			})
 
 		case tx := <-a.txP2PCh:
-			if _, err := a.EnclaveClient.SubmitTx(tx); err != nil {
+			if _, err := a.enclaveClient.SubmitTx(tx); err != nil {
 				common.WarnWithID(a.shortID, "Could not submit transaction. Cause: %s", err)
 			}
 
@@ -397,7 +410,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 			a.processBlock(decoded)
 
 			// submit each block to the enclave for ingestion plus validation
-			result = a.EnclaveClient.SubmitBlock(*decoded)
+			result = a.enclaveClient.SubmitBlock(*decoded)
 			a.storeBlockProcessingResult(result)
 		}
 	}
@@ -454,7 +467,7 @@ func (a *Node) processBlock(b *types.Block) {
 			if err != nil {
 				log.Panic("Could not decode attestation report. Cause: %s", err)
 			}
-			err = a.EnclaveClient.StoreAttestation(att)
+			err = a.enclaveClient.StoreAttestation(att)
 			if err != nil {
 				log.Panic("Could not store the attestation report. Cause: %s", err)
 			}
@@ -468,7 +481,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			return
 		}
 		// Request the round winner for the current head
-		winnerRollup, isWinner, err := a.EnclaveClient.RoundWinner(result.ProducedRollup.Header.ParentHash)
+		winnerRollup, isWinner, err := a.enclaveClient.RoundWinner(result.ProducedRollup.Header.ParentHash)
 		if err != nil {
 			log.Panic("could not determine round winner. Cause: %s", err)
 		}
@@ -514,7 +527,7 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
 	// Create the genesis rollup and submit it to the management contract
-	genesisResponse := a.EnclaveClient.ProduceGenesis(block.Hash())
+	genesisResponse := a.enclaveClient.ProduceGenesis(block.Hash())
 	common.LogWithID(
 		a.shortID,
 		"Initialising network. Genesis rollup r_%d.",
@@ -549,9 +562,9 @@ func (a *Node) broadcastL1Tx(tx types.TxData) {
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() {
 	common.LogWithID(a.shortID, "Requesting secret.")
-	att := a.EnclaveClient.Attestation()
-	if att.Owner != a.ID {
-		common.PanicWithID(a.shortID, "node has ID %s, but its enclave produced an attestation using ID %s", a.ID.Hex(), att.Owner.Hex())
+	att := a.enclaveClient.Attestation()
+	if att.Owner != a.config.ID {
+		common.PanicWithID(a.shortID, "node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation, err := common.EncodeAttestation(att)
 	if err != nil {
@@ -566,13 +579,13 @@ func (a *Node) requestSecret() {
 }
 
 func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
-	if t.RequesterID.Hex() != a.ID.Hex() {
+	if t.RequesterID.Hex() != a.config.ID.Hex() {
 		// this secret is for somebody else
 		return false
 	}
 
 	// someone has replied for us
-	err := a.EnclaveClient.InitEnclave(t.Secret)
+	err := a.enclaveClient.InitEnclave(t.Secret)
 	if err != nil {
 		common.LogWithID(a.shortID, "Failed to initialise enclave with received secret. Err: %s", err)
 		return false
@@ -594,14 +607,14 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		common.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
 	}
 
-	secret, err := a.EnclaveClient.ShareSecret(att)
+	secret, err := a.enclaveClient.ShareSecret(att)
 	if err != nil {
 		common.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
 		return
 	}
 
 	// Store the attested key only if the attestation process succeeded.
-	err = a.EnclaveClient.StoreAttestation(att)
+	err = a.enclaveClient.StoreAttestation(att)
 	if err != nil {
 		log.Panic("Could not store attestation. Cause:%s", err)
 	}
@@ -615,7 +628,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 	l1tx := &ethadapter.L1RespondSecretTx{
 		Secret:      secret,
 		RequesterID: att.Owner,
-		AttesterID:  a.ID,
+		AttesterID:  a.config.ID,
 		HostAddress: att.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
@@ -798,7 +811,7 @@ func (a *Node) bootstrapNode() types.Block {
 		cb := *currentBlock
 		a.processBlock(&cb)
 		// TODO ingest one block at a time or batch the blocks
-		result := a.EnclaveClient.IngestBlocks([]*types.Block{&cb})
+		result := a.enclaveClient.IngestBlocks([]*types.Block{&cb})
 		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
 			common.LogWithID(
 				a.shortID,

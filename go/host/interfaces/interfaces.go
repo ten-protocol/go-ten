@@ -1,10 +1,21 @@
-package host
+package interfaces
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host/db"
 )
+
+// todo - joel - describe, including methods
+type Host interface {
+	Config() *config.HostConfig
+	DB() *db.DB
+	EnclaveClient() common.Enclave
+	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
+	Stop()
+}
 
 // P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
 type P2PCallback interface {

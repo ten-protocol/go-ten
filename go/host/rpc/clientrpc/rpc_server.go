@@ -1,4 +1,4 @@
-package rpc
+package clientrpc
 
 import (
 	"github.com/ethereum/go-ethereum/node"
@@ -18,11 +18,11 @@ type Server interface {
 }
 
 // An implementation of `host.Server` that reuses the Geth `node` package for client communication.
-type rpcServerImpl struct {
+type serverImpl struct {
 	node *node.Node
 }
 
-func NewRPCServer(config config.HostConfig, rpcAPIs []rpc.API) Server {
+func NewServer(config config.HostConfig, rpcAPIs []rpc.API) Server {
 	rpcConfig := node.Config{}
 	if config.HasClientRPCHTTP {
 		rpcConfig.HTTPHost = config.ClientRPCHost
@@ -43,15 +43,15 @@ func NewRPCServer(config config.HostConfig, rpcAPIs []rpc.API) Server {
 	}
 	rpcServerNode.RegisterAPIs(rpcAPIs)
 
-	return &rpcServerImpl{node: rpcServerNode}
+	return &serverImpl{node: rpcServerNode}
 }
 
-func (s *rpcServerImpl) Start() {
+func (s *serverImpl) Start() {
 	if err := s.node.Start(); err != nil {
 		log.Panic("could not start node client server. Cause: %s", err)
 	}
 }
 
-func (s *rpcServerImpl) Stop() error {
+func (s *serverImpl) Stop() error {
 	return s.node.Close()
 }

@@ -1,4 +1,4 @@
-package host
+package enclaverpc
 
 import (
 	"bytes"
@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// EnclaveRPCClient implements enclave.Enclave and should be used by the host when communicating with the enclave via RPC.
-type EnclaveRPCClient struct {
+// Client implements enclave.Enclave and should be used by the host when communicating with the enclave via RPC.
+type Client struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
 	config      config.HostConfig
@@ -34,7 +34,7 @@ type EnclaveRPCClient struct {
 
 // TODO - Avoid panicking and return errors instead where appropriate.
 
-func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
+func NewClient(config config.HostConfig) *Client {
 	nodeShortID := common.ShortAddress(config.ID)
 
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
@@ -60,7 +60,7 @@ func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 		common.PanicWithID(nodeShortID, "RPC connection failed to establish. Current state is %s", currentState)
 	}
 
-	return &EnclaveRPCClient{
+	return &Client{
 		generated.NewEnclaveProtoClient(connection),
 		connection,
 		config,
@@ -68,11 +68,11 @@ func NewEnclaveRPCClient(config config.HostConfig) *EnclaveRPCClient {
 	}
 }
 
-func (c *EnclaveRPCClient) StopClient() error {
+func (c *Client) StopClient() error {
 	return c.connection.Close()
 }
 
-func (c *EnclaveRPCClient) IsReady() error {
+func (c *Client) IsReady() error {
 	if c.connection.GetState() != connectivity.Ready {
 		return errors.New("RPC connection is not ready")
 	}
@@ -90,7 +90,7 @@ func (c *EnclaveRPCClient) IsReady() error {
 	return nil
 }
 
-func (c *EnclaveRPCClient) Attestation() *common.AttestationReport {
+func (c *Client) Attestation() *common.AttestationReport {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -101,7 +101,7 @@ func (c *EnclaveRPCClient) Attestation() *common.AttestationReport {
 	return rpc.FromAttestationReportMsg(response.AttestationReportMsg)
 }
 
-func (c *EnclaveRPCClient) GenerateSecret() common.EncryptedSharedEnclaveSecret {
+func (c *Client) GenerateSecret() common.EncryptedSharedEnclaveSecret {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -112,7 +112,7 @@ func (c *EnclaveRPCClient) GenerateSecret() common.EncryptedSharedEnclaveSecret 
 	return response.EncryptedSharedEnclaveSecret
 }
 
-func (c *EnclaveRPCClient) ShareSecret(report *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
+func (c *Client) ShareSecret(report *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -128,7 +128,7 @@ func (c *EnclaveRPCClient) ShareSecret(report *common.AttestationReport) (common
 	return response.EncryptedSharedEnclaveSecret, nil
 }
 
-func (c *EnclaveRPCClient) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
+func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -142,7 +142,7 @@ func (c *EnclaveRPCClient) InitEnclave(secret common.EncryptedSharedEnclaveSecre
 	return nil
 }
 
-func (c *EnclaveRPCClient) IsInitialised() bool {
+func (c *Client) IsInitialised() bool {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -153,7 +153,7 @@ func (c *EnclaveRPCClient) IsInitialised() bool {
 	return response.IsInitialised
 }
 
-func (c *EnclaveRPCClient) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
+func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
@@ -163,7 +163,7 @@ func (c *EnclaveRPCClient) ProduceGenesis(blkHash gethcommon.Hash) common.BlockS
 	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
-func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionResponse {
+func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -187,7 +187,7 @@ func (c *EnclaveRPCClient) IngestBlocks(blocks []*types.Block) []common.BlockSub
 	return result
 }
 
-func (c *EnclaveRPCClient) Start(block types.Block) {
+func (c *Client) Start(block types.Block) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -201,7 +201,7 @@ func (c *EnclaveRPCClient) Start(block types.Block) {
 	}
 }
 
-func (c *EnclaveRPCClient) SubmitBlock(block types.Block) common.BlockSubmissionResponse {
+func (c *Client) SubmitBlock(block types.Block) common.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -219,7 +219,7 @@ func (c *EnclaveRPCClient) SubmitBlock(block types.Block) common.BlockSubmission
 	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 }
 
-func (c *EnclaveRPCClient) SubmitRollup(rollup common.ExtRollup) {
+func (c *Client) SubmitRollup(rollup common.ExtRollup) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -230,7 +230,7 @@ func (c *EnclaveRPCClient) SubmitRollup(rollup common.ExtRollup) {
 	}
 }
 
-func (c *EnclaveRPCClient) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
+func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -241,7 +241,7 @@ func (c *EnclaveRPCClient) SubmitTx(tx common.EncryptedTx) (common.EncryptedResp
 	return response.EncryptedHash, err
 }
 
-func (c *EnclaveRPCClient) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
+func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -257,7 +257,7 @@ func (c *EnclaveRPCClient) ExecuteOffChainTransaction(encryptedParams common.Enc
 	return response.Result, nil
 }
 
-func (c *EnclaveRPCClient) Nonce(address gethcommon.Address) uint64 {
+func (c *Client) Nonce(address gethcommon.Address) uint64 {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -268,7 +268,7 @@ func (c *EnclaveRPCClient) Nonce(address gethcommon.Address) uint64 {
 	return response.Nonce
 }
 
-func (c *EnclaveRPCClient) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
+func (c *Client) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -283,7 +283,7 @@ func (c *EnclaveRPCClient) RoundWinner(parent common.L2RootHash) (common.ExtRoll
 	return common.ExtRollup{}, false, nil
 }
 
-func (c *EnclaveRPCClient) Stop() error {
+func (c *Client) Stop() error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -294,7 +294,7 @@ func (c *EnclaveRPCClient) Stop() error {
 	return nil
 }
 
-func (c *EnclaveRPCClient) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
+func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -305,7 +305,7 @@ func (c *EnclaveRPCClient) GetTransaction(encryptedParams common.EncryptedParams
 	return resp.EncryptedTx, nil
 }
 
-func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
+func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -316,7 +316,7 @@ func (c *EnclaveRPCClient) GetTransactionReceipt(encryptedParams common.Encrypte
 	return response.EncryptedTxReceipt, nil
 }
 
-func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
+func (c *Client) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -329,7 +329,7 @@ func (c *EnclaveRPCClient) GetRollup(rollupHash common.L2RootHash) (*common.ExtR
 	return &extRollup, nil
 }
 
-func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -343,7 +343,7 @@ func (c *EnclaveRPCClient) AddViewingKey(viewingKeyBytes []byte, signature []byt
 	return nil
 }
 
-func (c *EnclaveRPCClient) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
+func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -356,7 +356,7 @@ func (c *EnclaveRPCClient) GetBalance(encryptedParams common.EncryptedParamsGetB
 	return resp.EncryptedBalance, nil
 }
 
-func (c *EnclaveRPCClient) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+func (c *Client) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -370,7 +370,7 @@ func (c *EnclaveRPCClient) GetCode(address gethcommon.Address, rollupHash *gethc
 	return resp.Code, nil
 }
 
-func (c *EnclaveRPCClient) StoreAttestation(report *common.AttestationReport) error {
+func (c *Client) StoreAttestation(report *common.AttestationReport) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

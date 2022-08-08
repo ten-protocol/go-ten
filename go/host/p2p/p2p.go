@@ -8,11 +8,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/config"
-
-	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -37,7 +37,7 @@ type Message struct {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config config.HostConfig) host.P2P {
+func NewSocketP2PLayer(config config.HostConfig) interfaces.P2P {
 	return &p2pImpl{
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
@@ -55,7 +55,7 @@ type p2pImpl struct {
 	p2pTimeout        time.Duration
 }
 
-func (p *p2pImpl) StartListening(callback host.P2PCallback) {
+func (p *p2pImpl) StartListening(callback interfaces.P2PCallback) {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
@@ -95,7 +95,7 @@ func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) error {
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
+func (p *p2pImpl) handleConnections(callback interfaces.P2PCallback) {
 	for {
 		conn, err := p.listener.Accept()
 		if err != nil {
@@ -109,7 +109,7 @@ func (p *p2pImpl) handleConnections(callback host.P2PCallback) {
 }
 
 // Receives and decodes a P2P message, and pushes it to the correct channel.
-func (p *p2pImpl) handle(conn net.Conn, callback host.P2PCallback) {
+func (p *p2pImpl) handle(conn net.Conn, callback interfaces.P2PCallback) {
 	if conn != nil {
 		defer conn.Close()
 	}

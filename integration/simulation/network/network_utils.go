@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
+
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
@@ -135,7 +137,7 @@ func createSocketObscuroNode(
 	}
 
 	// create an enclave client
-	enclaveClient := host.NewEnclaveRPCClient(hostConfig)
+	enclaveClient := enclaverpc.NewClient(hostConfig)
 
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)

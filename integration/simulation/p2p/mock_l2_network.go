@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -35,7 +37,7 @@ func NewMockP2P(avgBlockDuration time.Duration, avgLatency time.Duration) *MockP
 	}
 }
 
-func (netw *MockP2P) StartListening(host.P2PCallback) {
+func (netw *MockP2P) StartListening(interfaces.P2PCallback) {
 	// nothing to do here, since communication is direct through the in memory objects
 }
 
@@ -55,7 +57,7 @@ func (netw *MockP2P) BroadcastRollup(r common.EncodedRollup) error {
 	}
 
 	for _, a := range netw.Nodes {
-		if !bytes.Equal(a.ID.Bytes(), netw.CurrentNode.ID.Bytes()) {
+		if !bytes.Equal(a.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
 			t := a
 			common.Schedule(netw.delay(), func() { t.ReceiveRollup(r) })
 		}
@@ -70,7 +72,7 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 	}
 
 	for _, a := range netw.Nodes {
-		if !bytes.Equal(a.ID.Bytes(), netw.CurrentNode.ID.Bytes()) {
+		if !bytes.Equal(a.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
 			t := a
 			common.Schedule(netw.delay()/2, func() { t.ReceiveTx(tx) })
 		}
