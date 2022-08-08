@@ -2,9 +2,10 @@
 The Obscuro Testnet is the number 1 destination for application developers, builders and node operators who want to migrate their Ethereum smart contracts to a privacy preserving Layer 2. With Obscuro Testnet you can familiarise yourselves with deploying apps, running an Obscuro node or simply understand more about how Obscuro works.
 
 The Testnet release schedule has been intentionally designed to make new features available as soon as possible. This means you can expect frequent updates which will be communicated [here](https://docs.obscu.ro/testnet/changelog.html). The trade-off is that in the early days Testnet will have some sharp edges and unexpected surprises. More specifically, whilst Testnet is in its infancy:
-* Obscuro Testnet will crash from time to time, and will be frequently be updated with new features.
+* Obscuro Testnet will crash from time to time, and will frequently be updated with new features.
 * When Obscuro Testnet restarts expect to lose everything.
 * Obscuro Testnet code has not been optimised or audited yet. (Mainnet code will be audited prior to launch.)
+* The [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) is still very experimental. Every time you start it, you need to generate a fresh viewing key. 
 
 All Obscuro code is intentionally under an open source licence. If you see something you think could be improved or reworked feel free to submit a PR in the [go-obscuro repo](https://github.com/obscuronet/go-obscuro), or to let us know about your suggestion on [Discord](https://discord.com/channels/916052669955727371/945360340613484684). 
 
