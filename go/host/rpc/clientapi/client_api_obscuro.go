@@ -151,6 +151,7 @@ func (api *ObscuroAPI) GetTotalTransactions() *big.Int {
 }
 
 // StopHost gracefully stops the host.
+// TODO - Investigate how to authenticate this and other sensitive methods in production (Geth uses JWT).
 func (api *ObscuroAPI) StopHost() {
 	go api.host.Stop()
 }
