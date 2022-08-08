@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 )
 
@@ -13,21 +14,29 @@ type Host interface {
 	Config() *config.HostConfig
 	DB() *db.DB
 	EnclaveClient() common.Enclave
+	// Start initializes the main loop of the host.
+	Start()
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
-	// Stop gracefully stops the host execution.
-	Stop()
-}
-
-// P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
-type P2PCallback interface {
 	ReceiveRollup(r common.EncodedRollup)
 	ReceiveTx(tx common.EncryptedTx)
+	// Stop gracefully stops the host execution.
+	Stop()
+
+	/// The following methods are only used for integration testing.
+
+	P2P() P2P
+	// MockedNewHead receives the notification of new blocks.
+	MockedNewHead(b common.EncodedBlock, p common.EncodedBlock)
+	// MockedNewFork receives the notification of a new fork.
+	MockedNewFork(b []common.EncodedBlock)
+	// ConnectToEthNode connects the Aggregator to the Ethereum node.
+	ConnectToEthNode(node ethadapter.EthClient)
 }
 
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
 type P2P interface {
-	StartListening(callback P2PCallback)
+	StartListening(callback Host)
 	StopListening() error
 	UpdatePeerList([]string)
 	BroadcastRollup(r common.EncodedRollup) error

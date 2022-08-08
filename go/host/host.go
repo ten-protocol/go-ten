@@ -42,7 +42,7 @@ type Node struct {
 	config  config.HostConfig
 	shortID uint64
 
-	P2p           interfaces.P2P       // For communication with other Obscuro nodes
+	p2p           interfaces.P2P       // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
@@ -76,14 +76,14 @@ func NewHost(
 	enclaveClient common.Enclave,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-) *Node {
+) interfaces.Host {
 	host := &Node{
 		// config
 		config:  config,
 		shortID: common.ShortAddress(config.ID),
 
 		// Communication layers.
-		P2p:           p2p,
+		p2p:           p2p,
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
 
@@ -147,7 +147,6 @@ func NewHost(
 	return host
 }
 
-// Start initializes the main loop of the node
 func (a *Node) Start() {
 	tomlConfig, err := toml.Marshal(a.config)
 	if err != nil {
@@ -217,8 +216,10 @@ func (a *Node) EnclaveClient() common.Enclave {
 	return a.enclaveClient
 }
 
-// MockedNewHead receives the notification of new blocks
-// This endpoint is specific to the ethereum mock node
+func (a *Node) P2P() interfaces.P2P {
+	return a.p2p
+}
+
 func (a *Node) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
@@ -226,8 +227,6 @@ func (a *Node) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
 	a.blockRPCCh <- blockAndParent{b, p}
 }
 
-// MockedNewFork receives the notification of a new fork
-// This endpoint is specific to the ethereum mock node
 func (a *Node) MockedNewFork(b []common.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
@@ -243,7 +242,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		return nil, err
 	}
 
-	err = a.P2p.BroadcastTx(encryptedTx)
+	err = a.p2p.BroadcastTx(encryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not broadcast transaction. Cause: %w", err)
 	}
@@ -272,7 +271,7 @@ func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
 
-	if err := a.P2p.StopListening(); err != nil {
+	if err := a.p2p.StopListening(); err != nil {
 		common.ErrorWithID(a.shortID, "failed to close transaction P2P listener cleanly: %s", err)
 	}
 	if err := a.enclaveClient.Stop(); err != nil {
@@ -293,7 +292,6 @@ func (a *Node) Stop() {
 	a.exitNodeCh <- true
 }
 
-// ConnectToEthNode connects the Aggregator to the ethereum node
 func (a *Node) ConnectToEthNode(node ethadapter.EthClient) {
 	a.ethClient = node
 }
@@ -317,7 +315,7 @@ func (a *Node) waitForEnclave() {
 func (a *Node) startProcessing() {
 	//	time.Sleep(time.Second)
 	// Only open the p2p connection when the node is fully initialised
-	a.P2p.StartListening(a)
+	a.p2p.StartListening(a)
 
 	// use the roundInterrupt as a signaling mechanism for interrupting block processing
 	// stops processing the current round if a new block arrives
@@ -417,7 +415,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		if err != nil {
 			return fmt.Errorf("could not encode rollup. Cause: %w", err)
 		}
-		err = a.P2p.BroadcastRollup(encodedRollup)
+		err = a.p2p.BroadcastRollup(encodedRollup)
 		if err != nil {
 			return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
 		}
@@ -666,7 +664,7 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 		filteredHostAddresses = append(filteredHostAddresses, hostAddress)
 	}
 
-	a.P2p.UpdatePeerList(filteredHostAddresses)
+	a.p2p.UpdatePeerList(filteredHostAddresses)
 	return nil
 }
 

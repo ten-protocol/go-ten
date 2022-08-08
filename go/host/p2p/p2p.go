@@ -55,7 +55,7 @@ type p2pImpl struct {
 	p2pTimeout        time.Duration
 }
 
-func (p *p2pImpl) StartListening(callback interfaces.P2PCallback) {
+func (p *p2pImpl) StartListening(callback interfaces.Host) {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
@@ -95,7 +95,7 @@ func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) error {
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(callback interfaces.P2PCallback) {
+func (p *p2pImpl) handleConnections(callback interfaces.Host) {
 	for {
 		conn, err := p.listener.Accept()
 		if err != nil {
@@ -109,7 +109,7 @@ func (p *p2pImpl) handleConnections(callback interfaces.P2PCallback) {
 }
 
 // Receives and decodes a P2P message, and pushes it to the correct channel.
-func (p *p2pImpl) handle(conn net.Conn, callback interfaces.P2PCallback) {
+func (p *p2pImpl) handle(conn net.Conn, callback interfaces.Host) {
 	if conn != nil {
 		defer conn.Close()
 	}

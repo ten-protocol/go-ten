@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
@@ -67,7 +69,7 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	viewingKeysEnabled bool,
 	wallets *params.SimWallets,
-) *host.Node {
+) interfaces.Host {
 	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	hostConfig := config.HostConfig{
@@ -118,7 +120,7 @@ func createSocketObscuroNode(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethadapter.EthClient,
-) *host.Node {
+) interfaces.Host {
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,

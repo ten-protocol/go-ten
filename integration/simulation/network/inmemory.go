@@ -3,6 +3,8 @@ package network
 import (
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,7 +18,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
-	"github.com/obscuronet/go-obscuro/go/host"
 	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
@@ -33,7 +34,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]*host.Node, params.NumberOfNodes)
+	obscuroNodes := make([]interfaces.Host, params.NumberOfNodes)
 	n.obscuroClients = make([]rpcclientlib.Client, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
@@ -77,7 +78,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-		mockP2P := obscuroNodes[i].P2p.(*p2p.MockP2P)
+		mockP2P := obscuroNodes[i].P2P().(*p2p.MockP2P)
 		mockP2P.Nodes = obscuroNodes
 	}
 
