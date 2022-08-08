@@ -19,6 +19,9 @@ to securely decrypt the incoming messages.
 The wallet extension should be run locally by the user, such that no sensitive data leaves the client's machine
 unencrypted. If the data is not particularly sensitive, it can also be run in another trusted location.
 
+The diagram below lays out the flows.
+![Swimlane diagram showing wallet extension flows](../../docs/assets/images/swimlanes.png])
+
 ## Pre-requisites
 
 * [MetaMask](https://metamask.io/)

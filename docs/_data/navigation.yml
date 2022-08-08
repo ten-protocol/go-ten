@@ -1,7 +1,7 @@
 pages:
   - title: What is Obscuro?
     children:
-      - title: Privacy Matters
+      - title: Privacy
         url: what-is-obscuro/privacy-matters.html
       - title: Technology
         url: what-is-obscuro/technology.html
