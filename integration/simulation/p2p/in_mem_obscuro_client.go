@@ -8,7 +8,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/host"
 
-	api2 "github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -29,8 +29,8 @@ const (
 
 // An in-memory implementation of `rpcclientlib.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
-	obscuroAPI       *api2.ObscuroAPI
-	ethAPI           *api2.EthereumAPI
+	obscuroAPI       *clientapi.ObscuroAPI
+	ethAPI           *clientapi.EthereumAPI
 	enclavePublicKey *ecies.PublicKey
 }
 
@@ -43,8 +43,8 @@ func NewInMemObscuroClient(nodeHost host.Host) rpcclientlib.Client {
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	return &inMemObscuroClient{
-		obscuroAPI:       api2.NewObscuroAPI(nodeHost),
-		ethAPI:           api2.NewEthereumAPI(nodeHost),
+		obscuroAPI:       clientapi.NewObscuroAPI(nodeHost),
+		ethAPI:           clientapi.NewEthereumAPI(nodeHost),
 		enclavePublicKey: enclPubKey,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/host/db"
-	api2 "github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -78,7 +78,7 @@ func NewHost(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 ) host.Host {
-	host := &Node{
+	node := &Node{
 		// config
 		config:  config,
 		shortID: common.ShortAddress(config.ID),
@@ -117,23 +117,23 @@ func NewHost(
 			{
 				Namespace: apiNamespaceObscuro,
 				Version:   apiVersion1,
-				Service:   api2.NewObscuroAPI(host),
+				Service:   clientapi.NewObscuroAPI(node),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceEthereum,
 				Version:   apiVersion1,
-				Service:   api2.NewEthereumAPI(host),
+				Service:   clientapi.NewEthereumAPI(node),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceNetwork,
 				Version:   apiVersion1,
-				Service:   api2.NewNetworkAPI(host),
+				Service:   clientapi.NewNetworkAPI(node),
 				Public:    true,
 			},
 		}
-		host.rpcServer = clientrpc.NewServer(config, rpcAPIs)
+		node.rpcServer = clientrpc.NewServer(config, rpcAPIs)
 	}
 
 	var prof *profiler.Profiler
@@ -145,7 +145,7 @@ func NewHost(
 		}
 	}
 
-	return host
+	return node
 }
 
 func (a *Node) Start() {
