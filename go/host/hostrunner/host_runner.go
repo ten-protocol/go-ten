@@ -2,10 +2,11 @@ package hostrunner
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/obscuronet/go-obscuro/go/host/interfaces"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 
