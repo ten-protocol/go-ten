@@ -150,6 +150,11 @@ func (api *ObscuroAPI) GetTotalTransactions() *big.Int {
 	return totalTransactions
 }
 
+// Attestation returns the node's attestation details.
+func (api *ObscuroAPI) Attestation() *common.AttestationReport {
+	return api.host.EnclaveClient().Attestation()
+}
+
 // StopHost gracefully stops the host.
 // TODO - Investigate how to authenticate this and other sensitive methods in production (Geth uses JWT).
 func (api *ObscuroAPI) StopHost() {

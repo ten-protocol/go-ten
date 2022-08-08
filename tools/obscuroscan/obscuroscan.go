@@ -13,9 +13,14 @@ import (
 	"io/fs"
 	"math/big"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+
+	"github.com/edgelesssys/ego/enclave"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -34,17 +39,19 @@ import (
 )
 
 const (
-	pathNumRollups    = "/numrollups/"
-	pathNumTxs        = "/numtxs/"
-	pathGetRollupTime = "/rolluptime/"
-	pathLatestRollups = "/latestrollups/"
-	pathLatestTxs     = "/latesttxs/"
-	pathBlock         = "/block/"
-	pathRollup        = "/rollup/"
-	pathDecryptTxBlob = "/decrypttxblob/"
-	staticDir         = "static"
-	pathRoot          = "/"
-	httpCodeErr       = 500
+	pathNumRollups        = "/numrollups/"
+	pathNumTxs            = "/numtxs/"
+	pathGetRollupTime     = "/rolluptime/"
+	pathLatestRollups     = "/latestrollups/"
+	pathLatestTxs         = "/latesttxs/"
+	pathBlock             = "/block/"
+	pathRollup            = "/rollup/"
+	pathDecryptTxBlob     = "/decrypttxblob/"
+	pathAttestation       = "/attestation/"
+	pathAttestationReport = "/attestationreport/"
+	staticDir             = "static"
+	pathRoot              = "/"
+	httpCodeErr           = 500
 )
 
 //go:embed static
@@ -76,14 +83,16 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
-	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)       // Get the number of published rollups.
-	serveMux.HandleFunc(pathNumTxs, o.getNumTransactions)      // Get the number of rolled-up transactions.
-	serveMux.HandleFunc(pathGetRollupTime, o.getRollupTime)    // Get the average rollup time.
-	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups) // Get the latest rollup numbers.
-	serveMux.HandleFunc(pathLatestTxs, o.getLatestTxs)         // Get the latest transaction hashes.
-	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)  // Get the rollup given its number or the hash of a transaction it contains.
-	serveMux.HandleFunc(pathBlock, o.getBlock)                 // Get the L1 block with the given number.
-	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)    // Decrypt a transaction blob.
+	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)            // Get the number of published rollups.
+	serveMux.HandleFunc(pathNumTxs, o.getNumTransactions)           // Get the number of rolled-up transactions.
+	serveMux.HandleFunc(pathGetRollupTime, o.getRollupTime)         // Get the average rollup time.
+	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups)      // Get the latest rollup numbers.
+	serveMux.HandleFunc(pathLatestTxs, o.getLatestTxs)              // Get the latest transaction hashes.
+	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)       // Get the rollup given its number or the hash of a transaction it contains.
+	serveMux.HandleFunc(pathBlock, o.getBlock)                      // Get the L1 block with the given number.
+	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)         // Decrypt a transaction blob.
+	serveMux.HandleFunc(pathAttestation, o.attestation)             // Retrieve the node's attestation.
+	serveMux.HandleFunc(pathAttestationReport, o.attestationReport) // Retrieve the node's attestation report.
 
 	// Serves the web assets for the user interface.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
@@ -360,6 +369,67 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 	if err != nil {
 		log.Error("could not write decrypted transactions to client. Cause: %s", err)
 		logAndSendErr(resp, "Could not decrypt transaction blob.")
+		return
+	}
+}
+
+// Retrieves the node's attestation.
+func (o *Obscuroscan) attestation(resp http.ResponseWriter, _ *http.Request) {
+	var attestation *common.AttestationReport
+	err := o.client.Call(&attestation, rpcclientlib.RPCAttestation)
+	if err != nil {
+		log.Error("could not retrieve node's attestation. Cause: %s", err)
+		logAndSendErr(resp, "Could not retrieve node's attestation.")
+		return
+	}
+
+	jsonAttestation, err := json.Marshal(attestation)
+	if err != nil {
+		log.Error("could not convert node's attestation to JSON. Cause: %s", err)
+		logAndSendErr(resp, "Could not retrieve node's attestation.")
+		return
+	}
+	_, err = resp.Write(jsonAttestation)
+	if err != nil {
+		log.Error("could not return JSON attestation to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not retrieve node's attestation.")
+		return
+	}
+}
+
+// Retrieves the node's attestation report.
+func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Request) {
+	var attestation *common.AttestationReport
+	err := o.client.Call(&attestation, rpcclientlib.RPCAttestation)
+	if err != nil {
+		log.Error("could not retrieve node's attestation. Cause: %s", err)
+		logAndSendErr(resp, "Could not verify node's attestation.")
+		return
+	}
+
+	// If DCAP isn't set up, verifying the report will send a SIGSYS signal. We catch this, so that it doesn't crash the program.
+	sigChannel := make(chan os.Signal, 1)
+	defer signal.Stop(sigChannel)
+	signal.Notify(sigChannel, syscall.SIGSYS)
+	attestationReport, err := enclave.VerifyRemoteReport(attestation.Report)
+	signal.Stop(sigChannel)
+
+	if err != nil {
+		log.Error("could not verify node's attestation. Cause: %s", err)
+		logAndSendErr(resp, "Could not verify node's attestation.")
+		return
+	}
+
+	jsonAttestationReport, err := json.Marshal(attestationReport)
+	if err != nil {
+		log.Error("could not convert node's attestation report to JSON. Cause: %s", err)
+		logAndSendErr(resp, "Could not verify node's attestation.")
+		return
+	}
+	_, err = resp.Write(jsonAttestationReport)
+	if err != nil {
+		log.Error("could not return JSON attestation report to client. Cause: %s", err)
+		logAndSendErr(resp, "Could not verify node's attestation.")
 		return
 	}
 }
