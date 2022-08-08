@@ -37,7 +37,7 @@ const (
 	apiNamespaceNetwork  = "net"
 )
 
-// Node this will become the Obscuro "Node" type
+// Node is an implementation of interfaces.Host.
 type Node struct {
 	config  config.HostConfig
 	shortID uint64
@@ -59,8 +59,7 @@ type Node struct {
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
 
-	nodeDB       *db.DB // Stores the node's publicly-available data
-	readyForWork *int32 // Whether the node has bootstrapped the existing blocks and has the enclave secret
+	nodeDB *db.DB // Stores the node's publicly-available data
 
 	// library to handle Management Contract lib operations
 	mgmtContractLib mgmtcontractlib.MgmtContractLib
@@ -104,8 +103,7 @@ func NewHost(
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
-		nodeDB:       db.NewInMemoryDB(),
-		readyForWork: new(int32),
+		nodeDB: db.NewInMemoryDB(),
 
 		// library that provides a handler for Management Contract
 		mgmtContractLib: mgmtContractLib,
@@ -207,6 +205,18 @@ func (a *Node) Start() {
 	a.startProcessing()
 }
 
+func (a *Node) Config() *config.HostConfig {
+	return &a.config
+}
+
+func (a *Node) DB() *db.DB {
+	return a.nodeDB
+}
+
+func (a *Node) EnclaveClient() common.Enclave {
+	return a.enclaveClient
+}
+
 // MockedNewHead receives the notification of new blocks
 // This endpoint is specific to the ethereum mock node
 func (a *Node) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
@@ -258,7 +268,6 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// Stop gracefully stops the node execution
 func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
@@ -289,23 +298,6 @@ func (a *Node) ConnectToEthNode(node ethadapter.EthClient) {
 	a.ethClient = node
 }
 
-// IsReady returns if the Aggregator is ready to work (process blocks, respond to RPC requests, etc..)
-func (a *Node) IsReady() bool {
-	return atomic.LoadInt32(a.readyForWork) == 1
-}
-
-func (a *Node) Config() *config.HostConfig {
-	return &a.config
-}
-
-func (a *Node) DB() *db.DB {
-	return a.nodeDB
-}
-
-func (a *Node) EnclaveClient() common.Enclave {
-	return a.enclaveClient
-}
-
 // Waits for enclave to be available, printing a wait message every two seconds.
 func (a *Node) waitForEnclave() {
 	counter := 0
@@ -331,10 +323,6 @@ func (a *Node) startProcessing() {
 	// stops processing the current round if a new block arrives
 	i := int32(0)
 	roundInterrupt := &i
-
-	// marks the node as ready to do work ( process blocks, respond to RPC requests, etc... )
-	atomic.StoreInt32(a.readyForWork, 1)
-	common.LogWithID(a.shortID, "Node is ready for work...")
 
 	// Main Processing Loop -
 	// - Process new blocks from the L1 node

@@ -8,12 +8,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/db"
 )
 
-// todo - joel - describe, including methods
+// Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
 	Config() *config.HostConfig
 	DB() *db.DB
 	EnclaveClient() common.Enclave
+	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
+	// Stop gracefully stops the host execution.
 	Stop()
 }
 
