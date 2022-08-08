@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	api2 "github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 
@@ -34,7 +34,7 @@ type inMemObscuroClient struct {
 	enclavePublicKey *ecies.PublicKey
 }
 
-func NewInMemObscuroClient(nodeHost interfaces.Host) rpcclientlib.Client {
+func NewInMemObscuroClient(nodeHost host.Host) rpcclientlib.Client {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {

@@ -3,15 +3,15 @@ package clientapi
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	"github.com/obscuronet/go-obscuro/go/host"
 )
 
 // NetworkAPI implements a subset of the Ethereum network JSON RPC operations.
 type NetworkAPI struct {
-	host interfaces.Host
+	host host.Host
 }
 
-func NewNetworkAPI(host interfaces.Host) *NetworkAPI {
+func NewNetworkAPI(host host.Host) *NetworkAPI {
 	return &NetworkAPI{
 		host: host,
 	}

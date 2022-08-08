@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -17,10 +17,10 @@ import (
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
 // corresponding Geth implementations.
 type EthereumAPI struct {
-	host interfaces.Host
+	host host.Host
 }
 
-func NewEthereumAPI(host interfaces.Host) *EthereumAPI {
+func NewEthereumAPI(host host.Host) *EthereumAPI {
 	return &EthereumAPI{
 		host: host,
 	}

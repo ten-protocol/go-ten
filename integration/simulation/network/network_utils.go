@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	"github.com/obscuronet/go-obscuro/go/host/node"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 
@@ -69,7 +69,7 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	viewingKeysEnabled bool,
 	wallets *params.SimWallets,
-) interfaces.Host {
+) host.Host {
 	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
 
 	hostConfig := config.HostConfig{
@@ -93,7 +93,7 @@ func createInMemObscuroNode(
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
 
 	// create an in memory obscuro node
-	node := host.NewHost(
+	node := node.NewHost(
 		hostConfig,
 		stats,
 		obscuroInMemNetwork,
@@ -120,7 +120,7 @@ func createSocketObscuroNode(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethadapter.EthClient,
-) interfaces.Host {
+) host.Host {
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,
@@ -144,7 +144,7 @@ func createSocketObscuroNode(
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
 
-	node := host.NewHost(
+	node := node.NewHost(
 		hostConfig,
 		stats,
 		nodeP2p,

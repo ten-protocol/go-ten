@@ -1,4 +1,4 @@
-package interfaces
+package host
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -14,11 +14,14 @@ type Host interface {
 	Config() *config.HostConfig
 	DB() *db.DB
 	EnclaveClient() common.Enclave
+
 	// Start initializes the main loop of the host.
 	Start()
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
+	// ReceiveRollup processes a rollup received from a peer host.
 	ReceiveRollup(r common.EncodedRollup)
+	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// Stop gracefully stops the host execution.
 	Stop()

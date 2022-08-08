@@ -3,7 +3,7 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
@@ -34,7 +34,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]interfaces.Host, params.NumberOfNodes)
+	obscuroNodes := make([]host.Host, params.NumberOfNodes)
 	n.obscuroClients = make([]rpcclientlib.Client, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts

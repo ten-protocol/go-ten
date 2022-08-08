@@ -1,4 +1,4 @@
-package host
+package node
 
 import (
 	"encoding/json"
@@ -8,8 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	"github.com/obscuronet/go-obscuro/go/host/db"
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
 	api2 "github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 
@@ -37,17 +38,17 @@ const (
 	apiNamespaceNetwork  = "net"
 )
 
-// Node is an implementation of interfaces.Host.
+// Node is an implementation of hostinterfaces.Host.
 type Node struct {
 	config  config.HostConfig
 	shortID uint64
 
-	p2p           interfaces.P2P       // For communication with other Obscuro nodes
+	p2p           host.P2P             // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
-	stats interfaces.StatsCollector
+	stats host.StatsCollector
 
 	// control the host lifecycle
 	exitNodeCh            chan bool
@@ -70,13 +71,13 @@ type Node struct {
 
 func NewHost(
 	config config.HostConfig,
-	stats interfaces.StatsCollector,
-	p2p interfaces.P2P,
+	stats host.StatsCollector,
+	p2p host.P2P,
 	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-) interfaces.Host {
+) host.Host {
 	host := &Node{
 		// config
 		config:  config,
@@ -216,7 +217,7 @@ func (a *Node) EnclaveClient() common.Enclave {
 	return a.enclaveClient
 }
 
-func (a *Node) P2P() interfaces.P2P {
+func (a *Node) P2P() host.P2P {
 	return a.p2p
 }
 

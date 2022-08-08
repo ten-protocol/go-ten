@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -15,10 +15,10 @@ import (
 
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.
 type ObscuroAPI struct {
-	host interfaces.Host
+	host host.Host
 }
 
-func NewObscuroAPI(host interfaces.Host) *ObscuroAPI {
+func NewObscuroAPI(host host.Host) *ObscuroAPI {
 	return &ObscuroAPI{
 		host: host,
 	}

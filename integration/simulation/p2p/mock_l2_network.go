@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host/interfaces"
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
@@ -16,8 +16,8 @@ import (
 // Implements the P2p interface
 // Will be plugged into each node
 type MockP2P struct {
-	CurrentNode interfaces.Host
-	Nodes       []interfaces.Host
+	CurrentNode host.Host
+	Nodes       []host.Host
 
 	avgLatency       time.Duration
 	avgBlockDuration time.Duration
@@ -35,7 +35,7 @@ func NewMockP2P(avgBlockDuration time.Duration, avgLatency time.Duration) *MockP
 	}
 }
 
-func (netw *MockP2P) StartListening(interfaces.Host) {
+func (netw *MockP2P) StartListening(host.Host) {
 	// nothing to do here, since communication is direct through the in memory objects
 }
 
