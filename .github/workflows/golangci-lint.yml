@@ -27,9 +27,6 @@ jobs:
           version: v1.48.0
           args: --timeout=5m --verbose
           skip-pkg-cache: true
-          skip-dirs:
-            - design
-            - docs
 
           # Optional: working directory, useful for monorepos
           # working-directory: somedir
