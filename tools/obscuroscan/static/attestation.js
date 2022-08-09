@@ -5,8 +5,8 @@ const eventDomLoaded = "DOMContentLoaded";
 const idAttestation = "attestation";
 const idAttestationReport = "attestationReport";
 
-const pathAttestation = "/attestation/";
-const pathAttestationReport = "/attestationreport/"
+const pathAttestation = "/api/attestation/";
+const pathAttestationReport = "/api/attestationreport/"
 
 // Updates the displayed stats.
 async function displayAttestation() {

@@ -39,6 +39,7 @@ import (
 )
 
 const (
+	pathAPI               = "/api"
 	pathNumRollups        = "/numrollups/"
 	pathNumTxs            = "/numtxs/"
 	pathGetRollupTime     = "/rolluptime/"
@@ -49,9 +50,12 @@ const (
 	pathDecryptTxBlob     = "/decrypttxblob/"
 	pathAttestation       = "/attestation/"
 	pathAttestationReport = "/attestationreport/"
-	staticDir             = "static"
 	pathRoot              = "/"
-	httpCodeErr           = 500
+
+	staticDir   = "static"
+	extDivider  = "."
+	extHTML     = ".html"
+	httpCodeErr = 500
 )
 
 //go:embed static
@@ -83,26 +87,32 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
-	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)            // Get the number of published rollups.
-	serveMux.HandleFunc(pathNumTxs, o.getNumTransactions)           // Get the number of rolled-up transactions.
-	serveMux.HandleFunc(pathGetRollupTime, o.getRollupTime)         // Get the average rollup time.
-	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups)      // Get the latest rollup numbers.
-	serveMux.HandleFunc(pathLatestTxs, o.getLatestTxs)              // Get the latest transaction hashes.
-	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)       // Get the rollup given its number or the hash of a transaction it contains.
-	serveMux.HandleFunc(pathBlock, o.getBlock)                      // Get the L1 block with the given number.
-	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)         // Decrypt a transaction blob.
-	serveMux.HandleFunc(pathAttestation, o.attestation)             // Retrieve the node's attestation.
-	serveMux.HandleFunc(pathAttestationReport, o.attestationReport) // Retrieve the node's attestation report.
+	serveMux.HandleFunc(pathAPI+pathNumRollups, o.getNumRollups)            // Get the number of published rollups.
+	serveMux.HandleFunc(pathAPI+pathNumTxs, o.getNumTransactions)           // Get the number of rolled-up transactions.
+	serveMux.HandleFunc(pathAPI+pathGetRollupTime, o.getRollupTime)         // Get the average rollup time.
+	serveMux.HandleFunc(pathAPI+pathLatestRollups, o.getLatestRollups)      // Get the latest rollup numbers.
+	serveMux.HandleFunc(pathAPI+pathLatestTxs, o.getLatestTxs)              // Get the latest transaction hashes.
+	serveMux.HandleFunc(pathAPI+pathRollup, o.getRollupByNumOrTxHash)       // Get the rollup given its number or the hash of a transaction it contains.
+	serveMux.HandleFunc(pathAPI+pathBlock, o.getBlock)                      // Get the L1 block with the given number.
+	serveMux.HandleFunc(pathAPI+pathDecryptTxBlob, o.decryptTxBlob)         // Decrypt a transaction blob.
+	serveMux.HandleFunc(pathAPI+pathAttestation, o.attestation)             // Retrieve the node's attestation.
+	serveMux.HandleFunc(pathAPI+pathAttestationReport, o.attestationReport) // Retrieve the node's attestation report.
 
 	// Serves the web assets for the user interface.
-	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	staticFileFS, err := fs.Sub(staticFiles, staticDir)
 	if err != nil {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
 	}
-	serveMux.Handle(pathRoot, http.FileServer(http.FS(noPrefixStaticFiles)))
+	staticFileFilesystem := http.FileServer(http.FS(staticFileFS))
+	serveMux.Handle(pathRoot, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If we get a request without an extension (other than for the root), we tack on ".html".
+		if r.URL.Path != pathRoot && !strings.Contains(r.URL.Path, extDivider) {
+			r.URL.Path += extHTML
+		}
+		staticFileFilesystem.ServeHTTP(w, r)
+	}))
 
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
-
 	err = o.server.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)

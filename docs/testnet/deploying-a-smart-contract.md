@@ -9,11 +9,8 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
 
 Follow the steps [here](../wallet-extension/wallet-extension.md) to configure and start the wallet extension and 
-generate a viewing key. The wallet extension should be started with the following flags:
+generate a viewing key. 
 
-```
---nodeHost=testnet.obscu.ro --nodePortHTTP=13000 --nodePortWS=13001
-```
 
 If you do not have the Obscuro wallet extension running, MetaMask will not be able to communicate with the Obscuro 
 Testnet.
