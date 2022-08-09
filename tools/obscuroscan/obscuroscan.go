@@ -49,9 +49,12 @@ const (
 	pathDecryptTxBlob     = "/decrypttxblob/"
 	pathAttestation       = "/attestation/"
 	pathAttestationReport = "/attestationreport/"
-	staticDir             = "static"
 	pathRoot              = "/"
-	httpCodeErr           = 500
+
+	staticDir   = "static"
+	extDivider  = "."
+	extHTML     = ".html"
+	httpCodeErr = 500
 )
 
 //go:embed static
@@ -100,7 +103,13 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
 	}
 	staticFileFilesystem := http.FileServer(http.FS(staticFileFS))
-	serveMux.Handle(pathRoot, staticFileFilesystem)
+	serveMux.Handle(pathRoot, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If we get a request without an extension (other than for the root), we tack on ".html".
+		if r.URL.Path != pathRoot && !strings.Contains(r.URL.Path, extDivider) {
+			r.URL.Path += extHTML
+		}
+		staticFileFilesystem.ServeHTTP(w, r)
+	}))
 
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
 	err = o.server.ListenAndServe()
