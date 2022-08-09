@@ -35,7 +35,8 @@ type RPCHandles struct {
 
 	// an RPC client per node per wallet, with a viewing key setup (on the client and registered on its corresponding host enclave),
 	//	to mimic user acc interaction via a wallet extension
-	// map of address hex string -> slice of clients (indexed by node)
+	// map of owner addresses to RPC clients for that owner (one per L2 node)
+	// todo: simplify this with a client per node when we have clients that can support multiple wallets
 	VirtualWalletExtensionClients map[string][]rpcclientlib.Client
 }
 
@@ -47,7 +48,7 @@ func (n *RPCHandles) RndObscuroClient() rpcclientlib.Client {
 	return n.ObscuroClients[rand.Intn(len(n.ObscuroClients))] //nolint:gosec
 }
 
-// ObscuroWalletRndClient fetches a client for a given wallet connected to a random node
+// ObscuroWalletRndClient fetches an RPC client connected to a random L2 node for a given wallet
 func (n *RPCHandles) ObscuroWalletRndClient(wallet wallet.Wallet) rpcclientlib.Client {
 	addr := wallet.Address().String()
 	clients := n.VirtualWalletExtensionClients[addr]

@@ -87,21 +87,6 @@ func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockH
 	return walletClients
 }
 
-// createAuthenticatedClientsForWallet takes a wallet and sets up a client for it for every node
-func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []rpcclientlib.Client {
-	clients := make([]rpcclientlib.Client, len(nodes))
-	for i, node := range nodes {
-		c := p2p.NewInMemoryViewingKeyClient(node)
-
-		err := viewkey.GenerateAndRegisterViewingKey(c, wal)
-		if err != nil {
-			panic(err)
-		}
-		clients[i] = c
-	}
-	return clients
-}
-
 // todo: this method is quite heavy, should refactor to separate out the creation of the nodes, starting of the nodes, setup of the RPC clients etc.
 func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string][]rpcclientlib.Client) {
 	// handle to the obscuro clients
@@ -163,18 +148,33 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	// round-robin the wallets onto the different obscuro nodes, register them each a viewing key
 	walletClients := make(map[string][]rpcclientlib.Client)
 	for _, w := range params.Wallets.SimObsWallets {
-		walletClients[w.Address().String()] = createAuthenticatedClientsForWallet(nodeRPCAddresses, w)
+		walletClients[w.Address().String()] = createRPCClientsForWallet(nodeRPCAddresses, w)
 	}
 	for _, t := range params.Wallets.Tokens {
 		w := t.L2Owner
-		walletClients[w.Address().String()] = createAuthenticatedClientsForWallet(nodeRPCAddresses, w)
+		walletClients[w.Address().String()] = createRPCClientsForWallet(nodeRPCAddresses, w)
 	}
 
 	return obscuroClients, walletClients
 }
 
-// createAuthenticatedClientsForWallet takes a wallet and sets up a client for it for every node
-func createAuthenticatedClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []rpcclientlib.Client {
+// createRPCClientsForWallet takes a wallet and sets up a client for it for every node
+func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []rpcclientlib.Client {
+	clients := make([]rpcclientlib.Client, len(nodes))
+	for i, node := range nodes {
+		c := p2p.NewInMemoryViewingKeyClient(node)
+
+		err := viewkey.GenerateAndRegisterViewingKey(c, wal)
+		if err != nil {
+			panic(err)
+		}
+		clients[i] = c
+	}
+	return clients
+}
+
+// createRPCClientsForWallet takes a wallet and sets up a client for it for every node
+func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []rpcclientlib.Client {
 	clients := make([]rpcclientlib.Client, len(nodeRPCAddresses))
 	for i, addr := range nodeRPCAddresses {
 		c, err := rpcclientlib.NewViewingKeyNetworkClient(addr)

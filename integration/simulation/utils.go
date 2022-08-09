@@ -130,6 +130,7 @@ func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractA
 	}
 
 	b := new(big.Int)
+	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
 	b.SetString(response[2:], 16)
 	return b.Uint64()
 }
