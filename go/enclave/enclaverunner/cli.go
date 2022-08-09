@@ -26,7 +26,6 @@ type EnclaveConfigToml struct {
 	LogLevel                  string
 	LogPath                   string
 	UseInMemoryDB             bool
-	ViewingKeysEnabled        bool
 	GenesisJSON               string
 	EdgelessDBHost            string
 	SqliteDBPath              string
@@ -53,7 +52,6 @@ func ParseConfig() config.EnclaveConfig {
 	loglevel := flag.String(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
 	logPath := flag.String(logPathName, cfg.LogPath, flagUsageMap[logPathName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
-	viewingKeysEnabled := flag.Bool(ViewingKeysEnabledName, cfg.ViewingKeysEnabled, flagUsageMap[ViewingKeysEnabledName])
 	edgelessDBHost := flag.String(edgelessDBHostName, cfg.EdgelessDBHost, flagUsageMap[edgelessDBHostName])
 	sqliteDBPath := flag.String(sqliteDBPathName, cfg.SqliteDBPath, flagUsageMap[sqliteDBPathName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
@@ -89,7 +87,6 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.LogLevel = *loglevel
 	cfg.LogPath = *logPath
 	cfg.UseInMemoryDB = *useInMemoryDB
-	cfg.ViewingKeysEnabled = *viewingKeysEnabled
 	cfg.EdgelessDBHost = *edgelessDBHost
 	cfg.SqliteDBPath = *sqliteDBPath
 	cfg.ProfilerEnabled = *profilerEnabled
@@ -130,7 +127,6 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
-		ViewingKeysEnabled:        tomlConfig.ViewingKeysEnabled,
 		GenesisJSON:               []byte(tomlConfig.GenesisJSON),
 		EdgelessDBHost:            tomlConfig.EdgelessDBHost,
 		SqliteDBPath:              tomlConfig.SqliteDBPath,

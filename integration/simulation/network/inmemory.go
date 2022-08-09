@@ -61,10 +61,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			nil,
 			params.Wallets.NodeWallets[i],
 			miner,
-			params.ViewingKeysEnabled,
 			params.Wallets,
 		)
-		obscuroClient := p2p.NewInMemObscuroClient(agg)
+		obscuroClient := p2p.NewInMemoryViewingKeyClient(agg)
 
 		// and connect them to each other
 		miner.AddClient(agg)
@@ -100,7 +99,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	walletClients := setupWalletClientsWithoutViewingKeys(params, n.obscuroClients)
+	walletClients := setupInMemWalletClients(params, obscuroNodes)
 
 	return &RPCHandles{
 		EthClients:                    l1Clients,

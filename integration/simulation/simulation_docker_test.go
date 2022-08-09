@@ -30,7 +30,6 @@ func TestDockerNodesMonteCarloSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold: 0.8, // nodes might stop producing rollups but the geth network is still going
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationDocker,
-		ViewingKeysEnabled:        false,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 20
 	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 2

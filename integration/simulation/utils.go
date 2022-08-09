@@ -1,9 +1,9 @@
 package simulation
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -20,9 +20,7 @@ import (
 )
 
 const (
-	testLogs             = "../.build/simulations/"
-	jsonKeyStatus        = "status"
-	receiptStatusFailure = "0x0"
+	testLogs = "../.build/simulations/"
 )
 
 func setupSimTestLog(simType string) {
@@ -90,41 +88,24 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 }
 
 // Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) map[string]interface{} {
-	var encryptedResponse string
-	err := client.Call(&encryptedResponse, rpcclientlib.RPCGetTransactionByHash, txHash.Hex())
+func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *types.Transaction {
+	var tx types.Transaction
+	err := client.Call(&tx, rpcclientlib.RPCGetTransactionByHash, txHash.Hex())
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
 	}
 
-	var responseJSONMap map[string]interface{}
-	err = json.Unmarshal(gethcommon.Hex2Bytes(encryptedResponse), &responseJSONMap)
-	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not unmarshal JSON response to %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
-	}
-
-	return responseJSONMap
+	return &tx
 }
 
 // Returns the transaction receipt for the given transaction hash.
-func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) map[string]interface{} {
-	var encryptedResponse string
-	err := client.Call(&encryptedResponse, rpcclientlib.RPCGetTxReceipt, txHash.Hex())
+func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) *types.Receipt {
+	var rec types.Receipt
+	err := client.Call(&rec, rpcclientlib.RPCGetTxReceipt, txHash.Hex())
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
 	}
-
-	if encryptedResponse == "" {
-		panic(fmt.Errorf("simulation failed because there was no receipt for transaction %s", txHash))
-	}
-
-	var responseJSONMap map[string]interface{}
-	err = json.Unmarshal(gethcommon.Hex2Bytes(encryptedResponse), &responseJSONMap)
-	if err != nil {
-		panic(fmt.Errorf("simulation failed because could not unmarshall JSON response to %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
-	}
-
-	return responseJSONMap
+	return &rec
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
@@ -139,18 +120,19 @@ func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractA
 		rollupchain.CallFieldData: convertedData,
 	}
 
-	var encryptedResponse string
-	err := client.Call(&encryptedResponse, method, params)
+	var response string
+	err := client.Call(&response, method, params)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
-	bytes, err := hexutil.Decode(string(gethcommon.Hex2Bytes(encryptedResponse)))
-	if err != nil {
-		panic(fmt.Errorf("could not decode ERC20 balance response for node. Response was %s. Cause: %w", encryptedResponse, err))
+	if !strings.HasPrefix(response, "0x") {
+		panic(fmt.Errorf("expected hex formatted balance string but was: %s", response))
 	}
-	r := new(big.Int)
-	r = r.SetBytes(bytes)
-	return r.Uint64()
+
+	b := new(big.Int)
+	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
+	b.SetString(response[2:], 16)
+	return b.Uint64()
 }
 
 // FindHashDups - returns a map of all hashes that appear multiple times, and how many times
