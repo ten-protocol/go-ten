@@ -48,11 +48,11 @@ The diagram below lays out the flows.
 2. Open a command prompt and start the wallet extension by running the `wallet_extension` binary. The wallet extension 
    supports the following flags:
 
-   * `port` (default: `3000`): The local port on which to serve the wallet extension
-   * `nodeHost` (default: `127.0.0.1`): The host machine for the Obscuro node
-   * `nodePortHTTP` (default: `13000`): The Obscuro node's HTTP RPC port
-   * `nodePortWS` (default: `13001`): The Obscuro node's websockets RPC port
-   * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs
+   * `port` (default: `3000`): The local port on which to serve the wallet extension.
+   * `nodeHost` (default: `testnet.obscu.ro`): The Obscuro node for the RPC connection.
+   * `nodePortHTTP` (default: `13000`): The Obscuro node's HTTP RPC port.
+   * `nodePortWS` (default: `13001`): The Obscuro node's websockets RPC port.
+   * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs.
 
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
    assume that the default port of `3000` was selected.
