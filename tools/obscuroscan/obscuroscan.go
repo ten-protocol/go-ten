@@ -39,6 +39,7 @@ import (
 )
 
 const (
+	pathAPI               = "/api"
 	pathNumRollups        = "/numrollups/"
 	pathNumTxs            = "/numtxs/"
 	pathGetRollupTime     = "/rolluptime/"
@@ -86,16 +87,16 @@ func NewObscuroscan(address string) *Obscuroscan {
 func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux := http.NewServeMux()
 
-	serveMux.HandleFunc(pathNumRollups, o.getNumRollups)            // Get the number of published rollups.
-	serveMux.HandleFunc(pathNumTxs, o.getNumTransactions)           // Get the number of rolled-up transactions.
-	serveMux.HandleFunc(pathGetRollupTime, o.getRollupTime)         // Get the average rollup time.
-	serveMux.HandleFunc(pathLatestRollups, o.getLatestRollups)      // Get the latest rollup numbers.
-	serveMux.HandleFunc(pathLatestTxs, o.getLatestTxs)              // Get the latest transaction hashes.
-	serveMux.HandleFunc(pathRollup, o.getRollupByNumOrTxHash)       // Get the rollup given its number or the hash of a transaction it contains.
-	serveMux.HandleFunc(pathBlock, o.getBlock)                      // Get the L1 block with the given number.
-	serveMux.HandleFunc(pathDecryptTxBlob, o.decryptTxBlob)         // Decrypt a transaction blob.
-	serveMux.HandleFunc(pathAttestation, o.attestation)             // Retrieve the node's attestation.
-	serveMux.HandleFunc(pathAttestationReport, o.attestationReport) // Retrieve the node's attestation report.
+	serveMux.HandleFunc(pathAPI+pathNumRollups, o.getNumRollups)            // Get the number of published rollups.
+	serveMux.HandleFunc(pathAPI+pathNumTxs, o.getNumTransactions)           // Get the number of rolled-up transactions.
+	serveMux.HandleFunc(pathAPI+pathGetRollupTime, o.getRollupTime)         // Get the average rollup time.
+	serveMux.HandleFunc(pathAPI+pathLatestRollups, o.getLatestRollups)      // Get the latest rollup numbers.
+	serveMux.HandleFunc(pathAPI+pathLatestTxs, o.getLatestTxs)              // Get the latest transaction hashes.
+	serveMux.HandleFunc(pathAPI+pathRollup, o.getRollupByNumOrTxHash)       // Get the rollup given its number or the hash of a transaction it contains.
+	serveMux.HandleFunc(pathAPI+pathBlock, o.getBlock)                      // Get the L1 block with the given number.
+	serveMux.HandleFunc(pathAPI+pathDecryptTxBlob, o.decryptTxBlob)         // Decrypt a transaction blob.
+	serveMux.HandleFunc(pathAPI+pathAttestation, o.attestation)             // Retrieve the node's attestation.
+	serveMux.HandleFunc(pathAPI+pathAttestationReport, o.attestationReport) // Retrieve the node's attestation report.
 
 	// Serves the web assets for the user interface.
 	staticFileFS, err := fs.Sub(staticFiles, staticDir)

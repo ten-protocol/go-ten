@@ -28,14 +28,14 @@ const idTxThree = "txThree";
 const idTxFour = "txFour";
 const idTxFive = "txFive";
 
-const pathNumRollups = "/numrollups/";
-const pathNumTxs = "/numtxs/";
-const pathRollupTime = "/rolluptime/";
-const pathLatestRollups = "/latestrollups/";
-const pathLatestTxs = "/latesttxs/";
-const pathBlock = "/block/";
-const pathRollup = "/rollup/";
-const pathDecryptTxBlob = "/decrypttxblob/";
+const pathNumRollups = "/api/numrollups/";
+const pathNumTxs = "/api/numtxs/";
+const pathRollupTime = "/api/rolluptime/";
+const pathLatestRollups = "/api/latestrollups/";
+const pathLatestTxs = "/api/latesttxs/";
+const pathBlock = "/api/block/";
+const pathRollup = "/api/rollup/";
+const pathDecryptTxBlob = "/api/decrypttxblob/";
 
 // Updates the displayed stats.
 async function updateStats() {
