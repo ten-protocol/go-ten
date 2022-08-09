@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -530,7 +531,7 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 	if resp.Body != nil {
 		defer resp.Body.Close()
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
