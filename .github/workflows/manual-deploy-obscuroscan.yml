@@ -22,19 +22,19 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v1
 
-      # to be used when our dockerhub account is fixed
-      #      - name: Login to DockerHub
-      #        uses: docker/login-action@v2
-      #        with:
-      #          username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      #
-      #      - name: Build and push
-      #        uses: docker/build-push-action@v3
-      #        with:
-      #          push: true
-      #          tags: obscuronet/obscuro_testnet_l1network:latest
-      #          file: ./testnet/gethnetwork.Dockerfile
+# to be used when our dockerhub account is fixed
+#      - name: Login to DockerHub
+#        uses: docker/login-action@v2
+#        with:
+#          username: ${{ secrets.DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#
+#      - name: Build and push
+#        uses: docker/build-push-action@v3
+#        with:
+#          push: true
+#          tags: obscuronet/obscuro_testnet_l1network:latest
+#          file: ./testnet/gethnetwork.Dockerfile
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -67,4 +67,5 @@ jobs:
           ports: '80'
           cpu: 2
           memory: 2
+
 
