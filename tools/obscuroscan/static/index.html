@@ -12,22 +12,36 @@
     <script src="https://kit.fontawesome.com/dca3f6735f.js" crossorigin="anonymous"></script>
 </head>
 
-<nav class="navbar bg-dark">
+<body>
+<nav class="navbar navbar-expand-lg bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">
+        <a class="navbar-brand" href="">
             <img src="logo.png" alt="" height="36">
         </a>
-        <ul class="navbar-nav ms-md-auto">
+        <ul class="navbar-nav ms-md-auto navbar-nav-scroll">
+            <li>
+                <form class="d-flex" role="search" id="form-get-rollup">
+                    <input class="form-control me-2" type="search" id="rollupID" placeholder="Rollup # or tx hash">
+                    <button type="submit" class="btn btn-outline-light">Search</button>
+                </form>
+            </li>
+            <li class="nav-item dropdown px-lg-4">
+                <a class="nav-link link-light dropdown-toggle" href="" role="button" data-bs-toggle="dropdown"
+                   aria-expanded="false">
+                    Menu
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="/">Home</a></li>
+                    <!-- Add dropdown item for attestation page, once verification is working. -->
+                    <li><a class="dropdown-item" href="/game">Guessing game</a></li>
+                </ul>
+            </li>
             <li class="nav-item">
-                <a class="nav-link px-lg-4" href="https://discord.gg/yQfmKeNzNd" target="_blank">
+                <a class="nav-link" href="https://discord.gg/yQfmKeNzNd" target="_blank">
                     <i class="fab fa-discord" style="color: #fff;"></i>
                 </a>
             </li>
         </ul>
-        <form class="d-flex" role="search" id="form-get-rollup">
-            <input class="form-control me-2" type="search" id="rollupID" placeholder="Rollup # or tx hash">
-            <button type="submit" class="btn btn-outline-light">Search</button>
-        </form>
     </div>
 </nav>
 
