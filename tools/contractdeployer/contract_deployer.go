@@ -167,7 +167,7 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		}
 		address := common.BytesToAddress(common.Hex2Bytes(cfg.ConstructorParams[1]))
 
-		return guessinggame.Bytecode(size, address)
+		return guessinggame.Bytecode(uint8(size), address)
 
 	default:
 		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)
