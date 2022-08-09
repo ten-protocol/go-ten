@@ -108,6 +108,7 @@ func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) *
 	if &rec == nil {
 		panic(fmt.Errorf("simulation failed because there was no receipt for transaction %s", txHash))
 	}
+	return &rec
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.

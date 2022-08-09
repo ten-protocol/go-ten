@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 
@@ -61,7 +61,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	// Create a handle to each node
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	for i, node := range obscuroNodes {
-		obscuroClients[i] = host.NewInMemoryViewingKeyClient(node)
+		obscuroClients[i] = p2p.NewInMemoryViewingKeyClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 
@@ -73,7 +73,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 // setupWalletClientsWithoutViewingKeys will configure the existing obscuro clients to be used as wallet clients,
 // (we typically keep a client per wallet so their viewing keys are available and registered but they can share clients
 // 	if no viewing keys are in use)
-func setupWalletClients(params *params.SimParams, obscuroNodes []*host.Node) map[string][]rpcclientlib.Client {
+func setupWalletClients(params *params.SimParams, obscuroNodes []host.MockHost) map[string][]rpcclientlib.Client {
 	walletClients := make(map[string][]rpcclientlib.Client)
 	var i int
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
@@ -90,10 +90,10 @@ func setupWalletClients(params *params.SimParams, obscuroNodes []*host.Node) map
 }
 
 // createAuthenticatedClientsForWallet takes a wallet and sets up a client for it for every node
-func createInMemoryClientsForWallet(nodes []*host.Node, wal wallet.Wallet) []rpcclientlib.Client {
+func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []rpcclientlib.Client {
 	clients := make([]rpcclientlib.Client, len(nodes))
 	for i, node := range nodes {
-		c := host.NewInMemoryViewingKeyClient(node)
+		c := p2p.NewInMemoryViewingKeyClient(node)
 
 		err := viewkey.GenerateAndRegisterViewingKey(c, wal)
 		if err != nil {

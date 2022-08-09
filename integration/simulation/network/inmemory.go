@@ -63,7 +63,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			miner,
 			params.Wallets,
 		)
-		obscuroClient := host.NewInMemoryViewingKeyClient(agg)
+		obscuroClient := p2p.NewInMemoryViewingKeyClient(agg)
 
 		// and connect them to each other
 		miner.AddClient(agg)

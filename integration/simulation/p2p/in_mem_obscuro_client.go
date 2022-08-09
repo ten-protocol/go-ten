@@ -48,7 +48,7 @@ func NewInMemObscuroClient(nodeHost host.Host) rpcclientlib.Client {
 	}
 }
 
-func NewInMemoryViewingKeyClient(host *Node) *rpcclientlib.ViewingKeyClient {
+func NewInMemoryViewingKeyClient(host host.Host) *rpcclientlib.ViewingKeyClient {
 	inMemClient := NewInMemObscuroClient(host)
 	vkClient, err := rpcclientlib.NewViewingKeyClient(inMemClient)
 	if err != nil {
@@ -94,7 +94,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		c.obscuroAPI.StopHost()
 
 	case rpcclientlib.RPCAddViewingKey:
-		c.addViewingKey(args)
+		return c.addViewingKey(args)
 
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
@@ -118,11 +118,13 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	if err != nil {
 		return err
 	}
-	encryptedTx, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
+	encryptedResponse, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
 	if err != nil {
 		return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
 	}
-	result = encryptedTx
+
+	// GetTransactionByHash returns string pointer, we want string
+	*result.(*interface{}) = *encryptedResponse
 	return nil
 }
 
@@ -135,7 +137,7 @@ func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) err
 	if err != nil {
 		return fmt.Errorf("`eth_call` call failed. Cause: %w", err)
 	}
-	*result.(*string) = encryptedResponse
+	*result.(*interface{}) = encryptedResponse
 	return nil
 }
 
@@ -148,7 +150,9 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 	if err != nil {
 		return fmt.Errorf("`obscuro_getTransactionReceipt` call failed. Cause: %w", err)
 	}
-	*result.(*string) = *encryptedResponse
+
+	// GetTransactionReceipt returns string pointer, we want string
+	*result.(*interface{}) = *encryptedResponse
 	return nil
 }
 
