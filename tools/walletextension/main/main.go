@@ -17,7 +17,8 @@ const (
 func main() {
 	config := parseCLIArgs()
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
-	fmt.Printf("Wallet extension starting with following config: \n%s\n", string(jsonConfig))
+	fmt.Printf("Welcome to the Obscuro wallet extension. \n\n")
+	fmt.Printf("Starting with following config: \n%s\n", string(jsonConfig))
 
 	// We wait thirty seconds for a connection to the node. If we cannot establish one, we exit the program.
 	fmt.Printf("Waiting up to thirty seconds for connection to host at %s...\n", config.NodeRPCHTTPAddress)
