@@ -28,7 +28,10 @@ type AttestationProvider interface {
 type EgoAttestationProvider struct{}
 
 func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
-	idHash := getIDHash(owner, pubKey, hostAddress)
+	idHash, err := getIDHash(owner, pubKey, hostAddress)
+	if err != nil {
+		return nil, err
+	}
 	report, err := enclave.GetRemoteReport(idHash)
 	if err != nil {
 		return nil, err
@@ -64,23 +67,29 @@ func (e *DummyAttestationProvider) GetReport(pubKey []byte, owner gethcommon.Add
 }
 
 func (e *DummyAttestationProvider) VerifyReport(att *common.AttestationReport) ([]byte, error) {
-	return getIDHash(att.Owner, att.PubKey, att.HostAddress), nil
+	return getIDHash(att.Owner, att.PubKey, att.HostAddress)
 }
 
 // getIDHash provides a hash of identifying data to be included in an attestation report (or verified against the contents of an attestation report)
-func getIDHash(owner gethcommon.Address, pubKey []byte, hostAddress string) []byte {
+func getIDHash(owner gethcommon.Address, pubKey []byte, hostAddress string) ([]byte, error) {
 	idData := IDData{
 		Owner:       owner,
 		PubKey:      pubKey,
 		HostAddress: hostAddress,
 	}
-	idJSON, _ := json.Marshal(idData)
+	idJSON, err := json.Marshal(idData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format ID data as JSON. Cause: %w", err)
+	}
 	hash := sha256.Sum256(idJSON)
-	return hash[:]
+	return hash[:], nil
 }
 
 func VerifyIdentity(data []byte, att *common.AttestationReport) error {
-	expectedIDHash := getIDHash(att.Owner, att.PubKey, att.HostAddress)
+	expectedIDHash, err := getIDHash(att.Owner, att.PubKey, att.HostAddress)
+	if err != nil {
+		return fmt.Errorf("failed to create ID data to check attestation report with owner: %s. Cause: %w", att.Owner, err)
+	}
 	// we trim the actual data because data extracted from the verified attestation is always 64 bytes long (padded with zeroes at the end)
 	if !bytes.Equal(expectedIDHash, data[:len(expectedIDHash)]) {
 		return fmt.Errorf("failed to verify hash for attestation report with owner: %s", att.Owner)

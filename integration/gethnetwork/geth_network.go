@@ -249,7 +249,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 	dataDir := network.dataDirs[nodeIdx]
 
 	args := []string{dataDirFlag, dataDir, attachCmd, path.Join(dataDir, ipcFileName), execFlag, command}
-	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd := exec.Command(network.gethBinaryPath, args...) //nolint
 	cmd.Stderr = network.logNodeID(nodeIdx)
 
 	output, err := cmd.Output()
@@ -294,7 +294,7 @@ func (network *GethNetwork) createMiner(dataDir string, idx int) {
 // Creates an account for a Geth node.
 func (network *GethNetwork) createAccount(dataDirPath string) {
 	args := []string{dataDirFlag, dataDirPath, accountCmd, accountNewCmd, passwordFlag, network.passwordFilePath}
-	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd := exec.Command(network.gethBinaryPath, args...) //nolint
 	cmd.Stdout = network.logFile
 	cmd.Stderr = network.logFile
 
@@ -331,7 +331,7 @@ func (network *GethNetwork) retrieveAccount(dataDirPath string) string {
 // Initialises a Geth node based on the network genesis file.
 func (network *GethNetwork) initNode(dataDirPath string) {
 	args := []string{dataDirFlag, dataDirPath, initCmd, network.genesisFilePath}
-	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd := exec.Command(network.gethBinaryPath, args...) //nolint
 	cmd.Stdout = network.logFile
 	cmd.Stderr = network.logFile
 
@@ -354,7 +354,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 		httpAddrFlag, "0.0.0.0", wsAddrFlag, "0.0.0.0", httpVhostsFlag, "*", gasLimitFlag,
 		blockProductionIntervalFlag, strconv.Itoa(network.blockTimeSecs),
 	}
-	cmd := exec.Command(network.gethBinaryPath, args...) // nolint
+	cmd := exec.Command(network.gethBinaryPath, args...) //nolint
 
 	cmd.Stdout = network.logNodeID(idx)
 	cmd.Stderr = network.logNodeID(idx)
