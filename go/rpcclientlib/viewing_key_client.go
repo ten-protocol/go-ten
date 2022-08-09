@@ -65,7 +65,7 @@ type ViewingKeyClient struct {
 func (c *ViewingKeyClient) Call(result interface{}, method string, args ...interface{}) error {
 	if !isSensitive(method) {
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
-		return c.obscuroClient.Call(&result, method, args...)
+		return c.obscuroClient.Call(result, method, args...)
 	}
 
 	// we setup a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
@@ -96,8 +96,8 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 		return fmt.Errorf("%s rpc call failed - %w", method, err)
 	}
 
-	// if caller not interested in response, we're done
-	if result == nil {
+	// if caller not interested in response or there was a nil response, we're done
+	if result == nil || rawResult == nil {
 		return nil
 	}
 
@@ -138,23 +138,8 @@ func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 }
 
 func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
-	// For some RPC operations, a nil is a valid response (e.g. the transaction for an unrecognised transaction hash).
-	if resultBlob == nil {
-		return nil, nil
-	}
-
 	if c.viewingPrivKey == nil {
-		// todo: remove this non-decryption part when we make viewing key encryption mandatory across all tests
-		// extract result from the data as-is, in case we can't decrypt/process it below
-		unencrypted, ok := resultBlob.([]byte) // if viewing key was nil we try and extract result from the data as-is
-		if !ok {
-			decStr, ok := resultBlob.(string)
-			if ok {
-				unencrypted = []byte(decStr)
-			}
-		}
-		// todo: remove this when we no longer support disabling viewing keys for testing
-		return unencrypted, nil
+		return nil, fmt.Errorf("cannot decrypt response, viewing key has not been setup")
 	}
 	resultStr, ok := resultBlob.(string)
 	if !ok {

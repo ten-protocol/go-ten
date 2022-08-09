@@ -16,7 +16,6 @@ const (
 	logLevelName                  = "logLevel"
 	logPathName                   = "logPath"
 	useInMemoryDBName             = "useInMemoryDB"
-	ViewingKeysEnabledName        = "viewingKeysEnabled"
 	edgelessDBHostName            = "edgelessDBHost"
 	sqliteDBPathName              = "sqliteDBPath"
 	profilerEnabledName           = "profilerEnabled"
@@ -40,7 +39,6 @@ func getFlagUsageMap() map[string]string {
 		logLevelName:                  "The verbosity level of logs. (Defaults to Info)",
 		logPathName:                   "The path to use for the enclave service's log file",
 		useInMemoryDBName:             "Whether the enclave will use an in-memory DB rather than persist data",
-		ViewingKeysEnabledName:        "Whether the enclave should encrypt responses to sensitive requests with viewing keys",
 		edgelessDBHostName:            "Host address for the edgeless DB instance (can be empty if useInMemoryDB is true or if not using attestation",
 		sqliteDBPathName:              "Filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB or if using attestation/EdgelessDB)",
 		profilerEnabledName:           "Runs a profiler instance (Defaults to false)",

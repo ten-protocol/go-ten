@@ -185,7 +185,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		panic(err)
 	}
 
-	err = ti.rpcHandles.ObscuroWalletClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+	err = ti.rpcHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
 	}
@@ -222,7 +222,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = ti.rpcHandles.ObscuroWalletClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rpcHandles.ObscuroWalletRndClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -284,7 +284,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			common.ShortAddress(obsWallet.Address()),
 		)
 
-		err = ti.rpcHandles.ObscuroWalletClient(obsWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rpcHandles.ObscuroWalletRndClient(obsWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -311,7 +311,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		err := ti.rpcHandles.ObscuroWalletClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
@@ -392,7 +392,7 @@ func NextNonce(clients *network.RPCHandles, w wallet.Wallet) uint64 {
 
 	// only returns the nonce when the previous transaction was recorded
 	for {
-		remoteNonce := readNonce(clients.ObscuroWalletClient(w), w.Address())
+		remoteNonce := readNonce(clients.ObscuroWalletRndClient(w), w.Address())
 		localNonce := w.GetNonce()
 		if remoteNonce == localNonce {
 			return w.GetNonceAndIncrement()

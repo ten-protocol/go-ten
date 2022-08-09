@@ -29,16 +29,14 @@ var placeholderResult = []byte("0x")
 
 // RPCEncryptionManager manages the decryption and encryption of sensitive RPC requests.
 type RPCEncryptionManager struct {
-	viewingKeysEnabled     bool
 	enclavePrivateKeyECIES *ecies.PrivateKey
 	// TODO - Replace with persistent storage.
 	// TODO - Handle multiple viewing keys per address.
 	viewingKeys map[gethcommon.Address]*ecies.PublicKey
 }
 
-func NewRPCEncryptionManager(viewingKeysEnabled bool, enclavePrivateKeyECIES *ecies.PrivateKey) RPCEncryptionManager {
+func NewRPCEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) RPCEncryptionManager {
 	return RPCEncryptionManager{
-		viewingKeysEnabled:     viewingKeysEnabled,
 		enclavePrivateKeyECIES: enclavePrivateKeyECIES,
 		viewingKeys:            make(map[gethcommon.Address]*ecies.PublicKey),
 	}
@@ -86,10 +84,6 @@ func (rpc *RPCEncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, 
 
 // EncryptWithViewingKey encrypts the bytes with a viewing key for the address.
 func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Address, bytes []byte) ([]byte, error) {
-	if !rpc.viewingKeysEnabled {
-		return bytes, nil
-	}
-
 	viewingKey := rpc.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())

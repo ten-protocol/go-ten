@@ -11,4 +11,3 @@ erc20ContractAddresses = []
 logLevel = "info"
 logPath = "enclave_logs.txt"
 useInMemoryDb = true
-viewingKeysEnabled = false

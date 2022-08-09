@@ -39,7 +39,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
 	// Start the obscuro nodes and return the handles
-	var walletClients map[string]rpcclientlib.Client
+	var walletClients map[string][]rpcclientlib.Client
 	n.obscuroClients, walletClients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
 
 	return &RPCHandles{

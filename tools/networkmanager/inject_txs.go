@@ -50,7 +50,7 @@ func InjectTransactions(cfg Config, args []string) {
 	wallets := createWallets(cfg, l1Client, l2Client)
 	walletClients := createWalletRPCClients(wallets, cfg.obscuroClientAddress)
 
-	netwClients := &network.RPCHandles{
+	rpcHandles := &network.RPCHandles{
 		EthClients:                    []ethadapter.EthClient{l1Client},
 		ObscuroClients:                []rpcclientlib.Client{l2Client},
 		VirtualWalletExtensionClients: walletClients,
@@ -59,7 +59,7 @@ func InjectTransactions(cfg Config, args []string) {
 	txInjector := simulation.NewTransactionInjector(
 		avgBlockDuration,
 		simStats,
-		netwClients,
+		rpcHandles,
 		wallets,
 		&cfg.mgmtContractAddress,
 		mgmtContractLib,
@@ -77,37 +77,39 @@ func InjectTransactions(cfg Config, args []string) {
 	))
 
 	checkDepositsSuccessful(txInjector, l1Client, simStats, erc20ContractLib, mgmtContractLib, startBlock)
-	checkL2TxsSuccessful(l2Client, txInjector)
+	checkL2TxsSuccessful(rpcHandles, txInjector)
 
 	os.Exit(0)
 }
 
-func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) map[string]rpcclientlib.Client {
-	clients := make(map[string]rpcclientlib.Client)
+// createWalletRPCClients creates map of wallet address to list of wallet clients (of length 1 because we have 1 node)
+func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) map[string][]rpcclientlib.Client {
+	clients := make(map[string][]rpcclientlib.Client)
 
 	for _, w := range wallets.SimObsWallets {
-		cli, err := rpcclientlib.NewViewingKeyNetworkClient(obscuroNodeAddr)
+		client, err := rpcclientlib.NewViewingKeyNetworkClient(obscuroNodeAddr)
 		if err != nil {
 			panic(err)
 		}
-		clients[w.Address().String()] = cli
 
-		err = viewkey.GenerateAndRegisterViewingKey(cli, w)
+		err = viewkey.GenerateAndRegisterViewingKey(client, w)
 		if err != nil {
 			panic(err)
 		}
+		clients[w.Address().String()] = []rpcclientlib.Client{client}
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
-		cli, err := rpcclientlib.NewViewingKeyNetworkClient(obscuroNodeAddr)
+		client, err := rpcclientlib.NewViewingKeyNetworkClient(obscuroNodeAddr)
 		if err != nil {
 			panic(err)
 		}
-		clients[w.Address().String()] = cli
-		err = viewkey.GenerateAndRegisterViewingKey(cli, w)
+
+		err = viewkey.GenerateAndRegisterViewingKey(client, w)
 		if err != nil {
 			panic(err)
 		}
+		clients[w.Address().String()] = []rpcclientlib.Client{client}
 	}
 
 	return clients
@@ -183,10 +185,10 @@ func checkDepositsSuccessful(txInjector *simulation.TransactionInjector, l1Clien
 	}
 }
 
-func checkL2TxsSuccessful(l2Client rpcclientlib.Client, txInjector *simulation.TransactionInjector) {
+func checkL2TxsSuccessful(rpcHandles *network.RPCHandles, txInjector *simulation.TransactionInjector) {
 	injectedTransfers := len(txInjector.TxTracker.TransferL2Transactions)
 	injectedWithdrawals := len(txInjector.TxTracker.WithdrawalL2Transactions)
-	notFoundTransfers, notFoundWithdrawals := simulation.FindNotIncludedL2Txs(l2Client, txInjector)
+	notFoundTransfers, notFoundWithdrawals := simulation.FindNotIncludedL2Txs(0, rpcHandles, txInjector)
 
 	if notFoundTransfers != 0 {
 		println(fmt.Sprintf("Injected %d transfers into the L2 but %d were missing.", injectedTransfers, notFoundTransfers))
