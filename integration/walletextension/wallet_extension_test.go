@@ -647,22 +647,23 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 
 	sendTxJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 
-	// We wait for the Obscuro ERC20 contract deployment to be deployed.
-	txHash, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
+	// Verify the Obscuro ERC20 contract deployed successfully
+	_, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
-		panic("could not retrieve transaction hash from JSON result")
+		panic("could not retrieve transaction hash from JSON result, failed to deploy ERC20")
 	}
 
-	// We check once per second for twenty seconds whether the Obscuro ERC20 contract is deployed.
+	// We wait ten seconds for the first rollup to be published, to ensure the network is ready.
+	firstRollupIdx := 1
 	counter := 0
 	for {
-		if counter > 20 {
-			t.Fatalf("could not get receipt for Obscuro ERC20 deployment transaction after 20 seconds")
+		if counter > 10 {
+			t.Fatalf("first rollup had not been published after 10 seconds")
 		}
-		txReceiptResp := makeEthJSONReq(t, walletExtensionAddr, rpcclientlib.RPCGetTxReceipt, []string{txHash})
-		// We check whether the transaction receipt request gives a nil result, meaning the receipt isn't available.
-		isTxOnChain := !strings.Contains(string(txReceiptResp), "\"result\":\"\"")
-		if isTxOnChain {
+		rollupResp := makeEthJSONReq(t, walletExtensionAddr, rpcclientlib.RPCGetRollupHeaderByNumber, []int{firstRollupIdx})
+		// If the rollup request gives an error, the first rollup hasn't been published yet.
+		isFirstRollupPublished := !strings.Contains(string(rollupResp), "rpc request failed")
+		if isFirstRollupPublished {
 			break
 		}
 		time.Sleep(1 * time.Second)
