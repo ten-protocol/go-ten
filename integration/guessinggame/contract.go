@@ -5,7 +5,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/guessinggame/generated/Guess"
 )
 
-func Bytecode(size int, address common.Address) ([]byte, error) {
+func Bytecode(size uint8, address common.Address) ([]byte, error) {
 	parsed, err := Guess.GuessMetaData.GetAbi()
 	if err != nil {
 		return nil, err

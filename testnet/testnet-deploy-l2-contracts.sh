@@ -10,7 +10,7 @@ help_and_exit() {
     echo ""
     echo "  l2host             *Required* Set the l2 host address"
     echo ""
-    echo "  obxpkstring           *Optional* Set the pkstring to deploy OBX contract"
+    echo "  jampkstring           *Optional* Set the pkstring to deploy JAM contract"
     echo ""
     echo "  ethpkstring           *Optional* Set the pkstring to deploy ETH contract"
     echo ""
@@ -30,8 +30,9 @@ testnet_path="${start_path}"
 # Define defaults
 l2port=13000
 # todo: get rid of these defaults and require them to be passed in, using github secrets for testnet values (requires bridge.go changes)
-obxpkstring="6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
+jampkstring="6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 ethpkstring="4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
+jamerc20address="0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
 
 # Fetch options
 for argument in "$@"
@@ -42,7 +43,7 @@ do
     case "$key" in
             --l2host)                   l2host=${value} ;;
             --l2port)                   l2port=${value} ;;
-            --obxpkstring)                 obxpkstring=${value} ;;
+            --jampkstring)                 jampkstring=${value} ;;
             --ethpkstring)                 ethpkstring=${value} ;;
             --help)                     help_and_exit ;;
             *)
@@ -50,22 +51,23 @@ do
 done
 
 # ensure required fields
-if [[ -z ${l2host:-} || -z ${obxpkstring:-} || -z ${ethpkstring:-}  ]];
+if [[ -z ${l2host:-} || -z ${jampkstring:-} || -z ${ethpkstring:-}  ]];
 then
     help_and_exit
 fi
 
 # deploy contracts to the obscuro network
-echo "Deploying OBX ERC20 contract to the obscuro network..."
+echo "Deploying JAM ERC20 contract to the obscuro network..."
 docker network create --driver bridge node_network || true
-docker run --name=obxL2deployer \
+docker run --name=jamL2deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
     --contractName="ERC20" \
-    --privateKey=${obxpkstring}
+    --privateKey=${jampkstring}\
+    --constructorParams="JAM,JAM,1000000000000000000000"
 echo ""
 
 echo "Deploying ETH ERC20 contract to the obscuro network..."
@@ -76,7 +78,8 @@ docker run --name=ethL2deployer \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
     --contractName="ERC20" \
-    --privateKey=${ethpkstring}
+    --privateKey=${ethpkstring}\
+    --constructorParams="ETH,ETH,1000000000000000000000"
 echo ""
 
 echo "Deploying Guessing game contract to the obscuro network..."
@@ -87,5 +90,6 @@ docker run --name=guessingGameL2deployer \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
     --contractName="GUESS" \
-    --privateKey=${ethpkstring}
+    --privateKey=${ethpkstring}\
+    --constructorParams="100,${jamerc20address}"
 echo ""
