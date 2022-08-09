@@ -65,15 +65,13 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	walletClients := setupWalletClients(params, obscuroNodes)
+	walletClients := setupInMemWalletClients(params, obscuroNodes)
 
 	return obscuroClients, walletClients
 }
 
-// setupWalletClientsWithoutViewingKeys will configure the existing obscuro clients to be used as wallet clients,
-// (we typically keep a client per wallet so their viewing keys are available and registered but they can share clients
-// 	if no viewing keys are in use)
-func setupWalletClients(params *params.SimParams, obscuroNodes []host.MockHost) map[string][]rpcclientlib.Client {
+// setupInMemWalletClients will configure in-memory clients with viewing keys for every wallet-host combination
+func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockHost) map[string][]rpcclientlib.Client {
 	walletClients := make(map[string][]rpcclientlib.Client)
 	var i int
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
