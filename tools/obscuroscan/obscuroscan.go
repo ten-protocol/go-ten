@@ -434,7 +434,7 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 	signal.Notify(sigChannel, syscall.SIGSYS)
 	attestationReport, err := enclave.VerifyRemoteReport(attestation.Report)
 	signal.Stop(sigChannel)
-	
+
 	if err != nil {
 		log.Error("could not verify node's attestation. Cause: %s", err)
 		logAndSendErr(resp, "Could not verify node's attestation.")
