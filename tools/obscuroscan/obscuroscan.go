@@ -68,6 +68,17 @@ type Obscuroscan struct {
 	contractABI abi.ABI
 }
 
+// Identical to attestation.Report, but with the status mapped to a user-friendly string.
+type attestationReportExternal struct {
+	Data            []byte
+	SecurityVersion uint
+	Debug           bool
+	UniqueID        []byte
+	SignerID        []byte
+	ProductID       []byte
+	TCBStatus       string
+}
+
 func NewObscuroscan(address string) *Obscuroscan {
 	client, err := rpcclientlib.NewNetworkClient(address)
 	if err != nil {
@@ -423,14 +434,24 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 	signal.Notify(sigChannel, syscall.SIGSYS)
 	attestationReport, err := enclave.VerifyRemoteReport(attestation.Report)
 	signal.Stop(sigChannel)
-
+	
 	if err != nil {
 		log.Error("could not verify node's attestation. Cause: %s", err)
 		logAndSendErr(resp, "Could not verify node's attestation.")
 		return
 	}
 
-	jsonAttestationReport, err := json.Marshal(attestationReport)
+	attestationReportExt := attestationReportExternal{
+		Data:            attestationReport.Data,
+		SecurityVersion: attestationReport.SecurityVersion,
+		Debug:           attestationReport.Debug,
+		UniqueID:        attestationReport.UniqueID,
+		SignerID:        attestationReport.SignerID,
+		ProductID:       attestationReport.ProductID,
+		TCBStatus:       attestationReport.TCBStatus.String(),
+	}
+
+	jsonAttestationReport, err := json.Marshal(attestationReportExt)
 	if err != nil {
 		log.Error("could not convert node's attestation report to JSON. Cause: %s", err)
 		logAndSendErr(resp, "Could not verify node's attestation.")
