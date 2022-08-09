@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -211,14 +210,6 @@ func (c *inMemObscuroClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
 
 func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
-}
-
-func (c *inMemObscuroClient) encryptParamBytes(params []byte) ([]byte, error) {
-	encryptedParams, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, params, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not encrypt request params with enclave public key: %w", err)
-	}
-	return encryptedParams, nil
 }
 
 func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
