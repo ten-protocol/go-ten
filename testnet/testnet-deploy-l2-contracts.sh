@@ -69,7 +69,6 @@ docker run --name=obxL2deployer \
 echo ""
 
 echo "Deploying ETH ERC20 contract to the obscuro network..."
-docker network create --driver bridge node_network || true
 docker run --name=ethL2deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
@@ -77,5 +76,16 @@ docker run --name=ethL2deployer \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
     --contractName="ERC20" \
+    --privateKey=${ethpkstring}
+echo ""
+
+echo "Deploying Guessing game contract to the obscuro network..."
+docker run --name=guessingGameL2deployer \
+    --network=node_network \
+    --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
+     testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
+    --nodeHost=${l2host} \
+    --nodePort=${l2port} \
+    --contractName="GUESS" \
     --privateKey=${ethpkstring}
 echo ""

@@ -5,34 +5,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/integration/guessinggame"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
+// The types of contracts supported by the deployer
 const (
-	mgmtContract  = "MGMT"
-	erc20Contract = "ERC20"
+	mgmtContract         = "MGMT"
+	erc20Contract        = "ERC20"
+	guessingGameContract = "GUESS"
+)
+
+const (
 	timeoutWait   = 80 * time.Second
 	retryInterval = 2 * time.Second
 )
 
-type ContractDeployer struct {
+type contractDeployer struct {
 	client       ethadapter.EthClient
 	wallet       wallet.Wallet
 	contractCode []byte
 }
 
-func NewContractDeployer(config *Config) (*ContractDeployer, error) {
+func Deploy(config *Config) error {
+	deployer, err := newContractDeployer(config)
+	if err != nil {
+		return err
+	}
+	return deployer.run()
+}
+
+func newContractDeployer(config *Config) (*contractDeployer, error) {
 	cfgStr, _ := json.MarshalIndent(config, "", "  ")
 	fmt.Printf("Preparing contract deployer with config: %s\n", cfgStr)
 	wal, err := setupWallet(config)
@@ -60,14 +74,14 @@ func NewContractDeployer(config *Config) (*ContractDeployer, error) {
 		return nil, fmt.Errorf("failed to find contract bytecode to deploy - %w", err)
 	}
 
-	return &ContractDeployer{
+	return &contractDeployer{
 		client:       client,
 		wallet:       wal,
 		contractCode: contractCode,
 	}, nil
 }
 
-func (cd *ContractDeployer) Run() error {
+func (cd *contractDeployer) run() error {
 	nonce, err := cd.client.Nonce(cd.wallet.Address())
 	if err != nil {
 		return fmt.Errorf("failed to fetch wallet nonce: %w", err)
@@ -140,10 +154,20 @@ func setupClient(cfg *Config, wal wallet.Wallet) (ethadapter.EthClient, error) {
 func getContractCode(cfg *Config) ([]byte, error) {
 	switch cfg.ContractName {
 	case mgmtContract:
-		return common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode), nil
+		return managementcontract.Bytecode()
 
 	case erc20Contract:
-		return common.Hex2Bytes(erc20contract.ContractByteCode), nil
+		tokenName := cfg.ConstructorParams[0]
+		return erc20contract.BytecodeWithDefaultSupply(tokenName), nil
+
+	case guessingGameContract:
+		size, err := strconv.Atoi(cfg.ConstructorParams[0])
+		if err != nil {
+			return nil, err
+		}
+		address := common.BytesToAddress(common.Hex2Bytes(cfg.ConstructorParams[1]))
+
+		return guessinggame.Bytecode(size, address)
 
 	default:
 		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)

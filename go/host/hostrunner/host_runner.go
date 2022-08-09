@@ -6,6 +6,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/obscuronet/go-obscuro/go/host/node"
+
+	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -42,9 +46,9 @@ func RunHost(config config.HostConfig) {
 	}
 	ethWallet.SetNonce(nonce)
 
-	enclaveClient := host.NewEnclaveRPCClient(config)
+	enclaveClient := enclaverpc.NewClient(config)
 	aggP2P := p2p.NewSocketP2PLayer(config)
-	agg := host.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
+	agg := node.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
 
 	fmt.Println("Starting Obscuro host...")
 	log.Info("Starting Obscuro host...")
@@ -63,7 +67,7 @@ func setLogs(logPath string) {
 }
 
 // Shuts down the Obscuro host when an interrupt is received.
-func handleInterrupt(host *host.Node) {
+func handleInterrupt(host host.Host) {
 	interruptChannel := make(chan os.Signal, 1)
 	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 	<-interruptChannel

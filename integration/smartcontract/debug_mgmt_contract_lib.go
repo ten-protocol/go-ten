@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	generatedManagementContract "github.com/obscuronet/go-obscuro/contracts/compiledcontracts/generatedManagementContract"
+	generatedManagementContract "github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"

@@ -31,11 +31,11 @@ import (
 
 // ERC20 - the supported ERC20 tokens. A list of made-up tokens used for testing.
 // Todo - this will be removed together will all the keys and addresses.
-type ERC20 int
+type ERC20 string
 
 const (
-	OBX ERC20 = iota
-	ETH
+	OBX ERC20 = "OBX"
+	ETH ERC20 = "ETH"
 )
 
 var WOBXOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")
@@ -162,7 +162,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, bridge.TransactionBlobCrypto.ToEnclaveRollup(r))
+				rollups = append(rollups, obscurocore.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
 				common.LogWithID(bridge.NodeID, "Extracted Rollup r_%d from block b_%d",
 					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),

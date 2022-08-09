@@ -1,7 +1,7 @@
 pages:
   - title: What is Obscuro?
     children:
-      - title: Privacy Matters
+      - title: Privacy
         url: what-is-obscuro/privacy-matters.html
       - title: Technology
         url: what-is-obscuro/technology.html
@@ -21,10 +21,14 @@ pages:
     children:
       - title: Introduction
         url: testnet/Introduction.html
+      - title: Example Dapps on Testnet
+        url: testnet/example-dapps.html
       - title: Essential Information
         url: testnet/essentials.html
       - title: Deploying a Smart Contract
         url: testnet/deploying-a-smart-contract.html
+      - title: Programmatic Deployment
+        url: testnet/deploying-a-smart-contract-programmatically.html
       - title: ObscuroScan
         url: testnet/obscuroscan.html
       - title: Change Log

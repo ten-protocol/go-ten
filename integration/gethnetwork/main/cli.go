@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// Flag names, defaults and usages.
+	// Flag names and usages.
 	numNodesName  = "numNodes"
 	numNodesUsage = "The number of nodes on the network"
 

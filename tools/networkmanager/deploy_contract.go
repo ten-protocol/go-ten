@@ -3,18 +3,14 @@ package networkmanager
 import (
 	"os"
 
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+
 	"github.com/ethereum/go-ethereum/common"
 	obscuroconfig "github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-)
-
-var (
-	mgmtContractBytes  = common.Hex2Bytes(mgmtcontractlib.MgmtContractByteCode)
-	erc20ContractBytes = common.Hex2Bytes(erc20contract.ContractByteCode)
 )
 
 // DeployContract deploys a management contract or ERC20 contract to the L1 network, and prints its address.
@@ -22,9 +18,13 @@ func DeployContract(config Config) {
 	var contractBytes []byte
 	switch config.Command { //nolint:exhaustive
 	case DeployMgmtContract:
-		contractBytes = mgmtContractBytes
+		bytecode, err := managementcontract.Bytecode()
+		if err != nil {
+			panic(err)
+		}
+		contractBytes = bytecode
 	case DeployERC20Contract:
-		contractBytes = erc20ContractBytes
+		contractBytes = erc20contract.BytecodeWithDefaultSupply(config.erc20Token)
 	default:
 		panic("unrecognised command type")
 	}

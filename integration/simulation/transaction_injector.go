@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"golang.org/x/sync/errgroup"
@@ -22,8 +24,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
@@ -173,7 +173,8 @@ func (ti *TransactionInjector) Start() {
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
 func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	// deploy the ERC20
-	contractBytes := gethcommon.Hex2Bytes(erc20contract.ContractByteCode)
+	contractBytes := erc20contract.BytecodeWithDefaultSupply(string(bridge.OBX))
+
 	deployContractTx := types.DynamicFeeTx{
 		Nonce: NextNonce(ti.rpcHandles, owner),
 		Gas:   1025_000_000,

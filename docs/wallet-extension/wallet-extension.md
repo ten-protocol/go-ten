@@ -19,6 +19,9 @@ to securely decrypt the incoming messages.
 The wallet extension should be run locally by the user, such that no sensitive data leaves the client's machine
 unencrypted. If the data is not particularly sensitive, it can also be run in another trusted location.
 
+The diagram below lays out the flows.
+![Swimlane diagram showing wallet extension flows](../../assets/images/swimlanes.png)
+
 ## Pre-requisites
 
 * [MetaMask](https://metamask.io/)
@@ -27,7 +30,13 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 ## Usage
 
-1. Compile the wallet extension binary by cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro)
+1. You have two choices for getting the wallet extension:
+
+   a. Download the wallet extension binary for your operating system from the list of Assets in the [releases area on GitHub](https://github.com/obscuronet/go-obscuro/releases).
+   
+   Or
+
+   b. Compile the wallet extension binary by cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro)
    and running the following command from the root of the repository:
 
    ```
@@ -50,14 +59,13 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 3. Sign in to MetaMask.
 
-4. In MetaMask, add a new custom network. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
+4. If this is the first time connecting to Obscuro Testnet then in MetaMask, add a new custom network called _Obscuro Testnet_. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
    the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and
    responses for the network will now automatically pass through the wallet extension, with all outbound requests
    encrypted with the enclave public key.
 
     * At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such
-      as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`. As a result, your balance in MetaMask will 
-      show `0`.
+      as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`. As a result, your balance in MetaMask will not be accurately updated until you have a viewing key.
 
 5. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key, and sign the viewing key when prompted by
    MetaMask. Responses to sensitive RPC requests will be now be encrypted with the viewing key and decrypted

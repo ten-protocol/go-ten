@@ -9,6 +9,7 @@ import (
 const (
 	defaultRPCTimeoutSecs          = 10
 	defaultL1ConnectionTimeoutSecs = 15
+	defaultP2PTimeoutSecs          = 10
 )
 
 // HostConfig contains the full configuration for an Obscuro host.
@@ -29,12 +30,8 @@ type HostConfig struct {
 	ClientRPCPortWS uint64
 	// Host on which to handle client RPC requests
 	ClientRPCHost string
-	// Timeout duration for RPC requests from client applications
-	ClientRPCTimeout time.Duration
 	// Address on which to connect to the enclave
 	EnclaveRPCAddress string
-	// Timeout duration for RPC requests to the enclave service
-	EnclaveRPCTimeout time.Duration
 	// P2PBindAddress is the address where the P2P server is bound to
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
@@ -43,8 +40,14 @@ type HostConfig struct {
 	L1NodeHost string
 	// The websocket port of the connected L1 node
 	L1NodeWebsocketPort uint
+	// Timeout duration for RPC requests from client applications
+	ClientRPCTimeout time.Duration
+	// Timeout duration for RPC requests to the enclave service
+	EnclaveRPCTimeout time.Duration
 	// Timeout duration for connecting to the L1 node
 	L1ConnectionTimeout time.Duration
+	// Timeout duration for messaging between hosts.
+	P2PConnectionTimeout time.Duration
 	// The rollup contract address on the L1 network
 	RollupContractAddress common.Address
 	// LogLevel determines the verbosity of output logs
@@ -72,19 +75,21 @@ func DefaultHostConfig() HostConfig {
 		HasClientRPCWebsockets: false,
 		ClientRPCPortWS:        13001,
 		ClientRPCHost:          "127.0.0.1",
-		ClientRPCTimeout:       time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		EnclaveRPCAddress:      "127.0.0.1:11000",
-		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		P2PBindAddress:         "0.0.0.0:10000",
 		P2PPublicAddress:       "127.0.0.1:10000",
 		L1NodeHost:             "127.0.0.1",
 		L1NodeWebsocketPort:    8546,
+		ClientRPCTimeout:       time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		L1ConnectionTimeout:    time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
+		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,
 		RollupContractAddress:  common.BytesToAddress([]byte("")),
 		LogLevel:               "info",
 		LogPath:                "",
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:              1337,
 		ObscuroChainID:         777,
+		ProfilerEnabled:        false,
 	}
 }

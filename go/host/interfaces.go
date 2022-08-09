@@ -4,27 +4,51 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/host/db"
 )
 
-// P2PCallback -the glue between the P2p layer and the node. Notifies the node when rollups and transactions are received from peers
-type P2PCallback interface {
+// Host is the half of the Obscuro node that lives outside the enclave.
+type Host interface {
+	Config() *config.HostConfig
+	DB() *db.DB
+	EnclaveClient() common.Enclave
+
+	// Start initializes the main loop of the host.
+	Start()
+	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
+	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
+	// ReceiveRollup processes a rollup received from a peer host.
 	ReceiveRollup(r common.EncodedRollup)
+	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
+	// Stop gracefully stops the host execution.
+	Stop()
+}
+
+// MockHost extends Host with additional methods that are only used for integration testing.
+type MockHost interface {
+	Host
+
+	// TODO - Remove this method.
+	P2P() P2P
+	// MockedNewHead receives the notification of new blocks.
+	// TODO - Remove this method.
+	MockedNewHead(b common.EncodedBlock, p common.EncodedBlock)
+	// MockedNewFork receives the notification of a new fork.
+	MockedNewFork(b []common.EncodedBlock)
+	// ConnectToEthNode connects the Aggregator to the Ethereum node.
+	ConnectToEthNode(node ethadapter.EthClient)
 }
 
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
 type P2P interface {
-	StartListening(callback P2PCallback)
+	StartListening(callback Host)
 	StopListening() error
 	UpdatePeerList([]string)
 	BroadcastRollup(r common.EncodedRollup) error
 	BroadcastTx(tx common.EncryptedTx) error
-}
-
-// RPCServer is the layer responsible for handling RPC requests from Obscuro client applications.
-type RPCServer interface {
-	Start()
-	Stop() error
 }
 
 type StatsCollector interface {

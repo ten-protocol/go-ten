@@ -358,7 +358,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 		Nonce:    0,
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
+		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
 	}
 	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
 	if err != nil {
@@ -400,7 +400,7 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 		Nonce:    0,
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
+		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
 	}
 	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
 	if err != nil {
@@ -463,7 +463,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 		Nonce:    0,
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
+		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
 	}
 	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
 	if err != nil {
@@ -637,7 +637,7 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 		Nonce:    simulation.NextNonce(clients, txWallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     common.Hex2Bytes(erc20contract.ContractByteCode),
+		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
 	}
 	generateAndSubmitViewingKey(t, walletExtensionAddr, walletExtensionAddr, txWallet.PrivateKey())
 	txBinaryHex, err := formatTxForSubmission(txWallet, &deployContractTx)

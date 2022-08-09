@@ -1,5 +1,5 @@
 # ObscuroScan
-[ObscuroScan](http://obscuroscan-01.uksouth.azurecontainer.io/) is a blockchain explorer for the Obscuro Testnet - 
+ObscuroScan is a blockchain explorer for the Obscuro Testnet - 
 Obscuro's equivalent of Etherscan. ObscuroScan allows you to view the latest rollups and transactions on the Testnet, 
 as well as search for historical rollups and transactions. Its functionality will be expanded over time.
 

@@ -222,7 +222,7 @@ func (e *enclaveImpl) Start(block types.Block) {
 func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
 	return common.BlockSubmissionResponse{
-		ProducedRollup: e.transactionBlobCrypto.ToExtRollup(rolGenesis),
+		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
 		IngestedBlock:  true,
 	}
@@ -257,7 +257,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) common.BlockSubmissionRespo
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
-	r := e.transactionBlobCrypto.ToEnclaveRollup(rollup.ToRollup())
+	r := obscurocore.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
 
 	// only store if the parent exists
 	_, found := e.storage.FetchRollup(r.Header.ParentHash)
@@ -388,36 +388,7 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
-	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
-	return &extRollup, nil
-}
-
-func (e *enclaveImpl) GetRollupByHeight(rollupHeight int64) (*common.ExtRollup, error) {
-	// TODO - Consider improving efficiency by directly fetching rollup by number.
-	rollup := e.storage.FetchHeadRollup()
-
-	// -1 is used by Ethereum to indicate that we should fetch the head.
-	if rollupHeight != -1 {
-		for {
-			if rollup == nil {
-				// We've reached the head of the chain without finding the block.
-				return nil, nil //nolint:nilnil
-			}
-			if rollup.Number().Int64() == rollupHeight {
-				// We have found the block.
-				break
-			}
-			if rollup.Number().Int64() < rollupHeight {
-				// The current block number is below the sought number. Continuing to walk up the chain is pointless.
-				return nil, nil //nolint:nilnil
-			}
-
-			// We grab the next rollup and loop.
-			rollup = e.storage.ParentRollup(rollup)
-		}
-	}
-
-	extRollup := e.transactionBlobCrypto.ToExtRollup(rollup)
+	extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
 	return &extRollup, nil
 }
 

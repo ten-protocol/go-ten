@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 
@@ -22,7 +22,7 @@ type (
 	TxHash                = common.Hash
 	L2Tx                  = types.Transaction
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
-	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup.
+	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup, with the nonce prepended.
 
 	EncryptedParamsGetBalance   []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
 	EncryptedParamsCall         []byte // As above, but for an RPC call request.
@@ -76,6 +76,12 @@ type Header struct {
 	BaseFee *big.Int `json:"baseFeePerGas"`
 }
 
+// HeaderWithTxHashes represents a rollup header and the hashes of the transactions in the rollup.
+type HeaderWithTxHashes struct {
+	Header   *Header
+	TxHashes []TxHash
+}
+
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header
 type Withdrawal struct {
 	// Type      uint8 // the type of withdrawal. For now only ERC20. Todo - add this once more ERCs are supported
@@ -87,7 +93,7 @@ type Withdrawal struct {
 // ExtRollup is used for communication between the enclave and the outside world.
 type ExtRollup struct {
 	Header          *Header
-	TxHashes        []common.Hash // The hashes of the transactions included in the rollup
+	TxHashes        []TxHash // The hashes of the transactions included in the rollup
 	EncryptedTxBlob EncryptedTransactions
 }
 
@@ -95,7 +101,7 @@ type ExtRollup struct {
 // This parallels the Block/extblock split in Go Ethereum.
 type EncryptedRollup struct {
 	Header       *Header
-	TxHashes     []common.Hash // The hashes of the transactions included in the rollup
+	TxHashes     []TxHash // The hashes of the transactions included in the rollup
 	Transactions EncryptedTransactions
 	hash         atomic.Value
 }
@@ -129,7 +135,7 @@ var hasherPool = sync.Pool{
 func RLPHash(value interface{}) (common.Hash, error) {
 	var hash common.Hash
 
-	sha := hasherPool.Get().(crypto.KeccakState)
+	sha := hasherPool.Get().(gethcrypto.KeccakState)
 	defer hasherPool.Put(sha)
 	sha.Reset()
 

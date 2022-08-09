@@ -183,7 +183,7 @@ The missing link to achieving fully private transactions while allowing end-user
 wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
 between the Obscuro node and its clients.
 
-See the [docs](https://docs.obscu.ro/testnet/wallet-extension.html) for more information.
+See the [docs](https://docs.obscu.ro/wallet-extension/wallet-extension.html) for more information.
 
 
 ## Repository Structure
@@ -208,9 +208,16 @@ root
 │   ├── <a href="./go/ethadapter">ethadapter</a>: Responsible for interpreting L1 transactions 
 │   │   ├── <a href="./go/ethadapter/erc20contractlib">erc20contractlib</a>: Understand ERC20 transactions.
 │   │   └── <a href="./go/ethadapter/mgmtcontractlib">mgmtcontractlib</a>: Understand Obscuro Management contrract transactions. 
-│   ├── <a href="./go/host">host</a>: The standalone host process 
+│   ├── <a href="./go/host">host</a>: The standalone host process.
+│   │   ├── <a href="./go/host/db">db</a>: The host's database.
 │   │   ├── <a href="./go/host/hostrunner">hostrunner</a>: The entry point.
-│   │   └── <a href="./go/host/p2p">p2p</a>: The P2P communication implementation. 
+│   │   ├── <a href="./go/host/main">main</a>: Main
+│   │   ├── <a href="./go/host/node">node</a>: The host implementation.
+│   │   ├── <a href="./go/host/p2p">p2p</a>: The P2P communication implementation.
+│   │   └── <a href="./go/host/rpc">rpc</a>: RPC communications with the enclave and the client.
+│   │       ├── <a href="./go/host/rpc/clientapi">clientapi</a>: The API for RPC communications with the client.
+│   │       ├── <a href="./go/host/rpc/clientrpc">clientrpc</a>: The RPC server for communications with the client.
+│   │       └── <a href="./go/host/enclaverpc">enclaverpc</a>: The RPC client for communications with the enclave.
 │   ├── <a href="./go/rpcclientlib">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
 │   └── <a href="./go/wallet">wallet</a>: Logic around wallets. Used both by the node, which is an ethereum wallet, and by the tests
 ├── <a href="./integration">integration</a>: Integration tests that spin up Obscuro networks.
@@ -347,7 +354,8 @@ only a single Obscuro node is started, it must be set as a genesis node.
 ```
 ./testnet-local-gethnetwork.sh --pkaddresses=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 ./testnet-deploy-contracts.sh --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
-./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --obxerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --etherc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true 
+./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --obxerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --etherc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true
+./testnet-deploy-l2-contracts.sh --l2host=testnet-host-1 
 ```
 
 where;

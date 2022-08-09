@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
@@ -51,15 +53,6 @@ func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
 		return nil
 	}
 	r, _ := s.FetchRollup(*hash)
-	return r
-}
-
-func (s *storageImpl) FetchHeadRollup() *core.Rollup {
-	hash := obscurorawdb.ReadHeadRollupHash(s.db)
-	if hash == (gethcommon.Hash{}) {
-		return nil
-	}
-	r, _ := s.FetchRollup(hash)
 	return r
 }
 
@@ -112,11 +105,11 @@ func (s *storageImpl) FetchHeadBlock() *types.Block {
 	return b
 }
 
-func (s *storageImpl) StoreSecret(secret core.SharedEnclaveSecret) {
+func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) {
 	obscurorawdb.WriteSharedSecret(s.db, secret)
 }
 
-func (s *storageImpl) FetchSecret() *core.SharedEnclaveSecret {
+func (s *storageImpl) FetchSecret() *crypto.SharedEnclaveSecret {
 	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
