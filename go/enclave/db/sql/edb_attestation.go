@@ -52,7 +52,7 @@ type EdgelessAttestationConstraints struct {
 }
 
 // The values here were the latest values from: https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
-// 	This should probably be configurable rather than relying on this hardcoded snapshot
+// This should probably be configurable rather than relying on this hardcoded snapshot
 var defaultEDBConstraints = &EdgelessAttestationConstraints{
 	SecurityVersion: 2,
 	SignerID:        "67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe",

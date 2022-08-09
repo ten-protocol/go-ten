@@ -72,7 +72,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 
 // setupWalletClientsWithoutViewingKeys will configure the existing obscuro clients to be used as wallet clients,
 // (we typically keep a client per wallet so their viewing keys are available and registered but they can share clients
-// 	if no viewing keys are in use)
+// if no viewing keys are in use)
 func setupWalletClientsWithoutViewingKeys(params *params.SimParams, obscuroClients []rpcclientlib.Client) map[string]rpcclientlib.Client {
 	walletClients := make(map[string]rpcclientlib.Client)
 	var i int

@@ -24,7 +24,7 @@ type networkClient struct {
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
-//	then decrypts the response before returning.
+// then decrypts the response before returning.
 // The result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
 func (c *networkClient) Call(result interface{}, method string, args ...interface{}) error {
 	return c.rpcClient.Call(&result, method, args...)
