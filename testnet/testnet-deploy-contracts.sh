@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# This script deploys contracts to testnet
+# This script deploys contracts to the L1 of testnet
 #
 
 help_and_exit() {
@@ -78,7 +78,7 @@ docker run --name=jamerc20deployer \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
-    --contractName="ERC20" \
+    --contractName="ETHERC20" \
     --privateKey=${pkstring}\
     --constructorParams="JAM,JAM,1000000000000000000000"
 # storing the contract address to the .env file
@@ -95,7 +95,7 @@ docker run --name=etherc20deployer \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
-    --contractName="ERC20" \
+    --contractName="ETHERC20" \
     --privateKey=${pkstring}\
     --constructorParams="ETH,ETH,1000000000000000000000"
 # storing the contract address to the .env file

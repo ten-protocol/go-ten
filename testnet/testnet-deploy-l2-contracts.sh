@@ -65,7 +65,7 @@ docker run --name=jamL2deployer \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
-    --contractName="ERC20" \
+    --contractName="OBSERC20" \
     --privateKey=${jampkstring}\
     --constructorParams="JAM,JAM,1000000000000000000000"
 echo ""
@@ -77,7 +77,7 @@ docker run --name=ethL2deployer \
      testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
-    --contractName="ERC20" \
+    --contractName="OBSERC20" \
     --privateKey=${ethpkstring}\
     --constructorParams="ETH,ETH,1000000000000000000000"
 echo ""

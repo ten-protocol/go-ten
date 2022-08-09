@@ -24,7 +24,7 @@ func DeployContract(config Config) {
 		}
 		contractBytes = bytecode
 	case DeployERC20Contract:
-		contractBytes = erc20contract.BytecodeWithDefaultSupply(config.erc20Token)
+		contractBytes = erc20contract.EthBytecodeWithDefaultSupply(config.erc20Token)
 	default:
 		panic("unrecognised command type")
 	}
