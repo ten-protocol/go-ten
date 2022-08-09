@@ -54,11 +54,11 @@ jobs:
           ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
-          echo "OBXERC20ADDR=$OBXERC20ADDR" >> $GITHUB_ENV
+          echo "JAMERC20ADDR=$JAMERC20ADDR" >> $GITHUB_ENV
           echo "ETHERC20ADDR=$ETHERC20ADDR" >> $GITHUB_ENV
-          echo "Contracts deployed to $MGMTCONTRACTADDR and $OBXERC20ADDR and $ETHERC20ADDR"
+          echo "Contracts deployed to $MGMTCONTRACTADDR and $JAMERC20ADDR and $ETHERC20ADDR"
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
-          echo "::set-output name=obxErc20Addr::$OBXERC20ADDR"   
+          echo "::set-output name=obxErc20Addr::$JAMERC20ADDR"   
           echo "::set-output name=ethErc20Addr::$ETHERC20ADDR"    
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
