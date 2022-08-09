@@ -98,7 +98,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	walletClients := setupWalletClientsWithoutViewingKeys(params, n.obscuroClients)
+	walletClients := setupWalletClients(params, obscuroNodes)
 
 	return &RPCHandles{
 		EthClients:                    l1Clients,

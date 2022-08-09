@@ -3,7 +3,6 @@ package host
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -90,6 +89,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpcclientlib.RPCStopHost:
 		c.obscuroAPI.StopHost()
 
+	case rpcclientlib.RPCAddViewingKey:
+		c.addViewingKey(args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -98,30 +100,17 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 }
 
 func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCSendRawTransaction, len(args))
-	}
-	bytes, err := json.Marshal(args)
-	if err != nil {
-		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCSendRawTransaction, err)
-	}
-	enc, err := c.encryptParamBytes(bytes)
+	encBytes, err := getEncryptedBytes(args, rpcclientlib.RPCSendRawTransaction)
 	if err != nil {
 		return err
 	}
-	_, err = c.ethAPI.SendRawTransaction(context.Background(), enc)
+
+	_, err = c.ethAPI.SendRawTransaction(context.Background(), encBytes)
 	return err
 }
 
 func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []interface{}) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTransactionByHash, len(args))
-	}
-	bytes, err := json.Marshal(args)
-	if err != nil {
-		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTransactionByHash, err)
-	}
-	enc, err := c.encryptParamBytes(bytes)
+	enc, err := getEncryptedBytes(args, rpcclientlib.RPCGetTransactionByHash)
 	if err != nil {
 		return err
 	}
@@ -129,19 +118,12 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	if err != nil {
 		return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
 	}
-	*result.(*string) = *encryptedTx
+	result = encryptedTx
 	return nil
 }
 
 func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCCall, len(args))
-	}
-	bytes, err := json.Marshal(args)
-	if err != nil {
-		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCCall, err)
-	}
-	enc, err := c.encryptParamBytes(bytes)
+	enc, err := getEncryptedBytes(args, rpcclientlib.RPCCall)
 	if err != nil {
 		return err
 	}
@@ -154,14 +136,7 @@ func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) err
 }
 
 func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []interface{}) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCGetTxReceipt, len(args))
-	}
-	bytes, err := json.Marshal(args)
-	if err != nil {
-		return fmt.Errorf("failed to marshal the rpc args for %s - %w", rpcclientlib.RPCGetTxReceipt, err)
-	}
-	enc, err := c.encryptParamBytes(bytes)
+	enc, err := getEncryptedBytes(args, rpcclientlib.RPCGetTxReceipt)
 	if err != nil {
 		return err
 	}
@@ -236,4 +211,33 @@ func (c *inMemObscuroClient) encryptParamBytes(params []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not encrypt request params with enclave public key: %w", err)
 	}
 	return encryptedParams, nil
+}
+
+func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
+	if len(args) != 2 {
+		return fmt.Errorf("expected 2 args to %s, got %d", rpcclientlib.RPCAddViewingKey, len(args))
+	}
+
+	vk, ok := args[0].([]byte)
+	if !ok {
+		return fmt.Errorf("expected first arg to %s containing viewing key bytes but it had type %t", rpcclientlib.RPCAddViewingKey, args[0])
+	}
+
+	sig, ok := args[1].([]byte)
+	if !ok {
+		return fmt.Errorf("expected second arg to %s containing signature bytes but it had type %t", rpcclientlib.RPCAddViewingKey, args[1])
+	}
+	return c.obscuroAPI.AddViewingKey(vk, sig)
+}
+
+// getEncryptedBytes expects args to have a single element and it to be of type bytes (client doesn't know anything about what's getting passed through on sensitive methods)
+func getEncryptedBytes(args []interface{}, methodName string) ([]byte, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("expected 1 arg to %s, got %d", methodName, len(args))
+	}
+	encBytes, ok := args[0].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("expected single arg to %s containing bytes but it had type %t", methodName, args[0])
+	}
+	return encBytes, nil
 }
