@@ -20,7 +20,7 @@ const (
 )
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
-// 	otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
+// otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
 func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
 	if dbPath == "" {
 		tempPath, err := getTempDBFile()

@@ -55,7 +55,7 @@ func GenerateAndRegisterViewingKey(cli *rpcclientlib.ViewingKeyClient, wal walle
 }
 
 // signViewingKey takes a public key bytes as hex and the private key for a wallet, it simulates the back-and-forth to
-//	metamask and returns the signature bytes to register with the enclave
+// MetaMask and returns the signature bytes to register with the enclave
 func signViewingKey(viewingKeyHex string, signerKey *ecdsa.PrivateKey) ([]byte, error) {
 	msgToSign := rpcencryptionmanager.ViewingKeySignedMsgPrefix + viewingKeyHex
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), signerKey)

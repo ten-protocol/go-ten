@@ -8,7 +8,7 @@ import (
 )
 
 // SealAndPersist uses SGX's ProductKey to encrypt contents string to filepath string
-//	(note: filepath location must be accessible via ego mounts config in enclave.json)
+// (note: filepath location must be accessible via ego mounts config in enclave.json)
 func SealAndPersist(contents string, filepath string) error {
 	f, err := os.Create(filepath)
 	if err != nil {
