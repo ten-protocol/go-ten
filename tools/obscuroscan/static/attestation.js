@@ -26,7 +26,8 @@ async function displayAttestation() {
         const attestationReportJSON = JSON.parse(await respAttestationReport.text());
         fieldAttestationReport.innerText = JSON.stringify(attestationReportJSON, null, "\t");
     } else {
-        fieldAttestationReport.innerText = "Failed to fetch attestation.";
+        fieldAttestationReport.innerText = "Failed to fetch attestation report. Producing an attestation report is " +
+            "currently only supported on Azure virtual machines.";
     }
 }
 
