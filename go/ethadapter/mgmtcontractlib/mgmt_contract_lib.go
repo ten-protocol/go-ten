@@ -5,7 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"strings"
 
@@ -351,5 +351,5 @@ func Decompress(in []byte) ([]byte, error) {
 	}
 	defer gz.Close()
 
-	return ioutil.ReadAll(gz)
+	return io.ReadAll(gz)
 }
