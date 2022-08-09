@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strings"
@@ -588,7 +587,7 @@ func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	viewingKey, err := ioutil.ReadAll(resp.Body)
+	viewingKey, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
