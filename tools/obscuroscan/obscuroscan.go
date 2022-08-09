@@ -95,14 +95,14 @@ func (o *Obscuroscan) Serve(hostAndPort string) {
 	serveMux.HandleFunc(pathAttestationReport, o.attestationReport) // Retrieve the node's attestation report.
 
 	// Serves the web assets for the user interface.
-	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	staticFileFS, err := fs.Sub(staticFiles, staticDir)
 	if err != nil {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
 	}
-	serveMux.Handle(pathRoot, http.FileServer(http.FS(noPrefixStaticFiles)))
+	staticFileFilesystem := http.FileServer(http.FS(staticFileFS))
+	serveMux.Handle(pathRoot, staticFileFilesystem)
 
 	o.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
-
 	err = o.server.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
