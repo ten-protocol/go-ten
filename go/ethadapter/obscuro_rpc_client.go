@@ -17,9 +17,8 @@ import (
 // obscuroWalletRPCClient implements the EthClient interface, it's bound to a single wallet (viewing key and address)
 //
 // Note: Why does this exist (why use a geth-focused interface for our obscuro interactions)?
-//  - We have code (like deploying contracts) that we want to run against both L1 and L2, useful to be able to treat them the same
-//	- Maintaining this interface helps ensure we remain closely compatible with eth usability
-//
+// - We have code (like deploying contracts) that we want to run against both L1 and L2, useful to be able to treat them the same
+// - Maintaining this interface helps ensure we remain closely compatible with eth usability
 type obscuroWalletRPCClient struct {
 	client rpcclientlib.Client // the underlying obscuro client - the viewing key and address are stored in here todo: although maybe they shouldn't be...?
 	wallet wallet.Wallet

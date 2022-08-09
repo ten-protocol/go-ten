@@ -524,9 +524,8 @@ func attestedNodeHostAddressesAreStored(t *testing.T, mgmtContractLib *debugMgmt
 
 // detectSimpleFork agg A initializes the network, agg A creates 3 correct rollups, then makes a depth 2 fork and expects the contract to detect
 //
-//                    -> 4'-> 5'
-//   0 -> 1 -> 2 -> 3 -> 4 -> 5  -> 6 (contract marked with invalid withdrawals)
-//
+// -> 4'-> 5'
+// 0 -> 1 -> 2 -> 3 -> 4 -> 5  -> 6 (contract marked with invalid withdrawals)
 func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
 	secretBytes := []byte("This is super random")
 	// crypto.GenerateKey will generate a PK that does not play along this test

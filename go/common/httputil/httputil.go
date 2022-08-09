@@ -26,8 +26,8 @@ func CreateTLSHTTPClient(caCertPEM string) (*http.Client, error) {
 }
 
 // ExecuteHTTPReq executes an HTTP request:
-//	returns an error if request fails or if the response code was outside the range 200-299
-//	returns response body as bytes if there was a response body
+// * returns an error if request fails or if the response code was outside the range 200-299
+// * returns response body as bytes if there was a response body
 func ExecuteHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
 	resp, err := client.Do(req)
 	if err != nil {
