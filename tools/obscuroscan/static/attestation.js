@@ -27,7 +27,7 @@ async function displayAttestation() {
         fieldAttestationReport.innerText = JSON.stringify(attestationReportJSON, null, "\t");
     } else {
         fieldAttestationReport.innerText = "Failed to fetch attestation report. Producing an attestation report is " +
-            "currently only supported on Azure virtual machines.";
+            "currently only supported on SGX-enabled Azure virtual machines.";
     }
 }
 
