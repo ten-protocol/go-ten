@@ -1,9 +1,10 @@
-# runs obscuro scan
+# runs ObscuroScan
 #
-FROM golang:1.17-alpine
+FROM ghcr.io/edgelesssys/ego-dev:latest
 
 # set the base libs to build / run
-RUN apk add build-base bash git
+RUN apt-get -y install software-properties-common
+RUN yes | ego install az-dcap-client
 ENV CGO_ENABLED=1
 
 # create the base directory
@@ -15,11 +16,11 @@ COPY ./go.sum /home/go-obscuro
 WORKDIR /home/go-obscuro
 RUN go get -d -v ./...
 
-# make sure the geth network code is available
+# make sure the ObscuroScan code is available
 COPY . /home/go-obscuro
 
-# build the contract deployer exec
+# build the ObscuroScan exec
 WORKDIR /home/go-obscuro/tools/obscuroscan/main
-RUN go build
+RUN ego-go build && ego sign main
 
 WORKDIR /home/go-obscuro
