@@ -37,15 +37,15 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_dev_testnet_l1network:latest -f testnet/gethnetwork.Dockerfile  .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_dev_testnet_l1network:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_testnet_l1network:latest -f testnet/gethnetwork.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_testnet_l1network:latest
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: dev-testnet-gethnetwork
-          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_dev_testnet_l1network:latest
+          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_testnet_l1network:latest
           registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
@@ -168,7 +168,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=Dev-ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} devtestnetlatest=true \
@@ -228,7 +228,7 @@ jobs:
                --etherc20addr=${{needs.build.outputs.ethErc20Addr}} \
                --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
-               --p2p_public_address=obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
+               --p2p_public_address=dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
 
   update:
@@ -243,15 +243,15 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Remove existing backend nodes from the load balancer'
-        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh
+        run: ./.github/workflows/runner-scripts/dev-testnet-clear-loadbalancer.sh
 
       - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az network nic ip-config address-pool add \
-              --address-pool Backend-Pool-Obscuro-Testnet \
-              --ip-config-name ipconfigObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
+              --address-pool Dev-Backend-Pool-Obscuro-Testnet \
+              --ip-config-name dev-ipconfigObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
               --nic-name Dev-ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name dev-testnet-loadbalancer
