@@ -68,18 +68,11 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 		return c.obscuroClient.Call(result, method, args...)
 	}
 
-	// we setup a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
-	var rawResult interface{}
-	if result == nil {
-		// we set result receiver to nil if caller set nil since no return needs to be set
-		rawResult = nil
-	}
-
 	var err error
 	if method == RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
-		args, err = c.ensureCallParamsHaveFromAddress(method, args)
+		args, err = c.addFromAddressToCallParamsIfMissing(method, args)
 		if err != nil {
 			return err
 		}
@@ -91,6 +84,9 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 	if err != nil {
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
+
+	// we set up a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
+	var rawResult interface{}
 	err = c.obscuroClient.Call(&rawResult, method, encryptedParams)
 	if err != nil {
 		return fmt.Errorf("%s rpc call failed - %w", method, err)
@@ -202,7 +198,7 @@ func (c *ViewingKeyClient) RegisterViewingKey(signerAddr common.Address, signatu
 }
 
 // enclave requires a from address to be set for the viewing key encryption but sources like metamask often don't set it
-func (c *ViewingKeyClient) ensureCallParamsHaveFromAddress(method string, args []interface{}) ([]interface{}, error) {
+func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, args []interface{}) ([]interface{}, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
 	}
