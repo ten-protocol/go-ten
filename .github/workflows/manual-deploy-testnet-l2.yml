@@ -7,7 +7,7 @@
 # WebSocket:  9000, 9001, 9002
 #
 
-name: '[M] Deploy Testnet'
+name: '[M] Deploy Testnet L2'
 
 on:
   workflow_dispatch:
