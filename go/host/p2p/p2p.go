@@ -2,7 +2,7 @@ package p2p
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -114,7 +114,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 		defer conn.Close()
 	}
 
-	encodedMsg, err := ioutil.ReadAll(conn)
+	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
 		common.WarnWithID(p.nodeID, "failed to read message from peer: %v", err)
 		return

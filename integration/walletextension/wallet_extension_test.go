@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"strings"
@@ -358,7 +358,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 		Nonce:    0,
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
+		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
 	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
 	if err != nil {
@@ -400,7 +400,7 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 		Nonce:    0,
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
+		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
 	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
 	if err != nil {
@@ -463,7 +463,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 		Nonce:    0,
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
+		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
 	txBinaryHex, err := formatTxForSubmission(txWallet, &tx)
 	if err != nil {
@@ -530,7 +530,7 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 	if resp.Body != nil {
 		defer resp.Body.Close()
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +587,7 @@ func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	viewingKey, err := ioutil.ReadAll(resp.Body)
+	viewingKey, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -637,7 +637,7 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 		Nonce:    simulation.NextNonce(clients, txWallet),
 		Gas:      1025_000_000,
 		GasPrice: common.Big0,
-		Data:     erc20contract.BytecodeWithDefaultSupply("TST"),
+		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
 	generateAndSubmitViewingKey(t, walletExtensionAddr, walletExtensionAddr, txWallet.PrivateKey())
 	txBinaryHex, err := formatTxForSubmission(txWallet, &deployContractTx)

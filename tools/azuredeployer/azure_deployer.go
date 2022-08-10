@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -181,7 +180,7 @@ func runSetupScript(ipAddress string, paramsFile string, setupScript string) {
 
 // Read a JSON file into a map.
 func readJSON(path string) *map[string]interface{} {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatalf("failed to read file at %s: %v", path, err)
 	}
