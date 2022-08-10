@@ -12,8 +12,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-// todo - joel - rename package
-
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
 // API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
 // a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
