@@ -225,6 +225,8 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 		return args, nil
 	}
 
+	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
+
 	// We ensure that the `data` field is present.
 	if callParams[reqJSONKeyData] == nil {
 		return nil, fmt.Errorf("eth_call request did not have its `from` or its `data` field set. Aborting " +
