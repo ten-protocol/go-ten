@@ -288,7 +288,6 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		e.txCh <- decryptedTx
 	}
 
-	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
 	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx, e.config.ObscuroChainID)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
