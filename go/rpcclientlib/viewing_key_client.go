@@ -216,41 +216,15 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(args []interface{
 
 	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
 
-	// We ensure that the `data` field is present.
-	data := callParams[reqJSONKeyData]
-	if data == nil {
-		return nil, fmt.Errorf("eth_call request did not have its `from` or its `data` field set. Aborting " +
-			"request as it will not be possible to encrypt the response")
+	// We attempt to set the `from` field based on the `data` field.
+	fromAddress, err := c.extractFromInDataField(callParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
 	}
-	dataString, ok := data.(string)
-	if !ok {
-		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
-	}
-	dataString = dataString[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
-
-	// We split up the arguments in the `data` field.
-	var dataArgs []string
-	for i := 0; i < len(dataString); i += ethCallPaddedArgLen {
-		if i+ethCallPaddedArgLen > len(dataString) {
-			break
-		}
-		dataArgs = append(dataArgs, dataString[i:i+ethCallPaddedArgLen])
-	}
-
-	// We iterate over the arguments, looking for an argument that matches the viewing key address. If we find one, we
-	// set the `from` field to that address.
-	for _, dataArg := range dataArgs {
-		// If the argument doesn't have the correct padding, it's not an address.
-		if !strings.HasPrefix(dataArg, ethCallAddrPadding) {
-			continue
-		}
-
-		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
-		if maybeAddress == c.viewingKeyAddr {
-			callParams[reqJSONKeyFrom] = c.viewingKeyAddr
-			args[0] = callParams
-			return args, nil
-		}
+	if fromAddress != nil {
+		callParams[reqJSONKeyFrom] = c.viewingKeyAddr
+		args[0] = callParams
+		return args, nil
 	}
 
 	// TODO - Consider defining an additional fallback to set the `from` field if the above all fail.
@@ -292,4 +266,45 @@ func parseCallParams(args []interface{}) (map[string]interface{}, error) {
 	}
 
 	return callParams, nil
+}
+
+// Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
+// key address, we return that address. Otherwise, we return nil.
+func (c *ViewingKeyClient) extractFromInDataField(callParams map[string]interface{}) (*common.Address, error) {
+	// We ensure that the `data` field is present.
+	data := callParams[reqJSONKeyData]
+	if data == nil {
+		return nil, fmt.Errorf("eth_call request did not have its `from` or its `data` field set. Aborting " +
+			"request as it will not be possible to encrypt the response")
+	}
+	dataString, ok := data.(string)
+	if !ok {
+		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
+	}
+	dataString = dataString[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
+
+	// We split up the arguments in the `data` field.
+	var dataArgs []string
+	for i := 0; i < len(dataString); i += ethCallPaddedArgLen {
+		if i+ethCallPaddedArgLen > len(dataString) {
+			break
+		}
+		dataArgs = append(dataArgs, dataString[i:i+ethCallPaddedArgLen])
+	}
+
+	// We iterate over the arguments, looking for an argument that matches the viewing key address. If we find one, we
+	// set the `from` field to that address.
+	for _, dataArg := range dataArgs {
+		// If the argument doesn't have the correct padding, it's not an address.
+		if !strings.HasPrefix(dataArg, ethCallAddrPadding) {
+			continue
+		}
+
+		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
+		if maybeAddress == c.viewingKeyAddr {
+			return &c.viewingKeyAddr, nil
+		}
+	}
+
+	return nil, nil //nolint:nilnil
 }
