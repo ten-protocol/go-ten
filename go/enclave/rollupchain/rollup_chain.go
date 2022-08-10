@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/params"
 
@@ -17,11 +18,8 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -29,20 +27,15 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
 const (
-	msgNoRollup = "could not fetch rollup"
-
-	// The relevant fields in a Call request's params.
-	CallFieldTo   = "to"
-	CallFieldFrom = "from"
-	CallFieldData = "data"
-
-	DummyBalance = "0xD3C21BCECCEDA1000000" // 1,000,000,000,000,000,000,000,000 in hex.
+	msgNoRollup  = "could not fetch rollup"
+	DummyBalance = "0xD3C21BCECCEDA1000000" // 1,000,000,000,000,000,000,000,000 in hex. The Ethereum API is to return the balance in hex.
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -56,14 +49,14 @@ type RollupChain struct {
 	l1Blockchain          *core.BlockChain
 	bridge                *bridge.Bridge
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
-	rpcEncryptionManager  rpcencryptionmanager.RPCEncryptionManager
+	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
+func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
 	return &RollupChain{
 		nodeID:                nodeID,
 		hostID:                hostID,
@@ -631,9 +624,17 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
 	}
 
-	contractAddress, from, data, err := extractCallParams(paramBytes)
+	contractAddress, err := rpc.ExtractCallParamTo(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("aborting `eth_call` request. Cause: %w", err)
+		return nil, fmt.Errorf("could not extract `to` param from eth_call request. Cause: %w", err)
+	}
+	from, err := rpc.ExtractCallParamFrom(paramBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract `from` param from eth_call request. Cause: %w", err)
+	}
+	data, err := rpc.ExtractCallParamData(paramBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract `data` param from eth_call request. Cause: %w", err)
 	}
 
 	hs := rc.storage.FetchHeadState()
@@ -667,57 +668,19 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	return encryptedResult, nil
 }
 
-// Extracts and validates the relevant parameters in a Call request.
-func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.Address, []byte, error) {
-	var paramsJSONMap []interface{}
-	err := json.Unmarshal(decryptedParams, &paramsJSONMap)
-	if err != nil {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(decryptedParams), err)
-	}
-
-	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
-	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil,
-			fmt.Errorf("`to` field in request params was missing or not of expected type string")
-	}
-	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
-	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil,
-			fmt.Errorf("`from` field in request params is missing or was not of expected type string. The `from` field is required to encrypt the response")
-	}
-	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
-	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil,
-			fmt.Errorf("`data` field in request params is missing or was not of expected type string")
-	}
-
-	contractAddress := gethcommon.HexToAddress(contractAddressString)
-	from := gethcommon.HexToAddress(fromString)
-	data, err := hexutil.Decode(dataString)
-	if err != nil {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
-	}
-	return contractAddress, from, data, nil
-}
-
 func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
 	paramBytes, err := rc.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
 
-	var paramsJSONMap []string
-	err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForBalanceRequest(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in eth_getBalance request. JSON params are: %s. Cause: %w", string(paramBytes), err)
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getBalance response. Cause: %w", err)
 	}
-	address := gethcommon.HexToAddress(paramsJSONMap[0]) // The first argument is the address, the second the block.
 
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
-	balance := DummyBalance // The Ethereum API is to return the balance in hex.
-
-	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance))
+	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, []byte(DummyBalance))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}

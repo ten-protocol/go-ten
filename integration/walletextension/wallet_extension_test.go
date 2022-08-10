@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -28,8 +30,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 
@@ -597,7 +597,7 @@ func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
 
 // Signs a viewing key.
 func signViewingKey(t *testing.T, privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
-	msgToSign := rpcencryptionmanager.ViewingKeySignedMsgPrefix + string(viewingKey)
+	msgToSign := rpc.ViewingKeySignedMsgPrefix + string(viewingKey)
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), privateKey)
 	if err != nil {
 		t.Fatal(err)

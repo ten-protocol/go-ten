@@ -1,19 +1,14 @@
-package rpcencryptionmanager
+package rpc
 
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
@@ -27,23 +22,23 @@ const ViewingKeySignedMsgPrefix = "vk"
 // Used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil using ECIES throws an exception.
 var placeholderResult = []byte("0x")
 
-// RPCEncryptionManager manages the decryption and encryption of sensitive RPC requests.
-type RPCEncryptionManager struct {
+// EncryptionManager manages the decryption and encryption of sensitive RPC requests.
+type EncryptionManager struct {
 	enclavePrivateKeyECIES *ecies.PrivateKey
 	// TODO - Replace with persistent storage.
 	// TODO - Handle multiple viewing keys per address.
 	viewingKeys map[gethcommon.Address]*ecies.PublicKey
 }
 
-func NewRPCEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) RPCEncryptionManager {
-	return RPCEncryptionManager{
+func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) EncryptionManager {
+	return EncryptionManager{
 		enclavePrivateKeyECIES: enclavePrivateKeyECIES,
 		viewingKeys:            make(map[gethcommon.Address]*ecies.PublicKey),
 	}
 }
 
 // DecryptBytes decrypts the bytes with the enclave's private key if viewing keys are enabled.
-func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
+func (rpc *EncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
 	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
@@ -53,7 +48,7 @@ func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, er
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.
-func (rpc *RPCEncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+func (rpc *EncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
 	// We decrypt the viewing key.
 	viewingKeyBytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedViewingKeyBytes, nil, nil)
 	if err != nil {
@@ -83,7 +78,7 @@ func (rpc *RPCEncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, 
 }
 
 // EncryptWithViewingKey encrypts the bytes with a viewing key for the address.
-func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Address, bytes []byte) ([]byte, error) {
+func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, bytes []byte) ([]byte, error) {
 	viewingKey := rpc.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
@@ -99,49 +94,4 @@ func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Addres
 	}
 
 	return encryptedBytes, nil
-}
-
-// ExtractTxHash - Returns the transaction hash from a common.EncryptedParamsGetTxReceipt object.
-func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams common.EncryptedParamsGetTxReceipt) (gethcommon.Hash, error) {
-	paramBytes, err := rpc.DecryptBytes(encryptedParams)
-	if err != nil {
-		return gethcommon.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	var paramsJSONList []string
-	err = json.Unmarshal(paramBytes, &paramsJSONList)
-	if err != nil {
-		return gethcommon.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. JSON params are: %s. Cause: %w", string(paramBytes), err)
-	}
-	txHash := gethcommon.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
-	return txHash, err
-}
-
-// EncryptTxReceiptWithViewingKey marshals the transaction receipt to JSON, and encrypts it with a viewing key for the address.
-func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcommon.Address, txReceipt *types.Receipt) ([]byte, error) {
-	txReceiptBytes, err := txReceipt.MarshalJSON()
-	if err != nil {
-		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	log.Info("Tx receipt: %s", string(txReceiptBytes))
-	return rpc.EncryptWithViewingKey(address, txReceiptBytes)
-}
-
-func (rpc *RPCEncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
-	encodedTx, err := rpc.DecryptBytes(encodedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
-	}
-
-	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
-	txBinary := encodedTx[4 : len(encodedTx)-2]
-	txBytes := gethcommon.Hex2Bytes(string(txBinary))
-
-	tx := &common.L2Tx{}
-	err = tx.UnmarshalBinary(txBytes)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshall transaction from binary. Cause: %w", err)
-	}
-
-	return tx, nil
 }

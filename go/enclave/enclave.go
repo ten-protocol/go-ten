@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
@@ -17,8 +19,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -50,7 +50,7 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	statsCollector       StatsCollector
 	l1Blockchain         *core.BlockChain
-	rpcEncryptionManager rpcencryptionmanager.RPCEncryptionManager
+	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
 
 	chain *rollupchain.RollupChain
@@ -158,7 +158,7 @@ func NewEnclave(
 	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey))
 
 	obscuroKey := obscurocrypto.GetObscuroKey()
-	rpcem := rpcencryptionmanager.NewRPCEncryptionManager(ecies.ImportECDSA(obscuroKey))
+	rpcem := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
 	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
 
@@ -269,7 +269,12 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
-	decryptedTx, err := e.rpcEncryptionManager.ExtractTxFromBinary(tx)
+	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
+	}
+
+	decryptedTx, err := rpc.ExtractTx(encodedTx)
 	if err != nil {
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
@@ -283,15 +288,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		e.txCh <- decryptedTx
 	}
 
-	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	signer := types.NewLondonSigner(big.NewInt(e.config.ObscuroChainID))
-	sender, err := signer.Sender(decryptedTx)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx)
 	if err != nil {
-		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
 	}
 
 	txHashBytes := []byte(decryptedTx.Hash().Hex())
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, txHashBytes)
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
 	}
@@ -342,7 +345,13 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, err
 	}
 
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
+	}
+
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
+	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
 
@@ -350,23 +359,33 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal transaction to JSON. Cause: %w", err)
 	}
-	return e.rpcEncryptionManager.EncryptWithViewingKey(rpcTx.From, txBytes)
+	return e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txBytes)
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
-	txHash, err := e.rpcEncryptionManager.ExtractTxHash(encryptedParams)
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	txHash, err := rpc.ExtractTxHash(paramBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	viewingKeyAddress, err := e.storage.GetSender(txHash)
+	// We retrieve the viewing key address.
+	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
+	}
 
+	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
@@ -374,12 +393,15 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		}
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+	txReceiptBytes, err := txReceipt.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
+	}
 
-	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptTxReceiptWithViewingKey(viewingKeyAddress, txReceipt)
+	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txReceiptBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
 	}
-
 	return encryptedTxReceipt, nil
 }
 

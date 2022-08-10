@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
@@ -57,7 +58,7 @@ func GenerateAndRegisterViewingKey(cli *rpcclientlib.ViewingKeyClient, wal walle
 // signViewingKey takes a public key bytes as hex and the private key for a wallet, it simulates the back-and-forth to
 // MetaMask and returns the signature bytes to register with the enclave
 func signViewingKey(viewingKeyHex string, signerKey *ecdsa.PrivateKey) ([]byte, error) {
-	msgToSign := rpcencryptionmanager.ViewingKeySignedMsgPrefix + viewingKeyHex
+	msgToSign := rpc.ViewingKeySignedMsgPrefix + viewingKeyHex
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), signerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign viewing key: %w", err)
