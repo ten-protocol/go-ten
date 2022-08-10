@@ -290,7 +290,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 
 	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx)
 	if err != nil {
-		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
 	}
 
 	txHashBytes := []byte(decryptedTx.Hash().Hex())
@@ -347,10 +347,11 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 
 	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
 	if err != nil {
-		return nil, fmt.Errorf("could not recover sender to encrypt eth_getTransactionByHash response. Cause: %w", err)
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
 	}
 
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
+	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
 
@@ -371,14 +372,20 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, err
 	}
 
-	viewingKeyAddress, err := e.storage.GetSender(txHash)
+	// We retrieve the viewing key address.
+	tx, _, _, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
+	}
 
+	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
@@ -390,11 +397,11 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	if err != nil {
 		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+
 	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txReceiptBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
 	}
-
 	return encryptedTxReceipt, nil
 }
 

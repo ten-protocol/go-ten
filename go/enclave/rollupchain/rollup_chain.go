@@ -667,7 +667,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	return encryptedResult, nil
 }
 
-// Extracts and validates the relevant parameters in a Call request.
+// Extracts and validates the relevant parameters - `contractAddress`, `from`, and `data` - in a Call request
 func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.Address, []byte, error) {
 	var paramsJSONMap []interface{}
 	err := json.Unmarshal(decryptedParams, &paramsJSONMap)
