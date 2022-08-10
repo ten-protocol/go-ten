@@ -11,8 +11,10 @@ import (
 )
 
 const (
-	http           = "http://"
-	reqJSONKeyFrom = "from"
+	http                = "http://"
+	reqJSONKeyFrom      = "from"
+	reqJSONKeyData      = "data"
+	ethCallPaddedArgLen = 64
 
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -220,10 +222,33 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 		// We only modify `eth_call` requests where the `from` field is not set.
 		return args, nil
 	}
-	callParams[reqJSONKeyFrom] = c.viewingKeyAddr
+
+	if callParams[reqJSONKeyData] == nil {
+		return nil, fmt.Errorf("eth_call request did not have its `from` or its `data` field set. Aborting " +
+			"request as it will not be possible to encrypt the response")
+	}
+
+	data, ok := callParams[reqJSONKeyData].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `[]byte`")
+	}
+	data = data[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
+	for i := 0; i < len(data); i += ethCallPaddedArgLen {
+		if i+ethCallPaddedArgLen > len(data) {
+			return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
+				"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
+				"encrypt the response")
+		}
+		// Each encoded parameter in the `data` field is 32 padded bytes. Since an address is 20 bytes, we only want
+		// the final forty characters of the slice.
+		maybeAddress := common.BytesToAddress(data[i+24 : i+64])
+		if maybeAddress == c.viewingKeyAddr {
+			callParams[reqJSONKeyFrom] = c.viewingKeyAddr
+			break
+		}
+	}
 
 	args[0] = callParams
-
 	return args, nil
 }
 
