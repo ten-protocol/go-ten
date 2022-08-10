@@ -236,27 +236,31 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 	if !ok {
 		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
 	}
-
-	// We iterate over the `data` field, looking for an argument that matches the viewing key address. If we find one,
-	// we set the `from` field to that address.
 	data = data[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
+
+	// We split up the arguments in the `data` field.
+	var maybeAddresses []string
 	for i := 0; i < len(data); i += ethCallPaddedArgLen {
 		if i+ethCallPaddedArgLen > len(data) {
-			return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
-				"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
-				"encrypt the response")
-		}
-		// Each encoded parameter in the `data` field is 32 padded bytes. Since an address is 20 bytes, we only want
-		// the final forty characters of the slice.
-		maybeAddress := common.HexToAddress(data[i+ethCallPaddedArgLen-addressLen : i+ethCallPaddedArgLen])
-		if maybeAddress == c.viewingKeyAddr {
-			callParams[reqJSONKeyFrom] = c.viewingKeyAddr
 			break
+		}
+		maybeAddresses = append(maybeAddresses, data[i+ethCallPaddedArgLen-addressLen:i+ethCallPaddedArgLen])
+	}
+
+	// We iterate over the arguments, looking for an argument that matches the viewing key address. If we find one, we
+	// set the `from` field to that address.
+	for _, maybeAddress := range maybeAddresses {
+		parsedMaybeAddress := common.HexToAddress(maybeAddress)
+		if parsedMaybeAddress == c.viewingKeyAddr {
+			callParams[reqJSONKeyFrom] = c.viewingKeyAddr
+			args[0] = callParams
+			return args, nil
 		}
 	}
 
-	args[0] = callParams
-	return args, nil
+	return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
+		"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
+		"encrypt the response")
 }
 
 // isSensitive indicates whether the RPC method's requests and responses should be encrypted.
