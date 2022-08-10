@@ -3,8 +3,6 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -39,9 +37,10 @@ func ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
 	return tx, nil
 }
 
-func GetViewingKeyAddressForTransaction(tx *common.L2Tx, obscuroChainID int64) (gethcommon.Address, error) {
+// GetViewingKeyAddressForTransaction returns the address whose viewing key should be used to encrypt the response, given a transaction.
+func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, error) {
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	signer := types.NewLondonSigner(big.NewInt(obscuroChainID))
+	signer := types.NewLondonSigner(tx.ChainId())
 	sender, err := signer.Sender(tx)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)

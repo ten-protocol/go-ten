@@ -288,7 +288,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		e.txCh <- decryptedTx
 	}
 
-	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx, e.config.ObscuroChainID)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
 	}
@@ -345,6 +345,11 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, err
 	}
 
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover sender to encrypt eth_getTransactionByHash response. Cause: %w", err)
+	}
+
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
@@ -353,7 +358,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal transaction to JSON. Cause: %w", err)
 	}
-	return e.rpcEncryptionManager.EncryptWithViewingKey(rpcTx.From, txBytes)
+	return e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txBytes)
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
