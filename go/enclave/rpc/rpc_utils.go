@@ -4,17 +4,34 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-// ExtractTxHash - Returns the transaction hash from the params of a eth_getTransactionReceipt request.
-func ExtractTxHash(getTxReceiptParams []byte) (common.Hash, error) {
+// ExtractTxHash returns the transaction hash from the params of an eth_getTransactionReceipt request.
+func ExtractTxHash(getTxReceiptParams []byte) (gethcommon.Hash, error) {
 	var paramsJSONList []string
 	err := json.Unmarshal(getTxReceiptParams, &paramsJSONList)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt "+
+		return gethcommon.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt "+
 			"request. JSON params are: %s. Cause: %w", string(getTxReceiptParams), err)
 	}
-	txHash := common.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
+	txHash := gethcommon.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
 	return txHash, err
+}
+
+// ExtractTx returns the common.L2Tx from the params of an eth_sendRawTransaction request.
+func (rpc *EncryptionManager) ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
+	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
+	txBinary := sendRawTxParams[4 : len(sendRawTxParams)-2]
+	txBytes := gethcommon.Hex2Bytes(string(txBinary))
+
+	tx := &common.L2Tx{}
+	err := tx.UnmarshalBinary(txBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshall transaction from bytes. Cause: %w", err)
+	}
+
+	return tx, nil
 }

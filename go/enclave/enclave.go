@@ -269,7 +269,12 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
-	decryptedTx, err := e.rpcEncryptionManager.ExtractTxFromBinary(tx)
+	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
+	}
+
+	decryptedTx, err := e.rpcEncryptionManager.ExtractTx(encodedTx)
 	if err != nil {
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)

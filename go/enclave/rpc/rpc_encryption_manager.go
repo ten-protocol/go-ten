@@ -9,7 +9,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
@@ -95,23 +94,4 @@ func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, 
 	}
 
 	return encryptedBytes, nil
-}
-
-func (rpc *EncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
-	encodedTx, err := rpc.DecryptBytes(encodedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
-	}
-
-	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
-	txBinary := encodedTx[4 : len(encodedTx)-2]
-	txBytes := gethcommon.Hex2Bytes(string(txBinary))
-
-	tx := &common.L2Tx{}
-	err = tx.UnmarshalBinary(txBytes)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshall transaction from binary. Cause: %w", err)
-	}
-
-	return tx, nil
 }
