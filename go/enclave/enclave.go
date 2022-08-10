@@ -274,7 +274,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
 	}
 
-	decryptedTx, err := e.rpcEncryptionManager.ExtractTx(encodedTx)
+	decryptedTx, err := rpc.ExtractTx(encodedTx)
 	if err != nil {
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
@@ -289,14 +289,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	}
 
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	signer := types.NewLondonSigner(big.NewInt(e.config.ObscuroChainID))
-	sender, err := signer.Sender(decryptedTx)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx, e.config.ObscuroChainID)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover sender to encrypt eth_sendRawTransaction response. Cause: %w", err)
 	}
 
 	txHashBytes := []byte(decryptedTx.Hash().Hex())
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, txHashBytes)
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
 	}

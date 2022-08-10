@@ -3,6 +3,9 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -22,7 +25,7 @@ func ExtractTxHash(getTxReceiptParams []byte) (gethcommon.Hash, error) {
 }
 
 // ExtractTx returns the common.L2Tx from the params of an eth_sendRawTransaction request.
-func (rpc *EncryptionManager) ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
+func ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
 	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
 	txBinary := sendRawTxParams[4 : len(sendRawTxParams)-2]
 	txBytes := gethcommon.Hex2Bytes(string(txBinary))
@@ -34,4 +37,14 @@ func (rpc *EncryptionManager) ExtractTx(sendRawTxParams []byte) (*common.L2Tx, e
 	}
 
 	return tx, nil
+}
+
+func GetViewingKeyAddressForTransaction(tx *common.L2Tx, obscuroChainID int64) (gethcommon.Address, error) {
+	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
+	signer := types.NewLondonSigner(big.NewInt(obscuroChainID))
+	sender, err := signer.Sender(tx)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
+	}
+	return sender, nil
 }
