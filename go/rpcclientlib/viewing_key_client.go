@@ -264,6 +264,8 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 		}
 	}
 
+	// TODO - Consider defining an additional fallback to set the `from` field if the above all fail.
+
 	return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
 		"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
 		"encrypt the response")
