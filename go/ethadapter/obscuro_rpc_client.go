@@ -59,12 +59,12 @@ func (c *obscuroWalletRPCClient) SendTransaction(signedTx *types.Transaction) er
 }
 
 func (c *obscuroWalletRPCClient) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
-	var r types.Receipt
-	err := c.client.Call(&r, rpcclientlib.RPCGetTxReceipt, hash)
+	var r *types.Receipt
+	err := c.client.Call(r, rpcclientlib.RPCGetTxReceipt, hash)
 	if err != nil {
 		return nil, err
 	}
-	return &r, nil
+	return r, nil
 }
 
 func (c *obscuroWalletRPCClient) Nonce(address gethcommon.Address) (uint64, error) {

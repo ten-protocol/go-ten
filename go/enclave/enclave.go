@@ -372,6 +372,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, err
 	}
 
+	log.Info("Requesting receipt for: %s ..", txHash.Hex())
 	// We retrieve the viewing key address.
 	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
@@ -397,6 +398,8 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	if err != nil {
 		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+
+	log.Info("Returning receipt for: %s: %s", txHash.Hex(), string(txReceiptBytes))
 
 	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txReceiptBytes)
 	if err != nil {
