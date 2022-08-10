@@ -23,8 +23,8 @@ import (
 // The types of contracts supported by the deployer
 const (
 	mgmtContract         = "MGMT"
-	obsErc20Contract     = "OBSERC20"
-	ethErc20Contract     = "ETHERC20"
+	l2Erc20Contract      = "L2ERC20"
+	l1Erc20Contract      = "L1ERC20"
 	guessingGameContract = "GUESS"
 )
 
@@ -157,13 +157,13 @@ func getContractCode(cfg *Config) ([]byte, error) {
 	case mgmtContract:
 		return managementcontract.Bytecode()
 
-	case obsErc20Contract:
+	case l2Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
-		return erc20contract.ObsBytecodeWithDefaultSupply(tokenName), nil
+		return erc20contract.L2BytecodeWithDefaultSupply(tokenName), nil
 
-	case ethErc20Contract:
+	case l1Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
-		return erc20contract.EthBytecodeWithDefaultSupply(tokenName), nil
+		return erc20contract.L1BytecodeWithDefaultSupply(tokenName), nil
 
 	case guessingGameContract:
 		size, err := strconv.Atoi(cfg.ConstructorParams[0])

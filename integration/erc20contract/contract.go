@@ -18,7 +18,7 @@ func ObsBytecode(tokenName string, initialSupply *big.Int) ([]byte, error) {
 	return parsed.Pack("", tokenName, tokenName, initialSupply)
 }
 
-func ObsBytecodeWithDefaultSupply(tokenName string) []byte {
+func L2BytecodeWithDefaultSupply(tokenName string) []byte {
 	parsed, err := ObsERC20.ObsERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
@@ -32,7 +32,7 @@ func ObsBytecodeWithDefaultSupply(tokenName string) []byte {
 	return append(bytecode, input...)
 }
 
-func EthBytecodeWithDefaultSupply(tokenName string) []byte {
+func L1BytecodeWithDefaultSupply(tokenName string) []byte {
 	parsed, err := EthERC20.EthERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)

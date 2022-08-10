@@ -173,7 +173,7 @@ func (ti *TransactionInjector) Start() {
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
 func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	// deploy the ERC20
-	contractBytes := erc20contract.ObsBytecodeWithDefaultSupply(string(bridge.OBX))
+	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(bridge.OBX))
 
 	deployContractTx := types.DynamicFeeTx{
 		Nonce: NextNonce(ti.rpcHandles, owner),
