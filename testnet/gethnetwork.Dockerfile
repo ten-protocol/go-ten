@@ -1,5 +1,5 @@
 # build a network of geth nodes
-# please check the workflows/manual-deploy-l1network.yml for more info
+# please check the workflows/manual-deploy-testnet-l1.yml for more info
 #
 FROM golang:1.17-alpine
 

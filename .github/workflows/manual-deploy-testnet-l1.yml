@@ -9,7 +9,7 @@
 # Exposes the following addresses: (only accessible internally)
 #  testnet-gethnetwork-DEPLOYNUMBER.uksouth.azurecontainer.io
 
-name: Manual Deploy L1 network
+name: '[M] Deploy Testnet L1'
 
 on:
   workflow_dispatch:

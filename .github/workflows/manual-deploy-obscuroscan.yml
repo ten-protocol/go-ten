@@ -8,7 +8,7 @@
 # Exposes the following addresses: (only accessible internally)
 #  testnet-obscuroscan.uksouth.azurecontainer.io
 
-name: Manual Deploy Obscuroscan
+name: '[M] Deploy Obscuroscan'
 
 on:
   workflow_dispatch:
