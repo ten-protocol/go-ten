@@ -14,8 +14,10 @@ contract ObsERC20 is ERC20 {
     }
 
     function balanceOf(address account) public view virtual override returns (uint256) {
-// Todo - enable this to test ACL
-//        require(tx.origin == account);
+        // Respond to balance requests made by the account owner only.
+        // In case the requester spoofs the "from" of the call, they will not be able to read
+        // the result since it will be returned encrypted with the viewing key of the declared "from".
+        require(msg.sender == account);
         return super.balanceOf(account);
     }
 
