@@ -117,8 +117,9 @@ jobs:
           inlineScript: |
             $(az resource list --tag devtestnetlatest=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-  deploy:
-    needs: build
+
+  deploy-l2:
+    needs: build-l2
     runs-on: ubuntu-latest
 
     strategy:
@@ -231,8 +232,9 @@ jobs:
                --p2p_public_address=dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
 
-  update:
-    needs: deploy
+
+  update-l2:
+    needs: deploy-l2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -256,8 +258,9 @@ jobs:
               --resource-group Testnet \
               --lb-name dev-testnet-loadbalancer
 
-  setup:
-    needs: deploy
+
+  setup-l2:
+    needs: deploy-l2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
