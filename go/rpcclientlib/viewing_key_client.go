@@ -204,21 +204,9 @@ func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
 func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(args []interface{}) ([]interface{}, error) {
-	if len(args) == 0 {
-		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
-	}
-
-	callParams, ok := args[0].(map[string]interface{})
-	if !ok {
-		callParamsJSON, ok := args[0].([]byte)
-		if !ok {
-			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes but was %t", args[0])
-		}
-
-		err := json.Unmarshal(callParamsJSON, &callParams)
-		if err != nil {
-			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes, failed to decode: %w", err)
-		}
+	callParams, err := parseCallParams(args)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
@@ -229,23 +217,24 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(args []interface{
 	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
 
 	// We ensure that the `data` field is present.
-	if callParams[reqJSONKeyData] == nil {
+	data := callParams[reqJSONKeyData]
+	if data == nil {
 		return nil, fmt.Errorf("eth_call request did not have its `from` or its `data` field set. Aborting " +
 			"request as it will not be possible to encrypt the response")
 	}
-	data, ok := callParams[reqJSONKeyData].(string)
+	dataString, ok := data.(string)
 	if !ok {
 		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
 	}
-	data = data[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
+	dataString = dataString[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
 
 	// We split up the arguments in the `data` field.
 	var dataArgs []string
-	for i := 0; i < len(data); i += ethCallPaddedArgLen {
-		if i+ethCallPaddedArgLen > len(data) {
+	for i := 0; i < len(dataString); i += ethCallPaddedArgLen {
+		if i+ethCallPaddedArgLen > len(dataString) {
 			break
 		}
-		dataArgs = append(dataArgs, data[i:i+ethCallPaddedArgLen])
+		dataArgs = append(dataArgs, dataString[i:i+ethCallPaddedArgLen])
 	}
 
 	// We iterate over the arguments, looking for an argument that matches the viewing key address. If we find one, we
@@ -279,4 +268,28 @@ func isSensitive(method interface{}) bool {
 		}
 	}
 	return false
+}
+
+// Parses the eth_call params into a map.
+func parseCallParams(args []interface{}) (map[string]interface{}, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
+	}
+
+	callParams, ok := args[0].(map[string]interface{})
+	if !ok {
+		callParamsJSON, ok := args[0].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes but "+
+				"was %t", args[0])
+		}
+
+		err := json.Unmarshal(callParamsJSON, &callParams)
+		if err != nil {
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes, "+
+				"failed to decode: %w", err)
+		}
+	}
+
+	return callParams, nil
 }
