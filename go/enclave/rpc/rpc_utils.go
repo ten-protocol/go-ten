@@ -1,4 +1,4 @@
-package rpcencryptionmanager
+package rpc
 
 import (
 	"encoding/json"

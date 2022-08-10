@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
@@ -17,8 +19,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -50,7 +50,7 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	statsCollector       StatsCollector
 	l1Blockchain         *core.BlockChain
-	rpcEncryptionManager rpcencryptionmanager.RPCEncryptionManager
+	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
 
 	chain *rollupchain.RollupChain
@@ -158,7 +158,7 @@ func NewEnclave(
 	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey))
 
 	obscuroKey := obscurocrypto.GetObscuroKey()
-	rpcem := rpcencryptionmanager.NewRPCEncryptionManager(ecies.ImportECDSA(obscuroKey))
+	rpcem := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
 	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
 
@@ -358,7 +358,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
 	}
-	txHash, err := rpcencryptionmanager.ExtractTxHash(paramBytes)
+	txHash, err := rpc.ExtractTxHash(paramBytes)
 	if err != nil {
 		return nil, err
 	}

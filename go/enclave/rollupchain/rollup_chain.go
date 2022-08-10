@@ -11,17 +11,16 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpcencryptionmanager"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -29,6 +28,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
@@ -56,14 +56,14 @@ type RollupChain struct {
 	l1Blockchain          *core.BlockChain
 	bridge                *bridge.Bridge
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
-	rpcEncryptionManager  rpcencryptionmanager.RPCEncryptionManager
+	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpcencryptionmanager.RPCEncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
+func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
 	return &RollupChain{
 		nodeID:                nodeID,
 		hostID:                hostID,

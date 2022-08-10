@@ -1,4 +1,4 @@
-package rpcencryptionmanager
+package rpc
 
 import (
 	"crypto/rand"
@@ -25,23 +25,23 @@ const ViewingKeySignedMsgPrefix = "vk"
 // Used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil using ECIES throws an exception.
 var placeholderResult = []byte("0x")
 
-// RPCEncryptionManager manages the decryption and encryption of sensitive RPC requests.
-type RPCEncryptionManager struct {
+// EncryptionManager manages the decryption and encryption of sensitive RPC requests.
+type EncryptionManager struct {
 	enclavePrivateKeyECIES *ecies.PrivateKey
 	// TODO - Replace with persistent storage.
 	// TODO - Handle multiple viewing keys per address.
 	viewingKeys map[gethcommon.Address]*ecies.PublicKey
 }
 
-func NewRPCEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) RPCEncryptionManager {
-	return RPCEncryptionManager{
+func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) EncryptionManager {
+	return EncryptionManager{
 		enclavePrivateKeyECIES: enclavePrivateKeyECIES,
 		viewingKeys:            make(map[gethcommon.Address]*ecies.PublicKey),
 	}
 }
 
 // DecryptBytes decrypts the bytes with the enclave's private key if viewing keys are enabled.
-func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
+func (rpc *EncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
 	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt bytes with enclave private key. Cause: %w", err)
@@ -51,7 +51,7 @@ func (rpc *RPCEncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, er
 }
 
 // AddViewingKey - see the description of Enclave.AddViewingKey.
-func (rpc *RPCEncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+func (rpc *EncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
 	// We decrypt the viewing key.
 	viewingKeyBytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedViewingKeyBytes, nil, nil)
 	if err != nil {
@@ -81,7 +81,7 @@ func (rpc *RPCEncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, 
 }
 
 // EncryptWithViewingKey encrypts the bytes with a viewing key for the address.
-func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Address, bytes []byte) ([]byte, error) {
+func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, bytes []byte) ([]byte, error) {
 	viewingKey := rpc.viewingKeys[address]
 	if viewingKey == nil {
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
@@ -99,7 +99,7 @@ func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Addres
 	return encryptedBytes, nil
 }
 
-func (rpc *RPCEncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
+func (rpc *EncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
 	encodedTx, err := rpc.DecryptBytes(encodedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt transaction with enclave private key. Cause: %w", err)
