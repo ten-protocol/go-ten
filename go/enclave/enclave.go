@@ -373,7 +373,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We retrieve the viewing key address.
-	tx, _, _, _, err := e.storage.GetTransaction(txHash)
+	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
 			return nil, nil

@@ -3,6 +3,7 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -46,4 +47,16 @@ func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, er
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}
 	return sender, nil
+}
+
+// GetViewingKeyAddressForBalanceRequest returns the address whose viewing key should be used to encrypt the response, given a transaction.
+func GetViewingKeyAddressForBalanceRequest(balanceReqParamBytes []byte) (gethcommon.Address, error) {
+	var paramsJSONMap []string
+	err := json.Unmarshal(balanceReqParamBytes, &paramsJSONMap)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_getBalance request. JSON "+
+			"params are: %s. Cause: %w", string(balanceReqParamBytes), err)
+	}
+	// The first argument is the address, the second the block.
+	return gethcommon.HexToAddress(paramsJSONMap[0]), nil
 }

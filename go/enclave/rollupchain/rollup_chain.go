@@ -37,12 +37,12 @@ import (
 const (
 	msgNoRollup = "could not fetch rollup"
 
-	// The relevant fields in a Call request's params.
+	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
 	CallFieldTo   = "to"
 	CallFieldFrom = "from"
 	CallFieldData = "data"
 
-	DummyBalance = "0xD3C21BCECCEDA1000000" // 1,000,000,000,000,000,000,000,000 in hex.
+	DummyBalance = "0xD3C21BCECCEDA1000000" // 1,000,000,000,000,000,000,000,000 in hex. The Ethereum API is to return the balance in hex.
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -707,17 +707,13 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
 
-	var paramsJSONMap []string
-	err = json.Unmarshal(paramBytes, &paramsJSONMap)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForBalanceRequest(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in eth_getBalance request. JSON params are: %s. Cause: %w", string(paramBytes), err)
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getBalance response. Cause: %w", err)
 	}
-	address := gethcommon.HexToAddress(paramsJSONMap[0]) // The first argument is the address, the second the block.
 
 	// TODO - Calculate balance correctly, rather than returning this dummy value.
-	balance := DummyBalance // The Ethereum API is to return the balance in hex.
-
-	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance))
+	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, []byte(DummyBalance))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
