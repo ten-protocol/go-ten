@@ -3,18 +3,16 @@ package rpcencryptionmanager
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
+
+// todo - joel - rename package
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
 // API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
@@ -99,32 +97,6 @@ func (rpc *RPCEncryptionManager) EncryptWithViewingKey(address gethcommon.Addres
 	}
 
 	return encryptedBytes, nil
-}
-
-// ExtractTxHash - Returns the transaction hash from a common.EncryptedParamsGetTxReceipt object.
-func (rpc *RPCEncryptionManager) ExtractTxHash(encryptedParams common.EncryptedParamsGetTxReceipt) (gethcommon.Hash, error) {
-	paramBytes, err := rpc.DecryptBytes(encryptedParams)
-	if err != nil {
-		return gethcommon.Hash{}, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	var paramsJSONList []string
-	err = json.Unmarshal(paramBytes, &paramsJSONList)
-	if err != nil {
-		return gethcommon.Hash{}, fmt.Errorf("could not parse JSON params in eth_getTransactionReceipt request. JSON params are: %s. Cause: %w", string(paramBytes), err)
-	}
-	txHash := gethcommon.HexToHash(paramsJSONList[0]) // The only argument is the transaction hash.
-	return txHash, err
-}
-
-// EncryptTxReceiptWithViewingKey marshals the transaction receipt to JSON, and encrypts it with a viewing key for the address.
-func (rpc *RPCEncryptionManager) EncryptTxReceiptWithViewingKey(address gethcommon.Address, txReceipt *types.Receipt) ([]byte, error) {
-	txReceiptBytes, err := txReceipt.MarshalJSON()
-	if err != nil {
-		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	log.Info("Tx receipt: %s", string(txReceiptBytes))
-	return rpc.EncryptWithViewingKey(address, txReceiptBytes)
 }
 
 func (rpc *RPCEncryptionManager) ExtractTxFromBinary(encodedTx []byte) (*common.L2Tx, error) {
