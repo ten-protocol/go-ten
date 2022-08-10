@@ -178,14 +178,13 @@ func (c *ViewingKeyClient) Stop() {
 	c.obscuroClient.Stop()
 }
 
-func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, viewingPubKeyBytes []byte) {
+func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAddress common.Address, viewingPubKeyBytes []byte) {
 	c.viewingPrivKey = viewingKey
 	c.viewingPubKey = viewingPubKeyBytes
+	c.viewingKeyAddr = signerAddress
 }
 
-func (c *ViewingKeyClient) RegisterViewingKey(signerAddr common.Address, signature []byte) error {
-	c.viewingKeyAddr = signerAddr
-
+func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
 	// We encrypt the viewing key bytes
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingPubKey, nil, nil)
 	if err != nil {
