@@ -37,7 +37,7 @@ func GenerateAndRegisterViewingKey(cli *rpcclientlib.ViewingKeyClient, wal walle
 	viewingPubKeyBytes := crypto.CompressPubkey(&vk.PublicKey)
 
 	// set key pair on the RPC client
-	cli.SetViewingKey(viewingPrivateKeyECIES, viewingPubKeyBytes)
+	cli.SetViewingKey(viewingPrivateKeyECIES, wal.Address(), viewingPubKeyBytes)
 
 	// sign hex-encoded public key string with the wallet's private key
 	viewingKeyHex := hex.EncodeToString(viewingPubKeyBytes)
@@ -47,7 +47,7 @@ func GenerateAndRegisterViewingKey(cli *rpcclientlib.ViewingKeyClient, wal walle
 	}
 
 	// submit the signed public key to the enclave so it can encrypt sensitive responses
-	err = cli.RegisterViewingKey(wal.Address(), signature)
+	err = cli.RegisterViewingKey(signature)
 	if err != nil {
 		return err
 	}

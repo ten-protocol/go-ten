@@ -175,14 +175,13 @@ func (c *ViewingKeyClient) Stop() {
 	c.obscuroClient.Stop()
 }
 
-func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, viewingPubKeyBytes []byte) {
+func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAddress common.Address, viewingPubKeyBytes []byte) {
 	c.viewingPrivKey = viewingKey
 	c.viewingPubKey = viewingPubKeyBytes
+	c.viewingKeyAddr = signerAddress
 }
 
-func (c *ViewingKeyClient) RegisterViewingKey(signerAddr common.Address, signature []byte) error {
-	c.viewingKeyAddr = signerAddr
-
+func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
 	// We encrypt the viewing key bytes
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingPubKey, nil, nil)
 	if err != nil {
@@ -220,10 +219,13 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 		// We only modify `eth_call` requests where the `from` field is not set.
 		return args, nil
 	}
+
+	if c.viewingKeyAddr == (common.Address{}) {
+		return nil, fmt.Errorf("could not set eth_call `from` field as no viewing key is set")
+	}
 	callParams[reqJSONKeyFrom] = c.viewingKeyAddr
 
 	args[0] = callParams
-
 	return args, nil
 }
 
