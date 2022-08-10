@@ -49,14 +49,13 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	var rollupHeaderWithHashes *common.HeaderWithTxHashes
 
+	// Predefined consts to support geths API
 	switch number {
 	case rpc.LatestBlockNumber:
 		return headerWithHashesToBlock(api.host.DB().GetCurrentRollupHead()), nil
 	case rpc.EarliestBlockNumber:
-		rollupHeaderWithHashes = api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0)))
-		return headerWithHashesToBlock(rollupHeaderWithHashes), nil
+		return headerWithHashesToBlock(api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0)))), nil
 	case rpc.PendingBlockNumber:
 		// todo Dependent on the current pending rollup - leaving it for a different iteration as it will need more thought
 		return nil, nil
@@ -66,7 +65,7 @@ func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumb
 	if rollupHash == nil {
 		return nil, nil //nolint:nilnil
 	}
-	rollupHeaderWithHashes = api.host.DB().GetRollupHeader(*rollupHash)
+	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(*rollupHash)
 	if rollupHeaderWithHashes == nil {
 		return nil, fmt.Errorf("could not retrieve header for stored rollup with number %d and hash %s", number, rollupHash)
 	}
