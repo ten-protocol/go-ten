@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
@@ -14,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 )
@@ -115,9 +116,9 @@ func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractA
 	convertedData := (hexutil.Bytes)(balanceData)
 
 	params := map[string]interface{}{
-		rollupchain.CallFieldFrom: address.Hex(),
-		rollupchain.CallFieldTo:   l2ContractAddress.Hex(),
-		rollupchain.CallFieldData: convertedData,
+		rpc.CallFieldFrom: address.Hex(),
+		rpc.CallFieldTo:   l2ContractAddress.Hex(),
+		rpc.CallFieldData: convertedData,
 	}
 
 	var response string
