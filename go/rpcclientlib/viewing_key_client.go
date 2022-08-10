@@ -76,7 +76,7 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 	if method == RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
-		args, err = c.addFromAddressToCallParamsIfMissing(method, args)
+		args, err = c.addFromAddressToCallParamsIfMissing(args)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
-func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, args []interface{}) ([]interface{}, error) {
+func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(args []interface{}) ([]interface{}, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
 	}
@@ -212,12 +212,12 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 	if !ok {
 		callParamsJSON, ok := args[0].([]byte)
 		if !ok {
-			return nil, fmt.Errorf("expected %s first param to be a map or json encoded bytes but was %t", method, args[0])
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes but was %t", args[0])
 		}
 
 		err := json.Unmarshal(callParamsJSON, &callParams)
 		if err != nil {
-			return nil, fmt.Errorf("expected %s first param to be a map or json encoded bytes, failed to decode: %w", method, err)
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes, failed to decode: %w", err)
 		}
 	}
 
