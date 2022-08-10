@@ -1,3 +1,7 @@
+run:
+  skip-dirs:
+    - design
+    - docs
 linters:
   # Disable all linters.
   # Default: false
@@ -34,7 +38,6 @@ linters:
     - gosec
     - gosimple
     - govet
-    - ifshort
     - importas
     - ineffassign
     - makezero

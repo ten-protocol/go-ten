@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -133,7 +132,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	buildDir := path.Join(basepath, buildDirBase, timestamp)
 	// We create a data directory for each node.
-	nodesDir, err := ioutil.TempDir("", timestamp)
+	nodesDir, err := os.MkdirTemp("", timestamp)
 	fmt.Printf("Geth nodes created in: %s\n", nodesDir)
 	if err != nil {
 		panic(err)
@@ -306,7 +305,7 @@ func (network *GethNetwork) createAccount(dataDirPath string) {
 // Adds a Geth node's account public key to the `network` object.
 func (network *GethNetwork) retrieveAccount(dataDirPath string) string {
 	dir := path.Join(dataDirPath, keystoreDir)
-	files, _ := ioutil.ReadDir(dir)
+	files, _ := os.ReadDir(dir)
 	for _, file := range files {
 		// `ReadDir` returns the folder itself, as well as the files within it.
 		if file.IsDir() {

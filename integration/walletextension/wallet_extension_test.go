@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"strings"
@@ -530,7 +530,7 @@ func makeEthJSONReq(t *testing.T, walletExtensionAddr string, method string, par
 	if resp.Body != nil {
 		defer resp.Body.Close()
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +587,7 @@ func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	viewingKey, err := ioutil.ReadAll(resp.Body)
+	viewingKey, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,13 +19,17 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.17
+      - uses: actions/checkout@v3
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
           # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
-          version: v1.45.2
+          version: v1.48.0
           args: --timeout=5m --verbose
+          skip-pkg-cache: true
 
           # Optional: working directory, useful for monorepos
           # working-directory: somedir

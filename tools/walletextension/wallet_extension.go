@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -148,7 +148,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
 		return
@@ -256,7 +256,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, _ 
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signature from client: %s", err))
 		return
