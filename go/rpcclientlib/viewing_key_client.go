@@ -268,6 +268,8 @@ func parseCallParams(args []interface{}) (map[string]interface{}, error) {
 	return callParams, nil
 }
 
+// todo - joel - add tests
+
 // Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
 // key address, we return that address. Otherwise, we return nil.
 func (c *ViewingKeyClient) extractFromInDataField(callParams map[string]interface{}) (*common.Address, error) {
