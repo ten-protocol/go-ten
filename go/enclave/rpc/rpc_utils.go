@@ -3,12 +3,20 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+)
+
+const (
+	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
+	CallFieldTo   = "to"
+	CallFieldFrom = "from"
+	CallFieldData = "data"
 )
 
 // ExtractTxHash returns the transaction hash from the params of an eth_getTransactionReceipt request.
@@ -38,7 +46,8 @@ func ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
 	return tx, nil
 }
 
-// GetViewingKeyAddressForTransaction returns the address whose viewing key should be used to encrypt the response, given a transaction.
+// GetViewingKeyAddressForTransaction returns the address whose viewing key should be used to encrypt the response,
+// given a transaction.
 func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, error) {
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
 	signer := types.NewLondonSigner(tx.ChainId())
@@ -49,14 +58,77 @@ func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, er
 	return sender, nil
 }
 
-// GetViewingKeyAddressForBalanceRequest returns the address whose viewing key should be used to encrypt the response, given a transaction.
-func GetViewingKeyAddressForBalanceRequest(balanceReqParamBytes []byte) (gethcommon.Address, error) {
+// GetViewingKeyAddressForBalanceRequest returns the address whose viewing key should be used to encrypt the response,
+// given the params of an eth_getBalance request.
+func GetViewingKeyAddressForBalanceRequest(balanceParams []byte) (gethcommon.Address, error) {
 	var paramsJSONMap []string
-	err := json.Unmarshal(balanceReqParamBytes, &paramsJSONMap)
+	err := json.Unmarshal(balanceParams, &paramsJSONMap)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_getBalance request. JSON "+
-			"params are: %s. Cause: %w", string(balanceReqParamBytes), err)
+			"params are: %s. Cause: %w", string(balanceParams), err)
 	}
 	// The first argument is the address, the second the block.
 	return gethcommon.HexToAddress(paramsJSONMap[0]), nil
+}
+
+// ExtractCallParamTo extracts and parses the `to` field of an eth_call request.
+func ExtractCallParamTo(callParams []byte) (gethcommon.Address, error) {
+	var paramsJSONMap []interface{}
+	err := json.Unmarshal(callParams, &paramsJSONMap)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(callParams), err)
+	}
+
+	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
+	if !ok {
+		return gethcommon.Address{}, fmt.Errorf("`to` field in request params was missing or not of expected type string")
+	}
+
+	return gethcommon.HexToAddress(contractAddressString), nil
+}
+
+// ExtractCallParamFrom extracts and parses the `from` field of an eth_call request.
+// This is also the address whose viewing key should be used to encrypt the response.
+func ExtractCallParamFrom(callParams []byte) (gethcommon.Address, error) {
+	var paramsJSONMap []interface{}
+	err := json.Unmarshal(callParams, &paramsJSONMap)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_call request. JSON "+
+			"params are: %s. Cause: %w", string(callParams), err)
+	}
+
+	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
+	if !ok {
+		return gethcommon.Address{}, fmt.Errorf("`from` field in request params is missing or was not of " +
+			"expected type string. The `from` field is required to encrypt the response")
+	}
+
+	from := gethcommon.HexToAddress(fromString)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
+	}
+	return from, nil
+}
+
+// ExtractCallParamData extracts and parses the `data` field of an eth_call request.
+func ExtractCallParamData(callParams []byte) ([]byte, error) {
+	var paramsJSONMap []interface{}
+	err := json.Unmarshal(callParams, &paramsJSONMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(callParams), err)
+	}
+
+	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
+	if !ok {
+		return nil, fmt.Errorf("`data` field in request params is missing or was not of expected type string")
+	}
+
+	data, err := hexutil.Decode(dataString)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
+	}
+	return data, nil
 }

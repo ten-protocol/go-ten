@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"sort"
@@ -35,13 +34,7 @@ import (
 )
 
 const (
-	msgNoRollup = "could not fetch rollup"
-
-	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
-	CallFieldTo   = "to"
-	CallFieldFrom = "from"
-	CallFieldData = "data"
-
+	msgNoRollup  = "could not fetch rollup"
 	DummyBalance = "0xD3C21BCECCEDA1000000" // 1,000,000,000,000,000,000,000,000 in hex. The Ethereum API is to return the balance in hex.
 )
 
@@ -631,9 +624,17 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
 	}
 
-	contractAddress, from, data, err := extractCallParams(paramBytes)
+	contractAddress, err := rpc.ExtractCallParamTo(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("aborting `eth_call` request. Cause: %w", err)
+		return nil, fmt.Errorf("could not extract `to` param from eth_call request. Cause: %w", err)
+	}
+	from, err := rpc.ExtractCallParamFrom(paramBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract `from` param from eth_call request. Cause: %w", err)
+	}
+	data, err := rpc.ExtractCallParamData(paramBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract `data` param from eth_call request. Cause: %w", err)
 	}
 
 	hs := rc.storage.FetchHeadState()
@@ -665,40 +666,6 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	}
 
 	return encryptedResult, nil
-}
-
-// Extracts and validates the relevant parameters - `contractAddress`, `from`, and `data` - in a Call request
-func extractCallParams(decryptedParams []byte) (gethcommon.Address, gethcommon.Address, []byte, error) {
-	var paramsJSONMap []interface{}
-	err := json.Unmarshal(decryptedParams, &paramsJSONMap)
-	if err != nil {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(decryptedParams), err)
-	}
-
-	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
-	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil,
-			fmt.Errorf("`to` field in request params was missing or not of expected type string")
-	}
-	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
-	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil,
-			fmt.Errorf("`from` field in request params is missing or was not of expected type string. The `from` field is required to encrypt the response")
-	}
-	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
-	if !ok {
-		return gethcommon.Address{}, gethcommon.Address{}, nil,
-			fmt.Errorf("`data` field in request params is missing or was not of expected type string")
-	}
-
-	contractAddress := gethcommon.HexToAddress(contractAddressString)
-	from := gethcommon.HexToAddress(fromString)
-	data, err := hexutil.Decode(dataString)
-	if err != nil {
-		return gethcommon.Address{}, gethcommon.Address{}, nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
-	}
-	return contractAddress, from, data, nil
 }
 
 func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
