@@ -23,22 +23,28 @@ const initialize = () => {
             return
         }
 
-        const viewingKeyResp = await fetch(pathGenerateViewingKey);
+        const accounts = await ethereum.request({method: metamaskRequestAccounts});
+        if (accounts.length === 0) {
+            statusArea.innerText = "No MetaMask accounts found."
+            return
+        }
+        // Accounts is "An array of a single, hexadecimal Ethereum address string.", so we grab the single entry at index zero.
+        const account = accounts[0];
+
+        const addressJson = {"address": account}
+        const viewingKeyResp = await fetch(
+            pathGenerateViewingKey, {
+                method: methodPost,
+                headers: jsonHeaders,
+                body: JSON.stringify(addressJson)
+            }
+        );
         if (!viewingKeyResp.ok) {
             statusArea.innerText = "Failed to generate viewing key."
             return
         }
 
         const viewingKey = await viewingKeyResp.text();
-
-        const accounts = await ethereum.request({method: metamaskRequestAccounts});
-        if (accounts.length === 0) {
-            statusArea.innerText = "No MetaMask accounts found."
-            return
-        }
-        // The array returns "An array of a single, hexadecimal Ethereum address string.")
-        // We use the last created account for the viewing key since it makes most sense for testing.
-        const account = accounts[accounts.length - 1];
 
         const signature = await ethereum.request({
             method: metamaskPersonalSign,
@@ -50,7 +56,7 @@ const initialize = () => {
             return
         }
 
-        const signedViewingKeyJson = {"address": account, "signature": signature}
+        const signedViewingKeyJson = {"signature": signature}
         const submitViewingKeyResp = await fetch(
             pathSubmitViewingKey, {
                 method: methodPost,

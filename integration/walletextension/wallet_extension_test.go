@@ -557,12 +557,11 @@ func makeEthJSONReqAsJSON(t *testing.T, walletExtensionAddr string, method strin
 
 // Generates a signed viewing key and submits it to the wallet extension.
 func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) {
-	viewingKey := generateViewingKey(t, walletExtensionAddr)
+	viewingKey := generateViewingKey(t, accountAddr, walletExtensionAddr)
 	signature := signViewingKey(t, accountPrivateKey, viewingKey)
 
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		"address":   accountAddr,
-		"signature": hex.EncodeToString(signature),
+		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -582,8 +581,15 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 }
 
 // Generates a viewing key.
-func generateViewingKey(t *testing.T, walletExtensionAddr string) []byte {
-	resp, err := http.Get(httpProtocol + walletExtensionAddr + walletextension.PathGenerateViewingKey) //nolint:noctx
+func generateViewingKey(t *testing.T, accountAddress string, walletExtensionAddr string) []byte {
+	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
+		walletextension.ReqJSONKeyAddress: accountAddress,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	generateViewingKeyBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
+	resp, err := http.Post(httpProtocol+walletExtensionAddr+walletextension.PathGenerateViewingKey, "application/json", generateViewingKeyBody) //nolint:noctx
 	if err != nil {
 		t.Fatal(err)
 	}
