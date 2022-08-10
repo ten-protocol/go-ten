@@ -1,0 +1,269 @@
+# Deploys an Obscuro network on Azure for DEV Testnet
+#
+# The Obscuro network is composed of 3 obscuro nodes running on individual vms
+# It exposes the following ports:
+# HTTP:       8025, 8026, 8027
+# WebSocket:  9000, 9001, 9002
+#
+
+name: Manual Deploy Obscuro Dev Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      L1HOST:
+        description: 'geth network fqdn address'
+        required: true
+        default: 'dev-testnet-gethnetwork.uksouth.azurecontainer.io'
+
+jobs:
+  deploy-l1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 'Set up Docker'
+        uses: docker/setup-buildx-action@v1
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Build and push l1 dev image'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_dev_testnet_l1network:latest -f testnet/gethnetwork.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_dev_testnet_l1network:latest
+
+      - name: 'Deploy to Azure Container Instances'
+        uses: 'azure/aci-deploy@v1'
+        with:
+          resource-group: ${{ secrets.RESOURCE_GROUP }}
+          dns-name-label: dev-testnet-gethnetwork
+          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_dev_testnet_l1network:latest
+          registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          registry-username: ${{ secrets.REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+          name: dev-testnet-gethnetwork
+          location: 'uksouth'
+          restart-policy: 'Never'
+          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs 15 --numNodes=3 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_2 }}
+          # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
+          # Each node has Port + id
+          ports: '8025 8026 8027 9000 9001 9002'
+          cpu: 2
+          memory: 4
+
+  build-l2:
+    needs: deploy-l1
+    runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      mgmtContractAddr: ${{ steps.deployContracts.outputs.mgmtContractAddr }}
+      obxErc20Addr: ${{ steps.deployContracts.outputs.obxErc20Addr }}
+      ethErc20Addr: ${{ steps.deployContracts.outputs.ethErc20Addr }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Build and push obscuro node images'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_enclave:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_host:latest -f dockerfiles/host.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_host:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_contractdeployer:latest
+
+      - name: 'Deploy Contracts'
+        id: deployContracts
+        shell: bash
+        run: |
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
+          source ./testnet/.env
+          echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
+          echo "JAMERC20ADDR=$JAMERC20ADDR" >> $GITHUB_ENV
+          echo "ETHERC20ADDR=$ETHERC20ADDR" >> $GITHUB_ENV
+          echo "Contracts deployed to $MGMTCONTRACTADDR and $JAMERC20ADDR and $ETHERC20ADDR"
+          echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
+          echo "::set-output name=obxErc20Addr::$JAMERC20ADDR"   
+          echo "::set-output name=ethErc20Addr::$ETHERC20ADDR"    
+
+      # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
+      - name: 'Delete deployed VMs'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            $(az resource list --tag devtestnetlatest=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+      # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
+      - name: 'Delete VMs dependencies'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            $(az resource list --tag devtestnetlatest=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        host_id: [ 0,1,2 ]
+        include:
+          # Hardcoded host addresses
+          - host_addr: 0x0000000000000000000000000000000000000000
+            host_id: 0
+          - host_addr: 0x0000000000000000000000000000000000000001
+            host_id: 1
+          - host_addr: 0x0000000000000000000000000000000000000002
+            host_id: 2
+          # Hardcoded host prefunded keys
+          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
+            host_id: 0
+          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
+            host_id: 1
+          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_2
+            host_id: 2
+          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
+            host_id: 0
+          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
+            host_id: 1
+          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_2
+            host_id: 2
+          # Ensure there is a genesis node
+          - is_genesis: true
+            host_id: 0
+          - is_genesis: false
+            host_id: 1
+          - is_genesis: false
+            host_id: 2
+
+    steps:
+      - name: 'Extract branch name'
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Create VM LoadBalancing NIC Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+            --public-ip-address-dns-name "dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=Dev-ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} devtestnetlatest=true \
+            --vnet-name Dev-ObscuroHostTestnet01VNET --subnet Dev-ObscuroHostTestnet01Subnet \
+            --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
+            --public-ip-sku Basic --authentication-type password
+
+
+      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm create -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+            --public-ip-address-dns-name "dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=Dev-ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}  devtestnetlatest=true \
+            --vnet-name Dev-ObscuroHostTestnet01VNET --subnet Dev-ObscuroHostTestnet01Subnet \
+            --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
+            --public-ip-sku Basic --authentication-type password
+
+      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm open-port -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
+
+      - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            --command-id RunShellScript \
+            --scripts 'mkdir -p /home/obscuro \
+            && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+            && sudo apt-get update \
+            && sudo apt-get install -y jq \
+            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
+            && docker run -d --name datadog-agent \
+               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
+               -e DD_LOGS_ENABLED=true \
+               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
+               -e DD_SITE="datadoghq.eu"  \
+               -v /var/run/docker.sock:/var/run/docker.sock:ro \
+               -v /proc/:/host/proc/:ro \
+               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
+               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               datadog/agent:latest \
+            && cd /home/obscuro/go-obscuro/testnet/ \
+            && ./start-obscuro-node.sh \
+               --is_genesis=${{ matrix.is_genesis }} \
+               --sgx_enabled=true \
+               --host_id=${{ matrix.host_addr }} \
+               --l1host=${{ github.event.inputs.L1HOST }} \
+               --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
+               --obxerc20addr=${{needs.build.outputs.obxErc20Addr}} \
+               --etherc20addr=${{needs.build.outputs.ethErc20Addr}} \
+               --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
+               --pkstring=${{ secrets[matrix.node_pk_str] }} \
+               --p2p_public_address=obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
+
+
+  update:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Remove existing backend nodes from the load balancer'
+        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh
+
+      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az network nic ip-config address-pool add \
+              --address-pool Backend-Pool-Obscuro-Testnet \
+              --ip-config-name ipconfigObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name Dev-ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --resource-group Testnet \
+              --lb-name dev-testnet-loadbalancer
+
+  setup:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: 'Deploy L2 contracts'
+        id: deployL2Contracts
+        shell: bash
+        run: |
+          ./testnet/testnet-deploy-l2-contracts.sh --l2host=dev-obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
