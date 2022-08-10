@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,7 +16,7 @@ const (
 	reqJSONKeyFrom      = "from"
 	reqJSONKeyData      = "data"
 	ethCallPaddedArgLen = 64
-	addressLen          = 40
+	ethCallAddrPadding  = "000000000000000000000000"
 
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -239,19 +240,24 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 	data = data[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
 
 	// We split up the arguments in the `data` field.
-	var maybeAddresses []string
+	var dataArgs []string
 	for i := 0; i < len(data); i += ethCallPaddedArgLen {
 		if i+ethCallPaddedArgLen > len(data) {
 			break
 		}
-		maybeAddresses = append(maybeAddresses, data[i+ethCallPaddedArgLen-addressLen:i+ethCallPaddedArgLen])
+		dataArgs = append(dataArgs, data[i:i+ethCallPaddedArgLen])
 	}
 
 	// We iterate over the arguments, looking for an argument that matches the viewing key address. If we find one, we
 	// set the `from` field to that address.
-	for _, maybeAddress := range maybeAddresses {
-		parsedMaybeAddress := common.HexToAddress(maybeAddress)
-		if parsedMaybeAddress == c.viewingKeyAddr {
+	for _, dataArg := range dataArgs {
+		// If the argument doesn't have the correct padding, it's not an address.
+		if !strings.HasPrefix(dataArg, ethCallAddrPadding) {
+			continue
+		}
+
+		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
+		if maybeAddress == c.viewingKeyAddr {
 			callParams[reqJSONKeyFrom] = c.viewingKeyAddr
 			args[0] = callParams
 			return args, nil
