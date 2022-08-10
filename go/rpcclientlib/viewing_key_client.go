@@ -15,6 +15,7 @@ const (
 	reqJSONKeyFrom      = "from"
 	reqJSONKeyData      = "data"
 	ethCallPaddedArgLen = 64
+	addressLen          = 40
 
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -199,7 +200,9 @@ func (c *ViewingKeyClient) RegisterViewingKey(signerAddr common.Address, signatu
 	return nil
 }
 
-// enclave requires a from address to be set for the viewing key encryption but sources like metamask often don't set it
+// The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
+// don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
+// field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
 func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, args []interface{}) ([]interface{}, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
@@ -218,20 +221,23 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 		}
 	}
 
+	// We only modify `eth_call` requests where the `from` field is not set.
 	if callParams[reqJSONKeyFrom] != nil {
-		// We only modify `eth_call` requests where the `from` field is not set.
 		return args, nil
 	}
 
+	// We ensure that the `data` field is present.
 	if callParams[reqJSONKeyData] == nil {
 		return nil, fmt.Errorf("eth_call request did not have its `from` or its `data` field set. Aborting " +
 			"request as it will not be possible to encrypt the response")
 	}
-
-	data, ok := callParams[reqJSONKeyData].([]byte)
+	data, ok := callParams[reqJSONKeyData].(string)
 	if !ok {
-		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `[]byte`")
+		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
 	}
+
+	// We iterate over the `data` field, looking for an argument that matches the viewing key address. If we find one,
+	// we set the `from` field to that address.
 	data = data[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
 	for i := 0; i < len(data); i += ethCallPaddedArgLen {
 		if i+ethCallPaddedArgLen > len(data) {
@@ -241,7 +247,7 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, ar
 		}
 		// Each encoded parameter in the `data` field is 32 padded bytes. Since an address is 20 bytes, we only want
 		// the final forty characters of the slice.
-		maybeAddress := common.BytesToAddress(data[i+24 : i+64])
+		maybeAddress := common.HexToAddress(data[i+ethCallPaddedArgLen-addressLen : i+ethCallPaddedArgLen])
 		if maybeAddress == c.viewingKeyAddr {
 			callParams[reqJSONKeyFrom] = c.viewingKeyAddr
 			break
