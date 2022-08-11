@@ -34,11 +34,11 @@ func NewViewingKeyClient(client Client) (*ViewingKeyClient, error) {
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	vkClient := &ViewingKeyClient{
-		obscuroClient:    client,
-		enclavePublicKey: enclavePublicKey,
+		obscuroClient:      client,
+		enclavePublicKey:   enclavePublicKey,
+		viewingKeysPrivate: map[common.Address]*ecies.PrivateKey{},
+		viewingKeysPublic:  map[common.Address][]byte{},
 	}
-	vkClient.viewingKeysPrivate = make(map[common.Address]*ecies.PrivateKey)
-	vkClient.viewingKeysPublic = make(map[common.Address][]byte)
 
 	return vkClient, nil
 }
