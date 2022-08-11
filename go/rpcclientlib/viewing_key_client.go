@@ -58,12 +58,8 @@ func NewViewingKeyNetworkClient(rpcAddress string) (*ViewingKeyClient, error) {
 
 // ViewingKeyClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type ViewingKeyClient struct {
-	obscuroClient Client
-
-	enclavePublicKey *ecies.PublicKey
-	// TODO - Use multiple keys below to perform decryption.
-	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
-
+	obscuroClient      Client
+	enclavePublicKey   *ecies.PublicKey                     // Used to encrypt messages destined to the enclave.
 	viewingKeysPrivate map[common.Address]*ecies.PrivateKey // Maps an address to its private viewing key.
 	viewingKeysPublic  map[common.Address][]byte            // Maps an address to its public viewing key bytes.
 }
@@ -112,7 +108,11 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 	}
 
 	// method is sensitive, so we decrypt it before unmarshalling the result
-	decrypted, err := c.decryptResponse(rawResult)
+	decryptionKey, err := c.getDecryptionKey(method, args)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve decryption key for %s call - %w", method, err)
+	}
+	decrypted, err := c.decryptResponse(rawResult, decryptionKey)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt args for %s call - %w", method, err)
 	}
@@ -147,7 +147,7 @@ func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 	return encryptedParams, nil
 }
 
-func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
+func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}, privateKey *ecies.PrivateKey) ([]byte, error) {
 	if len(c.viewingKeysPrivate) == 0 {
 		return nil, fmt.Errorf("cannot decrypt response as no viewing keys have been set up")
 	}
@@ -157,7 +157,7 @@ func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, erro
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
 	}
 	encryptedResult := common.Hex2Bytes(resultStr)
-	decryptedResult, err := c.viewingPrivKey.Decrypt(encryptedResult, nil, nil)
+	decryptedResult, err := privateKey.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt the following response with viewing key: %s. Cause: %w", resultStr, err)
 	}
@@ -191,8 +191,6 @@ func (c *ViewingKeyClient) Stop() {
 }
 
 func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAddress common.Address, viewingPubKeyBytes []byte) {
-	c.viewingPrivKey = viewingKey
-
 	c.viewingKeysPrivate[signerAddress] = viewingKey
 	c.viewingKeysPublic[signerAddress] = viewingPubKeyBytes
 }
@@ -255,6 +253,40 @@ func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interfac
 	return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
 		"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
 		"encrypt the response")
+}
+
+func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) (*ecies.PrivateKey, error) {
+	var viewingKeyAddress common.Address
+
+	switch method {
+	case RPCCall:
+		// todo - joel - reuse shared logic
+		txArgs := args[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+		fromString, ok := txArgs.(map[string]interface{})[reqJSONKeyFrom].(string)
+		if !ok {
+			return nil, fmt.Errorf("`from` field in eth_call request params is missing or was not of expected type string")
+		}
+		viewingKeyAddress = common.HexToAddress(fromString)
+
+	case RPCGetBalance:
+		// todo - joel - reuse shared logic
+		// todo - joel - ensure there is at least one argument
+		balanceAddress, ok := args[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("`data` field in eth_getBalance request params is missing or was not of expected type string")
+		}
+		viewingKeyAddress = common.HexToAddress(balanceAddress)
+
+	case RPCGetTxReceipt, RPCGetTransactionByHash:
+		// todo - joel - need to retrieve tx first here
+
+	case RPCSendRawTransaction:
+
+	default:
+		return nil, fmt.Errorf("no mechanism to identify decryption key for method %s", method)
+	}
+
+	return c.viewingKeysPrivate[viewingKeyAddress], nil
 }
 
 // isSensitive indicates whether the RPC method's requests and responses should be encrypted.

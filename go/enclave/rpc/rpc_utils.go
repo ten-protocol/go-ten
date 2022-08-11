@@ -107,9 +107,6 @@ func ExtractCallParamFrom(callParams []byte) (gethcommon.Address, error) {
 	}
 
 	from := gethcommon.HexToAddress(fromString)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
-	}
 	return from, nil
 }
 
