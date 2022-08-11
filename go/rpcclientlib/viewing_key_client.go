@@ -33,10 +33,14 @@ func NewViewingKeyClient(client Client) (*ViewingKeyClient, error) {
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	return &ViewingKeyClient{
+	vkClient := &ViewingKeyClient{
 		obscuroClient:    client,
 		enclavePublicKey: enclavePublicKey,
-	}, nil
+	}
+	vkClient.viewingKeysPrivate = make(map[common.Address]*ecies.PrivateKey)
+	vkClient.viewingKeysPublic = make(map[common.Address][]byte)
+
+	return vkClient, nil
 }
 
 // NewViewingKeyNetworkClient returns a network RPC client with Viewing Key encryption/decryption
@@ -49,10 +53,6 @@ func NewViewingKeyNetworkClient(rpcAddress string) (*ViewingKeyClient, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	vkClient.viewingKeysPrivate = make(map[common.Address]*ecies.PrivateKey)
-	vkClient.viewingKeysPublic = make(map[common.Address][]byte)
-
 	return vkClient, nil
 }
 
