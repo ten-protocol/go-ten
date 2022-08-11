@@ -144,7 +144,7 @@ func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 
 func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
 	if len(c.viewingKeysPrivate) == 0 {
-		return nil, fmt.Errorf("cannot decrypt response as not viewing keys have been set up")
+		return nil, fmt.Errorf("cannot decrypt response as no viewing keys have been set up")
 	}
 
 	resultStr, ok := resultBlob.(string)
