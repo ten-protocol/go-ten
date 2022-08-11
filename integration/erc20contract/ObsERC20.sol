@@ -17,7 +17,8 @@ contract ObsERC20 is ERC20 {
         // Respond to balance requests made by the account owner only.
         // In case the requester spoofs the "from" of the call, they will not be able to read
         // the result since it will be returned encrypted with the viewing key of the declared "from".
-        require(msg.sender == account);
+        // todo - figure out the correct condition to work with other contracts
+//        require(msg.sender == account);
         return super.balanceOf(account);
     }
 
