@@ -18,7 +18,6 @@ type Cfg struct {
 
 // Setup will direct logs to a timestamped log file with a standard naming pattern, useful for simulations etc.
 func Setup(cfg *Cfg) *os.File {
-
 	// hardcode geth log level to error only
 	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(gethlog.LvlError, gethlog.StreamHandler(os.Stderr, gethlog.TerminalFormat(true))))
 

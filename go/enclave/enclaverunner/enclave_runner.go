@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -28,6 +30,8 @@ func RunEnclave(config config.EnclaveConfig) {
 	if config.LogPath != "" {
 		setLogs(config.LogPath)
 	}
+	// hardcode geth log level to error only
+	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(gethlog.LvlError, gethlog.StreamHandler(os.Stderr, gethlog.TerminalFormat(true))))
 
 	if config.ValidateL1Blocks {
 		config.GenesisJSON = []byte(hardcodedGenesisJSON)
