@@ -65,7 +65,7 @@ type ViewingKeyClient struct {
 	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
 
 	viewingKeysPrivate map[common.Address]*ecies.PrivateKey // Maps an address to its private viewing key.
-	viewingKeysPublic  map[common.Address][]byte            // Maps an address to its public viewing key.
+	viewingKeysPublic  map[common.Address][]byte            // Maps an address to its public viewing key bytes.
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
@@ -77,7 +77,9 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 		return c.obscuroClient.Call(result, method, args...)
 	}
 
-	// todo - joel - Abort if there's no viewing keys
+	if len(c.viewingKeysPrivate) == 0 {
+		return fmt.Errorf("called sensitive method %s, but no viewing keys are set up", method)
+	}
 
 	var err error
 	if method == RPCCall {
