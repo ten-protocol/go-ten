@@ -61,7 +61,7 @@ type ViewingKeyClient struct {
 	obscuroClient Client
 
 	enclavePublicKey *ecies.PublicKey
-	// todo - joel - remove this field
+	// TODO - Use multiple keys below to perform decryption.
 	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
 
 	viewingKeysPrivate map[common.Address]*ecies.PrivateKey // Maps an address to its private viewing key.
