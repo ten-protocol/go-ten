@@ -7,17 +7,11 @@ import (
 const (
 	RPCGetID                   = "obscuro_getID"
 	RPCGetCurrentBlockHead     = "obscuro_getCurrentBlockHead"
-	RPCGetBlockHeaderByHash    = "obscuro_getBlockHeaderByHash"
 	RPCGetCurrentRollupHead    = "obscuro_getCurrentRollupHead"
 	RPCGetRollupHeader         = "obscuro_getRollupHeader"
-	RPCGetRollupHeaderByNumber = "obscuro_getRollupHeaderByNumber"
 	RPCGetRollup               = "obscuro_getRollup"
 	RPCNonce                   = "obscuro_nonce"
 	RPCAddViewingKey           = "obscuro_addViewingKey"
-	RPCGetRollupForTx          = "obscuro_getRollupForTx"
-	RPCGetLatestTxs            = "obscuro_getLatestTransactions"
-	RPCGetTotalTxs             = "obscuro_getTotalTransactions"
-	RPCAttestation             = "obscuro_attestation"
 	RPCStopHost                = "obscuro_stopHost"
 	RPCCall                    = "eth_call"
 	RPCChainID                 = "eth_chainId"
@@ -25,6 +19,12 @@ const (
 	RPCGetTransactionByHash    = "eth_getTransactionByHash"
 	RPCGetTxReceipt            = "eth_getTransactionReceipt"
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
+	RPCGetBlockHeaderByHash    = "obscuroscan_getBlockHeaderByHash"
+	RPCGetRollupHeaderByNumber = "obscuroscan_getRollupHeaderByNumber"
+	RPCGetRollupForTx          = "obscuroscan_getRollupForTx"
+	RPCGetLatestTxs            = "obscuroscan_getLatestTransactions"
+	RPCGetTotalTxs             = "obscuroscan_getTotalTransactions"
+	RPCAttestation             = "obscuroscan_attestation"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")
