@@ -224,9 +224,9 @@ jobs:
                --sgx_enabled=true \
                --host_id=${{ matrix.host_addr }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
-               --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
-               --obxerc20addr=${{needs.build.outputs.obxErc20Addr}} \
-               --etherc20addr=${{needs.build.outputs.ethErc20Addr}} \
+               --mgmtcontractaddr=${{needs.build-l2.outputs.mgmtContractAddr}} \
+               --obxerc20addr=${{needs.build-l2.outputs.obxErc20Addr}} \
+               --etherc20addr=${{needs.build-l2.outputs.ethErc20Addr}} \
                --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --p2p_public_address=dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
