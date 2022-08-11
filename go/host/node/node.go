@@ -38,6 +38,7 @@ const (
 	apiNamespaceEthereum    = "eth"
 	apiNamespaceObscuroScan = "obscuroscan"
 	apiNamespaceNetwork     = "net"
+	apiNamespaceTest        = "test"
 )
 
 // Node is an implementation of host.Host.
@@ -138,6 +139,12 @@ func NewHost(
 				Namespace: apiNamespaceNetwork,
 				Version:   apiVersion1,
 				Service:   clientapi.NewNetworkAPI(node),
+				Public:    true,
+			},
+			{
+				Namespace: apiNamespaceTest,
+				Version:   apiVersion1,
+				Service:   clientapi.NewTestAPI(node),
 				Public:    true,
 			},
 		}

@@ -15,8 +15,8 @@ type ObscuroScanAPI struct {
 	host host.Host
 }
 
-func NewObscuroScanAPI(host host.Host) *ObscuroAPI {
-	return &ObscuroAPI{
+func NewObscuroScanAPI(host host.Host) *ObscuroScanAPI {
+	return &ObscuroScanAPI{
 		host: host,
 	}
 }

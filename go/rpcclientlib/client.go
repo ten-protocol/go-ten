@@ -5,11 +5,7 @@ import (
 )
 
 const (
-	RPCGetID                   = "obscuro_getID"
-	RPCGetCurrentBlockHead     = "obscuro_getCurrentBlockHead"
-	RPCGetRollupHeader         = "obscuro_getRollupHeader"
 	RPCAddViewingKey           = "obscuro_addViewingKey"
-	RPCStopHost                = "obscuro_stopHost"
 	RPCCall                    = "eth_call"
 	RPCChainID                 = "eth_chainId"
 	RPCGetBalance              = "eth_getBalance"
@@ -25,6 +21,10 @@ const (
 	RPCGetLatestTxs            = "obscuroscan_getLatestTransactions"
 	RPCGetTotalTxs             = "obscuroscan_getTotalTransactions"
 	RPCAttestation             = "obscuroscan_attestation"
+	RPCGetID                   = "test_getID"
+	RPCGetCurrentBlockHead     = "test_getCurrentBlockHead"
+	RPCGetRollupHeader         = "test_getRollupHeader"
+	RPCStopHost                = "test_stopHost"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")

@@ -32,6 +32,8 @@ const (
 type inMemObscuroClient struct {
 	obscuroAPI       *clientapi.ObscuroAPI
 	ethAPI           *clientapi.EthereumAPI
+	obscuroScanAPI   *clientapi.ObscuroScanAPI
+	testAPI          *clientapi.TestAPI
 	enclavePublicKey *ecies.PublicKey
 }
 
@@ -46,6 +48,8 @@ func NewInMemObscuroClient(nodeHost host.Host) rpcclientlib.Client {
 	return &inMemObscuroClient{
 		obscuroAPI:       clientapi.NewObscuroAPI(nodeHost),
 		ethAPI:           clientapi.NewEthereumAPI(nodeHost),
+		obscuroScanAPI:   clientapi.NewObscuroScanAPI(nodeHost),
+		testAPI:          clientapi.NewTestAPI(nodeHost),
 		enclavePublicKey: enclPubKey,
 	}
 }
@@ -63,16 +67,16 @@ func NewInMemoryViewingKeyClient(host host.Host) *rpcclientlib.ViewingKeyClient 
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case rpcclientlib.RPCGetID:
-		*result.(*gethcommon.Address) = c.obscuroAPI.GetID()
+		*result.(*gethcommon.Address) = c.testAPI.GetID()
 
 	case rpcclientlib.RPCSendRawTransaction:
 		return c.sendRawTransaction(args)
 
 	case rpcclientlib.RPCGetCurrentBlockHead:
-		*result.(**types.Header) = c.obscuroAPI.GetCurrentBlockHead()
+		*result.(**types.Header) = c.testAPI.GetCurrentBlockHead()
 
 	case rpcclientlib.RPCGetCurrentRollupHead:
-		*result.(**common.Header) = c.obscuroAPI.GetCurrentRollupHead()
+		*result.(**common.Header) = c.obscuroScanAPI.GetCurrentRollupHead()
 
 	case rpcclientlib.RPCGetRollupHeader:
 		return c.getRollupHeader(result, args)
@@ -93,7 +97,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		return c.getTransactionReceipt(result, args)
 
 	case rpcclientlib.RPCStopHost:
-		c.obscuroAPI.StopHost()
+		c.testAPI.StopHost()
 
 	case rpcclientlib.RPCAddViewingKey:
 		return c.addViewingKey(args)
@@ -169,7 +173,7 @@ func (c *inMemObscuroClient) getRollupHeader(result interface{}, args []interfac
 	}
 	hash := gethcommon.HexToHash(hashStr)
 
-	*result.(**common.Header) = c.obscuroAPI.GetRollupHeader(hash)
+	*result.(**common.Header) = c.testAPI.GetRollupHeader(hash)
 	return nil
 }
 
@@ -182,7 +186,7 @@ func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) e
 		return fmt.Errorf("arg to %s was not of expected type common.Hash", rpcclientlib.RPCGetRollup)
 	}
 
-	extRollup, err := c.obscuroAPI.GetRollup(hash)
+	extRollup, err := c.obscuroScanAPI.GetRollup(hash)
 	if err != nil {
 		return fmt.Errorf("`obscuro_getRollup` call failed. Cause: %w", err)
 	}
