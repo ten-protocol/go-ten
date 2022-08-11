@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkeyutils"
 )
 
 const (
@@ -109,11 +108,7 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 	}
 
 	// method is sensitive, so we decrypt it before unmarshalling the result
-	decryptionKey, err := c.getDecryptionKey(method, args)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve decryption key for %s call - %w", method, err)
-	}
-	decrypted, err := c.decryptResponse(rawResult, decryptionKey)
+	decrypted, err := c.decryptResponse(rawResult)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt args for %s call - %w", method, err)
 	}
@@ -148,7 +143,7 @@ func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 	return encryptedParams, nil
 }
 
-func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}, privateKey *ecies.PrivateKey) ([]byte, error) {
+func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
 	if len(c.viewingKeysPrivate) == 0 {
 		return nil, fmt.Errorf("cannot decrypt response as no viewing keys have been set up")
 	}
@@ -158,12 +153,16 @@ func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}, privateKey *e
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
 	}
 	encryptedResult := common.Hex2Bytes(resultStr)
-	decryptedResult, err := privateKey.Decrypt(encryptedResult, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt the following response with viewing key: %s. Cause: %w", resultStr, err)
+
+	// We attempt to decrypt the response with each viewing key in turn.
+	for _, privateKey := range c.viewingKeysPrivate {
+		decryptedResult, err := privateKey.Decrypt(encryptedResult, nil, nil)
+		if err == nil {
+			return decryptedResult, nil
+		}
 	}
 
-	return decryptedResult, nil
+	return nil, fmt.Errorf("could not decrypt the response with any of the registered viewing keys")
 }
 
 // setResult tries to cast/unmarshal data into the result pointer, based on its type
@@ -255,49 +254,6 @@ func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interfac
 	return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
 		"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
 		"encrypt the response")
-}
-
-func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) (*ecies.PrivateKey, error) {
-	var viewingKeyAddress common.Address
-
-	// For certain methods, we need the args in JSON format.
-	argsJSON, err := json.Marshal(args)
-	if err != nil {
-		return nil, fmt.Errorf("could not json encode request params: %w", err)
-	}
-
-	switch method {
-	case RPCCall:
-		viewingKeyAddress, err = viewingkeyutils.ExtractCallParamFrom(argsJSON)
-		if err != nil {
-			return nil, err
-		}
-
-	case RPCGetBalance:
-		viewingKeyAddress, err = viewingkeyutils.GetViewingKeyAddressForBalanceRequest(argsJSON)
-		if err != nil {
-			return nil, err
-		}
-
-	case RPCGetTxReceipt, RPCGetTransactionByHash:
-		// TODO - Add a caching layer that can be quickly checked to work out which address to use based on past submissions?
-		// todo - joel - need to retrieve tx first here; no good option but to scroll through all viewing key addresses?
-
-	case RPCSendRawTransaction:
-		decodedTx, err := viewingkeyutils.ExtractTx(args[0].([]byte))
-		if err != nil {
-			return nil, fmt.Errorf("could not parse transaction from eth_sendRawTransaction request. Cause: %w", err)
-		}
-		viewingKeyAddress, err = viewingkeyutils.GetViewingKeyAddressForTransaction(decodedTx)
-		if err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, fmt.Errorf("no mechanism to identify decryption key for method %s", method)
-	}
-
-	return c.viewingKeysPrivate[viewingKeyAddress], nil
 }
 
 // isSensitive indicates whether the RPC method's requests and responses should be encrypted.
