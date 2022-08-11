@@ -159,6 +159,7 @@ func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, erro
 	for _, privateKey := range c.viewingKeysPrivate {
 		decryptedResult, err := privateKey.Decrypt(encryptedResult, nil, nil)
 		if err == nil {
+			// The decryption did not error, which means we successfully decrypted the result.
 			return decryptedResult, nil
 		}
 	}
