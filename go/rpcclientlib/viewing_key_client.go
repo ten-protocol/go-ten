@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -11,8 +12,11 @@ import (
 )
 
 const (
-	http           = "http://"
-	reqJSONKeyFrom = "from"
+	http                = "http://"
+	reqJSONKeyFrom      = "from"
+	reqJSONKeyData      = "data"
+	ethCallPaddedArgLen = 64
+	ethCallAddrPadding  = "000000000000000000000000"
 
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -72,7 +76,7 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 	if method == RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
-		args, err = c.addFromAddressToCallParamsIfMissing(method, args)
+		args, err = c.setFromFieldIfMissing(args)
 		if err != nil {
 			return err
 		}
@@ -196,37 +200,38 @@ func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
 	return nil
 }
 
-// enclave requires a from address to be set for the viewing key encryption but sources like metamask often don't set it
-func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(method string, args []interface{}) ([]interface{}, error) {
-	if len(args) == 0 {
-		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
+// The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
+// don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
+// field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
+func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interface{}, error) {
+	callParams, err := parseCallParams(args)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
 	}
 
-	callParams, ok := args[0].(map[string]interface{})
-	if !ok {
-		callParamsJSON, ok := args[0].([]byte)
-		if !ok {
-			return nil, fmt.Errorf("expected %s first param to be a map or json encoded bytes but was %t", method, args[0])
-		}
-
-		err := json.Unmarshal(callParamsJSON, &callParams)
-		if err != nil {
-			return nil, fmt.Errorf("expected %s first param to be a map or json encoded bytes, failed to decode: %w", method, err)
-		}
-	}
-
+	// We only modify `eth_call` requests where the `from` field is not set.
 	if callParams[reqJSONKeyFrom] != nil {
-		// We only modify `eth_call` requests where the `from` field is not set.
 		return args, nil
 	}
 
-	if c.viewingKeyAddr == (common.Address{}) {
-		return nil, fmt.Errorf("could not set eth_call `from` field as no viewing key is set")
-	}
-	callParams[reqJSONKeyFrom] = c.viewingKeyAddr
+	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
 
-	args[0] = callParams
-	return args, nil
+	// We attempt to set the `from` field based on the `data` field.
+	fromAddress, err := searchDataFieldForFrom(callParams, &c.viewingKeyAddr)
+	if err != nil {
+		return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
+	}
+	if fromAddress != nil {
+		callParams[reqJSONKeyFrom] = c.viewingKeyAddr
+		args[0] = callParams
+		return args, nil
+	}
+
+	// TODO - Consider defining an additional fallback to set the `from` field if the above all fail.
+
+	return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
+		"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
+		"encrypt the response")
 }
 
 // isSensitive indicates whether the RPC method's requests and responses should be encrypted.
@@ -237,4 +242,74 @@ func isSensitive(method interface{}) bool {
 		}
 	}
 	return false
+}
+
+// Parses the eth_call params into a map.
+func parseCallParams(args []interface{}) (map[string]interface{}, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("expected %s params to have a 'from' field but no params found", RPCCall)
+	}
+
+	callParams, ok := args[0].(map[string]interface{})
+	if !ok {
+		callParamsJSON, ok := args[0].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes but "+
+				"was %t", args[0])
+		}
+
+		err := json.Unmarshal(callParamsJSON, &callParams)
+		if err != nil {
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes, "+
+				"failed to decode: %w", err)
+		}
+	}
+
+	return callParams, nil
+}
+
+// Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
+// key address, we return that address. Otherwise, we return nil.
+func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeyAddress *common.Address) (*common.Address, error) {
+	// We ensure that the `data` field is present.
+	data := callParams[reqJSONKeyData]
+	if data == nil {
+		return nil, fmt.Errorf("eth_call request did not have its `data` field set")
+	}
+	dataString, ok := data.(string)
+	if !ok {
+		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
+	}
+
+	// We check that the data field is long enough before removing the leading "0x" (1 bytes/2 chars) and the method ID
+	// (4 bytes/8 chars).
+	if len(dataString) < 10 {
+		return nil, nil //nolint:nilnil
+	}
+	dataString = dataString[10:]
+
+	// We split up the arguments in the `data` field.
+	var dataArgs []string
+	for i := 0; i < len(dataString); i += ethCallPaddedArgLen {
+		if i+ethCallPaddedArgLen > len(dataString) {
+			break
+		}
+		dataArgs = append(dataArgs, dataString[i:i+ethCallPaddedArgLen])
+	}
+
+	// We iterate over the arguments, looking for an argument that matches the viewing key address. If we find one, we
+	// set the `from` field to that address.
+	for _, dataArg := range dataArgs {
+		// If the argument doesn't have the correct padding, it's not an address.
+		if !strings.HasPrefix(dataArg, ethCallAddrPadding) {
+			continue
+		}
+
+		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
+		if maybeAddress == *viewingKeyAddress {
+			return viewingKeyAddress, nil
+		}
+	}
+
+	return nil, nil //nolint:nilnil
 }
