@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"strings"
+
+	"github.com/obscuronet/go-obscuro/go/common/viewingkeyutils"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -267,13 +269,13 @@ func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) 
 
 	switch method {
 	case RPCCall:
-		viewingKeyAddress, err = rpc.ExtractCallParamFrom(argsJSON)
+		viewingKeyAddress, err = viewingkeyutils.ExtractCallParamFrom(argsJSON)
 		if err != nil {
 			return nil, err
 		}
 
 	case RPCGetBalance:
-		viewingKeyAddress, err = rpc.GetViewingKeyAddressForBalanceRequest(argsJSON)
+		viewingKeyAddress, err = viewingkeyutils.GetViewingKeyAddressForBalanceRequest(argsJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +288,7 @@ func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) 
 		if err != nil {
 			return nil, fmt.Errorf("could not parse transaction from eth_sendRawTransaction request. Cause: %w", err)
 		}
-		viewingKeyAddress, err = rpc.GetViewingKeyAddressForTransaction(decodedTx)
+		viewingKeyAddress, err = viewingkeyutils.GetViewingKeyAddressForTransaction(decodedTx)
 		if err != nil {
 			return nil, err
 		}

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/viewingkeyutils"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -628,7 +630,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if err != nil {
 		return nil, fmt.Errorf("could not extract `to` param from eth_call request. Cause: %w", err)
 	}
-	from, err := rpc.ExtractCallParamFrom(paramBytes)
+	from, err := viewingkeyutils.ExtractCallParamFrom(paramBytes)
 	if err != nil {
 		return nil, fmt.Errorf("could not extract `from` param from eth_call request. Cause: %w", err)
 	}
@@ -674,7 +676,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
 
-	viewingKeyAddress, err := rpc.GetViewingKeyAddressForBalanceRequest(paramBytes)
+	viewingKeyAddress, err := viewingkeyutils.GetViewingKeyAddressForBalanceRequest(paramBytes)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getBalance response. Cause: %w", err)
 	}
