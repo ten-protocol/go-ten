@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -258,30 +259,37 @@ func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interfac
 func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) (*ecies.PrivateKey, error) {
 	var viewingKeyAddress common.Address
 
+	// For certain methods, we need the args in JSON format.
+	argsJSON, err := json.Marshal(args)
+	if err != nil {
+		return nil, fmt.Errorf("could not json encode request params: %w", err)
+	}
+
 	switch method {
 	case RPCCall:
-		// todo - joel - reuse shared logic
-		txArgs := args[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-		fromString, ok := txArgs.(map[string]interface{})[reqJSONKeyFrom].(string)
-		if !ok {
-			return nil, fmt.Errorf("`from` field in eth_call request params is missing or was not of expected type string")
+		viewingKeyAddress, err = rpc.ExtractCallParamFrom(argsJSON)
+		if err != nil {
+			return nil, err
 		}
-		viewingKeyAddress = common.HexToAddress(fromString)
 
 	case RPCGetBalance:
-		// todo - joel - reuse shared logic
-		// todo - joel - ensure there is at least one argument
-		balanceAddress, ok := args[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("`data` field in eth_getBalance request params is missing or was not of expected type string")
+		viewingKeyAddress, err = rpc.GetViewingKeyAddressForBalanceRequest(argsJSON)
+		if err != nil {
+			return nil, err
 		}
-		viewingKeyAddress = common.HexToAddress(balanceAddress)
 
 	case RPCGetTxReceipt, RPCGetTransactionByHash:
 		// todo - joel - need to retrieve tx first here; no good option but to scroll through all viewing key addresses?
 
 	case RPCSendRawTransaction:
-		// todo - joel - need to decrypt tx
+		decodedTx, err := rpc.ExtractTx(args[0].([]byte))
+		if err != nil {
+			return nil, fmt.Errorf("could not parse transaction from eth_sendRawTransaction request. Cause: %w", err)
+		}
+		viewingKeyAddress, err = rpc.GetViewingKeyAddressForTransaction(decodedTx)
+		if err != nil {
+			return nil, err
+		}
 
 	default:
 		return nil, fmt.Errorf("no mechanism to identify decryption key for method %s", method)
