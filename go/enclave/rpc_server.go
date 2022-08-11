@@ -2,11 +2,8 @@ package enclave
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
@@ -60,9 +57,7 @@ func StartServer(
 	closeHandle := func() {
 		go enclaveServer.Stop(context.Background(), nil) //nolint:errcheck
 	}
-	jsonConfig, _ := json.MarshalIndent(enclaveConfig, "", "  ")
 
-	log.Info("Enclave service started with following config:\n%s", string(jsonConfig))
 	return closeHandle, nil
 }
 

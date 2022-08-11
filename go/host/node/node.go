@@ -146,6 +146,9 @@ func NewHost(
 		}
 	}
 
+	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
+	log.Info("Host service created with following config:\n%s", string(jsonConfig))
+
 	return node
 }
 

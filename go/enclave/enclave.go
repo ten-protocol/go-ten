@@ -176,6 +176,8 @@ func NewEnclave(
 
 	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, enclaveKey, config.L1ChainID, &chainConfig)
 
+	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
+	log.Info("Enclave service created with following config:\n%s", string(jsonConfig))
 	return &enclaveImpl{
 		config:                config,
 		nodeShortID:           nodeShortID,
