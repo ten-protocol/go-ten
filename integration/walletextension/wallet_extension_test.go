@@ -135,16 +135,9 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	// We submit a viewing key for a random account.
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
+	accountAddr, _ := registerPrivateKey(t)
 
-	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddr, privateKey)
-
-	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{accountAddr, latestBlock})
+	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{accountAddr.String(), latestBlock})
 
 	if getBalanceJSON[respJSONKeyResult] != rollupchain.DummyBalance {
 		t.Fatalf("Expected balance of %s, got %s", rollupchain.DummyBalance, getBalanceJSON[respJSONKeyResult])
@@ -165,13 +158,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	// We submit a viewing key for a random account.
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddress.String(), privateKey)
+	registerPrivateKey(t)
 
 	respBody := makeEthJSONReq(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
 
@@ -195,7 +182,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	// We submit a viewing key for a random account.
+	// We generate an account, but do not register it with the node.
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
@@ -232,14 +219,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	// We submit a viewing key for a random account.
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
-	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddress.String(), privateKey)
+	accountAddress, _ := registerPrivateKey(t)
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
@@ -271,14 +251,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	// We submit a viewing key for a random account.
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
-	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddress.String(), privateKey)
+	accountAddress, _ := registerPrivateKey(t)
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
@@ -309,13 +282,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	// We submit a viewing key for a random account.
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddress.String(), privateKey)
+	registerPrivateKey(t)
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
@@ -389,13 +356,8 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
-	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	_, privateKey := registerPrivateKey(t)
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
-	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddress.String(), privateKey)
 	tx := types.LegacyTx{
 		Nonce:    0,
 		Gas:      1025_000_000,
@@ -445,13 +407,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
 	}
 
-	// We submit a viewing key for a random account.
-	randomPrivateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	accountAddress := crypto.PubkeyToAddress(randomPrivateKey.PublicKey)
-	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddress.String(), randomPrivateKey)
+	registerPrivateKey(t)
 
 	// We submit a transaction using another account.
 	privateKey, err := crypto.GenerateKey()
@@ -697,6 +653,17 @@ func formatTxForSubmission(wallet wallet.Wallet, tx types.TxData) (string, error
 	}
 
 	return txBinaryHex, nil
+}
+
+// Generates a new account and registers it with the node.
+func registerPrivateKey(t *testing.T) (common.Address, *ecdsa.PrivateKey) {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
+	generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddr.String(), privateKey)
+	return accountAddr, privateKey
 }
 
 func setupWalletTestLog(testName string) {
