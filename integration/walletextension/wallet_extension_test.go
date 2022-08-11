@@ -655,6 +655,7 @@ func formatTxForSubmission(wallet wallet.Wallet, tx types.TxData) (string, error
 	return txBinaryHex, nil
 }
 
+// Generates a new account and registers it with the node.
 func registerPrivateKey(t *testing.T) (common.Address, *ecdsa.PrivateKey) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
