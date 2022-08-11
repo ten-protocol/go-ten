@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
@@ -196,7 +199,16 @@ func (c *inMemObscuroClient) getNonce(result interface{}, args []interface{}) er
 		return fmt.Errorf("arg to %s was not of expected type common.Address", rpcclientlib.RPCNonce)
 	}
 
-	*result.(*uint64) = c.obscuroAPI.Nonce(address)
+	txCountHex, err := c.ethAPI.GetTransactionCount(context.Background(), address, rpc.BlockNumberOrHash{})
+	if err != nil {
+		return fmt.Errorf("`eth_getTransactionCount` call failed. Cause: %w", err)
+	}
+	txCount, err := hexutil.DecodeUint64(txCountHex.String())
+	if err != nil {
+		return fmt.Errorf("`eth_getTransactionCount` call failed. Cause: %w", err)
+	}
+	*result.(*uint64) = txCount
+
 	return nil
 }
 
