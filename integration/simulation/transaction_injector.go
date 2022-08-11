@@ -2,12 +2,13 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rpc"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
