@@ -30,14 +30,14 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 		r, err := executeTransaction(s, chainConfig, chain, gp, header, t, usedGas, vmCfg, fromTxIndex+i)
 		if err != nil {
 			result[t.Hash()] = err
-			common.LogTXExecution(t.Hash(), "Error: %s", err)
+			common.ErrorTXExecution(t.Hash(), "Error: %s", err)
 			continue
 		}
 		result[t.Hash()] = r
 		if r.Status == types.ReceiptStatusFailed {
-			common.LogTXExecution(t.Hash(), "Unsuccessful (status != 1).")
+			common.TraceTXExecution(t.Hash(), "Unsuccessful (status != 1).")
 		} else {
-			common.LogTXExecution(t.Hash(), "Successfully executed. Address: %s", r.ContractAddress.Hex())
+			common.TraceTXExecution(t.Hash(), "Successfully executed. Address: %s", r.ContractAddress.Hex())
 		}
 	}
 	s.Finalise(true)

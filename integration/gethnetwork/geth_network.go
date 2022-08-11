@@ -397,7 +397,7 @@ func waitForIPC(dataDir string) {
 		}
 
 		if counter > 20 {
-			log.Info(fmt.Sprintf("Waiting for .ipc file of node at %s", dataDir))
+			log.Trace("Waiting for .ipc file of node at %s", dataDir)
 			totalCounter += counter
 			counter = 0
 		}

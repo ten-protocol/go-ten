@@ -460,7 +460,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 		return common.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	common.LogWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
+	common.TraceWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
 	blockState := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
@@ -477,7 +477,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
 
-	common.LogWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
+	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
 	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto))
 }
@@ -556,7 +556,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 
 	// Uncomment this if you want to debug issues related to root state hashes not matching
 	dump := strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
-	log.Info("Create rollup. State: %s", dump)
+	log.Trace("Create rollup. State: %s", dump)
 
 	return r
 }
@@ -646,18 +646,18 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if !f {
 		panic("not found")
 	}
-	log.Info("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
+	log.Trace("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
 	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, rc.storage, rc.chainConfig)
 	if err != nil {
 		return nil, err
 	}
 	if result.Failed() {
-		log.Info("!OffChain: Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
+		log.Error("!OffChain: Failed to execute contract %s: %s\n", contractAddress.Hex(), result.Err)
 		return nil, result.Err
 	}
 
-	log.Info("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData))
+	log.Trace("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData))
 
 	encodedResult := hexutil.Encode(result.ReturnData)
 	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(from, []byte(encodedResult))
