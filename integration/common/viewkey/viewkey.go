@@ -47,7 +47,7 @@ func GenerateAndRegisterViewingKey(cli *rpcclientlib.ViewingKeyClient, wal walle
 	}
 
 	// submit the signed public key to the enclave so it can encrypt sensitive responses
-	err = cli.RegisterViewingKey(signature)
+	err = cli.RegisterViewingKey(signature, wal.Address())
 	if err != nil {
 		return err
 	}

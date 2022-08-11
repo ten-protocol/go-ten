@@ -49,6 +49,10 @@ func NewViewingKeyNetworkClient(rpcAddress string) (*ViewingKeyClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	vkClient.viewingKeysPrivate = make(map[common.Address]*ecies.PrivateKey)
+	vkClient.viewingKeysPublic = make(map[common.Address][]byte)
+
 	return vkClient, nil
 }
 
@@ -57,9 +61,8 @@ type ViewingKeyClient struct {
 	obscuroClient Client
 
 	enclavePublicKey *ecies.PublicKey
-	// todo: add support for multiple keys on the same client?
+	// todo - joel - remove this field
 	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
-	viewingPubKey  []byte            // public viewing key, submitted to the enclave
 
 	viewingKeysPrivate map[common.Address]*ecies.PrivateKey // Maps an address to its private viewing key.
 	viewingKeysPublic  map[common.Address][]byte            // Maps an address to its public viewing key.
@@ -73,6 +76,8 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
 		return c.obscuroClient.Call(result, method, args...)
 	}
+
+	// todo - joel - Abort if there's no viewing keys
 
 	var err error
 	if method == RPCCall {
@@ -140,6 +145,7 @@ func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 }
 
 func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
+	// todo - joel - update this check
 	if c.viewingPrivKey == nil {
 		return nil, fmt.Errorf("cannot decrypt response, viewing key has not been setup")
 	}
@@ -183,15 +189,14 @@ func (c *ViewingKeyClient) Stop() {
 
 func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAddress common.Address, viewingPubKeyBytes []byte) {
 	c.viewingPrivKey = viewingKey
-	c.viewingPubKey = viewingPubKeyBytes
 
 	c.viewingKeysPrivate[signerAddress] = viewingKey
 	c.viewingKeysPublic[signerAddress] = viewingPubKeyBytes
 }
 
-func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
+func (c *ViewingKeyClient) RegisterViewingKey(signature []byte, signerAddress common.Address) error {
 	// We encrypt the viewing key bytes
-	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingPubKey, nil, nil)
+	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingKeysPublic[signerAddress], nil, nil)
 	if err != nil {
 		return fmt.Errorf("could not encrypt viewing key with enclave public key: %w", err)
 	}
@@ -218,7 +223,7 @@ func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interfac
 		return args, nil
 	}
 
-	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
+	// todo - joel - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
 
 	// We attempt to set the `from` field based on the `data` field.
 	fromAddress, err := searchDataFieldForFrom(callParams, c.viewingKeysPrivate)

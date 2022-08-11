@@ -562,6 +562,7 @@ func generateAndSubmitViewingKey(t *testing.T, walletExtensionAddr string, accou
 
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
+		walletextension.ReqJSONKeyAddress:   accountAddr,
 	})
 	if err != nil {
 		t.Fatal(err)
