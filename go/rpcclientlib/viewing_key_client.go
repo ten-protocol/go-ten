@@ -76,7 +76,7 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 	if method == RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
-		args, err = c.addFromAddressToCallParamsIfMissing(args)
+		args, err = c.setFromFieldIfMissing(args)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
-func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(args []interface{}) ([]interface{}, error) {
+func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interface{}, error) {
 	callParams, err := parseCallParams(args)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
@@ -217,7 +217,7 @@ func (c *ViewingKeyClient) addFromAddressToCallParamsIfMissing(args []interface{
 	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
 
 	// We attempt to set the `from` field based on the `data` field.
-	fromAddress, err := c.extractFromInDataField(callParams)
+	fromAddress, err := searchDataFieldForFrom(callParams, &c.viewingKeyAddr)
 	if err != nil {
 		return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
 	}
@@ -268,22 +268,25 @@ func parseCallParams(args []interface{}) (map[string]interface{}, error) {
 	return callParams, nil
 }
 
-// todo - joel - add tests
-
 // Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
 // key address, we return that address. Otherwise, we return nil.
-func (c *ViewingKeyClient) extractFromInDataField(callParams map[string]interface{}) (*common.Address, error) {
+func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeyAddress *common.Address) (*common.Address, error) {
 	// We ensure that the `data` field is present.
 	data := callParams[reqJSONKeyData]
 	if data == nil {
-		return nil, fmt.Errorf("eth_call request did not have its `from` or its `data` field set. Aborting " +
-			"request as it will not be possible to encrypt the response")
+		return nil, fmt.Errorf("eth_call request did not have its `data` field set")
 	}
 	dataString, ok := data.(string)
 	if !ok {
 		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
 	}
-	dataString = dataString[10:] // We remove the leading "0x" (1 bytes/2 chars) and the method ID (4 bytes/8 chars).
+
+	// We check that the data field is long enough before removing the leading "0x" (1 bytes/2 chars) and the method ID
+	// (4 bytes/8 chars).
+	if len(dataString) < 10 {
+		return nil, nil //nolint:nilnil
+	}
+	dataString = dataString[10:]
 
 	// We split up the arguments in the `data` field.
 	var dataArgs []string
@@ -303,8 +306,8 @@ func (c *ViewingKeyClient) extractFromInDataField(callParams map[string]interfac
 		}
 
 		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
-		if maybeAddress == c.viewingKeyAddr {
-			return &c.viewingKeyAddr, nil
+		if maybeAddress == *viewingKeyAddress {
+			return viewingKeyAddress, nil
 		}
 	}
 
