@@ -1,6 +1,7 @@
 package ethadapter
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -12,6 +13,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
+)
+
+var (
+	ErrReceiptNotFound = errors.New("receipt not found, received nil response")
 )
 
 // obscuroWalletRPCClient implements the EthClient interface, it's bound to a single wallet (viewing key and address)
@@ -62,6 +67,9 @@ func (c *obscuroWalletRPCClient) TransactionReceipt(hash gethcommon.Hash) (*type
 	var r types.Receipt
 	err := c.client.Call(&r, rpcclientlib.RPCGetTxReceipt, hash)
 	if err != nil {
+		if err == rpcclientlib.ErrNilResponse {
+			return nil, ErrReceiptNotFound
+		}
 		return nil, err
 	}
 	return &r, nil
