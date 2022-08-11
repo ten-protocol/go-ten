@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/viewingkeyutils"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -276,7 +274,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
 	}
 
-	decryptedTx, err := viewingkeyutils.ExtractTx(encodedTx)
+	decryptedTx, err := rpc.ExtractTx(encodedTx)
 	if err != nil {
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
@@ -290,7 +288,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		e.txCh <- decryptedTx
 	}
 
-	viewingKeyAddress, err := viewingkeyutils.GetViewingKeyAddressForTransaction(decryptedTx)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
 	}
@@ -347,7 +345,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, err
 	}
 
-	viewingKeyAddress, err := viewingkeyutils.GetViewingKeyAddressForTransaction(tx)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
 	}
@@ -382,7 +380,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		}
 		return nil, err
 	}
-	viewingKeyAddress, err := viewingkeyutils.GetViewingKeyAddressForTransaction(tx)
+	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
 	}
