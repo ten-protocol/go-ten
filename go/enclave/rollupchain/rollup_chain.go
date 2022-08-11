@@ -556,7 +556,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 
 	// Uncomment this if you want to debug issues related to root state hashes not matching
 	dump := strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
-	log.Info("Create rollup. State: %s", dump)
+	log.Trace("Create rollup. State: %s", dump)
 
 	return r
 }

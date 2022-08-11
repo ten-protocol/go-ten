@@ -10,7 +10,8 @@ func main() {
 	config := contractdeployer.ParseConfig()
 	err := contractdeployer.Deploy(config)
 	if err != nil {
-		// todo: why is this log level stuff setup in this way (why not print here or use logs everywhere)
+		// the contract deployer's output is to be consumed by other applications
+		// in case of a failure bump the log level and panic
 		log.SetLogLevel(log.TraceLevel)
 		log.Panic("%s", err)
 	}

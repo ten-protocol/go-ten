@@ -2,12 +2,12 @@ package enclave
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -37,11 +37,6 @@ func StartServer(
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	collector StatsCollector,
 ) (func(), error) {
-	tomlConfig, err := toml.Marshal(enclaveConfig)
-	if err != nil {
-		log.Panic("could not print enclave config")
-	}
-
 	lis, err := net.Listen("tcp", enclaveConfig.Address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
@@ -65,8 +60,9 @@ func StartServer(
 	closeHandle := func() {
 		go enclaveServer.Stop(context.Background(), nil) //nolint:errcheck
 	}
+	jsonConfig, _ := json.MarshalIndent(enclaveConfig, "", "  ")
 
-	log.Info("Enclave service started with following config:\n%s", tomlConfig)
+	log.Info("Enclave service started with following config:\n%s", string(jsonConfig))
 	return closeHandle, nil
 }
 
