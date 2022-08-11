@@ -10,9 +10,6 @@ Building the guessing game in Obscuro addresses both scenarios described above. 
 
 ### How to Play
 1. Start up the wallet extension. Follow instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html).
-1. Sign in to MetaMask.
-1. If this is the first time connecting to Obscuro Testnet then in MetaMask add a new custom network called _Obscuro Testnet_. Add `http://127.0.0.1:3000/` as the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit).
-1. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key. Connect and sign the viewing key when prompted by MetaMask.
 1. For the moment, request some guessing game tokens to play the game by posting a message with your wallet address to [this Discord thread](https://discord.com/channels/916052669955727371/1004391962733989960). 50 game tokens will be sent to your account. Note this is a temporary solution for now.
 1. If you want to see this balance in your wallet, you have to import a new Token with the address: ``0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC``
 1. Browse to [the number guessing game](http://testnet.obscuroscan.io/game). Check you see `Network ID: 777` at the top of the game window to confirm you are connected to Obscuro Testnet.

@@ -17,6 +17,8 @@ pages:
     children:
       - title: Contributing to Obscuro
         url: community/contributions.html
+      - title: Developer Journey
+        url: community/journey.html
   - title: Obscuro Testnet
     children:
       - title: Introduction
@@ -43,6 +45,8 @@ pages:
     children:
       - title: Wallet Extension
         url: wallet-extension/wallet-extension.html
+      - title: Configure MetaMask
+        url: wallet-extension/configure-metamask.html
       - title: Handling Sensitive Data
         url: wallet-extension/handling-sensitive-data.html
   - title: Whitepaper

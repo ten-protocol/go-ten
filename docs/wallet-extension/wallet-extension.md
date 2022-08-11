@@ -30,13 +30,7 @@ The diagram below lays out the flows.
 
 ## Usage
 
-1. You have two choices for getting the wallet extension:
-
-   a. Download the wallet extension binary for your operating system from the list of Assets in the [releases area on GitHub](https://github.com/obscuronet/go-obscuro/releases).
-   
-   Or
-
-   b. Compile the wallet extension binary by cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro)
+1. Compile the wallet extension binary by cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro)
    and running the following command from the root of the repository:
 
    ```
@@ -45,7 +39,7 @@ The diagram below lays out the flows.
 
    This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`.
 
-2. Open a command prompt and start the wallet extension by running the `wallet_extension` binary. The wallet extension 
+2. Open a command prompt and start the wallet extension by running the built `wallet_extension` binary. The wallet extension 
    supports the following flags:
 
    * `port` (default: `3000`): The local port on which to serve the wallet extension.
@@ -57,14 +51,9 @@ The diagram below lays out the flows.
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
    assume that the default port of `3000` was selected.
 
-3. Sign in to MetaMask.
+3. Sign in to MetaMask and add the Obscuro Testnet network following the instructions [here](/wallet-extension/configure-metamask.html)
 
-4. If this is the first time connecting to Obscuro Testnet then in MetaMask, add a new custom network called _Obscuro Testnet_. Point the network at the wallet extension by using `http://127.0.0.1:3000/` as
-   the "New RPC URL", and use `777` as the "Chain ID" (fill in the other parameters as you see fit). Requests and
-   responses for the network will now automatically pass through the wallet extension, with all outbound requests
-   encrypted with the enclave public key.
-
-    * At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such
+4. At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such
       as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`. As a result, your balance in MetaMask will not be accurately updated until you have a viewing key.
 
 5. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key, and sign the viewing key when prompted by
