@@ -58,12 +58,8 @@ func NewViewingKeyNetworkClient(rpcAddress string) (*ViewingKeyClient, error) {
 
 // ViewingKeyClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type ViewingKeyClient struct {
-	obscuroClient Client
-
-	enclavePublicKey *ecies.PublicKey
-	// TODO - Use multiple keys below to perform decryption.
-	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
-
+	obscuroClient      Client
+	enclavePublicKey   *ecies.PublicKey                     // Used to encrypt messages destined to the enclave.
 	viewingKeysPrivate map[common.Address]*ecies.PrivateKey // Maps an address to its private viewing key.
 	viewingKeysPublic  map[common.Address][]byte            // Maps an address to its public viewing key bytes.
 }
@@ -157,12 +153,18 @@ func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, erro
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
 	}
 	encryptedResult := common.Hex2Bytes(resultStr)
-	decryptedResult, err := c.viewingPrivKey.Decrypt(encryptedResult, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt the following response with viewing key: %s. Cause: %w", resultStr, err)
+
+	// We attempt to decrypt the response with each viewing key in turn.
+	// TODO - Avoid trying all keys for certain requests by inspecting the request body?
+	for _, privateKey := range c.viewingKeysPrivate {
+		decryptedResult, err := privateKey.Decrypt(encryptedResult, nil, nil)
+		if err == nil {
+			// The decryption did not error, which means we successfully decrypted the result.
+			return decryptedResult, nil
+		}
 	}
 
-	return decryptedResult, nil
+	return nil, fmt.Errorf("could not decrypt the response with any of the registered viewing keys")
 }
 
 // setResult tries to cast/unmarshal data into the result pointer, based on its type
@@ -191,13 +193,12 @@ func (c *ViewingKeyClient) Stop() {
 }
 
 func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAddress common.Address, viewingPubKeyBytes []byte) {
-	c.viewingPrivKey = viewingKey
-
 	c.viewingKeysPrivate[signerAddress] = viewingKey
 	c.viewingKeysPublic[signerAddress] = viewingPubKeyBytes
 }
 
 func (c *ViewingKeyClient) RegisterViewingKey(signature []byte, signerAddress common.Address) error {
+	// TODO: Store signatures to be able to resubmit keys if they are evicted by the node?
 	// We encrypt the viewing key bytes
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingKeysPublic[signerAddress], nil, nil)
 	if err != nil {

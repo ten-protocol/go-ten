@@ -434,6 +434,41 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 	}
 }
 
+func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {
+	setupWalletTestLog("bal-with-mult-viewing-keys")
+
+	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
+	defer walletExtension.Shutdown()
+	go walletExtension.Serve(walletExtensionAddr)
+	waitForWalletExtension(t, walletExtensionAddr)
+
+	stopHandle, err := createObscuroNetwork(t)
+	defer stopHandle()
+	if err != nil {
+		t.Fatalf("failed to create test Obscuro network. Cause: %s", err)
+	}
+
+	// We submit a viewing key for a random account.
+	var accountAddrs []string
+	for i := 0; i < 10; i++ {
+		privateKey, err := crypto.GenerateKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+		accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
+		generateAndSubmitViewingKey(t, walletExtensionAddr, accountAddr, privateKey)
+		accountAddrs = append(accountAddrs, accountAddr)
+	}
+
+	// We request the balance of a random account about halfway through the list.
+	randAccountAddr := accountAddrs[len(accountAddrs)/2]
+	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{randAccountAddr, latestBlock})
+
+	if getBalanceJSON[respJSONKeyResult] != rollupchain.DummyBalance {
+		t.Fatalf("Expected balance of %s, got %s", rollupchain.DummyBalance, getBalanceJSON[respJSONKeyResult])
+	}
+}
+
 // Waits for wallet extension to be ready. Times out after three seconds.
 func waitForWalletExtension(t *testing.T, walletExtensionAddr string) {
 	retries := 30
