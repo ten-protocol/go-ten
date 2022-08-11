@@ -296,7 +296,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	signature[64] -= 27
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
-	err = we.hostClient.RegisterViewingKey(signature)
+	err = we.hostClient.RegisterViewingKey(signature, common.HexToAddress(reqJSONMap[ReqJSONKeyAddress]))
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("RPC request to register viewing key failed: %s", err))
 		return

@@ -33,10 +33,14 @@ func NewViewingKeyClient(client Client) (*ViewingKeyClient, error) {
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	return &ViewingKeyClient{
-		obscuroClient:    client,
-		enclavePublicKey: enclavePublicKey,
-	}, nil
+	vkClient := &ViewingKeyClient{
+		obscuroClient:      client,
+		enclavePublicKey:   enclavePublicKey,
+		viewingKeysPrivate: map[common.Address]*ecies.PrivateKey{},
+		viewingKeysPublic:  map[common.Address][]byte{},
+	}
+
+	return vkClient, nil
 }
 
 // NewViewingKeyNetworkClient returns a network RPC client with Viewing Key encryption/decryption
@@ -57,10 +61,11 @@ type ViewingKeyClient struct {
 	obscuroClient Client
 
 	enclavePublicKey *ecies.PublicKey
-	// todo: add support for multiple keys on the same client?
+	// TODO - Use multiple keys below to perform decryption.
 	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
-	viewingPubKey  []byte            // public viewing key, submitted to the enclave
-	viewingKeyAddr common.Address    // address that generated the public key
+
+	viewingKeysPrivate map[common.Address]*ecies.PrivateKey // Maps an address to its private viewing key.
+	viewingKeysPublic  map[common.Address][]byte            // Maps an address to its public viewing key bytes.
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
@@ -143,9 +148,10 @@ func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 }
 
 func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
-	if c.viewingPrivKey == nil {
-		return nil, fmt.Errorf("cannot decrypt response, viewing key has not been setup")
+	if len(c.viewingKeysPrivate) == 0 {
+		return nil, fmt.Errorf("cannot decrypt response as no viewing keys have been set up")
 	}
+
 	resultStr, ok := resultBlob.(string)
 	if !ok {
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
@@ -186,13 +192,14 @@ func (c *ViewingKeyClient) Stop() {
 
 func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAddress common.Address, viewingPubKeyBytes []byte) {
 	c.viewingPrivKey = viewingKey
-	c.viewingPubKey = viewingPubKeyBytes
-	c.viewingKeyAddr = signerAddress
+
+	c.viewingKeysPrivate[signerAddress] = viewingKey
+	c.viewingKeysPublic[signerAddress] = viewingPubKeyBytes
 }
 
-func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
+func (c *ViewingKeyClient) RegisterViewingKey(signature []byte, signerAddress common.Address) error {
 	// We encrypt the viewing key bytes
-	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingPubKey, nil, nil)
+	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingKeysPublic[signerAddress], nil, nil)
 	if err != nil {
 		return fmt.Errorf("could not encrypt viewing key with enclave public key: %w", err)
 	}
@@ -219,20 +226,31 @@ func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interfac
 		return args, nil
 	}
 
-	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
+	var fromAddress *common.Address
 
-	// We attempt to set the `from` field based on the `data` field.
-	fromAddress, err := searchDataFieldForFrom(callParams, &c.viewingKeyAddr)
-	if err != nil {
-		return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
-	}
-	if fromAddress != nil {
-		callParams[reqJSONKeyFrom] = c.viewingKeyAddr
-		args[0] = callParams
-		return args, nil
+	// If there's only one viewing key, we use that to set the `from` field.
+	if len(c.viewingKeysPrivate) == 1 {
+		for address := range c.viewingKeysPrivate {
+			foundAddress := address
+			fromAddress = &foundAddress
+			break
+		}
+	} else {
+		// Otherwise, we search the `data` field for an address matching a registered viewing key.
+		fromAddress, err = searchDataFieldForFrom(callParams, c.viewingKeysPrivate)
+		if err != nil {
+			return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
+		}
 	}
 
 	// TODO - Consider defining an additional fallback to set the `from` field if the above all fail.
+
+	// We set the `from` field if we have found a suitable address.
+	if fromAddress != nil {
+		callParams[reqJSONKeyFrom] = fromAddress
+		args[0] = callParams
+		return args, nil
+	}
 
 	return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
 		"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
@@ -275,7 +293,7 @@ func parseCallParams(args []interface{}) (map[string]interface{}, error) {
 
 // Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
 // key address, we return that address. Otherwise, we return nil.
-func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeyAddress *common.Address) (*common.Address, error) {
+func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeysPrivate map[common.Address]*ecies.PrivateKey) (*common.Address, error) {
 	// We ensure that the `data` field is present.
 	data := callParams[reqJSONKeyData]
 	if data == nil {
@@ -311,8 +329,8 @@ func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeyAddress
 		}
 
 		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
-		if maybeAddress == *viewingKeyAddress {
-			return viewingKeyAddress, nil
+		if _, ok := viewingKeysPrivate[maybeAddress]; ok {
+			return &maybeAddress, nil
 		}
 	}
 
