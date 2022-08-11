@@ -155,6 +155,7 @@ func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, erro
 	encryptedResult := common.Hex2Bytes(resultStr)
 
 	// We attempt to decrypt the response with each viewing key in turn.
+	// TODO - Avoid trying all keys for certain requests by inspecting the request body?
 	for _, privateKey := range c.viewingKeysPrivate {
 		decryptedResult, err := privateKey.Decrypt(encryptedResult, nil, nil)
 		if err == nil {
