@@ -119,6 +119,9 @@ func (cd *contractDeployer) run() error {
 			contractAddr = &receipt.ContractAddress
 			break
 		}
+		if err != nil {
+			fmt.Printf("Error when getting back receipt: %s\n", err)
+		}
 
 		log.Info("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
 	}
