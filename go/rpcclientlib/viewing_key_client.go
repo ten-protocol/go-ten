@@ -77,10 +77,6 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 		return c.obscuroClient.Call(result, method, args...)
 	}
 
-	if len(c.viewingKeysPrivate) == 0 {
-		return fmt.Errorf("called sensitive method %s, but no viewing keys are set up", method)
-	}
-
 	var err error
 	if method == RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
@@ -147,10 +143,10 @@ func (c *ViewingKeyClient) encryptParamBytes(params []byte) ([]byte, error) {
 }
 
 func (c *ViewingKeyClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
-	// todo - joel - update this check
-	if c.viewingPrivKey == nil {
-		return nil, fmt.Errorf("cannot decrypt response, viewing key has not been setup")
+	if len(c.viewingKeysPrivate) == 0 {
+		return nil, fmt.Errorf("cannot decrypt response as not viewing keys have been set up")
 	}
+
 	resultStr, ok := resultBlob.(string)
 	if !ok {
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
@@ -225,20 +221,31 @@ func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interfac
 		return args, nil
 	}
 
-	// todo - joel - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
+	var fromAddress *common.Address
 
-	// We attempt to set the `from` field based on the `data` field.
-	fromAddress, err := searchDataFieldForFrom(callParams, c.viewingKeysPrivate)
-	if err != nil {
-		return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
+	// If there's only one viewing key, we use that to set the `from` field.
+	if len(c.viewingKeysPrivate) == 1 {
+		for address := range c.viewingKeysPrivate {
+			foundAddress := address
+			fromAddress = &foundAddress
+			break
+		}
+	} else {
+		// Otherwise, we search the `data` field for an address matching a registered viewing key.
+		fromAddress, err = searchDataFieldForFrom(callParams, c.viewingKeysPrivate)
+		if err != nil {
+			return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
+		}
 	}
+
+	// TODO - Consider defining an additional fallback to set the `from` field if the above all fail.
+
+	// We set the `from` field if we have found a suitable address.
 	if fromAddress != nil {
 		callParams[reqJSONKeyFrom] = fromAddress
 		args[0] = callParams
 		return args, nil
 	}
-
-	// TODO - Consider defining an additional fallback to set the `from` field if the above all fail.
 
 	return nil, fmt.Errorf("eth_call request did not have its `from` field set, and its `data` field " +
 		"did not contain an address matching a viewing key. Aborting request as it will not be possible to " +
