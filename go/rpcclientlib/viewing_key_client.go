@@ -60,7 +60,9 @@ type ViewingKeyClient struct {
 	// todo: add support for multiple keys on the same client?
 	viewingPrivKey *ecies.PrivateKey // private viewing key to use for decrypting sensitive requests
 	viewingPubKey  []byte            // public viewing key, submitted to the enclave
-	viewingKeyAddr common.Address    // address that generated the public key
+
+	viewingKeysPrivate map[common.Address]*ecies.PrivateKey // Maps an address to its private viewing key.
+	viewingKeysPublic  map[common.Address][]byte            // Maps an address to its public viewing key.
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
@@ -182,7 +184,9 @@ func (c *ViewingKeyClient) Stop() {
 func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAddress common.Address, viewingPubKeyBytes []byte) {
 	c.viewingPrivKey = viewingKey
 	c.viewingPubKey = viewingPubKeyBytes
-	c.viewingKeyAddr = signerAddress
+
+	c.viewingKeysPrivate[signerAddress] = viewingKey
+	c.viewingKeysPublic[signerAddress] = viewingPubKeyBytes
 }
 
 func (c *ViewingKeyClient) RegisterViewingKey(signature []byte) error {
@@ -217,12 +221,12 @@ func (c *ViewingKeyClient) setFromFieldIfMissing(args []interface{}) ([]interfac
 	// TODO - Once we support multiple viewing keys, set the `from` field to the single viewing key if there's exactly one.
 
 	// We attempt to set the `from` field based on the `data` field.
-	fromAddress, err := searchDataFieldForFrom(callParams, &c.viewingKeyAddr)
+	fromAddress, err := searchDataFieldForFrom(callParams, c.viewingKeysPrivate)
 	if err != nil {
 		return nil, fmt.Errorf("could not process data field in eth_call params. Cause: %w", err)
 	}
 	if fromAddress != nil {
-		callParams[reqJSONKeyFrom] = c.viewingKeyAddr
+		callParams[reqJSONKeyFrom] = fromAddress
 		args[0] = callParams
 		return args, nil
 	}
@@ -270,7 +274,7 @@ func parseCallParams(args []interface{}) (map[string]interface{}, error) {
 
 // Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
 // key address, we return that address. Otherwise, we return nil.
-func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeyAddress *common.Address) (*common.Address, error) {
+func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeysPrivate map[common.Address]*ecies.PrivateKey) (*common.Address, error) {
 	// We ensure that the `data` field is present.
 	data := callParams[reqJSONKeyData]
 	if data == nil {
@@ -306,8 +310,8 @@ func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeyAddress
 		}
 
 		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
-		if maybeAddress == *viewingKeyAddress {
-			return viewingKeyAddress, nil
+		if _, ok := viewingKeysPrivate[maybeAddress]; ok {
+			return &maybeAddress, nil
 		}
 	}
 
