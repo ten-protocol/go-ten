@@ -39,10 +39,10 @@ Below are a set of challenges to get you started. For each challenge you success
 ### Warmup - 20 points
 Get set up and deploy a simple contract.
 * Configure the Wallet extension and Metamask following the instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html)
-* Try deploying any contract (e.g. the default Storage contract). Remember to select Injected Provider as your Environment ![Step 1 screenshot](https://images.tango.us/public/screenshot_017a4a1c-b655-4eda-8c6e-7a298e1faa70.png?crop=focalpoint&fit=crop&fp-x=0.0945&fp-y=0.1827&fp-z=2.5115&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=2027%3A1103)
+* Try deploying any contract using Remix (recommended) (e.g. the default Storage contract). Remember to select Injected Provider as your Environment ![Step 1 screenshot](https://images.tango.us/public/screenshot_017a4a1c-b655-4eda-8c6e-7a298e1faa70.png?crop=focalpoint&fit=crop&fp-x=0.0945&fp-y=0.1827&fp-z=2.5115&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=2027%3A1103)
 
 ### Deploy the Guessing game - 20 points
-The guessing game is a very basic contract that showcases some of Obscuro's capabilities. The goal of the same is to simply guess the secret number the game has selected. Each time an attempt is made, an entrance fee of 1 token is paid. If a player guesses correctly, they win the entire pot and a new random number is selected.
+The guessing game is a very basic contract that showcases some of Obscuro's capabilities. The goal of the game is to simply guess the secret number the game has selected. Each time an attempt is made, an entrance fee of 1 token is paid. If a player guesses correctly, they win the entire pot and a new random number is selected.
 
 Before we get into how the game works, let's see it in action and play. See the instructions [here](https://docs.obscu.ro/testnet/example-dapps.html)
 
@@ -55,15 +55,17 @@ There are two main functions of interest. First, the *attempt* function allows a
 The other is the *setNewTarget* function. This checks the game is in a state ready to be reset and then sets a secret number based on various block parameters.
 ![setNewTarget function](../../assets/images/setnewtarget.png)
 
-### Extend the Guessing game with a proper win notification - 50 points
-You'll have noticed immediately that on winning the game, there is no notification! The only thing that happens is the game transfers to you all the tokens in the pot. 
-
-The challenge here is to extend the game with events (or anything else) to inform the winning player that they've won and how much they've won. 
-
 ### Extend the Guessing game with Warmer/Colder functionality - 50 points
-Currently, after each guess, you have no idea how far you are from the winner number. The game will be more fun if players know with each play whether they're closer (warmer) or further (colder) form their last guess.
+Currently, after each guess, you have no idea how far you are from the winner number. The game will be more fun if players know with each play whether they're closer (warmer) or further (colder) from their last guess.
 
 The challenge here is to extend the game to include this functionality. You'll need to think about how you store previous guesses for each player.
+
+### Extend the Guessing game with a proper win notification - 75 points
+You'll have noticed immediately that on winning the game, there is no notification! The only thing that happens is the game transfers to you all the tokens in the pot. 
+
+The challenge here is to extend the game with events (or anything else) to inform the winning player that they've won and how much they've won.
+
+You'll need to write a UI for this.
 
 ### Deploy a DEX - 100 points
 A key promise of Obscuro is that existing Dapps built for EVM-based chains will also work on Obscuro. So the challenge here is to deploy an existing evm-based DEX of your choice to Obscuro.
