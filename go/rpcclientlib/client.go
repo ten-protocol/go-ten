@@ -7,9 +7,7 @@ import (
 const (
 	RPCGetID                   = "obscuro_getID"
 	RPCGetCurrentBlockHead     = "obscuro_getCurrentBlockHead"
-	RPCGetCurrentRollupHead    = "obscuro_getCurrentRollupHead"
 	RPCGetRollupHeader         = "obscuro_getRollupHeader"
-	RPCGetRollup               = "obscuro_getRollup"
 	RPCAddViewingKey           = "obscuro_addViewingKey"
 	RPCStopHost                = "obscuro_stopHost"
 	RPCCall                    = "eth_call"
@@ -20,6 +18,8 @@ const (
 	RPCGetTxReceipt            = "eth_getTransactionReceipt"
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
 	RPCGetBlockHeaderByHash    = "obscuroscan_getBlockHeaderByHash"
+	RPCGetCurrentRollupHead    = "obscuroscan_getCurrentRollupHead"
+	RPCGetRollup               = "obscuroscan_getRollup"
 	RPCGetRollupHeaderByNumber = "obscuroscan_getRollupHeaderByNumber"
 	RPCGetRollupForTx          = "obscuroscan_getRollupForTx"
 	RPCGetLatestTxs            = "obscuroscan_getLatestTransactions"

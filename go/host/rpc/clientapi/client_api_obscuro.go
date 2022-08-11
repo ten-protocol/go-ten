@@ -31,15 +31,6 @@ func (api *ObscuroAPI) GetCurrentBlockHead() *types.Header {
 	return api.host.DB().GetCurrentBlockHead()
 }
 
-// GetCurrentRollupHead returns the current head rollup's header.
-func (api *ObscuroAPI) GetCurrentRollupHead() *common.Header {
-	headerWithHashes := api.host.DB().GetCurrentRollupHead()
-	if headerWithHashes == nil {
-		return nil
-	}
-	return headerWithHashes.Header
-}
-
 // GetRollupHeader returns the header of the rollup with the given hash.
 func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 	headerWithHashes := api.host.DB().GetRollupHeader(hash)
@@ -47,11 +38,6 @@ func (api *ObscuroAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 		return nil
 	}
 	return headerWithHashes.Header
-}
-
-// GetRollup returns the rollup with the given hash.
-func (api *ObscuroAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, error) {
-	return api.host.EnclaveClient().GetRollup(hash)
 }
 
 // AddViewingKey stores the viewing key on the enclave.

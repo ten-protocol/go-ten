@@ -30,6 +30,20 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 	return blockHeader, nil
 }
 
+// GetCurrentRollupHead returns the current head rollup's header.
+func (api *ObscuroScanAPI) GetCurrentRollupHead() *common.Header {
+	headerWithHashes := api.host.DB().GetCurrentRollupHead()
+	if headerWithHashes == nil {
+		return nil
+	}
+	return headerWithHashes.Header
+}
+
+// GetRollup returns the rollup with the given hash.
+func (api *ObscuroScanAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, error) {
+	return api.host.EnclaveClient().GetRollup(hash)
+}
+
 // GetRollupHeaderByNumber returns the header for the rollup with the given number.
 func (api *ObscuroScanAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header, error) {
 	rollupHash := api.host.DB().GetRollupHash(number)
@@ -66,7 +80,7 @@ func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRo
 }
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
-func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
+func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
 	currentRollupHeaderWithHashes := api.host.DB().GetCurrentRollupHead()
 	if currentRollupHeaderWithHashes == nil {
 		return nil, nil
@@ -99,12 +113,12 @@ func (api *ObscuroAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error)
 }
 
 // GetTotalTransactions returns the number of recorded transactions on the network.
-func (api *ObscuroAPI) GetTotalTransactions() *big.Int {
+func (api *ObscuroScanAPI) GetTotalTransactions() *big.Int {
 	totalTransactions := api.host.DB().GetTotalTransactions()
 	return totalTransactions
 }
 
 // Attestation returns the node's attestation details.
-func (api *ObscuroAPI) Attestation() *common.AttestationReport {
+func (api *ObscuroScanAPI) Attestation() *common.AttestationReport {
 	return api.host.EnclaveClient().Attestation()
 }
