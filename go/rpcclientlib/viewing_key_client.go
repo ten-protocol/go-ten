@@ -278,9 +278,10 @@ func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) 
 		viewingKeyAddress = common.HexToAddress(balanceAddress)
 
 	case RPCGetTxReceipt, RPCGetTransactionByHash:
-		// todo - joel - need to retrieve tx first here
+		// todo - joel - need to retrieve tx first here; no good option but to scroll through all viewing key addresses?
 
 	case RPCSendRawTransaction:
+		// todo - joel - need to decrypt tx
 
 	default:
 		return nil, fmt.Errorf("no mechanism to identify decryption key for method %s", method)
