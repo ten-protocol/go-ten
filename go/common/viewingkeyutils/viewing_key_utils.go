@@ -9,6 +9,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+// Viewing-key-related functionality shared across the viewing-key client and the enclave.
+
 const CallFieldFrom = "from"
 
 // GetViewingKeyAddressForTransaction returns the address whose viewing key should be used to encrypt the response,
@@ -55,4 +57,19 @@ func ExtractCallParamFrom(callParams []byte) (gethcommon.Address, error) {
 
 	from := gethcommon.HexToAddress(fromString)
 	return from, nil
+}
+
+// ExtractTx returns the common.L2Tx from the params of an eth_sendRawTransaction request.
+func ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
+	// We need to extract the transaction hex from the JSON list encoding. We remove the leading `"[0x`, and the trailing `]"`.
+	txBinary := sendRawTxParams[4 : len(sendRawTxParams)-2]
+	txBytes := gethcommon.Hex2Bytes(string(txBinary))
+
+	tx := &common.L2Tx{}
+	err := tx.UnmarshalBinary(txBytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshall transaction from bytes. Cause: %w", err)
+	}
+
+	return tx, nil
 }

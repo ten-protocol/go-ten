@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/obscuronet/go-obscuro/go/common/viewingkeyutils"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkeyutils"
 )
 
 const (
@@ -284,7 +282,7 @@ func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) 
 		// todo - joel - need to retrieve tx first here; no good option but to scroll through all viewing key addresses?
 
 	case RPCSendRawTransaction:
-		decodedTx, err := rpc.ExtractTx(args[0].([]byte))
+		decodedTx, err := viewingkeyutils.ExtractTx(args[0].([]byte))
 		if err != nil {
 			return nil, fmt.Errorf("could not parse transaction from eth_sendRawTransaction request. Cause: %w", err)
 		}

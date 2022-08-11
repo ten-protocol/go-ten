@@ -276,7 +276,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
 	}
 
-	decryptedTx, err := rpc.ExtractTx(encodedTx)
+	decryptedTx, err := viewingkeyutils.ExtractTx(encodedTx)
 	if err != nil {
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
