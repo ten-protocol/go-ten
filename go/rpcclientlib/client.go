@@ -1,5 +1,9 @@
 package rpcclientlib
 
+import (
+	"errors"
+)
+
 const (
 	RPCGetID                   = "obscuro_getID"
 	RPCGetCurrentBlockHead     = "obscuro_getCurrentBlockHead"
@@ -23,9 +27,11 @@ const (
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
 )
 
+var ErrNilResponse = errors.New("nil response received from Obscuro node")
+
 // Client is used by client applications to interact with the Obscuro node
 type Client interface {
-	// Call executes the named method via RPC.
+	// Call executes the named method via RPC. (Returns `ErrNilResponse` on nil response from Node, this is used as "not found" for some method calls)
 	Call(result interface{}, method string, args ...interface{}) error
 	// Stop closes the client.
 	Stop()

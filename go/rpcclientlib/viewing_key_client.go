@@ -92,9 +92,14 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 		return fmt.Errorf("%s rpc call failed - %w", method, err)
 	}
 
-	// if caller not interested in response or there was a nil response, we're done
-	if result == nil || rawResult == nil {
+	// if caller not interested in response, we're done
+	if result == nil {
 		return nil
+	}
+
+	if rawResult == nil {
+		// note: some methods return nil for 'not found', caller can check for this Error type to verify
+		return ErrNilResponse
 	}
 
 	// method is sensitive, so we decrypt it before unmarshalling the result
