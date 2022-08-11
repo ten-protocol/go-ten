@@ -197,6 +197,7 @@ func (c *ViewingKeyClient) SetViewingKey(viewingKey *ecies.PrivateKey, signerAdd
 }
 
 func (c *ViewingKeyClient) RegisterViewingKey(signature []byte, signerAddress common.Address) error {
+	// TODO: Store signatures to be able to resubmit keys if they are evicted by the node?
 	// We encrypt the viewing key bytes
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingKeysPublic[signerAddress], nil, nil)
 	if err != nil {
@@ -279,6 +280,7 @@ func (c *ViewingKeyClient) getDecryptionKey(method string, args ...interface{}) 
 		}
 
 	case RPCGetTxReceipt, RPCGetTransactionByHash:
+		// TODO - Add a caching layer that can be quickly checked to work out which address to use based on past submissions?
 		// todo - joel - need to retrieve tx first here; no good option but to scroll through all viewing key addresses?
 
 	case RPCSendRawTransaction:
