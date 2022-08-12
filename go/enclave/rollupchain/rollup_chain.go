@@ -691,11 +691,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	}
 	balance := (*hexutil.Big)(blockchainState.GetBalance(address))
 
-	viewingKeyAddress, err := rpc.GetViewingKeyAddressForBalanceRequest(paramBytes)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getBalance response. Cause: %w", err)
-	}
-	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, []byte(balance.String()))
+	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance.String()))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}

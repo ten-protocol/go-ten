@@ -59,19 +59,6 @@ func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, er
 	return sender, nil
 }
 
-// GetViewingKeyAddressForBalanceRequest returns the address whose viewing key should be used to encrypt the response,
-// given the params of an eth_getBalance request.
-func GetViewingKeyAddressForBalanceRequest(balanceParams []byte) (gethcommon.Address, error) {
-	var paramsJSONMap []string
-	err := json.Unmarshal(balanceParams, &paramsJSONMap)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_getBalance request. JSON "+
-			"params are: %s. Cause: %w", string(balanceParams), err)
-	}
-	// The first argument is the address, the second the block.
-	return gethcommon.HexToAddress(paramsJSONMap[0]), nil
-}
-
 // ExtractCallParamTo extracts and parses the `to` field of an eth_call request.
 func ExtractCallParamTo(callParams []byte) (gethcommon.Address, error) {
 	var paramsJSONMap []interface{}
