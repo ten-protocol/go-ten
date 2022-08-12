@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
@@ -684,9 +687,34 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	}
 	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
 	address := gethcommon.HexToAddress(paramList[0])
+	blockNumber, err := strconv.Atoi(paramList[1])
+	if err != nil {
+		return nil, fmt.Errorf("could not parse requested rollup number")
+	}
 
-	// TODO - Retrieve balance at a specific block height, rather than the latest.
-	blockchainState := rc.storage.CreateStateDB(rc.storage.FetchHeadState().HeadRollup)
+	var rollup *obscurocore.Rollup
+	switch gethrpc.BlockNumber(blockNumber) {
+	case gethrpc.EarliestBlockNumber:
+		rollup = rc.storage.FetchGenesisRollup()
+	case gethrpc.PendingBlockNumber:
+		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
+		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
+	case gethrpc.LatestBlockNumber:
+		rollupHash := rc.storage.FetchHeadState().HeadRollup
+		maybeRollup, found := rc.storage.FetchRollup(rollupHash)
+		if !found {
+			return nil, fmt.Errorf("rollup with requested height %d was not found", blockNumber)
+		}
+		rollup = maybeRollup
+	default:
+		maybeRollup, found := rc.storage.FetchRollupByHeight(uint64(blockNumber))
+		if !found {
+			return nil, fmt.Errorf("rollup with requested height %d was not found", blockNumber)
+		}
+		rollup = maybeRollup
+	}
+
+	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
 	if blockchainState == nil || err != nil {
 		return nil, err
 	}
