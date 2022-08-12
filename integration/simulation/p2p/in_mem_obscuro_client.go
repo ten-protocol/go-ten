@@ -68,15 +68,18 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	switch method {
 	case rpcclientlib.RPCGetID:
 		*result.(*gethcommon.Address) = c.testAPI.GetID()
+		return nil
 
 	case rpcclientlib.RPCSendRawTransaction:
 		return c.sendRawTransaction(args)
 
 	case rpcclientlib.RPCGetCurrentBlockHead:
 		*result.(**types.Header) = c.testAPI.GetCurrentBlockHead()
+		return nil
 
 	case rpcclientlib.RPCGetCurrentRollupHead:
 		*result.(**common.Header) = c.obscuroScanAPI.GetCurrentRollupHead()
+		return nil
 
 	case rpcclientlib.RPCGetRollupHeader:
 		return c.getRollupHeader(result, args)
@@ -98,15 +101,17 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 	case rpcclientlib.RPCStopHost:
 		c.testAPI.StopHost()
+		return nil
 
 	case rpcclientlib.RPCAddViewingKey:
 		return c.addViewingKey(args)
 
+	case rpcclientlib.RPCGetBalance:
+		return c.getBalance(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
-
-	return nil
 }
 
 func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
@@ -209,6 +214,19 @@ func (c *inMemObscuroClient) getNonce(result interface{}, args []interface{}) er
 	}
 	*result.(*hexutil.Uint64) = *txCountHex
 
+	return nil
+}
+
+func (c *inMemObscuroClient) getBalance(result interface{}, args []interface{}) error {
+	enc, err := getEncryptedBytes(args, rpcclientlib.RPCGetBalance)
+	if err != nil {
+		return err
+	}
+	encryptedResponse, err := c.ethAPI.GetBalance(context.Background(), enc)
+	if err != nil {
+		return fmt.Errorf("`eth_getBalance` call failed. Cause: %w", err)
+	}
+	*result.(*interface{}) = encryptedResponse
 	return nil
 }
 

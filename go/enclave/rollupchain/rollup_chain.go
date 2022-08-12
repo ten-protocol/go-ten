@@ -38,6 +38,8 @@ import (
 
 const (
 	msgNoRollup = "could not fetch rollup"
+	// The balance preallocated to the faucet address.
+	prealloc = 7500000000000000000
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -245,6 +247,12 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 		}
 		rc.storage.SaveNewHead(&bs, genesis, nil)
 		s := rc.storage.GenesisStateDB()
+
+		// We preallocate funds to the faucet address.
+		// todo - joel - set faucet address from config
+		faucetAddress := gethcommon.HexToAddress("0x29d7d1dd5b6f9c864d9db560d72a247c178ae86b")
+		s.AddBalance(faucetAddress, big.NewInt(prealloc))
+
 		_, err := s.Commit(true)
 		if err != nil {
 			return nil, false
@@ -666,6 +674,11 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}
+
+	// todo - joel - delete this sanity-checking code that prints the prealloc balance, to check it's there
+	blockchainState := rc.storage.CreateStateDB(rc.storage.FetchHeadState().HeadRollup)
+	balance := (*hexutil.Big)(blockchainState.GetBalance(gethcommon.HexToAddress("0x29d7d1dd5b6f9c864d9db560d72a247c178ae86b")))
+	println("jjj prealloc balance:", balance)
 
 	return encryptedResult, nil
 }
