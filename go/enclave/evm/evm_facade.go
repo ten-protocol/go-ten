@@ -1,8 +1,9 @@
 package evm
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	core2 "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
