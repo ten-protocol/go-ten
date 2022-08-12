@@ -679,9 +679,12 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
 	}
+	if len(paramList) < 2 {
+		return nil, fmt.Errorf("required exactly two params, but received zero")
+	}
 	address := gethcommon.HexToAddress(paramList[0])
 
-	// todo - joel - get balance at specific block, as in Geth
+	// TODO - Retrieve balance at a specific block height, rather than the latest.
 	blockchainState := rc.storage.CreateStateDB(rc.storage.FetchHeadState().HeadRollup)
 	if blockchainState == nil || err != nil {
 		return nil, err
