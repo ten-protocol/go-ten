@@ -37,9 +37,9 @@ import (
 )
 
 const (
-	msgNoRollup = "could not fetch rollup"
-	// The balance preallocated to the faucet address.
-	prealloc = 7500000000000000000
+	msgNoRollup   = "could not fetch rollup"
+	prealloc      = 7500000000000000000 // The balance preallocated to the faucet address.
+	faucetAddress = "0x29d7d1dd5b6f9c864d9db560d72a247c178ae86b"
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -249,8 +249,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 		s := rc.storage.GenesisStateDB()
 
 		// We preallocate funds to the faucet address.
-		// todo - joel - set faucet address from config
-		faucetAddress := gethcommon.HexToAddress("0x29d7d1dd5b6f9c864d9db560d72a247c178ae86b")
+		faucetAddress := gethcommon.HexToAddress(faucetAddress)
 		s.AddBalance(faucetAddress, big.NewInt(prealloc))
 
 		_, err := s.Commit(true)
