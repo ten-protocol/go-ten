@@ -250,7 +250,7 @@ func (bridge *Bridge) ExtractDeposits(
 		b = p
 	}
 
-	log.Info("Extracted deposits %d ->%d: %v.", fromBlock.NumberU64(), toBlock.NumberU64(), allDeposits)
+	log.Trace("Extracted deposits %d ->%d: %v.", fromBlock.NumberU64(), toBlock.NumberU64(), allDeposits)
 	return allDeposits
 }
 
