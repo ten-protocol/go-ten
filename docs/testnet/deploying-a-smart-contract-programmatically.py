@@ -70,12 +70,13 @@ def run():
     logging.info('Using account with address %s' % account.address)
 
     # generate a viewing key for this account, sign and post it to the wallet extension
-    response = requests.get('http://%s:%d/generateviewingkey/' % (WHOST, WPORT))
+    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+    data = {"address": account.address}
+    response = requests.post('http://%s:%d/generateviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
     signed_msg = w3.eth.account.sign_message(encode_defunct(text='vk' + response.text), private_key=private_key)
 
-    data = {"address": account.address, "signature": signed_msg.signature.hex()}
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-    requests.post('http://%s:%d/submitviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
+    data = {"signature": signed_msg.signature.hex(), "address": account.address}
+    response = requests.post('http://%s:%d/submitviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
 
     # compile the guessing game and build the deployment transaction
     logging.info('Compiling the guessing game application')
@@ -109,7 +110,7 @@ def run():
     start = time.time()
     tx_receipt = None
     while True:
-        if (time.time() - start) > 30:
+        if (time.time() - start) > 60:
             logging.error('Timed out waiting for transaction receipt ... aborting')
             return
 
@@ -122,10 +123,10 @@ def run():
                 logging.info('Received transaction receipt')
                 break
         except Exception as e:
-            logging.info('Waiting for transaction receipt')
             time.sleep(1)
 
     # construct the contract using the contract address
+    logging.info('Contract address is %s' % tx_receipt.contractAddress)
     contract = w3.eth.contract(address=tx_receipt.contractAddress, abi=abi)
 
     # guess the number

@@ -25,12 +25,14 @@ associated account stored for later usage.
 The enclave encodes all communication to the wallet extension using viewing keys. HTTP endpoints exist in the wallet 
 extension to facilitate requesting a viewing key, and to sign and return it to the enclave. 
 ```python 
-    response = requests.get('http://%s:%d/generateviewingkey/' % (WHOST, WPORT))
+    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+    
+    data = {"address": account.address}
+    response = requests.post('http://%s:%d/generateviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
     signed_msg = w3.eth.account.sign_message(encode_defunct(text='vk' + response.text), private_key=private_key)
 
-    data = {"address": account.address, "signature": signed_msg.signature.hex()}
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-    requests.post('http://%s:%d/submitviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
+    data = {"signature": signed_msg.signature.hex(), "address": account.address}
+    response = requests.post('http://%s:%d/submitviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
 ```
 
 ## Compile the contract and build the local deployment transaction
