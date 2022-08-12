@@ -117,8 +117,9 @@ jobs:
           inlineScript: |
             $(az resource list --tag devtestnetlatest=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-  deploy:
-    needs: build
+
+  deploy-l2:
+    needs: build-l2
     runs-on: ubuntu-latest
 
     strategy:
@@ -223,16 +224,17 @@ jobs:
                --sgx_enabled=true \
                --host_id=${{ matrix.host_addr }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
-               --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
-               --obxerc20addr=${{needs.build.outputs.obxErc20Addr}} \
-               --etherc20addr=${{needs.build.outputs.ethErc20Addr}} \
+               --mgmtcontractaddr=${{needs.build-l2.outputs.mgmtContractAddr}} \
+               --obxerc20addr=${{needs.build-l2.outputs.obxErc20Addr}} \
+               --etherc20addr=${{needs.build-l2.outputs.ethErc20Addr}} \
                --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --p2p_public_address=dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
 
-  update:
-    needs: deploy
+
+  update-l2:
+    needs: deploy-l2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -245,19 +247,20 @@ jobs:
       - name: 'Remove existing backend nodes from the load balancer'
         run: ./.github/workflows/runner-scripts/dev-testnet-clear-loadbalancer.sh
 
-      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+      - name: 'Create VM NIC Address pool for Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az network nic ip-config address-pool add \
               --address-pool Dev-Backend-Pool-Obscuro-Testnet \
-              --ip-config-name dev-ipconfigObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
+              --ip-config-name ipconfigDev-ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
               --nic-name Dev-ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name dev-testnet-loadbalancer
 
-  setup:
-    needs: deploy
+
+  setup-l2:
+    needs: deploy-l2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
