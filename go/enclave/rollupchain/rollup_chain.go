@@ -749,11 +749,11 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
 		rollupHash := rc.storage.FetchHeadState().HeadRollup
-		maybeRollup, found := rc.storage.FetchRollup(rollupHash)
+		var found bool
+		rollup, found = rc.storage.FetchRollup(rollupHash)
 		if !found {
 			return nil, fmt.Errorf("rollup with requested height %d was not found", height)
 		}
-		rollup = maybeRollup
 	default:
 		maybeRollup, found := rc.storage.FetchRollupByHeight(uint64(height))
 		if !found {
