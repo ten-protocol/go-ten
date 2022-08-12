@@ -80,6 +80,7 @@ func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRo
 }
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
+// TODO - Consider introducing paging or similar to prevent a huge number of transactions blowing the node's memory limit.
 func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
 	currentRollupHeaderWithHashes := api.host.DB().GetCurrentRollupHead()
 	if currentRollupHeaderWithHashes == nil {
