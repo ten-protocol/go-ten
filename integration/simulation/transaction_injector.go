@@ -347,14 +347,12 @@ func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
 
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
-	t := ti.newTx(data, NextNonce(ti.rpcHandles, from))
-	return t
+	return ti.newTx(data, NextNonce(ti.rpcHandles, from))
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
-	t := ti.newTx(transferERC20data, NextNonce(ti.rpcHandles, from))
-	return t
+	return ti.newTx(transferERC20data, NextNonce(ti.rpcHandles, from))
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
@@ -364,7 +362,7 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	gas := uint64(1_000_000)
-	value := gethcommon.Big0
+	value := big.NewInt(1)
 
 	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
 	//max := big.NewInt(1_000_000_000_000_000_000)
