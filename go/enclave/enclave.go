@@ -336,6 +336,9 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
 	}
+	if len(paramList) == 0 {
+		return nil, fmt.Errorf("required at least one param, but received zero")
+	}
 	txHash := gethcommon.HexToHash(paramList[0])
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
