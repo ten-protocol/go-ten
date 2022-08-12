@@ -362,7 +362,7 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	gas := uint64(1_000_000)
-	value := big.NewInt(1)
+	value := gethcommon.Big1
 
 	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
 	//max := big.NewInt(1_000_000_000_000_000_000)

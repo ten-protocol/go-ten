@@ -190,7 +190,7 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 
 	tx := types.NewTx(&types.LegacyTx{
 		Nonce:    nonce,
-		Value:    gethcommon.Big0,
+		Value:    gethcommon.Big1,
 		Gas:      1_000_000,
 		GasPrice: gethcommon.Big0,
 		Data:     transferERC20data,
