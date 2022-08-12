@@ -56,6 +56,19 @@ func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
 	return r
 }
 
+func (s *storageImpl) FetchRollupByHeight(height uint64) *core.Rollup {
+	if height == 0 {
+		return s.FetchGenesisRollup()
+	}
+
+	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
+	if hash == (gethcommon.Hash{}) {
+		return nil
+	}
+	r, _ := s.FetchRollup(hash)
+	return r
+}
+
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	s.assertSecretAvailable()
 
