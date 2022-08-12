@@ -84,7 +84,6 @@ type Enclave interface {
 
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
 	// address.
-	// TODO - Handle multiple viewing keys, and thus multiple return values.
 	GetBalance(encryptedParams EncryptedParamsGetBalance) (EncryptedResponseGetBalance, error)
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.

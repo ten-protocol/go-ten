@@ -49,7 +49,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	// Predefined consts to support geths API
+	// Predefined constants to support Geth's API
 	switch number {
 	case rpc.LatestBlockNumber:
 		return headerWithHashesToBlock(api.host.DB().GetCurrentRollupHead()), nil
