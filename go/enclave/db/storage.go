@@ -56,19 +56,6 @@ func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
 	return r
 }
 
-func (s *storageImpl) FetchRollupByHeight(height uint64) *core.Rollup {
-	if height == 0 {
-		return s.FetchGenesisRollup()
-	}
-
-	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
-	if hash == (gethcommon.Hash{}) {
-		return nil
-	}
-	r, _ := s.FetchRollup(hash)
-	return r
-}
-
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	s.assertSecretAvailable()
 
@@ -86,6 +73,18 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 		return r, true
 	}
 	return nil, false
+}
+
+func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
+	if height == 0 {
+		return s.FetchGenesisRollup(), true
+	}
+
+	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
+	if hash == (gethcommon.Hash{}) {
+		return nil, false
+	}
+	return s.FetchRollup(hash)
 }
 
 func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
