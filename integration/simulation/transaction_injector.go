@@ -7,6 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
@@ -379,12 +382,16 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 }
 
 func readNonce(cl rpcclientlib.Client, a gethcommon.Address) uint64 {
-	var result uint64
-	err := cl.Call(&result, rpcclientlib.RPCNonce, a)
+	var result hexutil.Uint64
+	err := cl.Call(&result, rpcclientlib.RPCNonce, a, rpc.BlockNumberOrHash{})
 	if err != nil {
 		panic(err)
 	}
-	return result
+	nonce, err := hexutil.DecodeUint64(result.String())
+	if err != nil {
+		panic(err)
+	}
+	return nonce
 }
 
 func NextNonce(clients *network.RPCHandles, w wallet.Wallet) uint64 {

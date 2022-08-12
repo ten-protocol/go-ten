@@ -33,10 +33,12 @@ import (
 )
 
 const (
-	apiVersion1          = "1.0"
-	apiNamespaceObscuro  = "obscuro"
-	apiNamespaceEthereum = "eth"
-	apiNamespaceNetwork  = "net"
+	apiVersion1             = "1.0"
+	apiNamespaceObscuro     = "obscuro"
+	apiNamespaceEthereum    = "eth"
+	apiNamespaceObscuroScan = "obscuroscan"
+	apiNamespaceNetwork     = "net"
+	apiNamespaceTest        = "test"
 )
 
 // Node is an implementation of host.Host.
@@ -128,9 +130,21 @@ func NewHost(
 				Public:    true,
 			},
 			{
+				Namespace: apiNamespaceObscuroScan,
+				Version:   apiVersion1,
+				Service:   clientapi.NewObscuroScanAPI(node),
+				Public:    true,
+			},
+			{
 				Namespace: apiNamespaceNetwork,
 				Version:   apiVersion1,
 				Service:   clientapi.NewNetworkAPI(node),
+				Public:    true,
+			},
+			{
+				Namespace: apiNamespaceTest,
+				Version:   apiVersion1,
+				Service:   clientapi.NewTestAPI(node),
 				Public:    true,
 			},
 		}
