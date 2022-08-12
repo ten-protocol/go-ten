@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -669,11 +671,13 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 }
 
 func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
+	// We decrypt the request.
 	paramBytes, err := rc.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
 
+	// We extract the params from the request.
 	var paramList []string
 	err = json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
@@ -684,19 +688,30 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	}
 	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
 	address := gethcommon.HexToAddress(paramList[0])
+	blockNumber := gethrpc.BlockNumber(0)
+	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse requested rollup number")
+	}
 
-	// TODO - Retrieve balance at a specific block height, rather than the latest.
-	blockchainState := rc.storage.CreateStateDB(rc.storage.FetchHeadState().HeadRollup)
+	// We retrieve the rollup of interest.
+	rollup, err := rc.getRollup(blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	// We get the balance at that rollup.
+	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
 	if blockchainState == nil || err != nil {
 		return nil, err
 	}
 	balance := (*hexutil.Big)(blockchainState.GetBalance(address))
 
+	// We encrypt the result.
 	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance.String()))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
-
 	return encryptedBalance, blockchainState.Error()
 }
 
@@ -721,4 +736,30 @@ func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
 	}
 	pubKey := rc.storage.FetchAttestedKey(r.Header.Agg)
 	return ecdsa.Verify(pubKey, h[:], r.Header.R, r.Header.S)
+}
+
+// Retrieves the rollup with the given height, with special handling for earliest/latest/pending .
+func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollup, error) {
+	var rollup *obscurocore.Rollup
+	switch height {
+	case gethrpc.EarliestBlockNumber:
+		rollup = rc.storage.FetchGenesisRollup()
+	case gethrpc.PendingBlockNumber:
+		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
+		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
+	case gethrpc.LatestBlockNumber:
+		rollupHash := rc.storage.FetchHeadState().HeadRollup
+		var found bool
+		rollup, found = rc.storage.FetchRollup(rollupHash)
+		if !found {
+			return nil, fmt.Errorf("rollup with requested height %d was not found", height)
+		}
+	default:
+		maybeRollup, found := rc.storage.FetchRollupByHeight(uint64(height))
+		if !found {
+			return nil, fmt.Errorf("rollup with requested height %d was not found", height)
+		}
+		rollup = maybeRollup
+	}
+	return rollup, nil
 }
