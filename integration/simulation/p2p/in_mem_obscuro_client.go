@@ -195,7 +195,7 @@ func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) e
 }
 
 func (c *inMemObscuroClient) getNonce(result interface{}, args []interface{}) error {
-	if len(args) != 1 {
+	if len(args) != 2 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpcclientlib.RPCNonce, len(args))
 	}
 	address, ok := args[0].(gethcommon.Address)
@@ -207,11 +207,7 @@ func (c *inMemObscuroClient) getNonce(result interface{}, args []interface{}) er
 	if err != nil {
 		return fmt.Errorf("`eth_getTransactionCount` call failed. Cause: %w", err)
 	}
-	txCount, err := hexutil.DecodeUint64(txCountHex.String())
-	if err != nil {
-		return fmt.Errorf("`eth_getTransactionCount` call failed. Cause: %w", err)
-	}
-	*result.(*uint64) = txCount
+	*result.(*hexutil.Uint64) = *txCountHex
 
 	return nil
 }
