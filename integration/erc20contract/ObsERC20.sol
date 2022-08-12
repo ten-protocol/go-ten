@@ -3,6 +3,8 @@ pragma solidity ^0.8.4;
 
 import "libs/openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+// This is an implementation of a canonical ERC20 as used in the Obscuro network
+// where access to data has to be restricted.
 contract ObsERC20 is ERC20 {
 
     constructor(
