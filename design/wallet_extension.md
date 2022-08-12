@@ -2,21 +2,32 @@
 
 ## Scope
 
-The design for the wallet extension, a component that is responsible for handling RPC requests from traditional Ethereum 
-wallets (e.g. MetaMask, hardware wallets) and webapps to the Obscuro host.
+The design for the wallet extension, a component that is responsible for handling RPC requests from traditional 
+Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and webapps to the Obscuro host.
 
 ## Requirements
 
-* The wallet extension serves an endpoint that meets the [Ethereum JSON-RPC specification
-  ](https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/ethereum/eth1.0-apis/assembled-spec/openrpc.json)
+* The wallet extension serves the following APIs:
+  * The APIs defined in the [Ethereum JSON-RPC specification
+    ](https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/ethereum/eth1.0-apis/assembled-spec/openrpc.json)
+  * Additional APIs as needed to support common tools (e.g. MetaMask's use of Geth's `net_version` API)
 * The wallet extension is run locally by the end user
-* The wallet extension does not broadcast any sensitive information (e.g. transactions, balances) in plaintext
-* The encryption keys are only known to the client (e.g. wallet, webapp), and not to any third-parties
-* The encryption is transparent to the client; from the client's perspective, they are interacting with a "standard" 
-  non-encrypting implementation of the Ethereum JSON-RPC specification
-* The wallet extension is usable by any webapp or wallet type, and in particular:
+* Encryption
+  * The wallet extension does not send or receive any sensitive information (e.g. transactions, balances) in plaintext
+  * Any encryption keys used are only known to the client (e.g. wallet, webapp), and not to any third-parties
+  * The encryption is transparent to the client; from the client's perspective, they are interacting with a "standard" 
+    non-encrypting implementation of the Ethereum JSON-RPC specification
+* The wallet extension is usable by any webapp, tool or wallet type, and in particular:
   * Hardware wallets that do not offer a decryption capability
   * MetaMask, for which the keys are only available when running in the browser
+* Some tooling (e.g. MetaMask) does not set the `from` field in `eth_call` requests. For any received `eth_call` 
+  request, it is acceptable for the wallet extension to set the `from` field programmatically (e.g. to enable 
+  encryption of the response), using the following rules:
+  * If the `from` field is set, it is left untouched
+  * Else, if there is a single viewing key registered, we set the `from` field to that viewing key's address
+  * Else, we search the `data` field for possible addresses. If one of the addresses matching one of the registered 
+    viewing key's addresses, we set the `from` field to that
+  * Else, the `from` field is left untouched
 
 ## Design
 
@@ -66,6 +77,9 @@ that we are not relying on decryption capabilities being available in the wallet
   * Note, however, that these keys are far less sensitive than the signing keys; they only allow an attacker to view, 
     but not modify, the user's ledger
 * The end user must run an additional component; this precludes mobile-only wallets
+* Having the viewing keys stored by the host introduces a denial-of-service vector; the host could be induced to store 
+  enormous amounts of keys by the attacker. We may have to investigate mitigations (e.g. expiry of keys held by the 
+  host)
 
 ## Alternatives considered
 
