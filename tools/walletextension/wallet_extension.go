@@ -165,8 +165,11 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	var rpcResp interface{}
 	err = we.hostClient.Call(&rpcResp, rpcReq.method, rpcReq.params...)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("rpc request failed: %s", err))
-		return
+		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
+		if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+			logAndSendErr(resp, fmt.Sprintf("rpc request failed: %s", err))
+			return
+		}
 	}
 
 	respMap := make(map[string]interface{})
