@@ -22,8 +22,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
-
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
@@ -60,8 +58,9 @@ const (
 	nodeRPCWSPort    = integration.StartPortWalletExtensionTest + 1 + network.DefaultHostRPCWSOffset
 	httpProtocol     = "http://"
 
-	// Returned by the EVM to indicate a zero balance.
-	zeroResult = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	// Returned by the EVM to indicate a zero result.
+	zeroResult  = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	zeroBalance = "0x0"
 )
 
 var (
@@ -139,8 +138,8 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{accountAddr.String(), latestBlock})
 
-	if getBalanceJSON[respJSONKeyResult] != rollupchain.DummyBalance {
-		t.Fatalf("Expected balance of %s, got %s", rollupchain.DummyBalance, getBalanceJSON[respJSONKeyResult])
+	if getBalanceJSON[respJSONKeyResult] != zeroBalance {
+		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[respJSONKeyResult])
 	}
 }
 
@@ -464,8 +463,8 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 	randAccountAddr := accountAddrs[len(accountAddrs)/2]
 	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{randAccountAddr, latestBlock})
 
-	if getBalanceJSON[respJSONKeyResult] != rollupchain.DummyBalance {
-		t.Fatalf("Expected balance of %s, got %s", rollupchain.DummyBalance, getBalanceJSON[respJSONKeyResult])
+	if getBalanceJSON[respJSONKeyResult] != zeroBalance {
+		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[respJSONKeyResult])
 	}
 }
 

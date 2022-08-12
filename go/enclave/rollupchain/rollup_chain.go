@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sort"
@@ -34,8 +35,7 @@ import (
 )
 
 const (
-	msgNoRollup  = "could not fetch rollup"
-	DummyBalance = "0xD3C21BCECCEDA1000000" // 1,000,000,000,000,000,000,000,000 in hex. The Ethereum API is to return the balance in hex.
+	msgNoRollup = "could not fetch rollup"
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -674,18 +674,30 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
 	}
 
-	viewingKeyAddress, err := rpc.GetViewingKeyAddressForBalanceRequest(paramBytes)
+	var paramList []string
+	err = json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getBalance response. Cause: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
 	}
+	if len(paramList) < 2 {
+		return nil, fmt.Errorf("required exactly two params, but received zero")
+	}
+	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
+	address := gethcommon.HexToAddress(paramList[0])
 
-	// TODO - Calculate balance correctly, rather than returning this dummy value.
-	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, []byte(DummyBalance))
+	// TODO - Retrieve balance at a specific block height, rather than the latest.
+	blockchainState := rc.storage.CreateStateDB(rc.storage.FetchHeadState().HeadRollup)
+	if blockchainState == nil || err != nil {
+		return nil, err
+	}
+	balance := (*hexutil.Big)(blockchainState.GetBalance(address))
+
+	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance.String()))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
 
-	return encryptedBalance, nil
+	return encryptedBalance, blockchainState.Error()
 }
 
 func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
