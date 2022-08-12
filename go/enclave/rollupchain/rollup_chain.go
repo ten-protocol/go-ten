@@ -682,6 +682,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	if len(paramList) < 2 {
 		return nil, fmt.Errorf("required exactly two params, but received zero")
 	}
+	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
 	address := gethcommon.HexToAddress(paramList[0])
 
 	// TODO - Retrieve balance at a specific block height, rather than the latest.
