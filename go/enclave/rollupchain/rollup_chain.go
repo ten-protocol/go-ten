@@ -37,9 +37,9 @@ import (
 )
 
 const (
-	msgNoRollup    = "could not fetch rollup"
-	faucetPrealloc = 7500000000000000000 // The balance preallocated to the faucet address.
-	faucetAddress  = "0x29d7d1dd5b6f9c864d9db560d72a247c178ae86b"
+	msgNoRollup      = "could not fetch rollup"
+	faucetPrealloc   = 7500000000000000000 // The balance preallocated to the faucet address.
+	faucetAddressHex = "0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -249,13 +249,21 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 		s := rc.storage.GenesisStateDB()
 
 		// We preallocate funds to the faucet address.
-		faucetAddress := gethcommon.HexToAddress(faucetAddress)
+		faucetAddress := gethcommon.HexToAddress(faucetAddressHex)
 		s.AddBalance(faucetAddress, big.NewInt(faucetPrealloc))
 
 		_, err := s.Commit(true)
 		if err != nil {
 			return nil, false
 		}
+		s.Finalise(true)
+
+		// todo - joel - remove this debug check
+		balance := s.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
+		if balance.Int64() == 0 {
+			panic("faucet balance is zero")
+		}
+
 		return &bs, true
 	}
 
@@ -288,6 +296,12 @@ func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j]
 func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
+
+	// todo - joel - remove this debug check
+	balance := stateDB.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
+	if balance.Int64() == 0 {
+		panic("faucet balance is zero")
+	}
 
 	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0)
 	for _, tx := range txs {
@@ -673,11 +687,6 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}
-
-	// todo - joel - delete this sanity-checking code that prints the prealloc balance, to check it's there
-	blockchainState := rc.storage.CreateStateDB(rc.storage.FetchHeadState().HeadRollup)
-	balance := (*hexutil.Big)(blockchainState.GetBalance(gethcommon.HexToAddress("0x29d7d1dd5b6f9c864d9db560d72a247c178ae86b")))
-	println("jjj prealloc balance:", balance)
 
 	return encryptedResult, nil
 }

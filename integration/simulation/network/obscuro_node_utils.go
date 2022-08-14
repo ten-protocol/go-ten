@@ -75,7 +75,7 @@ func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockH
 	walletClients := make(map[string][]rpcclientlib.Client)
 	var i int
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
-	for _, w := range params.Wallets.SimObsWallets {
+	for _, w := range append(params.Wallets.SimObsWallets, params.Wallets.L2FaucetWallet) {
 		walletClients[w.Address().String()] = createInMemoryClientsForWallet(obscuroNodes, w)
 		i++
 	}
@@ -147,7 +147,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 
 	// round-robin the wallets onto the different obscuro nodes, register them each a viewing key
 	walletClients := make(map[string][]rpcclientlib.Client)
-	for _, w := range params.Wallets.SimObsWallets {
+	for _, w := range append(params.Wallets.SimObsWallets, params.Wallets.L2FaucetWallet) {
 		walletClients[w.Address().String()] = createRPCClientsForWallet(nodeRPCAddresses, w)
 	}
 	for _, t := range params.Wallets.Tokens {
