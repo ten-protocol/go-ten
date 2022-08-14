@@ -248,20 +248,27 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 		rc.storage.SaveNewHead(&bs, genesis, nil)
 		s := rc.storage.GenesisStateDB()
 
-		// We preallocate funds to the faucet address.
 		faucetAddress := gethcommon.HexToAddress(faucetAddressHex)
-		s.AddBalance(faucetAddress, big.NewInt(faucetPrealloc))
 
+		// We preallocate funds to the faucet address.
+		s.SetBalance(faucetAddress, big.NewInt(faucetPrealloc))
+
+		s.Finalise(true)
 		_, err := s.Commit(true)
 		if err != nil {
 			return nil, false
 		}
-		s.Finalise(true)
 
-		// todo - joel - remove this debug check
-		balance := s.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
+		balance := s.GetBalance(faucetAddress)
 		if balance.Int64() == 0 {
-			panic("faucet balance is zero")
+			panic("faucet balance is zero before reloading state DB")
+		}
+
+		// todo - joel - remove this debug check. we see that the balance has disappeared after reloading from the DB
+		s2 := rc.storage.GenesisStateDB()
+		balance2 := s2.GetBalance(faucetAddress)
+		if balance2.Int64() == 0 {
+			panic("faucet balance is zero after reloading state DB")
 		}
 
 		return &bs, true
@@ -296,12 +303,6 @@ func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j]
 func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
-
-	// todo - joel - remove this debug check
-	balance := stateDB.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
-	if balance.Int64() == 0 {
-		panic("faucet balance is zero")
-	}
 
 	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0)
 	for _, tx := range txs {
