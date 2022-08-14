@@ -1,8 +1,9 @@
 package params
 
 import (
-	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
