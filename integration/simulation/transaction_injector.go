@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
-	"os"
 	"sync/atomic"
 	"time"
 
@@ -175,16 +174,11 @@ func (ti *TransactionInjector) Start() {
 			continue
 		}
 
-		time.Sleep(3 * time.Second)
-		os.Exit(0) // todo - joel - remove this early exit
-
 		// todo - retrieve receipt
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
+		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed
 	}
-
-	// todo - joel - see if more/less sleep needed
-	SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 
 	// start transactions issuance
 	var wg errgroup.Group
