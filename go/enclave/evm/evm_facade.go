@@ -5,7 +5,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
-	core2 "github.com/ethereum/go-ethereum/core"
+	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -40,12 +40,12 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 	return result
 }
 
-func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *core2.GasPool, header *common.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
+func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *gethcore.GasPool, header *common.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
 	s.Prepare(t.Hash(), tCount)
 	snap := s.Snapshot()
 
 	// todo - Author?
-	receipt, err := core2.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), t, usedGas, vmCfg)
+	receipt, err := gethcore.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), t, usedGas, vmCfg)
 	if err != nil {
 		s.RevertToSnapshot(snap)
 		return nil, err
@@ -55,14 +55,18 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig) (*core2.ExecutionResult, error) {
+func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(rollupResolver)
 
-	blockContext := core2.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
-	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, s, chainConfig, vmCfg)
+	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	// todo use ToMessage
 	msg := types.NewMessage(from, &to, 0, gethcommon.Big0, 100_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
-	result, err := core2.ApplyMessage(vmenv, msg, gp)
+
+	// sets Tx.origin
+	txContext := gethcore.NewEVMTxContext(msg)
+	vmenv := vm.NewEVM(blockContext, txContext, s, chainConfig, vmCfg)
+
+	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
 	if err != nil {
 		return nil, err
 	}
@@ -71,11 +75,11 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 	return result, nil
 }
 
-func initParams(rollupResolver db.RollupResolver) (*ObscuroChainContext, vm.Config, *core2.GasPool) {
+func initParams(rollupResolver db.RollupResolver) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
 	vmCfg := vm.Config{
 		NoBaseFee: true,
 	}
-	gp := core2.GasPool(math.MaxUint64)
+	gp := gethcore.GasPool(math.MaxUint64)
 	return chain, vmCfg, &gp
 }
