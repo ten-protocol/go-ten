@@ -132,7 +132,7 @@ func (s *Simulation) prefundObscuroAccounts() {
 
 			err = s.TxInjector.awaitReceipt(faucetWallet, signedTx.Hash())
 			if err != nil {
-				panic(fmt.Sprintf("did not get receipt for faucet transfer transaction. Cause: %s", err))
+				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
 			}
 		}(w)
 	}
@@ -157,6 +157,11 @@ func (s *Simulation) deployObscuroERC20(owner wallet.Wallet) {
 	err = s.TxInjector.rpcHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
+	}
+
+	err = s.TxInjector.awaitReceipt(owner, signedTx.Hash())
+	if err != nil {
+		panic(fmt.Sprintf("ERC20 deployment transaction failed. Cause: %s", err))
 	}
 }
 
