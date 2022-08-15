@@ -52,6 +52,7 @@ type RollupChain struct {
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
 	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
+	faucet                Faucet
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -66,6 +67,7 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		bridge:                bridge,
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
+		faucet:                NewFaucet(storage),
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		ethereumChainID:       ethereumChainID,
@@ -88,7 +90,7 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		[]*common.L2Tx{},
 		[]common.Withdrawal{},
 		common.GenerateNonce(),
-		GetGenesisRoot(rc.storage),
+		rc.faucet.GetGenesisRoot(rc.storage),
 	)
 	rc.signRollup(rolGenesis)
 
@@ -244,7 +246,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			FoundNewRollup: true,
 		}
 		rc.storage.SaveNewHead(&bs, genesis, nil)
-		err := CommitGenesis(rc.storage)
+		err := rc.faucet.CommitGenesis(rc.storage)
 		if err != nil {
 			return nil, false
 		}
