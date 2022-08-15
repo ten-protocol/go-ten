@@ -1,7 +1,6 @@
 package simulation
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -121,7 +120,7 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
-	// Deposit some initial amount into every L2 wallet
+	// deposit some initial amount into every L2 wallet
 	ti.prefundObscuroAccounts()
 
 	// deploy the Obscuro ERC20 contracts
@@ -129,7 +128,7 @@ func (ti *TransactionInjector) Start() {
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
 
 	// enough time to process everywhere
-	time.Sleep(ti.avgBlockDuration * 6)
+	time.Sleep(ti.avgBlockDuration * 10)
 
 	// deposit some initial amount into every L1 wallet
 	for _, w := range ti.wallets.SimEthWallets {
@@ -183,40 +182,37 @@ func (ti *TransactionInjector) Start() {
 // Sends an amount from the faucet to each Obscuro account, to pay for transactions.
 func (ti *TransactionInjector) prefundObscuroAccounts() {
 	for _, w := range ti.wallets.AllObsWallets() {
-		destAddr := w.Address()
-
-		// We inject a transfer from the faucet to the wallet.
-		tx := &types.LegacyTx{
-			Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
-			Value:    big.NewInt(allocObsWallets),
-			Gas:      uint64(1_000_000),
-			GasPrice: gethcommon.Big1,
-			Data:     nil,
-			To:       &destAddr,
-		}
-		signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-		if err != nil {
-			panic(fmt.Sprintf("could not transfer from faucet to %s. Cause: %s", destAddr.Hex(), err))
-		}
-		log.Info(
-			"L2 faucet transaction injected into L2. Tx hash: %s. From address: %s. To address: %s",
-			signedTx.Hash().Hex(),
-			ti.wallets.L2FaucetWallet.Address().Hex(),
-			destAddr.Hex(),
-		)
-
-		// We await the receipt, to check the injection was successful.
-		err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
-		if err != nil {
-			panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
-		}
-
-		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+		go ti.prefundAccount(w)
 	}
+}
+
+// Sends an amount from the faucet to the wallet, to pay for transactions.
+func (ti *TransactionInjector) prefundAccount(w wallet.Wallet) {
+	destAddr := w.Address()
+
+	// We inject a transfer from the faucet to the wallet.
+	tx := &types.LegacyTx{
+		Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
+		Value:    big.NewInt(allocObsWallets),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     nil,
+		To:       &destAddr,
+	}
+	signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+	err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+	if err != nil {
+		panic(fmt.Sprintf("could not transfer from faucet to %s. Cause: %s", destAddr.Hex(), err))
+	}
+	log.Info(
+		"L2 faucet transaction injected into L2. Tx hash: %s. From address: %s. To address: %s",
+		signedTx.Hash().Hex(),
+		ti.wallets.L2FaucetWallet.Address().Hex(),
+		destAddr.Hex(),
+	)
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
@@ -236,11 +232,6 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	err = ti.rpcHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
-	}
-
-	err = ti.awaitReceipt(owner, signedTx.Hash())
-	if err != nil {
-		panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
 	}
 }
 
@@ -486,35 +477,4 @@ func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
 	}
 
 	return !isInterrupted && txCounter < ti.txsToIssue
-}
-
-// Blocks until the receipt for the transaction has been received. Errors if the transaction is unsuccessful or we time
-// out.
-func (ti *TransactionInjector) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.Hash) error {
-	counter := 0
-
-	client := ti.rpcHandles.ObscuroWalletRndClient(wallet)
-	var receipt types.Receipt
-
-	for {
-		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
-		if err != nil {
-			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
-				return err
-			}
-
-			counter++
-			if counter > timeoutMillis {
-				return fmt.Errorf("could not retrieve transaction after timeout")
-			}
-			time.Sleep(time.Millisecond)
-			continue
-		}
-
-		if receipt.Status == types.ReceiptStatusFailed {
-			return fmt.Errorf("receipt had status failed")
-		}
-
-		return nil
-	}
 }
