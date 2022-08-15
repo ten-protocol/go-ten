@@ -135,7 +135,9 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	}
 
 	// GetTransactionByHash returns string pointer, we want string
-	*result.(*interface{}) = *encryptedResponse
+	if encryptedResponse != nil {
+		*result.(*interface{}) = *encryptedResponse
+	}
 	return nil
 }
 
@@ -163,7 +165,9 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 	}
 
 	// GetTransactionReceipt returns string pointer, we want string
-	*result.(*interface{}) = *encryptedResponse
+	if encryptedResponse != nil {
+		*result.(*interface{}) = *encryptedResponse
+	}
 	return nil
 }
 
