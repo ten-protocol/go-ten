@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -142,15 +143,24 @@ func (ti *TransactionInjector) Start() {
 			continue
 		}
 
-		// todo - retrieve receipt
+		signedTxHash := signedTx.Hash()
+		var receipt types.Receipt
+		for {
+			err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
+			if err != nil {
+				if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+					panic(err)
+				}
+				continue
+			}
+			break
+		}
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
-		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed
+		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed. ideally, wait for real receipts
 	}
 
 	println("jjj finished prealloc transfers")
-
-	time.Sleep(10 * time.Second)
 
 	// deploy the Obscuro ERC20 contracts
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
@@ -443,7 +453,8 @@ func NextNonce(clients *network.RPCHandles, w wallet.Wallet) uint64 {
 
 		counter++
 		if counter > timeoutMillis {
-			panic("transaction injector failed to retrieve nonce after thirty seconds")
+			panic(fmt.Sprintf("transaction injector failed to retrieve nonce after thirty seconds for address %s. "+
+				"Local nonce was %d, remote nonce was %d", w.Address().Hex(), localNonce, remoteNonce))
 		}
 		time.Sleep(time.Millisecond)
 	}
