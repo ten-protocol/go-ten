@@ -319,7 +319,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		rec, ok := resp.(*types.Receipt)
 		if !ok {
 			// TODO - Handle the case of an error (e.g. insufficient funds).
-			log.Panic("Sanity check. Should be a receipt.")
+			log.Panic("Sanity check. Expected a receipt, got %v", resp)
 		}
 		depositReceipts[i] = rec
 		i++
