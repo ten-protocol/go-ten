@@ -153,7 +153,7 @@ func (ti *TransactionInjector) Start() {
 			continue
 		}
 
-		err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
+		_, err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
 		if err != nil {
 			panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
 		}
@@ -225,7 +225,6 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		Nonce: NextNonce(ti.rpcHandles, owner),
 		Gas:   1025_000_000,
 		Data:  contractBytes,
-		Value: big.NewInt(allocObsERC20Contracts), // todo - joel - work out whether this makes sense
 	}
 	signedTx, err := owner.SignTransaction(&deployContractTx)
 	if err != nil {
@@ -237,7 +236,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		panic(err)
 	}
 
-	err = ti.awaitReceipt(owner, signedTx.Hash())
+	_, err = ti.awaitReceipt(owner, signedTx.Hash())
 	if err != nil {
 		panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
 	}
@@ -411,7 +410,7 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	gas := uint64(1_000_000)
-	value := gethcommon.Big1
+	value := gethcommon.Big0
 
 	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
 	//max := big.NewInt(1_000_000_000_000_000_000)
@@ -491,7 +490,7 @@ func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
 
 // Blocks until the receipt for the transaction has been received. Errors if the transaction is unsuccessful or we time
 // out.
-func (ti *TransactionInjector) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.Hash) error {
+func (ti *TransactionInjector) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.Hash) (*types.Receipt, error) {
 	counter := 0
 
 	client := ti.rpcHandles.ObscuroWalletRndClient(wallet)
@@ -501,22 +500,21 @@ func (ti *TransactionInjector) awaitReceipt(wallet wallet.Wallet, signedTxHash g
 		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
 		if err != nil {
 			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
-				return err
+				return nil, err
 			}
 
 			counter++
 			if counter > timeoutMillis {
-				return fmt.Errorf("could not retrieve transaction after timeout")
+				return nil, fmt.Errorf("could not retrieve transaction after timeout")
 			}
 			time.Sleep(time.Millisecond)
-
 			continue
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
-			return fmt.Errorf("receipt status had status failed")
+			return nil, fmt.Errorf("receipt had status failed")
 		}
 
-		return nil
+		return &receipt, nil
 	}
 }
