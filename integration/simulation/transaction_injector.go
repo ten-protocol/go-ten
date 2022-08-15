@@ -153,23 +153,9 @@ func (ti *TransactionInjector) Start() {
 			continue
 		}
 
-		signedTxHash := signedTx.Hash()
-		var receipt types.Receipt
-		for {
-			err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
-
-			if err != nil {
-				if !errors.Is(err, rpcclientlib.ErrNilResponse) {
-					panic(err)
-				}
-				continue
-			}
-
-			if receipt.Status == types.ReceiptStatusFailed {
-				panic("faucet transfer failed")
-			}
-
-			break
+		err = ti.awaitReceipt(signedTx.Hash())
+		if err != nil {
+			panic(fmt.Sprintf("transactions %s failed. Cause: %s", signedTx.Hash(), err))
 		}
 
 		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
@@ -240,7 +226,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		Nonce: NextNonce(ti.rpcHandles, owner),
 		Gas:   1025_000_000,
 		Data:  contractBytes,
-		Value: big.NewInt(allocObsERC20Contracts),
+		Value: big.NewInt(allocObsERC20Contracts), // todo - joel - work out whether this makes sense
 	}
 	signedTx, err := owner.SignTransaction(&deployContractTx)
 	if err != nil {
@@ -497,4 +483,37 @@ func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
 	}
 
 	return !isInterrupted && txCounter < ti.txsToIssue
+}
+
+// Blocks until the receipt for the transaction has been received. Errors if the transaction is unsuccessful or we time
+// out.
+func (ti *TransactionInjector) awaitReceipt(signedTxHash gethcommon.Hash) error {
+	counter := 0
+
+	client := ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet)
+	var receipt types.Receipt
+
+	for {
+		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
+
+		if err != nil {
+			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+				return err
+			}
+
+			counter++
+			if counter > timeoutMillis {
+				return fmt.Errorf("could not retrieve transaction after timeout")
+			}
+			time.Sleep(time.Millisecond)
+
+			continue
+		}
+
+		if receipt.Status == types.ReceiptStatusFailed {
+			return fmt.Errorf("receipt status had status failed")
+		}
+
+		return nil
+	}
 }
