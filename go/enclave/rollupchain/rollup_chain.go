@@ -316,12 +316,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	for _, resp := range depositResponses {
 		rec, ok := resp.(*types.Receipt)
 		if !ok {
-			// todo - joel - remove block
-			err, ok := resp.(error)
-			if ok {
-				println("jjj deposit failed:", err.Error())
-			}
-			// TODO - Now that gas is introduced, this can also be an error, due to insufficient funds.
+			// TODO - Handle the case of an error (e.g. insufficient funds).
 			log.Panic("Sanity check. Should be a receipt.")
 		}
 		depositReceipts[i] = rec

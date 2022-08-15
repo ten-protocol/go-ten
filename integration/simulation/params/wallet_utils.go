@@ -13,6 +13,10 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 )
 
+const (
+	faucetPrivateKeyHex = "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b" // The faucet's private key.
+)
+
 // SimToken - mapping between the ERC20s on Ethereum and Obscuro. This holds both the contract addresses and the keys of the contract owners,
 // because it needs to sign transactions and deploy contracts.
 // Note: For now the l2 values are taken from the "bridge" inside the Obscuro core.
@@ -57,8 +61,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	mcOwnerWallet := datagenerator.RandomWallet(ethereumChainID)
 
 	// create the L2 faucet wallet
-	// todo - joel - use constant
-	l2FaucetPrivKey, err := crypto.HexToECDSA("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b")
+	l2FaucetPrivKey, err := crypto.HexToECDSA(faucetPrivateKeyHex)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}
