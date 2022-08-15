@@ -282,12 +282,6 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	// todo - joel - remove this sanity check
-	faucetBalance := stateDB.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
-	if faucetBalance.Int64() == 0 {
-		panic("faucet balance is zero after reloading state DB")
-	}
-
 	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
@@ -337,6 +331,19 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		log.Panic("could not commit to state DB. Cause: %s", err)
+	}
+
+	// todo - joel - remove block
+	recipients := make(map[*gethcommon.Address]int64)
+	for _, tx := range txs {
+		if tx.To() != nil {
+			recipients[tx.To()] = stateDB.GetBalance(*tx.To()).Int64()
+		}
+	}
+	if len(recipients) > 0 {
+		for recipient, balance := range recipients {
+			println(fmt.Sprintf("balance for addr %s is %d", recipient.Hex(), balance))
+		}
 	}
 
 	sort.Sort(sortByTxIndex(txReceipts))

@@ -171,9 +171,6 @@ func (ti *TransactionInjector) Start() {
 		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed. ideally, wait for real receipts
 	}
 
-	println("jjj finished prealloc transfers")
-	time.Sleep(3 * time.Second) // todo - joel - remove
-
 	// deploy the Obscuro ERC20 contracts
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
