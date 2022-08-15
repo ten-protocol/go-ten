@@ -161,7 +161,7 @@ func (ti *TransactionInjector) Start() {
 				continue
 			}
 
-			if receipt.Status != types.ReceiptStatusFailed {
+			if receipt.Status == types.ReceiptStatusFailed {
 				panic("faucet transfer failed")
 			}
 
@@ -172,6 +172,7 @@ func (ti *TransactionInjector) Start() {
 	}
 
 	println("jjj finished prealloc transfers")
+	time.Sleep(3 * time.Second) // todo - joel - remove
 
 	// deploy the Obscuro ERC20 contracts
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
