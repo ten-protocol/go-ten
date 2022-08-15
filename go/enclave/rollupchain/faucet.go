@@ -1,10 +1,11 @@
 package rollupchain
 
 import (
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"math/big"
 )
 
 const (
