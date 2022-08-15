@@ -153,7 +153,7 @@ func (ti *TransactionInjector) Start() {
 			continue
 		}
 
-		err = ti.awaitReceipt(signedTx.Hash())
+		err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
 		if err != nil {
 			panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
 		}
@@ -237,9 +237,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		panic(err)
 	}
 
-	println("jjj erc20 deployer:", owner.Address().Hex())
-
-	err = ti.awaitReceipt(signedTx.Hash())
+	err = ti.awaitReceipt(owner, signedTx.Hash())
 	if err != nil {
 		panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
 	}
@@ -493,15 +491,14 @@ func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
 
 // Blocks until the receipt for the transaction has been received. Errors if the transaction is unsuccessful or we time
 // out.
-func (ti *TransactionInjector) awaitReceipt(signedTxHash gethcommon.Hash) error {
+func (ti *TransactionInjector) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.Hash) error {
 	counter := 0
 
-	client := ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet)
+	client := ti.rpcHandles.ObscuroWalletRndClient(wallet)
 	var receipt types.Receipt
 
 	for {
 		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
-
 		if err != nil {
 			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
 				return err
