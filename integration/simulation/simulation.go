@@ -47,13 +47,14 @@ func (s *Simulation) Start() {
 	// arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
-	s.prefundL1Accounts()                                                 // Prefund every L1 wallet
 	s.prefundObscuroAccounts()                                            // Prefund every L2 wallet
 	s.deployObscuroERC20(s.TxInjector.wallets.Tokens[bridge.OBX].L2Owner) // Deploy the Obscuro OBX ERC20 contract
 	s.deployObscuroERC20(s.TxInjector.wallets.Tokens[bridge.ETH].L2Owner) // Deploy the Obscuro ETH ERC20 contract
 
 	// enough time to process everywhere
 	time.Sleep(s.Params.AvgBlockDuration * 10)
+
+	s.prefundL1Accounts() // Prefund every L1 wallet
 
 	timer := time.Now()
 	log.Info("Starting injection")
