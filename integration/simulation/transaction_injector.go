@@ -1,9 +1,11 @@
 package simulation
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -41,7 +43,9 @@ import (
 )
 
 const (
-	timeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
+	nonceTimeoutMillis   = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
+	receiptTimeoutMillis = 30000 // The timeout in millis to wait for a receipt for a transaction.
+
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -181,35 +185,39 @@ func (ti *TransactionInjector) Start() {
 
 // Sends an amount from the faucet to each Obscuro account, to pay for transactions.
 func (ti *TransactionInjector) prefundObscuroAccounts() {
-	for _, w := range ti.wallets.AllObsWallets() {
-		go ti.prefundAccount(w.Address())
-	}
-}
+	wg := sync.WaitGroup{}
 
-// Sends an amount from the faucet to the wallet, to pay for transactions.
-func (ti *TransactionInjector) prefundAccount(destAddr gethcommon.Address) {
-	tx := &types.LegacyTx{
-		Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
-		Value:    big.NewInt(allocObsWallets),
-		Gas:      uint64(1_000_000),
-		GasPrice: gethcommon.Big1,
-		Data:     nil,
-		To:       &destAddr,
+	for _, w := range ti.wallets.AllObsWallets() {
+		wg.Add(1)
+		go func(wallet wallet.Wallet) {
+			defer wg.Done()
+			destAddr := wallet.Address()
+			tx := &types.LegacyTx{
+				Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
+				Value:    big.NewInt(allocObsWallets),
+				Gas:      uint64(1_000_000),
+				GasPrice: gethcommon.Big1,
+				Data:     nil,
+				To:       &destAddr,
+			}
+			signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
+			if err != nil {
+				panic(err)
+			}
+
+			err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+			if err != nil {
+				panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
+			}
+
+			err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
+			if err != nil {
+				panic(fmt.Sprintf("did not get receipt for faucet transfer transaction. Cause: %s", err))
+			}
+		}(w)
 	}
-	signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
-	if err != nil {
-		panic(err)
-	}
-	err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-	if err != nil {
-		panic(fmt.Sprintf("could not transfer from faucet to %s. Cause: %s", destAddr.Hex(), err))
-	}
-	log.Info(
-		"L2 faucet transaction injected into L2. Tx hash: %s. From address: %s. To address: %s",
-		signedTx.Hash().Hex(),
-		ti.wallets.L2FaucetWallet.Address().Hex(),
-		destAddr.Hex(),
-	)
+
+	wg.Wait()
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
@@ -443,7 +451,7 @@ func NextNonce(clients *network.RPCHandles, w wallet.Wallet) uint64 {
 		}
 
 		counter++
-		if counter > timeoutMillis {
+		if counter > nonceTimeoutMillis {
 			panic(fmt.Sprintf("transaction injector failed to retrieve nonce after thirty seconds for address %s. "+
 				"Local nonce was %d, remote nonce was %d", w.Address().Hex(), localNonce, remoteNonce))
 		}
@@ -474,4 +482,34 @@ func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
 	}
 
 	return !isInterrupted && txCounter < ti.txsToIssue
+}
+
+// Blocks until the receipt for the transaction has been received. Errors if the transaction is unsuccessful or we time
+// out.
+func (ti *TransactionInjector) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.Hash) error {
+	client := ti.rpcHandles.ObscuroWalletRndClient(wallet)
+
+	var receipt types.Receipt
+	counter := 0
+	for {
+		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
+		if err != nil {
+			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+				return err
+			}
+
+			counter++
+			if counter > receiptTimeoutMillis {
+				return fmt.Errorf("could not retrieve transaction after timeout")
+			}
+			time.Sleep(time.Millisecond)
+			continue
+		}
+
+		if receipt.Status == types.ReceiptStatusFailed {
+			return fmt.Errorf("receipt had status failed")
+		}
+
+		return nil
+	}
 }
