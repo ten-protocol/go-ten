@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
@@ -124,40 +121,6 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
-	// deposit some initial amount into every L2 wallet
-	ti.prefundObscuroAccounts()
-
-	// deploy the Obscuro ERC20 contracts
-	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
-	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
-
-	// enough time to process everywhere
-	time.Sleep(ti.avgBlockDuration * 6)
-
-	// deposit some initial amount into every L1 wallet
-	for _, w := range ti.wallets.SimEthWallets {
-		addr := w.Address()
-		txData := &ethadapter.L1DepositTx{
-			Amount:        initialBalance,
-			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[bridge.OBX].L1ContractAddress,
-			Sender:        &addr,
-		}
-		tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
-		signedTx, err := w.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
-		if err != nil {
-			panic(err)
-		}
-
-		ti.stats.Deposit(initialBalance)
-		go ti.TxTracker.trackL1Tx(txData)
-	}
-
-	// start transactions issuance
 	var wg errgroup.Group
 	wg.Go(func() error {
 		ti.issueRandomDeposits()
@@ -181,63 +144,6 @@ func (ti *TransactionInjector) Start() {
 
 	_ = wg.Wait() // future proofing to return errors
 	ti.fullyStoppedChan <- true
-}
-
-// Sends an amount from the faucet to each Obscuro account, to pay for transactions.
-func (ti *TransactionInjector) prefundObscuroAccounts() {
-	wg := sync.WaitGroup{}
-
-	for _, w := range ti.wallets.AllObsWallets() {
-		wg.Add(1)
-		go func(wallet wallet.Wallet) {
-			defer wg.Done()
-			destAddr := wallet.Address()
-			tx := &types.LegacyTx{
-				Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
-				Value:    big.NewInt(allocObsWallets),
-				Gas:      uint64(1_000_000),
-				GasPrice: gethcommon.Big1,
-				Data:     nil,
-				To:       &destAddr,
-			}
-			signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
-			if err != nil {
-				panic(err)
-			}
-
-			err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-			if err != nil {
-				panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
-			}
-
-			err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
-			if err != nil {
-				panic(fmt.Sprintf("did not get receipt for faucet transfer transaction. Cause: %s", err))
-			}
-		}(w)
-	}
-
-	wg.Wait()
-}
-
-// This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
-func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
-	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(bridge.OBX))
-
-	deployContractTx := types.DynamicFeeTx{
-		Nonce: NextNonce(ti.rpcHandles, owner),
-		Gas:   1025_000_000,
-		Data:  contractBytes,
-	}
-	signedTx, err := owner.SignTransaction(&deployContractTx)
-	if err != nil {
-		panic(err)
-	}
-
-	err = ti.rpcHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-	if err != nil {
-		panic(err)
-	}
 }
 
 func (ti *TransactionInjector) Stop() {
