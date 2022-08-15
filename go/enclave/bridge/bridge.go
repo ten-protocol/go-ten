@@ -192,7 +192,7 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
 		Gas:      1_000_000,
-		GasPrice: gethcommon.Big0,
+		GasPrice: gethcommon.Big1,
 		Data:     transferERC20data,
 		To:       token.L2Address,
 	})

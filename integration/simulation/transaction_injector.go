@@ -47,8 +47,7 @@ const (
 	// TODO - Retrieve this key from the management contract instead.
 	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 
-	// todo - joel - consider using a much smaller number once all is working
-	allocObsWallets = 75000000000000000 // The amount the faucet allocates to Obscuro wallets.
+	allocObsWallets = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
@@ -123,7 +122,7 @@ func NewTransactionInjector(
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
 	// Deposit some initial amount into every L2 wallet
-	ti.prefundObsAccounts()
+	ti.prefundObscuroAccounts()
 
 	// deploy the Obscuro ERC20 contracts
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
@@ -182,7 +181,7 @@ func (ti *TransactionInjector) Start() {
 }
 
 // Sends an amount from the faucet to each Obscuro account, to pay for transactions.
-func (ti *TransactionInjector) prefundObsAccounts() {
+func (ti *TransactionInjector) prefundObscuroAccounts() {
 	for _, w := range ti.wallets.AllObsWallets() {
 		destAddr := w.Address()
 
@@ -412,19 +411,17 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 }
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
-	gas := uint64(1_000_000)
-	value := gethcommon.Big0
-
 	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
 	//max := big.NewInt(1_000_000_000_000_000_000)
 	//if nonce%3 == 0 {
 	//	value = max
 	//}
+
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		Value:    value,
-		Gas:      gas,
-		GasPrice: gethcommon.Big0,
+		Value:    gethcommon.Big0,
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
 		Data:     data,
 		To:       ti.wallets.Tokens[bridge.OBX].L2ContractAddress,
 	}

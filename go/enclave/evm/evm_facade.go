@@ -77,9 +77,7 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 
 func initParams(rollupResolver db.RollupResolver) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
-	vmCfg := vm.Config{
-		NoBaseFee: true,
-	}
+	vmCfg := vm.Config{}
 	gp := gethcore.GasPool(math.MaxUint64)
 	return chain, vmCfg, &gp
 }
