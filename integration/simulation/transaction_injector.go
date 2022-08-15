@@ -118,6 +118,40 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
+	// Deposit some initial amount into every L2 wallet
+	for _, w := range ti.wallets.AllObsWallets() {
+		destAddr := w.Address()
+		// todo - joel - remove duplicated code
+		tx := ti.newObscuroTransferTx(ti.wallets.L2FaucetWallet, destAddr, 1000)
+		signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+		log.Info(
+			"L2 faucet transaction injected into L2. Hash: %s. From address: %d. To address: %d",
+			signedTx.Hash().Hex(),
+			common.ShortAddress(ti.wallets.L2FaucetWallet.Address()),
+			common.ShortAddress(destAddr),
+		)
+
+		ti.stats.Transfer()
+
+		err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		if err != nil {
+			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
+			continue
+		}
+
+		// todo - retrieve receipt
+
+		go ti.TxTracker.trackTransferL2Tx(signedTx)
+		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed
+	}
+
+	println("jjj finished prealloc transfers")
+
+	time.Sleep(10 * time.Second)
+
 	// deploy the Obscuro ERC20 contracts
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
@@ -146,38 +180,6 @@ func (ti *TransactionInjector) Start() {
 
 		ti.stats.Deposit(initialBalance)
 		go ti.TxTracker.trackL1Tx(txData)
-	}
-
-	time.Sleep(3 * time.Second)
-
-	// deposit some initial amount into every L2 wallet
-	for _, w := range ti.wallets.SimObsWallets {
-		destAddr := w.Address()
-		// todo - joel - remove duplicated code
-		tx := ti.newObscuroTransferTx(ti.wallets.L2FaucetWallet, destAddr, 1000)
-		signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		log.Info(
-			"L2 faucet transaction injected into L2. Hash: %s. From address: %d. To address: %d",
-			signedTx.Hash().Hex(),
-			common.ShortAddress(ti.wallets.L2FaucetWallet.Address()),
-			common.ShortAddress(destAddr),
-		)
-
-		ti.stats.Transfer()
-
-		err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-		if err != nil {
-			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
-			continue
-		}
-
-		// todo - retrieve receipt
-
-		go ti.TxTracker.trackTransferL2Tx(signedTx)
-		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed
 	}
 
 	// start transactions issuance
