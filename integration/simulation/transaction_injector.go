@@ -147,12 +147,18 @@ func (ti *TransactionInjector) Start() {
 		var receipt types.Receipt
 		for {
 			err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
+
 			if err != nil {
 				if !errors.Is(err, rpcclientlib.ErrNilResponse) {
 					panic(err)
 				}
 				continue
 			}
+
+			if receipt.Status != 1 {
+				panic("faucet transfer failed")
+			}
+
 			break
 		}
 
