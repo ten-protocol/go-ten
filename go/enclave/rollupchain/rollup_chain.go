@@ -246,7 +246,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			FoundNewRollup: true,
 		}
 		rc.storage.SaveNewHead(&bs, genesis, nil)
-		err := rc.faucet.CommitGenesis(rc.storage)
+		err := rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
 		}
