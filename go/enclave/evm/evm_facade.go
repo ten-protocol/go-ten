@@ -18,7 +18,7 @@ import (
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig, fromTxIndex int) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(rollupResolver)
+	chain, vmCfg, gp := initParams(rollupResolver, false)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
@@ -56,7 +56,7 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
 func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig) (*gethcore.ExecutionResult, error) {
-	chain, vmCfg, gp := initParams(rollupResolver)
+	chain, vmCfg, gp := initParams(rollupResolver, true)
 
 	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	// todo use ToMessage
@@ -75,9 +75,9 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 	return result, nil
 }
 
-func initParams(rollupResolver db.RollupResolver) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
+func initParams(rollupResolver db.RollupResolver, noBaseFee bool) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
-	vmCfg := vm.Config{}
+	vmCfg := vm.Config{NoBaseFee: noBaseFee}
 	gp := gethcore.GasPool(math.MaxUint64)
 	return chain, vmCfg, &gp
 }
