@@ -110,7 +110,7 @@ func (c *ViewingKeyClient) Call(result interface{}, method string, args ...inter
 	// method is sensitive, so we decrypt it before unmarshalling the result
 	decrypted, err := c.decryptResponse(rawResult)
 	if err != nil {
-		return fmt.Errorf("failed to decrypt args for %s call - %w", method, err)
+		return fmt.Errorf("failed to decrypt response for %s call - %w", method, err)
 	}
 
 	// process the decrypted result to get the desired type and set it on the result pointer
