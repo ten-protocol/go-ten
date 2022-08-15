@@ -53,7 +53,7 @@ func (s *Simulation) Start() {
 	s.prefundL1Accounts()                                                 // Prefund every L1 wallet
 
 	// enough time to process everywhere
-	time.Sleep(s.Params.AvgBlockDuration * 6)
+	time.Sleep(s.Params.AvgBlockDuration * 10)
 
 	timer := time.Now()
 	log.Info("Starting injection")
