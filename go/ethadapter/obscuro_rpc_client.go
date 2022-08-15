@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rpc"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -75,7 +76,9 @@ func (c *obscuroWalletRPCClient) TransactionReceipt(hash gethcommon.Hash) (*type
 
 func (c *obscuroWalletRPCClient) Nonce(address gethcommon.Address) (uint64, error) {
 	var result uint64
-	err := c.client.Call(&result, rpcclientlib.RPCNonce, address)
+	bl := rpc.LatestBlockNumber
+	// todo take the block number as an argument
+	err := c.client.Call(&result, rpcclientlib.RPCNonce, address, rpc.BlockNumberOrHash{BlockNumber: &bl})
 	return result, err
 }
 
