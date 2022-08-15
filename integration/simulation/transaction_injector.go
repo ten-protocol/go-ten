@@ -47,9 +47,8 @@ const (
 	// TODO - Retrieve this key from the management contract instead.
 	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 
-	// todo - joel - consider using much smaller numbers once all is working
-	allocObsWallets        = 75000000000000000 // The amount the faucet allocates to Obscuro wallets.
-	allocObsERC20Contracts = 750000000000000   // The amount the faucet allocates to Obscuro ERC20 contracts.
+	// todo - joel - consider using a much smaller number once all is working
+	allocObsWallets = 75000000000000000 // The amount the faucet allocates to Obscuro wallets.
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
@@ -124,42 +123,7 @@ func NewTransactionInjector(
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
 	// Deposit some initial amount into every L2 wallet
-	for _, w := range ti.wallets.AllObsWallets() {
-		destAddr := w.Address()
-
-		tx := &types.LegacyTx{
-			Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
-			Value:    big.NewInt(allocObsWallets),
-			Gas:      uint64(1_000_000),
-			GasPrice: gethcommon.Big0,
-			Data:     nil,
-			To:       &destAddr,
-		}
-
-		signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		log.Info(
-			"L2 faucet transaction injected into L2. Hash: %s. From address: %d. To address: %d",
-			signedTx.Hash().Hex(),
-			common.ShortAddress(ti.wallets.L2FaucetWallet.Address()),
-			common.ShortAddress(destAddr),
-		)
-
-		err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-		if err != nil {
-			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
-			continue
-		}
-
-		_, err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
-		if err != nil {
-			panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
-		}
-
-		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
-	}
+	ti.prefundObsAccounts()
 
 	// deploy the Obscuro ERC20 contracts
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
@@ -215,6 +179,45 @@ func (ti *TransactionInjector) Start() {
 
 	_ = wg.Wait() // future proofing to return errors
 	ti.fullyStoppedChan <- true
+}
+
+// Sends an amount from the faucet to each Obscuro account, to pay for transactions.
+func (ti *TransactionInjector) prefundObsAccounts() {
+	for _, w := range ti.wallets.AllObsWallets() {
+		destAddr := w.Address()
+
+		tx := &types.LegacyTx{
+			Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
+			Value:    big.NewInt(allocObsWallets),
+			Gas:      uint64(1_000_000),
+			GasPrice: gethcommon.Big0,
+			Data:     nil,
+			To:       &destAddr,
+		}
+
+		signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+		log.Info(
+			"L2 faucet transaction injected into L2. Hash: %s. From address: %s. To address: %s",
+			signedTx.Hash().Hex(),
+			ti.wallets.L2FaucetWallet.Address().Hex(),
+			destAddr.Hex(),
+		)
+
+		err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		if err != nil {
+			panic(fmt.Sprintf("could not transfer from faucet to %s. Cause: %s", destAddr.Hex(), err))
+		}
+
+		_, err = ti.awaitReceipt(ti.wallets.L2FaucetWallet, signedTx.Hash())
+		if err != nil {
+			panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
+		}
+
+		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+	}
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
