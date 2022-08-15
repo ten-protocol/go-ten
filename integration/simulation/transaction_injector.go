@@ -122,8 +122,16 @@ func (ti *TransactionInjector) Start() {
 	// Deposit some initial amount into every L2 wallet
 	for _, w := range ti.wallets.AllObsWallets() {
 		destAddr := w.Address()
-		// todo - joel - remove duplicated code
-		tx := ti.newObscuroTransferTx(ti.wallets.L2FaucetWallet, destAddr, 1000)
+
+		tx := &types.LegacyTx{
+			Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
+			Value:    big.NewInt(75000000000000000),
+			Gas:      uint64(1_000_000),
+			GasPrice: gethcommon.Big0,
+			Data:     nil,
+			To:       &destAddr,
+		}
+
 		signedTx, err := ti.wallets.L2FaucetWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -134,8 +142,6 @@ func (ti *TransactionInjector) Start() {
 			common.ShortAddress(ti.wallets.L2FaucetWallet.Address()),
 			common.ShortAddress(destAddr),
 		)
-
-		ti.stats.Transfer()
 
 		err = ti.rpcHandles.ObscuroWalletRndClient(ti.wallets.L2FaucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 		if err != nil {
@@ -155,14 +161,13 @@ func (ti *TransactionInjector) Start() {
 				continue
 			}
 
-			if receipt.Status != 1 {
+			if receipt.Status != types.ReceiptStatusFailed {
 				panic("faucet transfer failed")
 			}
 
 			break
 		}
 
-		go ti.TxTracker.trackTransferL2Tx(signedTx)
 		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed. ideally, wait for real receipts
 	}
 
