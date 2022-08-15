@@ -46,6 +46,10 @@ const (
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+
+	// todo - joel - consider using much smaller numbers once all is working
+	allocObsWallets        = 75000000000000000 // The amount the faucet allocates to Obscuro wallets.
+	allocObsERC20Contracts = 750000000000000   // The amount the faucet allocates to Obscuro ERC20 contracts.
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
@@ -125,7 +129,7 @@ func (ti *TransactionInjector) Start() {
 
 		tx := &types.LegacyTx{
 			Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
-			Value:    big.NewInt(75000000000000000), // todo - joel - use constant
+			Value:    big.NewInt(allocObsWallets),
 			Gas:      uint64(1_000_000),
 			GasPrice: gethcommon.Big0,
 			Data:     nil,
@@ -236,7 +240,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		Nonce: NextNonce(ti.rpcHandles, owner),
 		Gas:   1025_000_000,
 		Data:  contractBytes,
-		Value: big.NewInt(750000000000000), // todo - joel - use constant
+		Value: big.NewInt(allocObsERC20Contracts),
 	}
 	signedTx, err := owner.SignTransaction(&deployContractTx)
 	if err != nil {
