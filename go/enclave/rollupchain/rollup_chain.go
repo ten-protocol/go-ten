@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -37,9 +36,7 @@ import (
 )
 
 const (
-	msgNoRollup      = "could not fetch rollup"
-	faucetPrealloc   = 7500000000000000000 // The balance preallocated to the faucet address.
-	faucetAddressHex = "0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"
+	msgNoRollup = "could not fetch rollup"
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -91,7 +88,8 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		[]*common.L2Tx{},
 		[]common.Withdrawal{},
 		common.GenerateNonce(),
-		gethcommon.BigToHash(big.NewInt(0)))
+		GetGenesisRoot(rc.storage),
+	)
 	rc.signRollup(rolGenesis)
 
 	return rolGenesis, b
@@ -246,27 +244,15 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			FoundNewRollup: true,
 		}
 		rc.storage.SaveNewHead(&bs, genesis, nil)
-		s := rc.storage.GenesisStateDB()
 
-		faucetAddress := gethcommon.HexToAddress(faucetAddressHex)
-
-		// We preallocate funds to the faucet address.
-		s.SetBalance(faucetAddress, big.NewInt(faucetPrealloc))
-
-		s.Finalise(true)
-		_, err := s.Commit(true)
+		err := CommitGenesis(rc.storage)
 		if err != nil {
 			return nil, false
 		}
 
-		balance := s.GetBalance(faucetAddress)
-		if balance.Int64() == 0 {
-			panic("faucet balance is zero before reloading state DB")
-		}
-
-		// todo - joel - remove this debug check. we see that the balance has disappeared after reloading from the DB
-		s2 := rc.storage.GenesisStateDB()
-		balance2 := s2.GetBalance(faucetAddress)
+		// todo - joel - remove this debug check that the balance has disappeared after reloading from the DB
+		reloadedS := rc.storage.CreateStateDB(genesis.Header.Hash())
+		balance2 := reloadedS.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
 		if balance2.Int64() == 0 {
 			panic("faucet balance is zero after reloading state DB")
 		}

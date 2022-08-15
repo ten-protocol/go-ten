@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -253,8 +254,12 @@ func (s *storageImpl) CreateStateDB(hash common.L2RootHash) *state.StateDB {
 	return statedb
 }
 
-func (s *storageImpl) GenesisStateDB() *state.StateDB {
-	return s.CreateStateDB(s.FetchGenesisRollup().Hash())
+func (s *storageImpl) EmptyStateDB() *state.StateDB {
+	statedb, err := state.New(gethcommon.BigToHash(big.NewInt(0)), s.stateDB, nil)
+	if err != nil {
+		log.Panic("could not create state DB. Cause: %s", err)
+	}
+	return statedb
 }
 
 func (s *storageImpl) FetchHeadState() *core.BlockState {
