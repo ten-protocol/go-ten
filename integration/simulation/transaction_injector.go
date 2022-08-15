@@ -172,7 +172,7 @@ func (ti *TransactionInjector) Start() {
 			break
 		}
 
-		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration) // todo - joel - see if more/less sleep needed. ideally, wait for real receipts
+		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 	}
 
 	// deploy the Obscuro ERC20 contracts
