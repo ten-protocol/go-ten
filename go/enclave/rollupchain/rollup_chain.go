@@ -249,13 +249,6 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			return nil, false
 		}
 
-		// todo - joel - remove this debug check that the balance has disappeared after reloading from the DB
-		reloadedS := rc.storage.CreateStateDB(genesis.Header.Hash())
-		balance2 := reloadedS.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
-		if balance2.Int64() == 0 {
-			panic("faucet balance is zero after reloading state DB")
-		}
-
 		return &bs, true
 	}
 
@@ -288,6 +281,12 @@ func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j]
 func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
+
+	// todo - joel - remove this sanity check
+	faucetBalance := stateDB.GetBalance(gethcommon.HexToAddress(faucetAddressHex))
+	if faucetBalance.Int64() == 0 {
+		panic("faucet balance is zero after reloading state DB")
+	}
 
 	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0)
 	for _, tx := range txs {
@@ -323,6 +322,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	for _, resp := range depositResponses {
 		rec, ok := resp.(*types.Receipt)
 		if !ok {
+			// TODO - Now that gas is introduced, this can also be an error, due to insufficient funds.
 			log.Panic("Sanity check. Should be a receipt.")
 		}
 		depositReceipts[i] = rec
