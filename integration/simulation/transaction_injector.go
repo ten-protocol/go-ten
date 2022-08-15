@@ -189,7 +189,7 @@ func (ti *TransactionInjector) prefundObscuroAccounts() {
 			Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
 			Value:    big.NewInt(allocObsWallets),
 			Gas:      uint64(1_000_000),
-			GasPrice: gethcommon.Big0,
+			GasPrice: gethcommon.Big1,
 			Data:     nil,
 			To:       &destAddr,
 		}
