@@ -125,7 +125,7 @@ func (ti *TransactionInjector) Start() {
 
 		tx := &types.LegacyTx{
 			Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
-			Value:    big.NewInt(75000000000000000),
+			Value:    big.NewInt(75000000000000000), // todo - joel - use constant
 			Gas:      uint64(1_000_000),
 			GasPrice: gethcommon.Big0,
 			Data:     nil,
@@ -236,6 +236,7 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 		Nonce: NextNonce(ti.rpcHandles, owner),
 		Gas:   1025_000_000,
 		Data:  contractBytes,
+		Value: big.NewInt(750000000000000), // todo - joel - use constant
 	}
 	signedTx, err := owner.SignTransaction(&deployContractTx)
 	if err != nil {
