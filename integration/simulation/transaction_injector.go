@@ -155,7 +155,7 @@ func (ti *TransactionInjector) Start() {
 
 		err = ti.awaitReceipt(signedTx.Hash())
 		if err != nil {
-			panic(fmt.Sprintf("transactions %s failed. Cause: %s", signedTx.Hash(), err))
+			panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
 		}
 
 		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
@@ -219,7 +219,6 @@ func (ti *TransactionInjector) Start() {
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
 func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
-	// deploy the ERC20
 	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(bridge.OBX))
 
 	deployContractTx := types.DynamicFeeTx{
@@ -236,6 +235,13 @@ func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
 	err = ti.rpcHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
+	}
+
+	println("jjj erc20 deployer:", owner.Address().Hex())
+
+	err = ti.awaitReceipt(signedTx.Hash())
+	if err != nil {
+		panic(fmt.Sprintf("could not retrieve transaction receipt for transaction %s. Cause: %s", signedTx.Hash(), err))
 	}
 }
 
