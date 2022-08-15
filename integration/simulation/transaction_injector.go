@@ -128,7 +128,7 @@ func (ti *TransactionInjector) Start() {
 	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
 
 	// enough time to process everywhere
-	time.Sleep(ti.avgBlockDuration * 10)
+	time.Sleep(ti.avgBlockDuration * 6)
 
 	// deposit some initial amount into every L1 wallet
 	for _, w := range ti.wallets.SimEthWallets {
@@ -182,15 +182,12 @@ func (ti *TransactionInjector) Start() {
 // Sends an amount from the faucet to each Obscuro account, to pay for transactions.
 func (ti *TransactionInjector) prefundObscuroAccounts() {
 	for _, w := range ti.wallets.AllObsWallets() {
-		go ti.prefundAccount(w)
+		go ti.prefundAccount(w.Address())
 	}
 }
 
 // Sends an amount from the faucet to the wallet, to pay for transactions.
-func (ti *TransactionInjector) prefundAccount(w wallet.Wallet) {
-	destAddr := w.Address()
-
-	// We inject a transfer from the faucet to the wallet.
+func (ti *TransactionInjector) prefundAccount(destAddr gethcommon.Address) {
 	tx := &types.LegacyTx{
 		Nonce:    NextNonce(ti.rpcHandles, ti.wallets.L2FaucetWallet),
 		Value:    big.NewInt(allocObsWallets),
