@@ -52,7 +52,7 @@ func (s *Simulation) Start() {
 	s.deployObscuroERC20(s.TxInjector.wallets.Tokens[bridge.ETH].L2Owner) // Deploy the Obscuro ETH ERC20 contract
 
 	// enough time to process everywhere
-	time.Sleep(s.Params.AvgBlockDuration * 10)
+	time.Sleep(s.Params.AvgBlockDuration * 6)
 
 	s.prefundL1Accounts() // Prefund every L1 wallet
 
