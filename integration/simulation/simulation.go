@@ -42,7 +42,7 @@ type Simulation struct {
 func (s *Simulation) Start() {
 	log.Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
 
-	s.waitForObscuroGenesis()
+	s.waitForObscuroGenesisOnL1()
 
 	// arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
@@ -78,7 +78,7 @@ func (s *Simulation) Stop() {
 	// nothing to do for now
 }
 
-func (s *Simulation) waitForObscuroGenesis() {
+func (s *Simulation) waitForObscuroGenesisOnL1() {
 	// grab an L1 client
 	client := s.RPCHandles.EthClients[0]
 
