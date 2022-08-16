@@ -15,7 +15,7 @@ import (
 
 // This package contains viewing key utils for testing and simulations
 
-//GenerateAndSignViewingKey returns a new private key, its pub key bytes and the pub key bytes signed by the account's private key
+// GenerateAndSignViewingKey returns a new private key, its pub key bytes and the pub key bytes signed by the account's private key
 func GenerateAndSignViewingKey(wal wallet.Wallet) (*ecies.PrivateKey, []byte, []byte, error) {
 	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
 	vk, err := crypto.GenerateKey()

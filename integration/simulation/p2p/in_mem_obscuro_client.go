@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 

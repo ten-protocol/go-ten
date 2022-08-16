@@ -1,11 +1,9 @@
-package rpcclientlib
+package walletextension
 
 import (
-	"testing"
-
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"testing"
 )
 
 const (

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -61,7 +62,6 @@ func NewViewingKeyNetworkClient(rpcAddress string, wallet wallet.Wallet, viewing
 	return vkClient, nil
 }
 
-// ViewingKeyClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type ViewingKeyClient struct {
 	obscuroClient     Client
 	enclavePublicKey  *ecies.PublicKey  // Used to encrypt messages destined to the enclave.
