@@ -106,38 +106,45 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 // Sends an amount from the faucet to each Obscuro account, to pay for transactions.
 func (s *Simulation) prefundObscuroAccounts() {
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
+	nonce := NextNonce(s.RPCHandles, faucetWallet)
 
+	// We send the transactions serially, so that we can precompute the nonces.
+	txHashes := make([]gethcommon.Hash, len(s.Params.Wallets.AllObsWallets()))
+	for idx, w := range s.Params.Wallets.AllObsWallets() {
+		destAddr := w.Address()
+		tx := &types.LegacyTx{
+			Nonce:    nonce + uint64(idx),
+			Value:    big.NewInt(allocObsWallets),
+			Gas:      uint64(1_000_000),
+			GasPrice: gethcommon.Big1,
+			Data:     nil,
+			To:       &destAddr,
+		}
+		signedTx, err := faucetWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+
+		err = s.RPCHandles.ObscuroWalletRndClient(faucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		if err != nil {
+			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
+		}
+
+		txHashes[idx] = signedTx.Hash()
+	}
+
+	// Then we await the receipts in parallel.
 	wg := sync.WaitGroup{}
-	for _, w := range s.Params.Wallets.AllObsWallets() {
+	for _, txHash := range txHashes {
 		wg.Add(1)
-		go func(wallet wallet.Wallet) {
+		go func(txHash gethcommon.Hash) {
 			defer wg.Done()
-			destAddr := wallet.Address()
-			tx := &types.LegacyTx{
-				Nonce:    NextNonce(s.RPCHandles, faucetWallet),
-				Value:    big.NewInt(allocObsWallets),
-				Gas:      uint64(1_000_000),
-				GasPrice: gethcommon.Big1,
-				Data:     nil,
-				To:       &destAddr,
-			}
-			signedTx, err := faucetWallet.SignTransaction(tx)
-			if err != nil {
-				panic(err)
-			}
-
-			err = s.RPCHandles.ObscuroWalletRndClient(faucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-			if err != nil {
-				panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
-			}
-
-			err = s.awaitReceipt(faucetWallet, signedTx.Hash())
+			err := s.awaitReceipt(faucetWallet, txHash)
 			if err != nil {
 				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
 			}
-		}(w)
+		}(txHash)
 	}
-
 	wg.Wait()
 }
 
