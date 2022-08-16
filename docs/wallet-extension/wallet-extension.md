@@ -3,7 +3,8 @@
 The wallet extension is the Obscuro component that ensures that sensitive information in RPC requests between client
 applications and the Obscuro enclave, such as balances or transactions, cannot be seen by third parties. It
 achieves this goal without requiring any custom wallet software or application code changes. Private keys for Obscuro
-addresses may be stored in [MetaMask](https://metamask.io/), for example.
+addresses may be stored in [MetaMask](https://metamask.io/), for example, and the Wallet Extension will act as a bridge 
+between MetaMask and an Obscuro host without ever knowing your wallet's private keys itself.
 
 The wallet extension performs two functions:
 
@@ -21,6 +22,10 @@ unencrypted. If the data is not particularly sensitive, it can also be run in an
 
 The diagram below lays out the flows.
 ![Swimlane diagram showing wallet extension flows](../../assets/images/swimlanes.png)
+
+This diagram shows how Wallet Extension fits into the Obscuro workflow as a bridge between standard ethereum ecosystem
+tools.
+![Diagram showing wallet extension as an RPC bridge for common Ethereum tooling](../../assets/images/RPC-Interfaces.png)
 
 ## Pre-requisites
 
