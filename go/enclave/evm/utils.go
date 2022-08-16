@@ -27,7 +27,7 @@ func convertToEthHeader(h *common.Header) *types.Header {
 		GasUsed:     0,
 		Time:        h.Time,
 		Extra:       obscuroHeader,
-		MixDigest:   h.MixDigest,
+		MixDigest:   h.MixDigest, // todo - combine the randomness with something hidden
 		Nonce:       types.BlockNonce{},
 		BaseFee:     gethcommon.Big0,
 	}
