@@ -48,9 +48,9 @@ func (s *Simulation) Start() {
 	// arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
-	s.prefundObscuroAccounts()                                        // Prefund every L2 wallet
-	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.OBX].L2Owner) // Deploy the Obscuro OBX ERC20 contract
-	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.ETH].L2Owner) // Deploy the Obscuro ETH ERC20 contract
+	s.prefundObscuroAccounts()                                                            // Prefund every L2 wallet
+	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.OBX].L2Owner, string(bridge.OBX)) // Deploy the Obscuro OBX ERC20 contract
+	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.ETH].L2Owner, string(bridge.ETH)) // Deploy the Obscuro ETH ERC20 contract
 
 	// enough time to process everywhere
 	time.Sleep(s.Params.AvgBlockDuration * 6)
@@ -149,8 +149,8 @@ func (s *Simulation) prefundObscuroAccounts() {
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
-func (s *Simulation) deployObscuroERC20(owner wallet.Wallet) {
-	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(bridge.OBX))
+func (s *Simulation) deployObscuroERC20(owner wallet.Wallet, tokenName string) {
+	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(tokenName)
 
 	deployContractTx := types.DynamicFeeTx{
 		Nonce: NextNonce(s.RPCHandles, owner),
