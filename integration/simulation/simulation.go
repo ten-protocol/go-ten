@@ -48,9 +48,8 @@ func (s *Simulation) Start() {
 	// arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
-	s.prefundObscuroAccounts()                                                            // Prefund every L2 wallet
-	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.OBX].L2Owner, string(bridge.OBX)) // Deploy the Obscuro OBX ERC20 contract
-	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.ETH].L2Owner, string(bridge.ETH)) // Deploy the Obscuro ETH ERC20 contract
+	s.prefundObscuroAccounts() // prefund every L2 wallet
+	s.deployObscuroERC20s()    // deploy the Obscuro OBX and ETH ERC20 contracts
 
 	// enough time to process everywhere
 	time.Sleep(s.Params.AvgBlockDuration * 6)
@@ -149,28 +148,39 @@ func (s *Simulation) prefundObscuroAccounts() {
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
-func (s *Simulation) deployObscuroERC20(owner wallet.Wallet, tokenName string) {
-	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(tokenName)
+func (s *Simulation) deployObscuroERC20s() {
+	tokens := []bridge.ERC20{bridge.OBX, bridge.ETH}
 
-	deployContractTx := types.DynamicFeeTx{
-		Nonce: NextNonce(s.RPCHandles, owner),
-		Gas:   1025_000_000,
-		Data:  contractBytes,
-	}
-	signedTx, err := owner.SignTransaction(&deployContractTx)
-	if err != nil {
-		panic(err)
-	}
+	wg := sync.WaitGroup{}
+	for _, token := range tokens {
+		wg.Add(1)
+		go func(token bridge.ERC20) {
+			defer wg.Done()
+			owner := s.Params.Wallets.Tokens[token].L2Owner
+			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
 
-	err = s.RPCHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-	if err != nil {
-		panic(err)
-	}
+			deployContractTx := types.DynamicFeeTx{
+				Nonce: NextNonce(s.RPCHandles, owner),
+				Gas:   1025_000_000,
+				Data:  contractBytes,
+			}
+			signedTx, err := owner.SignTransaction(&deployContractTx)
+			if err != nil {
+				panic(err)
+			}
 
-	err = s.awaitReceipt(owner, signedTx.Hash())
-	if err != nil {
-		panic(fmt.Sprintf("ERC20 deployment transaction failed. Cause: %s", err))
+			err = s.RPCHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+			if err != nil {
+				panic(err)
+			}
+
+			err = s.awaitReceipt(owner, signedTx.Hash())
+			if err != nil {
+				panic(fmt.Sprintf("ERC20 deployment transaction failed. Cause: %s", err))
+			}
+		}(token)
 	}
+	wg.Wait()
 }
 
 // Sends an amount from the faucet to each L1 account, to pay for transactions.
