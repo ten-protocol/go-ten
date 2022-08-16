@@ -136,7 +136,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			err := client.Call(nil, rpcclientlib.RPCGetID)
 			started = err == nil
 			if !started {
-				fmt.Printf("Could not connect to client %d. Err %s. Retrying..\n", i, err)
+				log.Info("Could not connect to client %d. Err %s. Retrying..\n", i, err)
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
