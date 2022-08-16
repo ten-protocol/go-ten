@@ -3,6 +3,10 @@ package params
 import (
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -31,7 +35,8 @@ type SimWallets struct {
 	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
 	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
 
-	Tokens map[bridge.ERC20]*SimToken // The supported tokens
+	L2FaucetWallet wallet.Wallet              // the wallet of the L2 faucet
+	Tokens         map[bridge.ERC20]*SimToken // The supported tokens
 }
 
 func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroChainID int64) *SimWallets {
@@ -53,6 +58,13 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	// create the wallet to deploy the Management contract
 	mcOwnerWallet := datagenerator.RandomWallet(ethereumChainID)
 
+	// create the L2 faucet wallet
+	l2FaucetPrivKey, err := crypto.HexToECDSA(rollupchain.FaucetPrivateKeyHex)
+	if err != nil {
+		panic("could not initialise L2 faucet private key")
+	}
+	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey)
+
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
 	obx := SimToken{
 		Name:              bridge.OBX,
@@ -68,10 +80,11 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	}
 
 	return &SimWallets{
-		MCOwnerWallet: mcOwnerWallet,
-		NodeWallets:   nodeWallets,
-		SimEthWallets: simEthWallets,
-		SimObsWallets: simObsWallets,
+		MCOwnerWallet:  mcOwnerWallet,
+		NodeWallets:    nodeWallets,
+		SimEthWallets:  simEthWallets,
+		SimObsWallets:  simObsWallets,
+		L2FaucetWallet: l2FaucetWallet,
 		Tokens: map[bridge.ERC20]*SimToken{
 			bridge.OBX: &obx,
 			bridge.ETH: &eth,

@@ -60,8 +60,8 @@ type BlockStateStorage interface {
 	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt)
 	// CreateStateDB create a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) *state.StateDB
-	// GenesisStateDB create the original empty StateDB
-	GenesisStateDB() *state.StateDB
+	// EmptyStateDB create the original empty StateDB
+	EmptyStateDB() *state.StateDB
 }
 
 type SharedSecretStorage interface {

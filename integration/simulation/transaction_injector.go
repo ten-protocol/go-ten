@@ -10,8 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"golang.org/x/sync/errgroup"
@@ -41,10 +39,14 @@ import (
 )
 
 const (
-	timeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
+	nonceTimeoutMillis   = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
+	receiptTimeoutMillis = 30000 // The timeout in millis to wait for a receipt for a transaction.
+
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+
+	allocObsWallets = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
@@ -118,36 +120,6 @@ func NewTransactionInjector(
 // Deposits an initial balance in to each wallet
 // Generates and issues L1 and L2 transactions to the network
 func (ti *TransactionInjector) Start() {
-	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.OBX].L2Owner)
-	ti.deployObscuroERC20(ti.wallets.Tokens[bridge.ETH].L2Owner)
-
-	// enough time to process everywhere
-	time.Sleep(ti.avgBlockDuration * 6)
-
-	// deposit some initial amount into every simulation wallet
-	for _, w := range ti.wallets.SimEthWallets {
-		addr := w.Address()
-		txData := &ethadapter.L1DepositTx{
-			Amount:        initialBalance,
-			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[bridge.OBX].L1ContractAddress,
-			Sender:        &addr,
-		}
-		tx := ti.erc20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
-		signedTx, err := w.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
-		if err != nil {
-			panic(err)
-		}
-
-		ti.stats.Deposit(initialBalance)
-		go ti.TxTracker.trackL1Tx(txData)
-	}
-
-	// start transactions issuance
 	var wg errgroup.Group
 	wg.Go(func() error {
 		ti.issueRandomDeposits()
@@ -171,27 +143,6 @@ func (ti *TransactionInjector) Start() {
 
 	_ = wg.Wait() // future proofing to return errors
 	ti.fullyStoppedChan <- true
-}
-
-// This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
-func (ti *TransactionInjector) deployObscuroERC20(owner wallet.Wallet) {
-	// deploy the ERC20
-	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(bridge.OBX))
-
-	deployContractTx := types.DynamicFeeTx{
-		Nonce: NextNonce(ti.rpcHandles, owner),
-		Gas:   1025_000_000,
-		Data:  contractBytes,
-	}
-	signedTx, err := owner.SignTransaction(&deployContractTx)
-	if err != nil {
-		panic(err)
-	}
-
-	err = ti.rpcHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
-	if err != nil {
-		panic(err)
-	}
 }
 
 func (ti *TransactionInjector) Stop() {
@@ -347,14 +298,12 @@ func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
 
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, amount)
-	t := ti.newTx(data, NextNonce(ti.rpcHandles, from))
-	return t
+	return ti.newTx(data, NextNonce(ti.rpcHandles, from))
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
-	t := ti.newTx(transferERC20data, NextNonce(ti.rpcHandles, from))
-	return t
+	return ti.newTx(transferERC20data, NextNonce(ti.rpcHandles, from))
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
@@ -363,19 +312,17 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 }
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
-	gas := uint64(1_000_000)
-	value := gethcommon.Big0
-
 	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
 	//max := big.NewInt(1_000_000_000_000_000_000)
 	//if nonce%3 == 0 {
 	//	value = max
 	//}
+
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		Value:    value,
-		Gas:      gas,
-		GasPrice: gethcommon.Big0,
+		Value:    gethcommon.Big0,
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
 		Data:     data,
 		To:       ti.wallets.Tokens[bridge.OBX].L2ContractAddress,
 	}
@@ -409,8 +356,9 @@ func NextNonce(clients *network.RPCHandles, w wallet.Wallet) uint64 {
 		}
 
 		counter++
-		if counter > timeoutMillis {
-			panic("transaction injector failed to retrieve nonce after thirty seconds")
+		if counter > nonceTimeoutMillis {
+			panic(fmt.Sprintf("transaction injector failed to retrieve nonce after thirty seconds for address %s. "+
+				"Local nonce was %d, remote nonce was %d", w.Address().Hex(), localNonce, remoteNonce))
 		}
 		time.Sleep(time.Millisecond)
 	}

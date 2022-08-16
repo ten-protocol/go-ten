@@ -2,7 +2,6 @@ package evm
 
 import (
 	"math"
-	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -15,14 +14,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// The balance allocated to the sender when they perform a transaction, to ensure they have enough gas.
-const prealloc = 7500000000000000000
-
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig, fromTxIndex int) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(rollupResolver)
+	chain, vmCfg, gp := initParams(rollupResolver, false)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
@@ -46,20 +42,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 
 func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *gethcore.GasPool, header *common.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
 	s.Prepare(t.Hash(), tCount)
-
-	// Allocates a large balance to the sender, to allow them to perform any transaction.
-	// TODO - Allocate balances properly.
-	signer := types.NewLondonSigner(cc.ChainID)
-	sender, err := types.Sender(signer, t)
-	if err != nil {
-		return nil, err
-	}
-
 	snap := s.Snapshot()
-
-	// Add some balance to the sender to avoid gas issues.
-	// Todo - this has to be removed once the gas logic is sorted.
-	s.AddBalance(sender, big.NewInt(prealloc))
 
 	// todo - Author?
 	receipt, err := gethcore.ApplyTransaction(cc, chain, nil, gp, s, convertToEthHeader(header), t, usedGas, vmCfg)
@@ -73,7 +56,7 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
 func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig) (*gethcore.ExecutionResult, error) {
-	chain, vmCfg, gp := initParams(rollupResolver)
+	chain, vmCfg, gp := initParams(rollupResolver, true)
 
 	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	// todo use ToMessage
@@ -92,11 +75,9 @@ func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []
 	return result, nil
 }
 
-func initParams(rollupResolver db.RollupResolver) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
+func initParams(rollupResolver db.RollupResolver, noBaseFee bool) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	chain := &ObscuroChainContext{rollupResolver: rollupResolver}
-	vmCfg := vm.Config{
-		NoBaseFee: true,
-	}
+	vmCfg := vm.Config{NoBaseFee: noBaseFee}
 	gp := gethcore.GasPool(math.MaxUint64)
 	return chain, vmCfg, &gp
 }

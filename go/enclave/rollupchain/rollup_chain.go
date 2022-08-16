@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -53,6 +52,7 @@ type RollupChain struct {
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
 	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
+	faucet                Faucet
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -67,6 +67,7 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		bridge:                bridge,
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
+		faucet:                NewFaucet(storage),
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		ethereumChainID:       ethereumChainID,
@@ -89,7 +90,8 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		[]*common.L2Tx{},
 		[]common.Withdrawal{},
 		common.GenerateNonce(),
-		gethcommon.BigToHash(big.NewInt(0)))
+		rc.faucet.GetGenesisRoot(rc.storage),
+	)
 	rc.signRollup(rolGenesis)
 
 	return rolGenesis, b
@@ -244,11 +246,11 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			FoundNewRollup: true,
 		}
 		rc.storage.SaveNewHead(&bs, genesis, nil)
-		s := rc.storage.GenesisStateDB()
-		_, err := s.Commit(true)
+		err := rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
 		}
+
 		return &bs, true
 	}
 
@@ -316,7 +318,8 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	for _, resp := range depositResponses {
 		rec, ok := resp.(*types.Receipt)
 		if !ok {
-			log.Panic("Sanity check. Should be a receipt.")
+			// TODO - Handle the case of an error (e.g. insufficient funds).
+			log.Panic("Sanity check. Expected a receipt, got %v", resp)
 		}
 		depositReceipts[i] = rec
 		i++
