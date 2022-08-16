@@ -41,10 +41,6 @@ func NewObscuroRPCClient(ipaddress string, port uint, wallet wallet.Wallet) (Eth
 		return nil, err
 	}
 
-	err = client.RegisterViewingKeyWithEnclave(publicVK, signedVK)
-	if err != nil {
-		return nil, err
-	}
 	return &obscuroWalletRPCClient{
 		client: client,
 		wallet: wallet,
