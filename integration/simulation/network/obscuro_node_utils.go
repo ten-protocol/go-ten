@@ -61,7 +61,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	// Create a handle to each node
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
 	for i, node := range obscuroNodes {
-		obscuroClients[i] = p2p.NewInMemoryViewingKeyClient(node)
+		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 
@@ -118,7 +118,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		client, err := rpcclientlib.NewViewingKeyNetworkClient(nodeRPCAddresses[i])
+		client, err := rpcclientlib.NewNetworkClient(nodeRPCAddresses[i])
 		if err != nil {
 			panic(err)
 		}
@@ -162,12 +162,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []rpcclientlib.Client {
 	clients := make([]rpcclientlib.Client, len(nodes))
 	for i, node := range nodes {
-		c := p2p.NewInMemoryViewingKeyClient(node)
-
-		err := viewkey.GenerateAndRegisterViewingKey(c, wal)
-		if err != nil {
-			panic(err)
-		}
+		c := p2p.NewInMemoryViewingKeyClient(node, wal)
 		clients[i] = c
 	}
 	return clients
@@ -177,14 +172,15 @@ func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []
 func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []rpcclientlib.Client {
 	clients := make([]rpcclientlib.Client, len(nodeRPCAddresses))
 	for i, addr := range nodeRPCAddresses {
-		c, err := rpcclientlib.NewViewingKeyNetworkClient(addr)
+		vk, publicVK, signedVK, err := viewkey.GenerateAndSignViewingKey(wal)
+		if err != nil {
+			return nil
+		}
+		c, err := rpcclientlib.NewViewingKeyNetworkClient(addr, wal, vk, publicVK, signedVK)
 		if err != nil {
 			panic(err)
 		}
-		err = viewkey.GenerateAndRegisterViewingKey(c, wal)
-		if err != nil {
-			panic(err)
-		}
+
 		clients[i] = c
 	}
 	return clients

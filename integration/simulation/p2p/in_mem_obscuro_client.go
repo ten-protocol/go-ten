@@ -3,6 +3,8 @@ package p2p
 import (
 	"context"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -54,12 +56,28 @@ func NewInMemObscuroClient(nodeHost host.Host) rpcclientlib.Client {
 	}
 }
 
-func NewInMemoryViewingKeyClient(host host.Host) *rpcclientlib.ViewingKeyClient {
+func NewInMemoryViewingKeyClient(host host.Host, wal wallet.Wallet) *rpcclientlib.ViewingKeyClient {
 	inMemClient := NewInMemObscuroClient(host)
-	vkClient, err := rpcclientlib.NewViewingKeyClient(inMemClient)
+
+	vk, publicVK, signedVK, err := viewkey.GenerateAndSignViewingKey(wal)
 	if err != nil {
 		panic(err)
 	}
+
+	vkManager := rpcclientlib.SingleAccountVKManager{
+		Address:    wal.Address(),
+		ViewingKey: vk,
+	}
+	vkClient, err := rpcclientlib.NewViewingKeyClient(inMemClient, vkManager)
+	if err != nil {
+		panic(err)
+	}
+	// todo: should we be registering in here or should that be a separate step for calling code?
+	err = vkClient.RegisterViewingKeyWithEnclave(publicVK, signedVK)
+	if err != nil {
+		panic(err)
+	}
+
 	return vkClient
 }
 

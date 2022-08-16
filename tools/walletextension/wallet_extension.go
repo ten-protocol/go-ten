@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -41,6 +42,12 @@ const (
 	RespJSONKeyResult   = "result"
 	httpCodeErr         = 500
 
+	// eth_call related constants
+	reqCallJSONKeyFrom  = "from"
+	reqCallJSONKeyData  = "data"
+	ethCallPaddedArgLen = 64
+	ethCallAddrPadding  = "000000000000000000000000"
+
 	// CORS-related constants.
 	corsAllowOrigin  = "Access-Control-Allow-Origin"
 	originAll        = "*"
@@ -62,6 +69,7 @@ type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
 	hostClient       *rpcclientlib.ViewingKeyClient
+	viewingKeyRepo   *ViewingKeyRepository // stores accounts and viewing keys that are using the wallet extension
 	server           *http.Server
 }
 
@@ -80,7 +88,12 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 	setLogs(config.LogPath)
 
-	client, err := rpcclientlib.NewViewingKeyNetworkClient(config.NodeRPCHTTPAddress)
+	rpcClient, err := rpcclientlib.NewNetworkClient(config.NodeRPCHTTPAddress)
+	if err != nil {
+		panic(err)
+	}
+	vkRepo := NewViewingKeyRepository()
+	client, err := rpcclientlib.NewViewingKeyClient(rpcClient, vkRepo)
 	if err != nil {
 		panic(err)
 	}
@@ -88,6 +101,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		enclavePublicKey: enclavePublicKey,
 		hostAddr:         config.NodeRPCWebsocketAddress,
 		hostClient:       client,
+		viewingKeyRepo:   vkRepo,
 	}
 }
 
@@ -160,6 +174,16 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	if err != nil {
 		logAndSendErr(resp, err.Error())
 		return
+	}
+
+	if rpcReq.method == rpcclientlib.RPCCall {
+		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
+		//	and is often not included from metamask etc. So we ensure it is populated here.
+		rpcReq.params, err = we.setFromFieldIfMissing(rpcReq.params)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("failed to set eth_call `from` field if it was missing - %s", err))
+			return
+		}
 	}
 
 	var rpcResp interface{}
@@ -260,7 +284,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 	}
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-	we.hostClient.SetViewingKey(viewingPrivateKeyEcies, common.HexToAddress(reqJSONMap[ReqJSONKeyAddress]), viewingPublicKeyBytes)
+	we.viewingKeyRepo.SetViewingKey(common.HexToAddress(reqJSONMap[ReqJSONKeyAddress]), viewingPrivateKeyEcies, viewingPublicKeyBytes)
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
@@ -298,12 +322,108 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
+	publicViewingKey := we.viewingKeyRepo.viewingKeysPublic[common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])]
+	// TODO: Store signatures to be able to resubmit keys if they are evicted by the node?
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
-	err = we.hostClient.RegisterViewingKey(signature, common.HexToAddress(reqJSONMap[ReqJSONKeyAddress]))
+	err = we.hostClient.RegisterViewingKeyWithEnclave(publicViewingKey, signature)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("RPC request to register viewing key failed: %s", err))
 		return
 	}
+}
+
+// The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
+// don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
+// field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
+func (we *WalletExtension) setFromFieldIfMissing(args []interface{}) ([]interface{}, error) {
+	callParams, err := parseCallParams(args)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
+	}
+
+	// We only modify `eth_call` requests where the `from` field is not set.
+	if callParams[reqCallJSONKeyFrom] != nil {
+		return args, nil
+	}
+
+	fromAddress, err := we.viewingKeyRepo.suggestFromAddressForEthCall(callParams)
+	if err != nil {
+		return nil, err
+	}
+
+	callParams[reqCallJSONKeyFrom] = fromAddress
+	args[0] = callParams
+	return args, nil
+}
+
+// Parses the eth_call params into a map.
+func parseCallParams(args []interface{}) (map[string]interface{}, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("expected eth_call params to have a 'from' field but no params found")
+	}
+
+	callParams, ok := args[0].(map[string]interface{})
+	if !ok {
+		callParamsJSON, ok := args[0].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes but "+
+				"was %t", args[0])
+		}
+
+		err := json.Unmarshal(callParamsJSON, &callParams)
+		if err != nil {
+			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes, "+
+				"failed to decode: %w", err)
+		}
+	}
+
+	return callParams, nil
+}
+
+// Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
+// key address, we return that address. Otherwise, we return nil.
+func searchDataFieldForFrom(callParams map[string]interface{}, viewingKeysPrivate map[common.Address]*ecies.PrivateKey) (*common.Address, error) {
+	// We ensure that the `data` field is present.
+	data := callParams[reqCallJSONKeyData]
+	if data == nil {
+		return nil, fmt.Errorf("eth_call request did not have its `data` field set")
+	}
+	dataString, ok := data.(string)
+	if !ok {
+		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
+	}
+
+	// We check that the data field is long enough before removing the leading "0x" (1 bytes/2 chars) and the method ID
+	// (4 bytes/8 chars).
+	if len(dataString) < 10 {
+		return nil, nil //nolint:nilnil
+	}
+	dataString = dataString[10:]
+
+	// We split up the arguments in the `data` field.
+	var dataArgs []string
+	for i := 0; i < len(dataString); i += ethCallPaddedArgLen {
+		if i+ethCallPaddedArgLen > len(dataString) {
+			break
+		}
+		dataArgs = append(dataArgs, dataString[i:i+ethCallPaddedArgLen])
+	}
+
+	// We iterate over the arguments, looking for an argument that matches the viewing key address. If we find one, we
+	// set the `from` field to that address.
+	for _, dataArg := range dataArgs {
+		// If the argument doesn't have the correct padding, it's not an address.
+		if !strings.HasPrefix(dataArg, ethCallAddrPadding) {
+			continue
+		}
+
+		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
+		if _, ok := viewingKeysPrivate[maybeAddress]; ok {
+			return &maybeAddress, nil
+		}
+	}
+
+	return nil, nil //nolint:nilnil
 }
 
 // Logs the error message and sends it as an HTTP error.

@@ -32,7 +32,7 @@ func TestCanSearchDataFieldForFrom(t *testing.T) {
 		t.Fatalf("did not expect an error but got %s", err)
 	}
 	if *address != viewingKeyAddressOne {
-		t.Fatal("did not find correct viewing key address in `data` field")
+		t.Fatal("did not find correct viewing key Address in `data` field")
 	}
 }
 
@@ -44,7 +44,7 @@ func TestCanSearchDataFieldWhenHasUnexpectedLength(t *testing.T) {
 		t.Fatalf("did not expect an error but got %s", err)
 	}
 	if *address != viewingKeyAddressOne {
-		t.Fatal("did not find correct viewing key address in `data` field")
+		t.Fatal("did not find correct viewing key Address in `data` field")
 	}
 }
 
@@ -63,6 +63,6 @@ func TestGracefulWhenDataFieldTooShort(t *testing.T) {
 		t.Fatalf("did not expect an error but got %s", err)
 	}
 	if address != nil {
-		t.Fatal("`data` field was too short but address was found anyway")
+		t.Fatal("`data` field was too short but Address was found anyway")
 	}
 }
