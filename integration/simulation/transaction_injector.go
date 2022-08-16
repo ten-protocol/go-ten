@@ -1,7 +1,6 @@
 package simulation
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -388,34 +387,4 @@ func (ti *TransactionInjector) shouldKeepIssuing(txCounter int) bool {
 	}
 
 	return !isInterrupted && txCounter < ti.txsToIssue
-}
-
-// Blocks until the receipt for the transaction has been received. Errors if the transaction is unsuccessful or we time
-// out.
-func (ti *TransactionInjector) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.Hash) error {
-	client := ti.rpcHandles.ObscuroWalletRndClient(wallet)
-
-	var receipt types.Receipt
-	counter := 0
-	for {
-		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
-		if err != nil {
-			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
-				return err
-			}
-
-			counter++
-			if counter > receiptTimeoutMillis {
-				return fmt.Errorf("could not retrieve transaction after timeout")
-			}
-			time.Sleep(time.Millisecond)
-			continue
-		}
-
-		if receipt.Status == types.ReceiptStatusFailed {
-			return fmt.Errorf("receipt had status failed")
-		}
-
-		return nil
-	}
 }

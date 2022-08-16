@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -47,9 +48,9 @@ func (s *Simulation) Start() {
 	// arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
-	s.prefundObscuroAccounts()                                            // Prefund every L2 wallet
-	s.deployObscuroERC20(s.TxInjector.wallets.Tokens[bridge.OBX].L2Owner) // Deploy the Obscuro OBX ERC20 contract
-	s.deployObscuroERC20(s.TxInjector.wallets.Tokens[bridge.ETH].L2Owner) // Deploy the Obscuro ETH ERC20 contract
+	s.prefundObscuroAccounts()                                        // Prefund every L2 wallet
+	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.OBX].L2Owner) // Deploy the Obscuro OBX ERC20 contract
+	s.deployObscuroERC20(s.Params.Wallets.Tokens[bridge.ETH].L2Owner) // Deploy the Obscuro ETH ERC20 contract
 
 	// enough time to process everywhere
 	time.Sleep(s.Params.AvgBlockDuration * 6)
@@ -104,7 +105,7 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 
 // Sends an amount from the faucet to each Obscuro account, to pay for transactions.
 func (s *Simulation) prefundObscuroAccounts() {
-	faucetWallet := s.TxInjector.wallets.L2FaucetWallet
+	faucetWallet := s.Params.Wallets.L2FaucetWallet
 
 	wg := sync.WaitGroup{}
 	for _, w := range s.Params.Wallets.AllObsWallets() {
@@ -113,7 +114,7 @@ func (s *Simulation) prefundObscuroAccounts() {
 			defer wg.Done()
 			destAddr := wallet.Address()
 			tx := &types.LegacyTx{
-				Nonce:    NextNonce(s.TxInjector.rpcHandles, faucetWallet),
+				Nonce:    NextNonce(s.RPCHandles, faucetWallet),
 				Value:    big.NewInt(allocObsWallets),
 				Gas:      uint64(1_000_000),
 				GasPrice: gethcommon.Big1,
@@ -125,12 +126,12 @@ func (s *Simulation) prefundObscuroAccounts() {
 				panic(err)
 			}
 
-			err = s.TxInjector.rpcHandles.ObscuroWalletRndClient(faucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+			err = s.RPCHandles.ObscuroWalletRndClient(faucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 			if err != nil {
 				panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
 			}
 
-			err = s.TxInjector.awaitReceipt(faucetWallet, signedTx.Hash())
+			err = s.awaitReceipt(faucetWallet, signedTx.Hash())
 			if err != nil {
 				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
 			}
@@ -145,7 +146,7 @@ func (s *Simulation) deployObscuroERC20(owner wallet.Wallet) {
 	contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(bridge.OBX))
 
 	deployContractTx := types.DynamicFeeTx{
-		Nonce: NextNonce(s.TxInjector.rpcHandles, owner),
+		Nonce: NextNonce(s.RPCHandles, owner),
 		Gas:   1025_000_000,
 		Data:  contractBytes,
 	}
@@ -154,12 +155,12 @@ func (s *Simulation) deployObscuroERC20(owner wallet.Wallet) {
 		panic(err)
 	}
 
-	err = s.TxInjector.rpcHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+	err = s.RPCHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		panic(err)
 	}
 
-	err = s.TxInjector.awaitReceipt(owner, signedTx.Hash())
+	err = s.awaitReceipt(owner, signedTx.Hash())
 	if err != nil {
 		panic(fmt.Sprintf("ERC20 deployment transaction failed. Cause: %s", err))
 	}
@@ -167,7 +168,7 @@ func (s *Simulation) deployObscuroERC20(owner wallet.Wallet) {
 
 // Sends an amount from the faucet to each L1 account, to pay for transactions.
 func (s *Simulation) prefundL1Accounts() {
-	for _, w := range s.TxInjector.wallets.SimEthWallets {
+	for _, w := range s.Params.Wallets.SimEthWallets {
 		addr := w.Address()
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
@@ -180,12 +181,42 @@ func (s *Simulation) prefundL1Accounts() {
 		if err != nil {
 			panic(err)
 		}
-		err = s.TxInjector.rpcHandles.RndEthClient().SendTransaction(signedTx)
+		err = s.RPCHandles.RndEthClient().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
 
 		s.Stats.Deposit(initialBalance)
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
+	}
+}
+
+// Blocks until the receipt for the transaction has been received. Errors if the transaction is unsuccessful or we time
+// out.
+func (s *Simulation) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.Hash) error {
+	client := s.RPCHandles.ObscuroWalletRndClient(wallet)
+
+	var receipt types.Receipt
+	counter := 0
+	for {
+		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, signedTxHash)
+		if err != nil {
+			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+				return err
+			}
+
+			counter++
+			if counter > receiptTimeoutMillis {
+				return fmt.Errorf("could not retrieve transaction after timeout")
+			}
+			time.Sleep(time.Millisecond)
+			continue
+		}
+
+		if receipt.Status == types.ReceiptStatusFailed {
+			return fmt.Errorf("receipt had status failed")
+		}
+
+		return nil
 	}
 }
