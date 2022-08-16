@@ -1,6 +1,7 @@
 package core
 
 import (
+	"crypto/rand"
 	"fmt"
 	"math/big"
 
@@ -44,4 +45,12 @@ func VerifySignature(chainID int64, tx *types.Transaction) error {
 	signer := types.NewLondonSigner(big.NewInt(chainID))
 	_, err := types.Sender(signer, tx)
 	return err
+}
+
+func RandomBytes(length int) []byte {
+	byteArr := make([]byte, length)
+	if _, err := rand.Read(byteArr); err != nil {
+		panic(err)
+	}
+	return byteArr
 }

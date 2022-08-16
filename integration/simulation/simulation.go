@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/guessinggame"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -153,7 +153,11 @@ func (s *Simulation) deployObscuroERC20s() {
 		go func(token bridge.ERC20) {
 			defer wg.Done()
 			owner := s.Params.Wallets.Tokens[token].L2Owner
-			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
+			// contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
+			contractBytes, err := guessinggame.Bytecode(100, gethcommon.Address{})
+			if err != nil {
+				panic(err)
+			}
 
 			deployContractTx := types.DynamicFeeTx{
 				Nonce: NextNonce(s.RPCHandles, owner),
