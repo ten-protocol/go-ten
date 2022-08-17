@@ -108,9 +108,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("bal-with-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
-
 	accountAddr, _ := registerPrivateKey(t)
 
 	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{accountAddr.String(), latestBlock})
@@ -124,9 +122,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("others-bal-with-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
-
 	registerPrivateKey(t)
 
 	respBody := makeEthJSONReq(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
@@ -141,7 +137,6 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("call-no-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
 
 	// We generate an account, but do not register it with the node.
@@ -171,9 +166,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("call-with-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
-
 	accountAddress, _ := registerPrivateKey(t)
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
@@ -196,9 +189,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	setupWalletTestLog("call-no-from-field")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
-
 	accountAddress, _ := registerPrivateKey(t)
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
@@ -220,9 +211,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("others-call-with-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
-
 	registerPrivateKey(t)
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
@@ -247,7 +236,6 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 	setupWalletTestLog("submit-tx-no-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
 
 	privateKey, err := crypto.GenerateKey()
@@ -280,10 +268,9 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 	setupWalletTestLog("submit-tx-with-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
-
 	_, privateKey := registerPrivateKey(t)
+
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
 	tx := types.LegacyTx{
 		Nonce:    0,
@@ -324,9 +311,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 	setupWalletTestLog("others-submit-tx-with-viewing-key")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
-
 	registerPrivateKey(t)
 
 	// We submit a transaction using another account.
@@ -358,7 +343,6 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 	setupWalletTestLog("bal-with-mult-viewing-keys")
 
 	createWalletExtension(t)
-
 	createObscuroNetwork(t)
 
 	// We submit a viewing key for a random account.
