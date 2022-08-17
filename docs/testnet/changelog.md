@@ -1,9 +1,13 @@
 # Obscuro Testnet Change Log
 
 ## August 2022
-* Testnet preview launched to limited number of application developers.
-* ObscuroScan transaction explorer preview launched.
-* Number Guessing Game smart contract deployed to Testnet.
-* Obscuro Docsite made available.
+* Testnet launch:
+  * Testnet preview launched to limited number of application developers.
+  * ObscuroScan block explorer for Testnet launched.
+  * Number Guessing Game smart contract deployed to Testnet.
+* Obscuro Docsite launched.
+* Account balances:
+  * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
+  * Introduced network faucet account.
 
 * ``block.difficulty`` will return a true random number generated inside the secure enclave.

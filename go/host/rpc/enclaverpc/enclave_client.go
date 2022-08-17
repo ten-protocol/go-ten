@@ -201,7 +201,7 @@ func (c *Client) Start(block types.Block) {
 	}
 }
 
-func (c *Client) SubmitBlock(block types.Block) common.BlockSubmissionResponse {
+func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -213,10 +213,11 @@ func (c *Client) SubmitBlock(block types.Block) common.BlockSubmissionResponse {
 	processTime := time.Now()
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to submit block. Cause: %s", err)
+		log.Error("Failed to submit block. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("failed to submit block. Cause: %w", err)
 	}
 	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
-	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
+	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse), nil
 }
 
 func (c *Client) SubmitRollup(rollup common.ExtRollup) {
