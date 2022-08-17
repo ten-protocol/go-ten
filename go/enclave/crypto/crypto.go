@@ -101,6 +101,7 @@ func PrivateRollupRnd(publicRnd []byte, secret []byte) []byte {
 func randomBytes(length int) []byte {
 	byteArr := make([]byte, length)
 	if _, err := rand.Read(byteArr); err != nil {
+		// todo - what should happen?
 		panic(err)
 	}
 	return byteArr

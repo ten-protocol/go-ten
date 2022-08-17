@@ -1,6 +1,8 @@
 package evm
 
 import (
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -26,7 +28,7 @@ func convertToEthHeader(h *common.Header, secret []byte) *types.Header {
 		TxHash:      h.TxHash,
 		ReceiptHash: h.ReceiptHash,
 		Bloom:       h.Bloom,
-		Difficulty:  gethcommon.Big0,
+		Difficulty:  big.NewInt(0).SetBytes(randomness),
 		Number:      h.Number,
 		GasLimit:    1_000_000_000,
 		GasUsed:     0,

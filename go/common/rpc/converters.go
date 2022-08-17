@@ -73,6 +73,14 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
 	}
 
+	diff := uint64(0)
+	if header.Difficulty != nil {
+		diff = header.Difficulty.Uint64()
+	}
+	baseFee := uint64(0)
+	if header.BaseFee != nil {
+		baseFee = header.BaseFee.Uint64()
+	}
 	headerMsg = generated.HeaderMsg{
 		ParentHash:  header.ParentHash.Bytes(),
 		Node:        header.Agg.Bytes(),
@@ -90,12 +98,12 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 		Withdrawals: withdrawalMsgs,
 		UncleHash:   header.UncleHash.Bytes(),
 		Coinbase:    header.Coinbase.Bytes(),
-		Difficulty:  0,
+		Difficulty:  diff,
 		GasLimit:    header.GasLimit,
 		GasUsed:     header.GasUsed,
 		Time:        header.Time,
 		MixDigest:   header.MixDigest.Bytes(),
-		BaseFee:     0,
+		BaseFee:     baseFee,
 	}
 
 	return &headerMsg
@@ -138,7 +146,7 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 	return &common.Header{
 		ParentHash:  gethcommon.BytesToHash(header.ParentHash),
 		Agg:         gethcommon.BytesToAddress(header.Node),
-		Nonce:       types.BlockNonce{},
+		Nonce:       types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
 		RollupNonce: header.RollupNonce,
 		L1Proof:     gethcommon.BytesToHash(header.Proof),
 		Root:        gethcommon.BytesToHash(header.Root),
@@ -156,7 +164,7 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 		GasLimit:    header.GasLimit,
 		GasUsed:     header.GasUsed,
 		Time:        header.Time,
-		MixDigest:   gethcommon.BytesToHash(header.UncleHash),
+		MixDigest:   gethcommon.BytesToHash(header.MixDigest),
 		BaseFee:     big.NewInt(int64(header.BaseFee)),
 	}
 }
