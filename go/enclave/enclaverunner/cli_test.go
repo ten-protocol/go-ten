@@ -18,6 +18,7 @@ const (
 )
 
 func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
+	panic("test fails")
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)

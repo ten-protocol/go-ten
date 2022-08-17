@@ -31,9 +31,13 @@ jobs:
         run: go build -v ./...
 
       - name: Test
-        run: go test --failfast -v ./...
+        uses: nick-fields/retry@v2
         env:
           USE_GETH_BINARY: true
+        with:
+          max_attempts: 3
+          retry_on: error
+          command: go test --failfast -v ./...
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
