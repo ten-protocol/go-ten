@@ -3,6 +3,7 @@ package enclaverunner
 import (
 	"flag"
 	"fmt"
+	"math/big"
 	"os"
 	"strings"
 
@@ -30,6 +31,7 @@ type EnclaveConfigToml struct {
 	EdgelessDBHost            string
 	SqliteDBPath              string
 	ProfilerEnabled           bool
+	MinGasPrice               int64
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -55,6 +57,7 @@ func ParseConfig() config.EnclaveConfig {
 	edgelessDBHost := flag.String(edgelessDBHostName, cfg.EdgelessDBHost, flagUsageMap[edgelessDBHostName])
 	sqliteDBPath := flag.String(sqliteDBPathName, cfg.SqliteDBPath, flagUsageMap[sqliteDBPathName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
+	minGasPrice := flag.Int64(minGasPriceName, cfg.MinGasPrice.Int64(), flagUsageMap[minGasPriceName])
 
 	flag.Parse()
 
@@ -90,6 +93,7 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.EdgelessDBHost = *edgelessDBHost
 	cfg.SqliteDBPath = *sqliteDBPath
 	cfg.ProfilerEnabled = *profilerEnabled
+	cfg.MinGasPrice = big.NewInt(*minGasPrice)
 
 	return cfg
 }
