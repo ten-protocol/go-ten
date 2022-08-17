@@ -33,10 +33,7 @@ var (
 // Runs the build_geth_binary.sh while handling source directory call
 func EnsureBinariesExist(version string) (string, error) {
 	if os.Getenv(envUseGethBinary) == "true" {
-		println("jjj using geth binary")
 		return path.Join(basepath, gethPrecompiledBinaryPathRel), nil
-	} else {
-		println("jjj not using geth binary")
 	}
 
 	creationLock.Lock()

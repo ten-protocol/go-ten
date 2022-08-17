@@ -37,7 +37,7 @@ jobs:
         with:
           max_attempts: 3
           retry_on: error
-          timeout_minutes: 600 # This is a required field. We set it high enough to not be hit in practice.
+          timeout_seconds: 15 # This is a required field. We set it high enough to not be hit in practice.
           command: go test --failfast -v ./...
 
       - name: Store simulation logs
