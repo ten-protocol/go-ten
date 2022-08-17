@@ -54,9 +54,9 @@ func NewInMemObscuroClient(nodeHost host.Host) rpcclientlib.Client {
 	}
 }
 
-func NewInMemoryViewingKeyClient(host host.Host) *rpcclientlib.ViewingKeyClient {
+func NewInMemoryEncRPCClient(host host.Host, viewingKey *rpcclientlib.ViewingKey) *rpcclientlib.EncRPCClient {
 	inMemClient := NewInMemObscuroClient(host)
-	vkClient, err := rpcclientlib.NewViewingKeyClient(inMemClient)
+	vkClient, err := rpcclientlib.NewEncRPCClient(inMemClient, viewingKey)
 	if err != nil {
 		panic(err)
 	}

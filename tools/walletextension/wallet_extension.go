@@ -59,9 +59,10 @@ var staticFiles embed.FS
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
-	hostAddr         string           // The address on which the Obscuro host can be reached.
-	hostClient       *rpcclientlib.ViewingKeyClient
+	enclavePublicKey *ecies.PublicKey                              // The public key used to encrypt requests for the enclave.
+	hostAddr         string                                        // The address on which the Obscuro host can be reached.
+	accountClients   map[common.Address]*rpcclientlib.EncRPCClient // an encrypted RPC client per registered account
+	unsignedVKs      map[common.Address]*rpcclientlib.ViewingKey   // map temporarily holding VKs that have been generated but not yet signed
 	server           *http.Server
 }
 
@@ -80,14 +81,11 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 	setLogs(config.LogPath)
 
-	client, err := rpcclientlib.NewViewingKeyNetworkClient(config.NodeRPCHTTPAddress)
-	if err != nil {
-		panic(err)
-	}
 	return &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
-		hostAddr:         config.NodeRPCWebsocketAddress,
-		hostClient:       client,
+		hostAddr:         config.NodeRPCHTTPAddress,
+		accountClients:   make(map[common.Address]*rpcclientlib.EncRPCClient),
+		unsignedVKs:      make(map[common.Address]*rpcclientlib.ViewingKey),
 	}
 }
 
@@ -162,8 +160,25 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
+	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
+	suggestedClient := suggestAccountClient(rpcReq, we.accountClients)
+
 	var rpcResp interface{}
-	err = we.hostClient.Call(&rpcResp, rpcReq.method, rpcReq.params...)
+	if suggestedClient != nil {
+		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
+		// 		The call data guessing won't often be wrong but there could be edge-cases there
+		err = executeCall(suggestedClient, rpcReq, &rpcResp)
+	} else {
+		// we attempt the request with every client until we have a successful execution
+		log.Info("appropriate client not found, attempting request with up to %d clients", len(we.accountClients))
+		for _, client := range we.accountClients {
+			err = executeCall(client, rpcReq, &rpcResp)
+			if err == nil || errors.Is(err, rpcclientlib.ErrNilResponse) {
+				// request didn't fail, we don't need to continue trying the other clients
+				break
+			}
+		}
+	}
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpcclientlib.ErrNilResponse) {
@@ -201,6 +216,11 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
 		return
 	}
+}
+
+//
+func executeCall(client *rpcclientlib.EncRPCClient, req *rpcRequest, resp *interface{}) error {
+	return client.Call(resp, req.method, req.params...)
 }
 
 func parseRequest(body []byte) (*rpcRequest, error) {
@@ -260,7 +280,13 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 	}
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-	we.hostClient.SetViewingKey(viewingPrivateKeyEcies, common.HexToAddress(reqJSONMap[ReqJSONKeyAddress]), viewingPublicKeyBytes)
+	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
+	we.unsignedVKs[accAddress] = &rpcclientlib.ViewingKey{
+		Account:    &accAddress,
+		PrivateKey: viewingPrivateKeyEcies,
+		PublicKey:  viewingPublicKeyBytes,
+		SignedKey:  nil, // we await a signature from the user before we can setup the EncRPCClient
+	}
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
@@ -286,6 +312,12 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 		logAndSendErr(resp, fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
+	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
+	vk, found := we.unsignedVKs[accAddress]
+	if !found {
+		logAndSendErr(resp, fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", accAddress, PathGenerateViewingKey))
+		return
+	}
 
 	//  We drop the leading "0x".
 	signature, err := hex.DecodeString(reqJSONMap[ReqJSONKeySignature][2:])
@@ -298,12 +330,16 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	// We return the hex of the viewing key's public key for MetaMask to sign over.
-	err = we.hostClient.RegisterViewingKey(signature, common.HexToAddress(reqJSONMap[ReqJSONKeyAddress]))
+	vk.SignedKey = signature
+	// create an encrypted RPC client with the signed VK and register it with the enclave
+	client, err := rpcclientlib.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("RPC request to register viewing key failed: %s", err))
-		return
+		logAndSendErr(resp, fmt.Sprintf("failed to create encrypted RPC client for acc=%s - %s", accAddress, err))
 	}
+	we.accountClients[accAddress] = client
+
+	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
+	delete(we.unsignedVKs, accAddress)
 }
 
 // Logs the error message and sends it as an HTTP error.

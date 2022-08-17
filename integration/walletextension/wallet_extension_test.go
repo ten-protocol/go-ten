@@ -543,7 +543,7 @@ func createObscuroNetwork(t *testing.T) {
 		GasPrice: common.Big0,
 		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
-	generateAndSubmitViewingKey(t, walletExtensionAddr, walletExtensionAddr, txWallet.PrivateKey())
+	generateAndSubmitViewingKey(t, walletExtensionAddr, txWallet.Address().String(), txWallet.PrivateKey())
 	txBinaryHex, err := formatTxForSubmission(txWallet, &deployContractTx)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
