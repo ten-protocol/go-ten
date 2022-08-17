@@ -412,11 +412,10 @@ func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes 
 	if len(unavailablePorts) > 0 {
 		// We attempt to kill the processes on the unavailable ports. This is best-efforts only (e.g. `lsof` may not exist).
 		for _, port := range unavailablePorts {
-			cmd := exec.Command(fmt.Sprintf("kill -9 $(lsof -t -i:%d)", port))
-			err := cmd.Run()
-			if err != nil {
-				// Ignore. This is best-efforts only.
-			}
+			cmdString := fmt.Sprintf("kill -9 $(lsof -t -i:%d)", port)
+			cmd := exec.Command(cmdString)
+			// Ignore any errors. This is best-efforts only.
+			cmd.Run() //nolint:errcheck
 		}
 		time.Sleep(time.Second)
 
