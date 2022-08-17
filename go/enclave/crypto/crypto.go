@@ -87,3 +87,21 @@ func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 	}
 	return plaintext, nil
 }
+
+func GeneratePublicRandomness() []byte {
+	return randomBytes(gethcommon.HashLength)
+}
+
+// PrivateRollupRnd - generates randomness known only inside the enclave
+// Todo - this is currently a naive implementation
+func PrivateRollupRnd(publicRnd []byte, secret []byte) []byte {
+	return crypto.Keccak256Hash(publicRnd, secret).Bytes()
+}
+
+func randomBytes(length int) []byte {
+	byteArr := make([]byte, length)
+	if _, err := rand.Read(byteArr); err != nil {
+		panic(err)
+	}
+	return byteArr
+}

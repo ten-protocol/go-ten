@@ -9,7 +9,7 @@ import (
 
 // ObscuroChainContext - basic implementation of the ChainContext needed for the EVM integration
 type ObscuroChainContext struct {
-	rollupResolver db.RollupResolver
+	storage db.Storage
 }
 
 func (*ObscuroChainContext) Engine() consensus.Engine {
@@ -17,9 +17,11 @@ func (*ObscuroChainContext) Engine() consensus.Engine {
 }
 
 func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *types.Header {
-	rol, f := occ.rollupResolver.FetchRollup(hash)
+	rol, f := occ.storage.FetchRollup(hash)
+
 	if !f {
 		return nil
 	}
-	return convertToEthHeader(rol.Header)
+	secret := occ.storage.FetchSecret()
+	return convertToEthHeader(rol.Header, secret[:])
 }
