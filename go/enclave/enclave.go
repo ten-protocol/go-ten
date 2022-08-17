@@ -282,11 +282,10 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 
-	txGasPrice := decryptedTx.GasPrice()
-	minGasPrice := e.config.MinGasPrice
-	if txGasPrice.Cmp(minGasPrice) == -1 {
-		log.Info(fmt.Sprintf("rejected transaction %s. Gas price was only %d, wanted at least %d", decryptedTx.Hash(), txGasPrice, minGasPrice))
-		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+	err = e.checkGas(decryptedTx)
+	if err != nil {
+		log.Info(err.Error())
+		return nil, err
 	}
 
 	err = e.mempool.AddMempoolTx(decryptedTx)
@@ -516,6 +515,18 @@ func (e *enclaveImpl) Stop() error {
 		return e.profiler.Stop()
 	}
 
+	return nil
+}
+
+func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
+	txGasPrice := tx.GasPrice()
+	if txGasPrice == nil {
+		return fmt.Errorf("rejected transaction %s. No gas price was set", tx.Hash())
+	}
+	minGasPrice := e.config.MinGasPrice
+	if txGasPrice.Cmp(minGasPrice) == -1 {
+		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
+	}
 	return nil
 }
 
