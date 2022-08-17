@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -105,4 +106,9 @@ func randomBytes(length int) []byte {
 		panic(err)
 	}
 	return byteArr
+}
+
+// PerTransactionRnd - calculates a per tx random value
+func PerTransactionRnd(privateRnd []byte, tCount int) []byte {
+	return crypto.Keccak256Hash(privateRnd, big.NewInt(int64(tCount)).Bytes()).Bytes()
 }

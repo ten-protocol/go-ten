@@ -4,6 +4,7 @@ import (
 	"math"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -47,8 +48,12 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 	s.Prepare(t.Hash(), tCount)
 	snap := s.Snapshot()
 
+	before := header.MixDigest
+	// calculate a random value per transaction
+	header.MixDigest = gethcommon.BytesToHash(crypto.PerTransactionRnd(before.Bytes(), tCount))
 	// todo - Author?
 	receipt, err := gethcore.ApplyTransaction(cc, chain, nil, gp, s, header, t, usedGas, vmCfg)
+	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
 		return nil, err
