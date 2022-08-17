@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"sync"
 	"time"
 
@@ -49,16 +48,9 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
-	//s.prefundObscuroAccounts() // Prefund every L2 wallet
-	s.deployObscuroERC20s() // Deploy the Obscuro OBX and ETH ERC20 contracts
-	s.prefundL1Accounts()   // Prefund every L1 wallet
-
-	err := s.RPCHandles.ObscuroClients[0].Call(nil, rpcclientlib.RPCGetCode, "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC", "latest")
-	if err != nil {
-		panic(err)
-	}
-
-	os.Exit(0)
+	s.prefundObscuroAccounts() // Prefund every L2 wallet
+	s.deployObscuroERC20s()    // Deploy the Obscuro OBX and ETH ERC20 contracts
+	s.prefundL1Accounts()      // Prefund every L1 wallet
 
 	timer := time.Now()
 	log.Info("Starting injection")
@@ -237,8 +229,6 @@ func (s *Simulation) awaitReceipt(wallet wallet.Wallet, signedTxHash gethcommon.
 		if receipt.Status == types.ReceiptStatusFailed {
 			return fmt.Errorf("receipt had status failed")
 		}
-
-		println("jjj contract deployed at: ", receipt.ContractAddress.Hex())
 
 		return nil
 	}
