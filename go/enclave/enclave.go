@@ -281,6 +281,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
+
+	// todo - joel - use config entry, here and in error below below
+	if decryptedTx.GasPrice().Cmp(big.NewInt(1)) == -1 {
+		log.Info(fmt.Sprintf("rejected transaction %s. Gas price was only %d, wanted at least %d", decryptedTx.Hash(), decryptedTx.GasPrice()), 1)
+		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+	}
+
 	err = e.mempool.AddMempoolTx(decryptedTx)
 	if err != nil {
 		return nil, err
