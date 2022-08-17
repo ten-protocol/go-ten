@@ -8,6 +8,7 @@ const (
 	RPCAddViewingKey           = "obscuro_addViewingKey"
 	RPCCall                    = "eth_call"
 	RPCChainID                 = "eth_chainId"
+	RPCGetCode                 = "eth_getCode"
 	RPCGetBalance              = "eth_getBalance"
 	RPCGetTransactionByHash    = "eth_getTransactionByHash"
 	RPCNonce                   = "eth_getTransactionCount"

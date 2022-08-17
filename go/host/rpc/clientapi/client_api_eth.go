@@ -129,7 +129,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 	rollupHeight, ok := blockNrOrHash.Number()
 	if ok {
 		rollupHash := api.host.DB().GetRollupHash(big.NewInt(rollupHeight.Int64()))
-		if rollupHash != nil {
+		if rollupHash == nil {
 			return nil, nil
 		}
 		return api.host.EnclaveClient().GetCode(address, rollupHash)
