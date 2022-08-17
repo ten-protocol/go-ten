@@ -40,7 +40,7 @@ import (
 
 const (
 	nonceTimeoutMillis   = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
-	receiptTimeoutMillis = 30000 // The timeout in millis to wait for a receipt for a transaction.
+	receiptTimeoutMillis = 60000 // The timeout in millis to wait for a receipt for a transaction.
 
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
