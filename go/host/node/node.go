@@ -415,7 +415,10 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 			a.processBlock(decoded)
 
 			// submit each block to the enclave for ingestion plus validation
-			result = a.enclaveClient.SubmitBlock(*decoded)
+			result, err = a.enclaveClient.SubmitBlock(*decoded)
+			if err != nil {
+				return err
+			}
 			a.storeBlockProcessingResult(result)
 		}
 	}

@@ -132,7 +132,10 @@ func (s *server) Start(_ context.Context, request *generated.StartRequest) (*gen
 
 func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
-	blockSubmissionResponse := s.enclave.SubmitBlock(bl)
+	blockSubmissionResponse, err := s.enclave.SubmitBlock(bl)
+	if err != nil {
+		return nil, err
+	}
 
 	msg := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
