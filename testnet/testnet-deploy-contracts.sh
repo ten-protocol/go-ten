@@ -14,6 +14,8 @@ help_and_exit() {
     echo ""
     echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
     echo ""
+    echo "  docker_image       *Optional* Sets the docker image to use. Defaults to testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
+    echo ""
     echo ""
     echo ""
     exit 1  # Exit with error explicitly
@@ -27,6 +29,7 @@ testnet_path="${start_path}"
 
 # Define defaults
 l1port=9000
+deployer_docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
 
 # Fetch options
 for argument in "$@"
@@ -38,6 +41,7 @@ do
             --l1host)                   l1host=${value} ;;
             --l1port)                   l1port=${value} ;;
             --pkstring)                 pkstring=${value} ;;
+            --docker_image)             docker_image=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac
@@ -58,7 +62,7 @@ echo "Deploying Obscuro management contract to L1 network"
 docker run --name=mgmtcontractdeployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
+    "${deployer_docker_image}" \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
@@ -74,7 +78,7 @@ echo "Deploying JAM ERC20 contract to L1 network"
 docker run --name=jamerc20deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
+     "${deployer_docker_image}" \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
@@ -91,7 +95,7 @@ echo "Deploying ETH ERC20 contract to L1 network"
 docker run --name=etherc20deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest \
+     "${deployer_docker_image}" \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \

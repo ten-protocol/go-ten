@@ -263,10 +263,10 @@ jobs:
     needs: deploy-l2
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-l2-contracts.sh --l2host=dev-obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./testnet/testnet-deploy-l2-contracts.sh --l2host=dev-obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --docker_image=${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_contractdeployer:latest
