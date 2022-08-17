@@ -31,14 +31,13 @@ jobs:
         run: go build -v ./...
 
       - name: Test
-        uses: nick-fields/retry@v2 # Used to automatically perform two retries if the tests fail.
+        uses: Wandalen/wretry.action@v1.0.11 # Used to automatically perform two retries if the tests fail.
         env:
           USE_GETH_BINARY: true
         with:
-          max_attempts: 3
-          retry_on: error
-          timeout_minutes: 60 # This is a required field. We set it high enough to not be hit in practice.
           command: go test --failfast -v ./...
+          attempt_limit: 3
+          attempt_delay: 2000
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
