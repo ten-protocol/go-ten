@@ -244,7 +244,7 @@ func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []common.BlockSubmissi
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block) common.BlockSubmissionResponse {
+func (e *enclaveImpl) SubmitBlock(block types.Block) (common.BlockSubmissionResponse, error) {
 	bsr := e.chain.SubmitBlock(block)
 
 	if bsr.RollupHead != nil {
@@ -255,7 +255,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) common.BlockSubmissionRespo
 		e.mempool.RemoveMempoolTxs(hr, e.storage)
 	}
 
-	return bsr
+	return bsr, nil
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
