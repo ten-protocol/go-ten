@@ -17,7 +17,9 @@ func convertToEthHeader(h *common.Header, secret []byte) *types.Header {
 		panic(err)
 	}
 
+	// deterministically calculate private randomness that will be exposed to the evm
 	randomness := crypto.PrivateRollupRnd(h.MixDigest.Bytes(), secret)
+
 	return &types.Header{
 		ParentHash:  h.ParentHash,
 		Root:        h.Root,

@@ -22,6 +22,5 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *type
 	if !f {
 		return nil
 	}
-	secret := occ.storage.FetchSecret()
-	return convertToEthHeader(rol.Header, secret[:])
+	return convertToEthHeader(rol.Header, secret(occ.storage))
 }

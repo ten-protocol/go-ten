@@ -88,12 +88,12 @@ func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 	return plaintext, nil
 }
 
+// GeneratePublicRandomness - generate 32 bytes of randomness, which will be exposed in the rollup header.
 func GeneratePublicRandomness() []byte {
 	return randomBytes(gethcommon.HashLength)
 }
 
-// PrivateRollupRnd - generates randomness known only inside the enclave
-// Todo - this is currently a naive implementation
+// PrivateRollupRnd - combine public randomness with private randomness in a way that protects the secret.
 func PrivateRollupRnd(publicRnd []byte, secret []byte) []byte {
 	return crypto.Keccak256Hash(publicRnd, secret).Bytes()
 }
