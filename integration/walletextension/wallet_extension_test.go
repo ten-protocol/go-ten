@@ -49,8 +49,9 @@ const (
 	reqJSONKeyTo      = "to"
 	reqJSONKeyFrom    = "from"
 	reqJSONKeyData    = "data"
-	respJSONKeyResult = "result"
+	respJSONKeyStatus = "status"
 	latestBlock       = "latest"
+	statusSuccess     = "0x1"
 	errInsecure       = "enclave could not respond securely to %s request"
 
 	networkStartPort = integration.StartPortWalletExtensionTest + 1
@@ -93,8 +94,8 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 
 	respJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCChainID, []string{})
 
-	if respJSON[respJSONKeyResult] != l2ChainIDHex {
-		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[respJSONKeyResult])
+	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
+		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -138,8 +139,8 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{accountAddr.String(), latestBlock})
 
-	if getBalanceJSON[respJSONKeyResult] != zeroBalance {
-		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[respJSONKeyResult])
+	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
+		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -232,7 +233,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	callJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCCall, []interface{}{reqParams, latestBlock})
 
 	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
-		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[respJSONKeyResult])
+		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -463,8 +464,8 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 	randAccountAddr := accountAddrs[len(accountAddrs)/2]
 	getBalanceJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{randAccountAddr, latestBlock})
 
-	if getBalanceJSON[respJSONKeyResult] != zeroBalance {
-		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[respJSONKeyResult])
+	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
+		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -645,19 +646,34 @@ func createObscuroNetwork(t *testing.T) (func(), error) {
 	sendTxJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 
 	// Verify the Obscuro ERC20 contract deployed successfully
-	_, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
+	txHash, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
 		panic("could not retrieve transaction hash from JSON result, failed to deploy ERC20")
 	}
 
-	// We wait ten seconds for the first rollup to be published, to ensure the network is ready.
-	firstRollupIdx := 1
 	counter := 0
+	for {
+		if counter > 10 {
+			t.Fatalf("could not get ERC20 receipt after 10 seconds")
+		}
+		getReceiptJSON := makeEthJSONReqAsJSON(t, walletExtensionAddr, rpcclientlib.RPCGetTxReceipt, []interface{}{txHash})
+		getReceiptJSONResult, ok := getReceiptJSON[walletextension.RespJSONKeyResult].(map[string]interface{})
+		if ok && getReceiptJSONResult[respJSONKeyStatus] == statusSuccess {
+			break
+		}
+		time.Sleep(1 * time.Second)
+		counter++
+	}
+
+	// todo - joel - break above into methods
+	// todo - joel - now need to do prealloc
+
+	// We wait ten seconds for the first rollup to be published, to ensure the network is ready.
 	for {
 		if counter > 10 {
 			t.Fatalf("first rollup had not been published after 10 seconds")
 		}
-		rollupResp := makeEthJSONReq(t, walletExtensionAddr, rpcclientlib.RPCGetRollupHeaderByNumber, []int{firstRollupIdx})
+		rollupResp := makeEthJSONReq(t, walletExtensionAddr, rpcclientlib.RPCGetRollupHeaderByNumber, []int{1})
 		// If the rollup request gives an error, the first rollup hasn't been published yet.
 		isFirstRollupPublished := !strings.Contains(string(rollupResp), "rpc request failed")
 		if isFirstRollupPublished {
