@@ -29,7 +29,7 @@ testnet_path="${start_path}"
 
 # Define defaults
 l1port=9000
-deployer_docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
+docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
 
 # Fetch options
 for argument in "$@"
@@ -62,7 +62,7 @@ echo "Deploying Obscuro management contract to L1 network"
 docker run --name=mgmtcontractdeployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-    "${deployer_docker_image}" \
+    "${docker_image}" \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
@@ -78,7 +78,7 @@ echo "Deploying JAM ERC20 contract to L1 network"
 docker run --name=jamerc20deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     "${deployer_docker_image}" \
+     "${docker_image}" \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
@@ -95,7 +95,7 @@ echo "Deploying ETH ERC20 contract to L1 network"
 docker run --name=etherc20deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     "${deployer_docker_image}" \
+     "${docker_image}" \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
