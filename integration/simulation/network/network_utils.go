@@ -78,20 +78,16 @@ func createInMemObscuroNode(
 		HasClientRPCHTTP:    false,
 	}
 
-	enclaveConfig := config.EnclaveConfig{
-		HostID:                 hostConfig.ID,
-		L1ChainID:              integration.EthereumChainID,
-		ObscuroChainID:         integration.ObscuroChainID,
-		WillAttest:             false,
-		ValidateL1Blocks:       validateBlocks,
-		GenesisJSON:            genesisJSON,
-		UseInMemoryDB:          true,
-		ERC20ContractAddresses: wallets.AllEthAddresses(),
-	}
+	enclaveConfig := config.DefaultEnclaveConfig()
+	enclaveConfig.HostID = hostConfig.ID
+	enclaveConfig.ValidateL1Blocks = validateBlocks
+	enclaveConfig.GenesisJSON = genesisJSON
+	enclaveConfig.ERC20ContractAddresses = wallets.AllEthAddresses()
+
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
 
 	// create an in memory obscuro node
-	node := node.NewHost(
+	inMemNode := node.NewHost(
 		hostConfig,
 		stats,
 		obscuroInMemNetwork,
@@ -100,9 +96,9 @@ func createInMemObscuroNode(
 		ethWallet,
 		mgmtContractLib,
 	)
-	obscuroInMemNetwork.CurrentNode = node
-	node.ConnectToEthNode(ethClient)
-	return node
+	obscuroInMemNetwork.CurrentNode = inMemNode
+	inMemNode.ConnectToEthNode(ethClient)
+	return inMemNode
 }
 
 func createSocketObscuroNode(
@@ -142,7 +138,7 @@ func createSocketObscuroNode(
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
 
-	node := node.NewHost(
+	socketNode := node.NewHost(
 		hostConfig,
 		stats,
 		nodeP2p,
@@ -152,8 +148,8 @@ func createSocketObscuroNode(
 		mgmtContractLib,
 	)
 
-	node.ConnectToEthNode(ethClient)
-	return node
+	socketNode.ConnectToEthNode(ethClient)
+	return socketNode
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {

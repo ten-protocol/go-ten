@@ -16,8 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave"
-	"github.com/obscuronet/go-obscuro/integration"
-
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
@@ -190,20 +188,13 @@ func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []r
 func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {
 	for i := startAt; i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
-		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
-		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
-		enclaveConfig := config.EnclaveConfig{
-			HostID:                 common.BigToAddress(big.NewInt(int64(i))),
-			HostAddress:            hostAddr,
-			Address:                enclaveAddr,
-			L1ChainID:              integration.EthereumChainID,
-			ObscuroChainID:         integration.ObscuroChainID,
-			ValidateL1Blocks:       false,
-			WillAttest:             false,
-			GenesisJSON:            nil,
-			UseInMemoryDB:          false,
-			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
-		}
+		enclaveConfig := config.DefaultEnclaveConfig()
+		enclaveConfig.HostID = common.BigToAddress(big.NewInt(int64(i)))
+		enclaveConfig.HostAddress = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
+		enclaveConfig.Address = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
+		enclaveConfig.UseInMemoryDB = false
+		enclaveConfig.ERC20ContractAddresses = params.Wallets.AllEthAddresses()
+
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create enclave server: %v", err))
