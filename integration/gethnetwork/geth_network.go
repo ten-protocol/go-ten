@@ -407,6 +407,28 @@ func waitForIPC(dataDir string) {
 }
 
 func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes int) error {
+	unavailablePorts := findUnavailablePorts(startPort, websocketStartPort, numberNodes)
+
+	if len(unavailablePorts) > 0 {
+		// We attempt to kill the processes on the unavailable ports. This is best-efforts only (e.g. `lsof` may not exist).
+		for _, port := range unavailablePorts {
+			cmd := exec.Command(fmt.Sprintf("kill -9 $(lsof -t -i:%d)", port))
+			err := cmd.Run()
+			if err != nil {
+				// Ignore. This is best-efforts only.
+			}
+		}
+		time.Sleep(time.Second)
+
+		unavailablePorts = findUnavailablePorts(startPort, websocketStartPort, numberNodes)
+		unavailablePortList, _ := json.Marshal(unavailablePorts)
+		return fmt.Errorf("could not run geth network because the following test ports are unavailable: %s", unavailablePortList)
+	}
+
+	return nil
+}
+
+func findUnavailablePorts(startPort int, websocketStartPort int, numberNodes int) []int {
 	var unavailablePorts []int
 
 	for i := 0; i < numberNodes; i++ {
@@ -420,11 +442,7 @@ func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes 
 		}
 	}
 
-	if len(unavailablePorts) > 0 {
-		list, _ := json.Marshal(unavailablePorts)
-		return fmt.Errorf("could not run geth network because test ports are unavailable for use - the following ports were unavailable: %s", list)
-	}
-	return nil
+	return unavailablePorts
 }
 
 func isPortAvailable(port int) bool {
