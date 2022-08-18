@@ -27,7 +27,7 @@ const (
 	mgmtContract         = "MGMT"
 	l2Erc20Contract      = "L2ERC20"
 	l1Erc20Contract      = "L1ERC20"
-	guessingGameContract = "GUESS"
+	GuessingGameContract = "GUESS"
 )
 
 const (
@@ -234,7 +234,7 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		tokenName := cfg.ConstructorParams[0]
 		return erc20contract.L1BytecodeWithDefaultSupply(tokenName), nil
 
-	case guessingGameContract:
+	case GuessingGameContract:
 		size, err := strconv.Atoi(cfg.ConstructorParams[0])
 		if err != nil {
 			return nil, err
