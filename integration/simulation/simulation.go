@@ -161,7 +161,7 @@ func (s *Simulation) deployObscuroERC20s() {
 			deployContractTx := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.RPCHandles, owner),
 				Gas:       1025_000_000,
-				GasFeeCap: gethcommon.Big1,
+				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
 				Data:      contractBytes,
 			}
 			signedTx, err := owner.SignTransaction(&deployContractTx)
