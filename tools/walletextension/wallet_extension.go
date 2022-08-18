@@ -219,6 +219,17 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 }
 
 func executeCall(client *rpcclientlib.EncRPCClient, req *rpcRequest, resp *interface{}) error {
+	var err error
+	if req.method == rpcclientlib.RPCCall {
+		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
+		//	and is often not included from metamask etc. So we ensure it is populated here.
+		account := client.Account()
+		req.params, err = setCallFromFieldIfMissing(req.params, *account)
+		if err != nil {
+			return err
+		}
+	}
+
 	return client.Call(resp, req.method, req.params...)
 }
 
@@ -339,6 +350,25 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(we.unsignedVKs, accAddress)
+}
+
+// The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
+// don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
+// field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
+func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
+	callParams, err := parseParams(args)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
+	}
+
+	// We only modify `eth_call` requests where the `from` field is not set.
+	if callParams[reqJSONKeyFrom] != nil {
+		return args, nil
+	}
+
+	callParams[reqJSONKeyFrom] = account
+	args[0] = callParams
+	return args, nil
 }
 
 // Logs the error message and sends it as an HTTP error.

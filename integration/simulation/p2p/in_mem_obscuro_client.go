@@ -56,11 +56,11 @@ func NewInMemObscuroClient(nodeHost host.Host) rpcclientlib.Client {
 
 func NewInMemoryEncRPCClient(host host.Host, viewingKey *rpcclientlib.ViewingKey) *rpcclientlib.EncRPCClient {
 	inMemClient := NewInMemObscuroClient(host)
-	vkClient, err := rpcclientlib.NewEncRPCClient(inMemClient, viewingKey)
+	encClient, err := rpcclientlib.NewEncRPCClient(inMemClient, viewingKey)
 	if err != nil {
 		panic(err)
 	}
-	return vkClient
+	return encClient
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.

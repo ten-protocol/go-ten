@@ -9,8 +9,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
-	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
-
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -159,7 +157,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []rpcclientlib.Client {
 	clients := make([]rpcclientlib.Client, len(nodes))
 	for i, node := range nodes {
-		vk, err := viewkey.GenerateAndSignViewingKey(wal)
+		vk, err := rpcclientlib.GenerateAndSignViewingKey(wal)
 		if err != nil {
 			panic(err)
 		}
@@ -174,7 +172,7 @@ func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []
 func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []rpcclientlib.Client {
 	clients := make([]rpcclientlib.Client, len(nodeRPCAddresses))
 	for i, addr := range nodeRPCAddresses {
-		vk, err := viewkey.GenerateAndSignViewingKey(wal)
+		vk, err := rpcclientlib.GenerateAndSignViewingKey(wal)
 		if err != nil {
 			panic(err)
 		}

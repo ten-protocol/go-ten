@@ -1,23 +1,30 @@
-package viewkey
+package rpcclientlib
 
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
-// This package contains viewing key utils for testing and simulations
+// ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave
+type ViewingKey struct {
+	Account    *common.Address   // Account address that this private key is bound to
+	PrivateKey *ecies.PrivateKey // private viewing key
+	PublicKey  []byte            // public viewing key in bytes to share with enclave
+	SignedKey  []byte            // public viewing key signed by the Account's private key
+}
 
 // GenerateAndSignViewingKey takes an account wallet, it generate a viewing key and signs the key with the acc's private key
-func GenerateAndSignViewingKey(wal wallet.Wallet) (*rpcclientlib.ViewingKey, error) {
+func GenerateAndSignViewingKey(wal wallet.Wallet) (*ViewingKey, error) {
 	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
 	vk, err := crypto.GenerateKey()
 	if err != nil {
@@ -38,7 +45,7 @@ func GenerateAndSignViewingKey(wal wallet.Wallet) (*rpcclientlib.ViewingKey, err
 	}
 
 	accAddress := wal.Address()
-	return &rpcclientlib.ViewingKey{
+	return &ViewingKey{
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyECIES,
 		PublicKey:  viewingPubKeyBytes,

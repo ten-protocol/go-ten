@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
 const (
-	http           = "http://"
-	reqJSONKeyFrom = "from"
-
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
@@ -21,11 +19,11 @@ const (
 // for these methods, the RPC method's requests and responses should be encrypted
 var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTxReceipt, RPCSendRawTransaction, RPCGetTransactionByHash}
 
-type ViewingKey struct {
-	Account    *common.Address   // Account address that this private key is bound to
-	PrivateKey *ecies.PrivateKey // private viewing key
-	PublicKey  []byte            // public viewing key in bytes to share with enclave
-	SignedKey  []byte            // public viewing key signed by the Account's private key
+// EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
+type EncRPCClient struct {
+	obscuroClient    Client
+	enclavePublicKey *ecies.PublicKey // Used to encrypt messages destined to the enclave.
+	viewingKey       *ViewingKey
 }
 
 // NewEncRPCClient sets up a client with a viewing key for encrypted communication (this submits the VK to the enclave)
@@ -37,37 +35,17 @@ func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, erro
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	vkClient := &EncRPCClient{
+	encClient := &EncRPCClient{
 		obscuroClient:    client,
 		enclavePublicKey: enclavePublicKey,
 		viewingKey:       viewingKey,
 	}
-	err = vkClient.RegisterViewingKey()
+	err = encClient.registerViewingKey()
 	if err != nil {
 		return nil, err
 	}
 
-	return vkClient, nil
-}
-
-// NewEncNetworkClient returns a network RPC client with Viewing Key encryption/decryption
-func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClient, error) {
-	rpcClient, err := NewNetworkClient(rpcAddress)
-	if err != nil {
-		return nil, err
-	}
-	vkClient, err := NewEncRPCClient(rpcClient, viewingKey)
-	if err != nil {
-		return nil, err
-	}
-	return vkClient, nil
-}
-
-// EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
-type EncRPCClient struct {
-	obscuroClient    Client
-	enclavePublicKey *ecies.PublicKey // Used to encrypt messages destined to the enclave.
-	viewingKey       *ViewingKey
+	return encClient, nil
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
@@ -79,19 +57,8 @@ func (c *EncRPCClient) Call(result interface{}, method string, args ...interface
 		return c.obscuroClient.Call(result, method, args...)
 	}
 
-	var err error
-	if method == RPCCall {
-		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
-		//	and is often not included from metamask etc. So we ensure it is populated here.
-		args, err = c.setFromFieldIfMissing(args)
-		if err != nil {
-			return err
-		}
-	}
-
 	// encode the params into a json blob and encrypt them
-	var encryptedParams []byte
-	encryptedParams, err = c.encryptArgs(args...)
+	encryptedParams, err := c.encryptArgs(args...)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
@@ -126,6 +93,14 @@ func (c *EncRPCClient) Call(result interface{}, method string, args ...interface
 	}
 
 	return nil
+}
+
+func (c *EncRPCClient) Stop() {
+	c.obscuroClient.Stop()
+}
+
+func (c *EncRPCClient) Account() *common.Address {
+	return c.viewingKey.Account
 }
 
 func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
@@ -185,12 +160,8 @@ func (c *EncRPCClient) setResult(data []byte, result interface{}) error {
 	}
 }
 
-func (c *EncRPCClient) Stop() {
-	c.obscuroClient.Stop()
-}
-
-// RegisterViewingKey submits the viewing key with signature to the enclave, this must be called before the viewing key is usable
-func (c *EncRPCClient) RegisterViewingKey() error {
+// registerViewingKey submits the viewing key with signature to the enclave, this must be called before the viewing key is usable
+func (c *EncRPCClient) registerViewingKey() error {
 	// TODO: Store signatures to be able to resubmit keys if they are evicted by the node?
 	// We encrypt the viewing key bytes
 	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingKey.PublicKey, nil, nil)
@@ -206,25 +177,6 @@ func (c *EncRPCClient) RegisterViewingKey() error {
 	return nil
 }
 
-// The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
-// don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
-// field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
-func (c *EncRPCClient) setFromFieldIfMissing(args []interface{}) ([]interface{}, error) {
-	callParams, err := parseCallParams(args)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
-	}
-
-	// We only modify `eth_call` requests where the `from` field is not set.
-	if callParams[reqJSONKeyFrom] != nil {
-		return args, nil
-	}
-
-	callParams[reqJSONKeyFrom] = c.viewingKey.Account
-	args[0] = callParams
-	return args, nil
-}
-
 // isSensitive indicates whether the RPC method's requests and responses should be encrypted.
 func isSensitive(method interface{}) bool {
 	for _, m := range sensitiveMethods {
@@ -233,28 +185,4 @@ func isSensitive(method interface{}) bool {
 		}
 	}
 	return false
-}
-
-// Many eth RPC requests provide params in a json map with similar fields (e.g. a `from` field)
-func parseCallParams(args []interface{}) (map[string]interface{}, error) {
-	if len(args) == 0 {
-		return nil, fmt.Errorf("no params found to unmarshal")
-	}
-
-	params, ok := args[0].(map[string]interface{})
-	if !ok {
-		callParamsJSON, ok := args[0].([]byte)
-		if !ok {
-			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes but "+
-				"was %t", args[0])
-		}
-
-		err := json.Unmarshal(callParamsJSON, &params)
-		if err != nil {
-			return nil, fmt.Errorf("expected eth_call first param to be a map or json encoded bytes, "+
-				"failed to decode: %w", err)
-		}
-	}
-
-	return params, nil
 }

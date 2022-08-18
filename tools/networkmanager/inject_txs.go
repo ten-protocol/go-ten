@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
@@ -87,7 +85,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 	clients := make(map[string][]rpcclientlib.Client)
 
 	for _, w := range wallets.SimObsWallets {
-		vk, err := viewkey.GenerateAndSignViewingKey(w)
+		vk, err := rpcclientlib.GenerateAndSignViewingKey(w)
 		if err != nil {
 			panic(err)
 		}
@@ -100,7 +98,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
-		vk, err := viewkey.GenerateAndSignViewingKey(w)
+		vk, err := rpcclientlib.GenerateAndSignViewingKey(w)
 		if err != nil {
 			panic(err)
 		}
