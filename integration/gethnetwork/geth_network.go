@@ -221,7 +221,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		wg.Add(1)
 		go func(idx int, dataDir string) {
 			defer wg.Done()
-			waitForIPC(dataDir) // We cannot issue RPC commands until the IPC files are available.
+			network.waitForIPC(dataDir) // We cannot issue RPC commands until the IPC files are available.
 			enodeAddrs[idx] = network.IssueCommand(idx, enodeCmd)
 		}(idx, dataDir)
 	}
@@ -253,6 +253,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 	output, err := cmd.Output()
 	if err != nil {
+		network.StopNodes() // We stop any nodes started so far.
 		panic(err)
 	}
 
@@ -359,6 +360,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	cmd.Stderr = network.logNodeID(idx)
 
 	if err := cmd.Start(); err != nil {
+		network.StopNodes() // We stop any nodes started so far.
 		panic(fmt.Errorf("could not start Geth node. Cause: %w", err))
 	}
 	network.nodesProcs[idx] = cmd.Process
@@ -380,7 +382,7 @@ func (network *GethNetwork) logNodeID(idx int) io.Writer {
 }
 
 // Waits for a node's IPC file to exist.
-func waitForIPC(dataDir string) {
+func (network *GethNetwork) waitForIPC(dataDir string) {
 	totalCounter := 0
 	counter := 0
 
@@ -393,6 +395,7 @@ func waitForIPC(dataDir string) {
 		time.Sleep(100 * time.Millisecond)
 
 		if totalCounter > 300 {
+			network.StopNodes() // We stop any nodes started so far.
 			panic(fmt.Errorf("waited over 30 seconds for .ipc file of node at %s", dataDir))
 		}
 
