@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+const (
+	chainIDPlaceholder           = 0
+	constructorParamsPlaceholder = ""
+)
+
 var (
 	defaultL1ChainID = big.NewInt(1337)
 	defaultL2ChainID = big.NewInt(777)
@@ -45,8 +50,8 @@ func ParseConfig() *Config {
 	contractName := flag.String(contractNameName, defaultConfig.ContractName, contractNameUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKey, privateKeyUsage)
 	// if this flag has a non-zero value it will be used instead of the default chain IDs
-	overrideChainID := flag.Int64(chainIDName, 0, chainIDUsage)
-	constructorParams := flag.String(constructorParamsName, "", constructorParamsUsage)
+	overrideChainID := flag.Int64(chainIDName, chainIDPlaceholder, chainIDUsage)
+	constructorParams := flag.String(constructorParamsName, constructorParamsPlaceholder, constructorParamsUsage)
 
 	flag.Parse()
 
@@ -54,16 +59,18 @@ func ParseConfig() *Config {
 	defaultConfig.NodePort = uint(*nodePort)
 	defaultConfig.IsL1Deployment = *isL1Deployment
 	defaultConfig.PrivateKey = *privateKeyStr
+	defaultConfig.ContractName = *contractName
+
 	if defaultConfig.IsL1Deployment {
 		// for L1 deployment we default the chain ID to the L1 chain (it will still be overridden if arg was set by caller)
 		defaultConfig.ChainID = defaultL1ChainID
 	}
-	if *overrideChainID != 0 {
+	if *overrideChainID != chainIDPlaceholder {
 		defaultConfig.ChainID = big.NewInt(*overrideChainID)
 	}
-	defaultConfig.ContractName = *contractName
-
-	defaultConfig.ConstructorParams = strings.Split(*constructorParams, ",")
+	if *constructorParams != constructorParamsPlaceholder {
+		defaultConfig.ConstructorParams = strings.Split(*constructorParams, ",")
+	}
 
 	return defaultConfig
 }
