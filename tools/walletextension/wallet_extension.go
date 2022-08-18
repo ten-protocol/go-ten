@@ -203,21 +203,6 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 }
 
-func executeCall(client *rpcclientlib.EncRPCClient, req *rpcRequest, resp *interface{}) error {
-	var err error
-	if req.method == rpcclientlib.RPCCall {
-		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
-		//	and is often not included from metamask etc. So we ensure it is populated here.
-		account := client.Account()
-		req.params, err = setCallFromFieldIfMissing(req.params, *account)
-		if err != nil {
-			return err
-		}
-	}
-
-	return client.Call(resp, req.method, req.params...)
-}
-
 func parseRequest(body []byte) (*rpcRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
