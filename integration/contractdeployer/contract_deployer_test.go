@@ -35,7 +35,7 @@ func TestCanDeployGuessingGameContract(t *testing.T) {
 	}
 }
 
-// Creates a single-node Obscuro network for testing, and deploys an ERC20 contract to it.
+// Creates a single-node Obscuro network for testing.
 func createObscuroNetwork(t *testing.T) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
