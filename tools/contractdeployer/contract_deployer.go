@@ -100,7 +100,7 @@ func (cd *contractDeployer) run(isL1Deployment bool) error {
 	if !isL1Deployment {
 		err := cd.prefundAccount()
 		if err != nil {
-			return fmt.Errorf("unable to prefund contract deployer account")
+			return fmt.Errorf("unable to prefund contract deployer account. Cause: %w", err)
 		}
 	}
 
@@ -120,6 +120,9 @@ func (cd *contractDeployer) run(isL1Deployment bool) error {
 	contractAddr, err := signAndSendTxWithReceipt(cd.wallet, cd.client, &deployContractTx)
 	if err != nil {
 		return err
+	}
+	if contractAddr == nil {
+		return fmt.Errorf("transaction was successful but could not retrieve address for deployed contract")
 	}
 
 	// print the contract address, to be read if necessary by the caller (important: this must be the last message output by the script)
@@ -203,25 +206,22 @@ func signAndSendTxWithReceipt(wallet wallet.Wallet, client ethadapter.EthClient,
 	}
 
 	var start time.Time
-	var receipt *types.Receipt
-	var contractAddr *common.Address
 	for start = time.Now(); time.Since(start) < timeoutWait; time.Sleep(retryInterval) {
-		receipt, err = client.TransactionReceipt(signedTx.Hash())
+		receipt, err := client.TransactionReceipt(signedTx.Hash())
+		if err != nil {
+			log.Info(err.Error())
+		}
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, fmt.Errorf("unable to deploy contract, receipt status unsuccessful: %v", receipt)
 			}
 			log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
-			contractAddr = &receipt.ContractAddress
-			break
+			return &receipt.ContractAddress, nil
 		}
 
 		log.Info("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
 	}
-	if contractAddr == nil {
-		return nil, fmt.Errorf("failed to mine contract deploy tx %s into a block after %s. Aborting", signedTx.Hash(), time.Since(start))
-	}
-	return contractAddr, nil
+	return nil, fmt.Errorf("failed to mine contract deploy tx %s into a block after %s. Aborting", signedTx.Hash(), time.Since(start))
 }
 
 func getContractCode(cfg *Config) ([]byte, error) {
