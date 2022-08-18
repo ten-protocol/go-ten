@@ -542,7 +542,11 @@ func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, tx types.Legacy
 	nonceJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCNonce, []interface{}{txWallet.Address().Hex(), latestBlock})
 	nonceString, ok := nonceJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
-		panic(fmt.Errorf("retrieved nonce was not of type string"))
+		respJSON, err := json.Marshal(nonceJSON)
+		if err != nil {
+			respJSON = []byte(fmt.Sprintf("can't read response as json, cause: %s response: %v", err, nonceJSON))
+		}
+		panic(fmt.Errorf("retrieved nonce was not of type string, resp: %s", respJSON))
 	}
 	nonce, err := hexutil.DecodeUint64(nonceString)
 	if err != nil {
