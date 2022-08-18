@@ -2,9 +2,12 @@ package gethnetwork
 
 import (
 	"bufio"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"math/big"
 	"net"
 	"os"
 	"os/exec"
@@ -117,6 +120,7 @@ type GethNetwork struct {
 	commStartPort    int
 	wsStartPort      int
 	blockTimeSecs    int
+	id               int64 // A random ID used to identify the network in logging.
 }
 
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
@@ -163,6 +167,11 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		panic(err)
 	}
 
+	networkID, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(err)
+	}
+
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,
 		dataDirs:         dataDirs,
@@ -174,6 +183,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		commStartPort:    portStart,
 		wsStartPort:      websocketPortStart,
 		blockTimeSecs:    blockTimeSecs,
+		id:               networkID.Int64(),
 	}
 
 	// We create an account for each node.
@@ -263,7 +273,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 // StopNodes kills the Geth node processes.
 func (network *GethNetwork) StopNodes() {
 	var wg sync.WaitGroup
-	for _, process := range network.nodesProcs {
+	for idx, process := range network.nodesProcs {
 		if process != nil {
 			wg.Add(1)
 			go func(process *os.Process) {
@@ -275,6 +285,8 @@ func (network *GethNetwork) StopNodes() {
 				_, err = process.Wait()
 				if err != nil {
 					log.Error("geth node was killed successfully but did not exit: %s", err)
+				} else {
+					fmt.Printf("Geth node %d on network %d stopped.\n", idx, network.id)
 				}
 			}(process)
 		}
@@ -366,7 +378,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
 
-	fmt.Printf("Geth node %d started on ports %d (WebSocket) and %d (HTTP)\n", idx, webSocketPort, httpPort)
+	fmt.Printf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort)
 }
 
 // logNodeID prepends the nodeID to the log entries
