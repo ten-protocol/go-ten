@@ -255,9 +255,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 		panic(err)
 	}
 
-	// We attempt to get the transaction receipt for the Obscuro ERC20 contract.
 	respBody := makeEthJSONReq(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
-
 	expectedErr := fmt.Sprintf(errInsecure, rpcclientlib.RPCSendRawTransaction)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -279,31 +277,24 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 		GasPrice: common.Big0,
 		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
-	txBinaryHex, err := signAndSerialiseTransaction(txWallet, &tx)
+	signedTx, err := txWallet.SignTransaction(&tx)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("could not sign transaction. Cause: %w", err))
 	}
-	sendTxJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 
-	time.Sleep(6 * time.Second) // We wait for the deployment of the contract to the Obscuro network.
-
-	// We get the transaction receipt for the Obscuro ERC20 contract deployment.
-	txHash, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
-	if !ok {
-		panic("could not retrieve transaction hash from JSON result")
-	}
-	txReceiptJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetTxReceipt, []string{txHash})
+	// We check the transaction receipt contains the correct transaction hash.
+	txReceiptJSON := sendTransactionAndAwaitConfirmation(txWallet, tx)
 	txReceiptResult := fmt.Sprintf("%s", txReceiptJSON[walletextension.RespJSONKeyResult])
-	expectedTxReceiptJSON := fmt.Sprintf("transactionHash:%s", txHash)
+	expectedTxReceiptJSON := fmt.Sprintf("transactionHash:%s", signedTx.Hash())
 	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
 		t.Fatalf("Expected transaction receipt containing %s, got %s", expectedTxReceiptJSON, txReceiptResult)
 	}
 
-	// We get the transaction by hash for the Obscuro ERC20 contract deployment.
-	getTxJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetTransactionByHash, []string{txHash})
+	// We check we can retrieve the transaction by hash.
+	getTxJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetTransactionByHash, []string{signedTx.Hash().Hex()})
 	getTxJSONResult := fmt.Sprintf("%s", getTxJSON[walletextension.RespJSONKeyResult])
-	expectedGetTxJSON := fmt.Sprintf("hash:%s", txHash)
-	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
+	expectedGetTxJSON := fmt.Sprintf("hash:%s", signedTx.Hash())
+	if !strings.Contains(getTxJSONResult, expectedGetTxJSON) {
 		t.Fatalf("Expected transaction containing %s, got %s", expectedGetTxJSON, getTxJSONResult)
 	}
 }
@@ -331,8 +322,8 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 	if err != nil {
 		panic(err)
 	}
-	respBody := makeEthJSONReq(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 
+	respBody := makeEthJSONReq(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 	expectedErr := fmt.Sprintf(errInsecure, rpcclientlib.RPCSendRawTransaction)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -560,7 +551,7 @@ func registerPrivateKey(t *testing.T) (common.Address, *ecdsa.PrivateKey) {
 }
 
 // Submits a transaction and awaits the transaction receipt.
-func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractTx types.LegacyTx) {
+func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractTx types.LegacyTx) map[string]interface{} {
 	txBinaryHex, err := signAndSerialiseTransaction(txWallet, &deployContractTx)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
@@ -582,7 +573,7 @@ func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractT
 		getReceiptJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetTxReceipt, []interface{}{txHash})
 		getReceiptJSONResult, ok := getReceiptJSON[walletextension.RespJSONKeyResult].(map[string]interface{})
 		if ok && getReceiptJSONResult[respJSONKeyStatus] == statusSuccess {
-			break
+			return getReceiptJSON
 		}
 		time.Sleep(1 * time.Second)
 		counter++
