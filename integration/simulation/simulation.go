@@ -159,9 +159,10 @@ func (s *Simulation) deployObscuroERC20s() {
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
 
 			deployContractTx := types.DynamicFeeTx{
-				Nonce: NextNonce(s.RPCHandles, owner),
-				Gas:   1025_000_000,
-				Data:  contractBytes,
+				Nonce:     NextNonce(s.RPCHandles, owner),
+				Gas:       1025_000_000,
+				GasFeeCap: gethcommon.Big1,
+				Data:      contractBytes,
 			}
 			signedTx, err := owner.SignTransaction(&deployContractTx)
 			if err != nil {
