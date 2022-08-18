@@ -84,7 +84,9 @@ func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwo
 		}
 	}
 	// Stop the nodes second
-	netw.StopNodes()
+	if netw != nil { // If network creation failed, we may be attempting to tear down the Geth network before it even exists.
+		netw.StopNodes()
+	}
 }
 
 // DeployContract todo -this should live somewhere else
