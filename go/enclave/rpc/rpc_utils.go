@@ -41,7 +41,7 @@ func ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
 	tx := &common.L2Tx{}
 	err := tx.UnmarshalBinary(txBytes)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshall transaction from bytes. Cause: %w", err)
+		return nil, fmt.Errorf("could not unmarshal transaction from bytes. Cause: %w", err)
 	}
 
 	return tx, nil
