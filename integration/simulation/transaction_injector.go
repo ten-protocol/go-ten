@@ -39,14 +39,11 @@ import (
 )
 
 const (
-	nonceTimeoutMillis   = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
-	receiptTimeoutMillis = 30000 // The timeout in millis to wait for a receipt for a transaction.
+	nonceTimeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
 
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-
-	allocObsWallets = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions

@@ -22,12 +22,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-	"github.com/obscuronet/go-obscuro/integration/simulation"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 
@@ -78,9 +76,8 @@ var (
 	}
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 	deployERC20Tx       = types.LegacyTx{
-		Nonce:    0,
 		Gas:      1025_000_000,
-		GasPrice: common.Big1,
+		GasPrice: common.Big0,
 		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
 )
@@ -509,7 +506,7 @@ func createObscuroNetwork(t *testing.T) {
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
 	t.Cleanup(obscuroNetwork.TearDown)
-	clients, err := obscuroNetwork.Create(&simParams, simStats)
+	_, err := obscuroNetwork.Create(&simParams, simStats)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}
@@ -518,8 +515,6 @@ func createObscuroNetwork(t *testing.T) {
 	erc20Wallet := wallets.Tokens[bridge.OBX].L2Owner
 	generateAndSubmitViewingKey(walletExtensionAddr, erc20Wallet.PrivateKey())
 
-	// Deploy an ERC20 contract to the Obscuro network.
-	deployERC20Tx.Nonce = simulation.NextNonce(clients, erc20Wallet) // We set the transaction's nonce.
 	sendTransactionAndAwaitConfirmation(erc20Wallet, deployERC20Tx)
 }
 
@@ -535,8 +530,21 @@ func registerPrivateKey(t *testing.T) (common.Address, *ecdsa.PrivateKey) {
 }
 
 // Submits a transaction and awaits the transaction receipt.
-func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractTx types.LegacyTx) map[string]interface{} {
-	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployContractTx)
+func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, tx types.LegacyTx) map[string]interface{} {
+	// Set the transaction's nonce.
+	nonceJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCNonce, []interface{}{txWallet.Address().Hex(), latestBlock})
+	nonceString, ok := nonceJSON[walletextension.RespJSONKeyResult].(string)
+	if !ok {
+		panic(fmt.Errorf("retrieved nonce was not of type string"))
+	}
+	nonce, err := hexutil.DecodeUint64(nonceString)
+	if err != nil {
+		panic(fmt.Errorf("could not parse nonce from string. Cause: %w", err))
+	}
+	tx.Nonce = nonce
+
+	// Send the transaction.
+	txBinaryHex := signAndSerialiseTransaction(txWallet, &tx)
 	sendTxJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 
 	// Verify the transaction was successful.
