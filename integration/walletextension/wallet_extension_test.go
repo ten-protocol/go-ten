@@ -80,7 +80,7 @@ var (
 	deployERC20Tx       = types.LegacyTx{
 		Nonce:    0,
 		Gas:      1025_000_000,
-		GasPrice: common.Big0,
+		GasPrice: common.Big1,
 		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
 )
@@ -91,7 +91,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	createWalletExtension(t)
 	createObscuroNetwork(t)
 
-	respJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCChainID, []string{})
+	respJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCChainID, []string{})
 
 	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
 		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
@@ -119,7 +119,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 	createObscuroNetwork(t)
 	accountAddr, _ := registerPrivateKey(t)
 
-	getBalanceJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{accountAddr.String(), latestBlock})
+	getBalanceJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCGetBalance, []string{accountAddr.String(), latestBlock})
 
 	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
 		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
@@ -188,7 +188,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 		reqJSONKeyData: convertedData,
 	}
 
-	callJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCCall, []interface{}{reqParams, latestBlock})
+	callJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCCall, []interface{}{reqParams, latestBlock})
 
 	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
 		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
@@ -211,7 +211,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 		reqJSONKeyData: convertedData,
 	}
 
-	callJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCCall, []interface{}{reqParams, latestBlock})
+	callJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCCall, []interface{}{reqParams, latestBlock})
 
 	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
 		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
@@ -287,7 +287,7 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 	}
 
 	// We check we can retrieve the transaction by hash.
-	getTxJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetTransactionByHash, []string{signedTx.Hash().Hex()})
+	getTxJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCGetTransactionByHash, []string{signedTx.Hash().Hex()})
 	getTxJSONResult := fmt.Sprintf("%s", getTxJSON[walletextension.RespJSONKeyResult])
 	expectedGetTxJSON := fmt.Sprintf("hash:%s", signedTx.Hash())
 	if !strings.Contains(getTxJSONResult, expectedGetTxJSON) {
@@ -332,13 +332,13 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 			t.Fatal(err)
 		}
 		accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
-		generateAndSubmitViewingKey(walletExtensionAddr, accountAddr, privateKey)
+		generateAndSubmitViewingKey(accountAddr, privateKey)
 		accountAddrs = append(accountAddrs, accountAddr)
 	}
 
 	// We request the balance of a random account about halfway through the list.
 	randAccountAddr := accountAddrs[len(accountAddrs)/2]
-	getBalanceJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetBalance, []string{randAccountAddr, latestBlock})
+	getBalanceJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCGetBalance, []string{randAccountAddr, latestBlock})
 
 	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
 		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
@@ -414,7 +414,7 @@ func makeEthJSONReq(walletExtensionAddr string, method string, params interface{
 }
 
 // Makes an Ethereum JSON RPC request and returns the response body as JSON.
-func makeEthJSONReqAsJSON(walletExtensionAddr string, method string, params interface{}) map[string]interface{} {
+func makeEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
 	respBody := makeEthJSONReq(walletExtensionAddr, method, params)
 
 	if respBody[0] != '{' {
@@ -431,7 +431,7 @@ func makeEthJSONReqAsJSON(walletExtensionAddr string, method string, params inte
 }
 
 // Generates a signed viewing key and submits it to the wallet extension.
-func generateAndSubmitViewingKey(walletExtensionAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) {
+func generateAndSubmitViewingKey(accountAddr string, accountPrivateKey *ecdsa.PrivateKey) {
 	viewingKey := generateViewingKey(accountAddr, walletExtensionAddr)
 	signature := signViewingKey(accountPrivateKey, viewingKey)
 
@@ -514,11 +514,13 @@ func createObscuroNetwork(t *testing.T) {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}
 
+	// Set up the ERC20 wallet.
+	erc20Wallet := wallets.Tokens[bridge.OBX].L2Owner
+	generateAndSubmitViewingKey(walletExtensionAddr, erc20Wallet.PrivateKey())
+
 	// Deploy an ERC20 contract to the Obscuro network.
-	txWallet := wallets.Tokens[bridge.OBX].L2Owner
-	generateAndSubmitViewingKey(walletExtensionAddr, walletExtensionAddr, txWallet.PrivateKey())
-	deployERC20Tx.Nonce = simulation.NextNonce(clients, txWallet)
-	sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
+	deployERC20Tx.Nonce = simulation.NextNonce(clients, erc20Wallet) // We set the transaction's nonce.
+	sendTransactionAndAwaitConfirmation(erc20Wallet, deployERC20Tx)
 }
 
 // Generates a new account and registers it with the node.
@@ -528,14 +530,14 @@ func registerPrivateKey(t *testing.T) (common.Address, *ecdsa.PrivateKey) {
 		t.Fatal(err)
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
-	generateAndSubmitViewingKey(walletExtensionAddr, accountAddr.String(), privateKey)
+	generateAndSubmitViewingKey(accountAddr.String(), privateKey)
 	return accountAddr, privateKey
 }
 
 // Submits a transaction and awaits the transaction receipt.
 func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractTx types.LegacyTx) map[string]interface{} {
 	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployContractTx)
-	sendTxJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
+	sendTxJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 
 	// Verify the transaction was successful.
 	txHash, ok := sendTxJSON[walletextension.RespJSONKeyResult].(string)
@@ -548,7 +550,7 @@ func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractT
 		if counter > 10 {
 			panic("could not get ERC20 receipt after 10 seconds")
 		}
-		getReceiptJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCGetTxReceipt, []interface{}{txHash})
+		getReceiptJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCGetTxReceipt, []interface{}{txHash})
 		getReceiptJSONResult, ok := getReceiptJSON[walletextension.RespJSONKeyResult].(map[string]interface{})
 		if ok && getReceiptJSONResult[respJSONKeyStatus] == statusSuccess {
 			return getReceiptJSON
