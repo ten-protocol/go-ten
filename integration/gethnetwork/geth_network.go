@@ -286,7 +286,7 @@ func (network *GethNetwork) StopNodes() {
 				if err != nil {
 					log.Error("geth node was killed successfully but did not exit: %s", err)
 				} else {
-					fmt.Printf("Geth node %d on network %d stopped.\n", network.id, idx)
+					fmt.Printf("Geth node %d on network %d stopped.\n", idx, network.id)
 				}
 			}(process)
 		}
