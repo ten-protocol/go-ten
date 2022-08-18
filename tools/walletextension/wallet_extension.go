@@ -218,7 +218,6 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 }
 
-//
 func executeCall(client *rpcclientlib.EncRPCClient, req *rpcRequest, resp *interface{}) error {
 	return client.Call(resp, req.method, req.params...)
 }
