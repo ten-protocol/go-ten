@@ -160,25 +160,10 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
-	suggestedClient := suggestAccountClient(rpcReq, we.accountClients)
-
 	var rpcResp interface{}
-	if suggestedClient != nil {
-		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
-		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		err = executeCall(suggestedClient, rpcReq, &rpcResp)
-	} else {
-		// we attempt the request with every client until we have a successful execution
-		log.Info("appropriate client not found, attempting request with up to %d clients", len(we.accountClients))
-		for _, client := range we.accountClients {
-			err = executeCall(client, rpcReq, &rpcResp)
-			if err == nil || errors.Is(err, rpcclientlib.ErrNilResponse) {
-				// request didn't fail, we don't need to continue trying the other clients
-				break
-			}
-		}
-	}
+	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
+	err = proxyRequest(rpcReq, rpcResp, we.accountClients)
+
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpcclientlib.ErrNilResponse) {
