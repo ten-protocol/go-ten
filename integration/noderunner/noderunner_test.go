@@ -57,7 +57,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig := config.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
-	hostConfig.ClientRPCPortHTTP = startPort + 1
+	hostConfig.ClientRPCPortHTTP = uint64(startPort + 1)
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 	hostConfig.ProfilerEnabled = true
 
@@ -71,7 +71,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{address.String()})
+	network := gethnetwork.NewGethNetwork(gethPort, gethWebsocketPort, gethBinaryPath, 1, 1, []string{address.String()})
 	defer network.StopNodes()
 
 	go enclaverunner.RunEnclave(enclaveConfig)

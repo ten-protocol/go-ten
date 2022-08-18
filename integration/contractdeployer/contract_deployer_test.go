@@ -2,9 +2,10 @@ package contractdeployer
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
 
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"

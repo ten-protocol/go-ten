@@ -3,7 +3,7 @@ package integration
 // Tracks the start ports handed out to different tests, in a bid to minimise conflicts.
 const (
 	StartPortGethNetworkTest        uint64 = 30000
-	StartPortWalletExtensionTest           = 31000
+	StartPortWalletExtensionTest    uint64 = 31000
 	StartPortNodeRunnerTest                = 32000
 	StartPortSimulationDocker              = 33000
 	StartPortSimulationGethInMem           = 34000
