@@ -116,7 +116,6 @@ func (s *Simulation) prefundObscuroAccounts() {
 			Value:    big.NewInt(allocObsWallets),
 			Gas:      uint64(1_000_000),
 			GasPrice: gethcommon.Big1,
-			Data:     nil,
 			To:       &destAddr,
 		}
 		signedTx, err := faucetWallet.SignTransaction(tx)
