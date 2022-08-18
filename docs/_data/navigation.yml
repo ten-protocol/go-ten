@@ -27,7 +27,7 @@ pages:
         url: testnet/example-dapps.html
       - title: Essential Information
         url: testnet/essentials.html
-      - title: Limitations
+      - title: Known Limitations
         url: testnet/limitations.html
       - title: Deploying a Smart Contract
         url: testnet/deploying-a-smart-contract.html

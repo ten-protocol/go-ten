@@ -9,7 +9,7 @@ The Testnet release schedule has been intentionally designed to make new feature
 
 All Obscuro code is under an open source licence. If you see something you think could be improved or reworked feel free to submit a PR in the [go-obscuro repo](https://github.com/obscuronet/go-obscuro), or to let us know about your suggestion on [Discord](https://discord.com/channels/916052669955727371/945360340613484684). 
 
-OBX tokens issued on Obscuro Testnet have no real value and gas fees are initially set to zero. As Testnet develops, gas fees will be introduced along with an OBX faucet.
+Native OBX tokens issued on Obscuro Testnet have no real value and gas fees are initially set to zero. As Testnet develops, gas fees will be introduced along with an OBX faucet.
 
 To indicate your interest in Testnet please complete the [form](https://obscu.ro/testnet) on the Obscuro website.
 
