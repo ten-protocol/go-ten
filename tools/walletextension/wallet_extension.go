@@ -204,7 +204,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 }
 
 func parseRequest(body []byte) (*rpcRequest, error) {
-	// We unmarshall the JSON request
+	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
