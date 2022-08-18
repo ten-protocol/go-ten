@@ -65,6 +65,11 @@ const (
 )
 
 var (
+	// The log file used across all the wallet extension tests.
+	logFile = testlog.Setup(
+		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
+	)
+
 	walletExtensionAddr   = fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 	walletExtensionConfig = walletextension.Config{
 		WalletExtensionPort:     int(integration.StartPortWalletExtensionTest),
@@ -72,10 +77,12 @@ var (
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
 	}
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
-	// The log file used across all the wallet extension tests.
-	logFile = testlog.Setup(
-		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
-	)
+	deployERC20Tx       = types.LegacyTx{
+		Nonce:    0,
+		Gas:      1025_000_000,
+		GasPrice: common.Big0,
+		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
+	}
 )
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
@@ -248,16 +255,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 		panic(err)
 	}
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
-	tx := types.LegacyTx{
-		Nonce:    0,
-		Gas:      1025_000_000,
-		GasPrice: common.Big0,
-		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
-	}
-	txBinaryHex, err := signAndSerialiseTransaction(txWallet, &tx)
-	if err != nil {
-		panic(err)
-	}
+	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployERC20Tx)
 
 	respBody := makeEthJSONReq(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 	expectedErr := fmt.Sprintf(errInsecure, rpcclientlib.RPCSendRawTransaction)
@@ -275,19 +273,13 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 	_, privateKey := registerPrivateKey(t)
 
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
-	tx := types.LegacyTx{
-		Nonce:    0,
-		Gas:      1025_000_000,
-		GasPrice: common.Big0,
-		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
-	}
-	signedTx, err := txWallet.SignTransaction(&tx)
+	signedTx, err := txWallet.SignTransaction(&deployERC20Tx)
 	if err != nil {
 		panic(fmt.Errorf("could not sign transaction. Cause: %w", err))
 	}
 
 	// We check the transaction receipt contains the correct transaction hash.
-	txReceiptJSON := sendTransactionAndAwaitConfirmation(txWallet, tx)
+	txReceiptJSON := sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
 	txReceiptResult := fmt.Sprintf("%s", txReceiptJSON[walletextension.RespJSONKeyResult])
 	expectedTxReceiptJSON := fmt.Sprintf("transactionHash:%s", signedTx.Hash())
 	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
@@ -316,16 +308,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 		panic(err)
 	}
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
-	tx := types.LegacyTx{
-		Nonce:    0,
-		Gas:      1025_000_000,
-		GasPrice: common.Big0,
-		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
-	}
-	txBinaryHex, err := signAndSerialiseTransaction(txWallet, &tx)
-	if err != nil {
-		panic(err)
-	}
+	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployERC20Tx)
 
 	respBody := makeEthJSONReq(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 	expectedErr := fmt.Sprintf(errInsecure, rpcclientlib.RPCSendRawTransaction)
@@ -534,13 +517,8 @@ func createObscuroNetwork(t *testing.T) {
 	// Deploy an ERC20 contract to the Obscuro network.
 	txWallet := wallets.Tokens[bridge.OBX].L2Owner
 	generateAndSubmitViewingKey(walletExtensionAddr, walletExtensionAddr, txWallet.PrivateKey())
-	deployContractTx := types.LegacyTx{
-		Nonce:    simulation.NextNonce(clients, txWallet),
-		Gas:      1025_000_000,
-		GasPrice: common.Big0,
-		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
-	}
-	sendTransactionAndAwaitConfirmation(txWallet, deployContractTx)
+	deployERC20Tx.Nonce = simulation.NextNonce(clients, txWallet)
+	sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
 }
 
 // Generates a new account and registers it with the node.
@@ -556,11 +534,7 @@ func registerPrivateKey(t *testing.T) (common.Address, *ecdsa.PrivateKey) {
 
 // Submits a transaction and awaits the transaction receipt.
 func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractTx types.LegacyTx) map[string]interface{} {
-	txBinaryHex, err := signAndSerialiseTransaction(txWallet, &deployContractTx)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
-	}
-
+	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployContractTx)
 	sendTxJSON := makeEthJSONReqAsJSON(walletExtensionAddr, rpcclientlib.RPCSendRawTransaction, []interface{}{txBinaryHex})
 
 	// Verify the transaction was successful.
@@ -585,22 +559,22 @@ func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, deployContractT
 }
 
 // Signs and serialises a transaction for submission to the node.
-func signAndSerialiseTransaction(wallet wallet.Wallet, tx types.TxData) (string, error) {
+func signAndSerialiseTransaction(wallet wallet.Wallet, tx types.TxData) string {
 	signedTx, err := wallet.SignTransaction(tx)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 	// We convert the transaction to the form expected for sending transactions via RPC.
 	txBinary, err := signedTx.MarshalBinary()
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 	txBinaryHex := "0x" + common.Bytes2Hex(txBinary)
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 
-	return txBinaryHex, nil
+	return txBinaryHex
 }
 
 func setupWalletTestLog(testName string) {
