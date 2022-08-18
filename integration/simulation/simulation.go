@@ -27,7 +27,11 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
-const initialBalance = 5000
+const (
+	initialBalance       = 5000
+	allocObsWallets      = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
+	receiptTimeoutMillis = 30000           // The timeout in millis to wait for a receipt for a transaction.
+)
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
@@ -112,7 +116,6 @@ func (s *Simulation) prefundObscuroAccounts() {
 			Value:    big.NewInt(allocObsWallets),
 			Gas:      uint64(1_000_000),
 			GasPrice: gethcommon.Big1,
-			Data:     nil,
 			To:       &destAddr,
 		}
 		signedTx, err := faucetWallet.SignTransaction(tx)

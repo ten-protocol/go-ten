@@ -98,7 +98,7 @@ var (
 	manifestSQLStatements = []string{
 		fmt.Sprintf("CREATE USER %s REQUIRE ISSUER '/CN=%s' SUBJECT '/CN=%s'", dbUser, certIssuer, certSubject),
 		fmt.Sprintf("CREATE DATABASE %s", dbName),
-		fmt.Sprintf("CREATE TABLE %s.%s (%s varbinary(64) primary key, %s blob)", dbName, tableName, keyCol, valueCol),
+		fmt.Sprintf("CREATE TABLE %s.%s (%s varbinary(64) primary key, %s mediumblob)", dbName, tableName, keyCol, valueCol),
 		fmt.Sprintf("GRANT ALL ON %s.%s TO %s", dbName, tableName, dbUser),
 	}
 

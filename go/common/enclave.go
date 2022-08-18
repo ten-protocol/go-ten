@@ -41,7 +41,7 @@ type Enclave interface {
 	// it is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving a parent of it, will result in it being ignored
-	SubmitBlock(block types.Block) BlockSubmissionResponse
+	SubmitBlock(block types.Block) (BlockSubmissionResponse, error)
 
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(rollup ExtRollup)

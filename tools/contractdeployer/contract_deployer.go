@@ -181,7 +181,6 @@ func (cd *contractDeployer) prefundAccount() error {
 		Value:    big.NewInt(prealloc),
 		Gas:      uint64(1_000_000),
 		GasPrice: common.Big1,
-		Data:     nil,
 		To:       &destAddr,
 	}
 	_, err = signAndSendTxWithReceipt(cd.faucetWallet, cd.faucetClient, tx)
