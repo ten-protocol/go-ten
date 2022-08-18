@@ -19,6 +19,8 @@ import (
 
 // testSimulation encapsulates the shared logic for simulating and testing various types of nodes.
 func testSimulation(t *testing.T, netw network.Network, params *params.SimParams) {
+	fmt.Printf("starting sim with start port %d", params.StartPort)
+
 	defer func() {
 		// wait until clean up is complete before we log the lingering goroutine count
 		log.Info("goroutine leak monitor - simulation end - %d goroutines currently running", runtime.NumGoroutine())
