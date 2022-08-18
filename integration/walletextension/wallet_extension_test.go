@@ -231,7 +231,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 
 	respBody := makeEthJSONReq(walletExtensionAddr, rpcclientlib.RPCCall, []interface{}{reqParams, latestBlock})
 	expectedErr := fmt.Sprintf(errInsecure, rpcclientlib.RPCCall)
-	
+
 	if !strings.Contains(string(respBody), expectedErr) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
 	}
