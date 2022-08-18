@@ -430,7 +430,7 @@ func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes 
 func isPortAvailable(port int) bool {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		fmt.Printf("Listen port %d. Err: %s. ", port, err)
+		log.Error("Listen port %d. Err: %s. ", port, err)
 	}
 	if ln != nil {
 		_ = ln.Close()
