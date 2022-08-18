@@ -1,6 +1,8 @@
 package config
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -41,6 +43,8 @@ type EnclaveConfig struct {
 	SqliteDBPath string
 	// ProfilerEnabled starts a profiler instance
 	ProfilerEnabled bool
+	// MinGasPrice is the minimum gas price for mining a transaction
+	MinGasPrice *big.Int
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -63,5 +67,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		EdgelessDBHost:            "",
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,
+		MinGasPrice:               big.NewInt(1),
 	}
 }

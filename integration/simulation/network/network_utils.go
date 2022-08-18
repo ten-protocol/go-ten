@@ -87,6 +87,7 @@ func createInMemObscuroNode(
 		GenesisJSON:            genesisJSON,
 		UseInMemoryDB:          true,
 		ERC20ContractAddresses: wallets.AllEthAddresses(),
+		MinGasPrice:            big.NewInt(1),
 	}
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
 

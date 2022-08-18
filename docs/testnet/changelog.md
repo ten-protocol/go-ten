@@ -9,5 +9,6 @@
 * Account balances:
   * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
   * Introduced network faucet account.
+  * Obscuro enclaves services can configure the minimum gas price they'll accept
 
 * ``block.difficulty`` will return a true random number generated inside the secure enclave.

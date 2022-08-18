@@ -203,6 +203,7 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 			GenesisJSON:            nil,
 			UseInMemoryDB:          false,
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
+			MinGasPrice:            big.NewInt(1),
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {

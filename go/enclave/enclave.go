@@ -281,6 +281,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
+
+	err = e.checkGas(decryptedTx)
+	if err != nil {
+		log.Info(err.Error())
+		return nil, err
+	}
+
 	err = e.mempool.AddMempoolTx(decryptedTx)
 	if err != nil {
 		return nil, err
@@ -400,7 +407,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 	txReceiptBytes, err := txReceipt.MarshalJSON()
 	if err != nil {
-		return nil, fmt.Errorf("could not marshall transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
+		return nil, fmt.Errorf("could not marshal transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
 	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txReceiptBytes)
@@ -508,6 +515,18 @@ func (e *enclaveImpl) Stop() error {
 		return e.profiler.Stop()
 	}
 
+	return nil
+}
+
+func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
+	txGasPrice := tx.GasPrice()
+	if txGasPrice == nil {
+		return fmt.Errorf("rejected transaction %s. No gas price was set", tx.Hash())
+	}
+	minGasPrice := e.config.MinGasPrice
+	if txGasPrice.Cmp(minGasPrice) == -1 {
+		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
+	}
 	return nil
 }
 

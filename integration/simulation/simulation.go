@@ -27,7 +27,11 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
-const initialBalance = 5000
+const (
+	initialBalance       = 5000
+	allocObsWallets      = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
+	receiptTimeoutMillis = 30000           // The timeout in millis to wait for a receipt for a transaction.
+)
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
@@ -112,7 +116,6 @@ func (s *Simulation) prefundObscuroAccounts() {
 			Value:    big.NewInt(allocObsWallets),
 			Gas:      uint64(1_000_000),
 			GasPrice: gethcommon.Big1,
-			Data:     nil,
 			To:       &destAddr,
 		}
 		signedTx, err := faucetWallet.SignTransaction(tx)
@@ -156,9 +159,10 @@ func (s *Simulation) deployObscuroERC20s() {
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
 
 			deployContractTx := types.DynamicFeeTx{
-				Nonce: NextNonce(s.RPCHandles, owner),
-				Gas:   1025_000_000,
-				Data:  contractBytes,
+				Nonce:     NextNonce(s.RPCHandles, owner),
+				Gas:       1025_000_000,
+				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
+				Data:      contractBytes,
 			}
 			signedTx, err := owner.SignTransaction(&deployContractTx)
 			if err != nil {
