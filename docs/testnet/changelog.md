@@ -9,4 +9,4 @@
 * Account balances:
   * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
   * Introduced network faucet account.
-  * Allowed Obscuro enclaves services to configure minimum gas price they'll accept
+  * Obscuro enclaves services can configure the minimum gas price they'll accept
