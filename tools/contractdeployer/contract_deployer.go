@@ -208,9 +208,6 @@ func signAndSendTxWithReceipt(wallet wallet.Wallet, client ethadapter.EthClient,
 	var start time.Time
 	for start = time.Now(); time.Since(start) < timeoutWait; time.Sleep(retryInterval) {
 		receipt, err := client.TransactionReceipt(signedTx.Hash())
-		if err != nil {
-			log.Info(err.Error())
-		}
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, fmt.Errorf("unable to deploy contract, receipt status unsuccessful: %v", receipt)
@@ -219,7 +216,7 @@ func signAndSendTxWithReceipt(wallet wallet.Wallet, client ethadapter.EthClient,
 			return &receipt.ContractAddress, nil
 		}
 
-		log.Info("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
+		log.Info("Contract deploy tx %s has not been mined into a block after %s...", signedTx.Hash(), time.Since(start))
 	}
 	return nil, fmt.Errorf("failed to mine contract deploy tx %s into a block after %s. Aborting", signedTx.Hash(), time.Since(start))
 }

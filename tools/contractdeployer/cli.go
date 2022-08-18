@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	// We check the flags against these default Go values, to see if we should use the provided defaults instead.
 	chainIDPlaceholder           = 0
 	constructorParamsPlaceholder = ""
 )
