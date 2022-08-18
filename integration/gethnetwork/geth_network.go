@@ -2,9 +2,12 @@ package gethnetwork
 
 import (
 	"bufio"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"math/big"
 	"net"
 	"os"
 	"os/exec"
@@ -117,6 +120,7 @@ type GethNetwork struct {
 	commStartPort    int
 	wsStartPort      int
 	blockTimeSecs    int
+	id               int64 // A random ID used to identify the network in logging.
 }
 
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
@@ -163,6 +167,11 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		panic(err)
 	}
 
+	networkID, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(err)
+	}
+
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,
 		dataDirs:         dataDirs,
@@ -174,6 +183,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		commStartPort:    portStart,
 		wsStartPort:      websocketPortStart,
 		blockTimeSecs:    blockTimeSecs,
+		id:               networkID.Int64(),
 	}
 
 	// We create an account for each node.
@@ -221,7 +231,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		wg.Add(1)
 		go func(idx int, dataDir string) {
 			defer wg.Done()
-			waitForIPC(dataDir) // We cannot issue RPC commands until the IPC files are available.
+			network.waitForIPC(dataDir) // We cannot issue RPC commands until the IPC files are available.
 			enodeAddrs[idx] = network.IssueCommand(idx, enodeCmd)
 		}(idx, dataDir)
 	}
@@ -253,6 +263,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 
 	output, err := cmd.Output()
 	if err != nil {
+		network.StopNodes() // We stop any nodes started so far.
 		panic(err)
 	}
 
@@ -262,7 +273,7 @@ func (network *GethNetwork) IssueCommand(nodeIdx int, command string) string {
 // StopNodes kills the Geth node processes.
 func (network *GethNetwork) StopNodes() {
 	var wg sync.WaitGroup
-	for _, process := range network.nodesProcs {
+	for idx, process := range network.nodesProcs {
 		if process != nil {
 			wg.Add(1)
 			go func(process *os.Process) {
@@ -274,6 +285,8 @@ func (network *GethNetwork) StopNodes() {
 				_, err = process.Wait()
 				if err != nil {
 					log.Error("geth node was killed successfully but did not exit: %s", err)
+				} else {
+					fmt.Printf("Geth node %d on network %d stopped.\n", idx, network.id)
 				}
 			}(process)
 		}
@@ -359,12 +372,13 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	cmd.Stderr = network.logNodeID(idx)
 
 	if err := cmd.Start(); err != nil {
+		network.StopNodes() // We stop any nodes started so far.
 		panic(fmt.Errorf("could not start Geth node. Cause: %w", err))
 	}
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
 
-	fmt.Printf("Geth node %d started on ports %d (WebSocket) and %d (HTTP)\n", idx, webSocketPort, httpPort)
+	fmt.Printf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort)
 }
 
 // logNodeID prepends the nodeID to the log entries
@@ -380,7 +394,7 @@ func (network *GethNetwork) logNodeID(idx int) io.Writer {
 }
 
 // Waits for a node's IPC file to exist.
-func waitForIPC(dataDir string) {
+func (network *GethNetwork) waitForIPC(dataDir string) {
 	totalCounter := 0
 	counter := 0
 
@@ -393,6 +407,7 @@ func waitForIPC(dataDir string) {
 		time.Sleep(100 * time.Millisecond)
 
 		if totalCounter > 300 {
+			network.StopNodes() // We stop any nodes started so far.
 			panic(fmt.Errorf("waited over 30 seconds for .ipc file of node at %s", dataDir))
 		}
 
@@ -422,7 +437,7 @@ func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes 
 
 	if len(unavailablePorts) > 0 {
 		list, _ := json.Marshal(unavailablePorts)
-		return fmt.Errorf("could not run geth network because test ports are unavailable for use - the following ports were unavailable: %s", list)
+		return fmt.Errorf("could not run geth network because the following ports were unavailable: %s", list)
 	}
 	return nil
 }
@@ -430,7 +445,7 @@ func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes 
 func isPortAvailable(port int) bool {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		fmt.Printf("Listen port %d. Err: %s. ", port, err)
+		log.Error("Listen port %d. Err: %s. ", port, err)
 	}
 	if ln != nil {
 		_ = ln.Close()

@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -60,6 +62,8 @@ const (
 	// Returned by the EVM to indicate a zero result.
 	zeroResult  = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	zeroBalance = "0x0"
+
+	faucetAlloc = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 var (
@@ -78,7 +82,7 @@ var (
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 	deployERC20Tx       = types.LegacyTx{
 		Gas:      1025_000_000,
-		GasPrice: common.Big0,
+		GasPrice: common.Big1,
 		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
 	}
 )
@@ -271,6 +275,7 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 	_, privateKey := registerPrivateKey(t)
 
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
+	fundAccount(txWallet.Address())
 	signedTx, err := txWallet.SignTransaction(&deployERC20Tx)
 	if err != nil {
 		panic(fmt.Errorf("could not sign transaction. Cause: %w", err))
@@ -514,7 +519,8 @@ func createObscuroNetwork(t *testing.T) {
 
 	// Set up the ERC20 wallet.
 	erc20Wallet := wallets.Tokens[bridge.OBX].L2Owner
-	generateAndSubmitViewingKey(walletExtensionAddr, erc20Wallet.PrivateKey())
+	generateAndSubmitViewingKey(erc20Wallet.Address().Hex(), erc20Wallet.PrivateKey())
+	fundAccount(erc20Wallet.Address())
 
 	sendTransactionAndAwaitConfirmation(erc20Wallet, deployERC20Tx)
 }
@@ -536,7 +542,11 @@ func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, tx types.Legacy
 	nonceJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCNonce, []interface{}{txWallet.Address().Hex(), latestBlock})
 	nonceString, ok := nonceJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
-		panic(fmt.Errorf("retrieved nonce was not of type string"))
+		respJSON, err := json.Marshal(nonceJSON)
+		if err != nil {
+			respJSON = []byte(fmt.Sprintf("can't read response as json, cause: %s response: %v", err, nonceJSON))
+		}
+		panic(fmt.Errorf("retrieved nonce was not of type string, resp: %s", respJSON))
 	}
 	nonce, err := hexutil.DecodeUint64(nonceString)
 	if err != nil {
@@ -586,6 +596,28 @@ func signAndSerialiseTransaction(wallet wallet.Wallet, tx types.TxData) string {
 	}
 
 	return txBinaryHex
+}
+
+// Funds the account from the faucet account.
+func fundAccount(dest common.Address) {
+	// We create the faucet wallet.
+	faucetPrivKey, err := crypto.HexToECDSA(rollupchain.FaucetPrivateKeyHex)
+	if err != nil {
+		panic("could not initialise faucet private key")
+	}
+	faucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), faucetPrivKey)
+
+	// We generate a viewing key for the faucet.
+	generateAndSubmitViewingKey(faucetWallet.Address().Hex(), faucetPrivKey)
+
+	// We submit the transaction and await confirmation.
+	tx := types.LegacyTx{
+		Value:    big.NewInt(faucetAlloc),
+		Gas:      uint64(1_000_000),
+		GasPrice: common.Big1,
+		To:       &dest,
+	}
+	sendTransactionAndAwaitConfirmation(faucetWallet, tx)
 }
 
 func setupWalletTestLog(testName string) {
