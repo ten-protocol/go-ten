@@ -299,12 +299,8 @@ func (a *Node) Stop() {
 	if err := a.enclaveClient.StopClient(); err != nil {
 		common.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
-
 	if a.rpcServer != nil {
-		// TODO - The RPC server does not return from stopping. Investigate.
-		go func() {
-			_ = a.rpcServer.Stop()
-		}()
+		a.rpcServer.Stop()
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
