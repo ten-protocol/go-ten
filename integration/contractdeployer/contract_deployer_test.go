@@ -7,9 +7,7 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
@@ -49,6 +47,8 @@ var (
 
 func TestCanDeployGuessingGameContract(t *testing.T) {
 	createObscuroNetwork(t)
+	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
+	time.Sleep(2 * time.Second)
 	contractAddr, err := contractdeployer.Deploy(config)
 	if err != nil {
 		panic(err)
@@ -57,16 +57,8 @@ func TestCanDeployGuessingGameContract(t *testing.T) {
 	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
 	contractDeployerClient := getClient(contractDeployerWallet)
 
-	// TODO - Once the bug around use of "latest" with `eth_getCode` is fixed, use "latest" instead of rollup number.
-	var rollupHeader *common.Header
-	err = contractDeployerClient.Call(&rollupHeader, rpcclientlib.RPCGetCurrentRollupHead)
-	if err != nil {
-		panic(err)
-	}
-	rollupNumber := hexutil.EncodeBig(rollupHeader.Number)
-
 	var deployedCode string
-	err = contractDeployerClient.Call(&deployedCode, rpcclientlib.RPCGetCode, contractAddr, rollupNumber)
+	err = contractDeployerClient.Call(&deployedCode, rpcclientlib.RPCGetCode, contractAddr, latestBlock)
 	if err != nil {
 		panic(err)
 	}
