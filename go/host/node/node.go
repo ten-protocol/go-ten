@@ -293,18 +293,18 @@ func (a *Node) Stop() {
 	if err := a.p2p.StopListening(); err != nil {
 		common.ErrorWithID(a.shortID, "failed to close transaction P2P listener cleanly: %s", err)
 	}
-
 	if err := a.enclaveClient.Stop(); err != nil {
 		common.ErrorWithID(a.shortID, "could not stop enclave server. Cause: %s", err)
 	}
-
 	if err := a.enclaveClient.StopClient(); err != nil {
 		common.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
 
 	if a.rpcServer != nil {
 		// TODO - The RPC server does not return from stopping. Investigate.
-		go a.rpcServer.Stop()
+		go func() {
+			_ = a.rpcServer.Stop()
+		}()
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
