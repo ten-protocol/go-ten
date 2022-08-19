@@ -43,11 +43,11 @@ func AwaitReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) error {
 				return err
 			}
 
-			counter++
+			counter += 100
 			if counter > receiptTimeoutMillis {
 				return fmt.Errorf("could not retrieve transaction after timeout")
 			}
-			time.Sleep(time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
