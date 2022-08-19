@@ -12,9 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
