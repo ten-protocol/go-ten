@@ -71,7 +71,7 @@ docker run --name=jamL2deployer \
     --nodePort=${l2port} \
     --contractName="L2ERC20" \
     --privateKey=${jampkstring}\
-    --constructorParams="JAM,JAM,1000000000000000000000"
+    --constructorParams="JAM,JAM,1000000000000000000000000000000"
 echo ""
 
 echo "Deploying ETH ERC20 contract to the obscuro network..."
@@ -83,7 +83,7 @@ docker run --name=ethL2deployer \
     --nodePort=${l2port} \
     --contractName="L2ERC20" \
     --privateKey=${ethpkstring}\
-    --constructorParams="ETH,ETH,1000000000000000000000"
+    --constructorParams="ETH,ETH,1000000000000000000000000000000"
 echo ""
 
 echo "Deploying Guessing game contract to the obscuro network..."
