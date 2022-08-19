@@ -84,7 +84,7 @@ docker run --name=jamerc20deployer \
     --l1Deployment \
     --contractName="L1ERC20" \
     --privateKey=${pkstring}\
-    --constructorParams="JAM,JAM,1000000000000000000000"
+    --constructorParams="JAM,JAM,1000000000000000000000000000000"
 # storing the contract address to the .env file
 jamErc20Addr=$(docker logs --tail 1 jamerc20deployer)
 echo "JAMERC20ADDR=${jamErc20Addr}" >> "${testnet_path}/.env"
@@ -101,7 +101,7 @@ docker run --name=etherc20deployer \
     --l1Deployment \
     --contractName="L1ERC20" \
     --privateKey=${pkstring}\
-    --constructorParams="ETH,ETH,1000000000000000000000"
+    --constructorParams="ETH,ETH,1000000000000000000000000000000"
 # storing the contract address to the .env file
 ethErc20Addr=$(docker logs --tail 1 etherc20deployer)
 echo "ETHERC20ADDR=${ethErc20Addr}" >> "${testnet_path}/.env"
