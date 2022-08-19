@@ -85,6 +85,8 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	// We send more than enough to the contract deployer, to make sure prefunding won't be needed.
 	prefundContractDeployer(faucetWallet, faucetClient, contractdeployer.Prealloc*3)
 
+	// We check the faucet's balance before and after the deployment. Since the contract deployer has already been sent
+	// sufficient funds, the faucet should have been to dispense any more, leaving its balance unchanged.
 	var faucetInitialBalance string
 	err := faucetClient.Call(&faucetInitialBalance, rpcclientlib.RPCGetBalance, faucetWallet.Address().Hex(), latestBlock)
 	if err != nil {

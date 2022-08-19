@@ -44,7 +44,7 @@ type contractDeployer struct {
 	contractCode []byte
 }
 
-// Deploy deploys the contract specified in the config, and returns its address.
+// Deploy deploys the contract specified in the config, and returns its deployed address.
 func Deploy(config *Config) (string, error) {
 	deployer, err := newContractDeployer(config)
 	if err != nil {
