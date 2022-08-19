@@ -162,7 +162,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = proxyRequest(rpcReq, rpcResp, we.accountClients)
+	err = proxyRequest(rpcReq, &rpcResp, we.accountClients)
 
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)

@@ -144,7 +144,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 // proxyRequest will try to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 //
 //	the request with all clients until it succeeds
-func proxyRequest(rpcReq *rpcRequest, rpcResp interface{}, accClients map[common.Address]*rpcclientlib.EncRPCClient) error {
+func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, accClients map[common.Address]*rpcclientlib.EncRPCClient) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, accClients)
 
@@ -152,12 +152,12 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp interface{}, accClients map[common
 	if suggestedClient != nil {
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		err = executeCall(suggestedClient, rpcReq, &rpcResp)
+		err = executeCall(suggestedClient, rpcReq, rpcResp)
 	} else {
 		// we attempt the request with every client until we have a successful execution
 		log.Info("appropriate client not found, attempting request with up to %d clients", len(accClients))
 		for _, client := range accClients {
-			err = executeCall(client, rpcReq, &rpcResp)
+			err = executeCall(client, rpcReq, rpcResp)
 			if err == nil || errors.Is(err, rpcclientlib.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				break
