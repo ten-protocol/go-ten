@@ -223,7 +223,7 @@ func StopObscuroNodes(clients []rpcclientlib.Client) {
 			c.Stop()
 		}(client)
 	}
-	if waitTimeout(&wg, 2*time.Second) {
+	if waitTimeout(&wg, 10*time.Second) {
 		log.Error("Timed out waiting for the obscuro nodes to stop")
 	} else {
 		log.Info("Obscuro nodes stopped")
