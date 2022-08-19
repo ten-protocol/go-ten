@@ -1,9 +1,8 @@
 package evm
 
 import (
-	"math"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"math"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -31,7 +30,14 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 		}
 		result[t.Hash()] = r
 		if r.Status == types.ReceiptStatusFailed {
-			common.TraceTXExecution(t.Hash(), "Unsuccessful (status != 1).")
+			common.ErrorTXExecution(t.Hash(),
+				"Unsuccessful (status != 1)."+
+					"\n To: %s"+
+					"\n Data: %x"+
+					"\n Gas: %s",
+				t.To().Hex(),
+				t.Data(),
+				t.Gas())
 		} else {
 			common.TraceTXExecution(t.Hash(), "Successfully executed. Address: %s", r.ContractAddress.Hex())
 		}
@@ -55,12 +61,12 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from gethcommon.Address, to gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig) (*gethcore.ExecutionResult, error) {
+func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, rollupResolver db.RollupResolver, chainConfig *params.ChainConfig) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(rollupResolver, true)
 
 	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	// todo use ToMessage
-	msg := types.NewMessage(from, &to, 0, gethcommon.Big0, 100_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
+	msg := types.NewMessage(from, to, 0, gethcommon.Big0, 100_000_000_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
 
 	// sets Tx.origin
 	txContext := gethcore.NewEVMTxContext(msg)
