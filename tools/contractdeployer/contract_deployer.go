@@ -126,9 +126,6 @@ func (cd *contractDeployer) run(isL1Deployment bool) (string, error) {
 		return "", fmt.Errorf("transaction was successful but could not retrieve address for deployed contract")
 	}
 
-	// print the contract address, to be read if necessary by the caller (important: this must be the last message output by the script)
-	fmt.Print(contractAddr.Hex())
-
 	// this is a safety sleep to make sure the output is printed
 	time.Sleep(5 * time.Second)
 	return contractAddr.Hex(), nil
