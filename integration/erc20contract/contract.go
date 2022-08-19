@@ -13,6 +13,7 @@ import (
 func L2BytecodeWithDefaultSupply(tokenName string) []byte {
 	return L2Bytecode(tokenName, "1000000000000000000000000000000000000000")
 }
+
 func L2Bytecode(tokenName string, initialSupply string) []byte {
 	parsed, err := ObsERC20.ObsERC20MetaData.GetAbi()
 	if err != nil {
@@ -30,6 +31,7 @@ func L2Bytecode(tokenName string, initialSupply string) []byte {
 func L1BytecodeWithDefaultSupply(tokenName string) []byte {
 	return L1Bytecode(tokenName, "1000000000000000000000000000000000000000")
 }
+
 func L1Bytecode(tokenName string, initialSupply string) []byte {
 	parsed, err := EthERC20.EthERC20MetaData.GetAbi()
 	if err != nil {
