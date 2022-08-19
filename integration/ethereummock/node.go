@@ -136,7 +136,7 @@ func (m *Node) IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool
 	return m.Resolver.IsBlockAncestor(block, proof)
 }
 
-func (m *Node) GetBalance(_ gethcommon.Address) (big.Int, error) {
+func (m *Node) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
 	panic("not implemented")
 }
 

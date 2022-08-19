@@ -171,7 +171,7 @@ func setupClient(cfg *Config, wal wallet.Wallet) (ethadapter.EthClient, error) {
 }
 
 func (cd *contractDeployer) prefundAccount() error {
-	balance, err := cd.client.GetBalance(cd.wallet.Address())
+	balance, err := cd.client.BalanceAt(cd.wallet.Address(), nil)
 	if err != nil {
 		return fmt.Errorf("failed to fetch contract deployer balance. Cause: %w", err)
 	}

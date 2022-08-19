@@ -88,15 +88,15 @@ func (c *obscuroWalletRPCClient) Nonce(address gethcommon.Address) (uint64, erro
 	return uint64(result), err
 }
 
-func (c *obscuroWalletRPCClient) GetBalance(address gethcommon.Address) (big.Int, error) {
+func (c *obscuroWalletRPCClient) BalanceAt(account gethcommon.Address, _ *big.Int) (*big.Int, error) {
 	var result string
 	// todo take the block number as an argument, rather than hardcoding latest
-	err := c.client.Call(&result, rpcclientlib.RPCGetBalance, address.Hex(), latestBlock)
+	err := c.client.Call(&result, rpcclientlib.RPCGetBalance, account.Hex(), latestBlock)
 	if err != nil {
-		return *gethcommon.Big0, err
+		return gethcommon.Big0, err
 	}
 	balance, err := hexutil.DecodeBig(result)
-	return *balance, err
+	return balance, err
 }
 
 func (c *obscuroWalletRPCClient) Info() Info {

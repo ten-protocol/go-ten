@@ -170,7 +170,7 @@ func (e *gethRPCClient) EthClient() *ethclient.Client {
 	return e.client
 }
 
-func (e *gethRPCClient) GetBalance(_ gethcommon.Address) (big.Int, error) {
+func (e *gethRPCClient) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
 	panic("not implemented")
 }
 
