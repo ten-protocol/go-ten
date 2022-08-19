@@ -1,11 +1,10 @@
-package rpcclientlib
+package walletextension
 
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 )
 
 const (
@@ -19,7 +18,7 @@ const (
 var (
 	viewingKeyAddressOne = common.HexToAddress("0x" + viewingKeyAddressHex)
 	viewingKeyAddressTwo = common.HexToAddress("0x71C7656EC7ab88b098defB751B7401B5f6d8976D") // Not in the data field.
-	viewingKeyMap        = map[common.Address]*ecies.PrivateKey{
+	accClients           = map[common.Address]*rpcclientlib.EncRPCClient{
 		viewingKeyAddressOne: nil,
 		viewingKeyAddressTwo: nil,
 	}
@@ -27,7 +26,7 @@ var (
 
 func TestCanSearchDataFieldForFrom(t *testing.T) {
 	callParams := map[string]interface{}{"data": dataFieldPrefix + otherAddressHexPadded + viewingKeyAddressHexPadded}
-	address, err := searchDataFieldForFrom(callParams, viewingKeyMap)
+	address, err := searchDataFieldForAccount(callParams, accClients)
 	if err != nil {
 		t.Fatalf("did not expect an error but got %s", err)
 	}
@@ -39,7 +38,7 @@ func TestCanSearchDataFieldForFrom(t *testing.T) {
 func TestCanSearchDataFieldWhenHasUnexpectedLength(t *testing.T) {
 	incorrectLengthArg := "arg2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // Only 31 bytes.
 	callParams := map[string]interface{}{"data": dataFieldPrefix + otherAddressHexPadded + viewingKeyAddressHexPadded + incorrectLengthArg}
-	address, err := searchDataFieldForFrom(callParams, viewingKeyMap)
+	address, err := searchDataFieldForAccount(callParams, accClients)
 	if err != nil {
 		t.Fatalf("did not expect an error but got %s", err)
 	}
@@ -49,7 +48,7 @@ func TestCanSearchDataFieldWhenHasUnexpectedLength(t *testing.T) {
 }
 
 func TestErrorsWhenDataFieldIsMissing(t *testing.T) {
-	_, err := searchDataFieldForFrom(make(map[string]interface{}), viewingKeyMap)
+	_, err := searchDataFieldForAccount(make(map[string]interface{}), accClients)
 
 	if err == nil {
 		t.Fatal("`data` field was missing but not error was thrown")
@@ -58,7 +57,7 @@ func TestErrorsWhenDataFieldIsMissing(t *testing.T) {
 
 func TestGracefulWhenDataFieldTooShort(t *testing.T) {
 	callParams := map[string]interface{}{"data": "tooshort"}
-	address, err := searchDataFieldForFrom(callParams, viewingKeyMap)
+	address, err := searchDataFieldForAccount(callParams, accClients)
 	if err != nil {
 		t.Fatalf("did not expect an error but got %s", err)
 	}

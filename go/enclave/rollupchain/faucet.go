@@ -1,6 +1,7 @@
 package rollupchain
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -12,7 +13,7 @@ import (
 
 const (
 	FaucetPrivateKeyHex = "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b" // The faucet's private key.
-	faucetPrealloc      = 7500000000000000000                                                // The balance preallocated to the faucet address.
+	faucetPrealloc      = "7500000000000000000000000000000"                                  // The balance preallocated to the faucet address.
 )
 
 // Faucet handles the preallocation of funds in the network.
@@ -54,6 +55,10 @@ func (f *Faucet) CalculateGenesisState(storage db.Storage) error {
 // Applies the faucet preallocation on top of an empty state DB.
 func (f *Faucet) applyFaucetPrealloc(storage db.Storage) *state.StateDB {
 	s := storage.EmptyStateDB()
-	s.SetBalance(f.faucetAddress, big.NewInt(faucetPrealloc))
+	faucetPreallocBig, success := big.NewInt(0).SetString(faucetPrealloc, 10)
+	if !success {
+		panic(fmt.Errorf("could not initialise faucet prealloc Big from string %s", faucetPrealloc))
+	}
+	s.SetBalance(f.faucetAddress, faucetPreallocBig)
 	return s
 }

@@ -16,7 +16,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
+)
+
+const (
+	latestBlock = "latest"
 )
 
 var ErrReceiptNotFound = errors.New("receipt not found, received nil response")
@@ -33,11 +36,11 @@ type obscuroWalletRPCClient struct {
 
 // NewObscuroRPCClient creates an obscuro RPC client for a given wallet, it will create and register a viewing key for the wallet as part of this setup
 func NewObscuroRPCClient(ipaddress string, port uint, wallet wallet.Wallet) (EthClient, error) {
-	client, err := rpcclientlib.NewViewingKeyNetworkClient(fmt.Sprintf("%s:%d", ipaddress, port))
+	vk, err := rpcclientlib.GenerateAndSignViewingKey(wallet)
 	if err != nil {
 		return nil, err
 	}
-	err = viewkey.GenerateAndRegisterViewingKey(client, wallet)
+	client, err := rpcclientlib.NewEncNetworkClient(fmt.Sprintf("%s:%d", ipaddress, port), vk)
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +83,20 @@ func (c *obscuroWalletRPCClient) TransactionReceipt(hash gethcommon.Hash) (*type
 func (c *obscuroWalletRPCClient) Nonce(address gethcommon.Address) (uint64, error) {
 	var result hexutil.Uint64
 	bl := rpc.LatestBlockNumber
-	// todo take the block number as an argument
+	// todo take the block number as an argument, rather than hardcoding latest
 	err := c.client.Call(&result, rpcclientlib.RPCNonce, address, rpc.BlockNumberOrHash{BlockNumber: &bl})
 	return uint64(result), err
+}
+
+func (c *obscuroWalletRPCClient) BalanceAt(account gethcommon.Address, _ *big.Int) (*big.Int, error) {
+	var result string
+	// todo take the block number as an argument, rather than hardcoding latest
+	err := c.client.Call(&result, rpcclientlib.RPCGetBalance, account.Hex(), latestBlock)
+	if err != nil {
+		return gethcommon.Big0, err
+	}
+	balance, err := hexutil.DecodeBig(result)
+	return balance, err
 }
 
 func (c *obscuroWalletRPCClient) Info() Info {

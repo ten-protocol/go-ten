@@ -6,6 +6,28 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+const (
+	http = "http://"
+)
+
+// networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
+type networkClient struct {
+	rpcClient *rpc.Client
+}
+
+// NewEncNetworkClient returns a network RPC client with Viewing Key encryption/decryption
+func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClient, error) {
+	rpcClient, err := NewNetworkClient(rpcAddress)
+	if err != nil {
+		return nil, err
+	}
+	encClient, err := NewEncRPCClient(rpcClient, viewingKey)
+	if err != nil {
+		return nil, err
+	}
+	return encClient, nil
+}
+
 // NewNetworkClient returns a client that can make RPC calls to an Obscuro node
 func NewNetworkClient(address string) (Client, error) {
 	rpcClient, err := rpc.Dial(http + address)
@@ -16,11 +38,6 @@ func NewNetworkClient(address string) (Client, error) {
 	return &networkClient{
 		rpcClient: rpcClient,
 	}, nil
-}
-
-// networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
-type networkClient struct {
-	rpcClient *rpc.Client
 }
 
 // Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
