@@ -4,13 +4,14 @@ package integration
 const (
 	StartPortGethNetworkTest        uint64 = 30000
 	StartPortWalletExtensionTest    uint64 = 31000
-	StartPortNodeRunnerTest         uint64 = 32000
+	StartPortNodeRunnerTest                = 32000
 	StartPortSimulationDocker              = 33000
 	StartPortSimulationGethInMem           = 34000
 	StartPortSimulationInMem               = 35000
 	StartPortSimulationAzureEnclave        = 36000
 	StartPortSimulationFullNetwork         = 37000
 	StartPortSmartContractTests            = 38000
+	StartPortContractDeployerTest          = 39000
 )
 
 const (
