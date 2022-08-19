@@ -84,7 +84,7 @@ func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, 
 		return nil, fmt.Errorf("could not encrypt bytes because it does not have a viewing key for account %s", address.String())
 	}
 
-	if bytes == nil {
+	if len(bytes) == 0 {
 		bytes = placeholderResult
 	}
 

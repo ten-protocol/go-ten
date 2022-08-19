@@ -42,5 +42,5 @@ func (api *TestAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 // StopHost gracefully stops the host.
 // TODO - Investigate how to authenticate this and other sensitive methods in production (Geth uses JWT).
 func (api *TestAPI) StopHost() {
-	go api.host.Stop()
+	api.host.Stop()
 }

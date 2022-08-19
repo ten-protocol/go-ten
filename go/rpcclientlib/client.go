@@ -9,6 +9,7 @@ const (
 	RPCCall                    = "eth_call"
 	RPCChainID                 = "eth_chainId"
 	RPCGetBalance              = "eth_getBalance"
+	RPCGetCode                 = "eth_getCode"
 	RPCGetTransactionByHash    = "eth_getTransactionByHash"
 	RPCNonce                   = "eth_getTransactionCount"
 	RPCGetTxReceipt            = "eth_getTransactionReceipt"
