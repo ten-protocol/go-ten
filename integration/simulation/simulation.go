@@ -100,48 +100,12 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 	}
 }
 
-// Sends an amount from the faucet to each Obscuro account, to pay for transactions.
+// Prefunds the L2 wallets with `allocObsWallets` each.
 func (s *Simulation) prefundObscuroAccounts() {
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
+	faucetClient := s.RPCHandles.ObscuroWalletRndClient(faucetWallet)
 	nonce := NextNonce(s.RPCHandles, faucetWallet)
-
-	// We send the transactions serially, so that we can precompute the nonces.
-	txHashes := make([]gethcommon.Hash, len(s.Params.Wallets.AllObsWallets()))
-	for idx, w := range s.Params.Wallets.AllObsWallets() {
-		destAddr := w.Address()
-		tx := &types.LegacyTx{
-			Nonce:    nonce + uint64(idx),
-			Value:    big.NewInt(allocObsWallets),
-			Gas:      uint64(1_000_000),
-			GasPrice: gethcommon.Big1,
-			To:       &destAddr,
-		}
-		signedTx, err := faucetWallet.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-
-		err = s.RPCHandles.ObscuroWalletRndClient(faucetWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, testcommon.EncodeTx(signedTx))
-		if err != nil {
-			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
-		}
-
-		txHashes[idx] = signedTx.Hash()
-	}
-
-	// Then we await the receipts in parallel.
-	wg := sync.WaitGroup{}
-	for _, txHash := range txHashes {
-		wg.Add(1)
-		go func(txHash gethcommon.Hash) {
-			defer wg.Done()
-			err := testcommon.AwaitReceipt(s.RPCHandles.ObscuroWalletRndClient(faucetWallet), txHash)
-			if err != nil {
-				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
-			}
-		}(txHash)
-	}
-	wg.Wait()
+	testcommon.PrefundWallets(faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets))
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.

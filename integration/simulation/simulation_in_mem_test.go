@@ -15,7 +15,7 @@ import (
 // Running it long enough with various parameters will test many corner cases without having to explicitly write individual tests for them.
 // The unit of time is the "AvgBlockDuration" - which is the average time between L1 blocks, which are the carriers of rollups.
 // Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
-// the CPU usage will be very high during the simulation which might result in inconclusive results.
+// the CPU usage will be very high during the simulation which might give inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupSimTestLog("in-mem")
 

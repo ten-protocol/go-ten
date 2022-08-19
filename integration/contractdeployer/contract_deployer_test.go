@@ -6,12 +6,10 @@ import (
 	"testing"
 	"time"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
@@ -74,8 +72,10 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	faucetWallet := getWallet(rollupchain.FaucetPrivateKeyHex)
 	faucetClient := getClient(faucetWallet)
 
+	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
 	// We send more than enough to the contract deployer, to make sure prefunding won't be needed.
-	prefundContractDeployer(faucetWallet, faucetClient, contractdeployer.Prealloc*3)
+	excessivePrealloc := big.NewInt(contractdeployer.Prealloc * 3)
+	testcommon.PrefundWallets(faucetWallet, faucetClient, 0, []wallet.Wallet{contractDeployerWallet}, excessivePrealloc)
 
 	// We check the faucet's balance before and after the deployment. Since the contract deployer has already been sent
 	// sufficient funds, the faucet should have been to dispense any more, leaving its balance unchanged.
@@ -146,36 +146,4 @@ func getClient(wallet wallet.Wallet) *rpcclientlib.EncRPCClient {
 		panic(err)
 	}
 	return client
-}
-
-// Prefunds the contract deployer with the given amount.
-func prefundContractDeployer(faucetWallet wallet.Wallet, faucetClient *rpcclientlib.EncRPCClient, prealloc int64) {
-	contractDeployerPrivKey, err := crypto.HexToECDSA(contractDeployerPrivateKeyHex)
-	if err != nil {
-		panic("could not initialise contract deployer private key")
-	}
-	contractDeployerWallet := wallet.NewInMemoryWalletFromPK(config.ChainID, contractDeployerPrivKey)
-
-	contractDeployerAddr := contractDeployerWallet.Address()
-	tx := &types.LegacyTx{
-		Nonce:    0, // We can assume this is the first transaction for the new wallet.
-		Value:    big.NewInt(prealloc),
-		Gas:      uint64(1_000_000),
-		GasPrice: gethcommon.Big1,
-		To:       &contractDeployerAddr,
-	}
-	signedTx, err := faucetWallet.SignTransaction(tx)
-	if err != nil {
-		panic(err)
-	}
-
-	err = faucetClient.Call(nil, rpcclientlib.RPCSendRawTransaction, testcommon.EncodeTx(signedTx))
-	if err != nil {
-		panic(err)
-	}
-
-	err = testcommon.AwaitReceipt(faucetClient, signedTx.Hash())
-	if err != nil {
-		panic(err)
-	}
 }

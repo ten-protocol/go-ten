@@ -3,8 +3,12 @@ package common
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"math/rand"
+	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -70,4 +74,46 @@ func EncodeTx(tx *common.L2Tx) string {
 	txBinaryHex := gethcommon.Bytes2Hex(txBinary)
 
 	return "0x" + txBinaryHex
+}
+
+// PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
+// The transactions are sent with sequential nonces, starting with `startingNonce`.
+func PrefundWallets(faucetWallet wallet.Wallet, faucetClient rpcclientlib.Client, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int) {
+	// We send the transactions serially, so that we can precompute the nonces.
+	txHashes := make([]gethcommon.Hash, len(wallets))
+	for idx, w := range wallets {
+		destAddr := w.Address()
+		tx := &types.LegacyTx{
+			Nonce:    startingNonce + uint64(idx),
+			Value:    alloc,
+			Gas:      uint64(1_000_000),
+			GasPrice: gethcommon.Big1,
+			To:       &destAddr,
+		}
+		signedTx, err := faucetWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+
+		err = faucetClient.Call(nil, rpcclientlib.RPCSendRawTransaction, EncodeTx(signedTx))
+		if err != nil {
+			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
+		}
+
+		txHashes[idx] = signedTx.Hash()
+	}
+
+	// Then we await the receipts in parallel.
+	wg := sync.WaitGroup{}
+	for _, txHash := range txHashes {
+		wg.Add(1)
+		go func(txHash gethcommon.Hash) {
+			defer wg.Done()
+			err := AwaitReceipt(faucetClient, txHash)
+			if err != nil {
+				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
+			}
+		}(txHash)
+	}
+	wg.Wait()
 }
