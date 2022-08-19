@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"sync"
@@ -11,7 +12,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -39,11 +39,13 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
+	ctx              context.Context
 }
 
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
 	log.Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
+	s.ctx = context.Background() // use injected context for graceful shutdowns
 
 	s.waitForObscuroGenesisOnL1()
 
@@ -104,8 +106,8 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 func (s *Simulation) prefundObscuroAccounts() {
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
 	faucetClient := s.RPCHandles.ObscuroWalletRndClient(faucetWallet)
-	nonce := NextNonce(s.RPCHandles, faucetWallet)
-	testcommon.PrefundWallets(faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets))
+	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
+	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets))
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
@@ -121,7 +123,7 @@ func (s *Simulation) deployObscuroERC20s() {
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
 
 			deployContractTx := types.DynamicFeeTx{
-				Nonce:     NextNonce(s.RPCHandles, owner),
+				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
 				Gas:       1025_000_000,
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
 				Data:      contractBytes,
@@ -131,12 +133,12 @@ func (s *Simulation) deployObscuroERC20s() {
 				panic(err)
 			}
 
-			err = s.RPCHandles.ObscuroWalletRndClient(owner).Call(nil, rpcclientlib.RPCSendRawTransaction, testcommon.EncodeTx(signedTx))
+			err = s.RPCHandles.ObscuroWalletRndClient(owner).SendTransaction(s.ctx, signedTx)
 			if err != nil {
 				panic(err)
 			}
 
-			err = testcommon.AwaitReceipt(s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash())
+			err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash())
 			if err != nil {
 				panic(fmt.Sprintf("ERC20 deployment transaction failed. Cause: %s", err))
 			}

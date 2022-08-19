@@ -1,7 +1,9 @@
 package networkmanager
 
 import (
+	"context"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"os"
 	"strconv"
@@ -26,6 +28,7 @@ import (
 )
 
 func InjectTransactions(cfg Config, args []string) {
+	ctx := context.Background()
 	println("Connecting to L1 node...")
 	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeHost, cfg.l1NodeWebsocketPort, cfg.l1RPCTimeout, common.HexToAddress("0x0"))
 	if err != nil {
@@ -75,14 +78,14 @@ func InjectTransactions(cfg Config, args []string) {
 	))
 
 	checkDepositsSuccessful(txInjector, l1Client, simStats, erc20ContractLib, mgmtContractLib, startBlock)
-	checkL2TxsSuccessful(rpcHandles, txInjector)
+	checkL2TxsSuccessful(ctx, rpcHandles, txInjector)
 
 	os.Exit(0)
 }
 
 // createWalletRPCClients creates map of wallet address to list of wallet clients (of length 1 because we have 1 node)
-func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) map[string][]rpcclientlib.Client {
-	clients := make(map[string][]rpcclientlib.Client)
+func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) map[string][]*obsclient.AuthObsClient {
+	clients := make(map[string][]*obsclient.AuthObsClient)
 
 	for _, w := range wallets.SimObsWallets {
 		vk, err := rpcclientlib.GenerateAndSignViewingKey(w)
@@ -93,8 +96,9 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 		if err != nil {
 			panic(err)
 		}
+		authClient := obsclient.NewAuthObsClient(client)
 
-		clients[w.Address().String()] = []rpcclientlib.Client{client}
+		clients[w.Address().String()] = []*obsclient.AuthObsClient{authClient}
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
@@ -106,8 +110,9 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 		if err != nil {
 			panic(err)
 		}
+		authClient := obsclient.NewAuthObsClient(client)
 
-		clients[w.Address().String()] = []rpcclientlib.Client{client}
+		clients[w.Address().String()] = []*obsclient.AuthObsClient{authClient}
 	}
 
 	return clients
@@ -183,10 +188,10 @@ func checkDepositsSuccessful(txInjector *simulation.TransactionInjector, l1Clien
 	}
 }
 
-func checkL2TxsSuccessful(rpcHandles *network.RPCHandles, txInjector *simulation.TransactionInjector) {
+func checkL2TxsSuccessful(ctx context.Context, rpcHandles *network.RPCHandles, txInjector *simulation.TransactionInjector) {
 	injectedTransfers := len(txInjector.TxTracker.TransferL2Transactions)
 	injectedWithdrawals := len(txInjector.TxTracker.WithdrawalL2Transactions)
-	notFoundTransfers, notFoundWithdrawals := simulation.FindNotIncludedL2Txs(0, rpcHandles, txInjector)
+	notFoundTransfers, notFoundWithdrawals := simulation.FindNotIncludedL2Txs(ctx, 0, rpcHandles, txInjector)
 
 	if notFoundTransfers != 0 {
 		println(fmt.Sprintf("Injected %d transfers into the L2 but %d were missing.", injectedTransfers, notFoundTransfers))

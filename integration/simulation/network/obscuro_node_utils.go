@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"net"
 	"sync"
@@ -24,7 +25,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string][]rpcclientlib.Client) {
+func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string][]*obsclient.AuthObsClient) {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -70,8 +71,8 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 }
 
 // setupInMemWalletClients will configure in-memory clients with viewing keys for every wallet-host combination
-func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockHost) map[string][]rpcclientlib.Client {
-	walletClients := make(map[string][]rpcclientlib.Client)
+func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockHost) map[string][]*obsclient.AuthObsClient {
+	walletClients := make(map[string][]*obsclient.AuthObsClient)
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
 	for _, w := range append(params.Wallets.SimObsWallets, params.Wallets.L2FaucetWallet) {
 		walletClients[w.Address().String()] = createInMemoryClientsForWallet(obscuroNodes, w)
@@ -84,7 +85,8 @@ func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockH
 }
 
 // todo: this method is quite heavy, should refactor to separate out the creation of the nodes, starting of the nodes, setup of the RPC clients etc.
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string][]rpcclientlib.Client, []string) {
+func startStandaloneObscuroNodes(
+	params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string][]*obsclient.AuthObsClient, []string) {
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
@@ -142,7 +144,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	}
 
 	// round-robin the wallets onto the different obscuro nodes, register them each a viewing key
-	walletClients := make(map[string][]rpcclientlib.Client)
+	walletClients := make(map[string][]*obsclient.AuthObsClient)
 	for _, w := range append(params.Wallets.SimObsWallets, params.Wallets.L2FaucetWallet) {
 		walletClients[w.Address().String()] = createRPCClientsForWallet(nodeRPCAddresses, w)
 	}
@@ -155,8 +157,8 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 }
 
 // createRPCClientsForWallet takes a wallet and sets up a client for it for every node
-func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []rpcclientlib.Client {
-	clients := make([]rpcclientlib.Client, len(nodes))
+func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []*obsclient.AuthObsClient {
+	clients := make([]*obsclient.AuthObsClient, len(nodes))
 	for i, node := range nodes {
 		vk, err := rpcclientlib.GenerateAndSignViewingKey(wal)
 		if err != nil {
@@ -164,14 +166,14 @@ func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []
 		}
 		c := p2p.NewInMemoryEncRPCClient(node, vk)
 
-		clients[i] = c
+		clients[i] = obsclient.NewAuthObsClient(c)
 	}
 	return clients
 }
 
 // createRPCClientsForWallet takes a wallet and sets up a client for it for every node
-func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []rpcclientlib.Client {
-	clients := make([]rpcclientlib.Client, len(nodeRPCAddresses))
+func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []*obsclient.AuthObsClient {
+	clients := make([]*obsclient.AuthObsClient, len(nodeRPCAddresses))
 	for i, addr := range nodeRPCAddresses {
 		vk, err := rpcclientlib.GenerateAndSignViewingKey(wal)
 		if err != nil {
@@ -181,7 +183,7 @@ func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []r
 		if err != nil {
 			panic(err)
 		}
-		clients[i] = c
+		clients[i] = obsclient.NewAuthObsClient(c)
 	}
 	return clients
 }
