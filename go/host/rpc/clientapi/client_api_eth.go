@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/host"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/host"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
@@ -48,27 +48,12 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 }
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
-func (api *EthereumAPI) GetBlockByNumber(_ context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	// Predefined constants to support Geth's API
-	switch number {
-	case rpc.LatestBlockNumber:
-		return headerWithHashesToBlock(api.host.DB().GetCurrentRollupHead()), nil
-	case rpc.EarliestBlockNumber:
-		return headerWithHashesToBlock(api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0)))), nil
-	case rpc.PendingBlockNumber:
-		// todo Dependent on the current pending rollup - leaving it for a different iteration as it will need more thought
-		return nil, nil //nolint:nilnil
+func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
+	rollupHash, err := api.blockNumberToHash(number)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch block number: %w", err)
 	}
-
-	rollupHash := api.host.DB().GetRollupHash(big.NewInt(int64(number)))
-	if rollupHash == nil {
-		return nil, nil //nolint:nilnil
-	}
-	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(*rollupHash)
-	if rollupHeaderWithHashes == nil {
-		return nil, fmt.Errorf("could not retrieve header for stored rollup with number %d and hash %s", number, rollupHash)
-	}
-	return headerWithHashesToBlock(rollupHeaderWithHashes), nil
+	return api.GetBlockByHash(ctx, *rollupHash, true)
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
@@ -112,7 +97,7 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 // EstimateGas is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	// TODO - Return a non-dummy gas estimate.
-	return 0, nil
+	return 5_000_000_000, nil
 }
 
 // SendRawTransaction sends the encrypted transaction.
@@ -126,17 +111,18 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 
 // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash.
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	rollupHeight, ok := blockNrOrHash.Number()
-	if ok {
-		rollupHash := api.host.DB().GetRollupHash(big.NewInt(rollupHeight.Int64()))
-		if rollupHash == nil {
-			return nil, nil
+	// requested a number
+	if rollupNumber, ok := blockNrOrHash.Number(); ok {
+		rollupHash, err := api.blockNumberToHash(rollupNumber)
+		if err != nil {
+			return nil, fmt.Errorf("unable to fetch block number: %w", err)
 		}
+
 		return api.host.EnclaveClient().GetCode(address, rollupHash)
 	}
 
-	rollupHash, ok := blockNrOrHash.Hash()
-	if ok {
+	// requested a hash
+	if rollupHash, ok := blockNrOrHash.Hash(); ok {
 		return api.host.EnclaveClient().GetCode(address, &rollupHash)
 	}
 
@@ -206,4 +192,25 @@ type FeeHistoryResult struct {
 	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
 	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
+}
+
+func (api *EthereumAPI) blockNumberToHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
+	// Predefined constants to support Geth's API
+	switch blockNumber {
+	case rpc.LatestBlockNumber:
+		hash := api.host.DB().GetCurrentRollupHead().Header.Hash()
+		return &hash, nil
+	case rpc.EarliestBlockNumber:
+		hash := api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0))).Header.Hash()
+		return &hash, nil
+	case rpc.PendingBlockNumber:
+		// todo Dependent on the current pending rollup - leaving it for a different iteration as it will need more thought
+		return nil, nil //nolint
+	}
+
+	rollupHash := api.host.DB().GetRollupHash(big.NewInt(blockNumber.Int64()))
+	if rollupHash == nil {
+		return nil, fmt.Errorf("unable to fetch rollup at height: %d", blockNumber.Int64())
+	}
+	return rollupHash, nil
 }
