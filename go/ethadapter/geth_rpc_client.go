@@ -170,6 +170,10 @@ func (e *gethRPCClient) EthClient() *ethclient.Client {
 	return e.client
 }
 
+func (e *gethRPCClient) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
+	panic("not implemented")
+}
+
 func (e *gethRPCClient) Stop() {
 	e.client.Close()
 }
