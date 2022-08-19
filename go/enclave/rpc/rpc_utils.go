@@ -68,12 +68,11 @@ func ExtractCallParamTo(callParams []byte) (*gethcommon.Address, error) {
 	}
 
 	// to field is null on contract creation
-	txArgs := paramsJSONMap[0]
+	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
 	if to := txArgs.(map[string]interface{})[CallFieldTo]; to == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
-	// The first argument is the transaction arguments, the second the block, the third the state overrides.
 	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
 	if !ok {
 		return nil, fmt.Errorf("`to` field in request params was missing or not of expected type string")

@@ -1,16 +1,17 @@
 package evm
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math"
 
-	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethcore "github.com/ethereum/go-ethereum/core"
 )
 
 // ExecuteTransactions
@@ -34,7 +35,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 				"Unsuccessful (status != 1)."+
 					"\n To: %s"+
 					"\n Data: %x"+
-					"\n Gas: %s",
+					"\n Gas: %d",
 				t.To().Hex(),
 				t.Data(),
 				t.Gas())
@@ -66,6 +67,7 @@ func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data [
 
 	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header), chain, &header.Agg)
 	// todo use ToMessage
+	// 100_000_000_000 is just a huge number gasLimit for making sure the local tx doesn't fail with lack of gas
 	msg := types.NewMessage(from, to, 0, gethcommon.Big0, 100_000_000_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
 
 	// sets Tx.origin
