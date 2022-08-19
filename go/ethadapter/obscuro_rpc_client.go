@@ -16,7 +16,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
 )
 
 var ErrReceiptNotFound = errors.New("receipt not found, received nil response")
@@ -33,11 +32,11 @@ type obscuroWalletRPCClient struct {
 
 // NewObscuroRPCClient creates an obscuro RPC client for a given wallet, it will create and register a viewing key for the wallet as part of this setup
 func NewObscuroRPCClient(ipaddress string, port uint, wallet wallet.Wallet) (EthClient, error) {
-	client, err := rpcclientlib.NewViewingKeyNetworkClient(fmt.Sprintf("%s:%d", ipaddress, port))
+	vk, err := rpcclientlib.GenerateAndSignViewingKey(wallet)
 	if err != nil {
 		return nil, err
 	}
-	err = viewkey.GenerateAndRegisterViewingKey(client, wallet)
+	client, err := rpcclientlib.NewEncNetworkClient(fmt.Sprintf("%s:%d", ipaddress, port), vk)
 	if err != nil {
 		return nil, err
 	}

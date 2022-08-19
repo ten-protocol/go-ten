@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/viewkey"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
@@ -34,7 +32,7 @@ func InjectTransactions(cfg Config, args []string) {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
 	println("Connecting to Obscuro node...")
-	l2Client, err := rpcclientlib.NewViewingKeyNetworkClient(cfg.obscuroClientAddress)
+	l2Client, err := rpcclientlib.NewNetworkClient(cfg.obscuroClientAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -87,28 +85,28 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 	clients := make(map[string][]rpcclientlib.Client)
 
 	for _, w := range wallets.SimObsWallets {
-		client, err := rpcclientlib.NewViewingKeyNetworkClient(obscuroNodeAddr)
+		vk, err := rpcclientlib.GenerateAndSignViewingKey(w)
+		if err != nil {
+			panic(err)
+		}
+		client, err := rpcclientlib.NewEncNetworkClient(obscuroNodeAddr, vk)
 		if err != nil {
 			panic(err)
 		}
 
-		err = viewkey.GenerateAndRegisterViewingKey(client, w)
-		if err != nil {
-			panic(err)
-		}
 		clients[w.Address().String()] = []rpcclientlib.Client{client}
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
-		client, err := rpcclientlib.NewViewingKeyNetworkClient(obscuroNodeAddr)
+		vk, err := rpcclientlib.GenerateAndSignViewingKey(w)
+		if err != nil {
+			panic(err)
+		}
+		client, err := rpcclientlib.NewEncNetworkClient(obscuroNodeAddr, vk)
 		if err != nil {
 			panic(err)
 		}
 
-		err = viewkey.GenerateAndRegisterViewingKey(client, w)
-		if err != nil {
-			panic(err)
-		}
 		clients[w.Address().String()] = []rpcclientlib.Client{client}
 	}
 
