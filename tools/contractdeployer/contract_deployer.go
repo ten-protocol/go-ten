@@ -235,13 +235,15 @@ func getContractCode(cfg *Config) ([]byte, error) {
 
 	case l2Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
-		supply := cfg.ConstructorParams[1]
-		return erc20contract.L2Bytecode(tokenName, supply), nil
+		tokenSymbol := cfg.ConstructorParams[1]
+		supply := cfg.ConstructorParams[2]
+		return erc20contract.L2Bytecode(tokenName, tokenSymbol, supply), nil
 
 	case l1Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
-		supply := cfg.ConstructorParams[1]
-		return erc20contract.L1Bytecode(tokenName, supply), nil
+		tokenSymbol := cfg.ConstructorParams[1]
+		supply := cfg.ConstructorParams[2]
+		return erc20contract.L1Bytecode(tokenName, tokenSymbol, supply), nil
 
 	case GuessingGameContract:
 		size, err := strconv.Atoi(cfg.ConstructorParams[0])

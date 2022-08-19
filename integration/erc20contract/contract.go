@@ -11,16 +11,16 @@ import (
 )
 
 func L2BytecodeWithDefaultSupply(tokenName string) []byte {
-	return L2Bytecode(tokenName, "1000000000000000000000000000000000000000")
+	return L2Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000")
 }
 
-func L2Bytecode(tokenName string, initialSupply string) []byte {
+func L2Bytecode(tokenName string, tokenSymbol string, initialSupply string) []byte {
 	parsed, err := ObsERC20.ObsERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
 	}
 	supply, _ := big.NewInt(0).SetString(initialSupply, 10)
-	input, err := parsed.Pack("", tokenName, tokenName, supply)
+	input, err := parsed.Pack("", tokenName, tokenSymbol, supply)
 	if err != nil {
 		panic(err)
 	}
@@ -29,16 +29,16 @@ func L2Bytecode(tokenName string, initialSupply string) []byte {
 }
 
 func L1BytecodeWithDefaultSupply(tokenName string) []byte {
-	return L1Bytecode(tokenName, "1000000000000000000000000000000000000000")
+	return L1Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000")
 }
 
-func L1Bytecode(tokenName string, initialSupply string) []byte {
+func L1Bytecode(tokenName string, tokenSymbol string, initialSupply string) []byte {
 	parsed, err := EthERC20.EthERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
 	}
 	supply, _ := big.NewInt(0).SetString(initialSupply, 10)
-	input, err := parsed.Pack("", tokenName, tokenName, supply)
+	input, err := parsed.Pack("", tokenName, tokenSymbol, supply)
 	if err != nil {
 		panic(err)
 	}
