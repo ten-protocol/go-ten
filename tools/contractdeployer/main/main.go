@@ -8,7 +8,7 @@ import (
 func main() {
 	log.SetLogLevel(log.DisabledLevel)
 	config := contractdeployer.ParseConfig()
-	err := contractdeployer.Deploy(config)
+	_, err := contractdeployer.Deploy(config)
 	if err != nil {
 		// the contract deployer's output is to be consumed by other applications
 		// in case of a failure bump the log level and panic

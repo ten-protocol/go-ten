@@ -173,7 +173,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = ti.rpcHandles.ObscuroWalletRndClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rpcHandles.ObscuroWalletRndClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, testcommon.EncodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
 			continue
@@ -235,7 +235,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			common.ShortAddress(obsWallet.Address()),
 		)
 
-		err = ti.rpcHandles.ObscuroWalletRndClient(obsWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err = ti.rpcHandles.ObscuroWalletRndClient(obsWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, testcommon.EncodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 			continue
@@ -262,7 +262,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, encodeTx(signedTx))
+		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).Call(nil, rpcclientlib.RPCSendRawTransaction, testcommon.EncodeTx(signedTx))
 		if err != nil {
 			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
 		}
@@ -359,19 +359,6 @@ func NextNonce(clients *network.RPCHandles, w wallet.Wallet) uint64 {
 		}
 		time.Sleep(time.Millisecond)
 	}
-}
-
-// Formats a transaction for sending to the enclave
-func encodeTx(tx *common.L2Tx) string {
-	txBinary, err := tx.MarshalBinary()
-	if err != nil {
-		panic(err)
-	}
-
-	// We convert the transaction binary to the form expected for sending transactions via RPC.
-	txBinaryHex := gethcommon.Bytes2Hex(txBinary)
-
-	return "0x" + txBinaryHex
 }
 
 // Indicates whether to keep issuing transactions, or halt.

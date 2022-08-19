@@ -33,7 +33,7 @@ const (
 const (
 	timeoutWait   = 80 * time.Second
 	retryInterval = 2 * time.Second
-	prealloc      = 2_050_000_000_000_000_000 // The amount preallocated to the contract deployer wallet.
+	Prealloc      = 2_050_000_000_000_000_000 // The amount preallocated to the contract deployer wallet.
 )
 
 type contractDeployer struct {
@@ -44,10 +44,11 @@ type contractDeployer struct {
 	contractCode []byte
 }
 
-func Deploy(config *Config) error {
+// Deploy deploys the contract specified in the config, and returns its address.
+func Deploy(config *Config) (string, error) {
 	deployer, err := newContractDeployer(config)
 	if err != nil {
-		return err
+		return "", err
 	}
 	return deployer.run(config.IsL1Deployment)
 }
@@ -95,18 +96,18 @@ func newContractDeployer(config *Config) (*contractDeployer, error) {
 	return deployer, nil
 }
 
-func (cd *contractDeployer) run(isL1Deployment bool) error {
+func (cd *contractDeployer) run(isL1Deployment bool) (string, error) {
 	// On the L2, we need to prefund the contract deployer account.
 	if !isL1Deployment {
 		err := cd.prefundAccount()
 		if err != nil {
-			return fmt.Errorf("unable to prefund contract deployer account. Cause: %w", err)
+			return "", fmt.Errorf("unable to prefund contract deployer account. Cause: %w", err)
 		}
 	}
 
 	nonce, err := cd.client.Nonce(cd.wallet.Address())
 	if err != nil {
-		return fmt.Errorf("failed to fetch wallet nonce: %w", err)
+		return "", fmt.Errorf("failed to fetch wallet nonce: %w", err)
 	}
 	cd.wallet.SetNonce(nonce)
 
@@ -119,10 +120,10 @@ func (cd *contractDeployer) run(isL1Deployment bool) error {
 
 	contractAddr, err := signAndSendTxWithReceipt(cd.wallet, cd.client, &deployContractTx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if contractAddr == nil {
-		return fmt.Errorf("transaction was successful but could not retrieve address for deployed contract")
+		return "", fmt.Errorf("transaction was successful but could not retrieve address for deployed contract")
 	}
 
 	// print the contract address, to be read if necessary by the caller (important: this must be the last message output by the script)
@@ -130,7 +131,7 @@ func (cd *contractDeployer) run(isL1Deployment bool) error {
 
 	// this is a safety sleep to make sure the output is printed
 	time.Sleep(5 * time.Second)
-	return nil
+	return contractAddr.Hex(), nil
 }
 
 func setupWallet(cfg *Config) (wallet.Wallet, error) {
@@ -181,7 +182,7 @@ func (cd *contractDeployer) prefundAccount() error {
 	destAddr := cd.wallet.Address()
 	tx := &types.LegacyTx{
 		Nonce:    nonce,
-		Value:    big.NewInt(prealloc),
+		Value:    big.NewInt(Prealloc),
 		Gas:      uint64(1_000_000),
 		GasPrice: common.Big1,
 		To:       &destAddr,

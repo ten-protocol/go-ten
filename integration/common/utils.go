@@ -1,9 +1,20 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+)
+
+const (
+	receiptTimeoutMillis = 30000 // The timeout in millis to wait for a receipt for a transaction.
 )
 
 func RndBtw(min uint64, max uint64) uint64 {
@@ -18,4 +29,45 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 		panic("invalid durations")
 	}
 	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
+}
+
+// AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
+// transaction is unsuccessful or times out.
+func AwaitReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) error {
+	var receipt types.Receipt
+	counter := 0
+	for {
+		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, txHash)
+		if err != nil {
+			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+				return err
+			}
+
+			counter++
+			if counter > receiptTimeoutMillis {
+				return fmt.Errorf("could not retrieve transaction after timeout")
+			}
+			time.Sleep(time.Millisecond)
+			continue
+		}
+
+		if receipt.Status == types.ReceiptStatusFailed {
+			return fmt.Errorf("receipt had status failed")
+		}
+
+		return nil
+	}
+}
+
+// EncodeTx formats a transaction for sending to the enclave
+func EncodeTx(tx *common.L2Tx) string {
+	txBinary, err := tx.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+
+	// We convert the transaction binary to the form expected for sending transactions via RPC.
+	txBinaryHex := gethcommon.Bytes2Hex(txBinary)
+
+	return "0x" + txBinaryHex
 }
