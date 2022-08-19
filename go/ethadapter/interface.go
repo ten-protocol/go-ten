@@ -20,6 +20,7 @@ type EthClient interface {
 	SendTransaction(signedTx *types.Transaction) error               // issues an ethereum transaction (expects signed tx)
 	TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) // fetches the ethereum transaction receipt
 	Nonce(address gethcommon.Address) (uint64, error)                // fetches the account nonce to use in the next transaction
+	GetBalance(address gethcommon.Address) (big.Int, error)          // fetches the balance of the account
 
 	Info() Info                                                         // retrieves the node Info
 	FetchHeadBlock() *types.Block                                       // retrieves the block at head height

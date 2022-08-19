@@ -174,6 +174,15 @@ func setupClient(cfg *Config, wal wallet.Wallet) (ethadapter.EthClient, error) {
 }
 
 func (cd *contractDeployer) prefundAccount() error {
+	balance, err := cd.client.GetBalance(cd.wallet.Address())
+	if err != nil {
+		return fmt.Errorf("failed to fetch contract deployer balance. Cause: %w", err)
+	}
+	// We do not send more funds if the contract deployer already has enough.
+	if balance.Cmp(big.NewInt(Prealloc)) == 1 {
+		return nil
+	}
+
 	nonce, err := cd.faucetClient.Nonce(cd.faucetWallet.Address())
 	if err != nil {
 		return fmt.Errorf("failed to fetch faucet nonce. Cause: %w", err)

@@ -18,6 +18,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
+const (
+	latestBlock = "latest"
+)
+
 var ErrReceiptNotFound = errors.New("receipt not found, received nil response")
 
 // obscuroWalletRPCClient implements the EthClient interface, it's bound to a single wallet (viewing key and address)
@@ -79,9 +83,20 @@ func (c *obscuroWalletRPCClient) TransactionReceipt(hash gethcommon.Hash) (*type
 func (c *obscuroWalletRPCClient) Nonce(address gethcommon.Address) (uint64, error) {
 	var result hexutil.Uint64
 	bl := rpc.LatestBlockNumber
-	// todo take the block number as an argument
+	// todo take the block number as an argument, rather than hardcoding latest
 	err := c.client.Call(&result, rpcclientlib.RPCNonce, address, rpc.BlockNumberOrHash{BlockNumber: &bl})
 	return uint64(result), err
+}
+
+func (c *obscuroWalletRPCClient) GetBalance(address gethcommon.Address) (big.Int, error) {
+	var result string
+	// todo take the block number as an argument, rather than hardcoding latest
+	err := c.client.Call(&result, rpcclientlib.RPCGetBalance, address.Hex(), latestBlock)
+	if err != nil {
+		return *gethcommon.Big0, err
+	}
+	balance, err := hexutil.DecodeBig(result)
+	return *balance, err
 }
 
 func (c *obscuroWalletRPCClient) Info() Info {
