@@ -60,20 +60,25 @@ func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, er
 }
 
 // ExtractCallParamTo extracts and parses the `to` field of an eth_call request.
-func ExtractCallParamTo(callParams []byte) (gethcommon.Address, error) {
+func ExtractCallParamTo(callParams []byte) (*gethcommon.Address, error) {
 	var paramsJSONMap []interface{}
 	err := json.Unmarshal(callParams, &paramsJSONMap)
 	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(callParams), err)
+		return nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(callParams), err)
 	}
 
+	// to field is null on contract creation
 	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
+	if to := txArgs.(map[string]interface{})[CallFieldTo]; to == nil {
+		return nil, nil //nolint:nilnil
+	}
+
 	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
 	if !ok {
-		return gethcommon.Address{}, fmt.Errorf("`to` field in request params was missing or not of expected type string")
+		return nil, fmt.Errorf("`to` field in request params was missing or not of expected type string")
 	}
-
-	return gethcommon.HexToAddress(contractAddressString), nil
+	contractAddress := gethcommon.HexToAddress(contractAddressString)
+	return &contractAddress, nil
 }
 
 // ExtractCallParamFrom extracts and parses the `from` field of an eth_call request.
