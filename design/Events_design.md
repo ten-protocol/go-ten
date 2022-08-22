@@ -68,7 +68,7 @@ subscribers?
 
 ## Obscuro Design
 
-In Obscuro, we aim maintain the same building blocks that are found in Ethereum: events and subscriptions, and will try
+In Obscuro, we aim to maintain the same building blocks that are found in Ethereum: events and subscriptions, and will try
 to implement the privacy concerns with as little disruption as possible.
 
 ### Event visibility rules
@@ -109,7 +109,8 @@ All the events in this section contain at least one end-user address topic.
     event Transfer(address indexed from, address indexed to, uint256 value);
 ```
 
-```   /// @notice Emitted when the owner of the factory is changed
+```   
+    /// @notice Emitted when the owner of the factory is changed
     /// @param oldOwner The owner before the owner was changed
     /// @param newOwner The owner after the owner was changed
     event OwnerChanged(address indexed oldOwner, address indexed newOwner);
@@ -277,7 +278,7 @@ User `U1`- owner of `A1` subscribes to all events.
 
     If there is at least one common element, the event is encrypted and returned in the `BlockSubmissionResponse` with metadata.
 
-    *Note: This extra step is skipped for rvent `E2`, which is returned on every subscription where it matches, encrypted with the first viewing key*
+    *Note: This extra step is skipped for event `E2`, which is returned on every subscription where it matches, encrypted with the first viewing key*
 
 
 5. The encrypted event is streamed from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
