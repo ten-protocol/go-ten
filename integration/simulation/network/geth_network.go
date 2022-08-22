@@ -50,9 +50,9 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 }
 
 func (n *networkInMemGeth) TearDown() {
-	// Stop the Obscuro nodes first
+	// Stop the obscuro nodes first
 	StopObscuroNodes(n.obscuroClients)
-	
+
 	// Stop geth last
 	StopGethNetwork(n.gethClients, n.gethNetwork)
 }
