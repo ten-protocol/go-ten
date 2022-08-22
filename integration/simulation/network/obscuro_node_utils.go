@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"math/big"
+	"net"
 	"sync"
 	"time"
 
@@ -83,7 +84,7 @@ func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockH
 }
 
 // todo: this method is quite heavy, should refactor to separate out the creation of the nodes, starting of the nodes, setup of the RPC clients etc.
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string][]rpcclientlib.Client) {
+func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpcclientlib.Client, map[string][]rpcclientlib.Client, []string) {
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)
 	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
@@ -150,7 +151,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		walletClients[w.Address().String()] = createRPCClientsForWallet(nodeRPCAddresses, w)
 	}
 
-	return obscuroClients, walletClients
+	return obscuroClients, walletClients, nodeRPCAddresses
 }
 
 // createRPCClientsForWallet takes a wallet and sets up a client for it for every node
@@ -210,6 +211,7 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 	}
 }
 
+// StopObscuroNodes stops the Obscuro nodes and their RPC clients.
 func StopObscuroNodes(clients []rpcclientlib.Client) {
 	var wg sync.WaitGroup
 	for _, client := range clients {
@@ -218,18 +220,42 @@ func StopObscuroNodes(clients []rpcclientlib.Client) {
 			defer wg.Done()
 			err := c.Call(nil, rpcclientlib.RPCStopHost)
 			if err != nil {
-				log.Error("Failed to stop client %s", err)
+				log.Error("Failed to stop Obscuro node. Cause: %s", err)
 			}
 			c.Stop()
 		}(client)
 	}
+
 	if waitTimeout(&wg, 10*time.Second) {
-		log.Error("Timed out waiting for the obscuro nodes to stop")
+		panic("Timed out waiting for the Obscuro nodes to stop")
 	} else {
 		log.Info("Obscuro nodes stopped")
 	}
-	// Wait a bit for the nodes to shut down.
-	time.Sleep(2 * time.Second)
+}
+
+// CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
+func CheckHostRPCServersStopped(hostRPCAddresses []string) {
+	var wg sync.WaitGroup
+	for _, hostRPCAddress := range hostRPCAddresses {
+		wg.Add(1)
+
+		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
+		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
+		// connection remains open, waiting for the RPC server to close. Instead, we check whether the RPC port
+		// becomes free.
+		go func(rpcAddress string) {
+			defer wg.Done()
+			for !isAddressAvailable(rpcAddress) {
+				time.Sleep(100 * time.Millisecond)
+			}
+		}(hostRPCAddress)
+	}
+
+	if waitTimeout(&wg, 10*time.Second) {
+		panic("Timed out waiting for the Obscuro host RPC addresses to become available")
+	} else {
+		log.Info("Obscuro host RPC addresses freed")
+	}
 }
 
 // waitTimeout waits for the waitgroup for the specified max timeout.
@@ -246,4 +272,15 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	case <-time.After(timeout):
 		return true // timed out
 	}
+}
+
+func isAddressAvailable(address string) bool {
+	ln, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	if ln != nil {
+		_ = ln.Close()
+	}
+	return true
 }

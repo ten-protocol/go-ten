@@ -42,6 +42,8 @@ help_and_exit() {
     echo ""
     echo "  debug_enclave      *Optional* Dev mode, with a dlv debugger remote attach on port 2345"
     echo ""
+    echo "  dev_testnet        *Optional* Uses dev images for dev testnet"
+    echo ""
     echo ""
     echo ""
     exit 1  # Exit with error explicitly
@@ -59,6 +61,7 @@ is_genesis=false
 profiler_enabled=false
 p2p_public_address="127.0.0.1:10000"
 debug_enclave=false
+dev_testnet=false
 pk_address=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 
@@ -83,6 +86,7 @@ do
             --profiler_enabled)         profiler_enabled=${value} ;;
             --p2p_public_address)       p2p_public_address=${value} ;;
             --debug_enclave)            debug_enclave=${value} ;;
+            --dev_testnet)              dev_testnet=${value} ;;
 
             --help)                     help_and_exit ;;
             *)
@@ -116,12 +120,20 @@ then
   exit 0
 fi
 
+if ${dev_testnet} ;
+then
+  echo "Starting enclave and host with dev testnet images..."
+  docker compose -f docker-compose.dev-testnet.yml up enclave host edgelessdb -d
+  exit 0
+fi
+
 if ${sgx_enabled} ;
 then
   echo "Starting enclave with enabled SGX and host..."
   docker compose up enclave host edgelessdb -d
-else
-  echo "Starting enclave with DISABLED SGX and host..."
-  docker compose -f docker-compose.non-sgx.yml up enclave host -d
+  exit 0
 fi
+
+echo "Starting enclave with DISABLED SGX and host..."
+docker compose -f docker-compose.non-sgx.yml up enclave host -d
 
