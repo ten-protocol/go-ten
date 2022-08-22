@@ -23,8 +23,8 @@ jobs:
     # Map a step output to a job output
     outputs:
       mgmtContractAddr: ${{ steps.deployContracts.outputs.mgmtContractAddr }}
-      obxErc20Addr: ${{ steps.deployContracts.outputs.obxErc20Addr }}
-      ethErc20Addr: ${{ steps.deployContracts.outputs.ethErc20Addr }}
+      hocErc20Addr: ${{ steps.deployContracts.outputs.hocErc20Addr }}
+      pocErc20Addr: ${{ steps.deployContracts.outputs.pocErc20Addr }}
     steps:
       - uses: actions/checkout@v2
 
@@ -54,12 +54,12 @@ jobs:
           ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
-          echo "JAMERC20ADDR=$JAMERC20ADDR" >> $GITHUB_ENV
-          echo "ETHERC20ADDR=$ETHERC20ADDR" >> $GITHUB_ENV
-          echo "Contracts deployed to $MGMTCONTRACTADDR and $JAMERC20ADDR and $ETHERC20ADDR"
+          echo "HOCERC20ADDR=$HOCERC20ADDR" >> $GITHUB_ENV
+          echo "POCERC20ADDR=$POCERC20ADDR" >> $GITHUB_ENV
+          echo "Contracts deployed to $MGMTCONTRACTADDR and $HOCERC20ADDR and $POCERC20ADDR"
           echo "::set-output name=mgmtContractAddr::$MGMTCONTRACTADDR"
-          echo "::set-output name=obxErc20Addr::$JAMERC20ADDR"   
-          echo "::set-output name=ethErc20Addr::$ETHERC20ADDR"    
+          echo "::set-output name=hocErc20Addr::$HOCERC20ADDR"   
+          echo "::set-output name=pocErc20Addr::$POCERC20ADDR"    
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
@@ -182,8 +182,8 @@ jobs:
                --host_id=${{ matrix.host_addr }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
                --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
-               --obxerc20addr=${{needs.build.outputs.obxErc20Addr}} \
-               --etherc20addr=${{needs.build.outputs.ethErc20Addr}} \
+               --hocerc20addr=${{needs.build.outputs.hocErc20Addr}} \
+               --pocerc20addr=${{needs.build.outputs.pocErc20Addr}} \
                --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --p2p_public_address=obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'

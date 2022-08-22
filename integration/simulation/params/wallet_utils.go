@@ -66,17 +66,17 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey)
 
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
-	obx := SimToken{
-		Name:              bridge.OBX,
+	hoc := SimToken{
+		Name:              bridge.HOC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WOBXOwner),
-		L2ContractAddress: &bridge.WOBXContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.HOCOwner),
+		L2ContractAddress: &bridge.HOCContract,
 	}
-	eth := SimToken{
-		Name:              bridge.ETH,
+	poc := SimToken{
+		Name:              bridge.POC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.WETHOwner),
-		L2ContractAddress: &bridge.WETHContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.POCOwner),
+		L2ContractAddress: &bridge.POCContract,
 	}
 
 	return &SimWallets{
@@ -86,8 +86,8 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 		SimObsWallets:  simObsWallets,
 		L2FaucetWallet: l2FaucetWallet,
 		Tokens: map[bridge.ERC20]*SimToken{
-			bridge.OBX: &obx,
-			bridge.ETH: &eth,
+			bridge.HOC: &hoc,
+			bridge.POC: &poc,
 		},
 	}
 }
@@ -102,8 +102,8 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 
 func (w *SimWallets) AllEthAddresses() []*common.Address {
 	addresses := make([]*common.Address, 0)
-	addresses = append(addresses, w.Tokens[bridge.OBX].L1ContractAddress)
-	addresses = append(addresses, w.Tokens[bridge.ETH].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[bridge.HOC].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[bridge.POC].L1ContractAddress)
 	return addresses
 }
 

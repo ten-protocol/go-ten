@@ -160,7 +160,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 	// deposit any funds in the ERC20 contract.
 	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.WOBXContract,
+		reqJSONKeyTo:   bridge.HOCContract,
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: "0x" + common.Bytes2Hex(transferTxBytes),
 	}
@@ -185,7 +185,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
 	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.WOBXContract.Hex(),
+		reqJSONKeyTo:   bridge.HOCContract.Hex(),
 		reqJSONKeyFrom: accountAddress.String(),
 		reqJSONKeyData: convertedData,
 	}
@@ -209,7 +209,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
 	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.WOBXContract,
+		reqJSONKeyTo:   bridge.HOCContract,
 		reqJSONKeyData: convertedData,
 	}
 
@@ -232,7 +232,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 	balanceData := erc20contractlib.CreateBalanceOfData(dummyAccountAddress)
 	convertedData := (hexutil.Bytes)(balanceData)
 	reqParams := map[string]interface{}{
-		reqJSONKeyTo: bridge.WOBXContract,
+		reqJSONKeyTo: bridge.HOCContract,
 		// We send the request from a different address than the one we created a viewing key for.
 		reqJSONKeyFrom: dummyAccountAddress.Hex(),
 		reqJSONKeyData: convertedData,
@@ -518,7 +518,7 @@ func createObscuroNetwork(t *testing.T) {
 	}
 
 	// Set up the ERC20 wallet.
-	erc20Wallet := wallets.Tokens[bridge.OBX].L2Owner
+	erc20Wallet := wallets.Tokens[bridge.HOC].L2Owner
 	generateAndSubmitViewingKey(erc20Wallet.Address().Hex(), erc20Wallet.PrivateKey())
 	fundAccount(erc20Wallet.Address())
 

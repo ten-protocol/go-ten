@@ -195,7 +195,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		txData := &ethadapter.L1DepositTx{
 			Amount:        v,
 			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[bridge.OBX].L1ContractAddress,
+			TokenContract: ti.wallets.Tokens[bridge.HOC].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
@@ -321,7 +321,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     data,
-		To:       ti.wallets.Tokens[bridge.OBX].L2ContractAddress,
+		To:       ti.wallets.Tokens[bridge.HOC].L2ContractAddress,
 	}
 }
 
