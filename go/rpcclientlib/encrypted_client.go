@@ -18,8 +18,6 @@ const (
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
-type callExecutor func(result interface{}, method string, args ...interface{}) error
-
 // for these methods, the RPC method's requests and responses should be encrypted
 var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTxReceipt, RPCSendRawTransaction, RPCGetTransactionByHash}
 
@@ -52,28 +50,20 @@ func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, erro
 	return encClient, nil
 }
 
-// Call handles JSON rpc requests without a context - see callInternal for details
+// Call handles JSON rpc requests without a context - see CallContext for details
 func (c *EncRPCClient) Call(result interface{}, method string, args ...interface{}) error {
-	return c.callInternal(c.obscuroClient.Call, result, method, args...)
+	return c.CallContext(nil, result, method, args...)
 }
 
-// CallContext will return immediately if ctx is cancelled - see callInternal for details
-func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
-	callExec := func(result interface{}, method string, args ...interface{}) error {
-		return c.obscuroClient.CallContext(ctx, result, method, args...)
-	}
-	return c.callInternal(callExec, result, method, args...)
-}
-
-// callInternal is the main logic to execute JSON-RPC requests:
+// CallContext is the main logic to execute JSON-RPC requests, the context can be nil.
 // - if the method is sensitive it will encrypt the args before sending the request and then decrypts the response before returning
 // - result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
 // - callExec handles the delegated call, allows EncClient to use the same code for calling with or without a context
-func (c *EncRPCClient) callInternal(callExec callExecutor, result interface{}, method string, args ...interface{}) error {
+func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	assertResultIsPointer(result)
 	if !isSensitive(method) {
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
-		return callExec(result, method, args...)
+		return c.executeRPCCall(ctx, result, method, args...)
 	}
 
 	// encode the params into a json blob and encrypt them
@@ -84,7 +74,7 @@ func (c *EncRPCClient) callInternal(callExec callExecutor, result interface{}, m
 
 	// we set up a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
 	var rawResult interface{}
-	err = callExec(&rawResult, method, encryptedParams)
+	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
 	if err != nil {
 		return fmt.Errorf("%s rpc call failed - %w", method, err)
 	}
@@ -112,6 +102,14 @@ func (c *EncRPCClient) callInternal(callExec callExecutor, result interface{}, m
 	}
 
 	return nil
+}
+
+func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	if ctx == nil {
+		return c.obscuroClient.Call(result, method, args...)
+	} else {
+		return c.obscuroClient.CallContext(ctx, result, method, args...)
+	}
 }
 
 func (c *EncRPCClient) Stop() {
