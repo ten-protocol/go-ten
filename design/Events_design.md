@@ -290,7 +290,7 @@ App developers will be able to use the existing libraries unchanged, as long as 
 Depending on the subscription, the results might be different from those returned on a normal Ethereum network, because the user might not have the right to see certain private data. 
 
 Smart contract developers need to spend a few minutes to think about whether an event can be seen by the entity who it is relevant to, or whether it leaks data.
-There is no new syntax to learn.
+There is no new syntax to learn, just to be aware about the visibility rules.
 
 The data access protections of smart contracts will prevent another smart contract interacting with it from extracting information and leaking it as an event.  
 
