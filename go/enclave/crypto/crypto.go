@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -86,4 +87,28 @@ func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 		return nil, fmt.Errorf("failed to decrypt with private key. %w", err)
 	}
 	return plaintext, nil
+}
+
+// GeneratePublicRandomness - generate 32 bytes of randomness, which will be exposed in the rollup header.
+func GeneratePublicRandomness() []byte {
+	return randomBytes(gethcommon.HashLength)
+}
+
+// PrivateRollupRnd - combine public randomness with private randomness in a way that protects the secret.
+func PrivateRollupRnd(publicRnd []byte, secret []byte) []byte {
+	return crypto.Keccak256Hash(publicRnd, secret).Bytes()
+}
+
+func randomBytes(length int) []byte {
+	byteArr := make([]byte, length)
+	if _, err := rand.Read(byteArr); err != nil {
+		// todo - what should happen?
+		panic(err)
+	}
+	return byteArr
+}
+
+// PerTransactionRnd - calculates a per tx random value
+func PerTransactionRnd(privateRnd []byte, tCount int) []byte {
+	return crypto.Keccak256Hash(privateRnd, big.NewInt(int64(tCount)).Bytes()).Bytes()
 }
