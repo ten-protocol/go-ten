@@ -26,21 +26,20 @@ well-known. On mainnet, rollups will use rotating keys that are not known to any
 Obscuro enclaves.
 
 ## ERC20 Contracts
-We have a couple of "official" testnet ERC20 contracts that are automatically deployed with a static address every time 
-testnet is restarted. Both of these can be deposited from and withdrawn to their equivalent ERC20 contracts on the L1.
+We have a couple of testnet ERC20 tokens (HOC & POC) that are automatically deployed with a static address every time 
+testnet is restarted. The bridging mechanism has been setup for these tokens so they can be deposited from and withdrawn
+to their respective ERC20 contracts on the L1.
 
 Please contact us in the discord if you'd like some tokens to test with these contracts (faucet coming soon).
 
-WETH (official ERC20 for wrapped ETH on testnet):
+Hocus (HOC):
 
 ```
 0x9802F661d17c65527D7ABB59DAAD5439cb125a67
 ```
 
-WOBX (official ERC20 for wrapped OBX on testnet):
+Pocus (POC):
 
 ```
 0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC
 ```
-
-N.B. We also have a native OBX token on the obscuro network, wrapping/unwrapping is not available yet
