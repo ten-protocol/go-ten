@@ -154,7 +154,7 @@ All the events in this section contain at least one end-user address topic.
 ```
 
 What all these events have in common is that the address topics like: `sender`, `recipient`, `owner`, `to`, etc, represent the 
-account owners for which this event is relevant.
+accounts which are affected by this transaction, and which are thus directly interested in it.
 
 
 ##### Without end-user address fields
@@ -295,4 +295,6 @@ There is no new syntax to learn.
 
 The data access protections of smart contracts will prevent another smart contract interacting with it from extracting information and leaking it as an event.  
 
-The fact that the wallet extension adds signed accounts to each subscription request, makes it impossible for a user to request the events of another user. 
+The fact that the wallet extension adds signed accounts to each subscription request, makes it impossible for a user to request the events of another user.
+
+An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed to it, but will not show on Charlie's UI. 
