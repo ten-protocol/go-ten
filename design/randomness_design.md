@@ -2,7 +2,7 @@
 
 ## Scope
 
-The purpose of this document is to describe how randomness is generated exposed to Obscuro smart contracts. 
+The purpose of this document is to describe how randomness is generated and exposed to Obscuro smart contracts. 
 
 ## Overview
 
