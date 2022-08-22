@@ -584,7 +584,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 		return common.ExtRollup{}, false, nil
 	}
 
-	common.LogWithID(rc.nodeID, "Round winner height: %d", head.Header.Number)
+	common.TraceWithID(rc.nodeID, "Round winner height: %d", head.Header.Number)
 	rollupsReceivedFromPeers := rc.storage.FetchRollups(head.NumberU64() + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
@@ -609,7 +609,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 	if bytes.Equal(winnerRollup.Header.Agg.Bytes(), rc.hostID.Bytes()) {
 		v := rc.storage.Proof(winnerRollup)
 		w := rc.storage.ParentRollup(winnerRollup)
-		common.LogWithID(rc.nodeID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
+		common.TraceWithID(rc.nodeID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
 			common.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			common.ShortHash(w.Hash()),
 			common.ShortHash(v.Hash()),
