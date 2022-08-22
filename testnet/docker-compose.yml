@@ -48,8 +48,8 @@ services:
       - "6060:6060"
     environment:
       MGMTCONTRACTADDR: some_address
-      JAMERC20ADDR: some_address
-      ETHERC20ADDR: some_address
+      HOCERC20ADDR: some_address
+      POCERC20ADDR: some_address
       HOSTID: some_address
       OE_SIMULATION: 0
       PROFILERENABLED: some_bool
@@ -60,7 +60,7 @@ services:
                  "--hostID=$HOSTID",
                  "--address=:11000",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
-                 "--erc20ContractAddresses=$JAMERC20ADDR,$ETHERC20ADDR",
+                 "--erc20ContractAddresses=$HOCERC20ADDR,$POCERC20ADDR",
                  "--hostAddress=host:10000",
                  "--willAttest",
                  "--useInMemoryDB=false",

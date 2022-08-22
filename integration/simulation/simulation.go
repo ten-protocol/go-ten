@@ -51,7 +51,7 @@ func (s *Simulation) Start() {
 	time.Sleep(1 * time.Second)
 
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
-	s.deployObscuroERC20s()    // Deploy the Obscuro OBX and ETH ERC20 contracts
+	s.deployObscuroERC20s()    // Deploy the Obscuro HOC and POC ERC20 contracts
 	s.prefundL1Accounts()      // Prefund every L1 wallet
 
 	timer := time.Now()
@@ -110,7 +110,7 @@ func (s *Simulation) prefundObscuroAccounts() {
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
 func (s *Simulation) deployObscuroERC20s() {
-	tokens := []bridge.ERC20{bridge.OBX, bridge.ETH}
+	tokens := []bridge.ERC20{bridge.HOC, bridge.POC}
 
 	wg := sync.WaitGroup{}
 	for _, token := range tokens {
@@ -152,7 +152,7 @@ func (s *Simulation) prefundL1Accounts() {
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
 			To:            s.Params.MgmtContractAddr,
-			TokenContract: s.Params.Wallets.Tokens[bridge.OBX].L1ContractAddress,
+			TokenContract: s.Params.Wallets.Tokens[bridge.HOC].L1ContractAddress,
 			Sender:        &addr,
 		}
 		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
