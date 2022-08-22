@@ -61,7 +61,7 @@ func (c *EncRPCClient) Call(result interface{}, method string, args ...interface
 // - callExec handles the delegated call, allows EncClient to use the same code for calling with or without a context
 func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	assertResultIsPointer(result)
-	if !isSensitive(method) {
+	if !IsSensitiveMethod(method) {
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
 		return c.executeRPCCall(ctx, result, method, args...)
 	}
@@ -193,8 +193,8 @@ func (c *EncRPCClient) registerViewingKey() error {
 	return nil
 }
 
-// isSensitive indicates whether the RPC method's requests and responses should be encrypted.
-func isSensitive(method interface{}) bool {
+// IsSensitiveMethod indicates whether the RPC method's requests and responses should be encrypted.
+func IsSensitiveMethod(method string) bool {
 	for _, m := range sensitiveMethods {
 		if m == method {
 			return true

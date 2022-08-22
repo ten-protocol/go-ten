@@ -142,7 +142,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 }
 
 // proxyRequest will try to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
-//	the request with all clients until it succeeds
+// the request with all clients until it succeeds
 func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, we.accountClients)
@@ -166,14 +166,11 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension)
 		// every attempt errored
 		return err
 
-	default: // no clients registered, use a temporary one
-		// TODO: We might consider having a permanent, no-account client to avoid the overhead of connection setup
-		client, err := rpcclientlib.NewNetworkClient(we.hostAddr)
-		if err != nil {
-			return fmt.Errorf("unable to create temporary client for request - %w", err)
+	default: // no clients registered, use the unauthenticated one
+		if rpcclientlib.IsSensitiveMethod(rpcReq.method) {
+			return fmt.Errorf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpcReq.method)
 		}
-
-		return client.Call(rpcResp, rpcReq.method, rpcReq.params...)
+		return we.unAuthedClient.Call(rpcResp, rpcReq.method, rpcReq.params...)
 	}
 }
 
