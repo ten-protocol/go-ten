@@ -276,7 +276,7 @@ func (network *GethNetwork) StopNodes() {
 	for idx, process := range network.nodesProcs {
 		if process != nil {
 			wg.Add(1)
-			go func(process *os.Process) {
+			go func(process *os.Process, nodeNumber int) {
 				defer wg.Done()
 				err := process.Kill()
 				if err != nil {
@@ -286,9 +286,9 @@ func (network *GethNetwork) StopNodes() {
 				if err != nil {
 					log.Error("geth node was killed successfully but did not exit: %s", err)
 				} else {
-					fmt.Printf("Geth node %d on network %d stopped.\n", idx, network.id)
+					fmt.Printf("Geth node %d on network %d stopped.\n", nodeNumber, network.id)
 				}
-			}(process)
+			}(process, idx)
 		}
 	}
 	wg.Wait()

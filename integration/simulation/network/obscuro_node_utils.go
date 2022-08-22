@@ -218,18 +218,22 @@ func StopObscuroNodes(clients []rpcclientlib.Client) {
 			defer wg.Done()
 			err := c.Call(nil, rpcclientlib.RPCStopHost)
 			if err != nil {
-				log.Error("Failed to stop client %s", err)
+				log.Error("Failed to stop Obscuro node. Cause: %s", err)
 			}
 			c.Stop()
 		}(client)
 	}
+
 	if waitTimeout(&wg, 10*time.Second) {
-		log.Error("Timed out waiting for the obscuro nodes to stop")
+		panic("Timed out waiting for the Obscuro nodes to stop")
 	} else {
 		log.Info("Obscuro nodes stopped")
 	}
-	// Wait a bit for the nodes to shut down.
-	time.Sleep(2 * time.Second)
+
+	// Wait a bit longer for the node's RPC servers to exit, since we cannot stop the RPC server synchronously. This is
+	// because the host itself is being stopped by an RPC call, so there is a deadlock. The RPC server is waiting for
+	// all connections to close, but a single connection remains open, waiting for the RPC server to close.
+	time.Sleep(5 * time.Second)
 }
 
 // waitTimeout waits for the waitgroup for the specified max timeout.
