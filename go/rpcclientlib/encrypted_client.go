@@ -52,7 +52,7 @@ func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, erro
 
 // Call handles JSON rpc requests without a context - see CallContext for details
 func (c *EncRPCClient) Call(result interface{}, method string, args ...interface{}) error {
-	return c.CallContext(nil, result, method, args...)
+	return c.CallContext(nil, result, method, args...) //nolint:staticcheck
 }
 
 // CallContext is the main logic to execute JSON-RPC requests, the context can be nil.
@@ -107,9 +107,8 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	if ctx == nil {
 		return c.obscuroClient.Call(result, method, args...)
-	} else {
-		return c.obscuroClient.CallContext(ctx, result, method, args...)
 	}
+	return c.obscuroClient.CallContext(ctx, result, method, args...)
 }
 
 func (c *EncRPCClient) Stop() {
