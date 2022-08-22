@@ -234,9 +234,8 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
   Optimisations need to be created as the load on the enclave could be significant. 
 
 - An account should be able to monitor only the events relevant to itself, and not subscribe to anything else. 
-  Basically, subscriptions need to be authenticated. This is not desireable,
-  because someone could setup a subscription to monitor well-known addresses, and receive useful information, even if
-  they cannot decrypt the actual event. 
+  Basically, subscriptions need to be authenticated. Otherwise, someone could setup a subscription to monitor well-known addresses, 
+  and receive useful information, even if they cannot decrypt the actual event. 
   They could determine  for example when a high profile individual has transferred some ERC20, even if they wouldn't know 
   how much or to whom.
 
@@ -254,18 +253,18 @@ User `U1`- owner of `A1` subscribes to all events.
 #### Implementation
 
 1. The Obscuro `Subscription` call, and the `Event query` call must take a list of signed owning accounts. Each account must be signed with the latest
-   viewing key( to prevent someone from asking random events, just to leak info). The call will fail if there are no
+   viewing key (to prevent someone from asking random events, just to leak info). The call will fail if there are no
    viewing keys for all those accounts. 
 
    Note: This is possible because the subscription call is implemented on Obscuro, and
-   made by the wallet_extension, so it doesn't have to be compatible with Ethereum. For our RPC client it would an
+   made by the wallet_extension, so it doesn't have to be compatible with Ethereum. For our RPC client it will be an
    authenticated subscription.
 
 
 2. The "Obscuro Host" is responsible in setting up the subscriptions and dispatching the events it receives from the enclave.
 
 
-3. Upon ingesting a rollup included in a block, the enclave runs all the usual filtering logic on this event, and determines if there 
+3. Upon ingesting a rollup included in a block, the enclave runs all the usual filtering logic on each emitted event, and determines if there 
    is any subscription that requested it. 
 
 
