@@ -120,17 +120,17 @@ then
   exit 0
 fi
 
-if ${sgx_enabled} ;
-then
-  echo "Starting enclave with enabled SGX and host..."
-  docker compose up enclave host edgelessdb -d
-  exit 0
-fi
-
 if ${dev_testnet} ;
 then
   echo "Starting enclave and host with dev testnet images..."
   docker compose -f docker-compose.dev-testnet.yml up enclave host edgelessdb -d
+  exit 0
+fi
+
+if ${sgx_enabled} ;
+then
+  echo "Starting enclave with enabled SGX and host..."
+  docker compose up enclave host edgelessdb -d
   exit 0
 fi
 
