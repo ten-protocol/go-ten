@@ -25,3 +25,21 @@ N.B. Decrypting transaction blobs is only possible on testnet, where the rollup 
 well-known. On mainnet, rollups will use rotating keys that are not known to anyone - or anything - other than the 
 Obscuro enclaves.
 
+## ERC20 Contracts
+We have a couple of testnet ERC20 tokens (HOC & POC) that are automatically deployed with a static address every time 
+testnet is restarted. The bridging mechanism has been setup for these tokens so they can be deposited from and withdrawn
+to their respective ERC20 contracts on the L1.
+
+Please contact us in the discord if you'd like some tokens to test with these contracts (faucet coming soon).
+
+Hocus (HOC):
+
+```
+0x9802F661d17c65527D7ABB59DAAD5439cb125a67
+```
+
+Pocus (POC):
+
+```
+0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC
+```

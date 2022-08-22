@@ -11,10 +11,10 @@ help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: (run locally)"
-    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --obxerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --etherc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true"
+    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true"
     echo ""
     echo "   ex: (run connect external)"
-    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --obxerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --etherc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2"
+    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2"
     echo ""
     echo "  host_id            *Required* Set the node ID"
     echo ""
@@ -22,9 +22,9 @@ help_and_exit() {
     echo ""
     echo "  mgmtcontractaddr   *Required* Set the management contract address"
     echo ""
-    echo "  obxerc20addr       *Required* Set the erc20 contract address for OBX"
+    echo "  hocerc20addr       *Required* Set the erc20 contract address for HOC"
     echo ""
-    echo "  etherc20addr       *Required* Set the erc20 contract address for ETH"
+    echo "  pocerc20addr       *Required* Set the erc20 contract address for POC"
     echo ""
     echo "  sgx_enabled        *Required* Set the execution to run with sgx enabled"
     echo ""
@@ -41,6 +41,8 @@ help_and_exit() {
     echo "  profiler_enabled   *Optional* Enables the profiler in the host + enclave. Defaults to false"
     echo ""
     echo "  debug_enclave      *Optional* Dev mode, with a dlv debugger remote attach on port 2345"
+    echo ""
+    echo "  dev_testnet        *Optional* Uses dev images for dev testnet"
     echo ""
     echo ""
     echo ""
@@ -59,6 +61,7 @@ is_genesis=false
 profiler_enabled=false
 p2p_public_address="127.0.0.1:10000"
 debug_enclave=false
+dev_testnet=false
 pk_address=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 
@@ -74,8 +77,8 @@ do
             --l1port)                   l1_port=${value} ;;
             --host_id)                  host_id=${value} ;;
             --mgmtcontractaddr)         mgmt_contract_addr=${value} ;;
-            --obxerc20addr)             obx_erc20_addr=${value} ;;
-            --etherc20addr)             eth_erc20_addr=${value} ;;
+            --hocerc20addr)             hoc_erc20_addr=${value} ;;
+            --pocerc20addr)             poc_erc20_addr=${value} ;;
             --pkaddress)                pk_address=${value} ;;
             --pkstring)                 pk_string=${value} ;;
             --sgx_enabled)              sgx_enabled=${value} ;;
@@ -83,13 +86,14 @@ do
             --profiler_enabled)         profiler_enabled=${value} ;;
             --p2p_public_address)       p2p_public_address=${value} ;;
             --debug_enclave)            debug_enclave=${value} ;;
+            --dev_testnet)              dev_testnet=${value} ;;
 
             --help)                     help_and_exit ;;
             *)
     esac
 done
 
-if [[ -z ${l1_host:-} || -z ${host_id:-} || -z ${mgmt_contract_addr:-} || -z ${obx_erc20_addr:-} || -z ${eth_erc20_addr:-} || -z ${sgx_enabled:-} ]];
+if [[ -z ${l1_host:-} || -z ${host_id:-} || -z ${mgmt_contract_addr:-} || -z ${hoc_erc20_addr:-} || -z ${poc_erc20_addr:-} || -z ${sgx_enabled:-} ]];
 then
     help_and_exit
 fi
@@ -100,8 +104,8 @@ echo "PKSTRING=${pk_string}" > "${testnet_path}/.env"
 echo "PKADDR=${pk_address}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
 echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"
-echo "JAMERC20ADDR=${obx_erc20_addr}"  >> "${testnet_path}/.env"
-echo "ETHERC20ADDR=${eth_erc20_addr}"  >> "${testnet_path}/.env"
+echo "HOCERC20ADDR=${hoc_erc20_addr}"  >> "${testnet_path}/.env"
+echo "POCERC20ADDR=${poc_erc20_addr}"  >> "${testnet_path}/.env"
 echo "L1HOST=${l1_host}" >> "${testnet_path}/.env"
 echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
 echo "ISGENESIS=${is_genesis}" >> "${testnet_path}/.env"
@@ -116,12 +120,20 @@ then
   exit 0
 fi
 
+if ${dev_testnet} ;
+then
+  echo "Starting enclave and host with dev testnet images..."
+  docker compose -f docker-compose.dev-testnet.yml up enclave host edgelessdb -d
+  exit 0
+fi
+
 if ${sgx_enabled} ;
 then
   echo "Starting enclave with enabled SGX and host..."
   docker compose up enclave host edgelessdb -d
-else
-  echo "Starting enclave with DISABLED SGX and host..."
-  docker compose -f docker-compose.non-sgx.yml up enclave host -d
+  exit 0
 fi
+
+echo "Starting enclave with DISABLED SGX and host..."
+docker compose -f docker-compose.non-sgx.yml up enclave host -d
 

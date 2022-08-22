@@ -84,8 +84,8 @@ func NewEnclave(
 	collector StatsCollector,
 ) common.Enclave {
 	if len(config.ERC20ContractAddresses) < 2 {
-		log.Panic("failed to initialise enclave. At least two ERC20 contract addresses are required - the OBX " +
-			"ERC20 address and the ETH ERC20 address")
+		log.Panic("failed to initialise enclave. At least two ERC20 contract addresses are required - the HOC " +
+			"ERC20 address and the POC ERC20 address")
 	}
 
 	// todo - add the delay: N hashes

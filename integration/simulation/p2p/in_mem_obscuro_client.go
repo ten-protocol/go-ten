@@ -1,3 +1,4 @@
+//nolint:contextcheck
 package p2p
 
 import (
@@ -112,6 +113,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
+}
+
+// CallContext not currently supported by in-memory obscuro client, the context will be ignored.
+func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
+	return c.Call(result, method, args...)
 }
 
 func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
