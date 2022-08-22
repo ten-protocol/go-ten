@@ -10,6 +10,10 @@
     no native tokens were required to execute transactions on Obscuro - this is now not the case and native tokens 
     must be requested. Allocation of native OBX, along with HOC and POC tokens is currently not supported automatically 
     and a request to Obscuro Labs should be made on the Faucet Discord channel.  
+* Account balances:
+  * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
+* Gas prices:
+  * Obscuro enclaves services can configure the minimum gas price they'll accept (on node startup set by the operator)
 * Wallet Extension 
   * The wallet extension now supports multiple viewing keys through a single running instance. For more information see
     `go-obscuro/design/wallet_extension.md`, specifically `Handling eth_call requests` for the approach to selecting 
@@ -21,7 +25,4 @@
   * ObscuroScan block explorer for Testnet launched.
   * Number Guessing Game smart contract deployed to Testnet.
 * Obscuro Docsite launched.
-* Account balances:
-  * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
-  * Introduced network faucet account.
-  * Obscuro enclaves services can configure the minimum gas price they'll accept
+
