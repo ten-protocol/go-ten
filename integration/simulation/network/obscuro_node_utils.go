@@ -237,13 +237,18 @@ func StopObscuroNodes(clients []rpcclientlib.Client) {
 func CheckHostRPCServersStopped(hostRPCAddresses []string) {
 	var wg sync.WaitGroup
 	for _, hostRPCAddress := range hostRPCAddresses {
+		wg.Add(1)
+
 		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
 		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
 		// connection remains open, waiting for the RPC server to close. Instead, we check whether the RPC port
 		// becomes free.
-		for !isAddressAvailable(hostRPCAddress) {
-			time.Sleep(100 * time.Millisecond)
-		}
+		go func(rpcAddress string) {
+			defer wg.Done()
+			for !isAddressAvailable(rpcAddress) {
+				time.Sleep(100 * time.Millisecond)
+			}
+		}(hostRPCAddress)
 	}
 
 	if waitTimeout(&wg, 10*time.Second) {
