@@ -1,6 +1,7 @@
 package rpcclientlib
 
 import (
+	"context"
 	"errors"
 )
 
@@ -34,6 +35,8 @@ var ErrNilResponse = errors.New("nil response received from Obscuro node")
 type Client interface {
 	// Call executes the named method via RPC. (Returns `ErrNilResponse` on nil response from Node, this is used as "not found" for some method calls)
 	Call(result interface{}, method string, args ...interface{}) error
+	// CallContext If the context is canceled before the call has successfully returned, CallContext returns immediately.
+	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	// Stop closes the client.
 	Stop()
 }
