@@ -31,7 +31,9 @@ const (
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfNodesWithDockerEnclave struct {
 	obscuroClients   []rpcclientlib.Client
+	hostRPCAddresses []string
 	enclaveAddresses []string
+
 	// Geth
 	gethNetwork *gethnetwork.GethNetwork
 	gethClients []ethadapter.EthClient
@@ -78,8 +80,9 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	}
 
 	// Start the standalone obscuro nodes connected to the enclaves and to the geth nodes
-	obscuroClients, walletClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients, walletClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
+	n.hostRPCAddresses = hostRPCAddresses
 
 	return &RPCHandles{
 		EthClients:                    n.gethClients,
@@ -94,6 +97,7 @@ func (n *basicNetworkOfNodesWithDockerEnclave) TearDown() {
 
 	StopGethNetwork(n.gethClients, n.gethNetwork)
 	terminateDockerContainers(n.ctx, n.client, n.containerIDs, n.containerStreams)
+	CheckHostRPCServersStopped(n.hostRPCAddresses)
 }
 
 func (n *basicNetworkOfNodesWithDockerEnclave) setupAndCheckDocker() error {

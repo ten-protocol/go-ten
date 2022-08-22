@@ -57,4 +57,5 @@ func (s *serverImpl) Stop() {
 	if err != nil {
 		log.Panic("could not stop node client server. Cause: %s", err)
 	}
+	println("jjj server closed inside")
 }
