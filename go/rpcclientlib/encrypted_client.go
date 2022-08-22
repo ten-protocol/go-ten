@@ -1,6 +1,7 @@
 package rpcclientlib
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -49,14 +50,20 @@ func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, erro
 	return encClient, nil
 }
 
-// Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
-// then decrypts the response before returning.
-// The result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
+// Call handles JSON rpc requests without a context - see CallContext for details
 func (c *EncRPCClient) Call(result interface{}, method string, args ...interface{}) error {
+	return c.CallContext(nil, result, method, args...) //nolint:staticcheck
+}
+
+// CallContext is the main logic to execute JSON-RPC requests, the context can be nil.
+// - if the method is sensitive it will encrypt the args before sending the request and then decrypts the response before returning
+// - result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
+// - callExec handles the delegated call, allows EncClient to use the same code for calling with or without a context
+func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	assertResultIsPointer(result)
 	if !isSensitive(method) {
 		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
-		return c.obscuroClient.Call(result, method, args...)
+		return c.executeRPCCall(ctx, result, method, args...)
 	}
 
 	// encode the params into a json blob and encrypt them
@@ -67,7 +74,7 @@ func (c *EncRPCClient) Call(result interface{}, method string, args ...interface
 
 	// we set up a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
 	var rawResult interface{}
-	err = c.obscuroClient.Call(&rawResult, method, encryptedParams)
+	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
 	if err != nil {
 		return fmt.Errorf("%s rpc call failed - %w", method, err)
 	}
@@ -95,6 +102,13 @@ func (c *EncRPCClient) Call(result interface{}, method string, args ...interface
 	}
 
 	return nil
+}
+
+func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	if ctx == nil {
+		return c.obscuroClient.Call(result, method, args...)
+	}
+	return c.obscuroClient.CallContext(ctx, result, method, args...)
 }
 
 func (c *EncRPCClient) Stop() {
