@@ -53,9 +53,8 @@ func (s *serverImpl) Start() {
 }
 
 func (s *serverImpl) Stop() {
-	s.node.Server().Stop()
-	go func() {
-		// TODO - Investigate why this never returns.
-		_ = s.node.Close()
-	}()
+	err := s.node.Close()
+	if err != nil {
+		log.Panic("could not stop node client server. Cause: %s", err)
+	}
 }

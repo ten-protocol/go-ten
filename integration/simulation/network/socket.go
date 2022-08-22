@@ -19,6 +19,7 @@ import (
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
 	obscuroClients   []rpcclientlib.Client
+	hostRPCAddresses []string
 	enclaveAddresses []string
 
 	// geth
@@ -53,8 +54,9 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	obscuroClients, walletClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients, walletClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
+	n.hostRPCAddresses = hostRPCAddresses
 
 	return &RPCHandles{
 		EthClients:                    n.gethClients,
@@ -67,4 +69,5 @@ func (n *networkOfSocketNodes) TearDown() {
 	// Stop the Obscuro nodes first (each host will attempt to shut down its enclave as part of shutdown).
 	StopObscuroNodes(n.obscuroClients)
 	StopGethNetwork(n.gethClients, n.gethNetwork)
+	CheckHostRPCServersStopped(n.hostRPCAddresses)
 }

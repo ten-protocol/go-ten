@@ -28,6 +28,7 @@ type networkWithAzureEnclaves struct {
 	obscuroClients  []rpcclientlib.Client
 	azureEnclaveIps []string
 
+	hostRPCAddresses []string
 	enclaveAddresses []string
 }
 
@@ -70,8 +71,9 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	obscuroClients, walletClients := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients, walletClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
+	n.hostRPCAddresses = hostRPCAddresses
 
 	return &RPCHandles{
 		EthClients:                    n.gethClients,
@@ -84,4 +86,5 @@ func (n *networkWithAzureEnclaves) TearDown() {
 	// First stop the obscuro nodes
 	StopObscuroNodes(n.obscuroClients)
 	StopGethNetwork(n.gethClients, n.gethNetwork)
+	CheckHostRPCServersStopped(n.hostRPCAddresses)
 }
