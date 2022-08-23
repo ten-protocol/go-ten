@@ -64,7 +64,7 @@ type WalletExtension struct {
 	accountClients   map[common.Address]*rpcclientlib.EncRPCClient // an encrypted RPC client per registered account
 	unsignedVKs      map[common.Address]*rpcclientlib.ViewingKey   // map temporarily holding VKs that have been generated but not yet signed
 	server           *http.Server
-	unAuthedClient   rpcclientlib.Client // The default, un-authenticated client.
+	unauthedClient   rpcclientlib.Client // The default, un-authenticated client.
 }
 
 type rpcRequest struct {
@@ -80,7 +80,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	unAuthedClient, err := rpcclientlib.NewNetworkClient(config.NodeRPCHTTPAddress)
+	unauthedClient, err := rpcclientlib.NewNetworkClient(config.NodeRPCHTTPAddress)
 	if err != nil {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
@@ -92,7 +92,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		hostAddr:         config.NodeRPCHTTPAddress,
 		accountClients:   make(map[common.Address]*rpcclientlib.EncRPCClient),
 		unsignedVKs:      make(map[common.Address]*rpcclientlib.ViewingKey),
-		unAuthedClient:   unAuthedClient,
+		unauthedClient:   unauthedClient,
 	}
 }
 

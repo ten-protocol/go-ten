@@ -170,7 +170,7 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension)
 		if rpcclientlib.IsSensitiveMethod(rpcReq.method) {
 			return fmt.Errorf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpcReq.method)
 		}
-		return we.unAuthedClient.Call(rpcResp, rpcReq.method, rpcReq.params...)
+		return we.unauthedClient.Call(rpcResp, rpcReq.method, rpcReq.params...)
 	}
 }
 
