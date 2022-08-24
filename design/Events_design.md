@@ -61,9 +61,6 @@ The query made on the UI side is transformed in a server-side query on the node,
 executed and events are emmitted, to match them against the filters requested by users and distribute them to the
 requester.
 
-Todo: Can you clarify in the doc whether the events are discarded after being distributed, or are stored for future
-subscribers?
-
 *Note that there is no constraint on data access, since all data is public.*
 
 ## Obscuro Design
@@ -76,13 +73,11 @@ to implement the privacy concerns with as little disruption as possible.
 There are a couple of cases that must be considered in order to decide whether Alice is entitled to view an event:
 
 1. The event was emitted by a smart contract as a result of executing a Tx sent by Alice.
-2. The event was emitted as result of a Tx sent by Bob which is relevant to Alice. (See below for a definition of
+2. The event that is relevant to Alice was emitted as a result of a Tx sent by Bob. (See below for a definition of
    relevancy.)
-3. The event was emitted as result of a Tx sent by Bob which is not relevant to Alice.
+3. The event that is not relevant to Alice was emitted as a result of a Tx sent by Bob.
 
-*Note that we assume that all events emitted during a transaction signed by Alice, will be visible to Alice.*  
-
-The developer of a smart contract is responsible with making sure to not include any data that must be kept secret from
+The developer of a smart contract is responsible with making sure to not include any data in the event that must be kept secret from
 the transaction originator.
 (The events are also included in the transaction receipt, which is available to the transaction submitter.)
 
@@ -208,11 +203,17 @@ The rules we propose are:
 2. In case there is no address in a topic, then the event is considered a lifecycle event, and thus relevant to everyone.
 3. An event is considered relevant to the signer of the transaction that created it. 
 
-The purpose for these rules is to be simple, clear, intuitive, and to work as good as possible with the existing contracts.  
+The purpose for these rules is to be simple, clear, intuitive, and to work as good as possible with the existing contracts.
+
+The first two rules are intuitive. The third one adds another dimension to the reasoning process, because there is an implicit user to whom the event is relevant.
+The alternative is to remove the third rule, and allow the owner to view the event only if it contains its own address. 
+
+*Note: If we decide to remove the third rule, the implementation will have to calculate the event visibility when adding them to transaction receipts.*
 
 In case the rules above are not providing the desired functionality, the developer can adjust the topics.
 
 For example, if one of the lifecycle events should only be visible to the administrators, the developer can add that address as a topic.
+Note that the lifecycle event will be visible to the signer of the transaction as well (according to rule 3).
 
 In case an event with an address field that should not contribute to relevancy, the developer can remove the `"indexed"` and thus the event will become invisible to that user.
 
@@ -297,4 +298,17 @@ The data access protections of smart contracts will prevent another smart contra
 
 The fact that the wallet extension adds signed accounts to each subscription request, makes it impossible for a user to request the events of another user.
 
-An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed to it, but will not show on Charlie's UI. 
+An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed to it, but will not show on Charlie's UI.
+
+
+## Open implementation questions
+
+1. what's the lifespan for a subscription in the enclave, unsubscribe option + an expiry?
+
+2. still pretty worried about perf and DoS potential, but we can test for it and try to optimise/prioritise traffic etc. Maybe we need read-only nodes to services these requests in production (normal nodes but the host doesn't give it any transactions/other work).
+
+3. very minor information leak for the host about their users, host owner can see how many relevant events their subscribers are getting back. Tbf that's no different from it seeing how many transactions that user is submitting etc., just a measure of their activity I guess and not tied to their acc address at all
+
+4. Todo: Can you clarify in the doc whether the events are discarded after being distributed, or are stored for future subscribers?
+
+5. How do events interact with the revelation period?
