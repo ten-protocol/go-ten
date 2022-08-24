@@ -40,8 +40,8 @@ const (
 	apiNamespaceNetwork     = "net"
 	apiNamespaceTest        = "test"
 
-	l1TxRetriesRollup = 3
-	l1TxRetriesSecret = 7
+	l1TxTriesRollup = 3 // The number of times we try broadcasting the rollup transaction to the L1.
+	l1TxTriesSecret = 7 // The number of times we try sending secret initialisation, request or response transactions to the L1.
 )
 
 // Node is an implementation of host.Host.
@@ -236,7 +236,7 @@ func (a *Node) broadcastSecret() error {
 		HostAddress:   a.config.P2PPublicAddress,
 	}
 	initialiseSecretTx := a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(initialiseSecretTx, l1TxRetriesSecret)
+	err = a.signAndBroadcastTx(initialiseSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
 	}
@@ -541,7 +541,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
 				rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
-				err = a.signAndBroadcastTx(rollupTx, l1TxRetriesRollup)
+				err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
 				if err != nil {
 					log.Error("could not broadcast winning rollup. Cause: %s", err)
 				}
@@ -583,7 +583,7 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	}
 
 	rollupTx := a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(rollupTx, l1TxRetriesRollup)
+	err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
@@ -591,19 +591,19 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	return genesisResponse.ProducedRollup.Header.ParentHash, nil
 }
 
-// `retries` is the number of times to attempt broadcasting the transaction.
-func (a *Node) signAndBroadcastTx(tx types.TxData, retries int) error {
+// `tries` is the number of times to attempt broadcasting the transaction.
+func (a *Node) signAndBroadcastTx(tx types.TxData, tries int) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
 	}
 
 	funcBroadcastTx := func() error { return a.ethClient.SendTransaction(signedTx) }
-	err = retryWithBackoff(retries, funcBroadcastTx)
+	err = retryWithBackoff(tries, funcBroadcastTx)
 	if err == nil {
 		return nil
 	}
-	return fmt.Errorf("broadcasting L1 transaction failed after %d retries. Cause: %w", retries, err)
+	return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 }
 
 // This method implements the procedure by which a node obtains the secret
@@ -621,7 +621,7 @@ func (a *Node) requestSecret() error {
 		Attestation: encodedAttestation,
 	}
 	requestSecretTx := a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(requestSecretTx, l1TxRetriesSecret)
+	err = a.signAndBroadcastTx(requestSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return err
 	}
@@ -688,7 +688,7 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 	respondSecretTx := a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false)
-	err = a.signAndBroadcastTx(respondSecretTx, l1TxRetriesSecret)
+	err = a.signAndBroadcastTx(respondSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 	}
@@ -983,14 +983,14 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 }
 
 // We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
-// This is equal to 7 seconds for 3 retries, and 63 seconds for 7 retries.
-func retryWithBackoff(retries int, funcToRetry func() error) error {
+// This is equal to 7 seconds for 3 tries, and 63 seconds for 7 tries.
+func retryWithBackoff(tries int, funcToRetry func() error) error {
 	pause := time.Second
 	var err error
 
 	for i := 0; ; i++ {
-		if i >= retries {
-			// We've performed all the retries, so we return the (possibly nil) error.
+		if i >= tries {
+			// We've performed all the tries, so we return the (possibly nil) error.
 			return err
 		}
 
