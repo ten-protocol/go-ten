@@ -39,6 +39,11 @@ const (
 	apiNamespaceObscuroScan = "obscuroscan"
 	apiNamespaceNetwork     = "net"
 	apiNamespaceTest        = "test"
+
+	// Attempts to broadcast the rollup transaction to the L1. Worst-case, equates to 7 seconds, plus time per request.
+	l1TxTriesRollup = 3
+	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
+	l1TxTriesSecret = 7
 )
 
 // Node is an implementation of host.Host.
@@ -232,7 +237,8 @@ func (a *Node) broadcastSecret() error {
 		InitialSecret: a.enclaveClient.GenerateSecret(),
 		HostAddress:   a.config.P2PPublicAddress,
 	}
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	initialiseSecretTx := a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
+	err = a.signAndBroadcastTx(initialiseSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
 	}
@@ -536,7 +542,8 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
-				err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
+				err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
 				if err != nil {
 					log.Error("could not broadcast winning rollup. Cause: %s", err)
 				}
@@ -577,7 +584,8 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		Rollup: encodedRollup,
 	}
 
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	rollupTx := a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement())
+	err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
@@ -585,19 +593,19 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	return genesisResponse.ProducedRollup.Header.ParentHash, nil
 }
 
-func (a *Node) broadcastL1Tx(tx types.TxData) error {
+// `tries` is the number of times to attempt broadcasting the transaction.
+func (a *Node) signAndBroadcastTx(tx types.TxData, tries int) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
 	}
 
-	// TODO Add retries, with fewer retries for rollups. Escalate an error if all retries fail.
-	err = a.ethClient.SendTransaction(signedTx)
-	if err != nil {
-		return err
+	funcBroadcastTx := func() error { return a.ethClient.SendTransaction(signedTx) }
+	err = retryWithBackoff(tries, funcBroadcastTx)
+	if err == nil {
+		return nil
 	}
-
-	return nil
+	return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 }
 
 // This method implements the procedure by which a node obtains the secret
@@ -614,7 +622,8 @@ func (a *Node) requestSecret() error {
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	requestSecretTx := a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
+	err = a.signAndBroadcastTx(requestSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return err
 	}
@@ -680,7 +689,8 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		HostAddress: att.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	respondSecretTx := a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false)
+	err = a.signAndBroadcastTx(respondSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 	}
@@ -972,4 +982,27 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 	}
 	// response not found
 	return false
+}
+
+// We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
+// This is equal to 7 seconds for 3 tries, and 63 seconds for 7 tries.
+func retryWithBackoff(tries int, funcToRetry func() error) error {
+	pause := time.Second
+	var err error
+
+	for i := 0; ; i++ {
+		if i >= tries {
+			// We've performed all the tries, so we return the (possibly nil) error.
+			return err
+		}
+
+		err = funcToRetry()
+		if err == nil {
+			// If the transaction sent successfully, we break out.
+			return nil
+		}
+
+		time.Sleep(pause)
+		pause = pause * 2
+	}
 }

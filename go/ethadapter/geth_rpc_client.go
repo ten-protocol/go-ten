@@ -20,8 +20,9 @@ import (
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
-	client *ethclient.Client  // the underlying eth rpc client
-	l2ID   gethcommon.Address // the address of the Obscuro node this client is dedicated to
+	client  *ethclient.Client  // the underlying eth rpc client
+	l2ID    gethcommon.Address // the address of the Obscuro node this client is dedicated to
+	timeout time.Duration      // the timeout for connecting to, or communicating with, the L1 node
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -33,13 +34,17 @@ func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethc
 
 	log.Trace("Initialized eth node connection - addr: %s port: %d", ipaddress, port)
 	return &gethRPCClient{
-		client: client,
-		l2ID:   l2ID,
+		client:  client,
+		l2ID:    l2ID,
+		timeout: timeout,
 	}, nil
 }
 
 func (e *gethRPCClient) FetchHeadBlock() *types.Block {
-	blk, err := e.client.BlockByNumber(context.Background(), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	blk, err := e.client.BlockByNumber(ctx, nil)
 	if err != nil {
 		log.Panic("could not fetch head block. Cause: %s", err)
 	}
@@ -99,9 +104,11 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor common
 }
 
 func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
-	var availBlocks []*types.Block
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
 
-	block, err := e.client.BlockByNumber(context.Background(), nil)
+	var availBlocks []*types.Block
+	block, err := e.client.BlockByNumber(ctx, nil)
 	if err != nil {
 		log.Panic("could not fetch head block. Cause: %s", err)
 	}
@@ -112,12 +119,7 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 		if block.ParentHash().Hex() == "0x0000000000000000000000000000000000000000000000000000000000000000" {
 			break
 		}
-
-		block, err = e.client.BlockByHash(context.Background(), block.ParentHash())
-		if err != nil {
-			log.Panic("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err)
-		}
-
+		block = e.getParentBlock(block)
 		availBlocks = append(availBlocks, block)
 	}
 
@@ -131,22 +133,34 @@ func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
 }
 
 func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
-	return e.client.SendTransaction(context.Background(), signedTx)
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.SendTransaction(ctx, signedTx)
 }
 
 func (e *gethRPCClient) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
-	return e.client.TransactionReceipt(context.Background(), hash)
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.TransactionReceipt(ctx, hash)
 }
 
 func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
-	return e.client.PendingNonceAt(context.Background(), account)
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.PendingNonceAt(ctx, account)
 }
 
 func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
 	// this channel holds blocks that have been received from the geth network but not yet processed by the host,
 	// with more than 1 capacity the buffer provides resilience in case of intermittent RPC or processing issues
 	ch := make(chan *types.Header, 100)
-	sub, err := e.client.SubscribeNewHead(context.Background(), ch)
+	sub, err := e.client.SubscribeNewHead(ctx, ch)
 	if err != nil {
 		log.Panic("could not subscribe for new head blocks. Cause: %s", err)
 	}
@@ -155,15 +169,24 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 }
 
 func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
-	return e.client.BlockByNumber(context.Background(), n)
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.BlockByNumber(ctx, n)
 }
 
 func (e *gethRPCClient) BlockByHash(hash gethcommon.Hash) (*types.Block, error) {
-	return e.client.BlockByHash(context.Background(), hash)
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.BlockByHash(ctx, hash)
 }
 
 func (e *gethRPCClient) CallContract(msg ethereum.CallMsg) ([]byte, error) {
-	return e.client.CallContract(context.Background(), msg, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.CallContract(ctx, msg, nil)
 }
 
 func (e *gethRPCClient) EthClient() *ethclient.Client {
@@ -189,4 +212,16 @@ func connect(ipaddress string, port uint, connectionTimeout time.Duration) (*eth
 	}
 
 	return c, err
+}
+
+func (e *gethRPCClient) getParentBlock(block *types.Block) *types.Block {
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	parentBlock, err := e.client.BlockByHash(ctx, block.ParentHash())
+	if err != nil {
+		log.Panic("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err)
+	}
+
+	return parentBlock
 }
