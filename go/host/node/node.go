@@ -586,13 +586,13 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 func (a *Node) broadcastL1Tx(tx types.TxData) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// TODO Add retries, with fewer retries for rollups. Escalate an error if all retries fail.
 	err = a.ethClient.SendTransaction(signedTx)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil
