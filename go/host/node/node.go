@@ -493,15 +493,16 @@ func (a *Node) processBlock(b *types.Block) {
 		}
 
 		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
-			// todo - there can ever be only one `L1InitializeSecretTx` message.
+			// TODO - Ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
+			//  our node will never be able to speak to other nodes.
 			// there must be a way to make sure that this transaction can only be sent once.
 			att, err := common.DecodeAttestation(initSecretTx.Attestation)
 			if err != nil {
-				log.Panic("Could not decode attestation report. Cause: %s", err)
+				common.ErrorWithID(a.shortID, "Could not decode attestation report. Cause: %s", err)
 			}
 			err = a.enclaveClient.StoreAttestation(att)
 			if err != nil {
-				log.Panic("Could not store the attestation report. Cause: %s", err)
+				common.ErrorWithID(a.shortID, "Could not store the attestation report. Cause: %s", err)
 			}
 		}
 	}
