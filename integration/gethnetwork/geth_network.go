@@ -269,7 +269,7 @@ func createAndStartMiners(network GethNetwork, dataDirs []string) {
 
 	if errors != nil {
 		network.StopNodes()
-		panic(fmt.Errorf("could not start Geth node. Causes: %s", strings.Join(errors, "; ")))
+		panic(fmt.Errorf("could not start one or more Geth nodes. Causes: %s", strings.Join(errors, "; ")))
 	}
 }
 
