@@ -248,7 +248,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 
 func createAndStartMiners(network GethNetwork, dataDirs []string) {
 	var wg sync.WaitGroup
-	errors := make([]string, len(dataDirs))
+	errs := make([]error, len(dataDirs))
 
 	// We need to wait for all the miner-creation goroutines to return before shutting down the nodes if there were any
 	// errors. Otherwise, there's a possible race condition whereby if the creation of one node fails, we start
@@ -261,15 +261,22 @@ func createAndStartMiners(network GethNetwork, dataDirs []string) {
 			err := network.createAndStartMiner(dataDir, idx)
 			if err != nil {
 				// We insert the error strings by index, as a workaround for concurrent updates to the slice.
-				errors[idx] = err.Error()
+				errs[idx] = err
 			}
 		}(idx, dataDir)
 	}
 	wg.Wait()
 
-	if len(errors) > 0 {
+	var nonNilErrs []string
+	for _, e := range errs {
+		if e != nil {
+			nonNilErrs = append(nonNilErrs, e.Error())
+		}
+	}
+
+	if len(nonNilErrs) > 0 {
 		network.StopNodes()
-		panic(fmt.Errorf("could not start one or more Geth nodes. Causes: %s", strings.Join(errors, "; ")))
+		panic(fmt.Errorf("could not start one or more Geth nodes. Causes: %s", strings.Join(nonNilErrs, "; ")))
 	}
 }
 
