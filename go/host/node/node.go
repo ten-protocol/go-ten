@@ -169,7 +169,7 @@ func NewHost(
 func (a *Node) Start() {
 	tomlConfig, err := toml.Marshal(a.config)
 	if err != nil {
-		panic("could not print host config")
+		log.Panic("could not print host config")
 	}
 	common.LogWithID(a.shortID, "Host started with following config:\n%s", tomlConfig)
 
@@ -617,7 +617,10 @@ func (a *Node) requestSecret() error {
 		return err
 	}
 
-	a.awaitSecret()
+	err = a.awaitSecret()
+	if err != nil {
+		log.Panic(err.Error())
+	}
 	return nil
 }
 
@@ -744,7 +747,10 @@ func (a *Node) monitorBlocks() {
 			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
 			listener, subs = a.ethClient.BlockListener()
 
-			a.catchupMissedBlocks(lastKnownBlkHash)
+			err = a.catchupMissedBlocks(lastKnownBlkHash)
+			if err != nil {
+				log.Panic("could not catch up missed blocks. Cause: %s", err)
+			}
 
 		case blkHeader := <-listener:
 			// don't process blocks if the node is stopping
@@ -775,7 +781,10 @@ func (a *Node) monitorBlocks() {
 			)
 
 			// issue the block to the ingestion channel
-			a.encodeAndIngest(block, blockParent)
+			err = a.encodeAndIngest(block, blockParent)
+			if err != nil {
+				log.Panic(err.Error())
+			}
 			lastKnownBlkHash = block.Hash()
 		}
 	}
@@ -786,19 +795,19 @@ func (a *Node) monitorBlocks() {
 	subs.Unsubscribe()
 }
 
-func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
+func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
 	var lastBlkNumber *big.Int
 	var reingestBlocks []*types.Block
 
 	// get the blockchain tip block
 	blk, err := a.ethClient.BlockByNumber(lastBlkNumber)
 	if err != nil {
-		log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
+		return fmt.Errorf("catching up on missed blocks, unable to fetch tip block - reason: %w", err)
 	}
 
 	if blk.Hash().Hex() == lastKnownBlkHash.Hex() {
 		// if no new blocks have been issued then nothing to catchup
-		return
+		return nil
 	}
 	reingestBlocks = append(reingestBlocks, blk)
 
@@ -806,7 +815,7 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
 	for blk.Hash().Hex() != lastKnownBlkHash.Hex() {
 		blockParent, err := a.ethClient.BlockByHash(blk.ParentHash())
 		if err != nil {
-			log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", blk.ParentHash(), err)
+			return fmt.Errorf("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %w", blk.ParentHash(), err)
 		}
 
 		reingestBlocks = append(reingestBlocks, blockParent)
@@ -816,27 +825,35 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
 	// make sure to have the last ingested block available for ingestion (because we always ingest ( blk, blk_parent)
 	lastKnownBlk, err := a.ethClient.BlockByHash(lastKnownBlkHash)
 	if err != nil {
-		log.Panic("catching up on missed blocks, unable to feth last known block - reason: %s", err)
+		return fmt.Errorf("catching up on missed blocks, unable to feth last known block - reason: %w", err)
 	}
 	reingestBlocks = append(reingestBlocks, lastKnownBlk)
 
 	// issue the block to the ingestion channel in reverse, with the parent attached too
 	for i := len(reingestBlocks) - 2; i >= 0; i-- {
 		log.Debug("Ingesting %s and %s blocks of %v", reingestBlocks[i].Hash(), reingestBlocks[i+1].Hash(), reingestBlocks)
-		a.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
+		err = a.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
+		if err != nil {
+			log.Panic(err.Error())
+		}
 	}
+
+	return nil
 }
 
-func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) {
+func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) error {
 	encodedBlock, err := common.EncodeBlock(block)
 	if err != nil {
-		log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+		return fmt.Errorf("could not encode block with hash %s. Cause: %w", block.Hash().String(), err)
 	}
+
 	encodedBlockParent, err := common.EncodeBlock(blockParent)
 	if err != nil {
-		log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+		return fmt.Errorf("could not encode block's parent with hash %s. Cause: %w", block.ParentHash().String(), err)
 	}
+
 	a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+	return nil
 }
 
 func (a *Node) bootstrapNode() types.Block {
@@ -848,7 +865,7 @@ func (a *Node) bootstrapNode() types.Block {
 	// todo the genesis block should be the block where the contract was deployed
 	currentBlock, err := a.ethClient.BlockByNumber(big.NewInt(0))
 	if err != nil {
-		panic(err)
+		log.Panic(err.Error())
 	}
 
 	common.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
@@ -874,7 +891,7 @@ func (a *Node) bootstrapNode() types.Block {
 			if errors.Is(err, ethereum.NotFound) {
 				break
 			}
-			panic(err)
+			log.Panic(err.Error())
 		}
 		currentBlock = nextBlk
 
@@ -893,7 +910,7 @@ func (a *Node) bootstrapNode() types.Block {
 	return *currentBlock
 }
 
-func (a *Node) awaitSecret() {
+func (a *Node) awaitSecret() error {
 	// start listening for l1 blocks that contain the response to the request
 	listener, subs := a.ethClient.BlockListener()
 
@@ -908,22 +925,22 @@ func (a *Node) awaitSecret() {
 		case header := <-listener:
 			block, err := a.ethClient.BlockByHash(header.Hash())
 			if err != nil {
-				log.Panic("failed to retrieve block. Cause: %s:", err)
+				return fmt.Errorf("failed to retrieve block. Cause: %w", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
 				// todo this should be defered when the errors are upstreamed instead of panic'd
 				subs.Unsubscribe()
-				return
+				return nil
 			}
 
 		case bAndParent := <-a.blockRPCCh:
 			block, err := bAndParent.b.DecodeBlock()
 			if err != nil {
-				log.Panic("failed to decode block received via RPC. Cause: %s:", err)
+				return fmt.Errorf("failed to decode block received via RPC. Cause: %w", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
 				subs.Unsubscribe()
-				return
+				return nil
 			}
 
 		case <-time.After(time.Second * 10):
@@ -932,7 +949,7 @@ func (a *Node) awaitSecret() {
 
 		case <-a.exitNodeCh:
 			subs.Unsubscribe()
-			return
+			return nil
 		}
 	}
 }
