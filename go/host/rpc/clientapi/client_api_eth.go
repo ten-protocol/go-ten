@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/eth/filters"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -213,4 +215,23 @@ func (api *EthereumAPI) blockNumberToHash(blockNumber rpc.BlockNumber) (*gethcom
 		return nil, fmt.Errorf("unable to fetch rollup at height: %d", blockNumber.Int64())
 	}
 	return rollupHash, nil
+}
+
+// ASubAPI is an example subscription API.
+func (api *EthereumAPI) ASubAPI(ctx context.Context, anArg filters.FilterCriteria) (*rpc.Subscription, error) {
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+	}
+
+	rpcSub := notifier.CreateSubscription()
+
+	go func() {
+		for {
+			notifier.Notify(rpcSub.ID, "data from host")
+			time.Sleep(time.Second)
+		}
+	}()
+
+	return rpcSub, nil
 }
