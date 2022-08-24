@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -228,7 +229,7 @@ func (api *EthereumAPI) ASubAPI(ctx context.Context, anArg filters.FilterCriteri
 
 	go func() {
 		for {
-			notifier.Notify(rpcSub.ID, "data from host")
+			notifier.Notify(rpcSub.ID, "data from host") //nolint:errcheck
 			time.Sleep(time.Second)
 		}
 	}()
