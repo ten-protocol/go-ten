@@ -39,6 +39,9 @@ const (
 	apiNamespaceObscuroScan = "obscuroscan"
 	apiNamespaceNetwork     = "net"
 	apiNamespaceTest        = "test"
+
+	l1TxRetriesRollup = 3
+	l1TxRetriesSecret = 7
 )
 
 // Node is an implementation of host.Host.
@@ -232,7 +235,8 @@ func (a *Node) broadcastSecret() error {
 		InitialSecret: a.enclaveClient.GenerateSecret(),
 		HostAddress:   a.config.P2PPublicAddress,
 	}
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	initialiseSecretTx := a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
+	err = a.broadcastL1Tx(initialiseSecretTx, l1TxRetriesSecret)
 	if err != nil {
 		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
 	}
@@ -536,7 +540,8 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
-				err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
+				err = a.broadcastL1Tx(rollupTx, l1TxRetriesRollup)
 				if err != nil {
 					log.Error("could not broadcast winning rollup. Cause: %s", err)
 				}
@@ -577,7 +582,8 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		Rollup: encodedRollup,
 	}
 
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	rollupTx := a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement())
+	err = a.broadcastL1Tx(rollupTx, l1TxRetriesRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
@@ -585,11 +591,13 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	return genesisResponse.ProducedRollup.Header.ParentHash, nil
 }
 
-func (a *Node) broadcastL1Tx(tx types.TxData) error {
+func (a *Node) broadcastL1Tx(tx types.TxData, retries int) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
 	}
+
+	// todo - joel - use retries
 
 	// TODO Add retries, with fewer retries for rollups. Escalate an error if all retries fail.
 	err = a.ethClient.SendTransaction(signedTx)
@@ -614,7 +622,8 @@ func (a *Node) requestSecret() error {
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	requestSecretTx := a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
+	err = a.broadcastL1Tx(requestSecretTx, l1TxRetriesSecret)
 	if err != nil {
 		return err
 	}
@@ -680,7 +689,8 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		HostAddress: att.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	respondSecretTx := a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false)
+	err = a.broadcastL1Tx(respondSecretTx, l1TxRetriesSecret)
 	if err != nil {
 		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 	}
