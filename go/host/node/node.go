@@ -599,7 +599,11 @@ func (a *Node) signAndBroadcastTx(tx types.TxData, retries int) error {
 	}
 
 	funcBroadcastTx := func() error { return a.ethClient.SendTransaction(signedTx) }
-	return retryWithBackoff(retries, funcBroadcastTx)
+	err = retryWithBackoff(retries, funcBroadcastTx)
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("broadcasting L1 transaction failed after %d retries. Cause: %w", retries, err)
 }
 
 // This method implements the procedure by which a node obtains the secret
