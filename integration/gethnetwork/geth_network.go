@@ -216,14 +216,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	network.genesisFilePath = genesisFilePath
 
 	// We start the miners.
-	for idx, dataDir := range dataDirs {
-		wg.Add(1)
-		go func(idx int, dataDir string) {
-			defer wg.Done()
-			network.createMiner(dataDir, idx)
-		}(idx, dataDir)
-	}
-	wg.Wait()
+	createAndStartMiners(network, dataDirs)
 
 	// We retrieve the enode address for each node.
 	enodeAddrs := make([]string, len(network.dataDirs))
@@ -251,6 +244,40 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	wg.Wait()
 
 	return &network
+}
+
+func createAndStartMiners(network GethNetwork, dataDirs []string) {
+	var wg sync.WaitGroup
+	errs := make([]error, len(dataDirs))
+
+	// We need to wait for all the miner-creation goroutines to return before shutting down the nodes if there were any
+	// errors. Otherwise, there's a possible race condition whereby if the creation of one node fails, we start
+	// shutting down the nodes from that goroutine, but new nodes are being spun up on other goroutines, and these are
+	// missed by the shutdown process.
+	for idx, dataDir := range dataDirs {
+		wg.Add(1)
+		go func(idx int, dataDir string) {
+			defer wg.Done()
+			err := network.createAndStartMiner(dataDir, idx)
+			if err != nil {
+				// We insert the error strings by index, as a workaround for concurrent updates to the slice.
+				errs[idx] = err
+			}
+		}(idx, dataDir)
+	}
+	wg.Wait()
+
+	var nonNilErrs []string
+	for _, e := range errs {
+		if e != nil {
+			nonNilErrs = append(nonNilErrs, e.Error())
+		}
+	}
+
+	if len(nonNilErrs) > 0 {
+		network.StopNodes()
+		panic(fmt.Errorf("could not start one or more Geth nodes. Causes: %s", strings.Join(nonNilErrs, "; ")))
+	}
 }
 
 // IssueCommand sends the command via RPC to the nodeIdx'th node in the network.
@@ -295,12 +322,12 @@ func (network *GethNetwork) StopNodes() {
 }
 
 // Initialises and starts a miner.
-func (network *GethNetwork) createMiner(dataDir string, idx int) {
+func (network *GethNetwork) createAndStartMiner(dataDir string, idx int) error {
 	// We delete the leftover IPC file from the previous run, if it exists.
 	_ = os.Remove(path.Join(dataDir, ipcFileName))
 	// The node must create its initial config based on the network's genesis file before it can be started.
 	network.initNode(dataDir)
-	network.startMiner(dataDir, idx)
+	return network.startMiner(dataDir, idx)
 }
 
 // Creates an account for a Geth node.
@@ -353,7 +380,7 @@ func (network *GethNetwork) initNode(dataDirPath string) {
 }
 
 // Starts a Geth miner.
-func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
+func (network *GethNetwork) startMiner(dataDirPath string, idx int) error {
 	webSocketPort := network.wsStartPort + idx
 	port := network.commStartPort + idx
 	httpPort := network.commStartPort + 25 + idx
@@ -372,13 +399,13 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) {
 	cmd.Stderr = network.logNodeID(idx)
 
 	if err := cmd.Start(); err != nil {
-		network.StopNodes() // We stop any nodes started so far.
-		panic(fmt.Errorf("could not start Geth node. Cause: %w", err))
+		return err
 	}
+
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
-
 	fmt.Printf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort)
+	return nil
 }
 
 // logNodeID prepends the nodeID to the log entries
