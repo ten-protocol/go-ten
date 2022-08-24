@@ -312,3 +312,12 @@ An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed
 4. Todo: Can you clarify in the doc whether the events are discarded after being distributed, or are stored for future subscribers?
 
 5. How do events interact with the revelation period?
+
+
+## Alternatives considered
+
+
+### All events are public by default 
+
+This is not possible as it breaks the most fundamental contact, the `ERC20`, which contains the `Transfer` event.
+If all events were public by default then, we either break the ERC20 api by removing the event, or we lose privacy
