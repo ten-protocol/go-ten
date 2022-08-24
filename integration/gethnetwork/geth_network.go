@@ -216,7 +216,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	network.genesisFilePath = genesisFilePath
 
 	// We start the miners.
-	createAndStartMiners(dataDirs, network)
+	createAndStartMiners(network, dataDirs)
 
 	// We retrieve the enode address for each node.
 	enodeAddrs := make([]string, len(network.dataDirs))
@@ -246,7 +246,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	return &network
 }
 
-func createAndStartMiners(dataDirs []string, network GethNetwork) {
+func createAndStartMiners(network GethNetwork, dataDirs []string) {
 	var wg sync.WaitGroup
 	errors := make([]string, len(dataDirs))
 
