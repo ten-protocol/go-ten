@@ -28,8 +28,8 @@ const (
 	peerCountCmd = "net.peerCount"
 	chainIDCmd   = "admin.nodeInfo.protocols.eth.config.chainId"
 
-	defaultWsPortOffset        = 100 // The default offset between a Geth node's HTTP and websocket ports.
-	defaultL1ConnectionTimeout = 15 * time.Second
+	defaultWsPortOffset = 100 // The default offset between a Geth node's HTTP and websocket ports.
+	defaultL1RPCTimeout = 15 * time.Second
 
 	localhost = "127.0.0.1"
 )
@@ -110,7 +110,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethadapter.NewEthClient(localhost, network.WebSocketPorts[0], defaultL1ConnectionTimeout, common.HexToAddress("0x0"))
+	ethClient, err := ethadapter.NewEthClient(localhost, network.WebSocketPorts[0], defaultL1RPCTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}

@@ -27,7 +27,7 @@ import (
 
 func InjectTransactions(cfg Config, args []string) {
 	println("Connecting to L1 node...")
-	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeHost, cfg.l1NodeWebsocketPort, cfg.l1ConnectionTimeout, common.HexToAddress("0x0"))
+	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeHost, cfg.l1NodeWebsocketPort, cfg.l1RPCTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}

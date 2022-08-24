@@ -34,7 +34,7 @@ func RunHost(config config.HostConfig) {
 	}
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethadapter.NewEthClient(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1ConnectionTimeout, config.ID)
+	l1Client, err := ethadapter.NewEthClient(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1RPCTimeout, config.ID)
 	if err != nil {
 		log.Panic("could not create Ethereum client. Cause: %s", err)
 	}

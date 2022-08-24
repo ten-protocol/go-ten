@@ -44,7 +44,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	)
 
 	// connect to the first host to deploy
-	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1ConnectionTimeout, common.HexToAddress("0x0"))
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1RPCTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}
@@ -127,7 +127,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 }
 
 func createEthClientConnection(id int64, port uint) ethadapter.EthClient {
-	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1ConnectionTimeout, common.BigToAddress(big.NewInt(id)))
+	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, common.BigToAddress(big.NewInt(id)))
 	if err != nil {
 		panic(err)
 	}
