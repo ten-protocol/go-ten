@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	defaultRPCTimeoutSecs          = 10
-	defaultL1ConnectionTimeoutSecs = 15
-	defaultP2PTimeoutSecs          = 10
+	defaultRPCTimeoutSecs   = 10
+	defaultL1RPCTimeoutSecs = 15
+	defaultP2PTimeoutSecs   = 10
 )
 
 // HostConfig contains the full configuration for an Obscuro host.
@@ -44,8 +44,8 @@ type HostConfig struct {
 	ClientRPCTimeout time.Duration
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
-	// Timeout duration for connecting to the L1 node
-	L1ConnectionTimeout time.Duration
+	// Timeout duration for connecting to, and communicating with, the L1 node
+	L1RPCTimeout time.Duration
 	// Timeout duration for messaging between hosts.
 	P2PConnectionTimeout time.Duration
 	// The rollup contract address on the L1 network
@@ -82,7 +82,7 @@ func DefaultHostConfig() HostConfig {
 		L1NodeWebsocketPort:    8546,
 		ClientRPCTimeout:       time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
-		L1ConnectionTimeout:    time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
+		L1RPCTimeout:           time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,
 		RollupContractAddress:  common.BytesToAddress([]byte("")),
 		LogLevel:               "info",

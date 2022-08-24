@@ -15,7 +15,7 @@ import (
 type Command uint8
 
 const (
-	defaultL1ConnectionTimeoutSecs = 15
+	defaultL1RPCTimeoutSecs = 15
 
 	DeployMgmtContract Command = iota
 	DeployERC20Contract
@@ -31,8 +31,8 @@ const (
 	l1NodeWebsocketPortName  = "l1NodeWebsocketPort"
 	l1NodeWebsocketPortUsage = "The websocket port on which to connect to the Ethereum client"
 
-	l1ConnectionTimeoutSecsName  = "l1ConnectionTimeoutSecs"
-	l1ConnectionTimeoutSecsUsage = "The timeout for connecting to the Ethereum client"
+	l1RPCTimeoutSecsName  = "l1RPCTimeoutSecs"
+	l1RPCTimeoutSecsUsage = "The timeout for connecting to, and communicating with, the Ethereum client"
 
 	privateKeysName  = "privateKeys"
 	privateKeysUsage = "The private keys for the L1 wallets, as a comma-separated list. These wallets should have been preallocated funds"
@@ -60,7 +60,7 @@ type Config struct {
 	Command              Command
 	l1NodeHost           string
 	l1NodeWebsocketPort  uint
-	l1ConnectionTimeout  time.Duration
+	l1RPCTimeout         time.Duration
 	privateKeys          []string
 	l1ChainID            int64
 	obscuroChainID       int64
@@ -74,7 +74,7 @@ func defaultNetworkManagerConfig() Config {
 	return Config{
 		l1NodeHost:          "127.0.0.1",
 		l1NodeWebsocketPort: 9000,
-		l1ConnectionTimeout: time.Duration(defaultL1ConnectionTimeoutSecs) * time.Second,
+		l1RPCTimeout:        time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		// Default chosen to not conflict with default private key used by host.
 		privateKeys:          []string{"0000000000000000000000000000000000000000000000000000000000000002"},
 		l1ChainID:            integration.EthereumChainID,
@@ -92,7 +92,7 @@ func ParseCLIArgs() (Config, []string) {
 
 	l1NodeHost := flag.String(l1NodeHostName, defaultConfig.l1NodeHost, l1NodeHostUsage)
 	l1NodePort := flag.Uint64(l1NodeWebsocketPortName, uint64(defaultConfig.l1NodeWebsocketPort), l1NodeWebsocketPortUsage)
-	l1ConnectionTimeoutSecs := flag.Uint64(l1ConnectionTimeoutSecsName, uint64(defaultConfig.l1ConnectionTimeout.Seconds()), l1ConnectionTimeoutSecsUsage)
+	l1RPCTimeoutSecs := flag.Uint64(l1RPCTimeoutSecsName, uint64(defaultConfig.l1RPCTimeout.Seconds()), l1RPCTimeoutSecsUsage)
 	ethereumChainID := flag.Int64(ethereumChainIDName, defaultConfig.l1ChainID, ethereumChainIDUsage)
 	obscuroChainID := flag.Int64(obscuroChainIDName, defaultConfig.obscuroChainID, obscuroChainIDUsage)
 	privateKeys := flag.String(privateKeysName, strings.Join(defaultConfig.privateKeys, ","), privateKeysUsage)
@@ -105,7 +105,7 @@ func ParseCLIArgs() (Config, []string) {
 
 	defaultConfig.l1NodeHost = *l1NodeHost
 	defaultConfig.l1NodeWebsocketPort = uint(*l1NodePort)
-	defaultConfig.l1ConnectionTimeout = time.Duration(*l1ConnectionTimeoutSecs) * time.Second
+	defaultConfig.l1RPCTimeout = time.Duration(*l1RPCTimeoutSecs) * time.Second
 	defaultConfig.privateKeys = strings.Split(*privateKeys, ",")
 	defaultConfig.l1ChainID = *ethereumChainID
 	defaultConfig.obscuroChainID = *obscuroChainID

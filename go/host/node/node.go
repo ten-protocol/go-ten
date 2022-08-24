@@ -169,7 +169,7 @@ func NewHost(
 func (a *Node) Start() {
 	tomlConfig, err := toml.Marshal(a.config)
 	if err != nil {
-		panic("could not print host config")
+		log.Panic("could not print host config")
 	}
 	common.LogWithID(a.shortID, "Host started with following config:\n%s", tomlConfig)
 
@@ -178,27 +178,15 @@ func (a *Node) Start() {
 
 	// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
 	if a.config.IsGenesis {
-		common.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
-		// Create the shared secret and submit it to the management contract for storage
-		attestation := a.enclaveClient.Attestation()
-		if attestation.Owner != a.config.ID {
-			common.PanicWithID(a.shortID, "genesis node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), attestation.Owner.Hex())
-		}
-
-		encodedAttestation, err := common.EncodeAttestation(attestation)
+		err = a.broadcastSecret()
 		if err != nil {
-			log.Panic("could not encode attestation Cause: %s", err)
+			log.Panic(err.Error())
 		}
-		l1tx := &ethadapter.L1InitializeSecretTx{
-			AggregatorID:  &a.config.ID,
-			Attestation:   encodedAttestation,
-			InitialSecret: a.enclaveClient.GenerateSecret(),
-			HostAddress:   a.config.P2PPublicAddress,
-		}
-		a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
-		common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	} else {
-		a.requestSecret()
+		err = a.requestSecret()
+		if err != nil {
+			log.Panic(err.Error())
+		}
 	}
 
 	// attach the l1 monitor
@@ -211,7 +199,10 @@ func (a *Node) Start() {
 	a.enclaveClient.Start(latestBlock)
 
 	if a.config.IsGenesis {
-		a.initialiseProtocol(&latestBlock)
+		_, err = a.initialiseProtocol(&latestBlock)
+		if err != nil {
+			log.Panic(err.Error())
+		}
 	}
 	// start the obscuro RPC endpoints
 	if a.rpcServer != nil {
@@ -221,6 +212,32 @@ func (a *Node) Start() {
 
 	// start the node main processing loop
 	a.startProcessing()
+}
+
+func (a *Node) broadcastSecret() error {
+	common.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
+	// Create the shared secret and submit it to the management contract for storage
+	attestation := a.enclaveClient.Attestation()
+	if attestation.Owner != a.config.ID {
+		return fmt.Errorf("genesis node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), attestation.Owner.Hex())
+	}
+
+	encodedAttestation, err := common.EncodeAttestation(attestation)
+	if err != nil {
+		return fmt.Errorf("could not encode attestation Cause: %w", err)
+	}
+	l1tx := &ethadapter.L1InitializeSecretTx{
+		AggregatorID:  &a.config.ID,
+		Attestation:   encodedAttestation,
+		InitialSecret: a.enclaveClient.GenerateSecret(),
+		HostAddress:   a.config.P2PPublicAddress,
+	}
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	if err != nil {
+		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
+	}
+	common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcast.")
+	return nil
 }
 
 func (a *Node) Config() *config.HostConfig {
@@ -460,26 +477,32 @@ func (a *Node) processBlock(b *types.Block) {
 
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
 			common.LogWithID(a.shortID, "Process shared secret request. Block: %d. Tx: %d", b.NumberU64(), common.ShortHash(tx.Hash()))
-			a.processSharedSecretRequest(scrtReqTx)
+			err := a.processSharedSecretRequest(scrtReqTx)
+			if err != nil {
+				common.ErrorWithID(a.shortID, "Failed to process shared secret request. Cause: %s", err)
+				continue
+			}
 		}
 
 		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			err := a.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
-				common.LogWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+				common.ErrorWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+				continue
 			}
 		}
 
 		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
-			// todo - there can ever be only one `L1InitializeSecretTx` message.
+			// TODO - Ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
+			//  our node will never be able to speak to other nodes.
 			// there must be a way to make sure that this transaction can only be sent once.
 			att, err := common.DecodeAttestation(initSecretTx.Attestation)
 			if err != nil {
-				log.Panic("Could not decode attestation report. Cause: %s", err)
+				common.ErrorWithID(a.shortID, "Could not decode attestation report. Cause: %s", err)
 			}
 			err = a.enclaveClient.StoreAttestation(att)
 			if err != nil {
-				log.Panic("Could not store the attestation report. Cause: %s", err)
+				common.ErrorWithID(a.shortID, "Could not store the attestation report. Cause: %s", err)
 			}
 		}
 	}
@@ -513,7 +536,10 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
-				a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				if err != nil {
+					log.Error("could not broadcast winning rollup. Cause: %s", err)
+				}
 				a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
 			}
 		}
@@ -535,7 +561,7 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
+func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
 	// Create the genesis rollup and submit it to the management contract
 	genesisResponse := a.enclaveClient.ProduceGenesis(block.Hash())
 	common.LogWithID(
@@ -545,47 +571,59 @@ func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
 	)
 	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())
 	if err != nil {
-		log.Panic("could not encode rollup. Cause: %s", err)
+		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
 
-	a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	if err != nil {
+		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
+	}
 
-	return genesisResponse.ProducedRollup.Header.ParentHash
+	return genesisResponse.ProducedRollup.Header.ParentHash, nil
 }
 
-func (a *Node) broadcastL1Tx(tx types.TxData) {
-	// TODO add retry and deal with failures
+func (a *Node) broadcastL1Tx(tx types.TxData) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
+	// TODO Add retries, with fewer retries for rollups. Escalate an error if all retries fail.
 	err = a.ethClient.SendTransaction(signedTx)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 // This method implements the procedure by which a node obtains the secret
-func (a *Node) requestSecret() {
+func (a *Node) requestSecret() error {
 	common.LogWithID(a.shortID, "Requesting secret.")
 	att := a.enclaveClient.Attestation()
 	if att.Owner != a.config.ID {
-		common.PanicWithID(a.shortID, "node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
+		return fmt.Errorf("node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation, err := common.EncodeAttestation(att)
 	if err != nil {
-		log.Panic("could not encode attestation. Cause: %s", err)
+		return fmt.Errorf("could not encode attestation. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
-	a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	if err != nil {
+		return err
+	}
 
-	a.awaitSecret()
+	err = a.awaitSecret()
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	return nil
 }
 
 func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
@@ -603,11 +641,11 @@ func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) {
+func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) error {
 	att, err := common.DecodeAttestation(scrtReqTx.Attestation)
 	if err != nil {
 		common.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
-		return
+		return nil
 	}
 
 	jsonAttestation, err := json.Marshal(att)
@@ -620,19 +658,19 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 	secret, err := a.enclaveClient.ShareSecret(att)
 	if err != nil {
 		common.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
-		return
+		return nil
 	}
 
 	// Store the attested key only if the attestation process succeeded.
 	err = a.enclaveClient.StoreAttestation(att)
 	if err != nil {
-		log.Panic("Could not store attestation. Cause:%s", err)
+		return fmt.Errorf("could not store attestation. Cause: %w", err)
 	}
 
 	// todo: implement proper protocol so only one host responds to this secret requests initially
 	// 	for now we just have the genesis host respond until protocol implemented
 	if !a.config.IsGenesis {
-		return
+		return nil
 	}
 
 	l1tx := &ethadapter.L1RespondSecretTx{
@@ -642,7 +680,11 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		HostAddress: att.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	if err != nil {
+		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
+	}
+	return nil
 }
 
 // Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
@@ -707,7 +749,10 @@ func (a *Node) monitorBlocks() {
 			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
 			listener, subs = a.ethClient.BlockListener()
 
-			a.catchupMissedBlocks(lastKnownBlkHash)
+			err = a.catchupMissedBlocks(lastKnownBlkHash)
+			if err != nil {
+				log.Panic("could not catch up missed blocks. Cause: %s", err)
+			}
 
 		case blkHeader := <-listener:
 			// don't process blocks if the node is stopping
@@ -738,7 +783,10 @@ func (a *Node) monitorBlocks() {
 			)
 
 			// issue the block to the ingestion channel
-			a.encodeAndIngest(block, blockParent)
+			err = a.encodeAndIngest(block, blockParent)
+			if err != nil {
+				log.Panic(err.Error())
+			}
 			lastKnownBlkHash = block.Hash()
 		}
 	}
@@ -749,19 +797,19 @@ func (a *Node) monitorBlocks() {
 	subs.Unsubscribe()
 }
 
-func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
+func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
 	var lastBlkNumber *big.Int
 	var reingestBlocks []*types.Block
 
 	// get the blockchain tip block
 	blk, err := a.ethClient.BlockByNumber(lastBlkNumber)
 	if err != nil {
-		log.Panic("catching up on missed blocks, unable to fetch tip block - reason: %s", err)
+		return fmt.Errorf("catching up on missed blocks, unable to fetch tip block - reason: %w", err)
 	}
 
 	if blk.Hash().Hex() == lastKnownBlkHash.Hex() {
 		// if no new blocks have been issued then nothing to catchup
-		return
+		return nil
 	}
 	reingestBlocks = append(reingestBlocks, blk)
 
@@ -769,7 +817,7 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
 	for blk.Hash().Hex() != lastKnownBlkHash.Hex() {
 		blockParent, err := a.ethClient.BlockByHash(blk.ParentHash())
 		if err != nil {
-			log.Panic("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %s", blk.ParentHash(), err)
+			return fmt.Errorf("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %w", blk.ParentHash(), err)
 		}
 
 		reingestBlocks = append(reingestBlocks, blockParent)
@@ -779,27 +827,35 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) {
 	// make sure to have the last ingested block available for ingestion (because we always ingest ( blk, blk_parent)
 	lastKnownBlk, err := a.ethClient.BlockByHash(lastKnownBlkHash)
 	if err != nil {
-		log.Panic("catching up on missed blocks, unable to feth last known block - reason: %s", err)
+		return fmt.Errorf("catching up on missed blocks, unable to feth last known block - reason: %w", err)
 	}
 	reingestBlocks = append(reingestBlocks, lastKnownBlk)
 
 	// issue the block to the ingestion channel in reverse, with the parent attached too
 	for i := len(reingestBlocks) - 2; i >= 0; i-- {
 		log.Debug("Ingesting %s and %s blocks of %v", reingestBlocks[i].Hash(), reingestBlocks[i+1].Hash(), reingestBlocks)
-		a.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
+		err = a.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
+		if err != nil {
+			log.Panic(err.Error())
+		}
 	}
+
+	return nil
 }
 
-func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) {
+func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) error {
 	encodedBlock, err := common.EncodeBlock(block)
 	if err != nil {
-		log.Panic("could not encode block with hash %s. Cause: %s", block.Hash().String(), err)
+		return fmt.Errorf("could not encode block with hash %s. Cause: %w", block.Hash().String(), err)
 	}
+
 	encodedBlockParent, err := common.EncodeBlock(blockParent)
 	if err != nil {
-		log.Panic("could not encode block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+		return fmt.Errorf("could not encode block's parent with hash %s. Cause: %w", block.ParentHash().String(), err)
 	}
+
 	a.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+	return nil
 }
 
 func (a *Node) bootstrapNode() types.Block {
@@ -811,7 +867,7 @@ func (a *Node) bootstrapNode() types.Block {
 	// todo the genesis block should be the block where the contract was deployed
 	currentBlock, err := a.ethClient.BlockByNumber(big.NewInt(0))
 	if err != nil {
-		panic(err)
+		log.Panic(err.Error())
 	}
 
 	common.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
@@ -837,7 +893,7 @@ func (a *Node) bootstrapNode() types.Block {
 			if errors.Is(err, ethereum.NotFound) {
 				break
 			}
-			panic(err)
+			log.Panic(err.Error())
 		}
 		currentBlock = nextBlk
 
@@ -856,7 +912,7 @@ func (a *Node) bootstrapNode() types.Block {
 	return *currentBlock
 }
 
-func (a *Node) awaitSecret() {
+func (a *Node) awaitSecret() error {
 	// start listening for l1 blocks that contain the response to the request
 	listener, subs := a.ethClient.BlockListener()
 
@@ -871,22 +927,22 @@ func (a *Node) awaitSecret() {
 		case header := <-listener:
 			block, err := a.ethClient.BlockByHash(header.Hash())
 			if err != nil {
-				log.Panic("failed to retrieve block. Cause: %s:", err)
+				return fmt.Errorf("failed to retrieve block. Cause: %w", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
 				// todo this should be defered when the errors are upstreamed instead of panic'd
 				subs.Unsubscribe()
-				return
+				return nil
 			}
 
 		case bAndParent := <-a.blockRPCCh:
 			block, err := bAndParent.b.DecodeBlock()
 			if err != nil {
-				log.Panic("failed to decode block received via RPC. Cause: %s:", err)
+				return fmt.Errorf("failed to decode block received via RPC. Cause: %w", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
 				subs.Unsubscribe()
-				return
+				return nil
 			}
 
 		case <-time.After(time.Second * 10):
@@ -895,7 +951,7 @@ func (a *Node) awaitSecret() {
 
 		case <-a.exitNodeCh:
 			subs.Unsubscribe()
-			return
+			return nil
 		}
 	}
 }
