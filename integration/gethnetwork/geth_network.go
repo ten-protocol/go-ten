@@ -267,7 +267,7 @@ func createAndStartMiners(network GethNetwork, dataDirs []string) {
 	}
 	wg.Wait()
 
-	if errors != nil {
+	if len(errors) > 0 {
 		network.StopNodes()
 		panic(fmt.Errorf("could not start one or more Geth nodes. Causes: %s", strings.Join(errors, "; ")))
 	}
