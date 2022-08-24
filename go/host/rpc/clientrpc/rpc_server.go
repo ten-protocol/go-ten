@@ -14,7 +14,7 @@ const (
 // Server is the layer responsible for handling RPC requests from Obscuro client applications.
 type Server interface {
 	Start()
-	Stop() error
+	Stop()
 }
 
 // An implementation of `host.Server` that reuses the Geth `node` package for client communication.
@@ -52,6 +52,9 @@ func (s *serverImpl) Start() {
 	}
 }
 
-func (s *serverImpl) Stop() error {
-	return s.node.Close()
+func (s *serverImpl) Stop() {
+	err := s.node.Close()
+	if err != nil {
+		log.Panic("could not stop node client server. Cause: %s", err)
+	}
 }

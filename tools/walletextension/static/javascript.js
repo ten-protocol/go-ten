@@ -64,8 +64,10 @@ const initialize = () => {
                 body: JSON.stringify(signedViewingKeyJson)
             }
         );
+
+        let checksummedAccount = Web3.utils.toChecksumAddress(account);
         if (submitViewingKeyResp.ok) {
-            statusArea.innerText = `Account: ${account}\nViewing key: ${viewingKey}\nSigned bytes: ${signature}`
+            statusArea.innerText = `Account: ${checksummedAccount}\nViewing key: ${viewingKey}\nSigned bytes: ${signature}`
         } else {
             statusArea.innerText = "Failed to submit viewing key to enclave."
         }

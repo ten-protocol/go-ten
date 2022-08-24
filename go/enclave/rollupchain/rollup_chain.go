@@ -584,7 +584,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 		return common.ExtRollup{}, false, nil
 	}
 
-	common.LogWithID(rc.nodeID, "Round winner height: %d", head.Header.Number)
+	common.TraceWithID(rc.nodeID, "Round winner height: %d", head.Header.Number)
 	rollupsReceivedFromPeers := rc.storage.FetchRollups(head.NumberU64() + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
@@ -609,7 +609,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 	if bytes.Equal(winnerRollup.Header.Agg.Bytes(), rc.hostID.Bytes()) {
 		v := rc.storage.Proof(winnerRollup)
 		w := rc.storage.ParentRollup(winnerRollup)
-		common.LogWithID(rc.nodeID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
+		common.TraceWithID(rc.nodeID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
 			common.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			common.ShortHash(w.Hash()),
 			common.ShortHash(v.Hash()),
@@ -651,7 +651,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if !f {
 		panic("not found")
 	}
-	log.Trace("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", contractAddress.Hex(), from.Hex(), hexutils.BytesToHex(data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
+	log.Trace("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", contractAddress, from.Hex(), hexutils.BytesToHex(data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
 	result, err := evm.ExecuteOffChainCall(from, contractAddress, data, s, r.Header, rc.storage, rc.chainConfig)
 	if err != nil {
@@ -664,7 +664,10 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 
 	log.Trace("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData))
 
-	encodedResult := hexutil.Encode(result.ReturnData)
+	var encodedResult string
+	if len(result.ReturnData) != 0 {
+		encodedResult = hexutil.Encode(result.ReturnData)
+	}
 	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(from, []byte(encodedResult))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)

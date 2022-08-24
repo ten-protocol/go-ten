@@ -39,9 +39,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := common.HexToAddress("AA")
-	params.Wallets.Tokens[bridge.OBX].L1ContractAddress = &dummyOBXAddress
+	params.Wallets.Tokens[bridge.HOC].L1ContractAddress = &dummyOBXAddress
 	dummyETHAddress := common.HexToAddress("BB")
-	params.Wallets.Tokens[bridge.ETH].L1ContractAddress = &dummyETHAddress
+	params.Wallets.Tokens[bridge.POC].L1ContractAddress = &dummyETHAddress
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0

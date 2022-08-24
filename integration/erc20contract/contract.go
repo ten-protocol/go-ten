@@ -10,21 +10,17 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/erc20contract/generated/ObsERC20"
 )
 
-func ObsBytecode(tokenName string, initialSupply *big.Int) ([]byte, error) {
-	parsed, err := ObsERC20.ObsERC20MetaData.GetAbi()
-	if err != nil {
-		return nil, err
-	}
-	return parsed.Pack("", tokenName, tokenName, initialSupply)
+func L2BytecodeWithDefaultSupply(tokenName string) []byte {
+	return L2Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000")
 }
 
-func L2BytecodeWithDefaultSupply(tokenName string) []byte {
+func L2Bytecode(tokenName string, tokenSymbol string, initialSupply string) []byte {
 	parsed, err := ObsERC20.ObsERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
 	}
-	initialSupply, _ := big.NewInt(0).SetString("1000000000000000000000000000000000000000", 10)
-	input, err := parsed.Pack("", tokenName, tokenName, initialSupply)
+	supply, _ := big.NewInt(0).SetString(initialSupply, 10)
+	input, err := parsed.Pack("", tokenName, tokenSymbol, supply)
 	if err != nil {
 		panic(err)
 	}
@@ -33,12 +29,16 @@ func L2BytecodeWithDefaultSupply(tokenName string) []byte {
 }
 
 func L1BytecodeWithDefaultSupply(tokenName string) []byte {
+	return L1Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000")
+}
+
+func L1Bytecode(tokenName string, tokenSymbol string, initialSupply string) []byte {
 	parsed, err := EthERC20.EthERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
 	}
-	initialSupply, _ := big.NewInt(0).SetString("1000000000000000000000000000000000000000", 10)
-	input, err := parsed.Pack("", tokenName, tokenName, initialSupply)
+	supply, _ := big.NewInt(0).SetString(initialSupply, 10)
+	input, err := parsed.Pack("", tokenName, tokenSymbol, supply)
 	if err != nil {
 		panic(err)
 	}

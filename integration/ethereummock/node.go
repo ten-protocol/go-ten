@@ -136,6 +136,10 @@ func (m *Node) IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool
 	return m.Resolver.IsBlockAncestor(block, proof)
 }
 
+func (m *Node) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
+	panic("not implemented")
+}
+
 // Start runs an infinite loop that listens to the two block producing channels and processes them.
 // it outputs the winning blocks to the roundWinnerCh channel
 func (m *Node) Start() {

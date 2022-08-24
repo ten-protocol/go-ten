@@ -296,19 +296,21 @@ func (a *Node) Stop() {
 	if err := a.enclaveClient.Stop(); err != nil {
 		common.ErrorWithID(a.shortID, "could not stop enclave server. Cause: %s", err)
 	}
-
 	if err := a.enclaveClient.StopClient(); err != nil {
 		common.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
 	}
 	if a.rpcServer != nil {
-		if err := a.rpcServer.Stop(); err != nil {
-			common.ErrorWithID(a.shortID, "could not stop client RPC server. Cause: %s", err)
-		}
+		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
+		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
+		// connection remains open, waiting for the RPC server to close.
+		go a.rpcServer.Stop()
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
+
+	common.LogWithID(a.shortID, "Node shut down successfully.")
 }
 
 func (a *Node) ConnectToEthNode(node ethadapter.EthClient) {

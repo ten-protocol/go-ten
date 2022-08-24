@@ -22,7 +22,7 @@ services:
       ISGENESIS: some_bool
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
+    image: testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
       "--l1NodeHost=$L1HOST",
@@ -54,7 +54,7 @@ services:
       OE_SIMULATION: 0
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
+    image: testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",

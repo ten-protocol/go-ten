@@ -73,9 +73,9 @@ mgmtContractAddr=$(docker logs --tail 1 mgmtcontractdeployer)
 echo "MGMTCONTRACTADDR=${mgmtContractAddr}" > "${testnet_path}/.env"
 echo ""
 
-# deploy JAM ERC20 contract
-echo "Deploying JAM ERC20 contract to L1 network"
-docker run --name=jamerc20deployer \
+# deploy Hocus ERC20 contract
+echo "Deploying Hocus ERC20 contract to L1 network"
+docker run --name=hocerc20deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      "${docker_image}" \
@@ -84,15 +84,15 @@ docker run --name=jamerc20deployer \
     --l1Deployment \
     --contractName="L1ERC20" \
     --privateKey=${pkstring}\
-    --constructorParams="JAM,JAM,1000000000000000000000"
+    --constructorParams="Hocus,HOC,1000000000000000000000000000000"
 # storing the contract address to the .env file
-jamErc20Addr=$(docker logs --tail 1 jamerc20deployer)
-echo "JAMERC20ADDR=${jamErc20Addr}" >> "${testnet_path}/.env"
+hocErc20Addr=$(docker logs --tail 1 hocerc20deployer)
+echo "HOCERC20ADDR=${hocErc20Addr}" >> "${testnet_path}/.env"
 echo ""
 
-# deploy ETH ERC20 contract
-echo "Deploying ETH ERC20 contract to L1 network"
-docker run --name=etherc20deployer \
+# deploy Pocus ERC20 contract
+echo "Deploying Pocus ERC20 contract to L1 network"
+docker run --name=pocerc20deployer \
     --network=node_network \
     --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
      "${docker_image}" \
@@ -101,8 +101,8 @@ docker run --name=etherc20deployer \
     --l1Deployment \
     --contractName="L1ERC20" \
     --privateKey=${pkstring}\
-    --constructorParams="ETH,ETH,1000000000000000000000"
+    --constructorParams="Pocus,POC,1000000000000000000000000000000"
 # storing the contract address to the .env file
-ethErc20Addr=$(docker logs --tail 1 etherc20deployer)
-echo "ETHERC20ADDR=${ethErc20Addr}" >> "${testnet_path}/.env"
+pocErc20Addr=$(docker logs --tail 1 pocerc20deployer)
+echo "POCERC20ADDR=${pocErc20Addr}" >> "${testnet_path}/.env"
 echo ""

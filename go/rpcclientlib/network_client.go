@@ -1,6 +1,7 @@
 package rpcclientlib
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -40,11 +41,14 @@ func NewNetworkClient(address string) (Client, error) {
 	}, nil
 }
 
-// Call handles JSON rpc requests - if the method is sensitive it will encrypt the args before sending the request and
-// then decrypts the response before returning.
+// Call handles JSON rpc requests, delegating to the geth RPC client
 // The result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
 func (c *networkClient) Call(result interface{}, method string, args ...interface{}) error {
 	return c.rpcClient.Call(&result, method, args...)
+}
+
+func (c *networkClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	return c.rpcClient.CallContext(ctx, result, method, args...)
 }
 
 func (c *networkClient) Stop() {
