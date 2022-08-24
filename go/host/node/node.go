@@ -597,15 +597,19 @@ func (a *Node) broadcastL1Tx(tx types.TxData, retries int) error {
 		return err
 	}
 
-	// todo - joel - use retries
+	err = nil
+	for i := 0; ; i++ {
+		// We've performed all the retries, so we return the (possibly nil) error.
+		if i >= retries {
+			return err
+		}
 
-	// TODO Add retries, with fewer retries for rollups. Escalate an error if all retries fail.
-	err = a.ethClient.SendTransaction(signedTx)
-	if err != nil {
-		return err
+		err = a.ethClient.SendTransaction(signedTx)
+		if err == nil {
+			// If the transaction sent successfully, we break out.
+			return nil
+		}
 	}
-
-	return nil
 }
 
 // This method implements the procedure by which a node obtains the secret
