@@ -168,7 +168,7 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 		defer conn.Close()
 	}
 	if err != nil {
-		common.WarnWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
+		common.WarnWithID(p.nodeID, "could not connect to peer on address %s: %v", address, err)
 		return
 	}
 
