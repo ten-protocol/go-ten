@@ -178,27 +178,15 @@ func (a *Node) Start() {
 
 	// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
 	if a.config.IsGenesis {
-		common.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
-		// Create the shared secret and submit it to the management contract for storage
-		attestation := a.enclaveClient.Attestation()
-		if attestation.Owner != a.config.ID {
-			common.PanicWithID(a.shortID, "genesis node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), attestation.Owner.Hex())
-		}
-
-		encodedAttestation, err := common.EncodeAttestation(attestation)
+		err = a.broadcastSecret()
 		if err != nil {
-			log.Panic("could not encode attestation Cause: %s", err)
+			log.Panic(err.Error())
 		}
-		l1tx := &ethadapter.L1InitializeSecretTx{
-			AggregatorID:  &a.config.ID,
-			Attestation:   encodedAttestation,
-			InitialSecret: a.enclaveClient.GenerateSecret(),
-			HostAddress:   a.config.P2PPublicAddress,
-		}
-		a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
-		common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcasted.")
 	} else {
-		a.requestSecret()
+		err = a.requestSecret()
+		if err != nil {
+			log.Panic(err.Error())
+		}
 	}
 
 	// attach the l1 monitor
@@ -211,7 +199,10 @@ func (a *Node) Start() {
 	a.enclaveClient.Start(latestBlock)
 
 	if a.config.IsGenesis {
-		a.initialiseProtocol(&latestBlock)
+		_, err = a.initialiseProtocol(&latestBlock)
+		if err != nil {
+			log.Panic(err.Error())
+		}
 	}
 	// start the obscuro RPC endpoints
 	if a.rpcServer != nil {
@@ -221,6 +212,32 @@ func (a *Node) Start() {
 
 	// start the node main processing loop
 	a.startProcessing()
+}
+
+func (a *Node) broadcastSecret() error {
+	common.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
+	// Create the shared secret and submit it to the management contract for storage
+	attestation := a.enclaveClient.Attestation()
+	if attestation.Owner != a.config.ID {
+		return fmt.Errorf("genesis node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), attestation.Owner.Hex())
+	}
+
+	encodedAttestation, err := common.EncodeAttestation(attestation)
+	if err != nil {
+		return fmt.Errorf("could not encode attestation Cause: %w", err)
+	}
+	l1tx := &ethadapter.L1InitializeSecretTx{
+		AggregatorID:  &a.config.ID,
+		Attestation:   encodedAttestation,
+		InitialSecret: a.enclaveClient.GenerateSecret(),
+		HostAddress:   a.config.P2PPublicAddress,
+	}
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	if err != nil {
+		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
+	}
+	common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcast.")
+	return nil
 }
 
 func (a *Node) Config() *config.HostConfig {
@@ -460,7 +477,11 @@ func (a *Node) processBlock(b *types.Block) {
 
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
 			common.LogWithID(a.shortID, "Process shared secret request. Block: %d. Tx: %d", b.NumberU64(), common.ShortHash(tx.Hash()))
-			a.processSharedSecretRequest(scrtReqTx)
+			err := a.processSharedSecretRequest(scrtReqTx)
+			if err != nil {
+				log.Error("failed to process shared secret request. Cause: %s", err)
+				return
+			}
 		}
 
 		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
@@ -513,7 +534,10 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
 			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
-				a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement()))
+				if err != nil {
+					log.Error("could not broadcast winning rollup. Cause: %s", err)
+				}
 				a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
 			}
 		}
@@ -535,7 +559,7 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
+func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
 	// Create the genesis rollup and submit it to the management contract
 	genesisResponse := a.enclaveClient.ProduceGenesis(block.Hash())
 	common.LogWithID(
@@ -545,18 +569,21 @@ func (a *Node) initialiseProtocol(block *types.Block) common.L2RootHash {
 	)
 	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())
 	if err != nil {
-		log.Panic("could not encode rollup. Cause: %s", err)
+		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
 
-	a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	if err != nil {
+		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
+	}
 
-	return genesisResponse.ProducedRollup.Header.ParentHash
+	return genesisResponse.ProducedRollup.Header.ParentHash, nil
 }
 
-func (a *Node) broadcastL1Tx(tx types.TxData) {
+func (a *Node) broadcastL1Tx(tx types.TxData) error {
 	// TODO add retry and deal with failures
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
@@ -567,25 +594,31 @@ func (a *Node) broadcastL1Tx(tx types.TxData) {
 	if err != nil {
 		panic(err)
 	}
+
+	return nil // todo - joel - return error
 }
 
 // This method implements the procedure by which a node obtains the secret
-func (a *Node) requestSecret() {
+func (a *Node) requestSecret() error {
 	common.LogWithID(a.shortID, "Requesting secret.")
 	att := a.enclaveClient.Attestation()
 	if att.Owner != a.config.ID {
-		common.PanicWithID(a.shortID, "node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
+		return fmt.Errorf("node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation, err := common.EncodeAttestation(att)
 	if err != nil {
-		log.Panic("could not encode attestation. Cause: %s", err)
+		return fmt.Errorf("could not encode attestation. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
-	a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement()))
+	if err != nil {
+		return err
+	}
 
 	a.awaitSecret()
+	return nil
 }
 
 func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
@@ -603,11 +636,11 @@ func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) {
+func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) error {
 	att, err := common.DecodeAttestation(scrtReqTx.Attestation)
 	if err != nil {
 		common.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
-		return
+		return nil
 	}
 
 	jsonAttestation, err := json.Marshal(att)
@@ -620,19 +653,19 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 	secret, err := a.enclaveClient.ShareSecret(att)
 	if err != nil {
 		common.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
-		return
+		return nil
 	}
 
 	// Store the attested key only if the attestation process succeeded.
 	err = a.enclaveClient.StoreAttestation(att)
 	if err != nil {
-		log.Panic("Could not store attestation. Cause:%s", err)
+		return fmt.Errorf("could not store attestation. Cause: %w", err)
 	}
 
 	// todo: implement proper protocol so only one host responds to this secret requests initially
 	// 	for now we just have the genesis host respond until protocol implemented
 	if !a.config.IsGenesis {
-		return
+		return nil
 	}
 
 	l1tx := &ethadapter.L1RespondSecretTx{
@@ -642,7 +675,11 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 		HostAddress: att.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	err = a.broadcastL1Tx(a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false))
+	if err != nil {
+		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
+	}
+	return nil
 }
 
 // Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
