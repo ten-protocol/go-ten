@@ -584,18 +584,18 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 }
 
 func (a *Node) broadcastL1Tx(tx types.TxData) error {
-	// TODO add retry and deal with failures
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		panic(err)
 	}
 
+	// TODO Add retries, with fewer retries for rollups. Escalate an error if all retries fail.
 	err = a.ethClient.SendTransaction(signedTx)
 	if err != nil {
 		panic(err)
 	}
 
-	return nil // todo - joel - return error
+	return nil
 }
 
 // This method implements the procedure by which a node obtains the secret
