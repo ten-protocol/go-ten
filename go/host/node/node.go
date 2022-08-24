@@ -479,15 +479,16 @@ func (a *Node) processBlock(b *types.Block) {
 			common.LogWithID(a.shortID, "Process shared secret request. Block: %d. Tx: %d", b.NumberU64(), common.ShortHash(tx.Hash()))
 			err := a.processSharedSecretRequest(scrtReqTx)
 			if err != nil {
-				log.Error("failed to process shared secret request. Cause: %s", err)
-				return
+				common.ErrorWithID(a.shortID, "Failed to process shared secret request. Cause: %s", err)
+				continue
 			}
 		}
 
 		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			err := a.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
-				common.LogWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+				common.ErrorWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+				continue
 			}
 		}
 
