@@ -591,32 +591,15 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	return genesisResponse.ProducedRollup.Header.ParentHash, nil
 }
 
-// `retries` is the number of times to attempt broadcasting the transaction, with exponential backoff.
+// `retries` is the number of times to attempt broadcasting the transaction.
 func (a *Node) signAndBroadcastTx(tx types.TxData, retries int) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
 	}
 
-	err = nil
-	// The pause we leave between retries for broadcasting L1 transactions. Doubles on each retry. For 3 retries, this
-	// is 9 seconds. For 7 retries, 63 seconds.
-	pause := time.Second
-	for i := 0; ; i++ {
-		if i >= retries {
-			// We've performed all the retries, so we return the (possibly nil) error.
-			return err
-		}
-
-		err = a.ethClient.SendTransaction(signedTx)
-		if err == nil {
-			// If the transaction sent successfully, we break out.
-			return nil
-		}
-
-		time.Sleep(pause)
-		pause = pause * 2
-	}
+	funcBroadcastTx := func() error { return a.ethClient.SendTransaction(signedTx) }
+	return retryWithBackoff(retries, funcBroadcastTx)
 }
 
 // This method implements the procedure by which a node obtains the secret
@@ -993,4 +976,27 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 	}
 	// response not found
 	return false
+}
+
+// We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
+// This is equal to 9 seconds for 3 retries, and 63 seconds for 7 retries.
+func retryWithBackoff(retries int, funcToRetry func() error) error {
+	pause := time.Second
+	var err error
+
+	for i := 0; ; i++ {
+		if i >= retries {
+			// We've performed all the retries, so we return the (possibly nil) error.
+			return err
+		}
+
+		err = funcToRetry()
+		if err == nil {
+			// If the transaction sent successfully, we break out.
+			return nil
+		}
+
+		time.Sleep(pause)
+		pause = pause * 2
+	}
 }
