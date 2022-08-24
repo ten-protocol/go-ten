@@ -49,12 +49,6 @@ func LogTXExecution(txHash common.Hash, msg string, args ...interface{}) {
 	log.Info(txExecPattern, txHash.Hex(), formattedMsg)
 }
 
-// DebugTXExecution - logs at DEBUG level with the tx hash prepended
-func DebugTXExecution(txHash common.Hash, msg string, args ...interface{}) {
-	formattedMsg := fmt.Sprintf(msg, args...)
-	log.Debug(txExecPattern, txHash.Hex(), formattedMsg)
-}
-
 // TraceTXExecution - logs at Trace level with the tx hash prepended
 func TraceTXExecution(txHash common.Hash, msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
