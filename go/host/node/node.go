@@ -983,7 +983,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 }
 
 // We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
-// This is equal to 9 seconds for 3 retries, and 63 seconds for 7 retries.
+// This is equal to 7 seconds for 3 retries, and 63 seconds for 7 retries.
 func retryWithBackoff(retries int, funcToRetry func() error) error {
 	pause := time.Second
 	var err error
