@@ -40,8 +40,10 @@ const (
 	apiNamespaceNetwork     = "net"
 	apiNamespaceTest        = "test"
 
-	l1TxTriesRollup = 3 // The number of times we try broadcasting the rollup transaction to the L1.
-	l1TxTriesSecret = 7 // The number of times we try sending secret initialisation, request or response transactions to the L1.
+	// Attempts to broadcast the rollup transaction to the L1. Worst-case, equates to 7 seconds, plus time per request.
+	l1TxTriesRollup = 3
+	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
+	l1TxTriesSecret = 7
 )
 
 // Node is an implementation of host.Host.
