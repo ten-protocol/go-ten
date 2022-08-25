@@ -34,14 +34,17 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 			continue
 		}
 		result[t.Hash()] = r
+		receiptJSON, err := r.MarshalJSON()
 		if r.Status == types.ReceiptStatusFailed {
-			common.ErrorTXExecution(t.Hash(),
-				"Unsuccessful (status != 1) To: %s Gas: %d Data: %x",
-				t.To().Hex(),
-				t.Gas(),
-				t.Data())
+			if err != nil {
+				common.ErrorTXExecution(t.Hash(), "Unsuccessful (status != 1) (but could not print receipt as JSON)")
+			}
+			common.ErrorTXExecution(t.Hash(), "Unsuccessful (status != 1). Receipt: %s", string(receiptJSON))
 		} else {
-			common.LogTXExecution(t.Hash(), "Successfully executed. Address: %s", r.ContractAddress.Hex())
+			if err != nil {
+				common.TraceTXExecution(t.Hash(), "Successfully executed (but could not print receipt as JSON)")
+			}
+			common.TraceTXExecution(t.Hash(), "Successfully executed. Receipt: %s", string(receiptJSON))
 		}
 	}
 	s.Finalise(true)
