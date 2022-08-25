@@ -34,15 +34,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 			continue
 		}
 		result[t.Hash()] = r
-		if r.Status == types.ReceiptStatusFailed {
-			common.ErrorTXExecution(t.Hash(),
-				"Unsuccessful (status != 1) To: %s Gas: %d Data: %x",
-				t.To().Hex(),
-				t.Gas(),
-				t.Data())
-		} else {
-			common.LogTXExecution(t.Hash(), "Successfully executed. Address: %s", r.ContractAddress.Hex())
-		}
+		logReceipt(r)
 	}
 	s.Finalise(true)
 	return result
@@ -64,6 +56,23 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 	}
 
 	return receipt, nil
+}
+
+func logReceipt(r *types.Receipt) {
+	receiptJSON, err := r.MarshalJSON()
+	if err != nil {
+		if r.Status == types.ReceiptStatusFailed {
+			common.ErrorTXExecution(r.TxHash, "Unsuccessful (status != 1) (but could not print receipt as JSON)")
+		} else {
+			common.TraceTXExecution(r.TxHash, "Successfully executed (but could not print receipt as JSON)")
+		}
+	}
+
+	if r.Status == types.ReceiptStatusFailed {
+		common.ErrorTXExecution(r.TxHash, "Unsuccessful (status != 1). Receipt: %s", string(receiptJSON))
+	} else {
+		common.TraceTXExecution(r.TxHash, "Successfully executed. Receipt: %s", string(receiptJSON))
+	}
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
