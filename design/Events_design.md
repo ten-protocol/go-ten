@@ -21,12 +21,12 @@ To better understand the anatomy of events, read this [blog](https://medium.com/
 
 This is how an event is declared in a smart contract.
 
-```
+```solidity
 event Transfer(address indexed from, address indexed to, uint256 value);
 ```
 
 And this is how it is emitted.
-```
+```solidity
 emit Transfer(from, to, amount);
 ```
 
@@ -34,7 +34,7 @@ emit Transfer(from, to, amount);
 
 A web app can subscribe to events by doing something like:
 
-```
+```javascript
 var subscription = web3.eth.subscribe('logs', {
     address: '0x123456..', 
     topics: ['0x12345...']
@@ -77,14 +77,14 @@ There are a couple of cases that must be considered in order to decide whether A
    relevancy.)
 3. The event that is not relevant to Alice was emitted as a result of a Tx sent by Bob.
 
-The developer of a smart contract is responsible with making sure to not include any data in the event that must be kept secret from
-the transaction originator.
-(The events are also included in the transaction receipt, which is available to the transaction submitter.)
 
 #### Event relevancy
 
 In Obscuro (inherited from Ethereum), end users can have multiple accounts. The account address is how accounts are
 referenced.
+
+*Note: Smart contracts also have accounts referenced by an address. Given an account address, we can query the "code" property 
+to determine whether it is an end user or a contract.*
 
 Events are structured objects containing multiple entries (topics or data fields).
 
@@ -100,18 +100,18 @@ All the events in this section contain at least one end-user address topic.
 
 *Note: a topic is a field which is marked as `indexed`*
 
-```
+```solidity
     event Transfer(address indexed from, address indexed to, uint256 value);
 ```
 
-```   
+```solidity   
     /// @notice Emitted when the owner of the factory is changed
     /// @param oldOwner The owner before the owner was changed
     /// @param newOwner The owner after the owner was changed
     event OwnerChanged(address indexed oldOwner, address indexed newOwner);
 ```
 
-```
+```solidity
     event Swap(
     address indexed sender,
     uint amount0In,
@@ -122,7 +122,7 @@ All the events in this section contain at least one end-user address topic.
     );
 ```
 
-```
+```solidity
     /// @notice Emitted when fees are collected by the owner of a position
     /// @dev Collect events may be emitted with zero amount0 and amount1 when the caller chooses not to collect fees
     /// @param owner The owner of the position for which fees are collected
@@ -140,7 +140,7 @@ All the events in this section contain at least one end-user address topic.
     );
 ```
 
-```
+```solidity
     /// @notice Emitted when the collected protocol fees are withdrawn by the factory owner
     /// @param sender The address that collects the protocol fees
     /// @param recipient The address that receives the collected protocol fees
@@ -155,7 +155,7 @@ accounts which are affected by this transaction, and which are thus directly int
 
 ##### Without end-user address fields
 
-```
+```solidity
     /// @notice Emitted when a pool is created
     /// @param token0 The first token of the pool by address sort order
     /// @param token1 The second token of the pool by address sort order
@@ -171,18 +171,18 @@ accounts which are affected by this transaction, and which are thus directly int
     );
 ```
 
-```
+```solidity
     /// @notice Emitted when a new fee amount is enabled for pool creation via the factory
     /// @param fee The enabled fee, denominated in hundredths of a bip
     /// @param tickSpacing The minimum number of ticks between initialized ticks for pools created with the given fee
     event FeeAmountEnabled(uint24 indexed fee, int24 indexed tickSpacing);
 ```
 
-```
+```solidity
     event Sync(uint112 reserve0, uint112 reserve1);
 ```
 
-```
+```solidity
     /// @notice Emitted when the protocol fee is changed by the pool
     /// @param feeProtocol0Old The previous value of the token0 protocol fee
     /// @param feeProtocol1Old The previous value of the token1 protocol fee
@@ -193,31 +193,57 @@ accounts which are affected by this transaction, and which are thus directly int
 
 What these events have in common is that they are not user-specific. They represent a general update of the smart contract.
 
-##### Visibility Rules
+*Note that they might contain address fields, but these are addresses of smart contracts.*
 
-Users should be able to request and read all events that are relevant to them.
+#### Visibility Rules
 
-The rules we propose are:
+Users should be able to request and read all events that are relevant to them. By relevant, we mean that the user was somehow involved in the transaction
+that emitted that event, and this event might be of interest to them.
+
+The implicit rules we propose are:
 
 1. An event is considered relevant to all account owners whose addresses are used as topics in the event.
-2. In case there is no address in a topic, then the event is considered a lifecycle event, and thus relevant to everyone.
-3. An event is considered relevant to the signer of the transaction that created it. 
+2. In case there is no user address in a topic, then the event is considered a lifecycle event, and thus relevant to everyone.
 
 The purpose for these rules is to be simple, clear, intuitive, and to work as good as possible with the existing contracts.
 
-The first two rules are intuitive. The third one adds another dimension to the reasoning process, because there is an implicit user to whom the event is relevant.
-The alternative is to remove the third rule, and allow the owner to view the event only if it contains its own address. 
+There is the case, as in the ``PoolCreated`` event from above, where the event contains addresses, but they are contract addresses. 
+There is another case, where an event might contain a field that happens to look like an address.
 
-*Note: If we decide to remove the third rule, the implementation will have to calculate the event visibility when adding them to transaction receipts.*
+During the evaluation phase, the VM must check each address field for the ``getCode`` function, to determine what type of address it is.  
+If at least one of the addresses is not a smart contract, then the event will fall under rule 1.
 
-In case the rules above are not providing the desired functionality, the developer can adjust the topics.
+#### Adjusting the visibility rules
+
+In case the rules above are not providing the desired functionality, the developer will have a couple of options to adjust visibility. 
 
 For example, if one of the lifecycle events should only be visible to the administrators, the developer can add that address as a topic.
-Note that the lifecycle event will be visible to the signer of the transaction as well (according to rule 3).
 
-In case an event with an address field that should not contribute to relevancy, the developer can remove the `"indexed"` and thus the event will become invisible to that user.
+In case an event contains a user address topic that should not contribute to relevancy, the developer can remove the `"indexed"` and thus the event will become invisible to that user. 
+This might not be ideal in case this address has to be used for subscribing. 
 
-*Note: It is easy to detect if a value is an address since it has 20 non-zero bytes. There is no risk that a collision occurs between an end-user address, and some other field because there are 2^160 possibilities.*
+As the ultimate flexible mechanism we propose a programmatic way to determine whether a requester is allowed to view an event. 
+
+If the implicit rules are not satisfactory, the smart contract developer can define a view function called ``eventVisibility``, which will be called
+by the Obscuro VM behind the scenes.
+
+```solidity
+   // If declared in a smart contract, this function will be called by the Obscuro VM to determine whether the requester
+   // address is allowed to view the event. 
+   function eventVisibility(address requester, bytes32[] memory topics,  bytes32[] memory data) external view returns (bool){
+       // based on the data from the event, passed in as an array of topic and data (which is the internal VM representation) 
+       // calculate whether the requester address is entitled to view the event
+       // - the first element in the topics array is the hash of the event signature
+       // Note: the developer must maintain a list of the event hashes they want to handle programmatically 
+        return ; 
+    }
+```    
+
+To determine the visibility of an event, the Obscuro VM will do the following:
+1. call the `eventVisibility` with the event being requested and the requester.
+2. If the function exists and returns 'true', then return the event. If it returns `false`, then the event is invisible.
+3. If the function does not exist, apply the implicit rules.
+
 
 ### Technical implementation
 
@@ -230,7 +256,6 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
 - Applications will connect to the "wallet extension", which will translate the plain web3 "Subscribe"
   call into an encrypted Obscuro compatible one. The stream of received events will be decrypted automatically with the appropriate viewing keys.
 
-
 - Events should not leave the enclave space unencrypted or encrypted with a non-relevant account key. Transactions are 
   executed inside a secure enclave, and events emitted during that, need to be collected, filtered, and encrypted before being returned from the enclave.
   Optimisations need to be created as the load on the enclave could be significant. 
@@ -241,6 +266,7 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
   They could determine  for example when a high profile individual has transferred some ERC20, even if they wouldn't know 
   how much or to whom.
 
+- Events included in transaction receipts should be filtered to only include events which are visible to the transaction submitter.
   
 #### Prerequisites
 
@@ -270,19 +296,11 @@ User `U1`- owner of `A1` subscribes to all events.
    is any subscription that requested it. 
 
 
-4. Then, there is an extra step (inside the enclave as well) to determine whether the event is relevant to the account which is
+4. Then, there is an extra step (inside the enclave as well) to determine whether the event is relevant for any account which is
    authenticated for that subscription.
- 
-   Based on the rules described above, this can be done by running an intersection between:
-   - all accounts found in the event topics plus the `from` of the transaction. E.g.: `for E1 -> (A1,A2,A3)`
-   - and the accounts from the subscription. `U1 -> A1`
-
-    If there is at least one common element, the event is encrypted and returned in the `BlockSubmissionResponse` with metadata.
-
-    *Note: This extra step is skipped for event `E2`, which is returned on every subscription where it matches, encrypted with the first viewing key*
 
 
-5. The encrypted event is streamed from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
+5. The last step is to encrypt the event with the authenticated viewing key and stream it from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
 
 
 ### Security and Usability of the proposed design
@@ -292,7 +310,8 @@ App developers will be able to use the existing libraries unchanged, as long as 
 Depending on the subscription, the results might be different from those returned on a normal Ethereum network, because the user might not have the right to see certain private data. 
 
 Smart contract developers need to spend a few minutes to think about whether an event can be seen by the entity who it is relevant to, or whether it leaks data.
-There is no new syntax to learn, just to be aware about the visibility rules.
+There is no new syntax to learn, just to be aware about the visibility rules. In case the default intuitive rules do not satisfy the requirements,
+the developer can write a function to precisely control visibility.
 
 The data access protections of smart contracts will prevent another smart contract interacting with it from extracting information and leaking it as an event.  
 
@@ -321,3 +340,13 @@ An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed
 
 This is not possible as it breaks the most fundamental contact, the `ERC20`, which contains the `Transfer` event.
 If all events were public by default then, we either break the ERC20 api by removing the event, or we lose privacy
+
+
+### Add a third visibility rule that says that 
+
+Rule 3: A signer of a transaction can view all events emitted during the execution of that transaction.
+
+This rule adds another dimension to the reasoning process, because there is an implicit user to whom the event is relevant.
+It also reduces flexibility in sending lifecycle events to administrators.
+
+Note: Adding this rule simplifies transaction receipts.
