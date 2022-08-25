@@ -34,7 +34,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 			continue
 		}
 		result[t.Hash()] = r
-		logReceipt(err, r, t)
+		logReceipt(r)
 	}
 	s.Finalise(true)
 	return result
@@ -67,7 +67,7 @@ func logReceipt(r *types.Receipt) {
 			common.TraceTXExecution(r.TxHash, "Successfully executed (but could not print receipt as JSON)")
 		}
 	}
-	
+
 	if r.Status == types.ReceiptStatusFailed {
 		common.ErrorTXExecution(r.TxHash, "Unsuccessful (status != 1). Receipt: %s", string(receiptJSON))
 	} else {
