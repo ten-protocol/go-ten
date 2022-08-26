@@ -20,8 +20,9 @@ Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and web
   * `eth_getTransactionReceipt`
   * `eth_sendRawTransaction`
 * Encryption
-  * Any encryption keys used are only known to the client (e.g. wallet, webapp), and not to any third-parties
-  * The encryption is transparent to the client; from the client's perspective, they are interacting with a "standard" 
+  * The keys used to encrypt sensitive information (the _viewing keys_) are stored solely on the client-side (e.g. 
+    wallet, webapp), and are not shared with any third-parties (e.g. the node operator)
+  * Any encryption is transparent to the client; from the client's perspective, they are interacting with a "standard" 
     non-encrypting implementation of the Ethereum JSON-RPC specification
 * The wallet extension is usable by any webapp, tool or wallet type, and in particular:
   * Hardware wallets that do not offer a decryption capability
@@ -29,6 +30,10 @@ Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and web
 * Some tooling (e.g. MetaMask) does not set the `from` field in `eth_call` requests. For any received `eth_call` 
   request, it is acceptable for the wallet extension to set the `from` field programmatically (e.g. to enable 
   encryption of the response)
+
+## Non-requirements
+
+* Encryption of viewing keys at rest. It is acceptable to store viewing keys locally in the clear
 
 ## Design
 
