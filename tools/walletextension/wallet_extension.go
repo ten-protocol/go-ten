@@ -64,10 +64,11 @@ var staticFiles embed.FS
 type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey                              // The public key used to encrypt requests for the enclave.
 	hostAddr         string                                        // The address on which the Obscuro host can be reached.
-	accountClients   map[common.Address]*rpcclientlib.EncRPCClient // an encrypted RPC client per registered account
-	unsignedVKs      map[common.Address]*rpcclientlib.ViewingKey   // map temporarily holding VKs that have been generated but not yet signed
+	accountClients   map[common.Address]*rpcclientlib.EncRPCClient // An encrypted RPC client per registered account
+	unauthedClient   rpcclientlib.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
+	unsignedVKs      map[common.Address]*rpcclientlib.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
 	server           *http.Server
-	unauthedClient   rpcclientlib.Client // The default, un-authenticated client.
+	persistenceFile  *os.File // Stores the submitted viewing keys
 }
 
 type rpcRequest struct {
@@ -89,7 +90,6 @@ func NewWalletExtension(config Config) *WalletExtension {
 	}
 
 	setUpLogs(config.LogPath)
-	setUpPersistence()
 
 	return &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
@@ -97,6 +97,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		accountClients:   make(map[common.Address]*rpcclientlib.EncRPCClient),
 		unsignedVKs:      make(map[common.Address]*rpcclientlib.ViewingKey),
 		unauthedClient:   unauthedClient,
+		persistenceFile:  setUpPersistence(),
 	}
 }
 
