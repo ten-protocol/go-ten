@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+
 	"github.com/obscuronet/go-obscuro/go/host/node"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
@@ -27,7 +29,9 @@ import (
 func RunHost(config config.HostConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
 
-	log.SetLogLevel(log.ParseLevel(config.LogLevel))
+	// todo temporary
+	// log.SetLogLevel(log.ParseLevel(config.LogLevel))
+	log.SetLogLevel(zerolog.TraceLevel)
 
 	if config.LogPath != "" {
 		setLogs(config.LogPath)
