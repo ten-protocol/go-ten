@@ -250,7 +250,7 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		address := common.BytesToAddress(common.Hex2Bytes(cfg.ConstructorParams[1]))
+		address := common.HexToAddress(cfg.ConstructorParams[1])
 
 		return guessinggame.Bytecode(uint8(size), address)
 
