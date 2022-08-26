@@ -12,21 +12,23 @@ Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and web
     ](https://playground.open-rpc.org/?schemaUrl=https://raw.githubusercontent.com/ethereum/eth1.0-apis/assembled-spec/openrpc.json)
   * Additional APIs as needed to support common tools (e.g. MetaMask's use of Geth's `net_version` API)
 * The wallet extension is run locally by the end user
-* The wallet extension does not send or receive any sensitive information in plaintext. The following methods are 
-  considered sensitive (this list may grow over time):
-  * `eth_call`
-  * `eth_getBalance`
-  * `eth_getTransactionByHash`
-  * `eth_getTransactionReceipt`
-  * `eth_sendRawTransaction`
 * Encryption
+  * The wallet extension does not send or receive any sensitive information in plaintext. The following methods are 
+    considered sensitive (this list may grow over time):
+    * `eth_call`
+    * `eth_getBalance`
+    * `eth_getTransactionByHash`
+    * `eth_getTransactionReceipt`
+    * `eth_sendRawTransaction`
   * The keys used to encrypt sensitive information (the _viewing keys_) are stored solely on the client-side (e.g. 
     wallet, webapp), and are not shared with any third-parties (e.g. the node operator)
+* UX
   * Any encryption is transparent to the client; from the client's perspective, they are interacting with a "standard" 
-    non-encrypting implementation of the Ethereum JSON-RPC specification
-* The wallet extension is usable by any webapp, tool or wallet type, and in particular:
-  * Hardware wallets that do not offer a decryption capability
-  * MetaMask, for which the keys are only available when running in the browser
+      non-encrypting implementation of the Ethereum JSON-RPC specification
+  * The wallet extension is usable by any webapp, tool or wallet type, and in particular:
+    * Hardware wallets that do not offer a decryption capability
+    * MetaMask, for which the keys are only available when running in the browser
+  * The viewing keys are persisted across wallet extension restarts
 * Some tooling (e.g. MetaMask) does not set the `from` field in `eth_call` requests. For any received `eth_call` 
   request, it is acceptable for the wallet extension to set the `from` field programmatically (e.g. to enable 
   encryption of the response)
