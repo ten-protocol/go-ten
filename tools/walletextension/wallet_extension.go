@@ -97,7 +97,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		accountClients:   make(map[common.Address]*rpcclientlib.EncRPCClient),
 		unsignedVKs:      make(map[common.Address]*rpcclientlib.ViewingKey),
 		unauthedClient:   unauthedClient,
-		persistenceFile:  setUpPersistence(),
+		persistenceFile:  setUpPersistence(config.PersistencePathOverride),
 	}
 }
 
@@ -147,19 +147,23 @@ func setUpLogs(logPath string) {
 	log.OutputToFile(logFile)
 }
 
-// Sets up the persistence file in the user's home directory.
-func setUpPersistence() *os.File {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic("cannot create persistence file as user's home directory is not defined")
-	}
-	obscuroDir := filepath.Join(homeDir, obscuroDirName)
-	err = os.MkdirAll(obscuroDir, 0o777)
-	if err != nil {
-		panic(fmt.Sprintf("could not create %s directory in user's home directory", obscuroDirName))
+// Sets up the persistence file. Defaults to the user's home directory if the path is empty.
+func setUpPersistence(persistenceFilePath string) *os.File {
+	// We set the default if the persistence file is not overridden.
+	if persistenceFilePath == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			panic("cannot create persistence file as user's home directory is not defined")
+		}
+		obscuroDir := filepath.Join(homeDir, obscuroDirName)
+		err = os.MkdirAll(obscuroDir, 0o777)
+		if err != nil {
+			panic(fmt.Sprintf("could not create %s directory in user's home directory", obscuroDirName))
+		}
+
+		persistenceFilePath = filepath.Join(obscuroDir, persistenceFileName)
 	}
 
-	persistenceFilePath := filepath.Join(obscuroDir, persistenceFileName)
 	persistenceFile, err := os.OpenFile(persistenceFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		panic(fmt.Sprintf("could not create persistence file. Cause: %s", err))
@@ -406,4 +410,5 @@ type Config struct {
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
+	PersistencePathOverride string // Used to override the persistence file location in tests.
 }
