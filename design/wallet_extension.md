@@ -29,6 +29,9 @@ Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and web
     * Hardware wallets that do not offer a decryption capability
     * MetaMask, for which the keys are only available when running in the browser
   * Restarting the wallet extension does not require existing viewing keys to be regenerated
+  * Existing viewing keys are automatically resubmitted if the network is restarted
+  * Multiple wallet extensions can run in parallel, with separate sets of viewing keys and optionally connected to 
+    separate hosts 
 * Some tooling (e.g. MetaMask) does not set the `from` field in `eth_call` requests. For any received `eth_call` 
   request, it is acceptable for the wallet extension to set the `from` field programmatically (e.g. to enable 
   encryption of the response)
@@ -74,8 +77,9 @@ information can only be decrypted by the wallet extension.
 By generating new viewing keys through a webpage, we maintain compatibility with MetaMask, since we can use the 
 MetaMask extension to ask people to sign the new viewing public key in-browser.
 
-Viewing keys are persisted to disk in cleartext. Any persisted viewing keys are rehydrated when the wallet extension 
-restarts.
+Viewing keys are persisted to a file in the user's home directory in cleartext. The viewing keys are stored as 
+`(<host_url_and_port>, <account>, <viewing_key>, <signature>)` quadruples. When the wallet extension is restarted, any 
+viewing keys for the configured host (as identified by the URL and port) are loaded and resubmitted to the enclave.
 
 ### Ethereum JSON-RPC endpoint
 
