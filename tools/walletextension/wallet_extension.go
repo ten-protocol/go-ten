@@ -351,8 +351,27 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 	we.accountClients[accAddress] = client
 
+	we.persistViewingKey(vk)
+
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(we.unsignedVKs, accAddress)
+}
+
+func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey) {
+	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
+
+	entry := fmt.Sprintf("%s %s %s %s\n",
+		we.hostAddr,
+		viewingKey.Account.Hex(),
+		// We encode the bytes as hex to ensure there are no unintentional line breaks that would parsing the file harder.
+		hex.EncodeToString(viewingPrivateKeyBytes),
+		hex.EncodeToString(viewingKey.SignedKey),
+	)
+
+	_, err := we.persistenceFile.WriteString(entry)
+	if err != nil {
+		log.Error("failed to persist viewing key. Cause: %s", err)
+	}
 }
 
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
@@ -387,5 +406,4 @@ type Config struct {
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
-	PersistencePath         string
 }
