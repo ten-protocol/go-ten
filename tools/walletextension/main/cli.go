@@ -14,11 +14,11 @@ const (
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension. Default: 3000."
 
 	nodeHostName    = "nodeHost"
-	nodeHostDefault = "127.0.0.1"
+	nodeHostDefault = "testnet.obscu.ro"
 	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `testnet.obscu.ro`."
 
 	nodeHTTPPortName    = "nodePortHTTP"
-	nodeHTTPPortDefault = 37400
+	nodeHTTPPortDefault = 13000
 	nodeHTTPPortUsage   = "The port on which to connect to the Obscuro node via RPC over HTTP. Default: 13000."
 
 	nodeWebsocketPortName    = "nodePortWS"
