@@ -28,7 +28,7 @@ Ethereum wallets (e.g. MetaMask, hardware wallets), tooling (e.g. Remix) and web
   * The wallet extension is usable by any webapp, tool or wallet type, and in particular:
     * Hardware wallets that do not offer a decryption capability
     * MetaMask, for which the keys are only available when running in the browser
-  * The viewing keys are persisted across wallet extension restarts
+  * Restarting the wallet extension does not require existing viewing keys to be regenerated
 * Some tooling (e.g. MetaMask) does not set the `from` field in `eth_call` requests. For any received `eth_call` 
   request, it is acceptable for the wallet extension to set the `from` field programmatically (e.g. to enable 
   encryption of the response)
