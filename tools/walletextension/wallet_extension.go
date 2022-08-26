@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -30,6 +31,8 @@ const (
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "static"
+	obscuroDirName         = ".obscuro"
+	persistenceFileName    = "wallet_extension_persistence"
 
 	reqJSONKeyID        = "id"
 	reqJSONKeyMethod    = "method"
@@ -85,7 +88,8 @@ func NewWalletExtension(config Config) *WalletExtension {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
 
-	setLogs(config.LogPath)
+	setUpLogs(config.LogPath)
+	setUpPersistence()
 
 	return &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
@@ -130,8 +134,8 @@ func (we *WalletExtension) Shutdown() {
 	}
 }
 
-// Sets the log file.
-func setLogs(logPath string) {
+// Sets up the log file.
+func setUpLogs(logPath string) {
 	if logPath == "" {
 		return
 	}
@@ -140,6 +144,27 @@ func setLogs(logPath string) {
 		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 	}
 	log.OutputToFile(logFile)
+}
+
+// Sets up the persistence file in the user's home directory.
+func setUpPersistence() *os.File {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic("cannot create persistence file as user's home directory is not defined")
+	}
+	obscuroDir := filepath.Join(homeDir, obscuroDirName)
+	err = os.MkdirAll(obscuroDir, 0o777)
+	if err != nil {
+		panic(fmt.Sprintf("could not create %s directory in user's home directory", obscuroDirName))
+	}
+
+	persistenceFilePath := filepath.Join(obscuroDir, persistenceFileName)
+	persistenceFile, err := os.OpenFile(persistenceFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		panic(fmt.Sprintf("could not create persistence file. Cause: %s", err))
+	}
+
+	return persistenceFile
 }
 
 // Used to check whether the server is ready.
@@ -361,4 +386,5 @@ type Config struct {
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
+	PersistencePath         string
 }
