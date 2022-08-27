@@ -35,11 +35,11 @@ Please contact us in the discord if you'd like some tokens to test with these co
 Hocus (HOC):
 
 ```
-0x9802F661d17c65527D7ABB59DAAD5439cb125a67
+0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC
 ```
 
 Pocus (POC):
 
 ```
-0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC
+0x9802F661d17c65527D7ABB59DAAD5439cb125a67
 ```
