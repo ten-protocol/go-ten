@@ -11,9 +11,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 )
 
-// AuthObsClient extends the functionality of the ObsClient for all methods that require encryption when communicating
-//
-//	with the enclave
+// AuthObsClient extends the functionality of the ObsClient for all methods that require encryption when communicating with the enclave
 type AuthObsClient struct {
 	ObsClient
 	c rpcclientlib.Client
