@@ -2,6 +2,7 @@ package obsclient
 
 import (
 	"context"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -14,10 +15,12 @@ func (m *rpcClientMock) Call(result interface{}, method string, args ...interfac
 	arguments := m.Called(result, method, args)
 	return arguments.Error(0)
 }
+
 func (m *rpcClientMock) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	arguments := m.Called(ctx, result, method, args)
 	return arguments.Error(0)
 }
+
 func (m *rpcClientMock) Stop() {
 	m.Called()
 }

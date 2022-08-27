@@ -6,7 +6,7 @@ It aims to provide all the same methods that the geth ethclient provides for com
 
 There are two clients, `ObsClient` and `AuthObsClient`
 
-`Client` just requires a NodeClient and provides access to general Obscuro functionality that doesn't require viewing keys.
+`ObsClient` just requires a NodeClient and provides access to general Obscuro functionality that doesn't require viewing keys.
 
 `AuthObsClient` requires a NodeClient, an account and a Viewing Key with signature. It provides full Obscuro functionality,
 authenticating with the node and encrypting/decrypting sensitive requests.

@@ -3,11 +3,12 @@ package networkmanager
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"

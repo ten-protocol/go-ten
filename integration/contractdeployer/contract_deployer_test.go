@@ -1,10 +1,13 @@
 package contractdeployer
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
@@ -75,7 +78,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
 	// We send more than enough to the contract deployer, to make sure prefunding won't be needed.
 	excessivePrealloc := big.NewInt(contractdeployer.Prealloc * 3)
-	testcommon.PrefundWallets(nil, faucetWallet, faucetClient, 0, []wallet.Wallet{contractDeployerWallet}, excessivePrealloc)
+	testcommon.PrefundWallets(context.Background(), faucetWallet, obsclient.NewAuthObsClient(faucetClient), 0, []wallet.Wallet{contractDeployerWallet}, excessivePrealloc)
 
 	// We check the faucet's balance before and after the deployment. Since the contract deployer has already been sent
 	// sufficient funds, the faucet should have been to dispense any more, leaving its balance unchanged.

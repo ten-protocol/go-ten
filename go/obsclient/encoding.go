@@ -1,11 +1,12 @@
 package obsclient
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"math/big"
 )
 
 // utils for converting to RPC message format - mostly ported from geth client

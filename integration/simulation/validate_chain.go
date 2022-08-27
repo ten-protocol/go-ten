@@ -224,7 +224,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
 
-	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(nil, nodeIdx, rpcHandles, s.TxInjector)
+	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
 			nodeAddr, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))

@@ -3,10 +3,11 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 

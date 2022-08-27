@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
@@ -110,7 +111,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		wg.Add(1)
 		go func(txHash gethcommon.Hash) {
 			defer wg.Done()
-			err := AwaitReceipt(nil, faucetClient, txHash)
+			err := AwaitReceipt(ctx, faucetClient, txHash)
 			if err != nil {
 				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
 			}

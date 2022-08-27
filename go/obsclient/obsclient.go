@@ -1,9 +1,10 @@
 package obsclient
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
-	"math/big"
 )
 
 // ObsClient requires an RPC Client and provides access to general Obscuro functionality that doesn't require viewing keys.

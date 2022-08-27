@@ -1,8 +1,9 @@
 package network
 
 import (
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/rand"
+
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/ethereum/go-ethereum/common"
 
