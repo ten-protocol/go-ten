@@ -12,6 +12,7 @@ import (
 )
 
 // AuthObsClient extends the functionality of the ObsClient for all methods that require encryption when communicating
+//
 //	with the enclave
 type AuthObsClient struct {
 	ObsClient
@@ -19,7 +20,8 @@ type AuthObsClient struct {
 }
 
 // NewAuthObsClient constructs an AuthObsClient for sensitive communication with an enclave.
-// 	It requires an EncRPCClient specifically even though the AuthObsClient uses a Client interface in its struct because
+//
+//	It requires an EncRPCClient specifically even though the AuthObsClient uses a Client interface in its struct because
 //	the Client interface makes testing easy but an EncRPCClient is required for the actual encrypted communication
 func NewAuthObsClient(client *rpcclientlib.EncRPCClient) *AuthObsClient {
 	return &AuthObsClient{
