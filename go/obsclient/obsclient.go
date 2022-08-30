@@ -35,7 +35,7 @@ func (oc *ObsClient) Close() {
 // ChainID retrieves the current chain ID for transaction replay protection.
 func (oc *ObsClient) ChainID() (*big.Int, error) {
 	var result hexutil.Big
-	err := oc.RPCClient.Call(&result, "eth_chainId")
+	err := oc.RPCClient.Call(&result, rpcclientlib.RPCChainID)
 	if err != nil {
 		return nil, err
 	}
