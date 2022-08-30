@@ -1,9 +1,9 @@
 package walletextension
 
 import (
-	"bufio"
 	"context"
 	"embed"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -404,12 +403,13 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey) {
 	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
 
-	persistenceEntry := fmt.Sprintf("%s %s %s %s",
+	record := []string{
 		we.hostAddr,
 		viewingKey.Account.Hex(),
 		// We encode the bytes as hex to ensure there are no unintentional line breaks to make parsing the file harder.
 		hex.EncodeToString(viewingPrivateKeyBytes),
-		hex.EncodeToString(viewingKey.SignedKey))
+		hex.EncodeToString(viewingKey.SignedKey),
+	}
 
 	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_APPEND|os.O_WRONLY, 0o644)
 	defer persistenceFile.Close() //nolint:staticcheck
@@ -417,7 +417,9 @@ func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey
 		log.Error("could not open persistence file. Cause: %s", err)
 	}
 
-	_, err = fmt.Fprintln(persistenceFile, persistenceEntry)
+	writer := csv.NewWriter(persistenceFile)
+	defer writer.Flush()
+	err = writer.Write(record)
 	if err != nil {
 		log.Error("failed to write viewing key to persistence file. Cause: %s", err)
 	}
@@ -433,24 +435,27 @@ func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpcclientlib.Vi
 		log.Error("could not open persistence file. Cause: %s", err)
 	}
 
-	scanner := bufio.NewScanner(persistenceFile)
-	for scanner.Scan() {
+	reader := csv.NewReader(persistenceFile)
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Error("could not read records from persistence file. Cause: %s", err)
+	}
+
+	for _, record := range records {
 		// TODO - Determine strategy for invalid persistence entries - delete? Warn? Shutdown? For now, we log a warning.
-		entry := scanner.Text()
-		components := strings.Split(entry, " ")
-		if len(components) != persistenceNumComponents {
-			log.Warn("persistence file entry did not have expected number of components: %s", entry)
+		if len(record) != persistenceNumComponents {
+			log.Warn("persistence file entry did not have expected number of components: %s", record)
 			continue
 		}
 
-		hostAddr := components[persistenceIdxHost]
+		hostAddr := record[persistenceIdxHost]
 		if hostAddr != we.hostAddr {
 			log.Info("skipping persistence file entry for another host. Current host is %s, entry was for %s", we.hostAddr, hostAddr)
 			continue
 		}
 
-		account := common.HexToAddress(components[persistenceIdxAccount])
-		viewingKeyPrivateHex := components[persistenceIdxViewingKey]
+		account := common.HexToAddress(record[persistenceIdxAccount])
+		viewingKeyPrivateHex := record[persistenceIdxViewingKey]
 		viewingKeyPrivateBytes, err := hex.DecodeString(viewingKeyPrivateHex)
 		if err != nil {
 			log.Warn("could not decode the following viewing private key from hex in the persistence file: %s", viewingKeyPrivateHex)
@@ -461,7 +466,7 @@ func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpcclientlib.Vi
 			log.Warn("could not convert the following viewing private key bytes to ECDSA in the persistence file: %s", viewingKeyPrivateHex)
 			continue
 		}
-		signedKeyHex := components[persistenceIdxSignedKey]
+		signedKeyHex := record[persistenceIdxSignedKey]
 		signedKey, err := hex.DecodeString(signedKeyHex)
 		if err != nil {
 			log.Warn("could not decode the following signed key from hex in the persistence file: %s", signedKeyHex)
