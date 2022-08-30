@@ -1,8 +1,9 @@
 package network
 
 import (
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 	"math/rand"
+
+	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 

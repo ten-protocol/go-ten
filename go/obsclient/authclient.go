@@ -2,8 +2,9 @@ package obsclient
 
 import (
 	"context"
-	"github.com/obscuronet/go-obscuro/go/wallet"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -33,7 +34,8 @@ func NewAuthObsClient(client *rpcclientlib.EncRPCClient) *AuthObsClient {
 }
 
 // DialWithAuth will generate and sign a viewing key for given wallet, then initiate a connection with the RPC node and
-//   register the viewing key
+//
+//	register the viewing key
 func DialWithAuth(rpcurl string, wal wallet.Wallet) (*AuthObsClient, error) {
 	viewingKey, err := rpcclientlib.GenerateAndSignViewingKey(wal)
 	if err != nil {
