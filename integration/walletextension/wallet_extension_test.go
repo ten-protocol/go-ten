@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strings"
@@ -73,11 +74,7 @@ var (
 	)
 
 	walletExtensionAddr   = fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
-	walletExtensionConfig = walletextension.Config{
-		WalletExtensionPort:     int(integration.StartPortWalletExtensionTest),
-		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCHTTPPort),
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
-	}
+	walletExtensionConfig = createWalletExtensionConfig()
 
 	dummyAccountAddress = common.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
 	deployERC20Tx       = types.LegacyTx{
@@ -348,12 +345,47 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 	}
 }
 
+func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
+	setupWalletTestLog("bal-after-restart")
+
+	walletExtension := createWalletExtension(t)
+	createObscuroNetwork(t)
+	accountAddr, _ := registerPrivateKey(t)
+
+	// We shut down the wallet extension and restart it, forcing the viewing keys to be reloaded.
+	walletExtension.Shutdown()
+	createWalletExtension(t)
+
+	getBalanceJSON := makeEthJSONReqAsJSON(rpcclientlib.RPCGetBalance, []string{accountAddr.String(), latestBlock})
+
+	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
+		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
+	}
+}
+
+func createWalletExtensionConfig() *walletextension.Config {
+	testPersistencePath, err := ioutil.TempFile("", "")
+	if err != nil {
+		panic("could not create persistence file for wallet extension tests")
+	}
+
+	return &walletextension.Config{
+		WalletExtensionPort:     int(integration.StartPortWalletExtensionTest),
+		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCHTTPPort),
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
+		PersistencePathOverride: testPersistencePath.Name(),
+	}
+}
+
 // Creates and serves a wallet extension.
-func createWalletExtension(t *testing.T) {
-	walletExtension := walletextension.NewWalletExtension(walletExtensionConfig)
+func createWalletExtension(t *testing.T) *walletextension.WalletExtension {
+	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
 	t.Cleanup(walletExtension.Shutdown)
+
 	go walletExtension.Serve(walletExtensionAddr)
 	waitForWalletExtension(t, walletExtensionAddr)
+
+	return walletExtension
 }
 
 // Waits for wallet extension to be ready. Times out after three seconds.
