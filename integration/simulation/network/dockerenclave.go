@@ -85,9 +85,9 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	n.hostRPCAddresses = hostRPCAddresses
 
 	return &RPCHandles{
-		EthClients:                    n.gethClients,
-		ObscuroClients:                obscuroClients,
-		VirtualWalletExtensionClients: walletClients,
+		EthClients:     n.gethClients,
+		ObscuroClients: obscuroClients,
+		AuthObsClients: walletClients,
 	}, nil
 }
 

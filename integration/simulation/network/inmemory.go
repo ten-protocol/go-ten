@@ -102,9 +102,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	walletClients := setupInMemWalletClients(params, obscuroNodes)
 
 	return &RPCHandles{
-		EthClients:                    l1Clients,
-		ObscuroClients:                n.obscuroClients,
-		VirtualWalletExtensionClients: walletClients,
+		EthClients:     l1Clients,
+		ObscuroClients: n.obscuroClients,
+		AuthObsClients: walletClients,
 	}, nil
 }
 

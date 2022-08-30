@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -223,7 +224,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
 
-	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(nodeIdx, rpcHandles, s.TxInjector)
+	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
 			nodeAddr, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))
@@ -233,7 +234,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 			nodeAddr, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
 	}
 
-	checkTransactionReceipts(nodeIdx, rpcHandles, s.TxInjector)
+	checkTransactionReceipts(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
@@ -265,7 +266,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	totalAmountInSystem := s.Stats.TotalDepositedAmount - totalSuccessfullyWithdrawn
 	total := uint64(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
-		total += balance(rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx), wallet.Address(), s.Params.Wallets.Tokens[bridge.HOC].L2ContractAddress)
+		client := rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx)
+		total += balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[bridge.HOC].L2ContractAddress)
 	}
 
 	if total != totalAmountInSystem {
@@ -278,13 +280,17 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 }
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
-func FindNotIncludedL2Txs(nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int) {
+func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int) {
 	transfers, withdrawals := txInjector.TxTracker.GetL2Transactions()
 	notFoundTransfers := 0
 	for _, tx := range transfers {
 		sender := getSender(tx)
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
-		if l2tx := getTransaction(rpcHandles.ObscuroWalletClient(sender, nodeIdx), tx.Hash()); l2tx == nil {
+		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
+		if err != nil {
+			panic(err)
+		}
+		if l2tx == nil {
 			notFoundTransfers++
 		}
 	}
@@ -293,7 +299,11 @@ func FindNotIncludedL2Txs(nodeIdx int, rpcHandles *network.RPCHandles, txInjecto
 	for _, tx := range withdrawals {
 		sender := getSender(tx)
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
-		if l2tx := getTransaction(rpcHandles.ObscuroWalletClient(sender, nodeIdx), tx.Hash()); l2tx == nil {
+		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
+		if err != nil {
+			panic(err)
+		}
+		if l2tx == nil {
 			notFoundWithdrawals++
 		}
 	}
@@ -310,13 +320,16 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 }
 
 // Checks that there is a receipt available for each L2 transaction.
-func checkTransactionReceipts(nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
+func checkTransactionReceipts(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
 
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
 		// We check that there is a receipt available for each transaction
-		rec := getTransactionReceipt(rpcHandles.ObscuroWalletClient(sender, nodeIdx), tx.Hash())
+		rec, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
+		if err != nil {
+			panic(err)
+		}
 		if rec.Status == types.ReceiptStatusFailed {
 			log.Info("Transaction %s has failed.", tx.Hash().Hex())
 		}

@@ -1,19 +1,19 @@
 package simulation
 
 import (
+	"context"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+	"github.com/ethereum/go-ethereum"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
@@ -88,51 +88,23 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 	return result
 }
 
-// Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *types.Transaction {
-	var tx types.Transaction
-	err := client.Call(&tx, rpcclientlib.RPCGetTransactionByHash, txHash.Hex())
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
-	}
-
-	return &tx
-}
-
-// Returns the transaction receipt for the given transaction hash.
-func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) *types.Receipt {
-	var rec types.Receipt
-	err := client.Call(&rec, rpcclientlib.RPCGetTxReceipt, txHash.Hex())
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
-	}
-	return &rec
-}
-
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractAddress *gethcommon.Address) uint64 {
-	method := rpcclientlib.RPCCall
+func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address) uint64 {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
-	convertedData := (hexutil.Bytes)(balanceData)
 
-	params := map[string]interface{}{
-		rpc.CallFieldFrom: address.Hex(),
-		rpc.CallFieldTo:   l2ContractAddress.Hex(),
-		rpc.CallFieldData: convertedData,
+	callMsg := ethereum.CallMsg{
+		From: address,
+		To:   l2ContractAddress,
+		Data: balanceData,
 	}
 
-	var response string
-	err := client.Call(&response, method, params)
+	response, err := client.CallContract(ctx, callMsg, nil)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
 	}
-	if !strings.HasPrefix(response, "0x") {
-		panic(fmt.Errorf("expected hex formatted balance string but was: %s", response))
-	}
-
 	b := new(big.Int)
 	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
-	b.SetString(response[2:], 16)
+	b.SetString(string(response)[2:], 16)
 	return b.Uint64()
 }
 

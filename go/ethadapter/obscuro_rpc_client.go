@@ -26,6 +26,8 @@ var ErrReceiptNotFound = errors.New("receipt not found, received nil response")
 
 // obscuroWalletRPCClient implements the EthClient interface, it's bound to a single wallet (viewing key and address)
 //
+// todo: remove this client, it is deprecated, use obsclient.AuthObsClient instead.
+//
 // Note: Why does this exist (why use a geth-focused interface for our obscuro interactions)?
 // - We have code (like deploying contracts) that we want to run against both L1 and L2, useful to be able to treat them the same
 // - Maintaining this interface helps ensure we remain closely compatible with eth usability
