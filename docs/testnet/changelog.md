@@ -1,5 +1,10 @@
 # Obscuro Testnet Change Log
 
+## August 2022-0x-xx
+
+* Wallet extension:
+  * Viewing keys are now persisted across wallet extension restarts
+
 ## August 2022-08-22
 * Account balances:
   * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
@@ -14,7 +19,7 @@
     and a request to Obscuro Labs should be made on the Faucet Discord channel.
 * Gas prices:
   * The node operator can configure the minimum gas price their aggregator will accept on startup.
-* Wallet Extension 
+* Wallet extension 
   * The wallet extension now supports multiple viewing keys through a single running instance. For more information see 
     the [wallet extension design doc](https://github.com/obscuronet/go-obscuro/blob/main/design/wallet_extension.md), 
     specifically `Handling eth_call requests` for how the required viewing key is selected when multiple keys are 
@@ -30,5 +35,4 @@
   * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
   * Introduced network faucet account.
   * Obscuro enclaves services can configure the minimum gas price they'll accept
-
 * ``block.difficulty`` will return a true random number generated inside the secure enclave.
