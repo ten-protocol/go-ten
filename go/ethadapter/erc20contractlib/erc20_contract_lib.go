@@ -54,7 +54,7 @@ func NewERC20ContractLib(mgmtContractAddr *gethcommon.Address, contractAddrs ...
 }
 
 func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) types.TxData {
-	data, err := c.contractABI.Pack("transfer", &tx.To, big.NewInt(int64(tx.Amount)))
+	data, err := c.contractABI.Pack("transfer", &tx.To, tx.Amount)
 	if err != nil {
 		panic(err)
 	}
@@ -105,7 +105,7 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Tran
 	}
 
 	return &ethadapter.L1DepositTx{
-		Amount:        amount.(*big.Int).Uint64(),
+		Amount:        amount.(*big.Int),
 		To:            &toAddr,
 		TokenContract: tx.To(),
 		Sender:        &sender,

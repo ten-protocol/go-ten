@@ -160,7 +160,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
-	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, 0)
+	transferTxBytes := erc20contractlib.CreateTransferTxData(accountAddress, big.NewInt(0))
 	reqParams := map[string]interface{}{
 		reqJSONKeyTo:   bridge.HOCContract,
 		reqJSONKeyFrom: accountAddress.String(),

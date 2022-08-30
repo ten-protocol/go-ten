@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -18,7 +19,7 @@ type L1RollupTx struct {
 }
 
 type L1DepositTx struct {
-	Amount        uint64              // Amount to be deposited
+	Amount        *big.Int            // Amount to be deposited
 	To            *gethcommon.Address // Address the ERC20 Transfer was made to (always be the Management Contract Addr)
 	Sender        *gethcommon.Address // Address that issued the ERC20, the token holder or tx.origin
 	TokenContract *gethcommon.Address // Address of the ERC20 Contract address that was executed

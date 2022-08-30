@@ -350,7 +350,7 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	withdrawals := rc.bridge.RollupPostProcessingWithdrawals(rollup, stateDB, toReceiptMap(txReceipts))
 	for i, w := range withdrawals {
 		hw := h.Withdrawals[i]
-		if hw.Amount != w.Amount || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
+		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
 			log.Error("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(rollup.Hash()))
 			return false
 		}

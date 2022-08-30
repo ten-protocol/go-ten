@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/big"
 
+	intcommon "github.com/obscuronet/go-obscuro/integration/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -39,7 +41,7 @@ func randomUInt64() uint64 {
 
 func randomWithdrawal() common.Withdrawal {
 	return common.Withdrawal{
-		Amount:    randomUInt64(),
+		Amount:    intcommon.ToWei(randomUInt64()),
 		Recipient: RandomAddress(),
 	}
 }
