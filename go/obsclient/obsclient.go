@@ -8,8 +8,10 @@ import (
 )
 
 // ObsClient requires an RPC Client and provides access to general Obscuro functionality that doesn't require viewing keys.
+//
+// The methods in this client are analogous to the methods in geth's EthClient and should behave the same unless noted otherwise.
 type ObsClient struct {
-	c rpcclientlib.Client
+	RPCClient rpcclientlib.Client
 }
 
 func Dial(rawurl string) (*ObsClient, error) {
@@ -25,7 +27,7 @@ func NewClient(c rpcclientlib.Client) *ObsClient {
 }
 
 func (oc *ObsClient) Close() {
-	oc.c.Stop()
+	oc.RPCClient.Stop()
 }
 
 // Blockchain Access
@@ -33,7 +35,7 @@ func (oc *ObsClient) Close() {
 // ChainID retrieves the current chain ID for transaction replay protection.
 func (oc *ObsClient) ChainID() (*big.Int, error) {
 	var result hexutil.Big
-	err := oc.c.Call(&result, "eth_chainId")
+	err := oc.RPCClient.Call(&result, "eth_chainId")
 	if err != nil {
 		return nil, err
 	}

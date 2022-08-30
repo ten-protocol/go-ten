@@ -59,9 +59,9 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	n.hostRPCAddresses = hostRPCAddresses
 
 	return &RPCHandles{
-		EthClients:                    n.gethClients,
-		ObscuroClients:                n.obscuroClients,
-		VirtualWalletExtensionClients: walletClients,
+		EthClients:     n.gethClients,
+		ObscuroClients: n.obscuroClients,
+		AuthObsClients: walletClients,
 	}, nil
 }
 

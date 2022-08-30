@@ -46,8 +46,7 @@ func TestNonceAt_ConvertsNilBlockNumberToLatest(t *testing.T) {
 func createAuthClientWithMockRPCClient() (*rpcClientMock, *AuthObsClient) {
 	mockRPC := new(rpcClientMock)
 	authClient := &AuthObsClient{
-		ObsClient: ObsClient{c: mockRPC},
-		c:         mockRPC,
+		ObsClient: ObsClient{RPCClient: mockRPC},
 	}
 	return mockRPC, authClient
 }

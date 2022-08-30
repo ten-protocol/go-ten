@@ -44,9 +44,9 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	n.obscuroClients, walletClients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
 
 	return &RPCHandles{
-		EthClients:                    n.gethClients,
-		ObscuroClients:                n.obscuroClients,
-		VirtualWalletExtensionClients: walletClients,
+		EthClients:     n.gethClients,
+		ObscuroClients: n.obscuroClients,
+		AuthObsClients: walletClients,
 	}, nil
 }
 
