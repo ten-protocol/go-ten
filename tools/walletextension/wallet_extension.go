@@ -86,6 +86,8 @@ type rpcRequest struct {
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
+	setUpLogs(config.LogPath)
+
 	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
 		log.Panic("%s", err)
@@ -97,8 +99,6 @@ func NewWalletExtension(config Config) *WalletExtension {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
 
-	setUpLogs(config.LogPath)
-
 	walletExtension := &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
 		hostAddr:         config.NodeRPCHTTPAddress,
@@ -108,6 +108,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		persistencePath:  setUpPersistence(config.PersistencePathOverride),
 	}
 
+	// We reload the existing viewing keys from persistence.
 	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
 		client, err := rpcclientlib.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
@@ -376,7 +377,6 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	we.accountClients[accAddress] = client
 
 	we.persistViewingKey(vk)
-
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(we.unsignedVKs, accAddress)
 }
@@ -400,6 +400,7 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 	return args, nil
 }
 
+// Stores a viewing key to disk.
 func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey) {
 	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
 
@@ -422,6 +423,7 @@ func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey
 	}
 }
 
+// Loads any viewing keys from disk. Viewing keys for other hosts are ignored.
 func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpcclientlib.ViewingKey {
 	viewingKeys := make(map[common.Address]*rpcclientlib.ViewingKey)
 
@@ -491,5 +493,5 @@ type Config struct {
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
-	PersistencePathOverride string // Used to override the persistence file location in tests.
+	PersistencePathOverride string // Overrides the persistence file location. Used in tests.
 }
