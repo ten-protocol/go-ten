@@ -3,6 +3,7 @@ package common
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/google/uuid"
 )
 
 // Enclave represents the API of the service that runs inside the TEE.
@@ -89,6 +90,12 @@ type Enclave interface {
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
 	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error)
 
+	// Subscribe registers a new event subscription. The events will be populated in the BlockSubmissionResponse
+	Subscribe(id uuid.UUID, subscription EncryptedEventSubscription) error
+
+	// Unsubscribe - removes a subscription
+	Unsubscribe(id uuid.UUID) error
+
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error
 }
@@ -102,4 +109,27 @@ type BlockSubmissionResponse struct {
 	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
+
+	SubscribedReceipts map[uuid.UUID]EncryptedReceipts
+}
+
+// call must take a list of signed owning accounts.
+// Each account must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info).
+// The call will fail if there are no viewing keys for all those accounts.
+type EventSubscription struct {
+	Id       uuid.UUID
+	Accounts []SubscriptionAccount
+	// todo Filters
+}
+
+func (s EventSubscription) Matches(r *types.Receipt) bool {
+	// todo - here goes the logic
+	return true
+}
+
+type SubscriptionAccount struct {
+	Account    gethcommon.Address
+	ViewingKey []byte
+	SignedKey  []byte // public viewing key signed by the Account's private key
+	Signature  []byte
 }

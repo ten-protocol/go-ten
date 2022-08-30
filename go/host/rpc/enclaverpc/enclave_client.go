@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"google.golang.org/grpc/connectivity"
@@ -385,5 +387,15 @@ func (c *Client) StoreAttestation(report *common.AttestationReport) error {
 	if resp.Error != "" {
 		return fmt.Errorf(resp.Error)
 	}
+	return nil
+}
+
+func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
+	// todo
+	return nil
+}
+
+func (c *Client) Unsubscribe(id uuid.UUID) error {
+	// todo
 	return nil
 }

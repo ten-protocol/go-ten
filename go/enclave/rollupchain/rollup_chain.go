@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
+
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
@@ -53,6 +55,8 @@ type RollupChain struct {
 	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
 	faucet                Faucet
+
+	Subscriptions map[uuid.UUID]common.EventSubscription
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -105,7 +109,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 	}
 
 	rc.storage.StoreBlock(block)
-	bs := rc.updateState(block)
+	bs, subscribedReceipts := rc.updateState(block)
 	if bs == nil {
 		return rc.noBlockStateBlockSubmissionResponse(block)
 	}
@@ -119,7 +123,11 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 
 		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
 	}
-	return rc.newBlockSubmissionResponse(bs, rollup)
+	enc, err := rc.encryptReceipts(subscribedReceipts)
+	if err != nil {
+		log.Panic("%s", err)
+	}
+	return rc.newBlockSubmissionResponse(bs, rollup, enc)
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
@@ -143,7 +151,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) c
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup) common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, receipts map[uuid.UUID]common.EncryptedReceipts) common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		log.Panic(msgNoRollup)
@@ -159,11 +167,12 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		head = headRollup.Header
 	}
 	return common.BlockSubmissionResponse{
-		BlockHeader:    headBlock.Header(),
-		ProducedRollup: rollup,
-		IngestedBlock:  true,
-		FoundNewHead:   bs.FoundNewRollup,
-		RollupHead:     head,
+		BlockHeader:        headBlock.Header(),
+		ProducedRollup:     rollup,
+		IngestedBlock:      true,
+		FoundNewHead:       bs.FoundNewRollup,
+		RollupHead:         head,
+		SubscribedReceipts: receipts,
 	}
 }
 
@@ -174,11 +183,11 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 //  STATE
 
 // Determine the new canonical L2 head and calculate the State
-func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map[uuid.UUID][]*types.Receipt) {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
-		return val
+		return val, nil
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -186,27 +195,29 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	// processing blocks before genesis, so there is nothing to do
 	if genesisRollup == nil && len(rollups) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handle the case of the block containing the genesis being processed multiple times.
 	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
 	if isGenesis {
-		return genesisState
+		return genesisState, nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
 	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
+	var parentReceipts map[uuid.UUID][]*types.Receipt
 	if !parentFound {
 		// go back and calculate the Root of the Parent
 		p, f := rc.storage.FetchBlock(b.ParentHash())
 		if !f {
 			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
-			return nil
+			return nil, nil
 		}
-		parentState = rc.updateState(p)
+
+		parentState, parentReceipts = rc.updateState(p)
 	}
 
 	if parentState == nil {
@@ -215,7 +226,7 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 			common.ShortHash(b.Hash()),
 			common.ShortHash(b.Header().ParentHash),
 		)
-		return nil
+		return nil, nil
 	}
 
 	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
@@ -226,7 +237,19 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	rc.storage.SaveNewHead(bs, head, receipts)
 
-	return bs
+	subscribedReceipts := rc.dispatchReceipts(receipts)
+
+	// append the parent receipts
+	for u, r := range parentReceipts {
+		subResult, found := subscribedReceipts[u]
+		if !found {
+			subResult = make([]*types.Receipt, 0)
+		}
+		subResult = append(subResult, r...)
+		subscribedReceipts[u] = subResult
+	}
+
+	return bs, subscribedReceipts
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {
@@ -466,7 +489,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	}
 
 	common.TraceWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
-	blockState := rc.updateState(&block)
+	blockState, receipts := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -484,7 +507,11 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 
 	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
-	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto))
+	enc, err := rc.encryptReceipts(receipts)
+	if err != nil {
+		log.Panic("%s", err)
+	}
+	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), enc)
 }
 
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
@@ -768,4 +795,38 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		rollup = maybeRollup
 	}
 	return rollup, nil
+}
+
+func (rc *RollupChain) dispatchReceipts(receipts []*types.Receipt) (result map[uuid.UUID][]*types.Receipt) {
+	for _, r := range receipts {
+		for sid, sub := range rc.Subscriptions {
+			if sub.Matches(r) {
+				subResult, found := result[sid]
+				if !found {
+					subResult = make([]*types.Receipt, 0)
+				}
+				subResult = append(subResult, r)
+				result[sid] = subResult
+			}
+		}
+	}
+	return
+}
+
+func (rc *RollupChain) encryptReceipts(receiptsMap map[uuid.UUID][]*types.Receipt) (result map[uuid.UUID]common.EncryptedReceipts, err error) {
+	for u, receipts := range receiptsMap {
+		encr := make([]byte, 0)
+		for _, r := range receipts {
+			txReceiptBytes, err := r.MarshalJSON()
+			if err != nil {
+				return nil, fmt.Errorf("could not marshal transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
+			}
+
+			// todo - add encryption
+
+			encr = append(encr, txReceiptBytes...)
+		}
+		result[u] = encr
+	}
+	return
 }

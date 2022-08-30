@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -500,6 +502,20 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
 	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
+}
+
+// Subscribe registers a new event subscription. The events will be populated in the BlockSubmissionResponse
+func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
+	// todo - decrypt and deserialize
+	eventSubscription := common.EventSubscription{}
+	e.chain.Subscriptions[id] = eventSubscription
+	return nil
+}
+
+// Unsubscribe - removes a subscription
+func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {
+	delete(e.chain.Subscriptions, id)
+	return nil
 }
 
 func (e *enclaveImpl) IsInitialised() bool {
