@@ -19,10 +19,10 @@ func Dial(rawurl string) (*ObsClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewClient(rc), nil
+	return NewObsClient(rc), nil
 }
 
-func NewClient(c rpcclientlib.Client) *ObsClient {
+func NewObsClient(c rpcclientlib.Client) *ObsClient {
 	return &ObsClient{c}
 }
 
