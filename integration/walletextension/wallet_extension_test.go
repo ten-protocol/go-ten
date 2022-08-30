@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -364,7 +364,7 @@ func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
 }
 
 func createWalletExtensionConfig() *walletextension.Config {
-	testPersistencePath, err := ioutil.TempFile("", "")
+	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
 	}
