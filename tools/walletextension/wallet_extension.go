@@ -76,7 +76,7 @@ type WalletExtension struct {
 	unauthedClient   rpcclientlib.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
 	unsignedVKs      map[common.Address]*rpcclientlib.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
 	server           *http.Server
-	persistenceFile  *os.File // Stores the submitted viewing keys
+	persistencePath  string // The path of the file used to store the submitted viewing keys
 }
 
 type rpcRequest struct {
@@ -105,12 +105,10 @@ func NewWalletExtension(config Config) *WalletExtension {
 		accountClients:   make(map[common.Address]*rpcclientlib.EncRPCClient),
 		unsignedVKs:      make(map[common.Address]*rpcclientlib.ViewingKey),
 		unauthedClient:   unauthedClient,
-		persistenceFile:  setUpPersistence(config.PersistencePathOverride),
+		persistencePath:  setUpPersistence(config.PersistencePathOverride),
 	}
 
-	// todo - joel - create method
-	persistedViewingKeys := walletExtension.loadViewingKeys()
-	for accountAddr, viewingKey := range persistedViewingKeys {
+	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
 		client, err := rpcclientlib.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
 		if err != nil {
@@ -169,8 +167,8 @@ func setUpLogs(logPath string) {
 	log.OutputToFile(logFile)
 }
 
-// Sets up the persistence file. Defaults to the user's home directory if the path is empty.
-func setUpPersistence(persistenceFilePath string) *os.File {
+// Sets up the persistence file and returns its path. Defaults to the user's home directory if the path is empty.
+func setUpPersistence(persistenceFilePath string) string {
 	// We set the default if the persistence file is not overridden.
 	if persistenceFilePath == "" {
 		homeDir, err := os.UserHomeDir()
@@ -186,12 +184,12 @@ func setUpPersistence(persistenceFilePath string) *os.File {
 		persistenceFilePath = filepath.Join(obscuroDir, persistenceFileName)
 	}
 
-	persistenceFile, err := os.OpenFile(persistenceFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	_, err := os.OpenFile(persistenceFilePath, os.O_CREATE|os.O_RDONLY, 0o644)
 	if err != nil {
 		panic(fmt.Sprintf("could not create persistence file. Cause: %s", err))
 	}
 
-	return persistenceFile
+	return persistenceFilePath
 }
 
 // Used to check whether the server is ready.
@@ -405,23 +403,35 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey) {
 	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
 
-	persistenceEntry := fmt.Sprintf("%s %s %s %s\n",
+	persistenceEntry := fmt.Sprintf("%s %s %s %s",
 		we.hostAddr,
 		viewingKey.Account.Hex(),
 		// We encode the bytes as hex to ensure there are no unintentional line breaks to make parsing the file harder.
 		hex.EncodeToString(viewingPrivateKeyBytes),
 		hex.EncodeToString(viewingKey.SignedKey))
 
-	_, err := we.persistenceFile.WriteString(persistenceEntry)
+	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	defer persistenceFile.Close() //nolint:staticcheck
 	if err != nil {
-		log.Error("failed to persist viewing key. Cause: %s", err)
+		log.Error("could not open persistence file. Cause: %s", err)
+	}
+
+	_, err = fmt.Fprintln(persistenceFile, persistenceEntry)
+	if err != nil {
+		log.Error("failed to write viewing key to persistence file. Cause: %s", err)
 	}
 }
 
 func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpcclientlib.ViewingKey {
 	viewingKeys := make(map[common.Address]*rpcclientlib.ViewingKey)
 
-	scanner := bufio.NewScanner(we.persistenceFile)
+	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_RDONLY, 0o644)
+	defer persistenceFile.Close() //nolint:staticcheck
+	if err != nil {
+		log.Error("could not open persistence file. Cause: %s", err)
+	}
+
+	scanner := bufio.NewScanner(persistenceFile)
 	for scanner.Scan() {
 		// TODO - Determine strategy for invalid persistence entries - delete? Warn? Shutdown? For now, we log a warning.
 		entry := scanner.Text()
