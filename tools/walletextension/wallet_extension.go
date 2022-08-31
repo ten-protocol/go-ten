@@ -19,7 +19,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -69,11 +69,11 @@ var staticFiles embed.FS
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecies.PublicKey                              // The public key used to encrypt requests for the enclave.
-	hostAddr         string                                        // The address on which the Obscuro host can be reached.
-	accountClients   map[common.Address]*rpcclientlib.EncRPCClient // An encrypted RPC client per registered account
-	unauthedClient   rpcclientlib.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
-	unsignedVKs      map[common.Address]*rpcclientlib.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
+	enclavePublicKey *ecies.PublicKey                     // The public key used to encrypt requests for the enclave.
+	hostAddr         string                               // The address on which the Obscuro host can be reached.
+	accountClients   map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	unauthedClient   rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
+	unsignedVKs      map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
 	server           *http.Server
 	persistencePath  string // The path of the file used to store the submitted viewing keys
 }
@@ -93,7 +93,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	unauthedClient, err := rpcclientlib.NewNetworkClient(config.NodeRPCHTTPAddress)
+	unauthedClient, err := rpc.NewNetworkClient(config.NodeRPCHTTPAddress)
 	if err != nil {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
@@ -101,8 +101,8 @@ func NewWalletExtension(config Config) *WalletExtension {
 	walletExtension := &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
 		hostAddr:         config.NodeRPCHTTPAddress,
-		accountClients:   make(map[common.Address]*rpcclientlib.EncRPCClient),
-		unsignedVKs:      make(map[common.Address]*rpcclientlib.ViewingKey),
+		accountClients:   make(map[common.Address]*rpc.EncRPCClient),
+		unsignedVKs:      make(map[common.Address]*rpc.ViewingKey),
 		unauthedClient:   unauthedClient,
 		persistencePath:  setUpPersistence(config.PersistencePathOverride),
 	}
@@ -110,7 +110,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	// We reload the existing viewing keys from persistence.
 	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
-		client, err := rpcclientlib.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
+		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
 		if err != nil {
 			log.Error("failed to create encrypted RPC client for account %s. Cause: %s", accountAddr, err)
 			continue
@@ -223,7 +223,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-		if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+		if !errors.Is(err, rpc.ErrNilResponse) {
 			logAndSendErr(resp, fmt.Sprintf("rpc request failed: %s", err))
 			return
 		}
@@ -318,7 +318,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
-	we.unsignedVKs[accAddress] = &rpcclientlib.ViewingKey{
+	we.unsignedVKs[accAddress] = &rpc.ViewingKey{
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
@@ -369,7 +369,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
-	client, err := rpcclientlib.NewEncNetworkClient(we.hostAddr, vk)
+	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("failed to create encrypted RPC client for acc=%s - %s", accAddress, err))
 	}
@@ -400,7 +400,7 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 }
 
 // Stores a viewing key to disk.
-func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey) {
+func (we *WalletExtension) persistViewingKey(viewingKey *rpc.ViewingKey) {
 	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
 
 	record := []string{
@@ -426,8 +426,8 @@ func (we *WalletExtension) persistViewingKey(viewingKey *rpcclientlib.ViewingKey
 }
 
 // Loads any viewing keys from disk. Viewing keys for other hosts are ignored.
-func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpcclientlib.ViewingKey {
-	viewingKeys := make(map[common.Address]*rpcclientlib.ViewingKey)
+func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpc.ViewingKey {
+	viewingKeys := make(map[common.Address]*rpc.ViewingKey)
 
 	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_RDONLY, 0o644)
 	defer persistenceFile.Close() //nolint:staticcheck
@@ -473,7 +473,7 @@ func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpcclientlib.Vi
 			continue
 		}
 
-		viewingKey := rpcclientlib.ViewingKey{
+		viewingKey := rpc.ViewingKey{
 			Account:    &account,
 			PrivateKey: ecies.ImportECDSA(viewingKeyPrivate),
 			PublicKey:  crypto.CompressPubkey(&viewingKeyPrivate.PublicKey),

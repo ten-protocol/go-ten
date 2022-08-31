@@ -12,7 +12,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -181,7 +181,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	defer wg.Done()
 	var nodeID gethcommon.Address
 	nodeClient := rpcHandles.ObscuroClients[nodeIdx]
-	err := nodeClient.Call(&nodeID, rpcclientlib.RPCGetID)
+	err := nodeClient.Call(&nodeID, rpc.RPCGetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
@@ -336,7 +336,7 @@ func checkTransactionReceipts(ctx context.Context, nodeIdx int, rpcHandles *netw
 	}
 }
 
-func extractWithdrawals(t *testing.T, nodeClient rpcclientlib.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn uint64, numberOfWithdrawalRequests int) {
 	head := getCurrentRollupHead(nodeClient)
 
 	if head == nil {

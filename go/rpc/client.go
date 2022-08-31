@@ -1,4 +1,4 @@
-package rpcclientlib
+package rpc
 
 import (
 	"context"

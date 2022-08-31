@@ -22,7 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/enclaverunner"
 	"github.com/obscuronet/go-obscuro/go/host/hostrunner"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
@@ -76,7 +76,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
-	obscuroClient, err := rpcclientlib.NewNetworkClient(rpcServerAddr)
+	obscuroClient, err := rpc.NewNetworkClient(rpcServerAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -113,7 +113,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		var result types.Header
-		err = obscuroClient.Call(&result, rpcclientlib.RPCGetCurrentBlockHead)
+		err = obscuroClient.Call(&result, rpc.RPCGetCurrentBlockHead)
 		if err == nil && result.Number.Uint64() > 0 {
 			return
 		}
@@ -122,8 +122,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
 }
 
-func teardown(obscuroClient rpcclientlib.Client, rpcServerAddr string) {
-	obscuroClient.Call(nil, rpcclientlib.RPCStopHost) //nolint:errcheck
+func teardown(obscuroClient rpc.Client, rpcServerAddr string) {
+	obscuroClient.Call(nil, rpc.RPCStopHost) //nolint:errcheck
 
 	// We wait for the client server port to be closed.
 	wait := 0
