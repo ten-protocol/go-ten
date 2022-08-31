@@ -80,9 +80,11 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	}
 
 	// Start the standalone obscuro nodes connected to the enclaves and to the geth nodes
-	obscuroClients, walletClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 	n.hostRPCAddresses = hostRPCAddresses
+
+	walletClients := createAuthClientsPerWallet(n.obscuroClients, params.Wallets)
 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
