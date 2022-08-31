@@ -16,7 +16,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -514,7 +514,7 @@ func generateViewingKey(accountAddress string, walletExtensionAddr string) []byt
 
 // Signs a viewing key.
 func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
-	msgToSign := rpc.ViewingKeySignedMsgPrefix + string(viewingKey)
+	msgToSign := enclaverpc.ViewingKeySignedMsgPrefix + string(viewingKey)
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), privateKey)
 	if err != nil {
 		panic(err)

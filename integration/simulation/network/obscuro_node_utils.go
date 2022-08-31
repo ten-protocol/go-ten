@@ -130,23 +130,6 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 	return obscuroClients, nodeRPCAddresses
 }
 
-// createRPCClientsForWallet takes a wallet and sets up a client for it for every node
-func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []*obsclient.AuthObsClient {
-	clients := make([]*obsclient.AuthObsClient, len(nodeRPCAddresses))
-	for i, addr := range nodeRPCAddresses {
-		vk, err := rpc.GenerateAndSignViewingKey(wal)
-		if err != nil {
-			panic(err)
-		}
-		c, err := rpc.NewEncNetworkClient(addr, vk)
-		if err != nil {
-			panic(err)
-		}
-		clients[i] = obsclient.NewAuthObsClient(c)
-	}
-	return clients
-}
-
 func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets) map[string][]*obsclient.AuthObsClient {
 	walletClients := make(map[string][]*obsclient.AuthObsClient)
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
