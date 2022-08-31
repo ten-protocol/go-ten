@@ -127,7 +127,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 	}
 	enc, err := rc.subscriptionManager.EncryptLogs(subscribedLogs)
 	if err != nil {
-		log.Panic("%s", err)
+		log.Panic("Could not encrypt logs. Cause: %s", err)
 	}
 	return rc.newBlockSubmissionResponse(bs, rollup, enc)
 }
@@ -519,7 +519,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 
 	enc, err := rc.subscriptionManager.EncryptLogs(logs)
 	if err != nil {
-		log.Panic("%s", err)
+		log.Panic("Could not encrypt logs. Cause: %s", err)
 	}
 	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), enc)
 }
