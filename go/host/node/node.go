@@ -336,10 +336,6 @@ func (a *Node) Stop() {
 	common.LogWithID(a.shortID, "Node shut down successfully.")
 }
 
-func (a *Node) ConnectToEthNode(node ethadapter.EthClient) {
-	a.ethClient = node
-}
-
 // Waits for enclave to be available, printing a wait message every two seconds.
 func (a *Node) waitForEnclave() {
 	counter := 0
