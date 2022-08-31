@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/events"
+
 	"github.com/google/uuid"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
@@ -54,6 +56,7 @@ type enclaveImpl struct {
 	l1Blockchain         *core.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
+	subscriptionManager  *events.SubscriptionManager
 
 	chain *rollupchain.RollupChain
 
@@ -176,7 +179,8 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, enclaveKey, config.L1ChainID, &chainConfig)
+	subscriptionManager := events.NewSubscriptionManager()
+	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcem, enclaveKey, config.L1ChainID, &chainConfig)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	log.Info("Enclave service created with following config:\n%s", string(jsonConfig))
@@ -190,6 +194,7 @@ func NewEnclave(
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcem,
 		bridge:                obscuroBridge,
+		subscriptionManager:   subscriptionManager,
 		chain:                 chain,
 		txCh:                  make(chan *common.L2Tx),
 		roundWinnerCh:         make(chan *obscurocore.Rollup),
@@ -506,23 +511,12 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 
 // Subscribe registers a new event subscription. The events will be populated in the BlockSubmissionResponse
 func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
-	// todo - decrypt and deserialize the subscription
-	eventSubscription := common.EventSubscription{}
-	// check the uuid matches
-
-	// todo
-	// check that each account is signed with a valid viewing key which in turn is signed with the account key
-	//for _, account := range eventSubscription.Accounts {
-	//}
-
-	e.chain.Subscriptions[id] = eventSubscription
-	return nil
+	return e.subscriptionManager.AddSubscription(id, subscription)
 }
 
 // Unsubscribe - removes a subscription
-func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {
-	delete(e.chain.Subscriptions, id)
-	return nil
+func (e *enclaveImpl) Unsubscribe(id uuid.UUID) {
+	e.subscriptionManager.DeleteSubscription(id)
 }
 
 func (e *enclaveImpl) IsInitialised() bool {

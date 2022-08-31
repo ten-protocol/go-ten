@@ -395,7 +395,6 @@ func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedEventSubsc
 	return nil
 }
 
-func (c *Client) Unsubscribe(id uuid.UUID) error {
+func (c *Client) Unsubscribe(id uuid.UUID) {
 	// todo
-	return nil
 }

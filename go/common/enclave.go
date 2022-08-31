@@ -95,7 +95,7 @@ type Enclave interface {
 	Subscribe(id uuid.UUID, subscription EncryptedEventSubscription) error
 
 	// Unsubscribe - removes a subscription
-	Unsubscribe(id uuid.UUID) error
+	Unsubscribe(id uuid.UUID)
 
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error
@@ -119,7 +119,6 @@ type BlockSubmissionResponse struct {
 // Each account must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info).
 // The call will fail if there are no viewing keys for all those accounts.
 type EventSubscription struct {
-	//ID       uuid.UUID // this should not be here
 	Accounts []*SubscriptionAccount
 	// todo Filters - the geth log filters
 }
@@ -135,12 +134,11 @@ func (s EventSubscription) Matches(log *types.Log, db *state.StateDB) (bool, *Su
 	return true, nil
 }
 
-// SubscriptionAccount - represents an authenticated account used for subscribing to events
-// note - the fields below are just indicative, to showcase the required functionality
+// SubscriptionAccount is an authenticated account used for subscribing to events.
 type SubscriptionAccount struct {
-	Account gethcommon.Address // the account for which the events are relevant
-	// todo - the viewingKey and SignedKey can be removed
-	ViewingKey []byte // the viewing key to use for the encryption of events relevant to this account
-	SignedKey  []byte // public viewing key signed by the Account's private key. Useful to authenticate the VK.
-	Signature  []byte // a signature over the account using the private viewing key. To prevent anyone but the account owner to request subscriptions to leak data.
+	// The account the events relate to.
+	Account gethcommon.Address
+	// A signature over the subscription ID using the private viewing key. Prevents attackers from subscribing to
+	// events for other accounts to see the pattern of events.
+	Signature []byte
 }

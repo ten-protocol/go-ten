@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/events"
+
 	"github.com/google/uuid"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -55,14 +57,13 @@ type RollupChain struct {
 	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
 	faucet                Faucet
-
-	Subscriptions map[uuid.UUID]common.EventSubscription
+	subscriptionManager   *events.SubscriptionManager
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
+func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
 	return &RollupChain{
 		nodeID:                nodeID,
 		hostID:                hostID,
@@ -72,6 +73,7 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
 		faucet:                NewFaucet(storage),
+		subscriptionManager:   subscriptionManager,
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		ethereumChainID:       ethereumChainID,
@@ -805,40 +807,10 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	return rollup, nil
 }
 
-func (rc *RollupChain) dispatchEvents(events []*types.Log, stateDB *state.StateDB) (result map[uuid.UUID][]*types.Log) {
-	result = map[uuid.UUID][]*types.Log{}
-	for _, event := range events {
-		for sid, sub := range rc.Subscriptions {
-			matches, _ := sub.Matches(event, stateDB)
-			// todo return the account somehow, maybe as a tuple with the log
-			if matches {
-				subResult, found := result[sid]
-				if !found {
-					subResult = make([]*types.Log, 0)
-				}
-				subResult = append(subResult, event)
-				result[sid] = subResult
-			}
-		}
-	}
-	return
+func (rc *RollupChain) dispatchEvents(events []*types.Log, stateDB *state.StateDB) map[uuid.UUID][]*types.Log {
+	return rc.subscriptionManager.ExtractEvents(events, stateDB)
 }
 
 func (rc *RollupChain) encryptEvents(eventsPerSubscription map[uuid.UUID][]*types.Log) (result map[uuid.UUID]common.EncryptedEvents, err error) {
-	result = map[uuid.UUID]common.EncryptedEvents{}
-	for u, events := range eventsPerSubscription {
-		enc := make([]byte, 0)
-		for _, event := range events {
-			txReceiptBytes, err := event.MarshalJSON()
-			if err != nil {
-				return nil, fmt.Errorf("could not marshal event log to JSON. Cause: %w", err)
-			}
-
-			// todo - add encryption
-			// todo - separator
-			enc = append(enc, txReceiptBytes...)
-		}
-		result[u] = enc
-	}
-	return
+	return rc.subscriptionManager.EncryptEvents(eventsPerSubscription)
 }
