@@ -2,6 +2,7 @@ package common
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
 )
@@ -110,7 +111,7 @@ type BlockSubmissionResponse struct {
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 
-	SubscribedEvents map[uuid.UUID]EncryptedEvents
+	SubscribedEvents map[uuid.UUID]EncryptedEvents // For each subscription id, there is an encrypted list of events, which has to be sent back to the requester by the host.
 }
 
 // EventSubscription
@@ -119,18 +120,26 @@ type BlockSubmissionResponse struct {
 // The call will fail if there are no viewing keys for all those accounts.
 type EventSubscription struct {
 	ID       uuid.UUID
-	Accounts []SubscriptionAccount
-	// todo Filters
+	Accounts []*SubscriptionAccount
+	// todo Filters - the geth log filters
 }
 
-func (s EventSubscription) Matches(r *types.Log) bool {
-	// todo - here goes the logic
-	return true
+func (s EventSubscription) Matches(log *types.Log, db *state.StateDB) (bool, *SubscriptionAccount) {
+	// todo
+	// transform the log into a useful data structure by extracting addresses from the log (according to the design)
+	// identify what type of log it is ( account specific or relevant)
+	// if account-specific go through each SubscriptionAccount and check whether the log is relevant
+	// note - the above logic has to be reused to filter out the logs when someone requests a transaction receipt
+	// for logs that pass the above the step apply the filters
+	// return the first account for which the log matches, so it can be used for encryption
+	return true, nil
 }
 
+// SubscriptionAccount - represents an authenticated account used for subscribing to events
+// note - the fields below are just indicative, to showcase the required functionality
 type SubscriptionAccount struct {
-	Account    gethcommon.Address
-	ViewingKey []byte
-	SignedKey  []byte // public viewing key signed by the Account's private key
-	Signature  []byte
+	Account    gethcommon.Address // the account for which the events are relevant
+	ViewingKey []byte             // the viewing key to use for the encryption of events relevant to this account
+	SignedKey  []byte             // public viewing key signed by the Account's private key. Useful to authenticate the VK.
+	Signature  []byte             // a signature over the account using the private viewing key. To prevent anyone but the account owner to request subscriptions to leak data.
 }

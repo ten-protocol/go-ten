@@ -506,8 +506,15 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 
 // Subscribe registers a new event subscription. The events will be populated in the BlockSubmissionResponse
 func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
-	// todo - decrypt and deserialize
+	// todo - decrypt and deserialize the subscription
 	eventSubscription := common.EventSubscription{}
+	// check the uuid matches
+
+	// todo
+	// check that each account is signed with a valid viewing key which in turn is signed with the account key
+	//for _, account := range eventSubscription.Accounts {
+	//}
+
 	e.chain.Subscriptions[id] = eventSubscription
 	return nil
 }

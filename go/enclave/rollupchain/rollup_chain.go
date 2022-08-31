@@ -151,7 +151,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) c
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, receipts map[uuid.UUID]common.EncryptedEvents) common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, events map[uuid.UUID]common.EncryptedEvents) common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		log.Panic(msgNoRollup)
@@ -172,7 +172,7 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		IngestedBlock:    true,
 		FoundNewHead:     bs.FoundNewRollup,
 		RollupHead:       head,
-		SubscribedEvents: receipts,
+		SubscribedEvents: events,
 	}
 }
 
@@ -242,7 +242,8 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		events = append(events, receipt.Logs...)
 	}
 
-	subscribedReceipts := rc.dispatchEvents(events)
+	stateDB := rc.storage.CreateStateDB(head.Header.ParentHash)
+	subscribedReceipts := rc.dispatchEvents(events, stateDB)
 
 	// todo - double check he recursivity logic, once properly hooked up
 
@@ -804,11 +805,13 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	return rollup, nil
 }
 
-func (rc *RollupChain) dispatchEvents(events []*types.Log) (result map[uuid.UUID][]*types.Log) {
+func (rc *RollupChain) dispatchEvents(events []*types.Log, stateDB *state.StateDB) (result map[uuid.UUID][]*types.Log) {
 	result = map[uuid.UUID][]*types.Log{}
 	for _, event := range events {
 		for sid, sub := range rc.Subscriptions {
-			if sub.Matches(event) {
+			matches, _ := sub.Matches(event, stateDB)
+			// todo return the account somehow, maybe as a tuple with the log
+			if matches {
 				subResult, found := result[sid]
 				if !found {
 					subResult = make([]*types.Log, 0)
