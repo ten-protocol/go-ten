@@ -3,6 +3,8 @@ package events
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -20,16 +22,19 @@ func NewSubscriptionManager() *SubscriptionManager {
 }
 
 // AddSubscription adds a log subscription to the enclave, provided the request is authenticated correctly.
-func (s *SubscriptionManager) AddSubscription(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
-	// todo - decrypt and deserialize the subscription
-	subcription := logSubscription{}
+func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedLogSubscription) error {
+	// todo - decrypt the subscription
 
-	// todo
-	// check that each account is signed with a valid viewing key which in turn is signed with the account key
-	//for _, account := range logSubscription.Accounts {
-	//}
+	var sub logSubscription
+	if err := rlp.DecodeBytes(encryptedSubscription, &sub); err != nil {
+		return fmt.Errorf("could not decode encoded log subscription. Cause: %w", err)
+	}
 
-	s.subscriptions[id] = subcription
+	for _, account := range sub.accounts {
+		println(account) // todo - check that each account is signed correctly
+	}
+
+	s.subscriptions[id] = sub
 	return nil
 }
 
