@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -10,8 +11,13 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 )
 
+const gethTestEnv = "GETH_TEST_ENABLED"
+
 // TestGethSimulation runs the simulation against a private geth network using Clique (PoA)
 func TestGethSimulation(t *testing.T) {
+	if os.Getenv(gethTestEnv) == "" {
+		t.Skipf("set the variable to run this test: `%s=true`", gethTestEnv)
+	}
 	setupSimTestLog("geth-in-mem")
 
 	numberOfNodes := 5

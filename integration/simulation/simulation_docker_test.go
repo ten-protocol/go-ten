@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -9,11 +10,16 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 )
 
+const dockerTestEnv = "DOCKER_TEST_ENABLED"
+
 // This test creates a network of L2 nodes, then injects transactions, and finally checks the resulting output blockchain
 // The L2 nodes communicate with each other via sockets, and with their enclave servers via RPC.
 // All nodes live in the same process, the enclaves run in individual Docker containers, and the Ethereum nodes are mocked out.
 // $> docker rm $(docker stop $(docker ps -a -q --filter ancestor=obscuro_enclave --format="{{.ID}}") will stop and remove all images
 func TestDockerNodesMonteCarloSimulation(t *testing.T) {
+	if os.Getenv(dockerTestEnv) == "" {
+		t.Skipf("set the variable to run this test: `%s=true`", dockerTestEnv)
+	}
 	setupSimTestLog("docker")
 
 	numberOfNodes := 5
