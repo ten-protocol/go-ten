@@ -59,14 +59,14 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, stateDB *sta
 }
 
 // todo - describe
-func (s *SubscriptionManager) EncryptEvents(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
+func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
 	result := map[uuid.UUID]common.EncryptedLogs{}
 	for subID, logs := range logsBySubID {
 		enc := make([]byte, 0)
 		for _, log := range logs {
 			txReceiptBytes, err := log.MarshalJSON()
 			if err != nil {
-				return nil, fmt.Errorf("could not marshal event log to JSON. Cause: %w", err)
+				return nil, fmt.Errorf("could not marshal log to JSON. Cause: %w", err)
 			}
 
 			// todo - add encryption
@@ -90,18 +90,18 @@ func (s logSubscription) isRelevant(log *types.Log, db *state.StateDB) (bool, *s
 }
 
 // From the design - call must take a list of signed owning accounts.
-// Each account must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info).
+// Each account must be signed with the latest viewing key (to prevent someone from asking for random logs, just to leak info).
 // The call will fail if there are no viewing keys for all those accounts.
 type logSubscription struct {
 	accounts []*subscriptionAccount
 	// todo Filters - the geth log filters
 }
 
-// SubscriptionAccount is an authenticated account used for subscribing to events.
+// SubscriptionAccount is an authenticated account used for subscribing to logs.
 type subscriptionAccount struct {
 	// The account the events relate to.
 	account gethcommon.Address
 	// A signature over the subscription ID using the private viewing key. Prevents attackers from subscribing to
-	// events for other accounts to see the pattern of events.
+	// (encrypted) logs for other accounts to see the pattern of logs.
 	signature []byte
 }
