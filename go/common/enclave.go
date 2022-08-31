@@ -2,7 +2,6 @@ package common
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
 )
@@ -112,33 +111,4 @@ type BlockSubmissionResponse struct {
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 
 	SubscribedEvents map[uuid.UUID]EncryptedEvents // For each subscription id, there is an encrypted list of events, which has to be sent back to the requester by the host.
-}
-
-// EventSubscription
-// From the design - call must take a list of signed owning accounts.
-// Each account must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info).
-// The call will fail if there are no viewing keys for all those accounts.
-type EventSubscription struct {
-	Accounts []*SubscriptionAccount
-	// todo Filters - the geth log filters
-}
-
-func (s EventSubscription) Matches(log *types.Log, db *state.StateDB) (bool, *SubscriptionAccount) {
-	// todo
-	// transform the log into a useful data structure by extracting addresses from the log (according to the design)
-	// identify what type of log it is ( account specific or lifecycle log)
-	// if account-specific go through each SubscriptionAccount and check whether the log is relevant
-	// note - the above logic has to be reused to filter out the logs when someone requests a transaction receipt
-	// for logs that pass the above the step apply the filters
-	// return the first account for which the log matches, so it can be used for encryption
-	return true, nil
-}
-
-// SubscriptionAccount is an authenticated account used for subscribing to events.
-type SubscriptionAccount struct {
-	// The account the events relate to.
-	Account gethcommon.Address
-	// A signature over the subscription ID using the private viewing key. Prevents attackers from subscribing to
-	// events for other accounts to see the pattern of events.
-	Signature []byte
 }

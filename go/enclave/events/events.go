@@ -3,6 +3,8 @@ package events
 import (
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
@@ -10,7 +12,7 @@ import (
 )
 
 type SubscriptionManager struct {
-	subscriptions map[uuid.UUID]common.EventSubscription
+	subscriptions map[uuid.UUID]EventSubscription
 }
 
 func NewSubscriptionManager() *SubscriptionManager {
@@ -20,7 +22,7 @@ func NewSubscriptionManager() *SubscriptionManager {
 // todo - describe
 func (s *SubscriptionManager) AddSubscription(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
 	// todo - decrypt and deserialize the subscription
-	eventSubscription := common.EventSubscription{}
+	eventSubscription := EventSubscription{}
 
 	// todo
 	// check that each account is signed with a valid viewing key which in turn is signed with the account key
@@ -41,7 +43,7 @@ func (s *SubscriptionManager) ExtractEvents(events []*types.Log, stateDB *state.
 	result := map[uuid.UUID][]*types.Log{}
 	for _, event := range events {
 		for subID, sub := range s.subscriptions {
-			matches, _ := sub.Matches(event, stateDB)
+			matches, _ := sub.matches(event, stateDB)
 			// todo return the account somehow, maybe as a tuple with the log
 			if matches {
 				subResult, found := result[subID]
@@ -74,4 +76,33 @@ func (s *SubscriptionManager) EncryptEvents(eventsPerSubscription map[uuid.UUID]
 		result[u] = enc
 	}
 	return result, nil
+}
+
+func (s EventSubscription) matches(log *types.Log, db *state.StateDB) (bool, *SubscriptionAccount) {
+	// todo
+	// transform the log into a useful data structure by extracting addresses from the log (according to the design)
+	// identify what type of log it is ( account specific or lifecycle log)
+	// if account-specific go through each SubscriptionAccount and check whether the log is relevant
+	// note - the above logic has to be reused to filter out the logs when someone requests a transaction receipt
+	// for logs that pass the above the step apply the filters
+	// return the first account for which the log matches, so it can be used for encryption
+	return true, nil
+}
+
+// EventSubscription
+// From the design - call must take a list of signed owning accounts.
+// Each account must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info).
+// The call will fail if there are no viewing keys for all those accounts.
+type EventSubscription struct {
+	Accounts []*SubscriptionAccount
+	// todo Filters - the geth log filters
+}
+
+// SubscriptionAccount is an authenticated account used for subscribing to events.
+type SubscriptionAccount struct {
+	// The account the events relate to.
+	Account gethcommon.Address
+	// A signature over the subscription ID using the private viewing key. Prevents attackers from subscribing to
+	// events for other accounts to see the pattern of events.
+	Signature []byte
 }
