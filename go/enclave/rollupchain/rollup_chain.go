@@ -153,7 +153,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) c
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, events map[uuid.UUID]common.EncryptedEvents) common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[uuid.UUID]common.EncryptedLogs) common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		log.Panic(msgNoRollup)
@@ -169,12 +169,12 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		head = headRollup.Header
 	}
 	return common.BlockSubmissionResponse{
-		BlockHeader:      headBlock.Header(),
-		ProducedRollup:   rollup,
-		IngestedBlock:    true,
-		FoundNewHead:     bs.FoundNewRollup,
-		RollupHead:       head,
-		SubscribedEvents: events,
+		BlockHeader:    headBlock.Header(),
+		ProducedRollup: rollup,
+		IngestedBlock:  true,
+		FoundNewHead:   bs.FoundNewRollup,
+		RollupHead:     head,
+		SubscribedLogs: logs,
 	}
 }
 

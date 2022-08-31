@@ -510,7 +510,7 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 }
 
 // Subscribe registers a new event subscription. The events will be populated in the BlockSubmissionResponse
-func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
+func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
 	return e.subscriptionManager.AddSubscription(id, subscription)
 }
 

@@ -91,7 +91,7 @@ type Enclave interface {
 	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error)
 
 	// Subscribe registers a new event subscription. The events will be populated in the BlockSubmissionResponse
-	Subscribe(id uuid.UUID, subscription EncryptedEventSubscription) error
+	Subscribe(id uuid.UUID, subscription EncryptedLogSubscription) error
 
 	// Unsubscribe - removes a subscription
 	Unsubscribe(id uuid.UUID)
@@ -110,5 +110,5 @@ type BlockSubmissionResponse struct {
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 
-	SubscribedEvents map[uuid.UUID]EncryptedEvents // For each subscription id, there is an encrypted list of events, which has to be sent back to the requester by the host.
+	SubscribedLogs map[uuid.UUID]EncryptedLogs // For each subscription id, there is an encrypted list of logs, which has to be sent back to the requester by the host.
 }

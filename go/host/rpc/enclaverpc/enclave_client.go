@@ -390,7 +390,7 @@ func (c *Client) StoreAttestation(report *common.AttestationReport) error {
 	return nil
 }
 
-func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
+func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
 	// todo
 	return nil
 }

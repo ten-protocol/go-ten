@@ -35,8 +35,8 @@ type (
 	EncryptedResponseGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
 	EncryptedResponseSendRawTx    []byte // As above, but for an RPC sendRawTransaction request.
 	EncryptedResponseGetTxByHash  []byte // As above, but for an RPC getTransactionByHash request.
-	EncryptedEventSubscription    []byte // As above, but for a request to event subscription.
-	EncryptedEvents               []byte // As above, but for encrypted events.
+	EncryptedLogSubscription      []byte // As above, but for a request for a log subscription.
+	EncryptedLogs                 []byte // As above, but for encrypted logs.
 
 	Nonce         = uint64
 	EncodedRollup []byte

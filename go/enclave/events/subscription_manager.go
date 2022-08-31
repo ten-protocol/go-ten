@@ -20,7 +20,7 @@ func NewSubscriptionManager() *SubscriptionManager {
 }
 
 // todo - describe
-func (s *SubscriptionManager) AddSubscription(id uuid.UUID, subscription common.EncryptedEventSubscription) error {
+func (s *SubscriptionManager) AddSubscription(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
 	// todo - decrypt and deserialize the subscription
 	subcription := logSubscription{}
 
@@ -59,8 +59,8 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, stateDB *sta
 }
 
 // todo - describe
-func (s *SubscriptionManager) EncryptEvents(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedEvents, error) {
-	result := map[uuid.UUID]common.EncryptedEvents{}
+func (s *SubscriptionManager) EncryptEvents(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
+	result := map[uuid.UUID]common.EncryptedLogs{}
 	for subID, logs := range logsBySubID {
 		enc := make([]byte, 0)
 		for _, log := range logs {
