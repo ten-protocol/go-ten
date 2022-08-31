@@ -27,15 +27,13 @@ import (
 )
 
 func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string][]*obsclient.AuthObsClient) {
-	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
-	for i := 0; i < params.NumberOfNodes; i++ {
-		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgGossipPeriod)
-	}
-
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
+	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
+		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgGossipPeriod)
+
 		obscuroNodes[i] = createInMemObscuroNode(
 			int64(i),
 			isGenesis,

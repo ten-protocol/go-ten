@@ -36,6 +36,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
 	n.obscuroClients = make([]rpcclientlib.Client, params.NumberOfNodes)
+	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := common.HexToAddress("AA")
@@ -43,16 +44,12 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	dummyETHAddress := common.HexToAddress("BB")
 	params.Wallets.Tokens[bridge.POC].L1ContractAddress = &dummyETHAddress
 
-	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
-	for i := 0; i < params.NumberOfNodes; i++ {
-		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgGossipPeriod)
-	}
-
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgGossipPeriod)
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
