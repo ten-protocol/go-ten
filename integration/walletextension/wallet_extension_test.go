@@ -85,6 +85,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// We share a single Obscuro network across tests. Otherwise, every test takes 20 seconds at a minimum.
 	err, teardown := createObscuroNetwork()
 	defer teardown()
 	if err != nil {
@@ -388,13 +389,16 @@ func createWalletExtension(t *testing.T) *walletextension.WalletExtension {
 	t.Cleanup(walletExtension.Shutdown)
 
 	go walletExtension.Serve(walletExtensionAddr)
-	waitForWalletExtension(t, walletExtensionAddr)
+	err := waitForWalletExtension(walletExtensionAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	return walletExtension
 }
 
 // Waits for wallet extension to be ready. Times out after three seconds.
-func waitForWalletExtension(t *testing.T, walletExtensionAddr string) {
+func waitForWalletExtension(walletExtensionAddr string) error {
 	retries := 30
 	for i := 0; i < retries; i++ {
 		resp, err := http.Get(httpProtocol + walletExtensionAddr + walletextension.PathReady) //nolint:noctx
@@ -402,11 +406,11 @@ func waitForWalletExtension(t *testing.T, walletExtensionAddr string) {
 			resp.Body.Close()
 		}
 		if err == nil {
-			return
+			return nil
 		}
 		time.Sleep(300 * time.Millisecond)
 	}
-	t.Fatal("could not establish connection to wallet extension")
+	return fmt.Errorf("could not establish connection to wallet extension")
 }
 
 // Makes an Ethereum JSON RPC request and returns the response body.
@@ -549,6 +553,15 @@ func createObscuroNetwork() (error, func()) {
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
 	_, err := obscuroNetwork.Create(&simParams, simStats)
+	if err != nil {
+		return fmt.Errorf("failed to create test Obscuro network. Cause: %s", err), obscuroNetwork.TearDown
+	}
+
+	// Create a wallet extension to allow the creation of the ERC20 contracts.
+	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
+	defer walletExtension.Shutdown()
+	go walletExtension.Serve(walletExtensionAddr)
+	err = waitForWalletExtension(walletExtensionAddr)
 	if err != nil {
 		return fmt.Errorf("failed to create test Obscuro network. Cause: %s", err), obscuroNetwork.TearDown
 	}
