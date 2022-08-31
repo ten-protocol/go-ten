@@ -210,7 +210,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
 	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
-	var parentEvents map[uuid.UUID][]*types.Log
+	var parentLogs map[uuid.UUID][]*types.Log
 	if !parentFound {
 		// go back and calculate the Root of the Parent
 		p, f := rc.storage.FetchBlock(b.ParentHash())
@@ -219,7 +219,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 			return nil, nil
 		}
 
-		parentState, parentEvents = rc.updateState(p)
+		parentState, parentLogs = rc.updateState(p)
 	}
 
 	if parentState == nil {
@@ -239,24 +239,24 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	rc.storage.SaveNewHead(bs, head, receipts)
 
-	events := make([]*types.Log, 0)
+	var logs []*types.Log
 	for _, receipt := range receipts {
-		events = append(events, receipt.Logs...)
+		logs = append(logs, receipt.Logs...)
 	}
 
 	stateDB := rc.storage.CreateStateDB(head.Header.ParentHash)
-	subscribedReceipts := rc.subscriptionManager.FilterRelevantLogs(events, stateDB)
+	subscribedReceipts := rc.subscriptionManager.FilterRelevantLogs(logs, stateDB)
 
 	// todo - double check he recursivity logic, once properly hooked up
 
 	// append to the parent events
-	for u, r := range parentEvents {
-		subResult, found := subscribedReceipts[u]
+	for subID, logs := range parentLogs {
+		subResult, found := subscribedReceipts[subID]
 		if !found {
 			subResult = make([]*types.Log, 0)
 		}
-		subResult = append(subResult, r...)
-		subscribedReceipts[u] = subResult
+		subResult = append(subResult, logs...)
+		subscribedReceipts[subID] = subResult
 	}
 
 	return bs, subscribedReceipts
