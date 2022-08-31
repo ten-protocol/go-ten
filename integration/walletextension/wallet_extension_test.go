@@ -91,7 +91,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	m.Run()
+	os.Exit(m.Run())
+
 }
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
