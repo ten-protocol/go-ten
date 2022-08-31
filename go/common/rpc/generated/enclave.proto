@@ -235,9 +235,7 @@ message SubscribeRequest {
   bytes id = 1;
   bytes encryptedSubscription = 2;
 }
-message SubscribeResponse {
-  string error = 1;
-}
+message SubscribeResponse {}
 
 // Nested message types.
 

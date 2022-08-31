@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -240,6 +242,16 @@ func (s *server) StoreAttestation(_ context.Context, req *generated.StoreAttesta
 		resp = err.Error()
 	}
 	return &generated.StoreAttestationResponse{Error: resp}, nil
+}
+
+func (s *server) Subscribe(_ context.Context, req *generated.SubscribeRequest) (*generated.SubscribeResponse, error) {
+	id, err := uuid.FromBytes(req.Id)
+	if err != nil {
+		return &generated.SubscribeResponse{}, fmt.Errorf("could not deserialise UUID. Cause: %w", err)
+	}
+
+	err = s.enclave.Subscribe(id, req.EncryptedSubscription)
+	return &generated.SubscribeResponse{}, err
 }
 
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {

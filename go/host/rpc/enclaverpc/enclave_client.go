@@ -399,17 +399,11 @@ func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscri
 		return fmt.Errorf("could not marshall subscription ID to binary. Cause: %w", err)
 	}
 
-	resp, err := c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
+	_, err = c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
 		Id:                    idBinary,
 		EncryptedSubscription: subscription,
 	})
-	if err != nil {
-		return err
-	}
-	if resp.Error != "" {
-		return fmt.Errorf(resp.Error)
-	}
-	return nil
+	return err
 }
 
 func (c *Client) Unsubscribe(id uuid.UUID) {
