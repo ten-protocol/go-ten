@@ -32,7 +32,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
-		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgGossipPeriod)
+		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
 
 		obscuroNodes[i] = createInMemObscuroNode(
 			int64(i),
