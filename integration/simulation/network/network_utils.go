@@ -60,17 +60,14 @@ func createInMemObscuroNode(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
-	avgBlockDuration time.Duration,
-	avgNetworkLatency time.Duration,
 	stats *stats.Stats,
 	validateBlocks bool,
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	wallets *params.SimWallets,
+	mockP2P *simp2p.MockP2P,
 ) host.MockHost {
-	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
-
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
@@ -92,18 +89,17 @@ func createInMemObscuroNode(
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
 
 	// create an in memory obscuro node
-	node := node.NewHost(
+	inMemNode := node.NewHost(
 		hostConfig,
 		stats,
-		obscuroInMemNetwork,
-		nil,
+		mockP2P,
+		ethClient,
 		enclaveClient,
 		ethWallet,
 		mgmtContractLib,
 	)
-	obscuroInMemNetwork.CurrentNode = node
-	node.ConnectToEthNode(ethClient)
-	return node
+	mockP2P.CurrentNode = inMemNode
+	return inMemNode
 }
 
 func createSocketObscuroNode(
@@ -143,18 +139,15 @@ func createSocketObscuroNode(
 	// create a socket obscuro node
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
 
-	node := node.NewHost(
+	return node.NewHost(
 		hostConfig,
 		stats,
 		nodeP2p,
-		nil,
+		ethClient,
 		enclaveClient,
 		ethWallet,
 		mgmtContractLib,
 	)
-
-	node.ConnectToEthNode(ethClient)
-	return node
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {
