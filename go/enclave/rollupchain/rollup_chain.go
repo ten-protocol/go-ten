@@ -109,7 +109,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 	}
 
 	rc.storage.StoreBlock(block)
-	bs, subscribedReceipts := rc.updateState(block)
+	bs, subscribedEvents := rc.updateState(block)
 	if bs == nil {
 		return rc.noBlockStateBlockSubmissionResponse(block)
 	}
@@ -123,7 +123,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 
 		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
 	}
-	enc, err := rc.encryptEvents(subscribedReceipts)
+	enc, err := rc.encryptEvents(subscribedEvents)
 	if err != nil {
 		log.Panic("%s", err)
 	}
@@ -247,7 +247,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	// todo - double check he recursivity logic, once properly hooked up
 
-	// append to the parent even
+	// append to the parent events
 	for u, r := range parentEvents {
 		subResult, found := subscribedReceipts[u]
 		if !found {
@@ -497,7 +497,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	}
 
 	common.TraceWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
-	blockState, receipts := rc.updateState(&block)
+	blockState, events := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}
@@ -515,7 +515,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 
 	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
-	enc, err := rc.encryptEvents(receipts)
+	enc, err := rc.encryptEvents(events)
 	if err != nil {
 		log.Panic("%s", err)
 	}

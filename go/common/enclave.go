@@ -119,7 +119,7 @@ type BlockSubmissionResponse struct {
 // Each account must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info).
 // The call will fail if there are no viewing keys for all those accounts.
 type EventSubscription struct {
-	ID       uuid.UUID
+	//ID       uuid.UUID // this should not be here
 	Accounts []*SubscriptionAccount
 	// todo Filters - the geth log filters
 }
@@ -127,7 +127,7 @@ type EventSubscription struct {
 func (s EventSubscription) Matches(log *types.Log, db *state.StateDB) (bool, *SubscriptionAccount) {
 	// todo
 	// transform the log into a useful data structure by extracting addresses from the log (according to the design)
-	// identify what type of log it is ( account specific or relevant)
+	// identify what type of log it is ( account specific or lifecycle log)
 	// if account-specific go through each SubscriptionAccount and check whether the log is relevant
 	// note - the above logic has to be reused to filter out the logs when someone requests a transaction receipt
 	// for logs that pass the above the step apply the filters
@@ -138,8 +138,9 @@ func (s EventSubscription) Matches(log *types.Log, db *state.StateDB) (bool, *Su
 // SubscriptionAccount - represents an authenticated account used for subscribing to events
 // note - the fields below are just indicative, to showcase the required functionality
 type SubscriptionAccount struct {
-	Account    gethcommon.Address // the account for which the events are relevant
-	ViewingKey []byte             // the viewing key to use for the encryption of events relevant to this account
-	SignedKey  []byte             // public viewing key signed by the Account's private key. Useful to authenticate the VK.
-	Signature  []byte             // a signature over the account using the private viewing key. To prevent anyone but the account owner to request subscriptions to leak data.
+	Account gethcommon.Address // the account for which the events are relevant
+	// todo - the viewingKey and SignedKey can be removed
+	ViewingKey []byte // the viewing key to use for the encryption of events relevant to this account
+	SignedKey  []byte // public viewing key signed by the Account's private key. Useful to authenticate the VK.
+	Signature  []byte // a signature over the account using the private viewing key. To prevent anyone but the account owner to request subscriptions to leak data.
 }
