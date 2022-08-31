@@ -89,7 +89,7 @@ func createInMemObscuroNode(
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
 
 	// create an in memory obscuro node
-	node := node.NewHost(
+	inMemNode := node.NewHost(
 		hostConfig,
 		stats,
 		mockP2P,
@@ -98,8 +98,8 @@ func createInMemObscuroNode(
 		ethWallet,
 		mgmtContractLib,
 	)
-	mockP2P.CurrentNode = node
-	return node
+	mockP2P.CurrentNode = inMemNode
+	return inMemNode
 }
 
 func createSocketObscuroNode(
