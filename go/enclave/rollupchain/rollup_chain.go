@@ -245,7 +245,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	}
 
 	stateDB := rc.storage.CreateStateDB(head.Header.ParentHash)
-	subscribedReceipts := rc.subscriptionManager.ExtractEvents(events, stateDB)
+	subscribedReceipts := rc.subscriptionManager.FilterRelevantLogs(events, stateDB)
 
 	// todo - double check he recursivity logic, once properly hooked up
 
