@@ -60,17 +60,14 @@ func createInMemObscuroNode(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
-	avgBlockDuration time.Duration,
-	avgNetworkLatency time.Duration,
 	stats *stats.Stats,
 	validateBlocks bool,
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	wallets *params.SimWallets,
+	mockP2P *simp2p.MockP2P,
 ) host.MockHost {
-	obscuroInMemNetwork := simp2p.NewMockP2P(avgBlockDuration, avgNetworkLatency)
-
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
@@ -95,13 +92,13 @@ func createInMemObscuroNode(
 	node := node.NewHost(
 		hostConfig,
 		stats,
-		obscuroInMemNetwork,
+		mockP2P,
 		ethClient,
 		enclaveClient,
 		ethWallet,
 		mgmtContractLib,
 	)
-	obscuroInMemNetwork.CurrentNode = node
+	mockP2P.CurrentNode = node
 	return node
 }
 
