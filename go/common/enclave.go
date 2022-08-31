@@ -110,19 +110,20 @@ type BlockSubmissionResponse struct {
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 
-	SubscribedReceipts map[uuid.UUID]EncryptedReceipts
+	SubscribedEvents map[uuid.UUID]EncryptedEvents
 }
 
-// call must take a list of signed owning accounts.
+// EventSubscription
+// From the design - call must take a list of signed owning accounts.
 // Each account must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info).
 // The call will fail if there are no viewing keys for all those accounts.
 type EventSubscription struct {
-	Id       uuid.UUID
+	ID       uuid.UUID
 	Accounts []SubscriptionAccount
 	// todo Filters
 }
 
-func (s EventSubscription) Matches(r *types.Receipt) bool {
+func (s EventSubscription) Matches(r *types.Log) bool {
 	// todo - here goes the logic
 	return true
 }

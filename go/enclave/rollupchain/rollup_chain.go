@@ -123,7 +123,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 
 		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
 	}
-	enc, err := rc.encryptReceipts(subscribedReceipts)
+	enc, err := rc.encryptEvents(subscribedReceipts)
 	if err != nil {
 		log.Panic("%s", err)
 	}
@@ -151,7 +151,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) c
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, receipts map[uuid.UUID]common.EncryptedReceipts) common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, receipts map[uuid.UUID]common.EncryptedEvents) common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		log.Panic(msgNoRollup)
@@ -167,12 +167,12 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		head = headRollup.Header
 	}
 	return common.BlockSubmissionResponse{
-		BlockHeader:        headBlock.Header(),
-		ProducedRollup:     rollup,
-		IngestedBlock:      true,
-		FoundNewHead:       bs.FoundNewRollup,
-		RollupHead:         head,
-		SubscribedReceipts: receipts,
+		BlockHeader:      headBlock.Header(),
+		ProducedRollup:   rollup,
+		IngestedBlock:    true,
+		FoundNewHead:     bs.FoundNewRollup,
+		RollupHead:       head,
+		SubscribedEvents: receipts,
 	}
 }
 
@@ -183,7 +183,7 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 //  STATE
 
 // Determine the new canonical L2 head and calculate the State
-func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map[uuid.UUID][]*types.Receipt) {
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map[uuid.UUID][]*types.Log) {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
@@ -208,7 +208,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
 	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
-	var parentReceipts map[uuid.UUID][]*types.Receipt
+	var parentEvents map[uuid.UUID][]*types.Log
 	if !parentFound {
 		// go back and calculate the Root of the Parent
 		p, f := rc.storage.FetchBlock(b.ParentHash())
@@ -217,7 +217,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 			return nil, nil
 		}
 
-		parentState, parentReceipts = rc.updateState(p)
+		parentState, parentEvents = rc.updateState(p)
 	}
 
 	if parentState == nil {
@@ -237,13 +237,20 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	rc.storage.SaveNewHead(bs, head, receipts)
 
-	subscribedReceipts := rc.dispatchReceipts(receipts)
+	events := make([]*types.Log, 0)
+	for _, receipt := range receipts {
+		events = append(events, receipt.Logs...)
+	}
 
-	// append the parent receipts
-	for u, r := range parentReceipts {
+	subscribedReceipts := rc.dispatchEvents(events)
+
+	// todo - double check he recursivity logic, once properly hooked up
+
+	// append to the parent even
+	for u, r := range parentEvents {
 		subResult, found := subscribedReceipts[u]
 		if !found {
-			subResult = make([]*types.Receipt, 0)
+			subResult = make([]*types.Log, 0)
 		}
 		subResult = append(subResult, r...)
 		subscribedReceipts[u] = subResult
@@ -507,7 +514,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 
 	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
-	enc, err := rc.encryptReceipts(receipts)
+	enc, err := rc.encryptEvents(receipts)
 	if err != nil {
 		log.Panic("%s", err)
 	}
@@ -797,15 +804,16 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	return rollup, nil
 }
 
-func (rc *RollupChain) dispatchReceipts(receipts []*types.Receipt) (result map[uuid.UUID][]*types.Receipt) {
-	for _, r := range receipts {
+func (rc *RollupChain) dispatchEvents(events []*types.Log) (result map[uuid.UUID][]*types.Log) {
+	result = map[uuid.UUID][]*types.Log{}
+	for _, event := range events {
 		for sid, sub := range rc.Subscriptions {
-			if sub.Matches(r) {
+			if sub.Matches(event) {
 				subResult, found := result[sid]
 				if !found {
-					subResult = make([]*types.Receipt, 0)
+					subResult = make([]*types.Log, 0)
 				}
-				subResult = append(subResult, r)
+				subResult = append(subResult, event)
 				result[sid] = subResult
 			}
 		}
@@ -813,20 +821,21 @@ func (rc *RollupChain) dispatchReceipts(receipts []*types.Receipt) (result map[u
 	return
 }
 
-func (rc *RollupChain) encryptReceipts(receiptsMap map[uuid.UUID][]*types.Receipt) (result map[uuid.UUID]common.EncryptedReceipts, err error) {
-	for u, receipts := range receiptsMap {
-		encr := make([]byte, 0)
-		for _, r := range receipts {
-			txReceiptBytes, err := r.MarshalJSON()
+func (rc *RollupChain) encryptEvents(eventsPerSubscription map[uuid.UUID][]*types.Log) (result map[uuid.UUID]common.EncryptedEvents, err error) {
+	result = map[uuid.UUID]common.EncryptedEvents{}
+	for u, events := range eventsPerSubscription {
+		enc := make([]byte, 0)
+		for _, event := range events {
+			txReceiptBytes, err := event.MarshalJSON()
 			if err != nil {
-				return nil, fmt.Errorf("could not marshal transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
+				return nil, fmt.Errorf("could not marshal event log to JSON. Cause: %w", err)
 			}
 
 			// todo - add encryption
-
-			encr = append(encr, txReceiptBytes...)
+			// todo - separator
+			enc = append(enc, txReceiptBytes...)
 		}
-		result[u] = encr
+		result[u] = enc
 	}
 	return
 }
