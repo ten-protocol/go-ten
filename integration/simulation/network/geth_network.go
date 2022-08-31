@@ -5,14 +5,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 type networkInMemGeth struct {
-	obscuroClients []rpcclientlib.Client
+	obscuroClients []rpc.Client
 
 	// geth
 	gethNetwork *gethnetwork.GethNetwork

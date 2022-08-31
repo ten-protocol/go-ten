@@ -8,7 +8,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -25,7 +25,7 @@ type networkWithAzureEnclaves struct {
 	gethClients []ethadapter.EthClient
 	wallets     *params.SimWallets
 
-	obscuroClients  []rpcclientlib.Client
+	obscuroClients  []rpc.Client
 	azureEnclaveIps []string
 
 	hostRPCAddresses []string

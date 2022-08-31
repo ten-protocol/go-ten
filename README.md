@@ -218,7 +218,7 @@ root
 │   │       ├── <a href="./go/host/rpc/clientapi">clientapi</a>: The API for RPC communications with the client.
 │   │       ├── <a href="./go/host/rpc/clientrpc">clientrpc</a>: The RPC server for communications with the client.
 │   │       └── <a href="./go/host/enclaverpc">enclaverpc</a>: The RPC client for communications with the enclave.
-│   ├── <a href="./go/rpcclientlib">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
+│   ├── <a href="./go/rpc">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
 │   └── <a href="./go/wallet">wallet</a>: Logic around wallets. Used both by the node, which is an ethereum wallet, and by the tests
 ├── <a href="./integration">integration</a>: Integration tests that spin up Obscuro networks.
 │   ├── <a href="./integration/simulation">simulation</a>: A series of tests that simulate running networks with different setups.

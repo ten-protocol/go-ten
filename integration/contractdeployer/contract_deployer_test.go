@@ -13,7 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
@@ -59,7 +59,7 @@ func TestCanDeployGuessingGameContract(t *testing.T) {
 	contractDeployerClient := getClient(contractDeployerWallet)
 
 	var deployedCode string
-	err = contractDeployerClient.Call(&deployedCode, rpcclientlib.RPCGetCode, contractAddr, latestBlock)
+	err = contractDeployerClient.Call(&deployedCode, rpc.RPCGetCode, contractAddr, latestBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +83,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	// We check the faucet's balance before and after the deployment. Since the contract deployer has already been sent
 	// sufficient funds, the faucet should have been to dispense any more, leaving its balance unchanged.
 	var faucetInitialBalance string
-	err := faucetClient.Call(&faucetInitialBalance, rpcclientlib.RPCGetBalance, faucetWallet.Address().Hex(), latestBlock)
+	err := faucetClient.Call(&faucetInitialBalance, rpc.RPCGetBalance, faucetWallet.Address().Hex(), latestBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -96,7 +96,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	var faucetBalanceAfterDeploy string
 	// We create a new faucet client because deploying the contract will have overwritten the faucet's viewing key on the node.
 	faucetClient = getClient(faucetWallet)
-	err = faucetClient.Call(&faucetBalanceAfterDeploy, rpcclientlib.RPCGetBalance, faucetWallet.Address().Hex(), latestBlock)
+	err = faucetClient.Call(&faucetBalanceAfterDeploy, rpc.RPCGetBalance, faucetWallet.Address().Hex(), latestBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -139,12 +139,12 @@ func createObscuroNetwork(t *testing.T) {
 }
 
 // Returns a viewing-key client with a registered viewing key.
-func getClient(wallet wallet.Wallet) *rpcclientlib.EncRPCClient {
-	viewingKey, err := rpcclientlib.GenerateAndSignViewingKey(wallet)
+func getClient(wallet wallet.Wallet) *rpc.EncRPCClient {
+	viewingKey, err := rpc.GenerateAndSignViewingKey(wallet)
 	if err != nil {
 		panic(err)
 	}
-	client, err := rpcclientlib.NewEncNetworkClient(nodeAddress, viewingKey)
+	client, err := rpc.NewEncNetworkClient(nodeAddress, viewingKey)
 	if err != nil {
 		panic(err)
 	}

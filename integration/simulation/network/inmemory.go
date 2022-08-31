@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -23,7 +23,7 @@ import (
 
 type basicNetworkOfInMemoryNodes struct {
 	ethNodes       []*ethereum_mock.Node
-	obscuroClients []rpcclientlib.Client
+	obscuroClients []rpc.Client
 }
 
 func NewBasicNetworkOfInMemoryNodes() Network {
@@ -35,7 +35,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
-	n.obscuroClients = make([]rpcclientlib.Client, params.NumberOfNodes)
+	n.obscuroClients = make([]rpc.Client, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := common.HexToAddress("AA")
@@ -112,7 +112,7 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
 		go func() {
-			_ = temp.Call(nil, rpcclientlib.RPCStopHost)
+			_ = temp.Call(nil, rpc.RPCStopHost)
 			temp.Stop()
 		}()
 	}

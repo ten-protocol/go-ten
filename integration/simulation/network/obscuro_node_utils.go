@@ -20,13 +20,13 @@ import (
 	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string][]*obsclient.AuthObsClient) {
+func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpc.Client, map[string][]*obsclient.AuthObsClient) {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -60,7 +60,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	}
 
 	// Create a handle to each node
-	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
+	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
 	for i, node := range obscuroNodes {
 		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
 	}
@@ -88,10 +88,10 @@ func setupInMemWalletClients(params *params.SimParams, obscuroNodes []host.MockH
 // todo: this method is quite heavy, should refactor to separate out the creation of the nodes, starting of the nodes, setup of the RPC clients etc.
 func startStandaloneObscuroNodes(
 	params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string,
-) ([]rpcclientlib.Client, map[string][]*obsclient.AuthObsClient, []string) {
+) ([]rpc.Client, map[string][]*obsclient.AuthObsClient, []string) {
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)
-	obscuroClients := make([]rpcclientlib.Client, params.NumberOfNodes)
+	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
 	obscuroNodes := make([]host.Host, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -118,7 +118,7 @@ func startStandaloneObscuroNodes(
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		client, err := rpcclientlib.NewNetworkClient(nodeRPCAddresses[i])
+		client, err := rpc.NewNetworkClient(nodeRPCAddresses[i])
 		if err != nil {
 			panic(err)
 		}
@@ -136,7 +136,7 @@ func startStandaloneObscuroNodes(
 	for i, client := range obscuroClients {
 		started := false
 		for !started {
-			err := client.Call(nil, rpcclientlib.RPCGetID)
+			err := client.Call(nil, rpc.RPCGetID)
 			started = err == nil
 			if !started {
 				log.Info("Could not connect to client %d. Err %s. Retrying..\n", i, err)
@@ -162,7 +162,7 @@ func startStandaloneObscuroNodes(
 func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []*obsclient.AuthObsClient {
 	clients := make([]*obsclient.AuthObsClient, len(nodes))
 	for i, node := range nodes {
-		vk, err := rpcclientlib.GenerateAndSignViewingKey(wal)
+		vk, err := rpc.GenerateAndSignViewingKey(wal)
 		if err != nil {
 			panic(err)
 		}
@@ -177,11 +177,11 @@ func createInMemoryClientsForWallet(nodes []host.MockHost, wal wallet.Wallet) []
 func createRPCClientsForWallet(nodeRPCAddresses []string, wal wallet.Wallet) []*obsclient.AuthObsClient {
 	clients := make([]*obsclient.AuthObsClient, len(nodeRPCAddresses))
 	for i, addr := range nodeRPCAddresses {
-		vk, err := rpcclientlib.GenerateAndSignViewingKey(wal)
+		vk, err := rpc.GenerateAndSignViewingKey(wal)
 		if err != nil {
 			panic(err)
 		}
-		c, err := rpcclientlib.NewEncNetworkClient(addr, vk)
+		c, err := rpc.NewEncNetworkClient(addr, vk)
 		if err != nil {
 			panic(err)
 		}
@@ -216,13 +216,13 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 }
 
 // StopObscuroNodes stops the Obscuro nodes and their RPC clients.
-func StopObscuroNodes(clients []rpcclientlib.Client) {
+func StopObscuroNodes(clients []rpc.Client) {
 	var wg sync.WaitGroup
 	for _, client := range clients {
 		wg.Add(1)
-		go func(c rpcclientlib.Client) {
+		go func(c rpc.Client) {
 			defer wg.Done()
-			err := c.Call(nil, rpcclientlib.RPCStopHost)
+			err := c.Call(nil, rpc.RPCStopHost)
 			if err != nil {
 				log.Error("Failed to stop Obscuro node. Cause: %s", err)
 			}

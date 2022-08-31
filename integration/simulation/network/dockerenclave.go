@@ -13,7 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -30,7 +30,7 @@ const (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfNodesWithDockerEnclave struct {
-	obscuroClients   []rpcclientlib.Client
+	obscuroClients   []rpc.Client
 	hostRPCAddresses []string
 	enclaveAddresses []string
 

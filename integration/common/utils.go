@@ -17,7 +17,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 const (
@@ -45,7 +45,7 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	for {
 		receipt, err := client.TransactionReceipt(ctx, txHash)
 		if err != nil {
-			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+			if !errors.Is(err, rpc.ErrNilResponse) {
 				return err
 			}
 

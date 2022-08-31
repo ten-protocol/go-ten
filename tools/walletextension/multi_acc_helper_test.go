@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 var (
 	viewingKeyAddressOne = common.HexToAddress("0x" + viewingKeyAddressHex)
 	viewingKeyAddressTwo = common.HexToAddress("0x71C7656EC7ab88b098defB751B7401B5f6d8976D") // Not in the data field.
-	accClients           = map[common.Address]*rpcclientlib.EncRPCClient{
+	accClients           = map[common.Address]*rpc.EncRPCClient{
 		viewingKeyAddressOne: nil,
 		viewingKeyAddressTwo: nil,
 	}
