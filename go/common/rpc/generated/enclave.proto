@@ -79,6 +79,8 @@ service EnclaveProto {
 
   // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
   rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
+
+  rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
 }
 
 message IsReadyRequest {}
@@ -223,10 +225,18 @@ message GetBalanceResponse {
 
 message GetCodeRequest {
   bytes address = 1;
-  bytes rollupHash = 3;
+  bytes rollupHash = 2;
 }
 message GetCodeResponse {
   bytes code = 1;
+}
+
+message SubscribeRequest {
+  bytes id = 1;
+  bytes encryptedSubscription = 2;
+}
+message SubscribeResponse {
+  string error = 1;
 }
 
 // Nested message types.

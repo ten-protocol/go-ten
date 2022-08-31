@@ -21,6 +21,8 @@ func NewSubscriptionManager() *SubscriptionManager {
 
 // AddSubscription adds a log subscription to the enclave, provided the request is authenticated correctly.
 func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedLogSubscription) error {
+	println("jjj received subscription request")
+
 	// todo - decrypt the subscription
 
 	var subscription common.LogSubscription

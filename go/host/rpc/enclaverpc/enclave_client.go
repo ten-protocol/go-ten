@@ -391,7 +391,24 @@ func (c *Client) StoreAttestation(report *common.AttestationReport) error {
 }
 
 func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
-	// todo
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	idBinary, err := id.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("could not marshall subscription ID to binary. Cause: %w", err)
+	}
+
+	resp, err := c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
+		Id:                    idBinary,
+		EncryptedSubscription: subscription,
+	})
+	if err != nil {
+		return err
+	}
+	if resp.Error != "" {
+		return fmt.Errorf(resp.Error)
+	}
 	return nil
 }
 
