@@ -86,7 +86,7 @@ var (
 
 func TestMain(m *testing.M) {
 	// We share a single Obscuro network across tests. Otherwise, every test takes 20 seconds at a minimum.
-	err, teardown := createObscuroNetwork()
+	teardown, err := createObscuroNetwork()
 	defer teardown()
 	if err != nil {
 		panic(err)
@@ -537,7 +537,7 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 }
 
 // Creates a single-node Obscuro network for testing, and deploys an ERC20 contract to it.
-func createObscuroNetwork() (error, func()) {
+func createObscuroNetwork() (func(), error) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
@@ -554,7 +554,7 @@ func createObscuroNetwork() (error, func()) {
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
 	_, err := obscuroNetwork.Create(&simParams, simStats)
 	if err != nil {
-		return fmt.Errorf("failed to create test Obscuro network. Cause: %s", err), obscuroNetwork.TearDown
+		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}
 
 	// Create a wallet extension to allow the creation of the ERC20 contracts.
@@ -563,22 +563,22 @@ func createObscuroNetwork() (error, func()) {
 	go walletExtension.Serve(walletExtensionAddr)
 	err = waitForWalletExtension(walletExtensionAddr)
 	if err != nil {
-		return fmt.Errorf("failed to create test Obscuro network. Cause: %s", err), obscuroNetwork.TearDown
+		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}
 
 	// Set up the ERC20 wallet.
 	erc20Wallet := wallets.Tokens[bridge.HOC].L2Owner
 	err = generateAndSubmitViewingKey(erc20Wallet.Address().Hex(), erc20Wallet.PrivateKey())
 	if err != nil {
-		return fmt.Errorf("failed to create test Obscuro network. Cause: %s", err), obscuroNetwork.TearDown
+		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}
 	err = fundAccount(erc20Wallet.Address())
 	if err != nil {
-		return fmt.Errorf("failed to create test Obscuro network. Cause: %s", err), obscuroNetwork.TearDown
+		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}
 
 	_, err = sendTransactionAndAwaitConfirmation(erc20Wallet, deployERC20Tx)
-	return err, obscuroNetwork.TearDown
+	return obscuroNetwork.TearDown, err
 }
 
 // Generates a new account and registers it with the node.
