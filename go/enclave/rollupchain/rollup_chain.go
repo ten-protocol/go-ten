@@ -125,7 +125,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 
 		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
 	}
-	enc, err := rc.encryptEvents(subscribedEvents)
+	enc, err := rc.subscriptionManager.EncryptEvents(subscribedEvents)
 	if err != nil {
 		log.Panic("%s", err)
 	}
@@ -245,7 +245,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	}
 
 	stateDB := rc.storage.CreateStateDB(head.Header.ParentHash)
-	subscribedReceipts := rc.dispatchEvents(events, stateDB)
+	subscribedReceipts := rc.subscriptionManager.ExtractEvents(events, stateDB)
 
 	// todo - double check he recursivity logic, once properly hooked up
 
@@ -517,7 +517,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 
 	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
-	enc, err := rc.encryptEvents(events)
+	enc, err := rc.subscriptionManager.EncryptEvents(events)
 	if err != nil {
 		log.Panic("%s", err)
 	}
@@ -805,12 +805,4 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		rollup = maybeRollup
 	}
 	return rollup, nil
-}
-
-func (rc *RollupChain) dispatchEvents(events []*types.Log, stateDB *state.StateDB) map[uuid.UUID][]*types.Log {
-	return rc.subscriptionManager.ExtractEvents(events, stateDB)
-}
-
-func (rc *RollupChain) encryptEvents(eventsPerSubscription map[uuid.UUID][]*types.Log) (result map[uuid.UUID]common.EncryptedEvents, err error) {
-	return rc.subscriptionManager.EncryptEvents(eventsPerSubscription)
 }
