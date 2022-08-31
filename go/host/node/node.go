@@ -258,10 +258,6 @@ func (a *Node) EnclaveClient() common.Enclave {
 	return a.enclaveClient
 }
 
-func (a *Node) P2P() host.P2P {
-	return a.p2p
-}
-
 func (a *Node) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
