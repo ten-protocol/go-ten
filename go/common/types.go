@@ -178,3 +178,18 @@ func (h *Header) Hash() L2RootHash {
 	}
 	return hash
 }
+
+// LogSubscription contains information about a log subscription, including a list of authenticated accounts for the subscription.
+type LogSubscription struct {
+	Accounts []*SubscriptionAccount
+	// todo Filters - the geth log filters
+}
+
+// SubscriptionAccount is an authenticated account used for subscribing to logs.
+type SubscriptionAccount struct {
+	// The account the events relate to.
+	Account common.Address
+	// A signature over the subscription ID using the private viewing key. Prevents attackers from subscribing to
+	// (encrypted) logs for other accounts to see the pattern of logs.
+	Signature []byte
+}

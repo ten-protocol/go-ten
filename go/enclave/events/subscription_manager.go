@@ -5,8 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
@@ -14,7 +12,7 @@ import (
 )
 
 type SubscriptionManager struct {
-	subscriptions map[uuid.UUID]logSubscription
+	subscriptions map[uuid.UUID]*common.LogSubscription
 }
 
 func NewSubscriptionManager() *SubscriptionManager {
@@ -25,16 +23,16 @@ func NewSubscriptionManager() *SubscriptionManager {
 func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedLogSubscription) error {
 	// todo - decrypt the subscription
 
-	var sub logSubscription
-	if err := rlp.DecodeBytes(encryptedSubscription, &sub); err != nil {
+	var subscription common.LogSubscription
+	if err := rlp.DecodeBytes(encryptedSubscription, &subscription); err != nil {
 		return fmt.Errorf("could not decode encoded log subscription. Cause: %w", err)
 	}
 
-	for _, account := range sub.accounts {
+	for _, account := range subscription.Accounts {
 		println(account) // todo - check that each account is signed correctly
 	}
 
-	s.subscriptions[id] = sub
+	s.subscriptions[id] = &subscription
 	return nil
 }
 
@@ -50,7 +48,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, stateDB *sta
 
 	for _, log := range logs {
 		for subID, sub := range s.subscriptions {
-			isRelevant, _ := sub.isRelevant(log, stateDB)
+			isRelevant, _ := isRelevant(sub, log, stateDB)
 			// todo return the account somehow, maybe as a tuple with the log
 			if !isRelevant {
 				continue
@@ -90,25 +88,10 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 
 // Indicates whether the log is relevant for any subscription, and returns the matching subscription account if so.
 // A lifecycle log is considered relevant to everyone.
-func (s logSubscription) isRelevant(log *types.Log, db *state.StateDB) (bool, *subscriptionAccount) {
+func isRelevant(sub *common.LogSubscription, log *types.Log, db *state.StateDB) (bool, *common.SubscriptionAccount) {
 	// todo - extract addresses from the logs
 	// todo - work out if this is an account or lifecycle log
 	// todo - if the former, establish whether it is relevant to any subscription
 	// todo - return the first account for which the log matches, so it can be used for encryption
 	return true, nil
-}
-
-// Information about a log subscription, including a list of authenticated accounts for the subscription.
-type logSubscription struct {
-	accounts []*subscriptionAccount
-	// todo Filters - the geth log filters
-}
-
-// SubscriptionAccount is an authenticated account used for subscribing to logs.
-type subscriptionAccount struct {
-	// The account the events relate to.
-	account gethcommon.Address
-	// A signature over the subscription ID using the private viewing key. Prevents attackers from subscribing to
-	// (encrypted) logs for other accounts to see the pattern of logs.
-	signature []byte
 }
