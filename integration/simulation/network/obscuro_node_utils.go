@@ -39,7 +39,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			isGenesis,
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			params.AvgNetworkLatency,
+			params.AvgGossipPeriod,
 			stats,
 			true,
 			genesisJSON,

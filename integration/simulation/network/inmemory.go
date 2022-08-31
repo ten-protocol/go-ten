@@ -55,7 +55,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			isGenesis,
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			params.AvgNetworkLatency,
+			params.AvgGossipPeriod,
 			stats,
 			false,
 			nil,
