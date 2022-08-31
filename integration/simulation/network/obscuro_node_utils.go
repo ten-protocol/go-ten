@@ -27,6 +27,11 @@ import (
 )
 
 func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) ([]rpcclientlib.Client, map[string][]*obsclient.AuthObsClient) {
+	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
+	for i := 0; i < params.NumberOfNodes; i++ {
+		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgGossipPeriod)
+	}
+
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -36,8 +41,6 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			isGenesis,
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			params.AvgGossipPeriod,
-			params.AvgBlockDuration,
 			params.AvgNetworkLatency,
 			stats,
 			true,
@@ -45,12 +48,12 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			params.Wallets,
+			p2pLayers[i],
 		)
 	}
 	// make sure the aggregators can talk to each other
-	for _, m := range obscuroNodes {
-		mockP2P := m.P2P().(*p2p.MockP2P)
-		mockP2P.Nodes = obscuroNodes
+	for i := 0; i < params.NumberOfNodes; i++ {
+		p2pLayers[i].Nodes = obscuroNodes
 	}
 
 	// start each obscuro node

@@ -43,6 +43,11 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	dummyETHAddress := common.HexToAddress("BB")
 	params.Wallets.Tokens[bridge.POC].L1ContractAddress = &dummyETHAddress
 
+	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
+	for i := 0; i < params.NumberOfNodes; i++ {
+		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgGossipPeriod)
+	}
+
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
@@ -53,8 +58,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			isGenesis,
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			params.AvgGossipPeriod,
-			params.AvgBlockDuration,
 			params.AvgNetworkLatency,
 			stats,
 			false,
@@ -62,6 +65,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.Wallets.NodeWallets[i],
 			miner,
 			params.Wallets,
+			p2pLayers[i],
 		)
 		obscuroClient := p2p.NewInMemObscuroClient(agg)
 
@@ -77,8 +81,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
-		mockP2P := obscuroNodes[i].P2P().(*p2p.MockP2P)
-		mockP2P.Nodes = obscuroNodes
+		p2pLayers[i].Nodes = obscuroNodes
 	}
 
 	// The sequence of starting the nodes is important to catch various edge cases.
