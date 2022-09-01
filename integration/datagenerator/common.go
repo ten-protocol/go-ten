@@ -39,7 +39,7 @@ func randomUInt64() uint64 {
 
 func randomWithdrawal() common.Withdrawal {
 	return common.Withdrawal{
-		Amount:    randomUInt64(),
+		Amount:    common.ValueInWei(big.NewInt(int64(randomUInt64()))),
 		Recipient: RandomAddress(),
 	}
 }

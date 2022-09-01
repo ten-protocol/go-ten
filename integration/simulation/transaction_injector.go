@@ -194,7 +194,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
 		txData := &ethadapter.L1DepositTx{
-			Amount:        v,
+			Amount:        common.ValueInWei(big.NewInt(int64(v))),
 			To:            ti.mgmtContractAddr,
 			TokenContract: ti.wallets.Tokens[bridge.HOC].L1ContractAddress,
 			Sender:        &addr,
@@ -214,7 +214,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			panic(err)
 		}
 
-		ti.stats.Deposit(v)
+		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
 		go ti.TxTracker.trackL1Tx(txData)
 		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
@@ -242,7 +242,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			continue
 		}
 
-		ti.stats.Withdrawal(v)
+		ti.stats.Withdrawal(common.ValueInWei(big.NewInt(int64(v))))
 		go ti.TxTracker.trackWithdrawalL2Tx(signedTx)
 		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
@@ -295,17 +295,17 @@ func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
 }
 
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
-	data := erc20contractlib.CreateTransferTxData(dest, amount)
+	data := erc20contractlib.CreateTransferTxData(dest, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(data, NextNonce(ti.ctx, ti.rpcHandles, from))
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
+	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(transferERC20data, NextNonce(ti.ctx, ti.rpcHandles, from))
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, amount)
+	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(transferERC20data, 1)
 }
 

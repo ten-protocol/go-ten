@@ -89,7 +89,7 @@ func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address) uint64 {
+func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address) *big.Int {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
 	callMsg := ethereum.CallMsg{
@@ -105,7 +105,7 @@ func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethc
 	b := new(big.Int)
 	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
 	b.SetString(string(response)[2:], 16)
-	return b.Uint64()
+	return b
 }
 
 // FindHashDups - returns a map of all hashes that appear multiple times, and how many times

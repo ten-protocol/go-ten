@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"math/big"
 	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -24,8 +25,8 @@ type Stats struct {
 	NoL2Blocks  map[gethcommon.Address]uint64
 	// todo - actual avg block Duration
 
-	TotalDepositedAmount           uint64
-	TotalWithdrawalRequestedAmount uint64
+	TotalDepositedAmount           *big.Int
+	TotalWithdrawalRequestedAmount *big.Int
 	RollupWithMoreRecentProofCount uint64
 	NrTransferTransactions         int
 	statsMu                        *sync.RWMutex
@@ -33,11 +34,13 @@ type Stats struct {
 
 func NewStats(nrMiners int) *Stats {
 	return &Stats{
-		NrMiners:    nrMiners,
-		NoL1Reorgs:  map[gethcommon.Address]int{},
-		NoL2Recalcs: map[gethcommon.Address]int{},
-		NoL2Blocks:  map[gethcommon.Address]uint64{},
-		statsMu:     &sync.RWMutex{},
+		NrMiners:                       nrMiners,
+		NoL1Reorgs:                     map[gethcommon.Address]int{},
+		NoL2Recalcs:                    map[gethcommon.Address]int{},
+		NoL2Blocks:                     map[gethcommon.Address]uint64{},
+		TotalDepositedAmount:           big.NewInt(0),
+		TotalWithdrawalRequestedAmount: big.NewInt(0),
+		statsMu:                        &sync.RWMutex{},
 	}
 }
 
@@ -69,9 +72,9 @@ func (s *Stats) NewRollup(node gethcommon.Address) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) Deposit(v uint64) {
+func (s *Stats) Deposit(v *big.Int) {
 	s.statsMu.Lock()
-	s.TotalDepositedAmount += v
+	s.TotalDepositedAmount.Add(s.TotalDepositedAmount, v)
 	s.statsMu.Unlock()
 }
 
@@ -81,9 +84,9 @@ func (s *Stats) Transfer() {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) Withdrawal(v uint64) {
+func (s *Stats) Withdrawal(v *big.Int) {
 	s.statsMu.Lock()
-	s.TotalWithdrawalRequestedAmount += v
+	s.TotalWithdrawalRequestedAmount = s.TotalWithdrawalRequestedAmount.Add(s.TotalWithdrawalRequestedAmount, v)
 	s.statsMu.Unlock()
 }
 
