@@ -30,7 +30,7 @@ const (
 	allocObsWallets = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
-var initialBalance = big.NewInt(5000*10 ^ 18) // balance in wei (1 HOC = 10^18 HOC-wei)
+var initialBalance = common.ValueInWei(big.NewInt(5000))
 
 // Simulation represents all the data required to inject transactions on a network
 type Simulation struct {
