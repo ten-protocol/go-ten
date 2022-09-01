@@ -79,6 +79,7 @@ func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg,
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) error {
+	signedTx.Data()
 	return ac.rpcClient.CallContext(ctx, nil, rpc.RPCSendRawTransaction, encodeTx(signedTx))
 }
 
@@ -92,4 +93,8 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	}
 	balance, err := hexutil.DecodeBig(result)
 	return balance, err
+}
+
+func (ac *AuthObsClient) Address() common.Address {
+	return ac.account
 }
