@@ -2,13 +2,12 @@ package common
 
 import "math/big"
 
-// Analagous to denomination.go constants in geth
+// Analogous to denomination.go constants in geth
 
 // These are the multipliers for ERC20 and native OBX value denominations
 // Example: To get the wei value of an amount in whole tokens, use
 //
-//    new(big.Int).Mul(value, big.NewInt(common.Token))
-//
+//	new(big.Int).Mul(value, big.NewInt(common.Token))
 var (
 	Wei   = big.NewInt(1)
 	GWei  = big.NewInt(1e9)
