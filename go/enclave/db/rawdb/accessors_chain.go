@@ -3,6 +3,7 @@ package rawdb
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
@@ -182,25 +183,30 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) *core.BlockSt
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs map[uuid.UUID][]*types.Log) {
-	bytes, err := rlp.EncodeToBytes(logs)
-	if err != nil {
+	buffer := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buffer)
+	if err := encoder.Encode(logs); err != nil {
 		log.Panic("could not encode logs. Cause: %s", err)
 	}
-	if err := db.Put(logsKey(blockHash), bytes); err != nil {
+
+	if err := db.Put(logsKey(blockHash), buffer.Bytes()); err != nil {
 		log.Panic("could not put logs in DB. Cause: %s", err)
 	}
 }
 
-func ReadBlockLogs(kv ethdb.KeyValueReader, hash gethcommon.Hash) map[uuid.UUID][]*types.Log {
-	data, _ := kv.Get(logsKey(hash))
+func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) map[uuid.UUID][]*types.Log {
+	data, _ := kv.Get(logsKey(blockHash))
 	if data == nil {
 		return nil
 	}
-	var logs map[uuid.UUID][]*types.Log
-	if err := rlp.Decode(bytes.NewReader(data), logs); err != nil {
-		log.Panic("could not decode block state. Cause: %s", err)
+
+	decoder := gob.NewDecoder(bytes.NewBuffer(data))
+	var logsRLP map[uuid.UUID][]*types.Log
+	if err := decoder.Decode(&logsRLP); err != nil {
+		log.Panic("could not decode logs. Cause: %s", err)
 	}
-	return logs
+
+	return map[uuid.UUID][]*types.Log{} // todo - joel - return proper value
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
