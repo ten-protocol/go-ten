@@ -31,7 +31,6 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 	}
 
 	s.subscriptions[id] = &subscription
-	println("jjj added subscription")
 	return nil
 }
 
@@ -40,7 +39,6 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 // TODO - #453 - Consider whether the deletion needs to be authenticated as well, to prevent attackers deleting subscriptions.
 func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
-	println("jjj deleted subscription")
 }
 
 // FilterRelevantLogs returns only those logs for which one or more subscriptions exist.
@@ -49,17 +47,17 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUI
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	for _, log := range logs {
-		for subID, sub := range s.subscriptions {
-			logIsRelevant, _ := isRelevant(sub, log)
+		for subscriptionID, subscription := range s.subscriptions {
+			logIsRelevant, _ := isRelevant(log, subscription)
 			if !logIsRelevant {
 				continue
 			}
 
-			logsForSubID, found := relevantLogs[subID]
+			logsForSubID, found := relevantLogs[subscriptionID]
 			if !found {
-				relevantLogs[subID] = []*types.Log{log}
+				relevantLogs[subscriptionID] = []*types.Log{log}
 			} else {
-				relevantLogs[subID] = append(logsForSubID, log)
+				relevantLogs[subscriptionID] = append(logsForSubID, log)
 			}
 		}
 	}
@@ -90,7 +88,7 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 // Indicates whether the log is relevant for any subscription, and returns the matching subscription account if so.
 // A lifecycle log is considered relevant to everyone.
 // TODO - #453 - Filter logs, instead of considering all logs relevant to everyone.
-func isRelevant(sub *common.LogSubscription, log *types.Log) (bool, *common.SubscriptionAccount) {
+func isRelevant(log *types.Log, sub *common.LogSubscription) (bool, *common.SubscriptionAccount) {
 	// Extract addresses from the logs
 	// Work out if this is an account or lifecycle log
 	// If the former, establish whether it is relevant to any subscription

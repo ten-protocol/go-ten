@@ -255,10 +255,6 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		logs = append(logs, receipt.Logs...)
 	}
 
-	if len(logs) != 0 {
-		println("jjj actually got some logs")
-	}
-
 	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs)
 
 	// TODO - #453 - Double-check the recursive logic, once properly hooked up.
