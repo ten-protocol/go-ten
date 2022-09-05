@@ -509,14 +509,13 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
 }
 
-// Subscribe registers a new event subscription. The events will be populated in the BlockSubmissionResponse
 func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
 	return e.subscriptionManager.AddSubscription(id, subscription)
 }
 
-// Unsubscribe - removes a subscription
-func (e *enclaveImpl) Unsubscribe(id uuid.UUID) {
-	e.subscriptionManager.DeleteSubscription(id)
+func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {
+	e.subscriptionManager.RemoveSubscription(id)
+	return nil
 }
 
 func (e *enclaveImpl) IsInitialised() bool {

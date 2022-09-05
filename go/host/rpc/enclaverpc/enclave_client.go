@@ -406,6 +406,17 @@ func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscri
 	return err
 }
 
-func (c *Client) Unsubscribe(id uuid.UUID) {
-	// todo
+func (c *Client) Unsubscribe(id uuid.UUID) error {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	idBinary, err := id.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("could not marshall subscription ID to binary. Cause: %w", err)
+	}
+
+	_, err = c.protoClient.Unsubscribe(timeoutCtx, &generated.UnsubscribeRequest{
+		Id: idBinary,
+	})
+	return err
 }

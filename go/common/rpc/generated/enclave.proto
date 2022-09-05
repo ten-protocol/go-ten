@@ -4,6 +4,7 @@ option go_package = "enclave/rpc/generated";
 
 package generated;
 
+// TODO - Remove these comments which duplicate those in common/enclave.go.
 service EnclaveProto {
   // IsReady is used to check whether the server is ready for requests.
   rpc IsReady(IsReadyRequest) returns (IsReadyResponse) {}
@@ -81,6 +82,8 @@ service EnclaveProto {
   rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
 
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
+
+  rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse) {}
 }
 
 message IsReadyRequest {}
@@ -236,6 +239,11 @@ message SubscribeRequest {
   bytes encryptedSubscription = 2;
 }
 message SubscribeResponse {}
+
+message UnsubscribeRequest {
+  bytes id = 1;
+}
+message UnsubscribeResponse {}
 
 // Nested message types.
 

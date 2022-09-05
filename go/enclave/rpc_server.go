@@ -254,6 +254,16 @@ func (s *server) Subscribe(_ context.Context, req *generated.SubscribeRequest) (
 	return &generated.SubscribeResponse{}, err
 }
 
+func (s *server) Unsubscribe(_ context.Context, req *generated.UnsubscribeRequest) (*generated.UnsubscribeResponse, error) {
+	id, err := uuid.FromBytes(req.Id)
+	if err != nil {
+		return &generated.UnsubscribeResponse{}, fmt.Errorf("could not deserialise UUID. Cause: %w", err)
+	}
+
+	err = s.enclave.Unsubscribe(id)
+	return &generated.UnsubscribeResponse{}, err
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

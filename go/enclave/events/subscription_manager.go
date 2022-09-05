@@ -21,10 +21,9 @@ func NewSubscriptionManager() *SubscriptionManager {
 	}
 }
 
-// AddSubscription adds a log subscription to the enclave, provided the request is authenticated correctly.
+// AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
+// correctly. If there is an existing subscription with the given ID, it is overwritten.
 func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedLogSubscription) error {
-	println("jjj received subscription request")
-
 	// TODO - #453 - Encryption of subscriptions.
 
 	var subscription common.LogSubscription
@@ -35,13 +34,16 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 	// TODO - #453 - Check each account is signed.
 
 	s.subscriptions[id] = &subscription
+	println("jjj added subscription")
 	return nil
 }
 
-// DeleteSubscription removes a log subscription from the enclave.
+// RemoveSubscription removes the log subscription with the given ID from the enclave. If there is no subscription with
+// the given ID, nothing is deleted.
 // TODO - Consider whether the deletion needs to be authenticated as well, to prevent attackers deleting subscriptions.
-func (s *SubscriptionManager) DeleteSubscription(id uuid.UUID) {
+func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
+	println("jjj deleted subscription")
 }
 
 // FilterRelevantLogs returns only those logs for which one or more subscriptions exist.
