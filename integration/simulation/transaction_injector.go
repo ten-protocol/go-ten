@@ -331,7 +331,7 @@ func NextNonce(ctx context.Context, clients *network.RPCHandles, w wallet.Wallet
 
 	// only returns the nonce when the previous transaction was recorded
 	for {
-		remoteNonce, err := clients.ObscuroWalletRndClient(w).NonceAt(ctx, w.Address(), nil)
+		remoteNonce, err := clients.ObscuroWalletRndClient(w).NonceAt(ctx, nil)
 		if err != nil {
 			panic(err)
 		}

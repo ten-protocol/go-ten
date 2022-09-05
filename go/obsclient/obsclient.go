@@ -11,7 +11,7 @@ import (
 //
 // The methods in this client are analogous to the methods in geth's EthClient and should behave the same unless noted otherwise.
 type ObsClient struct {
-	RPCClient rpc.Client
+	rpcClient rpc.Client
 }
 
 func Dial(rawurl string) (*ObsClient, error) {
@@ -27,7 +27,7 @@ func NewObsClient(c rpc.Client) *ObsClient {
 }
 
 func (oc *ObsClient) Close() {
-	oc.RPCClient.Stop()
+	oc.rpcClient.Stop()
 }
 
 // Blockchain Access
@@ -35,7 +35,7 @@ func (oc *ObsClient) Close() {
 // ChainID retrieves the current chain ID for transaction replay protection.
 func (oc *ObsClient) ChainID() (*big.Int, error) {
 	var result hexutil.Big
-	err := oc.RPCClient.Call(&result, rpc.RPCChainID)
+	err := oc.rpcClient.Call(&result, rpc.RPCChainID)
 	if err != nil {
 		return nil, err
 	}
