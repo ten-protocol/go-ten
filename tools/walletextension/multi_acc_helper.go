@@ -46,7 +46,7 @@ func suggestAccountClient(req *rpcRequest, accClients map[common.Address]*rpc.En
 	if req.method == rpc.RPCCall {
 		// Otherwise, we search the `data` field for an address matching a registered viewing key.
 		addr, err := searchDataFieldForAccount(paramsMap, accClients)
-		if err == nil && addr != nil {
+		if err == nil {
 			return accClients[*addr]
 		}
 	}
@@ -89,7 +89,7 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	// We check that the data field is long enough before removing the leading "0x" (1 bytes/2 chars) and the method ID
 	// (4 bytes/8 chars).
 	if len(dataString) < 10 {
-		return nil, nil //nolint:nilnil
+		return nil, fmt.Errorf("data field is not long enough - no known account found in data bytes")
 	}
 	dataString = dataString[10:]
 
