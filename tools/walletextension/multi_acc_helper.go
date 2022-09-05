@@ -46,7 +46,7 @@ func suggestAccountClient(req *rpcRequest, accClients map[common.Address]*rpc.En
 	if req.method == rpc.RPCCall {
 		// Otherwise, we search the `data` field for an address matching a registered viewing key.
 		addr, err := searchDataFieldForAccount(paramsMap, accClients)
-		if err == nil {
+		if err == nil && addr != nil {
 			return accClients[*addr]
 		}
 	}
