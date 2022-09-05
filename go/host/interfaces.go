@@ -5,7 +5,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 )
 
@@ -31,15 +30,11 @@ type Host interface {
 type MockHost interface {
 	Host
 
-	// TODO - Remove this method.
-	P2P() P2P
 	// MockedNewHead receives the notification of new blocks.
 	// TODO - Remove this method.
 	MockedNewHead(b common.EncodedBlock, p common.EncodedBlock)
 	// MockedNewFork receives the notification of a new fork.
 	MockedNewFork(b []common.EncodedBlock)
-	// ConnectToEthNode connects the Aggregator to the Ethereum node.
-	ConnectToEthNode(node ethadapter.EthClient)
 }
 
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.

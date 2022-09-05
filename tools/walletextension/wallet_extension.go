@@ -3,6 +3,7 @@ package walletextension
 import (
 	"context"
 	"embed"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,13 +12,14 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -30,6 +32,7 @@ const (
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "static"
+	obscuroDirName         = ".obscuro"
 
 	reqJSONKeyID        = "id"
 	reqJSONKeyMethod    = "method"
@@ -52,6 +55,13 @@ const (
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+
+	persistenceFileName      = "wallet_extension_persistence"
+	persistenceNumComponents = 4
+	persistenceIdxHost       = 0
+	persistenceIdxAccount    = 1
+	persistenceIdxViewingKey = 2
+	persistenceIdxSignedKey  = 3
 )
 
 //go:embed static
@@ -59,12 +69,13 @@ var staticFiles embed.FS
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecies.PublicKey                              // The public key used to encrypt requests for the enclave.
-	hostAddr         string                                        // The address on which the Obscuro host can be reached.
-	accountClients   map[common.Address]*rpcclientlib.EncRPCClient // an encrypted RPC client per registered account
-	unsignedVKs      map[common.Address]*rpcclientlib.ViewingKey   // map temporarily holding VKs that have been generated but not yet signed
+	enclavePublicKey *ecies.PublicKey                     // The public key used to encrypt requests for the enclave.
+	hostAddr         string                               // The address on which the Obscuro host can be reached.
+	accountClients   map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	unauthedClient   rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
+	unsignedVKs      map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
 	server           *http.Server
-	unauthedClient   rpcclientlib.Client // The default, un-authenticated client.
+	persistencePath  string // The path of the file used to store the submitted viewing keys
 }
 
 type rpcRequest struct {
@@ -74,26 +85,40 @@ type rpcRequest struct {
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
+	setUpLogs(config.LogPath)
+
 	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
 		log.Panic("%s", err)
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	unauthedClient, err := rpcclientlib.NewNetworkClient(config.NodeRPCHTTPAddress)
+	unauthedClient, err := rpc.NewNetworkClient(config.NodeRPCHTTPAddress)
 	if err != nil {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
 
-	setLogs(config.LogPath)
-
-	return &WalletExtension{
+	walletExtension := &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
 		hostAddr:         config.NodeRPCHTTPAddress,
-		accountClients:   make(map[common.Address]*rpcclientlib.EncRPCClient),
-		unsignedVKs:      make(map[common.Address]*rpcclientlib.ViewingKey),
+		accountClients:   make(map[common.Address]*rpc.EncRPCClient),
+		unsignedVKs:      make(map[common.Address]*rpc.ViewingKey),
 		unauthedClient:   unauthedClient,
+		persistencePath:  setUpPersistence(config.PersistencePathOverride),
 	}
+
+	// We reload the existing viewing keys from persistence.
+	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
+		// create an encrypted RPC client with the signed VK and register it with the enclave
+		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
+		if err != nil {
+			log.Error("failed to create encrypted RPC client for account %s. Cause: %s", accountAddr, err)
+			continue
+		}
+		walletExtension.accountClients[accountAddr] = client
+	}
+
+	return walletExtension
 }
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
@@ -130,8 +155,8 @@ func (we *WalletExtension) Shutdown() {
 	}
 }
 
-// Sets the log file.
-func setLogs(logPath string) {
+// Sets up the log file.
+func setUpLogs(logPath string) {
 	if logPath == "" {
 		return
 	}
@@ -140,6 +165,31 @@ func setLogs(logPath string) {
 		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 	}
 	log.OutputToFile(logFile)
+}
+
+// Sets up the persistence file and returns its path. Defaults to the user's home directory if the path is empty.
+func setUpPersistence(persistenceFilePath string) string {
+	// We set the default if the persistence file is not overridden.
+	if persistenceFilePath == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			panic("cannot create persistence file as user's home directory is not defined")
+		}
+		obscuroDir := filepath.Join(homeDir, obscuroDirName)
+		err = os.MkdirAll(obscuroDir, 0o777)
+		if err != nil {
+			panic(fmt.Sprintf("could not create %s directory in user's home directory", obscuroDirName))
+		}
+
+		persistenceFilePath = filepath.Join(obscuroDir, persistenceFileName)
+	}
+
+	_, err := os.OpenFile(persistenceFilePath, os.O_CREATE|os.O_RDONLY, 0o644)
+	if err != nil {
+		panic(fmt.Sprintf("could not create persistence file. Cause: %s", err))
+	}
+
+	return persistenceFilePath
 }
 
 // Used to check whether the server is ready.
@@ -173,7 +223,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-		if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+		if !errors.Is(err, rpc.ErrNilResponse) {
 			logAndSendErr(resp, fmt.Sprintf("rpc request failed: %s", err))
 			return
 		}
@@ -268,7 +318,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
-	we.unsignedVKs[accAddress] = &rpcclientlib.ViewingKey{
+	we.unsignedVKs[accAddress] = &rpc.ViewingKey{
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
@@ -319,12 +369,13 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
-	client, err := rpcclientlib.NewEncNetworkClient(we.hostAddr, vk)
+	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("failed to create encrypted RPC client for acc=%s - %s", accAddress, err))
 	}
 	we.accountClients[accAddress] = client
 
+	we.persistViewingKey(vk)
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(we.unsignedVKs, accAddress)
 }
@@ -348,6 +399,92 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 	return args, nil
 }
 
+// Stores a viewing key to disk.
+func (we *WalletExtension) persistViewingKey(viewingKey *rpc.ViewingKey) {
+	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
+
+	record := []string{
+		we.hostAddr,
+		viewingKey.Account.Hex(),
+		// We encode the bytes as hex to ensure there are no unintentional line breaks to make parsing the file harder.
+		hex.EncodeToString(viewingPrivateKeyBytes),
+		hex.EncodeToString(viewingKey.SignedKey),
+	}
+
+	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	defer persistenceFile.Close() //nolint:staticcheck
+	if err != nil {
+		log.Error("could not open persistence file. Cause: %s", err)
+	}
+
+	writer := csv.NewWriter(persistenceFile)
+	defer writer.Flush()
+	err = writer.Write(record)
+	if err != nil {
+		log.Error("failed to write viewing key to persistence file. Cause: %s", err)
+	}
+}
+
+// Loads any viewing keys from disk. Viewing keys for other hosts are ignored.
+func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpc.ViewingKey {
+	viewingKeys := make(map[common.Address]*rpc.ViewingKey)
+
+	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_RDONLY, 0o644)
+	defer persistenceFile.Close() //nolint:staticcheck
+	if err != nil {
+		log.Error("could not open persistence file. Cause: %s", err)
+	}
+
+	reader := csv.NewReader(persistenceFile)
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Error("could not read records from persistence file. Cause: %s", err)
+	}
+
+	for _, record := range records {
+		// TODO - Determine strategy for invalid persistence entries - delete? Warn? Shutdown? For now, we log a warning.
+		if len(record) != persistenceNumComponents {
+			log.Warn("persistence file entry did not have expected number of components: %s", record)
+			continue
+		}
+
+		hostAddr := record[persistenceIdxHost]
+		if hostAddr != we.hostAddr {
+			log.Info("skipping persistence file entry for another host. Current host is %s, entry was for %s", we.hostAddr, hostAddr)
+			continue
+		}
+
+		account := common.HexToAddress(record[persistenceIdxAccount])
+		viewingKeyPrivateHex := record[persistenceIdxViewingKey]
+		viewingKeyPrivateBytes, err := hex.DecodeString(viewingKeyPrivateHex)
+		if err != nil {
+			log.Warn("could not decode the following viewing private key from hex in the persistence file: %s", viewingKeyPrivateHex)
+			continue
+		}
+		viewingKeyPrivate, err := crypto.ToECDSA(viewingKeyPrivateBytes)
+		if err != nil {
+			log.Warn("could not convert the following viewing private key bytes to ECDSA in the persistence file: %s", viewingKeyPrivateHex)
+			continue
+		}
+		signedKeyHex := record[persistenceIdxSignedKey]
+		signedKey, err := hex.DecodeString(signedKeyHex)
+		if err != nil {
+			log.Warn("could not decode the following signed key from hex in the persistence file: %s", signedKeyHex)
+			continue
+		}
+
+		viewingKey := rpc.ViewingKey{
+			Account:    &account,
+			PrivateKey: ecies.ImportECDSA(viewingKeyPrivate),
+			PublicKey:  crypto.CompressPubkey(&viewingKeyPrivate.PublicKey),
+			SignedKey:  signedKey,
+		}
+		viewingKeys[account] = &viewingKey
+	}
+
+	return viewingKeys
+}
+
 // Logs the error message and sends it as an HTTP error.
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	log.Error(msg)
@@ -361,4 +498,5 @@ type Config struct {
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
+	PersistencePathOverride string // Overrides the persistence file location. Used in tests.
 }

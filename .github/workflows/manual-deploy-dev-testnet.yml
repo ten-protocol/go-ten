@@ -157,26 +157,13 @@ jobs:
     steps:
       - name: 'Extract branch name'
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
         id: extract_branch
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Create VM LoadBalancing NIC Obscuro node-${{ matrix.host_id }} on Azure'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az vm create -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
-            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=Dev-ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} devtestnetlatest=true \
-            --vnet-name Dev-ObscuroHostTestnet01VNET --subnet Dev-ObscuroHostTestnet01Subnet \
-            --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
-            --public-ip-sku Basic --authentication-type password
-
 
       - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
@@ -185,7 +172,7 @@ jobs:
             az vm create -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=Dev-ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}  devtestnetlatest=true \
+            --tags deploygroup=Dev-ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} devtestnetlatest=true \
             --vnet-name Dev-ObscuroHostTestnet01VNET --subnet Dev-ObscuroHostTestnet01Subnet \
             --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
             --public-ip-sku Basic --authentication-type password

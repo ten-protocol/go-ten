@@ -4,14 +4,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 type networkInMemGeth struct {
-	obscuroClients []rpcclientlib.Client
+	obscuroClients []rpc.Client
 
 	// geth
 	gethNetwork *gethnetwork.GethNetwork
@@ -39,13 +39,14 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
 	// Start the obscuro nodes and return the handles
-	var walletClients map[string][]rpcclientlib.Client
-	n.obscuroClients, walletClients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
+	n.obscuroClients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
+
+	walletClients := createAuthClientsPerWallet(n.obscuroClients, params.Wallets)
 
 	return &RPCHandles{
-		EthClients:                    n.gethClients,
-		ObscuroClients:                n.obscuroClients,
-		VirtualWalletExtensionClients: walletClients,
+		EthClients:     n.gethClients,
+		ObscuroClients: n.obscuroClients,
+		AuthObsClients: walletClients,
 	}, nil
 }
 

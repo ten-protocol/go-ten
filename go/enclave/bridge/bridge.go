@@ -175,7 +175,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 
 // NewDepositTx creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
 // Todo - has to go through a few more iterations
-func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcommon.Address, amount uint64, rollupState *state.StateDB, adjustNonce uint64) *common.L2Tx {
+func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcommon.Address, amount *big.Int, rollupState *state.StateDB, adjustNonce uint64) *common.L2Tx {
 	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
 	signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
 
@@ -273,7 +273,7 @@ func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore
 				state.Logs()
 				w = append(w, common.Withdrawal{
 					Contract:  *supportedTokenAddress,
-					Amount:    amount.Uint64(),
+					Amount:    amount,
 					Recipient: from,
 				})
 			}

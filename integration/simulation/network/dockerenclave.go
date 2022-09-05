@@ -13,7 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -30,7 +30,7 @@ const (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type basicNetworkOfNodesWithDockerEnclave struct {
-	obscuroClients   []rpcclientlib.Client
+	obscuroClients   []rpc.Client
 	hostRPCAddresses []string
 	enclaveAddresses []string
 
@@ -80,14 +80,16 @@ func (n *basicNetworkOfNodesWithDockerEnclave) Create(params *params.SimParams, 
 	}
 
 	// Start the standalone obscuro nodes connected to the enclaves and to the geth nodes
-	obscuroClients, walletClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 	n.hostRPCAddresses = hostRPCAddresses
 
+	walletClients := createAuthClientsPerWallet(n.obscuroClients, params.Wallets)
+
 	return &RPCHandles{
-		EthClients:                    n.gethClients,
-		ObscuroClients:                obscuroClients,
-		VirtualWalletExtensionClients: walletClients,
+		EthClients:     n.gethClients,
+		ObscuroClients: obscuroClients,
+		AuthObsClients: walletClients,
 	}, nil
 }
 

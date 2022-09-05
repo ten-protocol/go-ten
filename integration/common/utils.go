@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -8,13 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 const (
@@ -37,13 +40,12 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
 // transaction is unsuccessful or times out.
-func AwaitReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) error {
-	var receipt types.Receipt
+func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash) error {
 	counter := 0
 	for {
-		err := client.Call(&receipt, rpcclientlib.RPCGetTxReceipt, txHash)
+		receipt, err := client.TransactionReceipt(ctx, txHash)
 		if err != nil {
-			if !errors.Is(err, rpcclientlib.ErrNilResponse) {
+			if !errors.Is(err, rpc.ErrNilResponse) {
 				return err
 			}
 
@@ -78,7 +80,7 @@ func EncodeTx(tx *common.L2Tx) string {
 
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
 // The transactions are sent with sequential nonces, starting with `startingNonce`.
-func PrefundWallets(faucetWallet wallet.Wallet, faucetClient rpcclientlib.Client, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int) {
+func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClient *obsclient.AuthObsClient, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int) {
 	// We send the transactions serially, so that we can precompute the nonces.
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
@@ -95,7 +97,7 @@ func PrefundWallets(faucetWallet wallet.Wallet, faucetClient rpcclientlib.Client
 			panic(err)
 		}
 
-		err = faucetClient.Call(nil, rpcclientlib.RPCSendRawTransaction, EncodeTx(signedTx))
+		err = faucetClient.SendTransaction(ctx, signedTx)
 		if err != nil {
 			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
 		}
@@ -109,7 +111,7 @@ func PrefundWallets(faucetWallet wallet.Wallet, faucetClient rpcclientlib.Client
 		wg.Add(1)
 		go func(txHash gethcommon.Hash) {
 			defer wg.Done()
-			err := AwaitReceipt(faucetClient, txHash)
+			err := AwaitReceipt(ctx, faucetClient, txHash)
 			if err != nil {
 				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
 			}

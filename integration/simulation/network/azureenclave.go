@@ -8,7 +8,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -25,7 +25,7 @@ type networkWithAzureEnclaves struct {
 	gethClients []ethadapter.EthClient
 	wallets     *params.SimWallets
 
-	obscuroClients  []rpcclientlib.Client
+	obscuroClients  []rpc.Client
 	azureEnclaveIps []string
 
 	hostRPCAddresses []string
@@ -71,14 +71,16 @@ func (n *networkWithAzureEnclaves) Create(params *params.SimParams, stats *stats
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	obscuroClients, walletClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	obscuroClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
 	n.obscuroClients = obscuroClients
 	n.hostRPCAddresses = hostRPCAddresses
 
+	walletClients := createAuthClientsPerWallet(n.obscuroClients, params.Wallets)
+
 	return &RPCHandles{
-		EthClients:                    n.gethClients,
-		ObscuroClients:                n.obscuroClients,
-		VirtualWalletExtensionClients: walletClients,
+		EthClients:     n.gethClients,
+		ObscuroClients: n.obscuroClients,
+		AuthObsClients: walletClients,
 	}, nil
 }
 

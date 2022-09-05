@@ -87,7 +87,7 @@ type HeaderWithTxHashes struct {
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header
 type Withdrawal struct {
 	// Type      uint8 // the type of withdrawal. For now only ERC20. Todo - add this once more ERCs are supported
-	Amount    uint64
+	Amount    *big.Int
 	Recipient common.Address // the user account that will receive the money
 	Contract  common.Address // the contract
 }

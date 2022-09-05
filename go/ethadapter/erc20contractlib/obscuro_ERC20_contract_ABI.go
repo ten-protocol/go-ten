@@ -52,8 +52,8 @@ func DecodeTransferTx(t *types.Transaction) (bool, *gethcommon.Address, *big.Int
 	return true, &address, amount
 }
 
-func CreateTransferTxData(address gethcommon.Address, amount uint64) []byte {
-	transferERC20data, err := obscuroERC20ContractABIJSON.Pack(TransferFunction, address, big.NewInt(int64(amount)))
+func CreateTransferTxData(address gethcommon.Address, amount *big.Int) []byte {
+	transferERC20data, err := obscuroERC20ContractABIJSON.Pack(TransferFunction, address, amount)
 	if err != nil {
 		panic(err)
 	}

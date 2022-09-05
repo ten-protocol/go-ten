@@ -1,23 +1,23 @@
 package simulation
 
 import (
+	"context"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+	"github.com/ethereum/go-ethereum"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/go-obscuro/go/rpcclientlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 const (
@@ -46,8 +46,8 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 }
 
 // Uses the client to retrieve the height of the current block head.
-func getCurrentBlockHeadHeight(client rpcclientlib.Client) int64 {
-	method := rpcclientlib.RPCGetCurrentBlockHead
+func getCurrentBlockHeadHeight(client rpc.Client) int64 {
+	method := rpc.RPCGetCurrentBlockHead
 
 	var blockHead *types.Header
 	err := client.Call(&blockHead, method)
@@ -63,8 +63,8 @@ func getCurrentBlockHeadHeight(client rpcclientlib.Client) int64 {
 }
 
 // Uses the client to retrieve the current rollup head.
-func getCurrentRollupHead(client rpcclientlib.Client) *common.Header {
-	method := rpcclientlib.RPCGetCurrentRollupHead
+func getCurrentRollupHead(client rpc.Client) *common.Header {
+	method := rpc.RPCGetCurrentRollupHead
 
 	var result *common.Header
 	err := client.Call(&result, method)
@@ -76,8 +76,8 @@ func getCurrentRollupHead(client rpcclientlib.Client) *common.Header {
 }
 
 // Uses the client to retrieve the rollup header with the matching hash.
-func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.Header {
-	method := rpcclientlib.RPCGetRollupHeader
+func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
+	method := rpc.RPCGetRollupHeader
 
 	var result *common.Header
 	err := client.Call(&result, method, hash.Hex())
@@ -88,52 +88,24 @@ func getRollupHeader(client rpcclientlib.Client, hash gethcommon.Hash) *common.H
 	return result
 }
 
-// Uses the client to retrieve the transaction with the matching hash.
-func getTransaction(client rpcclientlib.Client, txHash gethcommon.Hash) *types.Transaction {
-	var tx types.Transaction
-	err := client.Call(&tx, rpcclientlib.RPCGetTransactionByHash, txHash.Hex())
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTransactionByHash, err))
-	}
-
-	return &tx
-}
-
-// Returns the transaction receipt for the given transaction hash.
-func getTransactionReceipt(client rpcclientlib.Client, txHash gethcommon.Hash) *types.Receipt {
-	var rec types.Receipt
-	err := client.Call(&rec, rpcclientlib.RPCGetTxReceipt, txHash.Hex())
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", rpcclientlib.RPCGetTxReceipt, err))
-	}
-	return &rec
-}
-
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(client rpcclientlib.Client, address gethcommon.Address, l2ContractAddress *gethcommon.Address) uint64 {
-	method := rpcclientlib.RPCCall
+func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address) *big.Int {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
-	convertedData := (hexutil.Bytes)(balanceData)
 
-	params := map[string]interface{}{
-		rpc.CallFieldFrom: address.Hex(),
-		rpc.CallFieldTo:   l2ContractAddress.Hex(),
-		rpc.CallFieldData: convertedData,
+	callMsg := ethereum.CallMsg{
+		From: address,
+		To:   l2ContractAddress,
+		Data: balanceData,
 	}
 
-	var response string
-	err := client.Call(&response, method, params)
+	response, err := client.CallContract(ctx, callMsg, nil)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
 	}
-	if !strings.HasPrefix(response, "0x") {
-		panic(fmt.Errorf("expected hex formatted balance string but was: %s", response))
-	}
-
 	b := new(big.Int)
 	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
-	b.SetString(response[2:], 16)
-	return b.Uint64()
+	b.SetString(string(response)[2:], 16)
+	return b
 }
 
 // FindHashDups - returns a map of all hashes that appear multiple times, and how many times

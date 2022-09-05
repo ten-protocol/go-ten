@@ -288,7 +288,7 @@ message HeaderMsg {
 }
 
 message WithdrawalMsg {
-  uint64 amount = 1;
+  bytes amount = 1;
   bytes recipient = 2;
   bytes contract = 3;
 }
