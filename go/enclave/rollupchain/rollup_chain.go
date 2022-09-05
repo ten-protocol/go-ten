@@ -224,7 +224,6 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		parentState, parentLogs = rc.updateState(p)
 	} else {
 		// TODO - #453 - Store the logs in the database, so that we don't need to recalculate the logs each time.
-		// go back and calculate the Root of the Parent
 		p, f := rc.storage.FetchBlock(b.ParentHash())
 		if !f {
 			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
@@ -256,12 +255,17 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		logs = append(logs, receipt.Logs...)
 	}
 
+	if len(logs) != 0 {
+		println("jjj actually got some logs")
+	}
+
 	stateDB := rc.storage.CreateStateDB(head.Header.ParentHash)
 	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs, stateDB)
 
 	// TODO - #453 - Double-check the recursive logic, once properly hooked up.
 
-	// append to the parent logs
+	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
+	// block is missed.
 	for subscriptionID, logs := range parentLogs {
 		logsForID, found := subscribedLogs[subscriptionID]
 		if !found {
