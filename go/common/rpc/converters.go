@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -28,10 +29,11 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 
 func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
+
 	subscribedLogsMsg := make(map[string][]byte)
-	for uuid, log := range response.SubscribedLogs {
+	for id, log := range response.SubscribedLogs {
 		// We marshal to text rather than to bytes because bytes cannot be used as a map key in protobufs.
-		uuidString, err := uuid.MarshalText()
+		uuidString, err := id.MarshalText()
 		if err != nil {
 			return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshall UUID to string. Cause: %w", err)
 		}
@@ -50,14 +52,24 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (gene
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) common.BlockSubmissionResponse {
+	subscribedLogs := make(map[uuid.UUID]common.EncryptedLogs)
+	for uuidString, log := range msg.SubscribedLogs {
+		id, err := uuid.Parse(uuidString)
+		if err != nil {
+			// todo - joel - return error instead
+			panic(fmt.Errorf("could not parse UUID from string. Cause: %w", err))
+		}
+		subscribedLogs[id] = log
+	}
+
 	return common.BlockSubmissionResponse{
 		BlockHeader:           FromBlockHeaderMsg(msg.GetBlockHeader()),
 		IngestedBlock:         msg.IngestedBlock,
 		BlockNotIngestedCause: msg.BlockNotIngestedCause,
-
-		ProducedRollup: FromExtRollupMsg(msg.ProducedRollup),
-		FoundNewHead:   msg.IngestedNewRollup,
-		RollupHead:     FromRollupHeaderMsg(msg.RollupHead),
+		ProducedRollup:        FromExtRollupMsg(msg.ProducedRollup),
+		FoundNewHead:          msg.IngestedNewRollup,
+		RollupHead:            FromRollupHeaderMsg(msg.RollupHead),
+		SubscribedLogs:        subscribedLogs,
 	}
 }
 
