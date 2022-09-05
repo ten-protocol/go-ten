@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/google/uuid"
+
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -176,6 +179,11 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) *core.BlockSt
 		log.Panic("could not decode block state. Cause: %s", err)
 	}
 	return bs
+}
+
+func ReadBlockLogs(kv ethdb.KeyValueReader, hash gethcommon.Hash) map[uuid.UUID][]*types.Log {
+	// todo - joel - write this logic
+	return nil
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.

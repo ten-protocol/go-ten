@@ -186,12 +186,12 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 
 //  STATE
 
-// Determine the new canonical L2 head and calculate the State
+// Recursively calculates the state and logs for the given block.
 func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map[uuid.UUID][]*types.Log) {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
-	val, found := rc.storage.FetchBlockState(b.Hash())
+	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
-		return val, nil
+		return blockState, nil
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -211,27 +211,22 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
-	var parentLogs map[uuid.UUID][]*types.Log
+	parentState, parentLogs, parentFound := rc.storage.FetchBlockState(b.ParentHash())
+
 	if !parentFound {
 		// go back and calculate the Root of the Parent
-		p, f := rc.storage.FetchBlock(b.ParentHash())
-		if !f {
+		parent, found := rc.storage.FetchBlock(b.ParentHash())
+		if !found {
 			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
 			return nil, nil
 		}
-
-		parentState, parentLogs = rc.updateState(p)
-	} else {
-		// TODO - #453 - Store the logs in the database, so that we don't need to recalculate the logs each time.
-		p, f := rc.storage.FetchBlock(b.ParentHash())
-		if !f {
-			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
-			return nil, nil
-		}
-
-		_, parentLogs = rc.updateState(p)
+		parentState, parentLogs = rc.updateState(parent)
 	}
+
+	// TODO - #453 - Is it correct that the parent logs are based on the subscriptions at the time, and not
+	//  recalculated based on the current set of subscriptions?
+
+	// todo - joel - parent logs logic
 
 	if parentState == nil {
 		common.LogWithID(rc.nodeID, "Something went wrong. There should be a parent here, blockNum=%d. \n Block: %d, Block Parent: %d ",
@@ -249,6 +244,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		common.ShortHash(bs.HeadRollup))
 
 	rc.storage.SaveNewHead(bs, head, receipts)
+	// todo - joel - store logs
 
 	var logs []*types.Log
 	for _, receipt := range receipts {
