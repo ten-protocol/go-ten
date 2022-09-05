@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"fmt"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -27,6 +28,16 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 
 func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
+	subscribedLogsMsg := make(map[string][]byte)
+	for uuid, log := range response.SubscribedLogs {
+		uuidString, err := uuid.MarshalText()
+		if err != nil {
+			// TODO - #453 - Surface error instead of panicking.
+			panic(fmt.Errorf("could not marshall UUID to string. Cause: %w", err))
+		}
+		subscribedLogsMsg[string(uuidString)] = log
+	}
+
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:           ToBlockHeaderMsg(response.BlockHeader),
 		IngestedBlock:         response.IngestedBlock,
@@ -34,6 +45,7 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) gener
 		ProducedRollup:        &producedRollupMsg,
 		IngestedNewRollup:     response.FoundNewHead,
 		RollupHead:            ToRollupHeaderMsg(response.RollupHead),
+		SubscribedLogs:        subscribedLogsMsg,
 	}
 }
 

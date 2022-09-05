@@ -139,6 +139,15 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 		return nil, err
 	}
 
+	for _, logBytes := range blockSubmissionResponse.SubscribedLogs {
+		var logs []*types.Log
+		err = rlp.DecodeBytes(logBytes, &logs)
+		if err != nil {
+			panic(err)
+		}
+		println(fmt.Sprintf("jjj got logs: %v", logs))
+	}
+
 	msg := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
