@@ -16,23 +16,23 @@ type SubscriptionManager struct {
 }
 
 func NewSubscriptionManager() *SubscriptionManager {
-	return &SubscriptionManager{}
+	return &SubscriptionManager{
+		subscriptions: map[uuid.UUID]*common.LogSubscription{},
+	}
 }
 
 // AddSubscription adds a log subscription to the enclave, provided the request is authenticated correctly.
 func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedLogSubscription) error {
 	println("jjj received subscription request")
 
-	// todo - decrypt the subscription
+	// TODO - #453 - Encryption of subscriptions.
 
 	var subscription common.LogSubscription
 	if err := rlp.DecodeBytes(encryptedSubscription, &subscription); err != nil {
 		return fmt.Errorf("could not decode encoded log subscription. Cause: %w", err)
 	}
 
-	for _, account := range subscription.Accounts {
-		println(account) // todo - check that each account is signed correctly
-	}
+	// TODO - #453 - Check each account is signed.
 
 	s.subscriptions[id] = &subscription
 	return nil
