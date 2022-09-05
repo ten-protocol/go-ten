@@ -436,8 +436,6 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 			if err != nil {
 				return err
 			}
-			// todo send the events to the right channels, where they are picked up by the rpc subscription
-			// map[subscription_uuid]channel
 			a.storeBlockProcessingResult(result)
 		}
 	}

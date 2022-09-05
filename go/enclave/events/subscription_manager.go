@@ -10,6 +10,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+// SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
+// active subscriptions.
 type SubscriptionManager struct {
 	subscriptions map[uuid.UUID]*common.LogSubscription
 }
@@ -41,7 +43,7 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterRelevantLogs returns only those logs for which one or more subscriptions exist.
+// FilterRelevantLogs filters out logs that are not subscribed too, and organises the logs by their subscribing ID.
 // TODO - #453 - Return which account each log is relevant to.
 func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
@@ -65,7 +67,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUI
 	return relevantLogs
 }
 
-// EncryptLogs encrypts the logs with the corresponding viewing keys.
+// EncryptLogs encrypts each log with the appropriate viewing key.
 // TODO - #453 - Encrypt logs, rather than just serialising them.
 func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
 	result := map[uuid.UUID]common.EncryptedLogs{}

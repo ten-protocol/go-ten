@@ -257,7 +257,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs)
 
-	// TODO - #453 - Double-check the recursive logic, once properly hooked up.
+	// TODO - #453 - Check this recursive logic works correctly (i.e. each rollup contains the logs of all its ancestors as well).
 
 	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
 	// block is missed.

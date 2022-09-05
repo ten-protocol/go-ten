@@ -113,5 +113,5 @@ type BlockSubmissionResponse struct {
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 
-	SubscribedLogs map[uuid.UUID]EncryptedLogs // For each subscription id, there is an encrypted list of logs, which has to be sent back to the requester by the host.
+	SubscribedLogs map[uuid.UUID]EncryptedLogs // The logs produced by the block and all its ancestors for each subscription ID.
 }

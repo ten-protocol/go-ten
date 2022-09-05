@@ -35,8 +35,8 @@ type (
 	EncryptedResponseGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
 	EncryptedResponseSendRawTx    []byte // As above, but for an RPC sendRawTransaction request.
 	EncryptedResponseGetTxByHash  []byte // As above, but for an RPC getTransactionByHash request.
-	EncryptedLogSubscription      []byte // As above, but for a request for a log subscription.
-	EncryptedLogs                 []byte // As above, but for encrypted logs.
+	EncryptedLogSubscription      []byte // As above, but for a log subscription request.
+	EncryptedLogs                 []byte // As above, but for a log subscription response.
 
 	Nonce         = uint64
 	EncodedRollup []byte
@@ -179,13 +179,12 @@ func (h *Header) Hash() L2RootHash {
 	return hash
 }
 
-// LogSubscription contains information about a log subscription, including a list of authenticated accounts for the subscription.
 type LogSubscription struct {
 	Accounts []*SubscriptionAccount
 	// todo Filters - the geth log filters
 }
 
-// SubscriptionAccount is an authenticated account used for subscribing to logs.
+// SubscriptionAccount is an authenticated account used when subscribing to logs.
 type SubscriptionAccount struct {
 	// The account the events relate to.
 	Account common.Address
