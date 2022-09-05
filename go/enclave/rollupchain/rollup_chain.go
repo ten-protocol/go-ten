@@ -203,7 +203,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
-	// Handle the case of the block containing the genesis being processed multiple times.
+	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
 	if isGenesis {
 		return genesisState, nil
@@ -259,8 +259,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		println("jjj actually got some logs")
 	}
 
-	stateDB := rc.storage.CreateStateDB(head.Header.ParentHash)
-	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs, stateDB)
+	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs)
 
 	// TODO - #453 - Double-check the recursive logic, once properly hooked up.
 

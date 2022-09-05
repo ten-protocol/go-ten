@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -46,12 +45,12 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 
 // FilterRelevantLogs returns only those logs for which one or more subscriptions exist.
 // TODO - #453 - Return which account each log is relevant to.
-func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, stateDB *state.StateDB) map[uuid.UUID][]*types.Log {
+func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	for _, log := range logs {
 		for subID, sub := range s.subscriptions {
-			logIsRelevant, _ := isRelevant(sub, log, stateDB)
+			logIsRelevant, _ := isRelevant(sub, log)
 			if !logIsRelevant {
 				continue
 			}
@@ -91,7 +90,7 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 // Indicates whether the log is relevant for any subscription, and returns the matching subscription account if so.
 // A lifecycle log is considered relevant to everyone.
 // TODO - #453 - Filter logs, instead of considering all logs relevant to everyone.
-func isRelevant(sub *common.LogSubscription, log *types.Log, db *state.StateDB) (bool, *common.SubscriptionAccount) {
+func isRelevant(sub *common.LogSubscription, log *types.Log) (bool, *common.SubscriptionAccount) {
 	// Extract addresses from the logs
 	// Work out if this is an account or lifecycle log
 	// If the former, establish whether it is relevant to any subscription
