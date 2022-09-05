@@ -225,7 +225,7 @@ func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState,
 	return nil, nil, false
 }
 
-func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt) {
+func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs map[uuid.UUID][]*types.Log) {
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
@@ -238,6 +238,8 @@ func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, r
 	}
 
 	obscurorawdb.WriteBlockState(batch, state)
+	obscurorawdb.WriteBlockLogs(batch, state.Block, logs)
+
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {

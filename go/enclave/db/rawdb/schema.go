@@ -13,10 +13,11 @@ var (
 
 	genesisRollupHash        = []byte("GenesisRollupHash")
 	rollupHeaderPrefix       = []byte("oh")          // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	headerHashSuffix         = []byte("on")          // headerPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	headerHashSuffix         = []byte("on")          // rollupHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
 	rollupBodyPrefix         = []byte("ob")          // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
-	rollupHeaderNumberPrefix = []byte("oH")          // headerNumberPrefix + hash -> num (uint64 big endian)
-	blockStatePrefix         = []byte("obs")         // headerNumberPrefix + hash -> num (uint64 big endian)
+	rollupHeaderNumberPrefix = []byte("oH")          // rollupHeaderNumberPrefix + hash -> num (uint64 big endian)
+	blockStatePrefix         = []byte("obs")         // blockStatePrefix + hash -> num (uint64 big endian)
+	logsPrefix               = []byte("olg")         // logsPrefix + hash -> block logs
 	rollupReceiptsPrefix     = []byte("or")          // rollupReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
 	txLookupPrefix           = []byte("ol")          // txLookupPrefix + hash -> transaction/receipt lookup metadata
 	bloomBitsPrefix          = []byte("oB")          // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
@@ -53,6 +54,10 @@ func rollupBodyKey(number uint64, hash common.Hash) []byte {
 
 func blockStateKey(hash common.Hash) []byte {
 	return append(blockStatePrefix, hash.Bytes()...)
+}
+
+func logsKey(hash common.Hash) []byte {
+	return append(logsPrefix, hash.Bytes()...)
 }
 
 // rollupReceiptsKey = rollupReceiptsPrefix + num (uint64 big endian) + hash

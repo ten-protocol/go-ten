@@ -223,11 +223,6 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		parentState, parentLogs = rc.updateState(parent)
 	}
 
-	// TODO - #453 - Is it correct that the parent logs are based on the subscriptions at the time, and not
-	//  recalculated based on the current set of subscriptions?
-
-	// todo - joel - parent logs logic
-
 	if parentState == nil {
 		common.LogWithID(rc.nodeID, "Something went wrong. There should be a parent here, blockNum=%d. \n Block: %d, Block Parent: %d ",
 			b.Number(),
@@ -243,20 +238,21 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		bs.FoundNewRollup,
 		common.ShortHash(bs.HeadRollup))
 
-	rc.storage.SaveNewHead(bs, head, receipts)
-	// todo - joel - store logs
-
 	var logs []*types.Log
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-
 	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs)
 
-	// TODO - #453 - Check this recursive logic works correctly (i.e. each rollup contains the logs of all its ancestors as well).
+	// TODO - #453 - Check this recursive logic works correctly (i.e. each block submission response contains the logs
+	//  of all its ancestors as well).
+	// TODO - #453 - Check whether this recursive logic is desirable. Won't it balloon over time?
+	// TODO - #453 - Should we be storing the parent logs based on the subscriptions at the time, or recalculating
+	//  based on the current subscriptions?
 
 	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
 	// block is missed.
+	// TODO - #453 - There is a bug here - we ignore any logs for new subscription IDs that didn't exist in the parent block.
 	for subscriptionID, logs := range parentLogs {
 		logsForID, found := subscribedLogs[subscriptionID]
 		if !found {
@@ -265,6 +261,8 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		logsForID = append(logsForID, logs...)
 		subscribedLogs[subscriptionID] = logsForID
 	}
+
+	rc.storage.SaveNewHead(bs, head, receipts, subscribedLogs)
 
 	return bs, subscribedLogs
 }
@@ -285,7 +283,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		rc.storage.SaveNewHead(&bs, genesis, nil)
+		rc.storage.SaveNewHead(&bs, genesis, nil, nil)
 		err := rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false

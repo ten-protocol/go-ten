@@ -58,7 +58,7 @@ type BlockStateStorage interface {
 	// FetchHeadState returns the head block state. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
 	// SaveNewHead save the rollup-block mapping
-	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt)
+	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs map[uuid.UUID][]*types.Log)
 	// CreateStateDB create a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) *state.StateDB
 	// EmptyStateDB create the original empty StateDB
