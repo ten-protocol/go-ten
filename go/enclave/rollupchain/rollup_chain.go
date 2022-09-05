@@ -125,11 +125,13 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 
 		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
 	}
-	enc, err := rc.subscriptionManager.EncryptLogs(subscribedLogs)
+
+	encryptedLogs, err := rc.subscriptionManager.EncryptLogs(subscribedLogs)
 	if err != nil {
 		log.Panic("Could not encrypt logs. Cause: %s", err)
 	}
-	return rc.newBlockSubmissionResponse(bs, rollup, enc)
+
+	return rc.newBlockSubmissionResponse(bs, rollup, encryptedLogs)
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
@@ -220,6 +222,16 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		}
 
 		parentState, parentLogs = rc.updateState(p)
+	} else {
+		// TODO - #453 - Store the logs in the database, so that we don't need to recalculate the logs each time.
+		// go back and calculate the Root of the Parent
+		p, f := rc.storage.FetchBlock(b.ParentHash())
+		if !f {
+			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
+			return nil, nil
+		}
+
+		_, parentLogs = rc.updateState(p)
 	}
 
 	if parentState == nil {
@@ -245,21 +257,21 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	}
 
 	stateDB := rc.storage.CreateStateDB(head.Header.ParentHash)
-	subscribedReceipts := rc.subscriptionManager.FilterRelevantLogs(logs, stateDB)
+	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs, stateDB)
 
-	// todo - double check he recursivity logic, once properly hooked up
+	// TODO - #453 - Double-check the recursive logic, once properly hooked up.
 
 	// append to the parent logs
-	for subID, logs := range parentLogs {
-		subResult, found := subscribedReceipts[subID]
+	for subscriptionID, logs := range parentLogs {
+		logsForID, found := subscribedLogs[subscriptionID]
 		if !found {
-			subResult = make([]*types.Log, 0)
+			logsForID = make([]*types.Log, 0)
 		}
-		subResult = append(subResult, logs...)
-		subscribedReceipts[subID] = subResult
+		logsForID = append(logsForID, logs...)
+		subscribedLogs[subscriptionID] = logsForID
 	}
 
-	return bs, subscribedReceipts
+	return bs, subscribedLogs
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {
@@ -506,22 +518,19 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	r := rc.produceRollup(&block, blockState)
-
 	rc.signRollup(r)
-
-	// Sanity check the produced rollup
-	rc.checkRollup(r)
-
+	rc.checkRollup(r) // Sanity check the produced rollup
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
 
 	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
-	enc, err := rc.subscriptionManager.EncryptLogs(logs)
+	encryptedLogs, err := rc.subscriptionManager.EncryptLogs(logs)
 	if err != nil {
 		log.Panic("Could not encrypt logs. Cause: %s", err)
 	}
-	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), enc)
+
+	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs)
 }
 
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
