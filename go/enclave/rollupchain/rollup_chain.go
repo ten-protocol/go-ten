@@ -10,6 +10,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/events"
+
+	"github.com/google/uuid"
+
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
@@ -53,12 +57,13 @@ type RollupChain struct {
 	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
 	faucet                Faucet
+	subscriptionManager   *events.SubscriptionManager
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
+func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
 	return &RollupChain{
 		nodeID:                nodeID,
 		hostID:                hostID,
@@ -68,6 +73,7 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
 		faucet:                NewFaucet(storage),
+		subscriptionManager:   subscriptionManager,
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		ethereumChainID:       ethereumChainID,
@@ -105,7 +111,7 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 	}
 
 	rc.storage.StoreBlock(block)
-	bs := rc.updateState(block)
+	bs, subscribedLogs := rc.updateState(block)
 	if bs == nil {
 		return rc.noBlockStateBlockSubmissionResponse(block)
 	}
@@ -119,7 +125,13 @@ func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionRes
 
 		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
 	}
-	return rc.newBlockSubmissionResponse(bs, rollup)
+
+	encryptedLogs, err := rc.subscriptionManager.EncryptLogs(subscribedLogs)
+	if err != nil {
+		log.Panic("Could not encrypt logs. Cause: %s", err)
+	}
+
+	return rc.newBlockSubmissionResponse(bs, rollup, encryptedLogs)
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
@@ -143,7 +155,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) c
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup) common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[uuid.UUID]common.EncryptedLogs) common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		log.Panic(msgNoRollup)
@@ -164,6 +176,7 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		IngestedBlock:  true,
 		FoundNewHead:   bs.FoundNewRollup,
 		RollupHead:     head,
+		SubscribedLogs: logs,
 	}
 }
 
@@ -174,11 +187,11 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 //  STATE
 
 // Determine the new canonical L2 head and calculate the State
-func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map[uuid.UUID][]*types.Log) {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	val, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
-		return val
+		return val, nil
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -186,27 +199,38 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	// processing blocks before genesis, so there is nothing to do
 	if genesisRollup == nil && len(rollups) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
-	// Handle the case of the block containing the genesis being processed multiple times.
+	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
 	if isGenesis {
-		return genesisState
+		return genesisState, nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
 	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
+	var parentLogs map[uuid.UUID][]*types.Log
 	if !parentFound {
 		// go back and calculate the Root of the Parent
 		p, f := rc.storage.FetchBlock(b.ParentHash())
 		if !f {
 			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
-			return nil
+			return nil, nil
 		}
-		parentState = rc.updateState(p)
+
+		parentState, parentLogs = rc.updateState(p)
+	} else {
+		// TODO - #453 - Store the logs in the database, so that we don't need to recalculate the logs each time.
+		p, f := rc.storage.FetchBlock(b.ParentHash())
+		if !f {
+			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
+			return nil, nil
+		}
+
+		_, parentLogs = rc.updateState(p)
 	}
 
 	if parentState == nil {
@@ -215,7 +239,7 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 			common.ShortHash(b.Hash()),
 			common.ShortHash(b.Header().ParentHash),
 		)
-		return nil
+		return nil, nil
 	}
 
 	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
@@ -226,7 +250,27 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	rc.storage.SaveNewHead(bs, head, receipts)
 
-	return bs
+	var logs []*types.Log
+	for _, receipt := range receipts {
+		logs = append(logs, receipt.Logs...)
+	}
+
+	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs)
+
+	// TODO - #453 - Check this recursive logic works correctly (i.e. each rollup contains the logs of all its ancestors as well).
+
+	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
+	// block is missed.
+	for subscriptionID, logs := range parentLogs {
+		logsForID, found := subscribedLogs[subscriptionID]
+		if !found {
+			logsForID = make([]*types.Log, 0)
+		}
+		logsForID = append(logsForID, logs...)
+		subscribedLogs[subscriptionID] = logsForID
+	}
+
+	return bs, subscribedLogs
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {
@@ -466,25 +510,26 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	}
 
 	common.TraceWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
-	blockState := rc.updateState(&block)
+	blockState, logs := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}
 
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	r := rc.produceRollup(&block, blockState)
-
 	rc.signRollup(r)
-
-	// Sanity check the produced rollup
-	rc.checkRollup(r)
-
+	rc.checkRollup(r) // Sanity check the produced rollup
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
 
 	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
 
-	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto))
+	encryptedLogs, err := rc.subscriptionManager.EncryptLogs(logs)
+	if err != nil {
+		log.Panic("Could not encrypt logs. Cause: %s", err)
+	}
+
+	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs)
 }
 
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {

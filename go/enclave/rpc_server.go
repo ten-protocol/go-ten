@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -102,7 +104,10 @@ func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest)
 
 func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
 	genesisRollup := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
-	blockSubmissionResponse := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
+	blockSubmissionResponse, err := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
+	if err != nil {
+		return nil, err
+	}
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 
@@ -116,9 +121,13 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 	r := s.enclave.IngestBlocks(blocks)
 	blockSubmissionResponses := make([]*generated.BlockSubmissionResponseMsg, len(r))
 	for i, response := range r {
-		b := rpc.ToBlockSubmissionResponseMsg(response)
+		b, err := rpc.ToBlockSubmissionResponseMsg(response)
+		if err != nil {
+			return nil, err
+		}
 		blockSubmissionResponses[i] = &b
 	}
+
 	return &generated.IngestBlocksResponse{
 		BlockSubmissionResponses: blockSubmissionResponses,
 	}, nil
@@ -137,7 +146,10 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 		return nil, err
 	}
 
-	msg := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
+	msg, err := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
+	if err != nil {
+		return nil, err
+	}
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
@@ -240,6 +252,26 @@ func (s *server) StoreAttestation(_ context.Context, req *generated.StoreAttesta
 		resp = err.Error()
 	}
 	return &generated.StoreAttestationResponse{Error: resp}, nil
+}
+
+func (s *server) Subscribe(_ context.Context, req *generated.SubscribeRequest) (*generated.SubscribeResponse, error) {
+	id, err := uuid.FromBytes(req.Id)
+	if err != nil {
+		return &generated.SubscribeResponse{}, fmt.Errorf("could not deserialise UUID. Cause: %w", err)
+	}
+
+	err = s.enclave.Subscribe(id, req.EncryptedSubscription)
+	return &generated.SubscribeResponse{}, err
+}
+
+func (s *server) Unsubscribe(_ context.Context, req *generated.UnsubscribeRequest) (*generated.UnsubscribeResponse, error) {
+	id, err := uuid.FromBytes(req.Id)
+	if err != nil {
+		return &generated.UnsubscribeResponse{}, fmt.Errorf("could not deserialise UUID. Cause: %w", err)
+	}
+
+	err = s.enclave.Unsubscribe(id)
+	return &generated.UnsubscribeResponse{}, err
 }
 
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {

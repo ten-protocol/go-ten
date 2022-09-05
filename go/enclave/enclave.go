@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/events"
+
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -52,6 +56,7 @@ type enclaveImpl struct {
 	l1Blockchain         *core.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
+	subscriptionManager  *events.SubscriptionManager
 
 	chain *rollupchain.RollupChain
 
@@ -174,7 +179,8 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, transactionBlobCrypto, memp, rpcem, enclaveKey, config.L1ChainID, &chainConfig)
+	subscriptionManager := events.NewSubscriptionManager()
+	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcem, enclaveKey, config.L1ChainID, &chainConfig)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	log.Info("Enclave service created with following config:\n%s", string(jsonConfig))
@@ -188,6 +194,7 @@ func NewEnclave(
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcem,
 		bridge:                obscuroBridge,
+		subscriptionManager:   subscriptionManager,
 		chain:                 chain,
 		txCh:                  make(chan *common.L2Tx),
 		roundWinnerCh:         make(chan *obscurocore.Rollup),
@@ -500,6 +507,15 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
 	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
+}
+
+func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
+	return e.subscriptionManager.AddSubscription(id, subscription)
+}
+
+func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {
+	e.subscriptionManager.RemoveSubscription(id)
+	return nil
 }
 
 func (e *enclaveImpl) IsInitialised() bool {

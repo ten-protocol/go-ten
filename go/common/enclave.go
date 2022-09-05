@@ -3,6 +3,7 @@ package common
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/google/uuid"
 )
 
 // Enclave represents the API of the service that runs inside the TEE.
@@ -89,6 +90,15 @@ type Enclave interface {
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
 	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error)
 
+	// Subscribe adds a log subscription to the enclave under the given ID, provided the request is authenticated
+	// correctly. The events will be populated in the BlockSubmissionResponse. If there is an existing subscription
+	// with the given ID, it is overwritten.
+	Subscribe(id uuid.UUID, subscription EncryptedLogSubscription) error
+
+	// Unsubscribe removes the log subscription with the given ID from the enclave. If there is no subscription with
+	// the given ID, nothing is deleted.
+	Unsubscribe(id uuid.UUID) error
+
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error
 }
@@ -102,4 +112,6 @@ type BlockSubmissionResponse struct {
 	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
+
+	SubscribedLogs map[uuid.UUID]EncryptedLogs // The logs produced by the block and all its ancestors for each subscription ID.
 }

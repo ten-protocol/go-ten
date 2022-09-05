@@ -4,6 +4,7 @@ option go_package = "enclave/rpc/generated";
 
 package generated;
 
+// TODO - Remove these comments which duplicate those in common/enclave.go.
 service EnclaveProto {
   // IsReady is used to check whether the server is ready for requests.
   rpc IsReady(IsReadyRequest) returns (IsReadyResponse) {}
@@ -79,6 +80,10 @@ service EnclaveProto {
 
   // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
   rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
+
+  rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
+
+  rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse) {}
 }
 
 message IsReadyRequest {}
@@ -223,11 +228,22 @@ message GetBalanceResponse {
 
 message GetCodeRequest {
   bytes address = 1;
-  bytes rollupHash = 3;
+  bytes rollupHash = 2;
 }
 message GetCodeResponse {
   bytes code = 1;
 }
+
+message SubscribeRequest {
+  bytes id = 1;
+  bytes encryptedSubscription = 2;
+}
+message SubscribeResponse {}
+
+message UnsubscribeRequest {
+  bytes id = 1;
+}
+message UnsubscribeResponse {}
 
 // Nested message types.
 
@@ -246,6 +262,7 @@ message BlockSubmissionResponseMsg {
   ExtRollupMsg producedRollup = 4;
   bool ingestedNewRollup = 5;
   HeaderMsg rollupHead = 6;
+  map<string, bytes> subscribedLogs = 7;
 }
 
 message ExtRollupMsg {

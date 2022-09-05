@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"fmt"
 	"math/big"
+
+	"github.com/google/uuid"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -25,8 +28,19 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 	}
 }
 
-func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {
+func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
+
+	subscribedLogsMsg := make(map[string][]byte)
+	for id, log := range response.SubscribedLogs {
+		// We marshal to text rather than to bytes because bytes cannot be used as a map key in protobufs.
+		uuidString, err := id.MarshalText()
+		if err != nil {
+			return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshall UUID to string. Cause: %w", err)
+		}
+		subscribedLogsMsg[string(uuidString)] = log
+	}
+
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:           ToBlockHeaderMsg(response.BlockHeader),
 		IngestedBlock:         response.IngestedBlock,
@@ -34,19 +48,29 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) gener
 		ProducedRollup:        &producedRollupMsg,
 		IngestedNewRollup:     response.FoundNewHead,
 		RollupHead:            ToRollupHeaderMsg(response.RollupHead),
-	}
+		SubscribedLogs:        subscribedLogsMsg,
+	}, nil
 }
 
-func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) common.BlockSubmissionResponse {
+func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (common.BlockSubmissionResponse, error) {
+	subscribedLogs := make(map[uuid.UUID]common.EncryptedLogs)
+	for uuidString, log := range msg.SubscribedLogs {
+		id, err := uuid.Parse(uuidString)
+		if err != nil {
+			return common.BlockSubmissionResponse{}, fmt.Errorf("could not parse UUID from string. Cause: %w", err)
+		}
+		subscribedLogs[id] = log
+	}
+
 	return common.BlockSubmissionResponse{
 		BlockHeader:           FromBlockHeaderMsg(msg.GetBlockHeader()),
 		IngestedBlock:         msg.IngestedBlock,
 		BlockNotIngestedCause: msg.BlockNotIngestedCause,
-
-		ProducedRollup: FromExtRollupMsg(msg.ProducedRollup),
-		FoundNewHead:   msg.IngestedNewRollup,
-		RollupHead:     FromRollupHeaderMsg(msg.RollupHead),
-	}
+		ProducedRollup:        FromExtRollupMsg(msg.ProducedRollup),
+		FoundNewHead:          msg.IngestedNewRollup,
+		RollupHead:            FromRollupHeaderMsg(msg.RollupHead),
+		SubscribedLogs:        subscribedLogs,
+	}, nil
 }
 
 func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
