@@ -26,14 +26,13 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 	}
 }
 
-func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) generated.BlockSubmissionResponseMsg {
+func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
 	subscribedLogsMsg := make(map[string][]byte)
 	for uuid, log := range response.SubscribedLogs {
 		uuidString, err := uuid.MarshalText()
 		if err != nil {
-			// TODO - #453 - Surface error instead of panicking.
-			panic(fmt.Errorf("could not marshall UUID to string. Cause: %w", err))
+			return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshall UUID to string. Cause: %w", err)
 		}
 		subscribedLogsMsg[string(uuidString)] = log
 	}
@@ -46,7 +45,7 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) gener
 		IngestedNewRollup:     response.FoundNewHead,
 		RollupHead:            ToRollupHeaderMsg(response.RollupHead),
 		SubscribedLogs:        subscribedLogsMsg,
-	}
+	}, nil
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) common.BlockSubmissionResponse {

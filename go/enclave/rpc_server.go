@@ -104,7 +104,10 @@ func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest)
 
 func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
 	genesisRollup := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
-	blockSubmissionResponse := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
+	blockSubmissionResponse, err := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
+	if err != nil {
+		return nil, err
+	}
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 
@@ -118,9 +121,13 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 	r := s.enclave.IngestBlocks(blocks)
 	blockSubmissionResponses := make([]*generated.BlockSubmissionResponseMsg, len(r))
 	for i, response := range r {
-		b := rpc.ToBlockSubmissionResponseMsg(response)
+		b, err := rpc.ToBlockSubmissionResponseMsg(response)
+		if err != nil {
+			return nil, err
+		}
 		blockSubmissionResponses[i] = &b
 	}
+
 	return &generated.IngestBlocksResponse{
 		BlockSubmissionResponses: blockSubmissionResponses,
 	}, nil
@@ -139,16 +146,10 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 		return nil, err
 	}
 
-	for _, logBytes := range blockSubmissionResponse.SubscribedLogs {
-		var logs []*types.Log
-		err = rlp.DecodeBytes(logBytes, &logs)
-		if err != nil {
-			panic(err)
-		}
-		println(fmt.Sprintf("jjj got logs: %v", logs))
+	msg, err := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
+	if err != nil {
+		return nil, err
 	}
-
-	msg := rpc.ToBlockSubmissionResponseMsg(blockSubmissionResponse)
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
