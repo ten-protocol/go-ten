@@ -494,14 +494,14 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 		return
 	}
 
-	var accounts []string
-	for account, _ := range viewingKeys {
+	var accounts []string //nolint:prealloc
+	for account := range viewingKeys {
 		accounts = append(accounts, account.Hex())
 	}
 
 	msg := fmt.Sprintf("Re-registering persisted viewing keys for the following addresses: %s",
 		strings.Join(accounts, ", "))
-	log.Error(msg)
+	log.Info(msg)
 	fmt.Println(msg)
 }
 
