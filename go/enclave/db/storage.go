@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -213,15 +215,17 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	return v
 }
 
-func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, bool) {
+func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, map[uuid.UUID][]*types.Log, bool) {
 	bs := obscurorawdb.ReadBlockState(s.db, hash)
-	if bs != nil {
-		return bs, true
+	logs := obscurorawdb.ReadBlockLogs(s.db, hash)
+	// We expect both the block state and the logs to be stored. If one isn't, we return neither.
+	if bs != nil && logs != nil {
+		return bs, logs, true
 	}
-	return nil, false
+	return nil, nil, false
 }
 
-func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt) {
+func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs map[uuid.UUID][]*types.Log) {
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
@@ -234,6 +238,8 @@ func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, r
 	}
 
 	obscurorawdb.WriteBlockState(batch, state)
+	obscurorawdb.WriteBlockLogs(batch, state.Block, logs)
+
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {

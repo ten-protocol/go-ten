@@ -186,12 +186,12 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 
 //  STATE
 
-// Determine the new canonical L2 head and calculate the State
+// Recursively calculates the state and logs for the given block.
 func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map[uuid.UUID][]*types.Log) {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
-	val, found := rc.storage.FetchBlockState(b.Hash())
+	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
-		return val, nil
+		return blockState, nil
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -211,26 +211,15 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
-	var parentLogs map[uuid.UUID][]*types.Log
+	parentState, parentLogs, parentFound := rc.storage.FetchBlockState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the Root of the Parent
-		p, f := rc.storage.FetchBlock(b.ParentHash())
-		if !f {
+		parent, found := rc.storage.FetchBlock(b.ParentHash())
+		if !found {
 			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
 			return nil, nil
 		}
-
-		parentState, parentLogs = rc.updateState(p)
-	} else {
-		// TODO - #453 - Store the logs in the database, so that we don't need to recalculate the logs each time.
-		p, f := rc.storage.FetchBlock(b.ParentHash())
-		if !f {
-			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
-			return nil, nil
-		}
-
-		_, parentLogs = rc.updateState(p)
+		parentState, parentLogs = rc.updateState(parent)
 	}
 
 	if parentState == nil {
@@ -248,19 +237,21 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		bs.FoundNewRollup,
 		common.ShortHash(bs.HeadRollup))
 
-	rc.storage.SaveNewHead(bs, head, receipts)
-
 	var logs []*types.Log
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-
 	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs)
 
-	// TODO - #453 - Check this recursive logic works correctly (i.e. each rollup contains the logs of all its ancestors as well).
+	// TODO - #453 - Check this recursive logic works correctly (i.e. each block submission response contains the logs
+	//  of all its ancestors as well).
+	// TODO - #453 - Check whether this recursive logic is desirable. Won't it balloon over time?
+	// TODO - #453 - Should we be storing the parent logs based on the subscriptions at the time, or recalculating
+	//  based on the current subscriptions?
 
 	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
 	// block is missed.
+	// TODO - #453 - There is a bug here - we ignore any logs for new subscription IDs that didn't exist in the parent block.
 	for subscriptionID, logs := range parentLogs {
 		logsForID, found := subscribedLogs[subscriptionID]
 		if !found {
@@ -269,6 +260,8 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 		logsForID = append(logsForID, logs...)
 		subscribedLogs[subscriptionID] = logsForID
 	}
+
+	rc.storage.SaveNewHead(bs, head, receipts, subscribedLogs)
 
 	return bs, subscribedLogs
 }
@@ -289,7 +282,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		rc.storage.SaveNewHead(&bs, genesis, nil)
+		rc.storage.SaveNewHead(&bs, genesis, nil, nil)
 		err := rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
