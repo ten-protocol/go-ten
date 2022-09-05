@@ -19,7 +19,7 @@ import (
 // The methods in this client are analogous to the methods in geth's EthClient and should behave the same unless noted otherwise.
 type AuthObsClient struct {
 	ObsClient
-	Account *common.Address
+	account common.Address
 }
 
 // NewAuthObsClient constructs an AuthObsClient for sensitive communication with an enclave.
@@ -29,9 +29,9 @@ type AuthObsClient struct {
 func NewAuthObsClient(client *rpc.EncRPCClient) *AuthObsClient {
 	return &AuthObsClient{
 		ObsClient: ObsClient{
-			RPCClient: client,
+			rpcClient: client,
 		},
-		Account: client.Account(),
+		account: *client.Account(),
 	}
 }
 
@@ -53,14 +53,14 @@ func DialWithAuth(rpcurl string, wal wallet.Wallet) (*AuthObsClient, error) {
 // TransactionByHash returns transaction (if found), isPending (always false currently as we don't search the mempool), error
 func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
 	var tx types.Transaction
-	err := ac.RPCClient.CallContext(ctx, &tx, rpc.RPCGetTransactionByHash, hash.Hex())
+	err := ac.rpcClient.CallContext(ctx, &tx, rpc.RPCGetTransactionByHash, hash.Hex())
 	// todo: revisit isPending result value, included for ethclient equivalence but hardcoded currently
 	return &tx, false, err
 }
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
 	var receipt types.Receipt
-	err := ac.RPCClient.CallContext(ctx, &receipt, rpc.RPCGetTxReceipt, txHash)
+	err := ac.rpcClient.CallContext(ctx, &receipt, rpc.RPCGetTxReceipt, txHash)
 	return &receipt, err
 }
 
@@ -68,25 +68,25 @@ func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash common.H
 // nonce cannot be requested for other accounts)
 func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uint64, error) {
 	var result hexutil.Uint64
-	err := ac.RPCClient.CallContext(ctx, &result, rpc.RPCNonce, ac.Account.Hex(), toBlockNumArg(blockNumber))
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.RPCNonce, ac.account, toBlockNumArg(blockNumber))
 	return uint64(result), err
 }
 
 func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	var hex string
-	err := ac.RPCClient.CallContext(ctx, &hex, rpc.RPCCall, toCallArg(msg), toBlockNumArg(blockNumber))
+	err := ac.rpcClient.CallContext(ctx, &hex, rpc.RPCCall, toCallArg(msg), toBlockNumArg(blockNumber))
 	return []byte(hex), err
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) error {
-	return ac.RPCClient.CallContext(ctx, nil, rpc.RPCSendRawTransaction, encodeTx(signedTx))
+	return ac.rpcClient.CallContext(ctx, nil, rpc.RPCSendRawTransaction, encodeTx(signedTx))
 }
 
 // BalanceAt retrieves the native balance for the account registered on this client (due to obscuro privacy restrictions,
 // balance cannot be requested for other accounts)
 func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
 	var result string
-	err := ac.RPCClient.CallContext(ctx, &result, rpc.RPCGetBalance, ac.Account.Hex(), toBlockNumArg(blockNumber))
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.RPCGetBalance, ac.account, toBlockNumArg(blockNumber))
 	if err != nil {
 		return big.NewInt(0), err
 	}

@@ -33,7 +33,7 @@ func TestNonceAt_ConvertsNilBlockNumberToLatest(t *testing.T) {
 		*res = 2
 	})
 
-	nonce, err := authClient.NonceAt(testCtx, testAcc, nil)
+	nonce, err := authClient.NonceAt(testCtx, nil)
 
 	// assert mock called as expected
 	mockRPC.AssertExpectations(t)
@@ -46,7 +46,8 @@ func TestNonceAt_ConvertsNilBlockNumberToLatest(t *testing.T) {
 func createAuthClientWithMockRPCClient() (*rpcClientMock, *AuthObsClient) {
 	mockRPC := new(rpcClientMock)
 	authClient := &AuthObsClient{
-		ObsClient: ObsClient{RPCClient: mockRPC},
+		ObsClient: *NewObsClient(mockRPC),
+		account:   testAcc,
 	}
 	return mockRPC, authClient
 }
