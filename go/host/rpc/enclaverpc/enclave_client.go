@@ -158,11 +158,17 @@ func (c *Client) IsInitialised() bool {
 func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
+
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to produce genesis. Cause: %s", err)
+		common.PanicWithID(c.nodeShortID, "Failed to produce genesis block. Cause: %s", err)
 	}
-	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
+
+	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
+	if err != nil {
+		common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+	}
+	return blockSubmissionResponse
 }
 
 func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionResponse {
@@ -184,7 +190,11 @@ func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionRes
 	responses := response.GetBlockSubmissionResponses()
 	result := make([]common.BlockSubmissionResponse, len(responses))
 	for i, r := range responses {
-		result[i] = rpc.FromBlockSubmissionResponseMsg(r)
+		blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(r)
+		if err != nil {
+			common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+		}
+		result[i] = blockSubmissionResponse
 	}
 	return result
 }
@@ -219,7 +229,12 @@ func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse,
 		return common.BlockSubmissionResponse{}, fmt.Errorf("failed to submit block. Cause: %w", err)
 	}
 	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
-	return rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse), nil
+
+	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
+	if err != nil {
+		common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+	}
+	return blockSubmissionResponse, nil
 }
 
 func (c *Client) SubmitRollup(rollup common.ExtRollup) {

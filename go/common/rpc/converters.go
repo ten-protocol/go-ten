@@ -2,8 +2,9 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"math/big"
+
+	"github.com/google/uuid"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -51,13 +52,12 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (gene
 	}, nil
 }
 
-func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) common.BlockSubmissionResponse {
+func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (common.BlockSubmissionResponse, error) {
 	subscribedLogs := make(map[uuid.UUID]common.EncryptedLogs)
 	for uuidString, log := range msg.SubscribedLogs {
 		id, err := uuid.Parse(uuidString)
 		if err != nil {
-			// todo - joel - return error instead
-			panic(fmt.Errorf("could not parse UUID from string. Cause: %w", err))
+			return common.BlockSubmissionResponse{}, fmt.Errorf("could not parse UUID from string. Cause: %w", err)
 		}
 		subscribedLogs[id] = log
 	}
@@ -70,7 +70,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) c
 		FoundNewHead:          msg.IngestedNewRollup,
 		RollupHead:            FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:        subscribedLogs,
-	}
+	}, nil
 }
 
 func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
