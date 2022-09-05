@@ -52,10 +52,12 @@ func rollupBodyKey(number uint64, hash common.Hash) []byte {
 	return append(append(rollupBodyPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
 }
 
+// blockStateKey = blockStatePrefix + hash
 func blockStateKey(hash common.Hash) []byte {
 	return append(blockStatePrefix, hash.Bytes()...)
 }
 
+// logsKey = logsPrefix + hash
 func logsKey(hash common.Hash) []byte {
 	return append(logsPrefix, hash.Bytes()...)
 }

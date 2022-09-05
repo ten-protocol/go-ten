@@ -53,7 +53,7 @@ type RollupResolver interface {
 }
 
 type BlockStateStorage interface {
-	// FetchBlockState returns the block state and logs for the given block. Returns nil if the block hasn't been stored.
+	// FetchBlockState returns the block state and logs for the given block, and a boolean indicating if the block was found.
 	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, map[uuid.UUID][]*types.Log, bool)
 	// FetchHeadState returns the head block state. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState

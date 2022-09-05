@@ -183,6 +183,7 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) *core.BlockSt
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs map[uuid.UUID][]*types.Log) {
+	// We use gobs instead of RLP here, because RLP cannot handle maps.
 	buffer := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buffer)
 	if err := encoder.Encode(logs); err != nil {
@@ -201,12 +202,12 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) map[uuid.
 	}
 
 	decoder := gob.NewDecoder(bytes.NewBuffer(data))
-	var logsRLP map[uuid.UUID][]*types.Log
-	if err := decoder.Decode(&logsRLP); err != nil {
+	var logs map[uuid.UUID][]*types.Log
+	if err := decoder.Decode(&logs); err != nil {
 		log.Panic("could not decode logs. Cause: %s", err)
 	}
 
-	return map[uuid.UUID][]*types.Log{} // todo - joel - return proper value
+	return logs
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
