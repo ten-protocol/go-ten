@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -482,7 +483,26 @@ func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpc.ViewingKey 
 		viewingKeys[account] = &viewingKey
 	}
 
+	logReRegisteredViewingKeys(viewingKeys)
+
 	return viewingKeys
+}
+
+// Logs and prints the accounts for which we are re-registering viewing keys.
+func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) {
+	if len(viewingKeys) == 0 {
+		return
+	}
+
+	var accounts []string //nolint:prealloc
+	for account := range viewingKeys {
+		accounts = append(accounts, account.Hex())
+	}
+
+	msg := fmt.Sprintf("Re-registering persisted viewing keys for the following addresses: %s",
+		strings.Join(accounts, ", "))
+	log.Info(msg)
+	fmt.Println(msg)
 }
 
 // Logs the error message and sends it as an HTTP error.
