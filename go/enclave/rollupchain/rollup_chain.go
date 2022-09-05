@@ -212,7 +212,6 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
 	parentState, parentLogs, parentFound := rc.storage.FetchBlockState(b.ParentHash())
-
 	if !parentFound {
 		// go back and calculate the Root of the Parent
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
