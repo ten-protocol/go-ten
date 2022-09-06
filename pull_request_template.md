@@ -1,18 +1,16 @@
 ### Why is this change needed?
 
-- description and if available link to ticket
+- Description and if available a link to ticket
 
 ### What changes were made as part of this PR:
 
-- list of changes
+- List of changes
 - Is this a functional or refactoring PR (it needs to be one or the other)
 
 ### What are the key areas to look at
 
-- ...
+- Describe the key areas for a reviewer to look at 
 
-
-### :rotating_light: Definition of Done :rotating_light:
-- [ ] Deployed into dev-testnet 
-- [ ] Passes tests on dev-testnet
-- [ ] [Changelog.md](https://github.com/obscuronet/go-obscuro/blob/main/docs/testnet/changelog.md) updated
+### :rotating_light: Definition of done :rotating_light:
+- [ ] New unit tests added, and all unit tests are passing
+- [ ] [Changelog.md](https://github.com/obscuronet/go-obscuro/blob/main/docs/testnet/changelog.md) updated if a functional PR
