@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -15,20 +16,19 @@ func main() {
 	}
 	defer client.Close()
 
-	ch := make(chan *string)
+	ch := make(chan *types.Log)
 	var subArgs []interface{} // By passing no additional args, we subscribe specifically for newly-mined blocks.
 	sub, err := client.Subscribe(context.Background(), "eth", ch, "logs", subArgs)
 	if err != nil {
 		panic(err)
 	}
 
-	println("jjj subscribed")
-
 	for {
 		select {
 		case msg := <-ch:
-			println("jjj received message:", *msg)
-		case err := <-sub.Err():
+			logData := msg.Data
+			println("jjj received data:", string(logData))
+		case err = <-sub.Err():
 			panic(err)
 		}
 	}

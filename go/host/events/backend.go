@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -23,23 +24,23 @@ func NewBackend() Backend {
 }
 
 func (b Backend) ChainDb() ethdb.Database { //nolint:stylecheck
-	return nil
+	panic("not implemented")
 }
 
 func (b Backend) HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error) {
-	return nil, nil //nolint:nilnil
+	panic("not implemented")
 }
 
 func (b Backend) HeaderByHash(ctx context.Context, blockHash common.Hash) (*types.Header, error) {
-	return nil, nil //nolint:nilnil
+	panic("not implemented")
 }
 
 func (b Backend) GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
-	return nil, nil
+	panic("not implemented")
 }
 
 func (b Backend) GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error) {
-	return nil, nil
+	panic("not implemented")
 }
 
 func (b Backend) SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription {
@@ -55,7 +56,19 @@ func (b Backend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) even
 }
 
 func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
-	return event.NewSubscription(nilProducer)
+	var logsProducer = func(<-chan struct{}) error {
+		for {
+			log := types.Log{
+				Topics: []common.Hash{},
+				Data:   []byte("hello world"),
+			}
+			ch <- []*types.Log{&log}
+			println("jjj just sent some logs")
+			time.Sleep(time.Second)
+		} // As soon as this method returns, the subscription is unsubscribed.
+	}
+
+	return event.NewSubscription(logsProducer)
 }
 
 func (b Backend) SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription {
@@ -63,6 +76,9 @@ func (b Backend) SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscri
 }
 
 func (b Backend) BloomStatus() (uint64, uint64) {
-	return 0, 0
+	panic("not implemented")
 }
-func (b Backend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {}
+
+func (b Backend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
+	panic("not implemented")
+}
