@@ -69,6 +69,7 @@ func (b Backend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) even
 func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	logsProducer := func(<-chan struct{}) error {
 		for {
+			// todo - joel - read logs from channel passed to backend
 			log := types.Log{
 				Topics: []common.Hash{},
 				Data:   []byte("hello world"),

@@ -1,6 +1,7 @@
 package events
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -68,21 +69,15 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUI
 }
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
-// TODO - #453 - Encrypt logs, rather than just serialising them.
+// TODO - #453 - Encrypt logs, rather than just serialising them as JSON.
 func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
 	result := map[uuid.UUID]common.EncryptedLogs{}
 	for subID, logs := range logsBySubID {
-		enc := make([]byte, 0)
-		for _, log := range logs {
-			logBytes, err := log.MarshalJSON()
-			if err != nil {
-				return nil, fmt.Errorf("could not marshal log to JSON. Cause: %w", err)
-			}
-
-			// TODO - #453 - Add separator between each serialised log.
-			enc = append(enc, logBytes...)
+		jsonLogs, err := json.Marshal(logs)
+		if err != nil {
+			return nil, err
 		}
-		result[subID] = enc
+		result[subID] = jsonLogs
 	}
 	return result, nil
 }

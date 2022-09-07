@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/host/events"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -224,6 +227,24 @@ func (a *Node) Start() {
 		a.rpcServer.Start()
 		common.LogWithID(a.shortID, "Started client server.")
 	}
+
+	println("jjj attempting to subscribe")
+	id, err := uuid.NewUUID()
+	if err != nil {
+		panic(err)
+	}
+	subscription := common.LogSubscription{
+		Accounts: []*common.SubscriptionAccount{},
+	}
+	encodedSubscription, err := rlp.EncodeToBytes(subscription)
+	if err != nil {
+		panic(err)
+	}
+	err = a.enclaveClient.Subscribe(id, encodedSubscription)
+	if err != nil {
+		panic(err)
+	}
+	println("jjj subscribed")
 
 	// start the node main processing loop
 	a.startProcessing()
@@ -449,7 +470,9 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		if err != nil {
 			return err
 		}
+
 		a.storeBlockProcessingResult(result)
+		a.sendLogsToSubscribers(result)
 	}
 
 	if !result.IngestedBlock {
@@ -569,6 +592,21 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	// adding a header will update the head if it has a higher height
 	if result.IngestedBlock {
 		a.nodeDB.AddBlockHeader(result.BlockHeader)
+	}
+}
+
+// Distributes logs to subscribed clients.
+// TODO - #453 - Encrypt logs, rather than just serialising them as JSON.
+// TODO - #453 - Distribute logs specifically based on subscription IDs, rather than sending all logs to everyone.
+func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
+	for _, jsonLogs := range result.SubscribedLogs {
+		println("jjj sending logs to subscribers")
+		var logs []*types.Log
+		err := json.Unmarshal(jsonLogs, &logs)
+		if err != nil {
+			panic(err) // todo - joel - handle
+		}
+		println(logs)
 	}
 }
 
