@@ -17,7 +17,7 @@ var (
 	defaultL2ChainID = big.NewInt(777)
 )
 
-// DefaultConfig stores the contract deployer default config
+// DefaultConfig stores the contract client default config
 func DefaultConfig() *Config {
 	return &Config{
 		NodeHost:          "",
