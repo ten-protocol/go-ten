@@ -158,7 +158,7 @@ func NewHost(
 				Public:    true,
 			},
 			{
-				Namespace: "eth",
+				Namespace: apiNamespaceEthereum,
 				Version:   apiVersion1,
 				Service:   clientapi.NewFilterAPI(node, node.logsCh),
 				Public:    true,
