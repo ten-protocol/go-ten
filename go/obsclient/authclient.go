@@ -79,7 +79,6 @@ func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg,
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) error {
-	signedTx.Data()
 	return ac.rpcClient.CallContext(ctx, nil, rpc.RPCSendRawTransaction, encodeTx(signedTx))
 }
 

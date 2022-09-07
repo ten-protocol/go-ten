@@ -41,7 +41,7 @@ type contractDeployerClient interface {
 }
 
 type contractDeployer struct {
-	client       contractDeployerClient
+	deployer     contractDeployerClient
 	wallet       wallet.Wallet
 	contractCode []byte
 }
@@ -63,7 +63,7 @@ func newContractDeployer(config *Config) (*contractDeployer, error) {
 		return nil, fmt.Errorf("failed to setup wallet - %w", err)
 	}
 
-	client, err := prepareClient(config, wal)
+	deployerClient, err := prepareDeployerClient(config, wal)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func newContractDeployer(config *Config) (*contractDeployer, error) {
 
 	deployer := &contractDeployer{
 		wallet:       wal,
-		client:       client,
+		deployer:     deployerClient,
 		contractCode: contractCode,
 	}
 
@@ -83,7 +83,7 @@ func newContractDeployer(config *Config) (*contractDeployer, error) {
 }
 
 func (cd *contractDeployer) run() (string, error) {
-	nonce, err := cd.client.Nonce(cd.wallet.Address())
+	nonce, err := cd.deployer.Nonce(cd.wallet.Address())
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch wallet nonce: %w", err)
 	}
@@ -96,7 +96,7 @@ func (cd *contractDeployer) run() (string, error) {
 		Data:     cd.contractCode,
 	}
 
-	contractAddr, err := signAndSendTxWithReceipt(cd.wallet, cd.client, &deployContractTx)
+	contractAddr, err := signAndSendTxWithReceipt(cd.wallet, cd.deployer, &deployContractTx)
 	if err != nil {
 		return "", err
 	}
@@ -117,27 +117,27 @@ func setupWallet(cfg *Config) (wallet.Wallet, error) {
 	return wallet.NewInMemoryWalletFromPK(cfg.ChainID, privateKey), nil
 }
 
-func prepareClient(config *Config, wal wallet.Wallet) (contractDeployerClient, error) {
+func prepareDeployerClient(config *Config, wal wallet.Wallet) (contractDeployerClient, error) {
 	if config.IsL1Deployment {
 		return prepareEthDeployer(config)
 	}
 	return prepareObscuroDeployer(config, wal)
 }
 
-func signAndSendTxWithReceipt(wallet wallet.Wallet, client contractDeployerClient, tx *types.LegacyTx) (*common.Address, error) {
+func signAndSendTxWithReceipt(wallet wallet.Wallet, deployer contractDeployerClient, tx *types.LegacyTx) (*common.Address, error) {
 	signedTx, err := wallet.SignTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign contract deploy transaction: %w", err)
 	}
 
-	err = client.SendTransaction(signedTx)
+	err = deployer.SendTransaction(signedTx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send contract deploy transaction: %w", err)
 	}
 
 	var start time.Time
 	for start = time.Now(); time.Since(start) < timeoutWait; time.Sleep(retryInterval) {
-		receipt, err := client.TransactionReceipt(signedTx.Hash())
+		receipt, err := deployer.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, fmt.Errorf("unable to deploy contract, receipt status unsuccessful: %v", receipt)

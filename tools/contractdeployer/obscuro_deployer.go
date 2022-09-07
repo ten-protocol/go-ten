@@ -21,10 +21,10 @@ func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet) (contractDeployerCli
 		return nil, fmt.Errorf("failed to setup obscuro client - %w", err)
 	}
 
-	// todo: this step doesn't belong in the contract_deployer tool, script should fail for underfunded deployer account
+	// todo: this step doesn't belong in the contract_deployer tool, script should fail for underfunded client account
 	err = fundDeployerWithFaucet(cfg, client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fund deployer acc from faucet - %w", err)
+		return nil, fmt.Errorf("failed to fund client acc from faucet - %w", err)
 	}
 
 	return &obscuroDeployer{client: client}, nil
@@ -45,9 +45,9 @@ func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient) error 
 
 	balance, err := client.BalanceAt(context.TODO(), nil)
 	if err != nil {
-		return fmt.Errorf("failed to fetch contract deployer balance. Cause: %w", err)
+		return fmt.Errorf("failed to fetch contract client balance. Cause: %w", err)
 	}
-	// We do not send more funds if the contract deployer already has enough.
+	// We do not send more funds if the contract client already has enough.
 	if balance.Cmp(big.NewInt(Prealloc)) == 1 {
 		return nil
 	}
@@ -110,7 +110,10 @@ type obscuroDeployer struct {
 	client *obsclient.AuthObsClient
 }
 
-func (o *obscuroDeployer) Nonce(_ gethcommon.Address) (uint64, error) {
+func (o *obscuroDeployer) Nonce(address gethcommon.Address) (uint64, error) {
+	if address != o.client.Address() {
+		return 0, fmt.Errorf("nonce requested for a different address to the deploying client address - this shouldn't happen")
+	}
 	return o.client.NonceAt(context.TODO(), nil)
 }
 
