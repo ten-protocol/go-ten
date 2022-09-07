@@ -230,7 +230,7 @@ func (a *Node) Start() {
 		common.LogWithID(a.shortID, "Started client server.")
 	}
 
-	println("jjj attempting to subscribe")
+	// Temporary code to set up a subscription.
 	id, err := uuid.NewUUID()
 	if err != nil {
 		panic(err)
@@ -246,7 +246,6 @@ func (a *Node) Start() {
 	if err != nil {
 		panic(err)
 	}
-	println("jjj subscribed")
 
 	// start the node main processing loop
 	a.startProcessing()
@@ -605,7 +604,7 @@ func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 		var logs []*types.Log
 		err := json.Unmarshal(jsonLogs, &logs)
 		if err != nil {
-			panic(err) // todo - joel - handle
+			log.Error("could not send logs to subscribers as could not unmarshal logs from JSON. Cause: %w", err)
 		}
 		a.logsCh <- logs
 	}
