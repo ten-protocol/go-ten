@@ -30,12 +30,12 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Config is the structure that a contract client config is parsed into.
+// Config is the structure that a contract deployer config is parsed into.
 type Config struct {
 	NodeHost          string   // host for the client connection
 	NodePort          uint     // port for client connection
 	IsL1Deployment    bool     // flag for L1/Eth contract deployment (rather than Obscuro/L2 deployment)
-	PrivateKey        string   // private key to be used for the contract client address
+	PrivateKey        string   // private key to be used for the contract deployer address
 	ChainID           *big.Int // chain ID we're deploying too
 	ContractName      string   // the name of the contract to deploy (e.g. ERC20 or MGMT)
 	ConstructorParams []string // parameters sent to the constructor
