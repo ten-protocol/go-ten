@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -11,9 +12,14 @@ import (
 const url = "ws://127.0.0.1:37500/" // The websocket address for the first Obscuro node in the full network simulation.
 
 func main() {
-	client, err := rpc.DialWebsocket(context.Background(), url, "")
-	if err != nil {
-		panic(err)
+	var client *rpc.Client
+	for {
+		var err error
+		client, err = rpc.DialWebsocket(context.Background(), url, "")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
 	}
 	defer client.Close()
 

@@ -28,10 +28,14 @@ var (
 )
 
 // Backend is a custom backend for Geth's `PublicFilterAPI`.
-type Backend struct{}
+type Backend struct {
+	logsCh <-chan []*types.Log
+}
 
-func NewBackend() Backend {
-	return Backend{}
+func NewBackend(logsCh <-chan []*types.Log) Backend {
+	return Backend{
+		logsCh: logsCh,
+	}
 }
 
 func (b Backend) ChainDb() ethdb.Database { //nolint:stylecheck
@@ -68,15 +72,11 @@ func (b Backend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) even
 
 func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	logsProducer := func(<-chan struct{}) error {
-		for {
-			// todo - joel - read logs from channel passed to backend
-			log := types.Log{
-				Topics: []common.Hash{},
-				Data:   []byte("hello world"),
-			}
-			ch <- []*types.Log{&log}
-			time.Sleep(time.Second)
-		} // As soon as this method returns, the subscription is unsubscribed.
+		select {
+		case logs := <-b.logsCh:
+			ch <- logs
+		}
+		return nil
 	}
 
 	return event.NewSubscription(logsProducer)

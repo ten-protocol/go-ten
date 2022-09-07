@@ -74,6 +74,7 @@ type Node struct {
 	forkRPCCh    chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
+	logsCh       chan []*types.Log          // The channel that logs are sent to
 
 	nodeDB *db.DB // Stores the node's publicly-available data
 
@@ -116,6 +117,7 @@ func NewHost(
 		forkRPCCh:    make(chan []common.EncodedBlock),
 		rollupsP2PCh: make(chan common.EncodedRollup),
 		txP2PCh:      make(chan common.EncryptedTx),
+		logsCh:       make(chan []*types.Log),
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -162,7 +164,7 @@ func NewHost(
 			{
 				Namespace: "eth",
 				Version:   apiVersion1,
-				Service:   filters.NewPublicFilterAPI(events.NewBackend(), false, 5*time.Minute),
+				Service:   filters.NewPublicFilterAPI(events.NewBackend(node.logsCh), false, 5*time.Minute),
 				Public:    true,
 			},
 		}
@@ -600,13 +602,12 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 // TODO - #453 - Distribute logs specifically based on subscription IDs, rather than sending all logs to everyone.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	for _, jsonLogs := range result.SubscribedLogs {
-		println("jjj sending logs to subscribers")
 		var logs []*types.Log
 		err := json.Unmarshal(jsonLogs, &logs)
 		if err != nil {
 			panic(err) // todo - joel - handle
 		}
-		println(logs)
+		a.logsCh <- logs
 	}
 }
 
