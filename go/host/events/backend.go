@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,10 +14,20 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-var nilProducer = func(<-chan struct{}) error {
-	select {} // As soon as this method returns, the subscription is unsubscribed.
-}
+var (
+	// We only support a limited subset of the `PublicFilterAPI` APIs.
+	errNotSupported = errors.New("this operation is not supported")
 
+	// Loops indefinitely. Cannot return, as this causes the subscription to be unsubscribed and the processing of
+	// events in `EventSystem.eventLoop` to end.
+	nilProducer = func(<-chan struct{}) error {
+		for {
+			time.Sleep(time.Minute)
+		}
+	}
+)
+
+// Backend is a custom backend for Geth's `PublicFilterAPI`.
 type Backend struct{}
 
 func NewBackend() Backend {
@@ -24,23 +35,23 @@ func NewBackend() Backend {
 }
 
 func (b Backend) ChainDb() ethdb.Database { //nolint:stylecheck
-	panic("not implemented")
+	return nil // Not implemented.
 }
 
 func (b Backend) HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error) {
-	panic("not implemented")
+	return nil, errNotSupported
 }
 
 func (b Backend) HeaderByHash(ctx context.Context, blockHash common.Hash) (*types.Header, error) {
-	panic("not implemented")
+	return nil, errNotSupported
 }
 
 func (b Backend) GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
-	panic("not implemented")
+	return nil, errNotSupported
 }
 
 func (b Backend) GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error) {
-	panic("not implemented")
+	return nil, errNotSupported
 }
 
 func (b Backend) SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription {
@@ -56,14 +67,13 @@ func (b Backend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) even
 }
 
 func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
-	var logsProducer = func(<-chan struct{}) error {
+	logsProducer := func(<-chan struct{}) error {
 		for {
 			log := types.Log{
 				Topics: []common.Hash{},
 				Data:   []byte("hello world"),
 			}
 			ch <- []*types.Log{&log}
-			println("jjj just sent some logs")
 			time.Sleep(time.Second)
 		} // As soon as this method returns, the subscription is unsubscribed.
 	}
@@ -76,9 +86,9 @@ func (b Backend) SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscri
 }
 
 func (b Backend) BloomStatus() (uint64, uint64) {
-	panic("not implemented")
+	return 0, 0 // Not implemented.
 }
 
 func (b Backend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
-	panic("not implemented")
+	// Not implemented.
 }
