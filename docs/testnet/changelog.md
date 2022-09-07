@@ -1,9 +1,13 @@
 # Obscuro Testnet Change Log
 
-## August 2022-0x-xx
-
+## August 2022-09-07
+* Tokens / ERC20 contracts
+  * The ERC20 'HOC' and 'POC' tokens are now funded with 18 decimal places of precision. Previously funding of 50 
+    tokens was erroneously made as 50 10^-18. This means tokens imported into Metamask will display correctly. Note that
+    the number guessing game pay to play still costs 1 10^-18 HOC tokens.
 * Wallet extension:
   * Viewing keys are now persisted across wallet extension restarts
+  * Enhanced logging for registering of viewing keys
 
 ## August 2022-08-22
 * Account balances:
