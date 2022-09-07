@@ -8,6 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/events"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
+
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -150,6 +154,12 @@ func NewHost(
 				Namespace: apiNamespaceTest,
 				Version:   apiVersion1,
 				Service:   clientapi.NewTestAPI(node),
+				Public:    true,
+			},
+			{
+				Namespace: "eth",
+				Version:   apiVersion1,
+				Service:   filters.NewPublicFilterAPI(events.NewBackend(), false, 5*time.Minute),
 				Public:    true,
 			},
 		}
