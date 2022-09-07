@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/google/uuid"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
@@ -317,26 +316,15 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 }
 
 // CreateSubscription sets up a subscription between the host and the enclave.
-func (a *Node) CreateSubscription() error {
+func (a *Node) CreateSubscription(encryptedLogSubscription common.EncryptedLogSubscription) error {
 	id, err := uuid.NewUUID()
 	if err != nil {
-		return fmt.Errorf("could not generate new UUID for subscription")
+		return fmt.Errorf("could not generate new UUID for subscription. Cause: %w", err)
 	}
 
-	// TODO - #453 - Link subscriptions to specific accounts.
-	subscription := common.LogSubscription{
-		Accounts: []*common.SubscriptionAccount{},
-	}
-
-	// TODO - #453 - Encrypt subscription requests, rather than just encoding them.
-	encodedSubscription, err := rlp.EncodeToBytes(subscription)
+	err = a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
-		return fmt.Errorf("could not encrypt subscription request")
-	}
-
-	err = a.EnclaveClient().Subscribe(id, encodedSubscription)
-	if err != nil {
-		return fmt.Errorf("could not create subscription with enclave")
+		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
 	}
 
 	return nil

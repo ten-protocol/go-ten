@@ -3,6 +3,7 @@ package clientapi
 import (
 	"context"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -11,6 +12,12 @@ import (
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/host/events"
+)
+
+var (
+	// Filters out nothing. The filtering is performed on the enclave side instead, based on the filters in the
+	// `common.EncryptedLogSubscription`.
+	emptyFilter = filters.FilterCriteria{}
 )
 
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.
@@ -27,11 +34,13 @@ func NewFilterAPI(host host.Host, logsCh chan []*types.Log) *FilterAPI {
 }
 
 // Logs returns a log subscription.
-func (api *FilterAPI) Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error) {
-	err := api.host.CreateSubscription()
+func (api *FilterAPI) Logs(ctx context.Context, encryptedLogSubscription common.EncryptedLogSubscription) (*rpc.Subscription, error) {
+	err := api.host.CreateSubscription(encryptedLogSubscription)
 	if err != nil {
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
+
 	// TODO - #453 - Manage termination of host -> enclave subscriptions when client subscriptions are terminated.
-	return api.gethFilterAPI.Logs(ctx, crit)
+
+	return api.gethFilterAPI.Logs(ctx, emptyFilter)
 }

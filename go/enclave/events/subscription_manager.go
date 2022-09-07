@@ -70,6 +70,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUI
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
 // TODO - #453 - Encrypt logs, rather than just serialising them as JSON.
+// TODO - #453 - Stuff encrypted logs into the data field of a log object, so they have the right type to return.
 func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
 	result := map[uuid.UUID]common.EncryptedLogs{}
 	for subID, logs := range logsBySubID {
