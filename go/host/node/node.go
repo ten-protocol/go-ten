@@ -424,20 +424,22 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	var result common.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
-		if block != nil {
-			decoded, err := block.DecodeBlock()
-			if err != nil {
-				return err
-			}
-			a.processBlock(decoded)
-
-			// submit each block to the enclave for ingestion plus validation
-			result, err = a.enclaveClient.SubmitBlock(*decoded)
-			if err != nil {
-				return err
-			}
-			a.storeBlockProcessingResult(result)
+		if block == nil {
+			continue
 		}
+
+		decoded, err := block.DecodeBlock()
+		if err != nil {
+			return err
+		}
+		a.processBlock(decoded)
+
+		// submit each block to the enclave for ingestion plus validation
+		result, err = a.enclaveClient.SubmitBlock(*decoded)
+		if err != nil {
+			return err
+		}
+		a.storeBlockProcessingResult(result)
 	}
 
 	if !result.IngestedBlock {
