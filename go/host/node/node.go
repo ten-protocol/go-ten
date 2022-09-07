@@ -8,9 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/google/uuid"
-
 	"github.com/obscuronet/go-obscuro/go/host/events"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -228,23 +225,6 @@ func (a *Node) Start() {
 	if a.rpcServer != nil {
 		a.rpcServer.Start()
 		common.LogWithID(a.shortID, "Started client server.")
-	}
-
-	// Temporary code to set up a subscription.
-	id, err := uuid.NewUUID()
-	if err != nil {
-		panic(err)
-	}
-	subscription := common.LogSubscription{
-		Accounts: []*common.SubscriptionAccount{},
-	}
-	encodedSubscription, err := rlp.EncodeToBytes(subscription)
-	if err != nil {
-		panic(err)
-	}
-	err = a.enclaveClient.Subscribe(id, encodedSubscription)
-	if err != nil {
-		panic(err)
 	}
 
 	// start the node main processing loop
