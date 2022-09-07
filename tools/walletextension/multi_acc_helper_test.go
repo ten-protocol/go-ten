@@ -55,7 +55,7 @@ func TestErrorsWhenDataFieldIsMissing(t *testing.T) {
 	}
 }
 
-func TestGracefulWhenDataFieldTooShort(t *testing.T) {
+func TestDataFieldTooShort(t *testing.T) {
 	callParams := map[string]interface{}{"data": "tooshort"}
 	address, err := searchDataFieldForAccount(callParams, accClients)
 	if err == nil {
