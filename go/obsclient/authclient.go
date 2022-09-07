@@ -93,3 +93,7 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	balance, err := hexutil.DecodeBig(result)
 	return balance, err
 }
+
+func (ac *AuthObsClient) Address() common.Address {
+	return ac.account
+}

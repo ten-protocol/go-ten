@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
-
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"github.com/obscuronet/go-obscuro/integration/guessinggame"
@@ -18,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
@@ -36,11 +33,16 @@ const (
 	Prealloc      = 2_050_000_000_000_000_000 // The amount preallocated to the contract deployer wallet.
 )
 
+// contractDeployerClient provides a common interface for the L1 and the L2 client
+type contractDeployerClient interface {
+	Nonce(address common.Address) (uint64, error)
+	SendTransaction(tx *types.Transaction) error
+	TransactionReceipt(hash common.Hash) (*types.Receipt, error)
+}
+
 type contractDeployer struct {
-	client       ethadapter.EthClient
+	deployer     contractDeployerClient
 	wallet       wallet.Wallet
-	faucetClient ethadapter.EthClient
-	faucetWallet wallet.Wallet
 	contractCode []byte
 }
 
@@ -50,7 +52,7 @@ func Deploy(config *Config) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return deployer.run(config.IsL1Deployment)
+	return deployer.run()
 }
 
 func newContractDeployer(config *Config) (*contractDeployer, error) {
@@ -61,7 +63,7 @@ func newContractDeployer(config *Config) (*contractDeployer, error) {
 		return nil, fmt.Errorf("failed to setup wallet - %w", err)
 	}
 
-	client, err := getClient(config, wal)
+	deployerClient, err := prepareDeployerClient(config, wal)
 	if err != nil {
 		return nil, err
 	}
@@ -73,39 +75,15 @@ func newContractDeployer(config *Config) (*contractDeployer, error) {
 
 	deployer := &contractDeployer{
 		wallet:       wal,
-		client:       client,
+		deployer:     deployerClient,
 		contractCode: contractCode,
-	}
-
-	if !config.IsL1Deployment {
-		// Create the L2 faucet wallet and client.
-		faucetPrivKey, err := crypto.HexToECDSA(rollupchain.FaucetPrivateKeyHex)
-		if err != nil {
-			panic("could not initialise L2 faucet private key")
-		}
-		deployer.faucetWallet = wallet.NewInMemoryWalletFromPK(config.ChainID, faucetPrivKey)
-
-		faucetClient, err := getClient(config, deployer.faucetWallet)
-		if err != nil {
-			return nil, err
-		}
-
-		deployer.faucetClient = faucetClient
 	}
 
 	return deployer, nil
 }
 
-func (cd *contractDeployer) run(isL1Deployment bool) (string, error) {
-	// On the L2, we need to prefund the contract deployer account.
-	if !isL1Deployment {
-		err := cd.prefundAccount()
-		if err != nil {
-			return "", fmt.Errorf("unable to prefund contract deployer account. Cause: %w", err)
-		}
-	}
-
-	nonce, err := cd.client.Nonce(cd.wallet.Address())
+func (cd *contractDeployer) run() (string, error) {
+	nonce, err := cd.deployer.Nonce(cd.wallet.Address())
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch wallet nonce: %w", err)
 	}
@@ -118,7 +96,7 @@ func (cd *contractDeployer) run(isL1Deployment bool) (string, error) {
 		Data:     cd.contractCode,
 	}
 
-	contractAddr, err := signAndSendTxWithReceipt(cd.wallet, cd.client, &deployContractTx)
+	contractAddr, err := signAndSendTxWithReceipt(cd.wallet, cd.deployer, &deployContractTx)
 	if err != nil {
 		return "", err
 	}
@@ -126,8 +104,6 @@ func (cd *contractDeployer) run(isL1Deployment bool) (string, error) {
 		return "", fmt.Errorf("transaction was successful but could not retrieve address for deployed contract")
 	}
 
-	// this is a safety sleep to make sure the output is printed
-	time.Sleep(5 * time.Second)
 	return contractAddr.Hex(), nil
 }
 
@@ -141,80 +117,27 @@ func setupWallet(cfg *Config) (wallet.Wallet, error) {
 	return wallet.NewInMemoryWalletFromPK(cfg.ChainID, privateKey), nil
 }
 
-func getClient(config *Config, wal wallet.Wallet) (ethadapter.EthClient, error) {
-	var client ethadapter.EthClient
-	var err error
-
-	startConnectingTime := time.Now()
-	// since the nodes we are connecting to may have only just started, we retry connection until it is successful
-	for client == nil && time.Since(startConnectingTime) < timeoutWait {
-		client, err = setupClient(config, wal)
-		if err == nil {
-			break // success
-		}
-		// if there was an error we'll retry, if we timeout the last seen error will display
-		time.Sleep(retryInterval)
+func prepareDeployerClient(config *Config, wal wallet.Wallet) (contractDeployerClient, error) {
+	if config.IsL1Deployment {
+		return prepareEthDeployer(config)
 	}
-	if client == nil {
-		return nil, fmt.Errorf("failed to initialise client connection after retrying for %s, %w", timeoutWait, err)
-	}
-
-	return client, nil
+	return prepareObscuroDeployer(config, wal)
 }
 
-func setupClient(cfg *Config, wal wallet.Wallet) (ethadapter.EthClient, error) {
-	if cfg.IsL1Deployment {
-		// return a connection to the l1
-		return ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"))
-	}
-	return ethadapter.NewObscuroRPCClient(cfg.NodeHost, cfg.NodePort, wal)
-}
-
-func (cd *contractDeployer) prefundAccount() error {
-	balance, err := cd.client.BalanceAt(cd.wallet.Address(), nil)
-	if err != nil {
-		return fmt.Errorf("failed to fetch contract deployer balance. Cause: %w", err)
-	}
-	// We do not send more funds if the contract deployer already has enough.
-	if balance.Cmp(big.NewInt(Prealloc)) == 1 {
-		return nil
-	}
-
-	nonce, err := cd.faucetClient.Nonce(cd.faucetWallet.Address())
-	if err != nil {
-		return fmt.Errorf("failed to fetch faucet nonce. Cause: %w", err)
-	}
-
-	destAddr := cd.wallet.Address()
-	tx := &types.LegacyTx{
-		Nonce:    nonce,
-		Value:    big.NewInt(Prealloc),
-		Gas:      uint64(1_000_000),
-		GasPrice: common.Big1,
-		To:       &destAddr,
-	}
-	_, err = signAndSendTxWithReceipt(cd.faucetWallet, cd.faucetClient, tx)
-	if err != nil {
-		return fmt.Errorf("failed to complete faucet transaction. Cause: %w", err)
-	}
-
-	return nil
-}
-
-func signAndSendTxWithReceipt(wallet wallet.Wallet, client ethadapter.EthClient, tx *types.LegacyTx) (*common.Address, error) {
+func signAndSendTxWithReceipt(wallet wallet.Wallet, deployer contractDeployerClient, tx *types.LegacyTx) (*common.Address, error) {
 	signedTx, err := wallet.SignTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign contract deploy transaction: %w", err)
 	}
 
-	err = client.SendTransaction(signedTx)
+	err = deployer.SendTransaction(signedTx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send contract deploy transaction: %w", err)
 	}
 
 	var start time.Time
 	for start = time.Now(); time.Since(start) < timeoutWait; time.Sleep(retryInterval) {
-		receipt, err := client.TransactionReceipt(signedTx.Hash())
+		receipt, err := deployer.TransactionReceipt(signedTx.Hash())
 		if err == nil && receipt != nil {
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, fmt.Errorf("unable to deploy contract, receipt status unsuccessful: %v", receipt)
