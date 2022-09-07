@@ -449,19 +449,20 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	}
 
 	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
-	if result.ProducedRollup.Header != nil {
-		encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
-		if err != nil {
-			return fmt.Errorf("could not encode rollup. Cause: %w", err)
-		}
-		err = a.p2p.BroadcastRollup(encodedRollup)
-		if err != nil {
-			return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
-		}
-
-		common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+	if result.ProducedRollup.Header == nil {
+		return nil
 	}
 
+	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
+	if err != nil {
+		return fmt.Errorf("could not encode rollup. Cause: %w", err)
+	}
+	err = a.p2p.BroadcastRollup(encodedRollup)
+	if err != nil {
+		return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
+	}
+
+	common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
 	return nil
 }
 
