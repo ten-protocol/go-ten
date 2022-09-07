@@ -42,19 +42,19 @@ func (b Backend) ChainDb() ethdb.Database { //nolint:stylecheck
 	return nil // Not implemented.
 }
 
-func (b Backend) HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error) {
+func (b Backend) HeaderByNumber(context.Context, rpc.BlockNumber) (*types.Header, error) {
 	return nil, errNotSupported
 }
 
-func (b Backend) HeaderByHash(ctx context.Context, blockHash common.Hash) (*types.Header, error) {
+func (b Backend) HeaderByHash(context.Context, common.Hash) (*types.Header, error) {
 	return nil, errNotSupported
 }
 
-func (b Backend) GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
+func (b Backend) GetReceipts(context.Context, common.Hash) (types.Receipts, error) {
 	return nil, errNotSupported
 }
 
-func (b Backend) GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error) {
+func (b Backend) GetLogs(context.Context, common.Hash) ([][]*types.Log, error) {
 	return nil, errNotSupported
 }
 
@@ -62,27 +62,26 @@ func (b Backend) SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscriptio
 	return event.NewSubscription(nilProducer)
 }
 
-func (b Backend) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
+func (b Backend) SubscribeChainEvent(chan<- core.ChainEvent) event.Subscription {
 	return event.NewSubscription(nilProducer)
 }
 
-func (b Backend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
+func (b Backend) SubscribeRemovedLogsEvent(chan<- core.RemovedLogsEvent) event.Subscription {
 	return event.NewSubscription(nilProducer)
 }
 
 func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	logsProducer := func(<-chan struct{}) error {
-		select {
-		case logs := <-b.logsCh:
+		for {
+			logs := <-b.logsCh
 			ch <- logs
 		}
-		return nil
 	}
 
 	return event.NewSubscription(logsProducer)
 }
 
-func (b Backend) SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription {
+func (b Backend) SubscribePendingLogsEvent(chan<- []*types.Log) event.Subscription {
 	return event.NewSubscription(nilProducer)
 }
 
@@ -90,6 +89,6 @@ func (b Backend) BloomStatus() (uint64, uint64) {
 	return 0, 0 // Not implemented.
 }
 
-func (b Backend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
+func (b Backend) ServiceFilter(context.Context, *bloombits.MatcherSession) {
 	// Not implemented.
 }

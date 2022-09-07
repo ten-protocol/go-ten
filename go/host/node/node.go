@@ -604,7 +604,7 @@ func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 		var logs []*types.Log
 		err := json.Unmarshal(jsonLogs, &logs)
 		if err != nil {
-			log.Error("could not send logs to subscribers as could not unmarshal logs from JSON. Cause: %w", err)
+			log.Error("could not send logs to subscribers as could not unmarshal logs from JSON. Cause: %s", err)
 		}
 		a.logsCh <- logs
 	}

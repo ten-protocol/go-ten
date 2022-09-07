@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -32,9 +33,8 @@ func main() {
 
 	for {
 		select {
-		case msg := <-ch:
-			logData := msg.Data
-			println("jjj received data:", string(logData))
+		case log := <-ch:
+			println(fmt.Sprintf("Received logs. Block number: %d. Data: %s", log.BlockNumber, string(log.Data)))
 		case err = <-sub.Err():
 			panic(err)
 		}
