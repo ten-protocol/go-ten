@@ -3,8 +3,9 @@ package clientapi
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/host"
 
@@ -14,11 +15,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/events"
 )
 
-var (
-	// Filters out nothing. The filtering is performed on the enclave side instead, based on the filters in the
-	// `common.EncryptedLogSubscription`.
-	emptyFilter = filters.FilterCriteria{}
-)
+// Filters out nothing. The filtering is performed on the enclave side instead, based on the filters in the
+// `common.EncryptedLogSubscription`.
+var emptyFilter = filters.FilterCriteria{}
 
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.
 type FilterAPI struct {
