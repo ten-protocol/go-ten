@@ -121,18 +121,20 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 }
 
 func teardown(obscuroClient rpc.Client, rpcServerAddr string) {
-	if obscuroClient != nil {
-		obscuroClient.Call(nil, rpc.RPCStopHost) //nolint:errcheck
+	if obscuroClient == nil {
+		return
+	}
 
-		// We wait for the client server port to be closed.
-		wait := 0
-		for tcpConnectionAvailable(rpcServerAddr) {
-			if wait == 20 { // max wait in seconds
-				panic(fmt.Sprintf("RPC client server had not shut down after %d seconds", wait))
-			}
-			time.Sleep(time.Second)
-			wait++
+	obscuroClient.Call(nil, rpc.RPCStopHost) //nolint:errcheck
+
+	// We wait for the client server port to be closed.
+	wait := 0
+	for tcpConnectionAvailable(rpcServerAddr) {
+		if wait == 20 { // max wait in seconds
+			panic(fmt.Sprintf("RPC client server had not shut down after %d seconds", wait))
 		}
+		time.Sleep(time.Second)
+		wait++
 	}
 }
 
