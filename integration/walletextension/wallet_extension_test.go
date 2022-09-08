@@ -304,12 +304,12 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 
-	// TODO - #453 - We should be passing standard arguments, and they should be mapped by the wallet extension.
+	// TODO - #453 - We should be passing a Geth FilterQuery, and it should be converted by the wallet extension.
 	logSubscription := common.LogSubscription{
 		Accounts: []*common.SubscriptionAccount{},
 	}
 
-	makeEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionLogs, logSubscription})
+	makeEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, logSubscription})
 }
 
 func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {

@@ -1,6 +1,7 @@
 package walletextension
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -175,11 +176,26 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension)
 }
 
 func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
-	var err error
+	if req.method == rpc.RPCSubscribe {
+		if len(req.params) == 0 {
+			return fmt.Errorf("could not subscribe as no subscription namespace was provided")
+		}
+		channel := make(chan interface{})
+		_, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, channel, req.params...)
+		if err != nil {
+			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.method, req.params, err)
+		}
+
+		// TODO - #453 - Route subscription events back to frontend.
+
+		return nil
+	}
+
 	if req.method == rpc.RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
+		var err error
 		req.params, err = setCallFromFieldIfMissing(req.params, *account)
 		if err != nil {
 			return err

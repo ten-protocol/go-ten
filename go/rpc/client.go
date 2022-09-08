@@ -3,6 +3,8 @@ package rpc
 import (
 	"context"
 	"errors"
+
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
@@ -15,7 +17,6 @@ const (
 	RPCNonce                   = "eth_getTransactionCount"
 	RPCGetTxReceipt            = "eth_getTransactionReceipt"
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
-	RPCSubscribe               = "eth_subscribe"
 	RPCGetBlockHeaderByHash    = "obscuroscan_getBlockHeaderByHash"
 	RPCGetCurrentRollupHead    = "obscuroscan_getCurrentRollupHead"
 	RPCGetRollup               = "obscuroscan_getRollup"
@@ -28,7 +29,10 @@ const (
 	RPCGetCurrentBlockHead     = "test_getCurrentBlockHead"
 	RPCGetRollupHeader         = "test_getRollupHeader"
 	RPCStopHost                = "test_stopHost"
-	RPCSubscriptionLogs        = "logs"
+
+	RPCSubscribe            = "eth_subscribe"
+	RPCSubscribeNamespace   = "eth"
+	RPCSubscriptionTypeLogs = "logs"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")
@@ -39,6 +43,8 @@ type Client interface {
 	Call(result interface{}, method string, args ...interface{}) error
 	// CallContext If the context is canceled before the call has successfully returned, CallContext returns immediately.
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
+	// Subscribe creates a subscription to the Obscuro host.
+	Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
 	// Stop closes the client.
 	Stop()
 }
