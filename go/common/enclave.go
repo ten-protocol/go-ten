@@ -93,7 +93,7 @@ type Enclave interface {
 	// Subscribe adds a log subscription to the enclave under the given ID, provided the request is authenticated
 	// correctly. The events will be populated in the BlockSubmissionResponse. If there is an existing subscription
 	// with the given ID, it is overwritten.
-	Subscribe(id uuid.UUID, subscription EncryptedLogSubscription) error
+	Subscribe(id uuid.UUID, encryptedParams EncryptedParamsLogs) error
 
 	// Unsubscribe removes the log subscription with the given ID from the enclave. If there is no subscription with
 	// the given ID, nothing is deleted.

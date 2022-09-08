@@ -23,7 +23,7 @@ type Host interface {
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// CreateSubscription sets up a subscription between the host and the enclave.
-	CreateSubscription(encryptedLogSubscription common.EncryptedLogSubscription) error
+	CreateSubscription(encryptedLogSubscription common.EncryptedParamsLogs) error
 	// Stop gracefully stops the host execution.
 	Stop()
 }

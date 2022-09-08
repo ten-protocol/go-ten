@@ -19,7 +19,7 @@ const (
 )
 
 // for these methods, the RPC method's requests and responses should be encrypted
-var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTxReceipt, RPCSendRawTransaction, RPCGetTransactionByHash}
+var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTransactionByHash, RPCGetTxReceipt, RPCSendRawTransaction, RPCSubscribe}
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type EncRPCClient struct {
@@ -67,14 +67,14 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	}
 
 	// encode the params into a json blob and encrypt them
-	encryptedParams, err := c.encryptArgs(args...)
+	encryptedParams, err := c.encryptArgs(method, args...)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
 
 	// we set up a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
 	var rawResult interface{}
-	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
+	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams...)
 	if err != nil {
 		return fmt.Errorf("%s rpc call failed - %w", method, err)
 	}
@@ -90,7 +90,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	}
 
 	// method is sensitive, so we decrypt it before unmarshalling the result
-	decrypted, err := c.decryptResponse(rawResult)
+	decrypted, err := c.decryptResponse(method, rawResult)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt response for %s call - %w", method, err)
 	}
@@ -119,7 +119,12 @@ func (c *EncRPCClient) Account() *common.Address {
 	return c.viewingKey.Account
 }
 
-func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
+func (c *EncRPCClient) encryptArgs(method string, args ...interface{}) ([]interface{}, error) {
+	if method == RPCSubscribe {
+		// Subscriptions require special handling, as the first parameter is the subscription type.
+		return c.encryptArgsSubscription(args)
+	}
+
 	if len(args) == 0 {
 		return nil, nil
 	}
@@ -129,7 +134,34 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("could not json encode request params: %w", err)
 	}
 
-	return c.encryptParamBytes(paramsJSON)
+	encryptedArgs, err := c.encryptParamBytes(paramsJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	return []interface{}{encryptedArgs}, nil
+}
+
+// Encrypts the arguments for a subscription.
+func (c *EncRPCClient) encryptArgsSubscription(args []interface{}) ([]interface{}, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("subscription did not specify its type")
+	}
+
+	var encryptedArgs []byte
+	if len(args) > 1 {
+		paramsJSON, err := json.Marshal(args[1:])
+		if err != nil {
+			return nil, fmt.Errorf("could not json encode request params: %w", err)
+		}
+
+		encryptedArgs, err = c.encryptParamBytes(paramsJSON)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return []interface{}{args[0], encryptedArgs}, nil
 }
 
 func (c *EncRPCClient) encryptParamBytes(params []byte) ([]byte, error) {
@@ -140,7 +172,18 @@ func (c *EncRPCClient) encryptParamBytes(params []byte) ([]byte, error) {
 	return encryptedParams, nil
 }
 
-func (c *EncRPCClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
+func (c *EncRPCClient) decryptResponse(method string, resultBlob interface{}) ([]byte, error) {
+	// TODO - #453 - Consider how the response should be encrypted, if at all, for subscriptions. Since the
+	//  subscription is created by the host, it may not make sense to encrypt the result. Does it make sense to return
+	//  anything at all, since the subscription object is (mainly?) aimed at the client library itself.
+	if method == RPCSubscribe {
+		bytes, err := json.Marshal(resultBlob)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal subscription result to JSON")
+		}
+		return bytes, nil
+	}
+
 	resultStr, ok := resultBlob.(string)
 	if !ok {
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/rlp"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -25,15 +23,18 @@ func NewSubscriptionManager() *SubscriptionManager {
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
-// TODO - #453 - Decrypt subscriptions (currently expects unencrypted serialised bytes).
 // TODO - #453 - Check each account in the subscription request is authenticated with a signature.
-func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedLogSubscription) error {
-	var subscription common.LogSubscription
-	if err := rlp.DecodeBytes(encryptedSubscription, &subscription); err != nil {
-		return fmt.Errorf("could not decode encoded log subscription. Cause: %w", err)
+func (s *SubscriptionManager) AddSubscription(id uuid.UUID, jsonSubscription []byte) error {
+	var subscriptions []common.LogSubscription
+	if err := json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
+		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
 	}
 
-	s.subscriptions[id] = &subscription
+	if len(subscriptions) != 1 {
+		return fmt.Errorf("expected a single log subscription, received %d", len(subscriptions))
+	}
+
+	s.subscriptions[id] = &subscriptions[0]
 	return nil
 }
 

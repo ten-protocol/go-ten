@@ -509,8 +509,12 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
 }
 
-func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
-	return e.subscriptionManager.AddSubscription(id, subscription)
+func (e *enclaveImpl) Subscribe(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogs) error {
+	jsonSubscription, err := e.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
+	if err != nil {
+		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
+	}
+	return e.subscriptionManager.AddSubscription(id, jsonSubscription)
 }
 
 func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {

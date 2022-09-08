@@ -15,6 +15,7 @@ const (
 	RPCNonce                   = "eth_getTransactionCount"
 	RPCGetTxReceipt            = "eth_getTransactionReceipt"
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
+	RPCSubscribe               = "eth_subscribe"
 	RPCGetBlockHeaderByHash    = "obscuroscan_getBlockHeaderByHash"
 	RPCGetCurrentRollupHead    = "obscuroscan_getCurrentRollupHead"
 	RPCGetRollup               = "obscuroscan_getRollup"
@@ -27,6 +28,7 @@ const (
 	RPCGetCurrentBlockHead     = "test_getCurrentBlockHead"
 	RPCGetRollupHeader         = "test_getRollupHeader"
 	RPCStopHost                = "test_stopHost"
+	RPCSubscriptionLogs        = "logs"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")
