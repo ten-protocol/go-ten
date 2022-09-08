@@ -68,11 +68,6 @@ const (
 )
 
 var (
-	// The log file used across all the wallet extension tests.
-	logFile = testlog.Setup(
-		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
-	)
-
 	walletExtensionAddr   = fmt.Sprintf("%s:%d", network.Localhost, integration.StartPortWalletExtensionTest)
 	walletExtensionConfig = createWalletExtensionConfig()
 
@@ -85,6 +80,11 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	logFile := testlog.Setup(
+		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
+	)
+	log.OutputToFile(logFile)
+
 	// We share a single Obscuro network across tests. Otherwise, every test takes 20 seconds at a minimum.
 	teardown, err := createObscuroNetwork()
 	defer teardown()
@@ -95,7 +95,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("req-no-viewing-key")
+	logTestStart("req-no-viewing-key")
 
 	createWalletExtension(t)
 
@@ -107,7 +107,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("bal-no-viewing-key")
+	logTestStart("bal-no-viewing-key")
 
 	createWalletExtension(t)
 
@@ -120,7 +120,7 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("bal-with-viewing-key")
+	logTestStart("bal-with-viewing-key")
 
 	createWalletExtension(t)
 	accountAddr, _ := registerPrivateKey(t)
@@ -133,7 +133,7 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("others-bal-with-viewing-key")
+	logTestStart("others-bal-with-viewing-key")
 
 	createWalletExtension(t)
 	registerPrivateKey(t)
@@ -147,7 +147,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("call-no-viewing-key")
+	logTestStart("call-no-viewing-key")
 
 	createWalletExtension(t)
 
@@ -176,7 +176,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("call-with-viewing-key")
+	logTestStart("call-with-viewing-key")
 
 	createWalletExtension(t)
 	accountAddress, _ := registerPrivateKey(t)
@@ -199,7 +199,7 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallWithoutSettingFromField(t *testing.T) {
-	setupWalletTestLog("call-no-from-field")
+	logTestStart("call-no-from-field")
 
 	createWalletExtension(t)
 	accountAddress, _ := registerPrivateKey(t)
@@ -221,7 +221,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 }
 
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("others-call-with-viewing-key")
+	logTestStart("others-call-with-viewing-key")
 
 	createWalletExtension(t)
 	registerPrivateKey(t)
@@ -246,7 +246,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("submit-tx-no-viewing-key")
+	logTestStart("submit-tx-no-viewing-key")
 
 	createWalletExtension(t)
 
@@ -266,7 +266,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("submit-tx-with-viewing-key")
+	logTestStart("submit-tx-with-viewing-key")
 
 	createWalletExtension(t)
 	_, privateKey := registerPrivateKey(t)
@@ -302,7 +302,7 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 }
 
 func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	setupWalletTestLog("others-submit-tx-with-viewing-key")
+	logTestStart("others-submit-tx-with-viewing-key")
 
 	createWalletExtension(t)
 	registerPrivateKey(t)
@@ -324,7 +324,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 }
 
 func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {
-	setupWalletTestLog("bal-with-mult-viewing-keys")
+	logTestStart("bal-with-mult-viewing-keys")
 
 	createWalletExtension(t)
 
@@ -353,7 +353,7 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 }
 
 func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
-	setupWalletTestLog("bal-after-restart")
+	logTestStart("bal-after-restart")
 
 	walletExtension := createWalletExtension(t)
 	accountAddr, _ := registerPrivateKey(t)
@@ -683,10 +683,7 @@ func fundAccount(dest common.Address) error {
 	return err
 }
 
-func setupWalletTestLog(testName string) {
-	// We reuse the same file for every test.
-	log.OutputToFile(logFile)
-
+func logTestStart(testName string) {
 	log.Info("-----------")
 	log.Info("Starting test: %s", testName)
 	log.Info("-----------")
