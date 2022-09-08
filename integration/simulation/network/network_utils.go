@@ -136,7 +136,7 @@ func createSocketObscuroNode(
 	// create an enclave client
 	enclaveClient := enclaverpc.NewClient(hostConfig)
 
-	// create a socket obscuro node
+	// create a socket P2P layer
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
 
 	return node.NewHost(

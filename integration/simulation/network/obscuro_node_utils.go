@@ -102,8 +102,6 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortWS)
 	}
 
-	time.Sleep(time.Second * 3)
-
 	// start each obscuro node
 	for _, m := range obscuroNodes {
 		t := m
@@ -113,13 +111,11 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 
 	// create the RPC clients
 	for i, rpcAddress := range nodeRPCAddresses {
-		println("jjj creating rpc client")
 		client, err := rpc.NewNetworkClient(rpcAddress)
 		if err != nil {
 			panic(err)
 		}
 		obscuroClients[i] = client
-		println("jjj created rpc client")
 	}
 
 	// wait for the clients to be connected
