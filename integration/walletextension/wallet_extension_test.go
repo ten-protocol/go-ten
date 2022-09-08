@@ -92,8 +92,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	logTestStart("req-no-viewing-key")
-
 	createWalletExtension(t)
 
 	respJSON := makeEthJSONReqAsJSON(rpc.RPCChainID, []string{})
@@ -104,8 +102,6 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
-	logTestStart("bal-no-viewing-key")
-
 	createWalletExtension(t)
 
 	respBody := makeEthJSONReq(walletExtensionAddr, rpc.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
@@ -117,8 +113,6 @@ func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	logTestStart("bal-with-viewing-key")
-
 	createWalletExtension(t)
 	accountAddr, _ := registerPrivateKey(t)
 
@@ -130,8 +124,6 @@ func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	logTestStart("others-bal-with-viewing-key")
-
 	createWalletExtension(t)
 	registerPrivateKey(t)
 
@@ -144,8 +136,6 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
-	logTestStart("call-no-viewing-key")
-
 	createWalletExtension(t)
 
 	// We generate an account, but do not register it with the node.
@@ -173,8 +163,6 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	logTestStart("call-with-viewing-key")
-
 	createWalletExtension(t)
 	accountAddress, _ := registerPrivateKey(t)
 
@@ -196,8 +184,6 @@ func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanCallWithoutSettingFromField(t *testing.T) {
-	logTestStart("call-no-from-field")
-
 	createWalletExtension(t)
 	accountAddress, _ := registerPrivateKey(t)
 
@@ -218,8 +204,6 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 }
 
 func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	logTestStart("others-call-with-viewing-key")
-
 	createWalletExtension(t)
 	registerPrivateKey(t)
 
@@ -243,8 +227,6 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
-	logTestStart("submit-tx-no-viewing-key")
-
 	createWalletExtension(t)
 
 	privateKey, err := crypto.GenerateKey()
@@ -263,8 +245,6 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 }
 
 func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) {
-	logTestStart("submit-tx-with-viewing-key")
-
 	createWalletExtension(t)
 	_, privateKey := registerPrivateKey(t)
 
@@ -299,8 +279,6 @@ func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) 
 }
 
 func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	logTestStart("others-submit-tx-with-viewing-key")
-
 	createWalletExtension(t)
 	registerPrivateKey(t)
 
@@ -321,8 +299,6 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 }
 
 func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {
-	logTestStart("bal-with-mult-viewing-keys")
-
 	createWalletExtension(t)
 
 	// We submit a viewing key for a random account.
@@ -350,8 +326,6 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 }
 
 func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
-	logTestStart("bal-after-restart")
-
 	walletExtension := createWalletExtension(t)
 	accountAddr, _ := registerPrivateKey(t)
 
@@ -678,10 +652,4 @@ func fundAccount(dest common.Address) error {
 	}
 	_, err = sendTransactionAndAwaitConfirmation(faucetWallet, tx)
 	return err
-}
-
-func logTestStart(testName string) {
-	log.Info("-----------")
-	log.Info("Starting test: %s", testName)
-	log.Info("-----------")
 }
