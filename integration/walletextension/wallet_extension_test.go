@@ -80,10 +80,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	logFile := testlog.Setup(
-		&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"},
-	)
-	log.OutputToFile(logFile)
+	log.OutputToFile(testlog.Setup(&testlog.Cfg{LogDir: testLogs, TestType: "wal-ext", TestSubtype: "test"}))
 
 	// We share a single Obscuro network across tests. Otherwise, every test takes 20 seconds at a minimum.
 	teardown, err := createObscuroNetwork()
