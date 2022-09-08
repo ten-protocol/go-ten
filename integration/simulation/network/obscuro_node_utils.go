@@ -83,7 +83,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		nodeRPCPortHTTP := params.StartPort + DefaultHostRPCHTTPOffset + i
 		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
 
-		// create a remote enclave server
+		// create an Obscuro node
 		obscuroNodes[i] = createSocketObscuroNode(
 			int64(i),
 			isGenesis,
@@ -99,7 +99,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			gethClients[i],
 		)
 
-		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
+		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortWS)
 		client, err := rpc.NewNetworkClient(nodeRPCAddresses[i])
 		if err != nil {
 			panic(err)

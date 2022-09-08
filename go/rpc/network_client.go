@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	http = "http://"
+	ws = "ws://"
 )
 
 // networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
@@ -31,9 +31,9 @@ func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClie
 
 // NewNetworkClient returns a client that can make RPC calls to an Obscuro node
 func NewNetworkClient(address string) (Client, error) {
-	rpcClient, err := rpc.Dial(http + address)
+	rpcClient, err := rpc.Dial(ws + address)
 	if err != nil {
-		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", http+address, err)
+		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", ws+address, err)
 	}
 
 	return &networkClient{
