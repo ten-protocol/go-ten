@@ -10,7 +10,7 @@ import (
 // setups some defaults like timestamp precision and logger
 func init() { //nolint:gochecknoinits
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	zerolog.SetGlobalLevel(DebugLevel)
+	zerolog.SetGlobalLevel(TraceLevel)
 	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli, NoColor: true}).With().Timestamp().Logger()
 }
 
