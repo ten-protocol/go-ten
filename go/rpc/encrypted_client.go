@@ -142,9 +142,9 @@ func (c *EncRPCClient) Account() *common.Address {
 	return c.viewingKey.Account
 }
 
-func (c *EncRPCClient) encryptArgs(args ...interface{}) (interface{}, error) {
+func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 	if len(args) == 0 {
-		return nil, nil //nolint:nilnil
+		return nil, nil
 	}
 
 	paramsJSON, err := json.Marshal(args)
@@ -152,12 +152,7 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("could not json encode request params: %w", err)
 	}
 
-	encryptedArgs, err := c.encryptParamBytes(paramsJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	return encryptedArgs, nil
+	return c.encryptParamBytes(paramsJSON)
 }
 
 func (c *EncRPCClient) encryptParamBytes(params []byte) ([]byte, error) {
