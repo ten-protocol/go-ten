@@ -48,9 +48,6 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)
 	rpcAddress := fmt.Sprintf("%s:%d", localhost, obscuroWebsocketPort)
 
-	var obscuroClient rpc.Client
-	defer teardown(obscuroClient, rpcAddress)
-
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +77,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
 
-	// we wait to ensure the RPC endpoint is up
+	// we create the node RPC client
+	var obscuroClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
 		obscuroClient, err = rpc.NewNetworkClient(rpcAddress)
@@ -93,6 +91,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(time.Second)
 		wait--
 	}
+	defer teardown(obscuroClient, rpcAddress)
 
 	// Check if the host profiler is up
 	_, err = http.Get(fmt.Sprintf("http://%s:%d", localhost, profiler.DefaultHostPort)) //nolint
