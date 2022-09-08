@@ -81,7 +81,7 @@ func defaultNetworkManagerConfig() Config {
 		obscuroChainID:       integration.ObscuroChainID,
 		mgmtContractAddress:  common.BytesToAddress([]byte("")),
 		erc20ContractAddress: common.BytesToAddress([]byte("")),
-		obscuroClientAddress: "127.0.0.1:13000",
+		obscuroClientAddress: "127.0.0.1:13001",
 		erc20Token:           "TST",
 	}
 }
