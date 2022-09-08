@@ -3,8 +3,9 @@ package clientutil
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -18,7 +19,7 @@ func AwaitTransactionReceipt(ctx context.Context, client *obsclient.AuthObsClien
 	return AwaitTransactionReceiptWithRetryStrategy(ctx, client, txHash, timeoutStrategy)
 }
 
-func AwaitTransactionReceiptWithRetryStrategy(ctx context.Context, client *obsclient.AuthObsClient, txHash common.Hash, retryStrategy retry.RetryStrategy) (*types.Receipt, error) {
+func AwaitTransactionReceiptWithRetryStrategy(ctx context.Context, client *obsclient.AuthObsClient, txHash common.Hash, retryStrategy retry.Strategy) (*types.Receipt, error) {
 	retryStrategy.Reset()
 	for {
 		select {

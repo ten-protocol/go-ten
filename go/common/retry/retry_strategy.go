@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// RetryStrategy interface allows for flexible strategies for retrying/polling functions, the usage should be:
-type RetryStrategy interface {
+// Strategy interface allows for flexible strategies for retrying/polling functions, the usage should be:
+type Strategy interface {
 	// NextRetryInterval calls can be considered as marking the completion of an attempt
 	NextRetryInterval() time.Duration // returns the duration to sleep before making the next attempt (may not be fixed, e.g. if strategy is to back-off)
 	Done() bool                       // returns true when caller should stop retrying

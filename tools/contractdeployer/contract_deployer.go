@@ -4,10 +4,11 @@ package contractdeployer
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"math/big"
 	"strconv"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"

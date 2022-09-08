@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func Do(fn func() error, retryStrat RetryStrategy) error {
+func Do(fn func() error, retryStrat Strategy) error {
 	// Reset tells the strategy we are about to start making attempts (it might reset attempts counter/record start time)
 	retryStrat.Reset()
 

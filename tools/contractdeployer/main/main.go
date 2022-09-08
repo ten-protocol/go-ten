@@ -11,7 +11,7 @@ import (
 
 func main() {
 	log.SetLogLevel(log.DisabledLevel)
-	//config := contractdeployer.ParseConfig()
+	// config := contractdeployer.ParseConfig()
 	config := &contractdeployer.Config{
 		NodeHost:       "obscuronode-0-testnet-17.uksouth.cloudapp.azure.com",
 		NodePort:       13000,
