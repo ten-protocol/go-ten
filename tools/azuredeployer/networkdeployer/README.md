@@ -26,6 +26,6 @@ network.
   * The enclave logs can be viewed using `docker logs <container-id>`
   * The Geth network logs are found under `~/go-obscuro/integration/.build/geth/<run-id>/node_logs.txt`
 
-* The first Obscuro host can be connected to remotely on port `13000`
+* The first Obscuro host can be connected to remotely via WS on port `13001`
   * This repo contains a tool under `tools/obscuroclient/` that can be used to connect remotely to the running 
     Obscuro host and retrieve the current block head height
