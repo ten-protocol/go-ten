@@ -36,7 +36,7 @@ const (
 var (
 	config = &contractdeployer.Config{
 		NodeHost:          network.Localhost,
-		NodePort:          integration.StartPortContractDeployerTest + network.DefaultHostRPCHTTPOffset,
+		NodePort:          integration.StartPortContractDeployerTest + network.DefaultHostRPCWSOffset,
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
 		ChainID:           big.NewInt(integration.ObscuroChainID),
