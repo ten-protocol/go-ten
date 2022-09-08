@@ -4,6 +4,7 @@ package contractdeployer
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"math/big"
 	"strconv"
 	"time"
@@ -135,20 +136,22 @@ func signAndSendTxWithReceipt(wallet wallet.Wallet, deployer contractDeployerCli
 		return nil, fmt.Errorf("failed to send contract deploy transaction: %w", err)
 	}
 
-	var start time.Time
-	for start = time.Now(); time.Since(start) < timeoutWait; time.Sleep(retryInterval) {
-		receipt, err := deployer.TransactionReceipt(signedTx.Hash())
-		if err == nil && receipt != nil {
-			if receipt.Status != types.ReceiptStatusSuccessful {
-				return nil, fmt.Errorf("unable to deploy contract, receipt status unsuccessful: %v", receipt)
-			}
-			log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
-			return &receipt.ContractAddress, nil
-		}
+	log.Info("Waiting (up to %s) for deploy tx to be mined into a block...", timeoutWait)
 
-		log.Info("Contract deploy tx %s has not been mined into a block after %s...", signedTx.Hash(), time.Since(start))
+	var receipt *types.Receipt
+	err = retry.Do(func() error {
+		receipt, err = deployer.TransactionReceipt(signedTx.Hash())
+		return err
+	}, retry.NewTimeoutStrategy(timeoutWait, retryInterval))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy contract - %w", err)
 	}
-	return nil, fmt.Errorf("failed to mine contract deploy tx %s into a block after %s. Aborting", signedTx.Hash(), time.Since(start))
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		return nil, fmt.Errorf("unable to deploy contract, receipt status unsuccessful: %v", receipt)
+	}
+
+	return &receipt.ContractAddress, nil
 }
 
 func getContractCode(cfg *Config) ([]byte, error) {
