@@ -47,7 +47,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)
 	rpcAddress := fmt.Sprintf("%s:%d", localhost, obscuroWebsocketPort)
-	
+
 	var obscuroClient rpc.Client
 	defer teardown(obscuroClient, rpcAddress)
 
