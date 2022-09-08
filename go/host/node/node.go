@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -67,6 +69,7 @@ type Node struct {
 	forkRPCCh    chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
+	logsCh       chan []*types.Log          // The channel that logs are sent to
 
 	nodeDB *db.DB // Stores the node's publicly-available data
 
@@ -109,6 +112,7 @@ func NewHost(
 		forkRPCCh:    make(chan []common.EncodedBlock),
 		rollupsP2PCh: make(chan common.EncodedRollup),
 		txP2PCh:      make(chan common.EncryptedTx),
+		logsCh:       make(chan []*types.Log),
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -150,6 +154,12 @@ func NewHost(
 				Namespace: apiNamespaceTest,
 				Version:   apiVersion1,
 				Service:   clientapi.NewTestAPI(node),
+				Public:    true,
+			},
+			{
+				Namespace: apiNamespaceEthereum,
+				Version:   apiVersion1,
+				Service:   clientapi.NewFilterAPI(node, node.logsCh),
 				Public:    true,
 			},
 		}
@@ -305,6 +315,21 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
+// CreateSubscription sets up a subscription between the host and the enclave.
+func (a *Node) CreateSubscription(encryptedLogSubscription common.EncryptedLogSubscription) error {
+	id, err := uuid.NewUUID()
+	if err != nil {
+		return fmt.Errorf("could not generate new UUID for subscription. Cause: %w", err)
+	}
+
+	err = a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
+	if err != nil {
+		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
+	}
+
+	return nil
+}
+
 func (a *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
@@ -439,7 +464,9 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		if err != nil {
 			return err
 		}
+
 		a.storeBlockProcessingResult(result)
+		a.sendLogsToSubscribers(result)
 	}
 
 	if !result.IngestedBlock {
@@ -559,6 +586,20 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	// adding a header will update the head if it has a higher height
 	if result.IngestedBlock {
 		a.nodeDB.AddBlockHeader(result.BlockHeader)
+	}
+}
+
+// Distributes logs to subscribed clients.
+// TODO - #453 - Encrypt logs, rather than just serialising them as JSON.
+// TODO - #453 - Distribute logs specifically based on subscription IDs, rather than sending all logs to everyone.
+func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
+	for _, jsonLogs := range result.SubscribedLogs {
+		var logs []*types.Log
+		err := json.Unmarshal(jsonLogs, &logs)
+		if err != nil {
+			log.Error("could not send logs to subscribers as could not unmarshal logs from JSON. Cause: %s", err)
+		}
+		a.logsCh <- logs
 	}
 }
 

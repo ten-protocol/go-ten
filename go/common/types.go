@@ -181,7 +181,7 @@ func (h *Header) Hash() L2RootHash {
 
 type LogSubscription struct {
 	Accounts []*SubscriptionAccount
-	// todo Filters - the geth log filters
+	// TODO - #453 - Add filters using the Geth `filters.FilterCriteria` type.
 }
 
 // SubscriptionAccount is an authenticated account used when subscribing to logs.
