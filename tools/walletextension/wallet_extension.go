@@ -94,14 +94,14 @@ func NewWalletExtension(config Config) *WalletExtension {
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	unauthedClient, err := rpc.NewNetworkClient(config.NodeRPCHTTPAddress)
+	unauthedClient, err := rpc.NewNetworkClient(config.NodeRPCWebsocketAddress)
 	if err != nil {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
 
 	walletExtension := &WalletExtension{
 		enclavePublicKey: enclavePublicKey,
-		hostAddr:         config.NodeRPCHTTPAddress,
+		hostAddr:         config.NodeRPCWebsocketAddress,
 		accountClients:   make(map[common.Address]*rpc.EncRPCClient),
 		unsignedVKs:      make(map[common.Address]*rpc.ViewingKey),
 		unauthedClient:   unauthedClient,
@@ -113,7 +113,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
 		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
 		if err != nil {
-			log.Error("failed to create encrypted RPC client for account %s. Cause: %s", accountAddr, err)
+			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
 			continue
 		}
 		walletExtension.accountClients[accountAddr] = client
@@ -372,7 +372,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("failed to create encrypted RPC client for acc=%s - %s", accAddress, err))
+		logAndSendErr(resp, fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
 	we.accountClients[accAddress] = client
 
@@ -515,7 +515,7 @@ func logAndSendErr(resp http.ResponseWriter, msg string) {
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionPort     int
-	NodeRPCHTTPAddress      string
+	NodeRPCHTTPAddress      string // TODO - Remove this unused field.
 	NodeRPCWebsocketAddress string
 	LogPath                 string
 	PersistencePathOverride string // Overrides the persistence file location. Used in tests.

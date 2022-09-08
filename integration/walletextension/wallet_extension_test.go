@@ -492,7 +492,11 @@ func generateAndSubmitViewingKey(accountAddr string, accountPrivateKey *ecdsa.Pr
 		return err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("request to add viewing key failed with following status: %s", resp.Status)
+		respBody, err := io.ReadAll(resp.Body)
+		if err == nil {
+			return fmt.Errorf("request to add viewing key failed with status %s: %s", resp.Status, respBody)
+		}
+		return fmt.Errorf("request to add viewing key failed with status %s", resp.Status)
 	}
 	if err != nil {
 		return err

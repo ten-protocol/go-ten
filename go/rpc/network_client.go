@@ -31,6 +31,7 @@ func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClie
 
 // NewNetworkClient returns a client that can make RPC calls to an Obscuro node
 func NewNetworkClient(address string) (Client, error) {
+	// TODO - Allow instantiator to choose between websockets and HTTP
 	rpcClient, err := rpc.Dial(ws + address)
 	if err != nil {
 		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", ws+address, err)
