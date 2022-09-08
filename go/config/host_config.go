@@ -72,7 +72,7 @@ func DefaultHostConfig() HostConfig {
 		GossipRoundDuration:    8333,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      13000,
-		HasClientRPCWebsockets: false,
+		HasClientRPCWebsockets: true,
 		ClientRPCPortWS:        13001,
 		ClientRPCHost:          "127.0.0.1",
 		EnclaveRPCAddress:      "127.0.0.1:11000",

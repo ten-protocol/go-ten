@@ -83,7 +83,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		nodeRPCPortHTTP := params.StartPort + DefaultHostRPCHTTPOffset + i
 		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
 
-		// create a remote enclave server
+		// create an Obscuro node
 		obscuroNodes[i] = createSocketObscuroNode(
 			int64(i),
 			isGenesis,
@@ -99,12 +99,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			gethClients[i],
 		)
 
-		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortHTTP)
-		client, err := rpc.NewNetworkClient(nodeRPCAddresses[i])
-		if err != nil {
-			panic(err)
-		}
-		obscuroClients[i] = client
+		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortWS)
 	}
 
 	// start each obscuro node
@@ -114,17 +109,22 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	// wait for the clients to be connected
-	for i, client := range obscuroClients {
+	// create the RPC clients
+	for i, rpcAddress := range nodeRPCAddresses {
+		var client rpc.Client
+		var err error
+
 		started := false
 		for !started {
-			err := client.Call(nil, rpc.RPCGetID)
-			started = err == nil
+			client, err = rpc.NewNetworkClient(rpcAddress)
+			started = err == nil // The client cannot be created until the node has started.
 			if !started {
-				log.Info("Could not connect to client %d. Err %s. Retrying..\n", i, err)
+				log.Info("Could not create client %d. Err %s. Retrying...\n", i, err)
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
+
+		obscuroClients[i] = client
 	}
 
 	return obscuroClients, nodeRPCAddresses

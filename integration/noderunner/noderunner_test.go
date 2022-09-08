@@ -29,9 +29,12 @@ import (
 // TODO - Use the HostRunner/EnclaveRunner methods in the socket-based integration tests, and retire this smoketest.
 
 const (
-	testLogs            = "../.build/noderunner/"
-	defaultWsPortOffset = 100
-	localhost           = "127.0.0.1"
+	testLogs             = "../.build/noderunner/"
+	gethPort             = integration.StartPortNodeRunnerTest + 2
+	defaultWsPortOffset  = 100
+	gethWebsocketPort    = gethPort + defaultWsPortOffset
+	localhost            = "127.0.0.1"
+	obscuroWebsocketPort = integration.StartPortNodeRunnerTest + 1
 )
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
@@ -42,11 +45,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		TestSubtype: "test",
 	})
 
-	startPort := integration.StartPortNodeRunnerTest
-	enclaveAddr := fmt.Sprintf("%s:%d", localhost, startPort)
-	rpcServerAddr := fmt.Sprintf("%s:%d", localhost, startPort+1)
-	gethPort := startPort + 2
-	gethWebsocketPort := gethPort + defaultWsPortOffset
+	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)
+	rpcAddress := fmt.Sprintf("%s:%d", localhost, obscuroWebsocketPort)
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -57,7 +57,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig := config.DefaultHostConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
-	hostConfig.ClientRPCPortHTTP = uint64(startPort + 1)
+	hostConfig.ClientRPCPortWS = uint64(obscuroWebsocketPort)
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 	hostConfig.ProfilerEnabled = true
 
@@ -76,24 +76,22 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	go enclaverunner.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
-	obscuroClient, err := rpc.NewNetworkClient(rpcServerAddr)
-	if err != nil {
-		panic(err)
-	}
-	defer teardown(obscuroClient, rpcServerAddr)
 
-	// We sleep to give the network time to produce some blocks.
-	time.Sleep(3 * time.Second)
-
-	// we wait to ensure the RPC endpoint is up
-	wait := 60 // max wait in seconds
-	for !tcpConnectionAvailable(rpcServerAddr) {
-		if wait == 0 {
+	// we create the node RPC client
+	var obscuroClient rpc.Client
+	wait := 30 // max wait in seconds
+	for {
+		obscuroClient, err = rpc.NewNetworkClient(rpcAddress)
+		if err == nil {
+			break
+		}
+		if wait <= 0 {
 			t.Fatal("RPC client server never became available")
 		}
 		time.Sleep(time.Second)
 		wait--
 	}
+	defer teardown(obscuroClient, rpcAddress)
 
 	// Check if the host profiler is up
 	_, err = http.Get(fmt.Sprintf("http://%s:%d", localhost, profiler.DefaultHostPort)) //nolint
@@ -123,6 +121,10 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 }
 
 func teardown(obscuroClient rpc.Client, rpcServerAddr string) {
+	if obscuroClient == nil {
+		return
+	}
+
 	obscuroClient.Call(nil, rpc.RPCStopHost) //nolint:errcheck
 
 	// We wait for the client server port to be closed.

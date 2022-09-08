@@ -21,10 +21,10 @@ func main() {
 	fmt.Printf("Starting with following config: \n%s\n", string(jsonConfig))
 
 	// We wait thirty seconds for a connection to the node. If we cannot establish one, we exit the program.
-	fmt.Printf("Waiting up to thirty seconds for connection to host at %s...\n", config.NodeRPCHTTPAddress)
+	fmt.Printf("Waiting up to thirty seconds for connection to host at %s...\n", config.NodeRPCWebsocketAddress)
 	counter := 30
 	for {
-		conn, err := net.Dial(tcp, config.NodeRPCHTTPAddress)
+		conn, err := net.Dial(tcp, config.NodeRPCWebsocketAddress)
 		if conn != nil {
 			conn.Close()
 		}
@@ -34,7 +34,7 @@ func main() {
 
 		counter--
 		if counter <= 0 {
-			fmt.Printf("Exiting. Could not establish connection to host at %s. Cause: %s\n", config.NodeRPCHTTPAddress, err)
+			fmt.Printf("Exiting. Could not establish connection to host at %s. Cause: %s\n", config.NodeRPCWebsocketAddress, err)
 			return
 		}
 		time.Sleep(time.Second)
