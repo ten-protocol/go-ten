@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,7 +21,7 @@ const (
 )
 
 // for these methods, the RPC method's requests and responses should be encrypted
-var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTxReceipt, RPCSendRawTransaction, RPCGetTransactionByHash}
+var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTransactionByHash, RPCGetTxReceipt, RPCSendRawTransaction, RPCSubscribe}
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type EncRPCClient struct {
@@ -102,6 +104,27 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	}
 
 	return nil
+}
+
+func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("subscription did not specify its type")
+	}
+
+	encryptedParams, err := c.encryptArgs(args[1:]...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
+	}
+
+	clientChannel := make(chan interface{})
+	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, args[0], encryptedParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO - #453 - Listen on the client channel, decrypt logs, and forward the logs on using the other channel.
+
+	return subscription, nil
 }
 
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {

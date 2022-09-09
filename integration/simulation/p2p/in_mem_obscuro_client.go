@@ -120,6 +120,10 @@ func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, 
 	return c.Call(result, method, args...)
 }
 
+func (c *inMemObscuroClient) Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
+	panic("not implemented")
+}
+
 func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
 	encBytes, err := getEncryptedBytes(args, rpc.RPCSendRawTransaction)
 	if err != nil {

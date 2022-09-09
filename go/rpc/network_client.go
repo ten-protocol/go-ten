@@ -52,6 +52,10 @@ func (c *networkClient) CallContext(ctx context.Context, result interface{}, met
 	return c.rpcClient.CallContext(ctx, result, method, args...)
 }
 
+func (c *networkClient) Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+	return c.rpcClient.Subscribe(ctx, namespace, channel, args...)
+}
+
 func (c *networkClient) Stop() {
 	c.rpcClient.Close()
 }

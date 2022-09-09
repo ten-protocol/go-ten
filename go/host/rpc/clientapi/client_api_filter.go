@@ -33,8 +33,8 @@ func NewFilterAPI(host host.Host, logsCh chan []*types.Log) *FilterAPI {
 }
 
 // Logs returns a log subscription.
-func (api *FilterAPI) Logs(ctx context.Context, encryptedLogSubscription common.EncryptedLogSubscription) (*rpc.Subscription, error) {
-	err := api.host.CreateSubscription(encryptedLogSubscription)
+func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
+	err := api.host.CreateSubscription(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
