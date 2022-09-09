@@ -596,9 +596,10 @@ func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	for _, encryptedLogs := range result.SubscribedLogs {
 		// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
 		// encrypted bytes. To get around this, we place the encrypted log bytes into a "fake" log's data field.
-		// TODO - #453 - Tag the "fake" log objects with a topic that's the padded subscription ID.
 		wrapperLog := types.Log{
-			Data: encryptedLogs,
+			// TODO - #453 - Tag the "fake" log objects with a topic that's the padded subscription ID instead.
+			Topics: []gethcommon.Hash{gethcommon.BytesToHash([]byte("placeholder"))},
+			Data:   encryptedLogs,
 		}
 		a.logsCh <- &wrapperLog
 	}

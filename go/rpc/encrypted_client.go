@@ -120,7 +120,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel 
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
 
-	clientChannel := make(chan []*types.Log)
+	clientChannel := make(chan *types.Log)
 	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, args[0], encryptedParams)
 	if err != nil {
 		return nil, err
@@ -129,12 +129,24 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel 
 	go func() {
 		for {
 			select {
-			case receivedLogs := <-clientChannel:
-				for range receivedLogs {
-					// TODO - #453 - Route subscription events back to frontend.
+			case receivedLog := <-clientChannel:
+				// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
+				// encrypted bytes. To get around this, we place the encrypted log bytes into a "fake" log's data field.
+				// TODO - #453 - Add decryption of logs here once it's added on the enclave side.
+				var encryptedLogs []*types.Log
+				err = json.Unmarshal(receivedLog.Data, &encryptedLogs)
+				if err != nil {
+					// TODO - #453 - Route error back to frontend.
+					panic(err)
 				}
+
+				for range encryptedLogs {
+					// TODO - #453 - Route logs back to frontend.
+				}
+
 			case err = <-subscription.Err():
-				// TODO - #453 - Handle error.
+				// TODO - #453 - Route error back to frontend.
+				panic(err)
 			}
 		}
 	}()

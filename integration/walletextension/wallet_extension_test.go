@@ -305,6 +305,24 @@ func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 
 	makeEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+
+	// TODO - #453 - Remove temp code below, which is intended only to force an event to happen, then wait for it to be
+	//  processed by the wallet extension.
+	_, privateKey := registerPrivateKey(t)
+	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
+	err := fundAccount(txWallet.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = txWallet.SignTransaction(&deployERC20Tx)
+	if err != nil {
+		panic(fmt.Errorf("could not sign transaction. Cause: %w", err))
+	}
+	_, err = sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Second)
 }
 
 func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {
