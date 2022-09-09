@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -108,9 +110,19 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return nil
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
+	}
+
+	subscriptionType := args[0]
+	if subscriptionType != RPCSubscriptionTypeLogs {
+		return nil, fmt.Errorf("only subscriptions of type %s are supported", RPCSubscriptionTypeLogs)
+	}
+
+	logCh, ok := ch.(chan *types.Log)
+	if !ok {
+		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
 	// TODO - #453 - Map incoming filters.FilterCriteria to a common.LogSubscription.
@@ -120,8 +132,8 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel 
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
 
-	clientChannel := make(chan []*types.Log)
-	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, args[0], encryptedParams)
+	clientChannel := make(chan *types.Log)
+	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
 	}
@@ -129,12 +141,22 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel 
 	go func() {
 		for {
 			select {
-			case receivedLogs := <-clientChannel:
-				for range receivedLogs {
-					// TODO - #453 - Route subscription events back to frontend.
+			case receivedLog := <-clientChannel:
+				// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
+				// encrypted bytes. To get around this, we place the encrypted log bytes into a "fake" log's data field.
+				// TODO - #453 - Add decryption of logs here once it's added on the enclave side.
+				var decryptedLogs []*types.Log
+				err = json.Unmarshal(receivedLog.Data, &decryptedLogs)
+				if err != nil {
+					log.Error("could not unmarshall log from subscription. Cause: %s", err)
 				}
-			case err = <-subscription.Err():
-				// TODO - #453 - Handle error.
+
+				for _, decryptedLog := range decryptedLogs {
+					logCh <- decryptedLog
+				}
+
+			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
+				break
 			}
 		}
 	}()
