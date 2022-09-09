@@ -134,7 +134,6 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	}
 
 	go func() {
-
 		for {
 			select {
 			case receivedLog := <-clientChannel:
@@ -152,9 +151,8 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 					logCh <- decryptedLog
 				}
 
-			case err = <-subscription.Err():
-				// TODO - #453 - Route error back to frontend.
-				panic(err)
+			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
+				break
 			}
 		}
 	}()
