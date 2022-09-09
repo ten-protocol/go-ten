@@ -72,10 +72,14 @@ func (b Backend) SubscribeRemovedLogsEvent(chan<- core.RemovedLogsEvent) event.S
 }
 
 func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
-	logsProducer := func(<-chan struct{}) error {
+	logsProducer := func(quit <-chan struct{}) error {
 		for {
-			logs := <-b.logsCh
-			ch <- logs
+			select {
+			case <-quit:
+				// TODO - #453 - Terminate the host -> enclave subscription.
+			case logs := <-b.logsCh:
+				ch <- logs
+			}
 		}
 	}
 

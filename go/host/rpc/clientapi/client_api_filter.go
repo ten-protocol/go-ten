@@ -46,7 +46,5 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedLogSubscription common.
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
 
-	// TODO - #453 - Manage termination of host -> enclave subscriptions when client subscriptions are terminated.
-
 	return api.gethFilterAPI.Logs(ctx, emptyFilter)
 }
