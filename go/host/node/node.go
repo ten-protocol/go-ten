@@ -591,8 +591,9 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 }
 
 // Distributes logs to subscribed clients.
-// TODO - #453 - Encrypt logs, rather than just serialising them as JSON.
 // TODO - #453 - Distribute logs specifically based on subscription IDs, rather than sending all logs to everyone.
+// TODO - #453 - Stuff encrypted logs into the data field of log objects, so they have the right type to return.
+// TODO - #453 - Tag the "fake" log objects with a topic that's the padded subscription ID.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	for _, jsonLogs := range result.SubscribedLogs {
 		var logs []*types.Log
