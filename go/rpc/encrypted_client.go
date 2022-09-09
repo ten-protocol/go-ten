@@ -111,6 +111,8 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel 
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
 
+	// TODO - #453 - Map incoming filters.FilterCriteria to a common.LogSubscription.
+
 	encryptedParams, err := c.encryptArgs(args[1:]...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)

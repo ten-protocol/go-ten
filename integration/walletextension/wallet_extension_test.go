@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
@@ -304,12 +304,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 
-	// TODO - #453 - We should be passing a Geth FilterQuery, and it should be converted by the wallet extension.
-	logSubscription := common.LogSubscription{
-		Accounts: []*common.SubscriptionAccount{},
-	}
-
-	makeEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, logSubscription})
+	makeEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
 }
 
 func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {
