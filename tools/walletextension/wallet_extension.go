@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"io"
 	"io/fs"
 	"net/http"
@@ -67,6 +68,10 @@ const (
 
 //go:embed static
 var staticFiles embed.FS
+
+var (
+	upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
+)
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
@@ -206,10 +211,35 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
-		return
+	var isWebsocket bool
+	for _, header := range req.Header["Upgrade"] { // todo - joel - use constant
+		if header == "websocket" {
+			isWebsocket = true
+			break
+		}
+	}
+
+	var conn *websocket.Conn
+	var err error
+	if isWebsocket {
+		conn, err = upgrader.Upgrade(resp, req, nil)
+		if err != nil {
+			logAndSendErr(resp, "attempted to subscribe, but was unable to create websocket connection")
+			return
+		}
+	}
+
+	// todo - joel - check if I need to do special error handling for websocket
+
+	var body []byte
+	if isWebsocket {
+		// todo - joel - do a websocket read
+	} else {
+		body, err = io.ReadAll(req.Body)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
+			return
+		}
 	}
 
 	rpcReq, err := parseRequest(body)
@@ -218,9 +248,11 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
+	// todo - joel - reject if is a subscribe attempt, but aren't using websockets
+
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = proxyRequest(rpcReq, &rpcResp, we)
+	err = proxyRequest(rpcReq, &rpcResp, we, conn)
 
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
@@ -253,11 +285,15 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.method, rpcRespToSend)
 
-	// We write the response to the client.
-	_, err = resp.Write(rpcRespToSend)
-	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
-		return
+	if isWebsocket {
+		// todo - joel - do a websocket write
+	} else {
+		// We write the response to the client.
+		_, err = resp.Write(rpcRespToSend)
+		if err != nil {
+			logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
+			return
+		}
 	}
 }
 

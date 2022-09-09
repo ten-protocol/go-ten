@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -146,7 +147,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 
 // proxyRequest will try to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 // the request with all clients until it succeeds
-func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension) error {
+func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension, websocket *websocket.Conn) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, we.accountClients)
 
@@ -155,12 +156,12 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension)
 	case suggestedClient != nil: // use the suggested client if there is one
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		return performRequest(suggestedClient, rpcReq, rpcResp)
+		return performRequest(suggestedClient, rpcReq, rpcResp, websocket)
 
 	case len(we.accountClients) > 0: // try registered clients until there's a successful execution
 		log.Info("appropriate client not found, attempting request with up to %d clients", len(we.accountClients))
 		for _, client := range we.accountClients {
-			err = performRequest(client, rpcReq, rpcResp)
+			err = performRequest(client, rpcReq, rpcResp, websocket)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
@@ -177,14 +178,14 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension)
 	}
 }
 
-func performRequest(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
+func performRequest(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}, websocket *websocket.Conn) error {
 	if req.method == rpc.RPCSubscribe {
-		return executeSubscribe(client, req, resp)
+		return executeSubscribe(client, req, resp, websocket)
 	}
 	return executeCall(client, req, resp)
 }
 
-func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{}) error {
+func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{}, ws *websocket.Conn) error {
 	if len(req.params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
@@ -197,8 +198,15 @@ func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{})
 	go func() {
 		for {
 			select {
-			case <-ch:
-				// TODO - #453 - Route subscription events back to frontend.
+			case receivedLog := <-ch:
+				jsonLog, err := json.Marshal(receivedLog)
+				if err != nil {
+					// TODO - #453 - Route error back to frontend.
+				}
+				err = ws.WriteMessage(websocket.TextMessage, jsonLog)
+				if err != nil {
+					// TODO - #453 - Route error back to frontend.
+				}
 			case err = <-subscription.Err():
 				// TODO - #453 - Route error back to frontend.
 			}

@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/gorilla/websocket"
 	"io"
 	"math/big"
 	"net/http"
@@ -13,8 +15,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
@@ -304,13 +304,31 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 
-	makeEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+	conn, _, err := websocket.DefaultDialer.Dial("ws://"+walletExtensionAddr, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	reqBodyBytes, err := json.Marshal(map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  rpc.RPCSubscribe,
+		"params":  []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}},
+		"id":      "1",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	err = conn.WriteMessage(websocket.TextMessage, reqBodyBytes)
+	if err != nil {
+		panic(err)
+	}
 
 	// TODO - #453 - Remove temp code below, which is intended only to force an event to happen, then wait for it to be
 	//  processed by the wallet extension.
 	_, privateKey := registerPrivateKey(t)
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
-	err := fundAccount(txWallet.Address())
+	err = fundAccount(txWallet.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,6 +341,15 @@ func TestCanSubscribeForLogs(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)
+
+	for {
+		println("jjj trying to read message")
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			panic(err)
+		}
+		println(msg)
+	}
 }
 
 func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {
