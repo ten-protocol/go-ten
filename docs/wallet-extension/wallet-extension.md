@@ -35,7 +35,7 @@ tools.
 
 ## Usage
 
-1. The wallet extension can be downloaded from the [Obscuro release page](`https://github.com/obscuronet/go-obscuro/releases`) 
+1. The wallet extension can be downloaded from the [Obscuro release page](https://github.com/obscuronet/go-obscuro/releases) 
    where the binary is built for the Linux, MacOS and Windows platforms. Download the binary for the latest release and 
    rename to `wallet_extension`. Alternatively the binary can be compiled by cloning the 
    [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the root of 
