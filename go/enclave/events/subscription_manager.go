@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -12,19 +14,26 @@ import (
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
-	subscriptions map[uuid.UUID]*common.LogSubscription
+	rpcEncryptionManager *rpc.EncryptionManager
+	subscriptions        map[uuid.UUID]*common.LogSubscription
 }
 
-func NewSubscriptionManager() *SubscriptionManager {
+func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager) *SubscriptionManager {
 	return &SubscriptionManager{
-		subscriptions: map[uuid.UUID]*common.LogSubscription{},
+		rpcEncryptionManager: rpcEncryptionManager,
+		subscriptions:        map[uuid.UUID]*common.LogSubscription{},
 	}
 }
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
 // TODO - #453 - Check each account in the subscription request is authenticated with a signature.
-func (s *SubscriptionManager) AddSubscription(id uuid.UUID, jsonSubscription []byte) error {
+func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogs) error {
+	jsonSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
+	if err != nil {
+		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
+	}
+
 	var subscriptions []common.LogSubscription
 	if err := json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
