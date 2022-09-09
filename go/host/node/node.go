@@ -315,11 +315,19 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// Subscribe sets up a subscription between the host and the enclave.
 func (a *Node) Subscribe(id uuid.UUID, encryptedLogSubscription common.EncryptedLogSubscription) error {
 	err := a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
+	}
+
+	return nil
+}
+
+func (a *Node) Unsubscribe(id uuid.UUID) error {
+	err := a.EnclaveClient().Unsubscribe(id)
+	if err != nil {
+		return fmt.Errorf("could not terminate subscription %s with enclave. Cause: %w", id, err)
 	}
 
 	return nil

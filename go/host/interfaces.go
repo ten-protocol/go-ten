@@ -25,6 +25,8 @@ type Host interface {
 	ReceiveTx(tx common.EncryptedTx)
 	// Subscribe sets up a log subscription between the host and the enclave.
 	Subscribe(id uuid.UUID, encryptedLogSubscription common.EncryptedLogSubscription) error
+	// Unsubscribe terminates a log subscription between the host and the enclave.
+	Unsubscribe(id uuid.UUID) error
 	// Stop gracefully stops the host execution.
 	Stop()
 }
