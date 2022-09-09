@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/google/uuid"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -57,7 +59,10 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 	go func() {
 		<-subscription.Err() // This channel's sole purpose is to be closed when the subscription is unsubscribed.
-		// TODO - #453 - Terminate host -> enclave subscription.
+		err := api.host.Unsubscribe(id)
+		if err != nil {
+			log.Error("could not unsubscribe from subscription %s", id)
+		}
 	}()
 
 	return subscription, nil
