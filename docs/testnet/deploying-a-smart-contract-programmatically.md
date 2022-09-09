@@ -21,6 +21,15 @@ associated account stored for later usage.
     logging.info('Using account with address %s' % account.address)
 ```
 
+## Request OBX from the faucet server for native OBX
+An account needs gas to perform transactions on Obscuro, where gas is paid in native OBX. Requests of native OBX can be 
+made through a POST to the faucet server where the address is supplied in the data payload.
+```python
+    headers = {'Content-Type': 'application/json'}
+    data = {"address": account.address}
+    requests.post(FAUCET_URL, data=json.dumps(data), headers=headers)
+```
+
 ## Generate a viewing key, sign and post back to the wallet extension
 The enclave encodes all communication to the wallet extension using viewing keys. HTTP endpoints exist in the wallet 
 extension to facilitate requesting a viewing key, and to sign and return it to the enclave. 

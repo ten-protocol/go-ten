@@ -35,16 +35,20 @@ tools.
 
 ## Usage
 
-1. Compile the wallet extension binary by cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro)
-   and running the following command from the root of the repository:
+1. The wallet extension can be downloaded from the [Obscuro release page](https://github.com/obscuronet/go-obscuro/releases) 
+   where the binary is built for the Linux, MacOS and Windows platforms. Download the binary for the latest release and 
+   rename to `wallet_extension`. Alternatively the binary can be compiled by cloning the 
+   [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the root of 
+   the repository:
 
    ```
    cd tools/walletextension/main && go build -o wallet_extension .
    ```
 
-   This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`.
+   This will build the wallet extension binary under `tools/walletextension/main/wallet_extension`. Note that the 
+   recommended approach is to download from the release page when running against Testnet. 
 
-2. Open a command prompt and start the wallet extension by running the built `wallet_extension` binary. The wallet extension 
+2. Open a command prompt and start the wallet extension by running the `wallet_extension` binary. The wallet extension 
    supports the following flags:
 
    * `port` (default: `3000`): The local port on which to serve the wallet extension.
@@ -58,15 +62,16 @@ tools.
 
 3. Sign in to MetaMask and add the Obscuro Testnet network following the instructions [here](/wallet-extension/configure-metamask.html)
 
-4. At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such
-      as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`. As a result, your balance in MetaMask will not be accurately updated until you have a viewing key.
+4. At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such 
+   as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`. As a result, your balance in MetaMask will not be 
+   accurately updated until you have a viewing key.
 
 5. Visit `http://localhost:3000/viewingkeys/` to generate a new viewing key, and sign the viewing key when prompted by
-   MetaMask. Responses to sensitive RPC requests will be now be encrypted with the viewing key and decrypted
+   MetaMask. Responses to sensitive RPC requests will now be encrypted with the viewing key and decrypted
    automatically by the wallet extension. Your balance in MetaMask will now display a testnet balance of `1000000` (you 
-   may need to switch to another network and back again to force MetaMask to refresh the balance).
-
-    * Viewing keys are ephemeral. A new viewing key must be created each time the wallet extension is started.
+   may need to switch to another network and back again to force MetaMask to refresh the balance). Once a viewing key
+   is generated it will be persisted across restarts of the wallet extension, saved in the user home space under 
+   `~/.obscuro/wallet_extension_persistence`.
 
 # Auditing the source
 

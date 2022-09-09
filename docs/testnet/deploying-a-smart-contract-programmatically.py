@@ -12,10 +12,11 @@ WPORT = 3000
 WHOST = '127.0.0.1'
 LOWER = 0
 UPPER = 100
+FAUCET_URL = 'http://testnet-faucet.uksouth.azurecontainer.io/fund/obx'
 
 guesser = '''
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8;
 
 contract Guesser {
     address public owner;
@@ -68,6 +69,11 @@ def run():
     private_key = secrets.token_hex(32)
     account = w3.eth.account.privateKeyToAccount(private_key)
     logging.info('Using account with address %s' % account.address)
+
+    # request native OBX from the faucet server
+    headers = {'Content-Type': 'application/json'}
+    data = {"address": account.address}
+    requests.post(FAUCET_URL, data=json.dumps(data), headers=headers)
 
     # generate a viewing key for this account, sign and post it to the wallet extension
     headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
