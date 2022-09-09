@@ -133,7 +133,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	}
 
 	clientChannel := make(chan *types.Log)
-	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, args[0], encryptedParams)
+	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
 	}
