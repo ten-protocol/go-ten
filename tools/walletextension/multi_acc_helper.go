@@ -187,6 +187,7 @@ func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) e
 		}
 
 		// TODO - #453 - Route subscription events back to frontend.
+		// TODO - #453 - Manage subscriptions based on websockets being terminated.
 
 		return nil
 	}
