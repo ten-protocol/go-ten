@@ -509,7 +509,7 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
 }
 
-func (e *enclaveImpl) Subscribe(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogs) error {
+func (e *enclaveImpl) Subscribe(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
 	return e.subscriptionManager.AddSubscription(id, encryptedSubscription)
 }
 

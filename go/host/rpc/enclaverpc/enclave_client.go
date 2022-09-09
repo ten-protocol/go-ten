@@ -405,7 +405,7 @@ func (c *Client) StoreAttestation(report *common.AttestationReport) error {
 	return nil
 }
 
-func (c *Client) Subscribe(id uuid.UUID, encryptedParams common.EncryptedParamsLogs) error {
+func (c *Client) Subscribe(id uuid.UUID, encryptedParams common.EncryptedParamsLogSubscription) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
