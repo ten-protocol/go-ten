@@ -35,6 +35,10 @@ func NewFilterAPI(host host.Host, logsCh chan []*types.Log) *FilterAPI {
 }
 
 // Logs returns a log subscription.
+// TODO - #453 - Handle termination of the corresponding host -> enclave subscription when a client subscription is
+//  terminated. This is non-trivial, as since we are leveraging Geth's subscription framework, we have no way of
+//  determining when an unsubscribe request is made. The cleanest option appears to be detecting the `eth_unsubscribe`
+//  request in the wallet extension, and firing an additional unsubscribe call to the host.
 func (api *FilterAPI) Logs(ctx context.Context, encryptedLogSubscription common.EncryptedLogSubscription) (*rpc.Subscription, error) {
 	id, err := uuid.NewUUID()
 	if err != nil {

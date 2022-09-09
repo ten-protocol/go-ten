@@ -76,7 +76,7 @@ func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 		for {
 			select {
 			case <-quit:
-				// TODO - #453 - Terminate the host -> enclave subscription.
+				break
 			case logs := <-b.logsCh:
 				ch <- logs
 			}

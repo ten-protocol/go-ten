@@ -320,7 +320,6 @@ func (a *Node) Subscribe(id uuid.UUID, encryptedLogSubscription common.Encrypted
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
 	}
-
 	return nil
 }
 
@@ -329,7 +328,6 @@ func (a *Node) Unsubscribe(id uuid.UUID) error {
 	if err != nil {
 		return fmt.Errorf("could not terminate subscription %s with enclave. Cause: %w", id, err)
 	}
-
 	return nil
 }
 
