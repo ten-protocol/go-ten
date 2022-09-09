@@ -115,7 +115,10 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
 
-	// TODO - #453 - Reject subscriptions that are not log subscriptions.
+	subscriptionType := args[0]
+	if subscriptionType != RPCSubscriptionTypeLogs {
+		return nil, fmt.Errorf("only subscriptions of type %s are supported", RPCSubscriptionTypeLogs)
+	}
 
 	logCh, ok := ch.(chan *types.Log)
 	if !ok {
