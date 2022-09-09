@@ -197,7 +197,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{})
 	go func() {
 		for {
 			select {
-			case _ = <-ch:
+			case <-ch:
 				// TODO - #453 - Route subscription events back to frontend.
 			case err = <-subscription.Err():
 				// TODO - #453 - Route error back to frontend.
