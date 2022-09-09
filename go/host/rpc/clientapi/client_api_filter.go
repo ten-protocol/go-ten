@@ -57,7 +57,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedLogSubscription common.
 
 	go func() {
 		<-subscription.Err() // This channel's sole purpose is to be closed when the subscription is unsubscribed.
-		// TODO - #453 - Terminate host -> enclave subscription
+		// TODO - #453 - Terminate host -> enclave subscription.
 	}()
 
 	return subscription, nil
