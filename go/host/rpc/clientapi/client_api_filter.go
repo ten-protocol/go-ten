@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -34,7 +36,12 @@ func NewFilterAPI(host host.Host, logsCh chan []*types.Log) *FilterAPI {
 
 // Logs returns a log subscription.
 func (api *FilterAPI) Logs(ctx context.Context, encryptedLogSubscription common.EncryptedLogSubscription) (*rpc.Subscription, error) {
-	err := api.host.Subscribe(encryptedLogSubscription)
+	id, err := uuid.NewUUID()
+	if err != nil {
+		return nil, fmt.Errorf("could not generate new UUID for subscription. Cause: %w", err)
+	}
+
+	err = api.host.Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}

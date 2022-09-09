@@ -3,6 +3,7 @@ package host
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/google/uuid"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/host/db"
@@ -23,7 +24,7 @@ type Host interface {
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// Subscribe sets up a log subscription between the host and the enclave.
-	Subscribe(encryptedLogSubscription common.EncryptedLogSubscription) error
+	Subscribe(id uuid.UUID, encryptedLogSubscription common.EncryptedLogSubscription) error
 	// Stop gracefully stops the host execution.
 	Stop()
 }
