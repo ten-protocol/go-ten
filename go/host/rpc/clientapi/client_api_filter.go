@@ -46,6 +46,10 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedLogSubscription common.
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
 
+	// TODO - #453 - The empty filter here is incorrect. The API retrieves all logs, then filters them based on the
+	//  filter. If we pass an empty filter, we'll get back all the logs for all the subscription IDs. We could always
+	//  filter this on the wallet extension side, but we could also use custom topics in the filter (e.g. a topic that
+	//  was the subscription ID).
 	subscription, err := api.gethFilterAPI.Logs(ctx, emptyFilter)
 	if err != nil {
 		return nil, err
