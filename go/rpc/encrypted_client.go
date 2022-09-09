@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -143,8 +145,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				var decryptedLogs []*types.Log
 				err = json.Unmarshal(receivedLog.Data, &decryptedLogs)
 				if err != nil {
-					// TODO - #453 - Route error back to frontend.
-					panic(err)
+					log.Error("could not unmarshall log from subscription. Cause: %s", err)
 				}
 
 				for _, decryptedLog := range decryptedLogs {
