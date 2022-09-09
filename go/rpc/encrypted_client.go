@@ -108,9 +108,16 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return nil
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
+	}
+
+	// TODO - #453 - Reject subscriptions that are not log subscriptions.
+
+	logCh, ok := ch.(chan *types.Log)
+	if !ok {
+		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
 	// TODO - #453 - Map incoming filters.FilterCriteria to a common.LogSubscription.
@@ -127,21 +134,22 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel 
 	}
 
 	go func() {
+
 		for {
 			select {
 			case receivedLog := <-clientChannel:
 				// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
 				// encrypted bytes. To get around this, we place the encrypted log bytes into a "fake" log's data field.
 				// TODO - #453 - Add decryption of logs here once it's added on the enclave side.
-				var encryptedLogs []*types.Log
-				err = json.Unmarshal(receivedLog.Data, &encryptedLogs)
+				var decryptedLogs []*types.Log
+				err = json.Unmarshal(receivedLog.Data, &decryptedLogs)
 				if err != nil {
 					// TODO - #453 - Route error back to frontend.
 					panic(err)
 				}
 
-				for range encryptedLogs {
-					// TODO - #453 - Route logs back to frontend.
+				for _, decryptedLog := range decryptedLogs {
+					logCh <- decryptedLog
 				}
 
 			case err = <-subscription.Err():
