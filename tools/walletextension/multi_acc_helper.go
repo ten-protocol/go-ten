@@ -153,12 +153,12 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension)
 	case suggestedClient != nil: // use the suggested client if there is one
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		return executeCall(suggestedClient, rpcReq, rpcResp)
+		return performRequest(suggestedClient, rpcReq, rpcResp)
 
 	case len(we.accountClients) > 0: // try registered clients until there's a successful execution
 		log.Info("appropriate client not found, attempting request with up to %d clients", len(we.accountClients))
 		for _, client := range we.accountClients {
-			err = executeCall(client, rpcReq, rpcResp)
+			err = performRequest(client, rpcReq, rpcResp)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
@@ -175,23 +175,30 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension)
 	}
 }
 
-func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
+func performRequest(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
 	if req.method == rpc.RPCSubscribe {
-		if len(req.params) == 0 {
-			return fmt.Errorf("could not subscribe as no subscription namespace was provided")
-		}
-		channel := make(chan interface{})
-		_, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, channel, req.params...)
-		if err != nil {
-			return fmt.Errorf("could not call %s with params %v. Cause: %w", req.method, req.params, err)
-		}
+		return executeSubscribe(client, req, resp)
+	}
+	return executeCall(client, req, resp)
+}
 
-		// TODO - #453 - Route subscription events back to frontend.
-		// TODO - #453 - Manage subscriptions based on websockets being terminated.
-
-		return nil
+func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{}) error {
+	if len(req.params) == 0 {
+		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
+	}
+	channel := make(chan interface{})
+	_, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, channel, req.params...)
+	if err != nil {
+		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.method, req.params, err)
 	}
 
+	// TODO - #453 - Route subscription events back to frontend.
+	// TODO - #453 - Manage subscriptions based on websockets being terminated.
+
+	return nil
+}
+
+func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
 	if req.method == rpc.RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
