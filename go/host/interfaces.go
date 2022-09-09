@@ -22,8 +22,8 @@ type Host interface {
 	ReceiveRollup(r common.EncodedRollup)
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
-	// CreateSubscription sets up a subscription between the host and the enclave.
-	CreateSubscription(encryptedLogSubscription common.EncryptedLogSubscription) error
+	// Subscribe sets up a log subscription between the host and the enclave.
+	Subscribe(encryptedLogSubscription common.EncryptedLogSubscription) error
 	// Stop gracefully stops the host execution.
 	Stop()
 }

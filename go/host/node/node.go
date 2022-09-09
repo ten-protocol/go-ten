@@ -316,7 +316,7 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 }
 
 // CreateSubscription sets up a subscription between the host and the enclave.
-func (a *Node) CreateSubscription(encryptedLogSubscription common.EncryptedLogSubscription) error {
+func (a *Node) Subscribe(encryptedLogSubscription common.EncryptedLogSubscription) error {
 	id, err := uuid.NewUUID()
 	if err != nil {
 		return fmt.Errorf("could not generate new UUID for subscription. Cause: %w", err)
