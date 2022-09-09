@@ -163,7 +163,7 @@ func NewEnclave(
 	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey))
 
 	obscuroKey := obscurocrypto.GetObscuroKey()
-	rpcem := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
+	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
 	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
 
@@ -179,8 +179,8 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	subscriptionManager := events.NewSubscriptionManager()
-	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcem, enclaveKey, config.L1ChainID, &chainConfig)
+	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager)
+	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	log.Info("Enclave service created with following config:\n%s", string(jsonConfig))
@@ -192,7 +192,7 @@ func NewEnclave(
 		mempool:               memp,
 		statsCollector:        collector,
 		l1Blockchain:          l1Blockchain,
-		rpcEncryptionManager:  rpcem,
+		rpcEncryptionManager:  rpcEncryptionManager,
 		bridge:                obscuroBridge,
 		subscriptionManager:   subscriptionManager,
 		chain:                 chain,
@@ -509,8 +509,8 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
 }
 
-func (e *enclaveImpl) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
-	return e.subscriptionManager.AddSubscription(id, subscription)
+func (e *enclaveImpl) Subscribe(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
+	return e.subscriptionManager.AddSubscription(id, encryptedSubscription)
 }
 
 func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {

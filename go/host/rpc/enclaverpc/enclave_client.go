@@ -405,7 +405,7 @@ func (c *Client) StoreAttestation(report *common.AttestationReport) error {
 	return nil
 }
 
-func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscription) error {
+func (c *Client) Subscribe(id uuid.UUID, encryptedParams common.EncryptedParamsLogSubscription) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -416,7 +416,7 @@ func (c *Client) Subscribe(id uuid.UUID, subscription common.EncryptedLogSubscri
 
 	_, err = c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
 		Id:                    idBinary,
-		EncryptedSubscription: subscription,
+		EncryptedSubscription: encryptedParams,
 	})
 	return err
 }
