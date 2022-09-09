@@ -29,7 +29,7 @@ type FilterAPI struct {
 	gethFilterAPI *filters.PublicFilterAPI
 }
 
-func NewFilterAPI(host host.Host, logsCh chan []*types.Log) *FilterAPI {
+func NewFilterAPI(host host.Host, logsCh chan *types.Log) *FilterAPI {
 	return &FilterAPI{
 		host:          host,
 		gethFilterAPI: filters.NewPublicFilterAPI(events.NewBackend(logsCh), false, 5*time.Minute),
@@ -59,7 +59,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 	go func() {
 		<-subscription.Err() // This channel's sole purpose is to be closed when the subscription is unsubscribed.
-		err := api.host.Unsubscribe(id)
+		err = api.host.Unsubscribe(id)
 		if err != nil {
 			log.Error("could not unsubscribe from subscription %s", id)
 		}

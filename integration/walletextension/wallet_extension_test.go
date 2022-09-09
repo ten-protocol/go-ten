@@ -305,6 +305,8 @@ func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 
 	makeEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+
+	select {}
 }
 
 func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {

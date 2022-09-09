@@ -29,10 +29,10 @@ var (
 
 // Backend is a custom backend for Geth's `PublicFilterAPI`.
 type Backend struct {
-	logsCh <-chan []*types.Log
+	logsCh <-chan *types.Log
 }
 
-func NewBackend(logsCh <-chan []*types.Log) Backend {
+func NewBackend(logsCh <-chan *types.Log) Backend {
 	return Backend{
 		logsCh: logsCh,
 	}
@@ -78,7 +78,7 @@ func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 			case <-quit:
 				break
 			case logs := <-b.logsCh:
-				ch <- logs
+				ch <- []*types.Log{logs}
 			}
 		}
 	}

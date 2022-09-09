@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -118,13 +120,24 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, channel 
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
 
-	clientChannel := make(chan interface{})
+	clientChannel := make(chan []*types.Log)
 	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, args[0], encryptedParams)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO - #453 - Listen on the client channel, decrypt logs, and forward the logs on using the other channel.
+	go func() {
+		for {
+			select {
+			case receivedLogs := <-clientChannel:
+				for range receivedLogs {
+					// TODO - #453 - Route subscription events back to frontend.
+				}
+			case err = <-subscription.Err():
+				// TODO - #453 - Handle error.
+			}
+		}
+	}()
 
 	return subscription, nil
 }

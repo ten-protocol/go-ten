@@ -69,7 +69,7 @@ type Node struct {
 	forkRPCCh    chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
-	logsCh       chan []*types.Log          // The channel that logs are sent to
+	logsCh       chan *types.Log            // The channel that logs are sent to
 
 	nodeDB *db.DB // Stores the node's publicly-available data
 
@@ -112,7 +112,7 @@ func NewHost(
 		forkRPCCh:    make(chan []common.EncodedBlock),
 		rollupsP2PCh: make(chan common.EncodedRollup),
 		txP2PCh:      make(chan common.EncryptedTx),
-		logsCh:       make(chan []*types.Log),
+		logsCh:       make(chan *types.Log),
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -592,16 +592,15 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 
 // Distributes logs to subscribed clients.
 // TODO - #453 - Distribute logs specifically based on subscription IDs, rather than sending all logs to everyone.
-// TODO - #453 - Stuff encrypted logs into the data field of log objects, so they have the right type to return.
-// TODO - #453 - Tag the "fake" log objects with a topic that's the padded subscription ID.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
-	for _, jsonLogs := range result.SubscribedLogs {
-		var logs []*types.Log
-		err := json.Unmarshal(jsonLogs, &logs)
-		if err != nil {
-			log.Error("could not send logs to subscribers as could not unmarshal logs from JSON. Cause: %s", err)
+	for _, encryptedLogs := range result.SubscribedLogs {
+		// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
+		// encrypted bytes. To get around this, we place the encrypted log bytes into a "fake" log's data field.
+		// TODO - #453 - Tag the "fake" log objects with a topic that's the padded subscription ID.
+		wrapperLog := types.Log{
+			Data: encryptedLogs,
 		}
-		a.logsCh <- logs
+		a.logsCh <- &wrapperLog
 	}
 }
 

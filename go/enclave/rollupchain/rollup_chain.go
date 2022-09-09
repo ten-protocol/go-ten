@@ -251,14 +251,12 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
 	// block is missed.
-	// TODO - #453 - There is a bug here - we ignore any logs for new subscription IDs that didn't exist in the parent block.
-	for subscriptionID, logs := range parentLogs {
-		logsForID, found := subscribedLogs[subscriptionID]
+	for subscriptionID, logs := range subscribedLogs {
+		logsForID, found := parentLogs[subscriptionID]
 		if !found {
 			logsForID = make([]*types.Log, 0)
 		}
-		logsForID = append(logsForID, logs...)
-		subscribedLogs[subscriptionID] = logsForID
+		subscribedLogs[subscriptionID] = append(logsForID, logs...)
 	}
 
 	rc.storage.SaveNewHead(bs, head, receipts, subscribedLogs)

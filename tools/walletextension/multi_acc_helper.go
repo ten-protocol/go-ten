@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -186,14 +188,26 @@ func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{})
 	if len(req.params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
-	channel := make(chan interface{})
-	_, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, channel, req.params...)
+	ch := make(chan *types.Log)
+	subscription, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, ch, req.params...)
 	if err != nil {
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.method, req.params, err)
 	}
 
-	// TODO - #453 - Route subscription events back to frontend.
-	// TODO - #453 - Manage subscriptions based on websockets being terminated.
+	go func() {
+		for {
+			select {
+			case receivedLog := <-ch:
+				// TODO - #453 - Route subscription events back to frontend.
+				println(fmt.Sprintf("Received logs. Block number: %d. Index: %d. Data: %s.",
+					receivedLog.BlockNumber, receivedLog.Index, string(receivedLog.Data)))
+			case err = <-subscription.Err():
+				// TODO - #453 - Route error back to frontend.
+			}
+		}
+	}()
+
+	// TODO - #453 - Unsubscribe the subscription if the websocket is closed.
 
 	return nil
 }
