@@ -315,18 +315,19 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-// CreateSubscription sets up a subscription between the host and the enclave.
-func (a *Node) CreateSubscription(encryptedParams common.EncryptedParamsLogSubscription) error {
-	id, err := uuid.NewUUID()
-	if err != nil {
-		return fmt.Errorf("could not generate new UUID for subscription. Cause: %w", err)
-	}
-
-	err = a.EnclaveClient().Subscribe(id, encryptedParams)
+func (a *Node) Subscribe(id uuid.UUID, encryptedLogSubscription common.EncryptedParamsLogSubscription) error {
+	err := a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
 	}
+	return nil
+}
 
+func (a *Node) Unsubscribe(id uuid.UUID) error {
+	err := a.EnclaveClient().Unsubscribe(id)
+	if err != nil {
+		return fmt.Errorf("could not terminate subscription %s with enclave. Cause: %w", id, err)
+	}
 	return nil
 }
 
@@ -590,8 +591,9 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 }
 
 // Distributes logs to subscribed clients.
-// TODO - #453 - Encrypt logs, rather than just serialising them as JSON.
 // TODO - #453 - Distribute logs specifically based on subscription IDs, rather than sending all logs to everyone.
+// TODO - #453 - Stuff encrypted logs into the data field of log objects, so they have the right type to return.
+// TODO - #453 - Tag the "fake" log objects with a topic that's the padded subscription ID.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	for _, jsonLogs := range result.SubscribedLogs {
 		var logs []*types.Log

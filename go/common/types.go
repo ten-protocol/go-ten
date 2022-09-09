@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/eth/filters"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -182,7 +184,7 @@ func (h *Header) Hash() L2RootHash {
 
 type LogSubscription struct {
 	Accounts []*SubscriptionAccount
-	// TODO - #453 - Add filters using the Geth `filters.FilterCriteria` type.
+	Filters  []*filters.FilterCriteria
 }
 
 // SubscriptionAccount is an authenticated account used when subscribing to logs.
