@@ -13,7 +13,7 @@ const (
 	walletExtensionPortDefault = 3000
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension. Default: 3000."
 
-	walletExtensionPortWSName    = "wsRPC"
+	walletExtensionPortWSName    = "portWS"
 	walletExtensionPortWSDefault = 3001
 	walletExtensionPortWSUsage   = "The port on which to serve websocket JSON RPC requests. Default: 3001."
 
