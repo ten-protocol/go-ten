@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"io"
 	"io/fs"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -69,9 +70,7 @@ const (
 //go:embed static
 var staticFiles embed.FS
 
-var (
-	upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
-)
+var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
@@ -211,35 +210,16 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	var isWebsocket bool
-	for _, header := range req.Header["Upgrade"] { // todo - joel - use constant
-		if header == "websocket" {
-			isWebsocket = true
-			break
-		}
+	readWriter, err := NewReadWriter(resp, req)
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
 	}
 
-	var conn *websocket.Conn
-	var err error
-	if isWebsocket {
-		conn, err = upgrader.Upgrade(resp, req, nil)
-		if err != nil {
-			logAndSendErr(resp, "attempted to subscribe, but was unable to create websocket connection")
-			return
-		}
-	}
-
-	// todo - joel - check if I need to do special error handling for websocket
-
-	var body []byte
-	if isWebsocket {
-		// todo - joel - do a websocket read
-	} else {
-		body, err = io.ReadAll(req.Body)
-		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
-			return
-		}
+	body, err := readWriter.ReadRequest()
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
 	}
 
 	rpcReq, err := parseRequest(body)
@@ -252,7 +232,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = proxyRequest(rpcReq, &rpcResp, we, conn)
+	err = proxyRequest(rpcReq, &rpcResp, we, &readWriter)
 
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
@@ -285,15 +265,10 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.method, rpcRespToSend)
 
-	if isWebsocket {
-		// todo - joel - do a websocket write
-	} else {
-		// We write the response to the client.
-		_, err = resp.Write(rpcRespToSend)
-		if err != nil {
-			logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
-			return
-		}
+	err = readWriter.WriteResponse(rpcRespToSend)
+	if err != nil {
+		logAndSendErr(resp, err.Error())
+		return
 	}
 }
 
@@ -541,6 +516,7 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 	fmt.Println(msg)
 }
 
+// todo - joel - pull this onto readwriter? How does sending errors work with websockets anyway?
 // Logs the error message and sends it as an HTTP error.
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	log.Error(msg)
