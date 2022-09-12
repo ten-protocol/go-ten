@@ -32,14 +32,16 @@ tools.
 * [MetaMask](https://metamask.io/)
     * MetaMask is required to create a signature over each new viewing key. Other signers are not currently supported.
 * [Go](https://go.dev/)
+    * Required if building the binary locally.
 
 ## Usage
 
 1. The wallet extension can be downloaded from the [Obscuro release page](https://github.com/obscuronet/go-obscuro/releases) 
    where the binary is built for the Linux, MacOS and Windows platforms. Download the binary for the latest release and 
-   rename to `wallet_extension`. Alternatively the binary can be compiled by cloning the 
-   [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the root of 
-   the repository:
+   rename to `wallet_extension`. Note that on MacOS the binary has not been signed and notarised yet - see 
+   [apple support](https://support.apple.com/en-gb/HT202491) for steps to over-write this. The binary can be compiled by
+   cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the 
+   root of the repository:
 
    ```
    cd tools/walletextension/main && go build -o wallet_extension .
@@ -52,13 +54,14 @@ tools.
    supports the following flags:
 
    * `port` (default: `3000`): The local port on which to serve the wallet extension.
+   * `portWS` (default: `3001`): The local port on which to handle websocket requests.
    * `nodeHost` (default: `testnet.obscu.ro`): The Obscuro node for the RPC connection.
    * `nodePortHTTP` (default: `13000`): The Obscuro node's HTTP RPC port.
    * `nodePortWS` (default: `13001`): The Obscuro node's websockets RPC port.
    * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs.
 
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
-   assume that the default port of `3000` was selected.
+   assume that the default ports of `3000` and `3001` were selected.
 
 3. Sign in to MetaMask and add the Obscuro Testnet network following the instructions [here](/wallet-extension/configure-metamask.html)
 
