@@ -125,35 +125,17 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
 func (we *WalletExtension) Serve(host string, httpPort int, wsPort int) {
-	serveMuxHTTP := http.NewServeMux()
-
-	// Handles Ethereum JSON-RPC requests received over HTTP.
-	serveMuxHTTP.HandleFunc(pathRoot, we.handleEthJSON)
-	serveMuxHTTP.HandleFunc(PathReady, we.handleReady)
-	serveMuxHTTP.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
-	serveMuxHTTP.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
-
-	// Serves the web assets for the management of viewing keys.
-	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
-	if err != nil {
-		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
-	}
-	serveMuxHTTP.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
-
-	we.serverHTTP = &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
-
-	serveMuxWS := http.NewServeMux()
-	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSON)
-	we.serverWS = &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
+	we.createHTTPServer(host, httpPort)
+	we.createWSServer(host, wsPort)
 
 	go func() {
-		err = we.serverWS.ListenAndServe()
+		err := we.serverWS.ListenAndServe()
 		if !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
 
-	err = we.serverHTTP.ListenAndServe()
+	err := we.serverHTTP.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
@@ -173,6 +155,31 @@ func (we *WalletExtension) Shutdown() {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
 	}
+}
+
+func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
+	serveMuxHTTP := http.NewServeMux()
+
+	// Handles Ethereum JSON-RPC requests received over HTTP.
+	serveMuxHTTP.HandleFunc(pathRoot, we.handleEthJSON)
+	serveMuxHTTP.HandleFunc(PathReady, we.handleReady)
+	serveMuxHTTP.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
+	serveMuxHTTP.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
+
+	// Serves the web assets for the management of viewing keys.
+	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMuxHTTP.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
+
+	we.serverHTTP = &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
+}
+
+func (we *WalletExtension) createWSServer(host string, wsPort int) {
+	serveMuxWS := http.NewServeMux()
+	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSON)
+	we.serverWS = &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
 }
 
 // Sets up the log file.
