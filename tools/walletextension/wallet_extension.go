@@ -168,7 +168,7 @@ func (we *WalletExtension) Shutdown() {
 	}
 
 	if we.serverWS != nil {
-		err := we.serverHTTP.Shutdown(context.Background())
+		err := we.serverWS.Shutdown(context.Background())
 		if err != nil {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
