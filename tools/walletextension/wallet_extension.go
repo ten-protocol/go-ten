@@ -70,13 +70,15 @@ var staticFiles embed.FS
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecies.PublicKey                     // The public key used to encrypt requests for the enclave.
-	hostAddr         string                               // The address on which the Obscuro host can be reached.
-	accountClients   map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
-	unauthedClient   rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
-	unsignedVKs      map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
-	server           *http.Server
-	persistencePath  string // The path of the file used to store the submitted viewing keys
+	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
+	hostAddr         string           // The address on which the Obscuro host can be reached.
+	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
+	accountClients  map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	unauthedClient  rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
+	unsignedVKs     map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
+	serverHTTP      *http.Server
+	serverWS        *http.Server
+	persistencePath string // The path of the file used to store the submitted viewing keys
 }
 
 type rpcRequest struct {
@@ -111,6 +113,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	// We reload the existing viewing keys from persistence.
 	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
+		// TODO - Create the clients lazily, to reduce connections to the host.
 		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
 		if err != nil {
 			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
@@ -123,37 +126,62 @@ func NewWalletExtension(config Config) *WalletExtension {
 }
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
-func (we *WalletExtension) Serve(hostAndPort string) {
-	serveMux := http.NewServeMux()
+func (we *WalletExtension) Serve(host string, httpPort int, wsPort int) {
+	we.createHTTPServer(host, httpPort)
+	we.createWSServer(host, wsPort)
 
-	// Handles Ethereum JSON-RPC requests received over HTTP.
-	serveMux.HandleFunc(pathRoot, we.handleHTTPEthJSON)
-	serveMux.HandleFunc(PathReady, we.handleReady)
-	serveMux.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
-	serveMux.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
+	go func() {
+		err := we.serverWS.ListenAndServe()
+		if !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
+	}()
 
-	// Serves the web assets for the management of viewing keys.
-	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
-	if err != nil {
-		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
-	}
-	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
-
-	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
-
-	err = we.server.ListenAndServe()
+	err := we.serverHTTP.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
 
 func (we *WalletExtension) Shutdown() {
-	if we.server != nil {
-		err := we.server.Shutdown(context.Background())
+	if we.serverHTTP != nil {
+		err := we.serverHTTP.Shutdown(context.Background())
 		if err != nil {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
 	}
+
+	if we.serverWS != nil {
+		err := we.serverWS.Shutdown(context.Background())
+		if err != nil {
+			log.Warn("could not shut down wallet extension: %s\n", err)
+		}
+	}
+}
+
+func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
+	serveMuxHTTP := http.NewServeMux()
+
+	// Handles Ethereum JSON-RPC requests received over HTTP.
+	serveMuxHTTP.HandleFunc(pathRoot, we.handleEthJSONHTTP)
+	serveMuxHTTP.HandleFunc(PathReady, we.handleReady)
+	serveMuxHTTP.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
+	serveMuxHTTP.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
+
+	// Serves the web assets for the management of viewing keys.
+	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMuxHTTP.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
+
+	we.serverHTTP = &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
+}
+
+func (we *WalletExtension) createWSServer(host string, wsPort int) {
+	serveMuxWS := http.NewServeMux()
+	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSONWS)
+	we.serverWS = &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
 }
 
 // Sets up the log file.
@@ -196,21 +224,26 @@ func setUpPersistence(persistenceFilePath string) string {
 // Used to check whether the server is ready.
 func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
 
-// Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
-func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
-	// We enable CORS, as required by some browsers (e.g. Firefox).
-	resp.Header().Set(corsAllowOrigin, originAll)
-	if (*req).Method == reqOptions {
-		resp.Header().Set(corsAllowMethods, reqOptions)
-		resp.Header().Set(corsAllowHeaders, corsHeaders)
+// Handles the Ethereum JSON-RPC request over HTTP.
+func (we *WalletExtension) handleEthJSONHTTP(resp http.ResponseWriter, req *http.Request) {
+	if we.enableCORS(resp, req) {
 		return
 	}
+	readWriter := readwriter.NewHTTPReadWriter(resp, req)
+	we.handleEthJSON(readWriter)
+}
 
-	readWriter, err := readwriter.NewReadWriter(resp, req)
+// Handles the Ethereum JSON-RPC request over websockets.
+func (we *WalletExtension) handleEthJSONWS(resp http.ResponseWriter, req *http.Request) {
+	readWriter, err := readwriter.NewWSReadWriter(resp, req)
 	if err != nil {
 		return
 	}
+	we.handleEthJSON(readWriter)
+}
 
+// Encrypts the Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
+func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 	body, err := readWriter.ReadRequest()
 	if err != nil {
 		readWriter.HandleError(err.Error())
@@ -269,6 +302,17 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 }
 
+// Enables CORS, as required by some browsers (e.g. Firefox). Returns true if CORS was enabled.
+func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Request) bool {
+	resp.Header().Set(corsAllowOrigin, originAll)
+	if (*req).Method == reqOptions {
+		resp.Header().Set(corsAllowMethods, reqOptions)
+		resp.Header().Set(corsAllowHeaders, corsHeaders)
+		return true
+	}
+	return false
+}
+
 func parseRequest(body []byte) (*rpcRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
@@ -306,10 +350,7 @@ func parseRequest(body []byte) (*rpcRequest, error) {
 
 // Generates a new viewing key.
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
-	readWriter, err := readwriter.NewReadWriter(resp, req)
-	if err != nil {
-		return
-	}
+	readWriter := readwriter.NewHTTPReadWriter(resp, req)
 
 	body, err := readWriter.ReadRequest()
 	if err != nil {
@@ -351,10 +392,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	readWriter, err := readwriter.NewReadWriter(resp, req)
-	if err != nil {
-		return
-	}
+	readWriter := readwriter.NewHTTPReadWriter(resp, req)
 
 	body, err := readWriter.ReadRequest()
 	if err != nil {
@@ -388,6 +426,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
+	// TODO - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
 		readWriter.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
@@ -528,6 +567,7 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionPort     int
+	WalletExtensionPortWS   int
 	NodeRPCHTTPAddress      string // TODO - Remove this unused field.
 	NodeRPCWebsocketAddress string
 	LogPath                 string

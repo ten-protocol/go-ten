@@ -11,9 +11,7 @@ import (
 )
 
 const (
-	headerUpgrade   = "Upgrade"
-	headerWebsocket = "websocket"
-	httpCodeErr     = 500
+	httpCodeErr = 500
 )
 
 var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
@@ -37,24 +35,22 @@ type WSReadWriter struct {
 	conn *websocket.Conn
 }
 
-func NewReadWriter(resp http.ResponseWriter, req *http.Request) (ReadWriter, error) {
-	// We search all the request's headers. If there's a websocket upgrade header, we upgrade to a websocket connection.
-	for _, header := range req.Header[headerUpgrade] {
-		if header == headerWebsocket {
-			conn, err := upgrader.Upgrade(resp, req, nil)
-			if err != nil {
-				err = fmt.Errorf("unable to upgrade to websocket connection")
-				httpLogAndSendErr(resp, err.Error())
-				return nil, err
-			}
+func NewHTTPReadWriter(resp http.ResponseWriter, req *http.Request) ReadWriter {
+	return &HTTPReadWriter{resp: resp, req: req}
+}
 
-			return &WSReadWriter{
-				conn: conn,
-			}, nil
-		}
+func NewWSReadWriter(resp http.ResponseWriter, req *http.Request) (ReadWriter, error) {
+	// We search all the request's headers. If there's a websocket upgrade header, we upgrade to a websocket connection.
+	conn, err := upgrader.Upgrade(resp, req, nil)
+	if err != nil {
+		err = fmt.Errorf("unable to upgrade to websocket connection")
+		httpLogAndSendErr(resp, err.Error()) // TODO - Handle error properly for websockets.
+		return nil, err
 	}
 
-	return &HTTPReadWriter{resp: resp, req: req}, nil
+	return &WSReadWriter{
+		conn: conn,
+	}, nil
 }
 
 func (h *HTTPReadWriter) ReadRequest() ([]byte, error) {
