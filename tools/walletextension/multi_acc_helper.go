@@ -146,7 +146,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 
 // proxyRequest will try to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 // the request with all clients until it succeeds
-func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension, rw *ReadWriter) error {
+func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, we.accountClients)
 
@@ -155,12 +155,12 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension,
 	case suggestedClient != nil: // use the suggested client if there is one
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		return performRequest(suggestedClient, rpcReq, rpcResp, rw)
+		return performRequest(suggestedClient, rpcReq, rpcResp)
 
 	case len(we.accountClients) > 0: // try registered clients until there's a successful execution
 		log.Info("appropriate client not found, attempting request with up to %d clients", len(we.accountClients))
 		for _, client := range we.accountClients {
-			err = performRequest(client, rpcReq, rpcResp, rw)
+			err = performRequest(client, rpcReq, rpcResp)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
@@ -177,14 +177,14 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension,
 	}
 }
 
-func performRequest(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}, rw *ReadWriter) error {
+func performRequest(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
 	if req.method == rpc.RPCSubscribe {
-		return executeSubscribe(client, req, resp, rw)
+		return executeSubscribe(client, req, resp)
 	}
-	return executeCall(client, req, resp, rw)
+	return executeCall(client, req, resp)
 }
 
-func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{}, rw *ReadWriter) error {
+func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{}) error {
 	if len(req.params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
@@ -210,7 +210,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{},
 	return nil
 }
 
-func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}, rw *ReadWriter) error {
+func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
 	if req.method == rpc.RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
