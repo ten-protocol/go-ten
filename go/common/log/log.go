@@ -66,7 +66,7 @@ func Panic(msg string, args ...interface{}) {
 func ParseLevel(levelStr string) zerolog.Level {
 	lvl, err := zerolog.ParseLevel(levelStr)
 	if err != nil {
-		// we purposefully
+		// we purposefully ignore err as it provides wrong additional information
 		Error("Unable to parse log level: %s - defaulting to %s level", levelStr, zerolog.InfoLevel)
 		lvl = zerolog.InfoLevel
 	}
