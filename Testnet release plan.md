@@ -1,6 +1,6 @@
-# Testnet versions
+# Development milestones
 
-This is the large task breakdown I propose we add to the next versions of testnet.
+This is the large task breakdown I propose we add to the next development milestones.
 There will be bug fixes and UX improvements as we discover them, which will be treated as high priority.
 
 Note that there is no protocol work listed here. These are the tasks that are orthogonal to the protocol.
