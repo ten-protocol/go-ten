@@ -4,14 +4,15 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 const (

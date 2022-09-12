@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 	"io/fs"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
 
