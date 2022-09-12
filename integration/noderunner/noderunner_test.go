@@ -46,7 +46,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	})
 
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)
-	rpcAddress := fmt.Sprintf("%s:%d", localhost, obscuroWebsocketPort)
+	rpcAddress := fmt.Sprintf("ws://%s:%d", localhost, obscuroWebsocketPort)
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
