@@ -8,13 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -43,7 +44,6 @@ const (
 	resJSONKeyID        = "id"
 	resJSONKeyRPCVer    = "jsonrpc"
 	RespJSONKeyResult   = "result"
-	httpCodeErr         = 500
 
 	// CORS-related constants.
 	corsAllowOrigin  = "Access-Control-Allow-Origin"
@@ -206,26 +206,34 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	body, err := io.ReadAll(req.Body)
+	readWriter, err := readwriter.NewReadWriter(resp, req)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read JSON-RPC request body: %s", err))
+		return
+	}
+
+	body, err := readWriter.ReadRequest()
+	if err != nil {
+		readWriter.HandleError(err.Error())
 		return
 	}
 
 	rpcReq, err := parseRequest(body)
 	if err != nil {
-		logAndSendErr(resp, err.Error())
+		readWriter.HandleError(err.Error())
 		return
+	}
+
+	if rpcReq.method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
+		readWriter.HandleError(fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
 	}
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	err = proxyRequest(rpcReq, &rpcResp, we)
-
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
-			logAndSendErr(resp, fmt.Sprintf("rpc request failed: %s", err))
+			readWriter.HandleError(fmt.Sprintf("rpc request failed: %s", err))
 			return
 		}
 	}
@@ -249,14 +257,14 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 
 	rpcRespToSend, err := json.Marshal(respMap)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
+		readWriter.HandleError(fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
+		return
 	}
 	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.method, rpcRespToSend)
 
-	// We write the response to the client.
-	_, err = resp.Write(rpcRespToSend)
+	err = readWriter.WriteResponse(rpcRespToSend)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not write JSON-RPC response: %s", err))
+		readWriter.HandleError(err.Error())
 		return
 	}
 }
@@ -298,22 +306,27 @@ func parseRequest(body []byte) (*rpcRequest, error) {
 
 // Generates a new viewing key.
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
-	body, err := io.ReadAll(req.Body)
+	readWriter, err := readwriter.NewReadWriter(resp, req)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signature from client: %s", err))
+		return
+	}
+
+	body, err := readWriter.ReadRequest()
+	if err != nil {
+		readWriter.HandleError(err.Error())
 		return
 	}
 
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		readWriter.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
 
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not generate new keypair: %s", err))
+		readWriter.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
@@ -323,44 +336,49 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
-		SignedKey:  nil, // we await a signature from the user before we can setup the EncRPCClient
+		SignedKey:  nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
-	_, err = resp.Write([]byte(viewingKeyHex))
+	err = readWriter.WriteResponse([]byte(viewingKeyHex))
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
+		readWriter.HandleError(fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
 		return
 	}
 }
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	body, err := io.ReadAll(req.Body)
+	readWriter, err := readwriter.NewReadWriter(resp, req)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signature from client: %s", err))
+		return
+	}
+
+	body, err := readWriter.ReadRequest()
+	if err != nil {
+		readWriter.HandleError(err.Error())
 		return
 	}
 
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		readWriter.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
 	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
 	vk, found := we.unsignedVKs[accAddress]
 	if !found {
-		logAndSendErr(resp, fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", accAddress, PathGenerateViewingKey))
+		readWriter.HandleError(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", accAddress, PathGenerateViewingKey))
 		return
 	}
 
 	//  We drop the leading "0x".
 	signature, err := hex.DecodeString(reqJSONMap[ReqJSONKeySignature][2:])
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not decode signature from client to hex: %s", err))
+		readWriter.HandleError(fmt.Sprintf("could not decode signature from client to hex: %s", err))
 		return
 	}
 
@@ -372,7 +390,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
+		readWriter.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
 	we.accountClients[accAddress] = client
 
@@ -384,6 +402,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
+// TODO - Move this method into multi_acc_helper.go.
 func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
 	callParams, err := parseParams(args)
 	if err != nil {
@@ -401,6 +420,7 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 }
 
 // Stores a viewing key to disk.
+// TODO - Move the persistence-related methods onto a separate struct.
 func (we *WalletExtension) persistViewingKey(viewingKey *rpc.ViewingKey) {
 	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
 
@@ -503,13 +523,6 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 		strings.Join(accounts, ", "))
 	log.Info(msg)
 	fmt.Println(msg)
-}
-
-// Logs the error message and sends it as an HTTP error.
-func logAndSendErr(resp http.ResponseWriter, msg string) {
-	log.Error(msg)
-	fmt.Println(msg)
-	http.Error(resp, msg, httpCodeErr)
 }
 
 // Config contains the configuration required by the WalletExtension.
