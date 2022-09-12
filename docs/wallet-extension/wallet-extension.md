@@ -32,14 +32,16 @@ tools.
 * [MetaMask](https://metamask.io/)
     * MetaMask is required to create a signature over each new viewing key. Other signers are not currently supported.
 * [Go](https://go.dev/)
+    * Required if building the binary locally.
 
 ## Usage
 
 1. The wallet extension can be downloaded from the [Obscuro release page](https://github.com/obscuronet/go-obscuro/releases) 
    where the binary is built for the Linux, MacOS and Windows platforms. Download the binary for the latest release and 
-   rename to `wallet_extension`. Alternatively the binary can be compiled by cloning the 
-   [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the root of 
-   the repository:
+   rename to `wallet_extension`. Note that on MacOS the binary has not been signed and notarised yet - see 
+   [apple support](https://support.apple.com/en-gb/HT202491) for steps to over-write this. The binary can be compiled by
+   cloning the [Obscuro repository](https://github.com/obscuronet/go-obscuro) and running the following command from the 
+   root of the repository:
 
    ```
    cd tools/walletextension/main && go build -o wallet_extension .
