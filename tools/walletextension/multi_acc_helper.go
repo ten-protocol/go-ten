@@ -228,7 +228,6 @@ func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) e
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
-// TODO - Move this method into multi_acc_helper.go.
 func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
 	callParams, err := parseParams(args)
 	if err != nil {
