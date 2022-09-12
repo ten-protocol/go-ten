@@ -70,14 +70,15 @@ var staticFiles embed.FS
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecies.PublicKey                     // The public key used to encrypt requests for the enclave.
-	hostAddr         string                               // The address on which the Obscuro host can be reached.
-	accountClients   map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
-	unauthedClient   rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
-	unsignedVKs      map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
-	serverHTTP       *http.Server
-	serverWS         *http.Server
-	persistencePath  string // The path of the file used to store the submitted viewing keys
+	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
+	hostAddr         string           // The address on which the Obscuro host can be reached.
+	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
+	accountClients  map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	unauthedClient  rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
+	unsignedVKs     map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
+	serverHTTP      *http.Server
+	serverWS        *http.Server
+	persistencePath string // The path of the file used to store the submitted viewing keys
 }
 
 type rpcRequest struct {
@@ -112,6 +113,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	// We reload the existing viewing keys from persistence.
 	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
+		// TODO - Create the clients lazily, to reduce connections to the host.
 		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
 		if err != nil {
 			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
@@ -424,6 +426,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
+	// TODO - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
 		readWriter.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
