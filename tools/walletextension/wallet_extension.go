@@ -161,7 +161,7 @@ func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
 	serveMuxHTTP := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
-	serveMuxHTTP.HandleFunc(pathRoot, we.handleEthJSON)
+	serveMuxHTTP.HandleFunc(pathRoot, we.handleEthJSONHTTP)
 	serveMuxHTTP.HandleFunc(PathReady, we.handleReady)
 	serveMuxHTTP.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
 	serveMuxHTTP.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
@@ -178,7 +178,7 @@ func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
 
 func (we *WalletExtension) createWSServer(host string, wsPort int) {
 	serveMuxWS := http.NewServeMux()
-	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSON)
+	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSONWS)
 	we.serverWS = &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
 }
 
@@ -222,21 +222,26 @@ func setUpPersistence(persistenceFilePath string) string {
 // Used to check whether the server is ready.
 func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
 
-// Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
-func (we *WalletExtension) handleEthJSON(resp http.ResponseWriter, req *http.Request) {
-	// We enable CORS, as required by some browsers (e.g. Firefox).
-	resp.Header().Set(corsAllowOrigin, originAll)
-	if (*req).Method == reqOptions {
-		resp.Header().Set(corsAllowMethods, reqOptions)
-		resp.Header().Set(corsAllowHeaders, corsHeaders)
+// Handles the Ethereum JSON-RPC request over HTTP.
+func (we *WalletExtension) handleEthJSONHTTP(resp http.ResponseWriter, req *http.Request) {
+	if we.enableCORS(resp, req) {
 		return
 	}
+	readWriter := readwriter.NewHTTPReadWriter(resp, req)
+	we.handleEthJSON(readWriter)
+}
 
-	readWriter, err := readwriter.NewReadWriter(resp, req)
+// Handles the Ethereum JSON-RPC request over websockets.
+func (we *WalletExtension) handleEthJSONWS(resp http.ResponseWriter, req *http.Request) {
+	readWriter, err := readwriter.NewWSReadWriter(resp, req)
 	if err != nil {
 		return
 	}
+	we.handleEthJSON(readWriter)
+}
 
+// Encrypts the Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
+func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 	body, err := readWriter.ReadRequest()
 	if err != nil {
 		readWriter.HandleError(err.Error())
@@ -295,6 +300,17 @@ func (we *WalletExtension) handleEthJSON(resp http.ResponseWriter, req *http.Req
 	}
 }
 
+// Enables CORS, as required by some browsers (e.g. Firefox). Returns true if CORS was enabled.
+func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Request) bool {
+	resp.Header().Set(corsAllowOrigin, originAll)
+	if (*req).Method == reqOptions {
+		resp.Header().Set(corsAllowMethods, reqOptions)
+		resp.Header().Set(corsAllowHeaders, corsHeaders)
+		return true
+	}
+	return false
+}
+
 func parseRequest(body []byte) (*rpcRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
@@ -332,10 +348,7 @@ func parseRequest(body []byte) (*rpcRequest, error) {
 
 // Generates a new viewing key.
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
-	readWriter, err := readwriter.NewReadWriter(resp, req)
-	if err != nil {
-		return
-	}
+	readWriter := readwriter.NewHTTPReadWriter(resp, req)
 
 	body, err := readWriter.ReadRequest()
 	if err != nil {
@@ -377,10 +390,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	readWriter, err := readwriter.NewReadWriter(resp, req)
-	if err != nil {
-		return
-	}
+	readWriter := readwriter.NewHTTPReadWriter(resp, req)
 
 	body, err := readWriter.ReadRequest()
 	if err != nil {
