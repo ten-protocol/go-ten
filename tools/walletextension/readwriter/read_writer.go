@@ -11,9 +11,7 @@ import (
 )
 
 const (
-	headerUpgrade   = "Upgrade"
-	headerWebsocket = "websocket"
-	httpCodeErr     = 500
+	httpCodeErr = 500
 )
 
 var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.

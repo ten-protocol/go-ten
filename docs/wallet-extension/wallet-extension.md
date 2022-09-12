@@ -54,13 +54,14 @@ tools.
    supports the following flags:
 
    * `port` (default: `3000`): The local port on which to serve the wallet extension.
+   * `portWS` (default: `3001`): The local port on which to handle websocket requests.
    * `nodeHost` (default: `testnet.obscu.ro`): The Obscuro node for the RPC connection.
    * `nodePortHTTP` (default: `13000`): The Obscuro node's HTTP RPC port.
    * `nodePortWS` (default: `13001`): The Obscuro node's websockets RPC port.
    * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs.
 
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
-   assume that the default port of `3000` was selected.
+   assume that the default ports of `3000` and `3001` were selected.
 
 3. Sign in to MetaMask and add the Obscuro Testnet network following the instructions [here](/wallet-extension/configure-metamask.html)
 
