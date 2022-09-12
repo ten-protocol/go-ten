@@ -99,7 +99,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			gethClients[i],
 		)
 
-		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortWS)
+		nodeRPCAddresses[i] = fmt.Sprintf("ws://%s:%d", Localhost, nodeRPCPortWS)
 	}
 
 	// start each obscuro node
