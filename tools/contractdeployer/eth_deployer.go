@@ -9,7 +9,7 @@ import (
 )
 
 func prepareEthDeployer(cfg *Config) (contractDeployerClient, error) {
-	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"))
+	client, err := ethadapter.NewEthClient(cfg.NodeAddress, 30*time.Second, common.HexToAddress("0x0"))
 	if err != nil {
 		return nil, err
 	}

@@ -37,9 +37,7 @@ type HostConfig struct {
 	// P2PPublicAddress is the advertised P2P server address
 	P2PPublicAddress string
 	// The host of the connected L1 node
-	L1NodeHost string
-	// The websocket port of the connected L1 node
-	L1NodeWebsocketPort uint
+	L1NodeAddress string
 	// Timeout duration for RPC requests from client applications
 	ClientRPCTimeout time.Duration
 	// Timeout duration for RPC requests to the enclave service
@@ -78,8 +76,7 @@ func DefaultHostConfig() HostConfig {
 		EnclaveRPCAddress:      "127.0.0.1:11000",
 		P2PBindAddress:         "0.0.0.0:10000",
 		P2PPublicAddress:       "127.0.0.1:10000",
-		L1NodeHost:             "127.0.0.1",
-		L1NodeWebsocketPort:    8546,
+		L1NodeAddress:          "ws://127.0.0.1:8546",
 		ClientRPCTimeout:       time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		L1RPCTimeout:           time.Duration(defaultL1RPCTimeoutSecs) * time.Second,

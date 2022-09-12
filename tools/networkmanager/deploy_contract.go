@@ -34,7 +34,7 @@ func DeployContract(config Config) {
 		L1ChainID:        config.l1ChainID,
 	}
 
-	l1Client, err := ethadapter.NewEthClient(config.l1NodeHost, config.l1NodeWebsocketPort, config.l1RPCTimeout, common.HexToAddress("0x0"))
+	l1Client, err := ethadapter.NewEthClient(config.l1NodeAddress, config.l1RPCTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}

@@ -99,7 +99,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			gethClients[i],
 		)
 
-		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortWS)
+		nodeRPCAddresses[i] = fmt.Sprintf("http://%s:%d", Localhost, nodeRPCPortWS)
 	}
 
 	// start each obscuro node
@@ -116,7 +116,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 
 		started := false
 		for !started {
-			client, err = rpc.NewNetworkClient(rpc.HTTP, rpcAddress)
+			client, err = rpc.NewNetworkClient(rpcAddress)
 			started = err == nil // The client cannot be created until the node has started.
 			if !started {
 				log.Info("Could not create client %d. Err %s. Retrying...\n", i, err)

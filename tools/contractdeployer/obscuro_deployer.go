@@ -16,7 +16,7 @@ import (
 )
 
 func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet) (contractDeployerClient, error) {
-	client, err := connectClient(getURL(cfg), wal)
+	client, err := connectClient(cfg.NodeAddress, wal)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup obscuro client - %w", err)
 	}
@@ -38,7 +38,7 @@ func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient) error 
 	}
 	faucetWallet := wallet.NewInMemoryWalletFromPK(cfg.ChainID, faucetPrivKey)
 
-	faucetClient, err := connectClient(getURL(cfg), faucetWallet)
+	faucetClient, err := connectClient(cfg.NodeAddress, faucetWallet)
 	if err != nil {
 		return err
 	}
@@ -123,8 +123,4 @@ func (o *obscuroDeployer) SendTransaction(tx *types.Transaction) error {
 
 func (o *obscuroDeployer) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
 	return o.client.TransactionReceipt(context.TODO(), hash)
-}
-
-func getURL(cfg *Config) string {
-	return fmt.Sprintf("%s:%d", cfg.NodeHost, cfg.NodePort)
 }

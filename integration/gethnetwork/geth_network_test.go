@@ -110,7 +110,8 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethadapter.NewEthClient(localhost, network.WebSocketPorts[0], defaultL1RPCTimeout, common.HexToAddress("0x0"))
+	address := fmt.Sprintf("ws://%s:%d", localhost, network.WebSocketPorts[0])
+	ethClient, err := ethadapter.NewEthClient(address, defaultL1RPCTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(err)
 	}

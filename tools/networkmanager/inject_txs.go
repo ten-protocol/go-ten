@@ -31,12 +31,12 @@ import (
 func InjectTransactions(cfg Config, args []string) {
 	ctx := context.Background()
 	println("Connecting to L1 node...")
-	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeHost, cfg.l1NodeWebsocketPort, cfg.l1RPCTimeout, common.HexToAddress("0x0"))
+	l1Client, err := ethadapter.NewEthClient(cfg.l1NodeAddress, cfg.l1RPCTimeout, common.HexToAddress("0x0"))
 	if err != nil {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
 	println("Connecting to Obscuro node...")
-	l2Client, err := rpc.NewNetworkClient(rpc.HTTP, cfg.obscuroClientAddress)
+	l2Client, err := rpc.NewNetworkClient(cfg.obscuroClientAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 		if err != nil {
 			panic(err)
 		}
-		client, err := rpc.NewEncNetworkClient(rpc.HTTP, obscuroNodeAddr, vk)
+		client, err := rpc.NewEncNetworkClient(obscuroNodeAddr, vk)
 		if err != nil {
 			panic(err)
 		}
@@ -107,7 +107,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 		if err != nil {
 			panic(err)
 		}
-		client, err := rpc.NewEncNetworkClient(rpc.HTTP, obscuroNodeAddr, vk)
+		client, err := rpc.NewEncNetworkClient(obscuroNodeAddr, vk)
 		if err != nil {
 			panic(err)
 		}

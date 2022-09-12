@@ -33,18 +33,14 @@ const (
 	emptyCode                     = "0x"
 )
 
-var (
-	config = &contractdeployer.Config{
-		NodeHost:          network.Localhost,
-		NodePort:          integration.StartPortContractDeployerTest + network.DefaultHostRPCWSOffset,
-		IsL1Deployment:    false,
-		PrivateKey:        contractDeployerPrivateKeyHex,
-		ChainID:           big.NewInt(integration.ObscuroChainID),
-		ContractName:      contractdeployer.GuessingGameContract,
-		ConstructorParams: []string{guessingGameParamOne, guessingGameParamTwo},
-	}
-	nodeAddress = fmt.Sprintf("%s:%d", config.NodeHost, config.NodePort)
-)
+var config = &contractdeployer.Config{
+	NodeAddress:       fmt.Sprintf("http://%s:%d", network.Localhost, integration.StartPortContractDeployerTest+network.DefaultHostRPCWSOffset),
+	IsL1Deployment:    false,
+	PrivateKey:        contractDeployerPrivateKeyHex,
+	ChainID:           big.NewInt(integration.ObscuroChainID),
+	ContractName:      contractdeployer.GuessingGameContract,
+	ConstructorParams: []string{guessingGameParamOne, guessingGameParamTwo},
+}
 
 func TestCanDeployGuessingGameContract(t *testing.T) {
 	createObscuroNetwork(t)
@@ -144,7 +140,7 @@ func getClient(wallet wallet.Wallet) *rpc.EncRPCClient {
 	if err != nil {
 		panic(err)
 	}
-	client, err := rpc.NewEncNetworkClient(rpc.HTTP, nodeAddress, viewingKey)
+	client, err := rpc.NewEncNetworkClient(config.NodeAddress, viewingKey)
 	if err != nil {
 		panic(err)
 	}

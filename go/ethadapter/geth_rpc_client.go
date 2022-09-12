@@ -26,13 +26,13 @@ type gethRPCClient struct {
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
-func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethcommon.Address) (EthClient, error) {
-	client, err := connect(ipaddress, port, timeout)
+func NewEthClient(address string, timeout time.Duration, l2ID gethcommon.Address) (EthClient, error) {
+	client, err := connect(address, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	log.Trace("Initialized eth node connection - addr: %s port: %d", ipaddress, port)
+	log.Trace("Initialized eth node connection - addr: %s", address)
 	return &gethRPCClient{
 		client:  client,
 		l2ID:    l2ID,
@@ -201,11 +201,11 @@ func (e *gethRPCClient) Stop() {
 	e.client.Close()
 }
 
-func connect(ipaddress string, port uint, connectionTimeout time.Duration) (*ethclient.Client, error) {
+func connect(address string, connectionTimeout time.Duration) (*ethclient.Client, error) {
 	var err error
 	var c *ethclient.Client
 	for start := time.Now(); time.Since(start) < connectionTimeout; time.Sleep(time.Second) {
-		c, err = ethclient.Dial(fmt.Sprintf("ws://%s:%d", ipaddress, port))
+		c, err = ethclient.Dial(address)
 		if err == nil {
 			break
 		}

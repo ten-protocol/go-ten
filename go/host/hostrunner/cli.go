@@ -26,8 +26,7 @@ type HostConfigToml struct {
 	EnclaveRPCAddress      string
 	P2PBindAddress         string
 	P2PPublicAddress       string
-	L1NodeHost             string
-	L1NodeWebsocketPort    uint
+	L1NodeAddress          string
 	ClientRPCTimeout       int
 	EnclaveRPCTimeout      int
 	L1RPCTimeout           int
@@ -57,8 +56,7 @@ func ParseConfig() config.HostConfig {
 	enclaveRPCAddress := flag.String(enclaveRPCAddressName, cfg.EnclaveRPCAddress, flagUsageMap[enclaveRPCAddressName])
 	p2pBindAddress := flag.String(p2pBindAddressName, cfg.P2PBindAddress, flagUsageMap[p2pBindAddressName])
 	p2pPublicAddress := flag.String(p2pPublicAddressName, cfg.P2PPublicAddress, flagUsageMap[p2pPublicAddressName])
-	l1NodeHost := flag.String(l1NodeHostName, cfg.L1NodeHost, flagUsageMap[l1NodeHostName])
-	l1NodePort := flag.Uint64(l1NodePortName, uint64(cfg.L1NodeWebsocketPort), flagUsageMap[l1NodePortName])
+	l1NodeAddress := flag.String(l1NodeAddressName, cfg.L1NodeAddress, flagUsageMap[l1NodeAddressName])
 	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, uint64(cfg.ClientRPCTimeout.Seconds()), flagUsageMap[clientRPCTimeoutSecsName])
 	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(cfg.EnclaveRPCTimeout.Seconds()), flagUsageMap[enclaveRPCTimeoutSecsName])
 	l1RPCTimeoutSecs := flag.Uint64(l1RPCTimeoutSecsName, uint64(cfg.L1RPCTimeout.Seconds()), flagUsageMap[l1RPCTimeoutSecsName])
@@ -88,8 +86,7 @@ func ParseConfig() config.HostConfig {
 	cfg.EnclaveRPCAddress = *enclaveRPCAddress
 	cfg.P2PBindAddress = *p2pBindAddress
 	cfg.P2PPublicAddress = *p2pPublicAddress
-	cfg.L1NodeHost = *l1NodeHost
-	cfg.L1NodeWebsocketPort = uint(*l1NodePort)
+	cfg.L1NodeAddress = *l1NodeAddress
 	cfg.ClientRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
 	cfg.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
 	cfg.L1RPCTimeout = time.Duration(*l1RPCTimeoutSecs) * time.Second
@@ -130,8 +127,7 @@ func fileBasedConfig(configPath string) config.HostConfig {
 		EnclaveRPCAddress:      tomlConfig.EnclaveRPCAddress,
 		P2PBindAddress:         tomlConfig.P2PBindAddress,
 		P2PPublicAddress:       tomlConfig.P2PPublicAddress,
-		L1NodeHost:             tomlConfig.L1NodeHost,
-		L1NodeWebsocketPort:    tomlConfig.L1NodeWebsocketPort,
+		L1NodeAddress:          tomlConfig.L1NodeAddress,
 		ClientRPCTimeout:       time.Duration(tomlConfig.ClientRPCTimeout) * time.Second,
 		EnclaveRPCTimeout:      time.Duration(tomlConfig.EnclaveRPCTimeout) * time.Second,
 		L1RPCTimeout:           time.Duration(tomlConfig.L1RPCTimeout) * time.Second,

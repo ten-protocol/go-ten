@@ -12,8 +12,7 @@ const (
 	enclaveRPCAddressName        = "enclaveRPCAddress"
 	p2pBindAddressName           = "p2pBindAddress"
 	p2pPublicAddressName         = "p2pPublicAddress"
-	l1NodeHostName               = "l1NodeHost"
-	l1NodePortName               = "l1NodePort"
+	l1NodeAddressName            = "l1NodeAddress"
 	clientRPCTimeoutSecsName     = "clientRPCTimeoutSecs"
 	enclaveRPCTimeoutSecsName    = "enclaveRPCTimeoutSecs"
 	l1RPCTimeoutSecsName         = "l1RPCTimeoutSecs"
@@ -41,8 +40,7 @@ func getFlagUsageMap() map[string]string {
 		enclaveRPCAddressName:        "The address to use to connect to the Obscuro enclave service",
 		p2pBindAddressName:           "The address where the p2p server is bound to. Defaults to 0.0.0.0:10000",
 		p2pPublicAddressName:         "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
-		l1NodeHostName:               "The host on which to connect to the Ethereum client",
-		l1NodePortName:               "The port on which to connect to the Ethereum client",
+		l1NodeAddressName:            "The address on which to connect to the Ethereum client",
 		clientRPCTimeoutSecsName:     "The timeout for client <-> host RPC communication",
 		enclaveRPCTimeoutSecsName:    "The timeout for host <-> enclave RPC communication",
 		l1RPCTimeoutSecsName:         "The timeout for connecting to, and communicating with, the Ethereum client",

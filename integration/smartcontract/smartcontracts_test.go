@@ -1,6 +1,7 @@
 package smartcontract
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -51,7 +52,8 @@ func runGethNetwork(t *testing.T) *netInfo {
 	)
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second, gethcommon.HexToAddress("0x0"))
+	address := fmt.Sprintf("ws://127.0.0.1:%d", gethNetwork.WebSocketPorts[0])
+	client, err := ethadapter.NewEthClient(address, 30*time.Second, gethcommon.HexToAddress("0x0"))
 	if err != nil {
 		return nil
 	}

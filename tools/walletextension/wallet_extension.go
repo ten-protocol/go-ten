@@ -97,7 +97,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	}
 	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
-	unauthedClient, err := rpc.NewNetworkClient(rpc.WS, config.NodeRPCWebsocketAddress)
+	unauthedClient, err := rpc.NewNetworkClient(config.NodeRPCWebsocketAddress)
 	if err != nil {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
@@ -114,7 +114,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	// We reload the existing viewing keys from persistence.
 	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
-		client, err := rpc.NewEncNetworkClient(rpc.WS, walletExtension.hostAddr, viewingKey)
+		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
 		if err != nil {
 			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
 			continue
@@ -373,7 +373,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
-	client, err := rpc.NewEncNetworkClient(rpc.WS, we.hostAddr, vk)
+	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
@@ -518,7 +518,7 @@ func logAndSendErr(resp http.ResponseWriter, msg string) {
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionPort     int
-	NodeRPCHTTPAddress      string // TODO - Remove this unused field.
+	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
 	PersistencePathOverride string // Overrides the persistence file location. Used in tests.

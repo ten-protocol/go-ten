@@ -46,7 +46,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	})
 
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)
-	rpcAddress := fmt.Sprintf("%s:%d", localhost, obscuroWebsocketPort)
+	rpcAddress := fmt.Sprintf("http://%s:%d", localhost, obscuroWebsocketPort)
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -58,7 +58,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
 	hostConfig.ClientRPCPortWS = uint64(obscuroWebsocketPort)
-	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
+	hostConfig.L1NodeAddress = fmt.Sprintf("ws://127.0.0.1:%d", gethWebsocketPort)
 	hostConfig.ProfilerEnabled = true
 
 	enclaveConfig := config.DefaultEnclaveConfig()
@@ -81,7 +81,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	var obscuroClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
-		obscuroClient, err = rpc.NewNetworkClient(rpc.HTTP, rpcAddress)
+		obscuroClient, err = rpc.NewNetworkClient(rpcAddress)
 		if err == nil {
 			break
 		}

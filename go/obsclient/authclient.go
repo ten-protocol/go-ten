@@ -42,7 +42,7 @@ func DialWithAuth(rpcurl string, wal wallet.Wallet) (*AuthObsClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	encClient, err := rpc.NewEncNetworkClient(rpc.HTTP, rpcurl, viewingKey)
+	encClient, err := rpc.NewEncNetworkClient(rpcurl, viewingKey)
 	if err != nil {
 		return nil, err
 	}

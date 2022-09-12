@@ -20,8 +20,7 @@ var (
 // DefaultConfig stores the contract client default config
 func DefaultConfig() *Config {
 	return &Config{
-		NodeHost:          "",
-		NodePort:          0,
+		NodeAddress:       "",
 		IsL1Deployment:    false,
 		PrivateKey:        "",
 		ChainID:           defaultL2ChainID,
@@ -32,8 +31,7 @@ func DefaultConfig() *Config {
 
 // Config is the structure that a contract deployer config is parsed into.
 type Config struct {
-	NodeHost          string   // host for the client connection
-	NodePort          uint     // port for client connection
+	NodeAddress       string   // address for the client connection
 	IsL1Deployment    bool     // flag for L1/Eth contract deployment (rather than Obscuro/L2 deployment)
 	PrivateKey        string   // private key to be used for the contract deployer address
 	ChainID           *big.Int // chain ID we're deploying too
@@ -45,8 +43,7 @@ type Config struct {
 func ParseConfig() *Config {
 	defaultConfig := DefaultConfig()
 
-	nodeHost := flag.String(nodeHostName, defaultConfig.NodeHost, nodeHostUsage)
-	nodePort := flag.Uint64(nodePortName, uint64(defaultConfig.NodePort), nodePortUsage)
+	nodeAddress := flag.String(nodeAddressName, defaultConfig.NodeAddress, nodeAddressUsage)
 	isL1Deployment := flag.Bool(isL1DeploymentName, defaultConfig.IsL1Deployment, isL1DeploymentUsage)
 	contractName := flag.String(contractNameName, defaultConfig.ContractName, contractNameUsage)
 	privateKeyStr := flag.String(privateKeyName, defaultConfig.PrivateKey, privateKeyUsage)
@@ -56,8 +53,7 @@ func ParseConfig() *Config {
 
 	flag.Parse()
 
-	defaultConfig.NodeHost = *nodeHost
-	defaultConfig.NodePort = uint(*nodePort)
+	defaultConfig.NodeAddress = *nodeAddress
 	defaultConfig.IsL1Deployment = *isL1Deployment
 	defaultConfig.PrivateKey = *privateKeyStr
 	defaultConfig.ContractName = *contractName
