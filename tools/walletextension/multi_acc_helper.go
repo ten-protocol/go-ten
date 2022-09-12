@@ -224,3 +224,22 @@ func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) e
 
 	return client.Call(resp, req.method, req.params...)
 }
+
+// The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
+// don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
+// field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
+func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
+	callParams, err := parseParams(args)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
+	}
+
+	// We only modify `eth_call` requests where the `from` field is not set.
+	if callParams[reqJSONKeyFrom] != nil {
+		return args, nil
+	}
+
+	callParams[reqJSONKeyFrom] = account
+	args[0] = callParams
+	return args, nil
+}
