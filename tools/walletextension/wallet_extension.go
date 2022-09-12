@@ -528,6 +528,7 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionPort     int
+	WalletExtensionWSPort   int
 	NodeRPCHTTPAddress      string // TODO - Remove this unused field.
 	NodeRPCWebsocketAddress string
 	LogPath                 string
