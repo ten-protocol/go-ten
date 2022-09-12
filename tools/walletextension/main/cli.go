@@ -40,8 +40,8 @@ func parseCLIArgs() walletextension.Config {
 
 	return walletextension.Config{
 		WalletExtensionPort:     *walletExtensionPort,
-		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
+		NodeRPCHTTPAddress:      fmt.Sprintf("http://%s:%d", *nodeHost, *nodeHTTPPort),
+		NodeRPCWebsocketAddress: fmt.Sprintf("ws://%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                 *logPath,
 	}
 }
