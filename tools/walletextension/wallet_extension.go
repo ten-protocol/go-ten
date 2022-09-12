@@ -229,7 +229,7 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 	}
 
 	if rpcReq.method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
-		logAndSendErr(resp, fmt.Sprintf("received a %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
+		logAndSendErr(resp, fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
 	}
 
 	var rpcResp interface{}
@@ -518,7 +518,6 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 	fmt.Println(msg)
 }
 
-// todo - joel - pull this onto readwriter? How does sending errors work with websockets anyway?
 // Logs the error message and sends it as an HTTP error.
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	log.Error(msg)
