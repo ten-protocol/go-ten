@@ -81,7 +81,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	var obscuroClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
-		obscuroClient, err = rpc.NewNetworkClient(rpcAddress)
+		obscuroClient, err = rpc.NewNetworkClient(rpc.HTTP, rpcAddress)
 		if err == nil {
 			break
 		}

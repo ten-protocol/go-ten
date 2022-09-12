@@ -80,7 +80,7 @@ type attestationReportExternal struct {
 }
 
 func NewObscuroscan(address string) *Obscuroscan {
-	client, err := rpc.NewNetworkClient(address)
+	client, err := rpc.NewNetworkClient(rpc.HTTP, address)
 	if err != nil {
 		panic(err)
 	}

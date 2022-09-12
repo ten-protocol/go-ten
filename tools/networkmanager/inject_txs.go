@@ -36,7 +36,7 @@ func InjectTransactions(cfg Config, args []string) {
 		panic(fmt.Sprintf("could not create L1 client. Cause: %s", err))
 	}
 	println("Connecting to Obscuro node...")
-	l2Client, err := rpc.NewNetworkClient(cfg.obscuroClientAddress)
+	l2Client, err := rpc.NewNetworkClient(rpc.HTTP, cfg.obscuroClientAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 		if err != nil {
 			panic(err)
 		}
-		client, err := rpc.NewEncNetworkClient(obscuroNodeAddr, vk)
+		client, err := rpc.NewEncNetworkClient(rpc.HTTP, obscuroNodeAddr, vk)
 		if err != nil {
 			panic(err)
 		}
@@ -107,7 +107,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string) 
 		if err != nil {
 			panic(err)
 		}
-		client, err := rpc.NewEncNetworkClient(obscuroNodeAddr, vk)
+		client, err := rpc.NewEncNetworkClient(rpc.HTTP, obscuroNodeAddr, vk)
 		if err != nil {
 			panic(err)
 		}

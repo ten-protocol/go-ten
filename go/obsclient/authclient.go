@@ -36,14 +36,13 @@ func NewAuthObsClient(client *rpc.EncRPCClient) *AuthObsClient {
 }
 
 // DialWithAuth will generate and sign a viewing key for given wallet, then initiate a connection with the RPC node and
-//
-//	register the viewing key
+// register the viewing key
 func DialWithAuth(rpcurl string, wal wallet.Wallet) (*AuthObsClient, error) {
 	viewingKey, err := rpc.GenerateAndSignViewingKey(wal)
 	if err != nil {
 		return nil, err
 	}
-	encClient, err := rpc.NewEncNetworkClient(rpcurl, viewingKey)
+	encClient, err := rpc.NewEncNetworkClient(rpc.HTTP, rpcurl, viewingKey)
 	if err != nil {
 		return nil, err
 	}

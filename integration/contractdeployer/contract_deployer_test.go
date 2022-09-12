@@ -144,7 +144,7 @@ func getClient(wallet wallet.Wallet) *rpc.EncRPCClient {
 	if err != nil {
 		panic(err)
 	}
-	client, err := rpc.NewEncNetworkClient(nodeAddress, viewingKey)
+	client, err := rpc.NewEncNetworkClient(rpc.HTTP, nodeAddress, viewingKey)
 	if err != nil {
 		panic(err)
 	}

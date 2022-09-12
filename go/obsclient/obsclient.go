@@ -15,7 +15,7 @@ type ObsClient struct {
 }
 
 func Dial(rawurl string) (*ObsClient, error) {
-	rc, err := rpc.NewNetworkClient(rawurl)
+	rc, err := rpc.NewNetworkClient(rpc.HTTP, rawurl)
 	if err != nil {
 		return nil, err
 	}

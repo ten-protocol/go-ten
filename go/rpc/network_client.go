@@ -7,8 +7,15 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+// Protocol indicates the web protocol to use to connect to the host.
+type Protocol uint8
+
 const (
-	ws = "ws://"
+	HTTP Protocol = iota
+	WS
+
+	http = "http://"
+	ws   = "ws://"
 )
 
 // networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
@@ -17,8 +24,8 @@ type networkClient struct {
 }
 
 // NewEncNetworkClient returns a network RPC client with Viewing Key encryption/decryption
-func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClient, error) {
-	rpcClient, err := NewNetworkClient(rpcAddress)
+func NewEncNetworkClient(protocol Protocol, rpcAddress string, viewingKey *ViewingKey) (*EncRPCClient, error) {
+	rpcClient, err := NewNetworkClient(protocol, rpcAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -30,9 +37,8 @@ func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClie
 }
 
 // NewNetworkClient returns a client that can make RPC calls to an Obscuro node
-func NewNetworkClient(address string) (Client, error) {
-	// TODO - Allow instantiator to choose between websockets and HTTP
-	rpcClient, err := rpc.Dial(ws + address)
+func NewNetworkClient(protocol Protocol, address string) (Client, error) {
+	rpcClient, err := rpc.Dial(protocol.String() + address)
 	if err != nil {
 		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", ws+address, err)
 	}
@@ -58,4 +64,8 @@ func (c *networkClient) Subscribe(ctx context.Context, namespace string, channel
 
 func (c *networkClient) Stop() {
 	c.rpcClient.Close()
+}
+
+func (p Protocol) String() string {
+	return [...]string{http, ws}[p]
 }
