@@ -33,7 +33,6 @@ type Persistence struct {
 
 func NewPersistence(hostAddr string, persistenceFilePath string) *Persistence {
 	// Sets up the persistence file and returns its path. Defaults to the user's home directory if the path is empty.
-
 	if persistenceFilePath == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {

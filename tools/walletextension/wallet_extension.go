@@ -98,7 +98,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		accountClients:   make(map[common.Address]*rpc.EncRPCClient),
 		unsignedVKs:      make(map[common.Address]*rpc.ViewingKey),
 		unauthedClient:   unauthedClient,
-		persistence:      persistence.NewPersistence(config.PersistencePathOverride, config.NodeRPCWebsocketAddress),
+		persistence:      persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
 	}
 
 	// We reload the existing viewing keys from persistence.
