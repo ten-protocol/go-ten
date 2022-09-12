@@ -2,20 +2,21 @@ package readwriter
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"io"
 	"net/http"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/gorilla/websocket"
 )
 
 const (
-	httpCodeErr = 500
+	headerUpgrade   = "Upgrade"
+	headerWebsocket = "websocket"
+	httpCodeErr     = 500
 )
 
-var (
-	upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
-)
+var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
 
 // ReadWriter handles reading and writing Ethereum JSON RPC requests.
 type ReadWriter interface {
@@ -37,8 +38,8 @@ type WSReadWriter struct {
 }
 
 func NewReadWriter(resp http.ResponseWriter, req *http.Request) (ReadWriter, error) {
-	for _, header := range req.Header["Upgrade"] { // todo - joel - use constant
-		if header == "websocket" { // todo - joel - use constant
+	for _, header := range req.Header[headerUpgrade] {
+		if header == headerWebsocket {
 			conn, err := upgrader.Upgrade(resp, req, nil)
 			if err != nil {
 				err = fmt.Errorf("unable to upgrade to websocket connection")
@@ -79,15 +80,15 @@ func (h HTTPReadWriter) SupportsSubscriptions() bool {
 }
 
 func (w WSReadWriter) ReadRequest() ([]byte, error) {
-	panic("todo - joel")
+	panic("not implemented")
 }
 
 func (w WSReadWriter) WriteResponse(msg []byte) error {
-	panic("todo - joel")
+	panic("not implemented")
 }
 
 func (w WSReadWriter) HandleError(msg string) {
-	panic("todo - joel")
+	panic("not implemented")
 }
 
 func (w WSReadWriter) SupportsSubscriptions() bool {
