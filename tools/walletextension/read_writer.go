@@ -45,7 +45,7 @@ func NewReadWriter(resp http.ResponseWriter, req *http.Request) (ReadWriter, err
 func (h HTTPReadWriter) ReadRequest() ([]byte, error) {
 	body, err := io.ReadAll(h.req.Body)
 	if err != nil {
-		return nil, fmt.Errorf("could not read JSON-RPC request body: %w", err)
+		return nil, fmt.Errorf("could not read request body: %w", err)
 	}
 	return body, nil
 }
@@ -53,7 +53,7 @@ func (h HTTPReadWriter) ReadRequest() ([]byte, error) {
 func (h HTTPReadWriter) WriteResponse(responseBytes []byte) error {
 	_, err := h.resp.Write(responseBytes)
 	if err != nil {
-		return fmt.Errorf("could not write JSON-RPC response: %w", err)
+		return fmt.Errorf("could not write response: %w", err)
 	}
 	return nil
 }

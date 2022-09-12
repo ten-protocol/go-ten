@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -311,9 +310,15 @@ func parseRequest(body []byte) (*rpcRequest, error) {
 
 // Generates a new viewing key.
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
-	body, err := io.ReadAll(req.Body)
+	readWriter, err := NewReadWriter(resp, req)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signature from client: %s", err))
+		logAndSendErr(resp, err.Error())
+		return
+	}
+
+	body, err := readWriter.ReadRequest()
+	if err != nil {
+		logAndSendErr(resp, err.Error())
 		return
 	}
 
@@ -336,13 +341,13 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
-		SignedKey:  nil, // we await a signature from the user before we can setup the EncRPCClient
+		SignedKey:  nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
-	_, err = resp.Write([]byte(viewingKeyHex))
+	err = readWriter.WriteResponse([]byte(viewingKeyHex))
 	if err != nil {
 		logAndSendErr(resp, fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
 		return
@@ -351,9 +356,15 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	body, err := io.ReadAll(req.Body)
+	readWriter, err := NewReadWriter(resp, req)
 	if err != nil {
-		logAndSendErr(resp, fmt.Sprintf("could not read viewing key and signature from client: %s", err))
+		logAndSendErr(resp, err.Error())
+		return
+	}
+
+	body, err := readWriter.ReadRequest()
+	if err != nil {
+		logAndSendErr(resp, err.Error())
 		return
 	}
 
@@ -397,6 +408,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
+// TODO - Move this method into multi_acc_helper.go.
 func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
 	callParams, err := parseParams(args)
 	if err != nil {
@@ -414,6 +426,7 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 }
 
 // Stores a viewing key to disk.
+// TODO - Move the persistence-related methods onto a separate struct.
 func (we *WalletExtension) persistViewingKey(viewingKey *rpc.ViewingKey) {
 	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
 
