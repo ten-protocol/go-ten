@@ -1,5 +1,11 @@
 # Obscuro Testnet Change Log
 
+## September 2022-09-xx
+* Wallet extension:
+  * The wallet extension now supports separate ports for HTTP and WebSocket connections. Use the `--port` and `--portWS` 
+    command line options respectively for each. For more information see the
+    [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) documentation. 
+
 ## September 2022-09-07
 * Tokens / ERC20 contracts
   * The ERC20 'HOC' and 'POC' tokens are now funded with 18 decimal places of precision. Previously funding of 50 
