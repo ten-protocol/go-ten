@@ -355,6 +355,17 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 }
 
+func TestCanMakeRequestOverWS(t *testing.T) {
+	createWalletExtension(t)
+
+	// todo - joel - keep working on this
+	respJSON := makeWSEthJSONReqAsJSON(rpc.RPCChainID, []string{})
+
+	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
+		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
+	}
+}
+
 func createWalletExtensionConfig() *walletextension.Config {
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
@@ -400,7 +411,13 @@ func waitForWalletExtension(walletExtensionAddr string) error {
 	return fmt.Errorf("could not establish connection to wallet extension")
 }
 
-// Makes an Ethereum JSON RPC request and returns the response body.
+// Makes an Ethereum JSON RPC request over HTTP and returns the response body as JSON.
+func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
+	respBody := makeHTTPEthJSONReq(method, params)
+	return convertRespBodyToJSON(respBody)
+}
+
+// Makes an Ethereum JSON RPC request over HTTP and returns the response body.
 func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -444,10 +461,19 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 	return respBody
 }
 
-// Makes an Ethereum JSON RPC request and returns the response body as JSON.
-func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
-	respBody := makeHTTPEthJSONReq(method, params)
+// Makes an Ethereum JSON RPC request over websockets and returns the response body as JSON.
+func makeWSEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
+	respBody := makeWSEthJSONReq(method, params)
+	return convertRespBodyToJSON(respBody)
+}
 
+// Makes an Ethereum JSON RPC request over websockets and returns the response body.
+func makeWSEthJSONReq(method string, params interface{}) []byte {
+	panic("todo - joel - not implemented")
+}
+
+// Converts the response body bytes to JSON.
+func convertRespBodyToJSON(respBody []byte) map[string]interface{} {
 	if respBody[0] != '{' {
 		panic(fmt.Errorf("expected JSON response but received: %s", respBody))
 	}
