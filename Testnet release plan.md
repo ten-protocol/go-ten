@@ -8,7 +8,7 @@ Note that there is no protocol work listed here. These are the tasks that are or
 
 ## V2
 1. Events subscription
-2. Connect to goerli
+2. Connect to a well-known Ethereum testnet
    a) support restarting of nodes
 3. Improvements to Management contract
    a) Support withdrawals
@@ -24,7 +24,7 @@ Note that there is no protocol work listed here. These are the tasks that are or
    d) Try outside of Azure?
 2. Design and implement reveleation period
 3. Finalise cryptography
-   a) key derivation
+   a) key derivation (both the obscuro network key, and the symmetric rollup encryption keys) 
    b) Calculate hashes on startup
    c) Check that the rollup producer is attested
    d) Add entropy to txs
