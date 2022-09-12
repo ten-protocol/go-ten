@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -248,12 +249,19 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 func isAddressAvailable(address string) bool {
-	ln, err := net.Listen("tcp", address)
-	if err != nil {
-		return false
+	// `net.Listen` requires us to strip the protocol, if it exists.
+	addressNoProtocol := address
+	splitAddress := strings.Split(address, "://")
+	if len(splitAddress) == 2 {
+		addressNoProtocol = splitAddress[1]
 	}
+
+	ln, err := net.Listen("tcp", addressNoProtocol)
 	if ln != nil {
 		_ = ln.Close()
+	}
+	if err != nil {
+		return false
 	}
 	return true
 }

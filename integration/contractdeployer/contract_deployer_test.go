@@ -35,7 +35,7 @@ const (
 
 var (
 	config = &contractdeployer.Config{
-		NodeHost:          network.Localhost,
+		NodeHost:          "ws://" + network.Localhost, // todo - joel - pass protocol properly
 		NodePort:          integration.StartPortContractDeployerTest + network.DefaultHostRPCWSOffset,
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
