@@ -75,7 +75,8 @@ type WalletExtension struct {
 	accountClients   map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
 	unauthedClient   rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
 	unsignedVKs      map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
-	server           *http.Server
+	serverHTTP       *http.Server
+	serverWS         *http.Server
 	persistencePath  string // The path of the file used to store the submitted viewing keys
 }
 
@@ -123,33 +124,51 @@ func NewWalletExtension(config Config) *WalletExtension {
 }
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
-func (we *WalletExtension) Serve(hostAndPort string) {
-	serveMux := http.NewServeMux()
+func (we *WalletExtension) Serve(host string, httpPort int, wsPort int) {
+	serveMuxHTTP := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
-	serveMux.HandleFunc(pathRoot, we.handleHTTPEthJSON)
-	serveMux.HandleFunc(PathReady, we.handleReady)
-	serveMux.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
-	serveMux.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
+	serveMuxHTTP.HandleFunc(pathRoot, we.handleEthJSON)
+	serveMuxHTTP.HandleFunc(PathReady, we.handleReady)
+	serveMuxHTTP.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
+	serveMuxHTTP.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
 
 	// Serves the web assets for the management of viewing keys.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
 	if err != nil {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
 	}
-	serveMux.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
+	serveMuxHTTP.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
-	we.server = &http.Server{Addr: hostAndPort, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
+	we.serverHTTP = &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
 
-	err = we.server.ListenAndServe()
+	serveMuxWS := http.NewServeMux()
+	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSON)
+	we.serverWS = &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
+
+	go func() {
+		err = we.serverWS.ListenAndServe()
+		if !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
+	}()
+
+	err = we.serverHTTP.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
 
 func (we *WalletExtension) Shutdown() {
-	if we.server != nil {
-		err := we.server.Shutdown(context.Background())
+	if we.serverHTTP != nil {
+		err := we.serverHTTP.Shutdown(context.Background())
+		if err != nil {
+			log.Warn("could not shut down wallet extension: %s\n", err)
+		}
+	}
+
+	if we.serverWS != nil {
+		err := we.serverHTTP.Shutdown(context.Background())
 		if err != nil {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
@@ -197,7 +216,7 @@ func setUpPersistence(persistenceFilePath string) string {
 func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
 
 // Encrypts Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
-func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http.Request) {
+func (we *WalletExtension) handleEthJSON(resp http.ResponseWriter, req *http.Request) {
 	// We enable CORS, as required by some browsers (e.g. Firefox).
 	resp.Header().Set(corsAllowOrigin, originAll)
 	if (*req).Method == reqOptions {
@@ -528,7 +547,7 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
 	WalletExtensionPort     int
-	WalletExtensionWSPort   int
+	WalletExtensionPortWS   int
 	NodeRPCHTTPAddress      string // TODO - Remove this unused field.
 	NodeRPCWebsocketAddress string
 	LogPath                 string

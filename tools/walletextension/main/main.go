@@ -42,8 +42,10 @@ func main() {
 
 	walletExtension := walletextension.NewWalletExtension(config)
 	defer walletExtension.Shutdown()
+
+	go walletExtension.Serve(localhost, config.WalletExtensionPort, config.WalletExtensionPortWS)
+
 	walletExtensionAddr := fmt.Sprintf("%s:%d", localhost, config.WalletExtensionPort)
-	go walletExtension.Serve(walletExtensionAddr)
 	fmt.Printf("💡 Wallet extension started - visit http://%s/viewingkeys/ to generate an ephemeral viewing key.\n", walletExtensionAddr)
 
 	select {}
