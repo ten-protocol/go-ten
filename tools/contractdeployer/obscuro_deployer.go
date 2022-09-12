@@ -126,5 +126,5 @@ func (o *obscuroDeployer) TransactionReceipt(hash gethcommon.Hash) (*types.Recei
 }
 
 func getURL(cfg *Config) string {
-	return fmt.Sprintf("%s:%d", cfg.NodeHost, cfg.NodePort)
+	return fmt.Sprintf("ws://%s:%d", cfg.NodeHost, cfg.NodePort)
 }

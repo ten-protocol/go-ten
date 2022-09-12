@@ -35,7 +35,7 @@ const (
 
 var (
 	config = &contractdeployer.Config{
-		NodeHost:          "ws://" + network.Localhost, // todo - joel - pass protocol properly
+		NodeHost:          network.Localhost,
 		NodePort:          integration.StartPortContractDeployerTest + network.DefaultHostRPCWSOffset,
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
@@ -43,7 +43,7 @@ var (
 		ContractName:      contractdeployer.GuessingGameContract,
 		ConstructorParams: []string{guessingGameParamOne, guessingGameParamTwo},
 	}
-	nodeAddress = fmt.Sprintf("%s:%d", config.NodeHost, config.NodePort)
+	nodeAddress = fmt.Sprintf("ws://%s:%d", config.NodeHost, config.NodePort)
 )
 
 func TestCanDeployGuessingGameContract(t *testing.T) {
