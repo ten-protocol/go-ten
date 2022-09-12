@@ -18,6 +18,10 @@ const (
 	ws   = "ws://"
 )
 
+func (p Protocol) String() string {
+	return [...]string{http, ws}[p]
+}
+
 // networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
 type networkClient struct {
 	rpcClient *rpc.Client
@@ -40,7 +44,7 @@ func NewEncNetworkClient(protocol Protocol, rpcAddress string, viewingKey *Viewi
 func NewNetworkClient(protocol Protocol, address string) (Client, error) {
 	rpcClient, err := rpc.Dial(protocol.String() + address)
 	if err != nil {
-		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", ws+address, err)
+		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", protocol.String()+address, err)
 	}
 
 	return &networkClient{
@@ -64,8 +68,4 @@ func (c *networkClient) Subscribe(ctx context.Context, namespace string, channel
 
 func (c *networkClient) Stop() {
 	c.rpcClient.Close()
-}
-
-func (p Protocol) String() string {
-	return [...]string{http, ws}[p]
 }
