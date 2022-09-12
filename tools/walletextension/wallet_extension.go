@@ -3,16 +3,14 @@ package walletextension
 import (
 	"context"
 	"embed"
-	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 	"io/fs"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
@@ -34,7 +32,6 @@ const (
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "static"
-	obscuroDirName         = ".obscuro"
 
 	reqJSONKeyID        = "id"
 	reqJSONKeyMethod    = "method"
@@ -56,13 +53,6 @@ const (
 	// EnclavePublicKeyHex is the public key of the enclave.
 	// TODO - Retrieve this key from the management contract instead.
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-
-	persistenceFileName      = "wallet_extension_persistence"
-	persistenceNumComponents = 4
-	persistenceIdxHost       = 0
-	persistenceIdxAccount    = 1
-	persistenceIdxViewingKey = 2
-	persistenceIdxSignedKey  = 3
 )
 
 //go:embed static
@@ -73,12 +63,12 @@ type WalletExtension struct {
 	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
 	hostAddr         string           // The address on which the Obscuro host can be reached.
 	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
-	accountClients  map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
-	unauthedClient  rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
-	unsignedVKs     map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
-	serverHTTP      *http.Server
-	serverWS        *http.Server
-	persistencePath string // The path of the file used to store the submitted viewing keys
+	accountClients map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	unauthedClient rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
+	unsignedVKs    map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
+	serverHTTP     *http.Server
+	serverWS       *http.Server
+	persistence    *persistence.Persistence
 }
 
 type rpcRequest struct {
@@ -107,11 +97,11 @@ func NewWalletExtension(config Config) *WalletExtension {
 		accountClients:   make(map[common.Address]*rpc.EncRPCClient),
 		unsignedVKs:      make(map[common.Address]*rpc.ViewingKey),
 		unauthedClient:   unauthedClient,
-		persistencePath:  setUpPersistence(config.PersistencePathOverride),
+		persistence:      persistence.NewPersistence(config.PersistencePathOverride, config.NodeRPCWebsocketAddress),
 	}
 
 	// We reload the existing viewing keys from persistence.
-	for accountAddr, viewingKey := range walletExtension.loadViewingKeys() {
+	for accountAddr, viewingKey := range walletExtension.persistence.LoadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
 		// TODO - Create the clients lazily, to reduce connections to the host.
 		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
@@ -194,31 +184,6 @@ func setUpLogs(logPath string) {
 		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 	}
 	log.OutputToFile(logFile)
-}
-
-// Sets up the persistence file and returns its path. Defaults to the user's home directory if the path is empty.
-func setUpPersistence(persistenceFilePath string) string {
-	// We set the default if the persistence file is not overridden.
-	if persistenceFilePath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			panic("cannot create persistence file as user's home directory is not defined")
-		}
-		obscuroDir := filepath.Join(homeDir, obscuroDirName)
-		err = os.MkdirAll(obscuroDir, 0o777)
-		if err != nil {
-			panic(fmt.Sprintf("could not create %s directory in user's home directory", obscuroDirName))
-		}
-
-		persistenceFilePath = filepath.Join(obscuroDir, persistenceFileName)
-	}
-
-	_, err := os.OpenFile(persistenceFilePath, os.O_CREATE|os.O_RDONLY, 0o644)
-	if err != nil {
-		panic(fmt.Sprintf("could not create persistence file. Cause: %s", err))
-	}
-
-	return persistenceFilePath
 }
 
 // Used to check whether the server is ready.
@@ -433,7 +398,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	}
 	we.accountClients[accAddress] = client
 
-	we.persistViewingKey(vk)
+	we.persistence.PersistViewingKey(vk)
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(we.unsignedVKs, accAddress)
 }
@@ -456,112 +421,6 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 	callParams[reqJSONKeyFrom] = account
 	args[0] = callParams
 	return args, nil
-}
-
-// Stores a viewing key to disk.
-// TODO - Move the persistence-related methods onto a separate struct.
-func (we *WalletExtension) persistViewingKey(viewingKey *rpc.ViewingKey) {
-	viewingPrivateKeyBytes := crypto.FromECDSA(viewingKey.PrivateKey.ExportECDSA())
-
-	record := []string{
-		we.hostAddr,
-		viewingKey.Account.Hex(),
-		// We encode the bytes as hex to ensure there are no unintentional line breaks to make parsing the file harder.
-		hex.EncodeToString(viewingPrivateKeyBytes),
-		hex.EncodeToString(viewingKey.SignedKey),
-	}
-
-	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_APPEND|os.O_WRONLY, 0o644)
-	defer persistenceFile.Close() //nolint:staticcheck
-	if err != nil {
-		log.Error("could not open persistence file. Cause: %s", err)
-	}
-
-	writer := csv.NewWriter(persistenceFile)
-	defer writer.Flush()
-	err = writer.Write(record)
-	if err != nil {
-		log.Error("failed to write viewing key to persistence file. Cause: %s", err)
-	}
-}
-
-// Loads any viewing keys from disk. Viewing keys for other hosts are ignored.
-func (we *WalletExtension) loadViewingKeys() map[common.Address]*rpc.ViewingKey {
-	viewingKeys := make(map[common.Address]*rpc.ViewingKey)
-
-	persistenceFile, err := os.OpenFile(we.persistencePath, os.O_RDONLY, 0o644)
-	defer persistenceFile.Close() //nolint:staticcheck
-	if err != nil {
-		log.Error("could not open persistence file. Cause: %s", err)
-	}
-
-	reader := csv.NewReader(persistenceFile)
-	records, err := reader.ReadAll()
-	if err != nil {
-		log.Error("could not read records from persistence file. Cause: %s", err)
-	}
-
-	for _, record := range records {
-		// TODO - Determine strategy for invalid persistence entries - delete? Warn? Shutdown? For now, we log a warning.
-		if len(record) != persistenceNumComponents {
-			log.Warn("persistence file entry did not have expected number of components: %s", record)
-			continue
-		}
-
-		hostAddr := record[persistenceIdxHost]
-		if hostAddr != we.hostAddr {
-			log.Info("skipping persistence file entry for another host. Current host is %s, entry was for %s", we.hostAddr, hostAddr)
-			continue
-		}
-
-		account := common.HexToAddress(record[persistenceIdxAccount])
-		viewingKeyPrivateHex := record[persistenceIdxViewingKey]
-		viewingKeyPrivateBytes, err := hex.DecodeString(viewingKeyPrivateHex)
-		if err != nil {
-			log.Warn("could not decode the following viewing private key from hex in the persistence file: %s", viewingKeyPrivateHex)
-			continue
-		}
-		viewingKeyPrivate, err := crypto.ToECDSA(viewingKeyPrivateBytes)
-		if err != nil {
-			log.Warn("could not convert the following viewing private key bytes to ECDSA in the persistence file: %s", viewingKeyPrivateHex)
-			continue
-		}
-		signedKeyHex := record[persistenceIdxSignedKey]
-		signedKey, err := hex.DecodeString(signedKeyHex)
-		if err != nil {
-			log.Warn("could not decode the following signed key from hex in the persistence file: %s", signedKeyHex)
-			continue
-		}
-
-		viewingKey := rpc.ViewingKey{
-			Account:    &account,
-			PrivateKey: ecies.ImportECDSA(viewingKeyPrivate),
-			PublicKey:  crypto.CompressPubkey(&viewingKeyPrivate.PublicKey),
-			SignedKey:  signedKey,
-		}
-		viewingKeys[account] = &viewingKey
-	}
-
-	logReRegisteredViewingKeys(viewingKeys)
-
-	return viewingKeys
-}
-
-// Logs and prints the accounts for which we are re-registering viewing keys.
-func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) {
-	if len(viewingKeys) == 0 {
-		return
-	}
-
-	var accounts []string //nolint:prealloc
-	for account := range viewingKeys {
-		accounts = append(accounts, account.Hex())
-	}
-
-	msg := fmt.Sprintf("Re-registering persisted viewing keys for the following addresses: %s",
-		strings.Join(accounts, ", "))
-	log.Info(msg)
-	fmt.Println(msg)
 }
 
 // Config contains the configuration required by the WalletExtension.
