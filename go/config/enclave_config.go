@@ -61,7 +61,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		SpeculativeExecution:      false,
 		ManagementContractAddress: common.BytesToAddress([]byte("")),
 		ERC20ContractAddresses:    []*common.Address{},
-		LogLevel:                  "info",
+		LogLevel:                  "warn",
 		LogPath:                   "",
 		UseInMemoryDB:             true, // todo: persistence should be on by default before production release
 		EdgelessDBHost:            "",

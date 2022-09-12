@@ -6,8 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/rs/zerolog"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -28,9 +26,7 @@ func RunEnclave(config config.EnclaveConfig) {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddresses...)
 
-	// todo temporary
-	// log.SetLogLevel(log.ParseLevel(config.LogLevel))
-	log.SetLogLevel(zerolog.TraceLevel)
+	log.SetLogLevel(log.ParseLevel(config.LogLevel))
 
 	if config.LogPath != "" {
 		setLogs(config.LogPath)

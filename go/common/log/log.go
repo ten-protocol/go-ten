@@ -10,8 +10,8 @@ import (
 // setups some defaults like timestamp precision and logger
 func init() { //nolint:gochecknoinits
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	zerolog.SetGlobalLevel(TraceLevel)
 	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.StampMilli, NoColor: true}).With().Timestamp().Logger()
+	logger = logger.Level(WarnLevel)
 }
 
 // Errors will always show
@@ -30,9 +30,11 @@ var (
 
 func SetLogLevel(level zerolog.Level) {
 	logger = logger.Level(level)
+	Info("Log level set to: %s", level)
 }
 
 func OutputToFile(f *os.File) {
+	Info("Log output set to: %s", f.Name())
 	logger = zerolog.New(zerolog.ConsoleWriter{Out: f, TimeFormat: time.StampMilli, NoColor: true}).With().Timestamp().Logger()
 }
 
@@ -64,6 +66,8 @@ func Panic(msg string, args ...interface{}) {
 func ParseLevel(levelStr string) zerolog.Level {
 	lvl, err := zerolog.ParseLevel(levelStr)
 	if err != nil {
+		// we purposefully
+		Error("Unable to parse log level: %s - defaulting to %s level", levelStr, zerolog.InfoLevel)
 		lvl = zerolog.InfoLevel
 	}
 	return lvl

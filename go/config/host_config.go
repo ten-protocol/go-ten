@@ -85,7 +85,7 @@ func DefaultHostConfig() HostConfig {
 		L1RPCTimeout:           time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,
 		RollupContractAddress:  common.BytesToAddress([]byte("")),
-		LogLevel:               "info",
+		LogLevel:               "warn",
 		LogPath:                "",
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:              1337,
