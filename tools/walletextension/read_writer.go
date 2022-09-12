@@ -12,6 +12,7 @@ import (
 type ReadWriter interface {
 	ReadRequest() ([]byte, error)
 	WriteResponse([]byte) error
+	SupportsSubscriptions() bool
 }
 
 // HTTPReadWriter is a ReadWriter over HTTP.
@@ -57,10 +58,18 @@ func (h HTTPReadWriter) WriteResponse(responseBytes []byte) error {
 	return nil
 }
 
+func (h HTTPReadWriter) SupportsSubscriptions() bool {
+	return false
+}
+
 func (w WSReadWriter) ReadRequest() ([]byte, error) {
 	panic("todo - joel")
 }
 
 func (w WSReadWriter) WriteResponse(responseBytes []byte) error {
 	panic("todo - joel")
+}
+
+func (w WSReadWriter) SupportsSubscriptions() bool {
+	return true
 }

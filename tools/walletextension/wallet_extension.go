@@ -228,7 +228,9 @@ func (we *WalletExtension) handleHTTPEthJSON(resp http.ResponseWriter, req *http
 		return
 	}
 
-	// todo - joel - reject if is a subscribe attempt, but aren't using websockets
+	if rpcReq.method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
+		logAndSendErr(resp, fmt.Sprintf("received a %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
+	}
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
