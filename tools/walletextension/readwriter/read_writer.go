@@ -1,17 +1,27 @@
-package walletextension
+package readwriter
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"io"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 )
 
+const (
+	httpCodeErr = 500
+)
+
+var (
+	upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
+)
+
 // ReadWriter handles reading and writing Ethereum JSON RPC requests.
 type ReadWriter interface {
 	ReadRequest() ([]byte, error)
-	WriteResponse([]byte) error
+	WriteResponse(msg []byte) error
+	HandleError(msg string)
 	SupportsSubscriptions() bool
 }
 
@@ -31,7 +41,9 @@ func NewReadWriter(resp http.ResponseWriter, req *http.Request) (ReadWriter, err
 		if header == "websocket" { // todo - joel - use constant
 			conn, err := upgrader.Upgrade(resp, req, nil)
 			if err != nil {
-				return nil, fmt.Errorf("attempted to subscribe, but was unable to create websocket connection")
+				err = fmt.Errorf("unable to upgrade to websocket connection")
+				logAndSendErr(resp, err.Error())
+				return nil, err
 			}
 			return &WSReadWriter{
 				conn: conn,
@@ -50,12 +62,16 @@ func (h HTTPReadWriter) ReadRequest() ([]byte, error) {
 	return body, nil
 }
 
-func (h HTTPReadWriter) WriteResponse(responseBytes []byte) error {
-	_, err := h.resp.Write(responseBytes)
+func (h HTTPReadWriter) WriteResponse(msg []byte) error {
+	_, err := h.resp.Write(msg)
 	if err != nil {
 		return fmt.Errorf("could not write response: %w", err)
 	}
 	return nil
+}
+
+func (h HTTPReadWriter) HandleError(msg string) {
+	logAndSendErr(h.resp, msg)
 }
 
 func (h HTTPReadWriter) SupportsSubscriptions() bool {
@@ -66,10 +82,20 @@ func (w WSReadWriter) ReadRequest() ([]byte, error) {
 	panic("todo - joel")
 }
 
-func (w WSReadWriter) WriteResponse(responseBytes []byte) error {
+func (w WSReadWriter) WriteResponse(msg []byte) error {
+	panic("todo - joel")
+}
+
+func (w WSReadWriter) HandleError(msg string) {
 	panic("todo - joel")
 }
 
 func (w WSReadWriter) SupportsSubscriptions() bool {
 	return true
+}
+
+func logAndSendErr(resp http.ResponseWriter, msg string) {
+	log.Error(msg)
+	fmt.Println(msg)
+	http.Error(resp, msg, httpCodeErr)
 }
