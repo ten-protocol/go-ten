@@ -265,7 +265,7 @@ func isAddressAvailable(address string) bool {
 	if ln != nil {
 		err = ln.Close()
 		if err != nil {
-			log.Error("could not close listener when checking if address %w was available", address)
+			log.Error("could not close listener when checking if address %s was available", address)
 		}
 	}
 	if err != nil {
