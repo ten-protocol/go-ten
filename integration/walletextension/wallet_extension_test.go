@@ -377,8 +377,8 @@ func createWalletExtensionConfig() *walletextension.Config {
 	return &walletextension.Config{
 		WalletExtensionPort:     walletExtensionPort,
 		WalletExtensionPortWS:   walletExtensionPortWS,
-		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCHTTPPort),
-		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
+		NodeRPCHTTPAddress:      fmt.Sprintf("http://%s:%d", network.Localhost, nodeRPCHTTPPort),
+		NodeRPCWebsocketAddress: fmt.Sprintf("ws://%s:%d", network.Localhost, nodeRPCWSPort),
 		PersistencePathOverride: testPersistencePath.Name(),
 	}
 }
@@ -630,7 +630,7 @@ func registerPrivateKey(t *testing.T) (gethcommon.Address, *ecdsa.PrivateKey) {
 // Submits a transaction and awaits the transaction receipt.
 func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, tx types.LegacyTx) (map[string]interface{}, error) {
 	// Set the transaction's nonce.
-	nonceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCNonce, []interface{}{txWallet.Address().Hex(), latestBlock})
+	nonceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCGetTransactionCount, []interface{}{txWallet.Address().Hex(), latestBlock})
 	nonceString, ok := nonceJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
 		respJSON, err := json.Marshal(nonceJSON)

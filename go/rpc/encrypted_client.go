@@ -25,7 +25,15 @@ const (
 )
 
 // for these methods, the RPC method's requests and responses should be encrypted
-var sensitiveMethods = []string{RPCCall, RPCGetBalance, RPCGetTransactionByHash, RPCGetTxReceipt, RPCSendRawTransaction, RPCSubscribe}
+var sensitiveMethods = []string{
+	RPCCall,
+	RPCGetBalance,
+	RPCGetTransactionByHash,
+	RPCGetTransactionCount,
+	RPCGetTxReceipt,
+	RPCSendRawTransaction,
+	RPCSubscribe,
+}
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type EncRPCClient struct {

@@ -129,10 +129,15 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 	return nil, errors.New("invalid arguments; neither rollup height nor rollup hash specified")
 }
 
-// TODO - Temporary. Will be replaced by encrypted implementation.
-func (api *EthereumAPI) GetTransactionCount(_ context.Context, address gethcommon.Address, _ rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
-	nonce := api.host.EnclaveClient().Nonce(address)
-	return (*hexutil.Uint64)(&nonce), nil
+func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
+	encryptedResponse, err := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
+	if err != nil {
+		return "", err
+	}
+	if encryptedResponse == nil {
+		return "", err
+	}
+	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the

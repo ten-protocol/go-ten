@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -94,8 +93,8 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.RPCCall:
 		return c.rpcCall(result, args)
 
-	case rpc.RPCNonce:
-		return c.getNonce(result, args)
+	case rpc.RPCGetTransactionCount:
+		return c.getTransactionCount(result, args)
 
 	case rpc.RPCGetTxReceipt:
 		return c.getTransactionReceipt(result, args)
@@ -213,21 +212,17 @@ func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) e
 	return nil
 }
 
-func (c *inMemObscuroClient) getNonce(result interface{}, args []interface{}) error {
-	if len(args) != 2 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.RPCNonce, len(args))
-	}
-	address, ok := args[0].(gethcommon.Address)
-	if !ok {
-		return fmt.Errorf("arg to %s was not of expected type common.Address", rpc.RPCNonce)
-	}
-
-	txCountHex, err := c.ethAPI.GetTransactionCount(context.Background(), address, gethrpc.BlockNumberOrHash{})
+func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []interface{}) error {
+	enc, err := getEncryptedBytes(args, rpc.RPCGetTransactionCount)
 	if err != nil {
-		return fmt.Errorf("`eth_getTransactionCount` call failed. Cause: %w", err)
+		return err
 	}
-	*result.(*hexutil.Uint64) = *txCountHex
+	encryptedResponse, err := c.ethAPI.GetTransactionCount(context.Background(), enc)
+	if err != nil {
+		return fmt.Errorf("GetTransactionCount call failed. Cause: %w", err)
+	}
 
+	*result.(*interface{}) = encryptedResponse
 	return nil
 }
 
