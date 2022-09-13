@@ -38,7 +38,6 @@ func (m *MultiAccHelper) proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, 
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, accClients)
 
-	var err error
 	switch {
 	case suggestedClient != nil: // use the suggested client if there is one
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
@@ -47,6 +46,7 @@ func (m *MultiAccHelper) proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, 
 
 	case len(accClients) > 0: // try registered clients until there's a successful execution
 		log.Info("appropriate client not found, attempting request with up to %d clients", len(accClients))
+		var err error
 		for _, client := range accClients {
 			err = performRequest(client, rpcReq, rpcResp)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
