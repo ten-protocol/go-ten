@@ -77,8 +77,8 @@ func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 			select {
 			case <-quit:
 				break
-			case logs := <-b.logsCh:
-				ch <- []*types.Log{logs}
+			case receivedLog := <-b.logsCh:
+				ch <- []*types.Log{receivedLog}
 			}
 		}
 	}

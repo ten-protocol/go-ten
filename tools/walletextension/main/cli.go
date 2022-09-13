@@ -13,6 +13,10 @@ const (
 	walletExtensionPortDefault = 3000
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension. Default: 3000."
 
+	walletExtensionPortWSName    = "portWS"
+	walletExtensionPortWSDefault = 3001
+	walletExtensionPortWSUsage   = "The port on which to serve websocket JSON RPC requests. Default: 3001."
+
 	nodeHostName    = "nodeHost"
 	nodeHostDefault = "testnet.obscu.ro"
 	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `testnet.obscu.ro`."
@@ -32,6 +36,7 @@ const (
 
 func parseCLIArgs() walletextension.Config {
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
+	walletExtensionPortWS := flag.Int(walletExtensionPortWSName, walletExtensionPortWSDefault, walletExtensionPortWSUsage)
 	nodeHost := flag.String(nodeHostName, nodeHostDefault, nodeHostUsage)
 	nodeHTTPPort := flag.Int(nodeHTTPPortName, nodeHTTPPortDefault, nodeHTTPPortUsage)
 	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
@@ -40,6 +45,7 @@ func parseCLIArgs() walletextension.Config {
 
 	return walletextension.Config{
 		WalletExtensionPort:     *walletExtensionPort,
+		WalletExtensionPortWS:   *walletExtensionPortWS,
 		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                 *logPath,
