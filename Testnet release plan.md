@@ -48,7 +48,7 @@ Note that there is no protocol work listed here. These are the tasks that are or
 3. Start implementing failure scenarios 	
    a) Malicious actors
 
-4. Design and implement Mobile experience
+4. Design and implement new Wallet extension experience
 
 5. Optimise and implement the l1 interaction
     - how to ignore failed transactions
