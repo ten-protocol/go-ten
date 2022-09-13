@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,11 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+)
+
+const (
+	protocolSeparator = "://"
+	networkTCP        = "tcp"
 )
 
 func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
@@ -99,7 +105,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			gethClients[i],
 		)
 
-		nodeRPCAddresses[i] = fmt.Sprintf("%s:%d", Localhost, nodeRPCPortWS)
+		nodeRPCAddresses[i] = fmt.Sprintf("ws://%s:%d", Localhost, nodeRPCPortWS)
 	}
 
 	// start each obscuro node
@@ -248,12 +254,23 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 func isAddressAvailable(address string) bool {
-	ln, err := net.Listen("tcp", address)
+	// `net.Listen` requires us to strip the protocol, if it exists.
+	addressNoProtocol := address
+	splitAddress := strings.Split(address, protocolSeparator)
+	if len(splitAddress) == 2 {
+		addressNoProtocol = splitAddress[1]
+	}
+
+	ln, err := net.Listen(networkTCP, addressNoProtocol)
+	if ln != nil {
+		err = ln.Close()
+		if err != nil {
+			log.Error("could not close listener when checking if address %s was available", address)
+		}
+	}
 	if err != nil {
 		return false
 	}
-	if ln != nil {
-		_ = ln.Close()
-	}
+
 	return true
 }

@@ -3,12 +3,14 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
-	ws = "ws://"
+	ws   = "ws://"
+	http = "http://"
 )
 
 // networkClient is a Client implementation that wraps Geth's rpc.Client to make calls to the obscuro node
@@ -31,10 +33,13 @@ func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClie
 
 // NewNetworkClient returns a client that can make RPC calls to an Obscuro node
 func NewNetworkClient(address string) (Client, error) {
-	// TODO - Allow instantiator to choose between websockets and HTTP
-	rpcClient, err := rpc.Dial(ws + address)
+	if !strings.HasPrefix(address, http) && !strings.HasPrefix(address, ws) {
+		return nil, fmt.Errorf("clients for Obscuro only support the %s and %s protocols", http, ws)
+	}
+
+	rpcClient, err := rpc.Dial(address)
 	if err != nil {
-		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", ws+address, err)
+		return nil, fmt.Errorf("could not create RPC client on %s. Cause: %w", address, err)
 	}
 
 	return &networkClient{
