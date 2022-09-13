@@ -95,6 +95,7 @@ func (w *WSReadWriter) WriteResponse(msg []byte) error {
 	return nil
 }
 
+// HandleError logs and prints the error, and writes it to the websocket as a JSON object with a single key, "error".
 func (w *WSReadWriter) HandleError(msg string) {
 	log.Error(msg)
 	fmt.Println(msg)
