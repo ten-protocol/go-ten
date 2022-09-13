@@ -12,6 +12,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/multiacchelper"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
@@ -58,17 +60,11 @@ var staticFiles embed.FS
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	hostAddr       string // The address on which the Obscuro host can be reached.
-	multiAccHelper MultiAccHelper
+	multiAccHelper multiacchelper.MultiAccHelper
 	unsignedVKs    map[common.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	serverHTTP     *http.Server
 	serverWS       *http.Server
 	persistence    *persistence.Persistence
-}
-
-type rpcRequest struct {
-	id     interface{} // can be string or int
-	method string
-	params []interface{}
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
@@ -82,7 +78,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	walletExtension := &WalletExtension{
 		hostAddr:       config.NodeRPCWebsocketAddress,
 		unsignedVKs:    make(map[common.Address]*rpc.ViewingKey),
-		multiAccHelper: NewMultiAccHelper(unauthedClient),
+		multiAccHelper: multiacchelper.NewMultiAccHelper(unauthedClient),
 		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
 	}
 
@@ -95,7 +91,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
 			continue
 		}
-		walletExtension.multiAccHelper.addClient(accountAddr, client)
+		walletExtension.multiAccHelper.AddClient(accountAddr, client)
 	}
 
 	return walletExtension
@@ -207,13 +203,13 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 		return
 	}
 
-	if rpcReq.method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
+	if rpcReq.Method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
 		readWriter.HandleError(fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
 	}
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = we.multiAccHelper.proxyRequest(rpcReq, &rpcResp)
+	err = we.multiAccHelper.ProxyRequest(rpcReq, &rpcResp)
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
@@ -223,7 +219,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 	}
 
 	respMap := make(map[string]interface{})
-	respMap[resJSONKeyID] = rpcReq.id
+	respMap[resJSONKeyID] = rpcReq.ID
 	respMap[resJSONKeyRPCVer] = jsonrpc.Version
 	respMap[RespJSONKeyResult] = rpcResp
 
@@ -244,7 +240,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 		readWriter.HandleError(fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
 		return
 	}
-	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.method, rpcRespToSend)
+	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.Method, rpcRespToSend)
 
 	err = readWriter.WriteResponse(rpcRespToSend)
 	if err != nil {
@@ -264,7 +260,7 @@ func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Reques
 	return false
 }
 
-func parseRequest(body []byte) (*rpcRequest, error) {
+func parseRequest(body []byte) (*multiacchelper.RPCRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
@@ -292,10 +288,10 @@ func parseRequest(body []byte) (*rpcRequest, error) {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}
 
-	return &rpcRequest{
-		id:     reqID,
-		method: method,
-		params: params,
+	return &multiacchelper.RPCRequest{
+		ID:     reqID,
+		Method: method,
+		Params: params,
 	}, nil
 }
 
@@ -382,7 +378,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	if err != nil {
 		readWriter.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
-	we.multiAccHelper.addClient(accAddress, client)
+	we.multiAccHelper.AddClient(accAddress, client)
 
 	we.persistence.PersistViewingKey(vk)
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created

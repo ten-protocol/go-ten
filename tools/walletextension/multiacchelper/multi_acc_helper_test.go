@@ -1,4 +1,4 @@
-package walletextension
+package multiacchelper
 
 import (
 	"testing"
