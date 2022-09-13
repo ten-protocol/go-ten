@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"io"
 	"math/big"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 
@@ -435,7 +436,7 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 	// We retry for three seconds to handle node start-up time.
 	timeout := time.Now().Add(3 * time.Second)
 	for i := time.Now(); i.Before(timeout); i = time.Now() {
-		resp, err = http.Post(walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx
+		resp, err = http.Post(walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx,gosec
 		if err == nil {
 			break
 		}
@@ -483,10 +484,14 @@ func makeWSEthJSONReq(method string, params interface{}) []byte {
 
 	// todo - joel - review need for this spinning
 	var conn *websocket.Conn
+	var resp *http.Response
 	// We retry for three seconds to handle node start-up time.
 	timeout := time.Now().Add(3 * time.Second)
 	for i := time.Now(); i.Before(timeout); i = time.Now() {
-		conn, _, err = websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
+		conn, resp, err = websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 		if err == nil {
 			break
 		}
@@ -498,7 +503,7 @@ func makeWSEthJSONReq(method string, params interface{}) []byte {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
-	err = conn.WriteJSON(reqBody)
+	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
 	if err != nil {
 		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
 	}
