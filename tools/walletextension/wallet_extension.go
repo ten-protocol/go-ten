@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/multiacchelper"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 
@@ -60,7 +60,7 @@ var staticFiles embed.FS
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
-	multiAccHelper     multiacchelper.MultiAccHelper
+	accountManager     accountmanager.AccountManager
 	unsignedVKs        map[common.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	serverHTTPShutdown func(ctx context.Context) error
 	serverWSShutdown   func(ctx context.Context) error
@@ -78,7 +78,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 	walletExtension := &WalletExtension{
 		hostAddr:       config.NodeRPCWebsocketAddress,
 		unsignedVKs:    make(map[common.Address]*rpc.ViewingKey),
-		multiAccHelper: multiacchelper.NewMultiAccHelper(unauthedClient),
+		accountManager: accountmanager.NewAccountManager(unauthedClient),
 		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
 	}
 
@@ -91,7 +91,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
 			continue
 		}
-		walletExtension.multiAccHelper.AddClient(accountAddr, client)
+		walletExtension.accountManager.AddClient(accountAddr, client)
 	}
 
 	return walletExtension
@@ -213,7 +213,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = we.multiAccHelper.ProxyRequest(rpcReq, &rpcResp)
+	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp)
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
@@ -264,7 +264,7 @@ func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Reques
 	return false
 }
 
-func parseRequest(body []byte) (*multiacchelper.RPCRequest, error) {
+func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
@@ -292,7 +292,7 @@ func parseRequest(body []byte) (*multiacchelper.RPCRequest, error) {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}
 
-	return &multiacchelper.RPCRequest{
+	return &accountmanager.RPCRequest{
 		ID:     reqID,
 		Method: method,
 		Params: params,
@@ -382,7 +382,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	if err != nil {
 		readWriter.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
-	we.multiAccHelper.AddClient(accAddress, client)
+	we.accountManager.AddClient(accAddress, client)
 
 	we.persistence.PersistViewingKey(vk)
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created

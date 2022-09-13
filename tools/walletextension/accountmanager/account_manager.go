@@ -1,4 +1,4 @@
-package multiacchelper
+package accountmanager
 
 import (
 	"context"
@@ -22,29 +22,29 @@ const (
 	ethCallAddrPadding  = "000000000000000000000000"
 )
 
-// MultiAccHelper provides a single location for code that helps wallet extension in determining the appropriate
+// AccountManager provides a single location for code that helps wallet extension in determining the appropriate
 // account to use to send a request when multiple are registered
-type MultiAccHelper struct {
+type AccountManager struct {
 	unauthedClient rpc.Client
 	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
 	accountClients map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
 }
 
-func NewMultiAccHelper(unauthedClient rpc.Client) MultiAccHelper {
-	return MultiAccHelper{
+func NewAccountManager(unauthedClient rpc.Client) AccountManager {
+	return AccountManager{
 		unauthedClient: unauthedClient,
 		accountClients: make(map[common.Address]*rpc.EncRPCClient),
 	}
 }
 
 // AddClient adds a client to the list of clients, keyed by account address.
-func (m *MultiAccHelper) AddClient(address common.Address, client *rpc.EncRPCClient) {
+func (m *AccountManager) AddClient(address common.Address, client *rpc.EncRPCClient) {
 	m.accountClients[address] = client
 }
 
 // ProxyRequest tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 // the request with all clients until it succeeds
-func (m *MultiAccHelper) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}) error {
+func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, m.accountClients)
 
