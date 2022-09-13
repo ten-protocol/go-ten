@@ -12,6 +12,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
@@ -50,10 +52,6 @@ const (
 	reqOptions       = "OPTIONS"
 	corsAllowHeaders = "Access-Control-Allow-Headers"
 	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
-
-	// EnclavePublicKeyHex is the public key of the enclave.
-	// TODO - Retrieve this key from the management contract instead.
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
 //go:embed static
@@ -61,31 +59,16 @@ var staticFiles embed.FS
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	enclavePublicKey *ecies.PublicKey // The public key used to encrypt requests for the enclave.
-	hostAddr         string           // The address on which the Obscuro host can be reached.
-	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
-	accountClients map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
-	unauthedClient rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
-	unsignedVKs    map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
-	serverHTTP     *http.Server
-	serverWS       *http.Server
-	persistence    *persistence.Persistence
-}
-
-type rpcRequest struct {
-	id     interface{} // can be string or int
-	method string
-	params []interface{}
+	hostAddr           string // The address on which the Obscuro host can be reached.
+	accountManager     accountmanager.AccountManager
+	unsignedVKs        map[common.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	serverHTTPShutdown func(ctx context.Context) error
+	serverWSShutdown   func(ctx context.Context) error
+	persistence        *persistence.Persistence
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
 	setUpLogs(config.LogPath)
-
-	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
-	if err != nil {
-		log.Panic("%s", err)
-	}
-	enclavePublicKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	unauthedClient, err := rpc.NewNetworkClient(config.NodeRPCWebsocketAddress)
 	if err != nil {
@@ -93,12 +76,10 @@ func NewWalletExtension(config Config) *WalletExtension {
 	}
 
 	walletExtension := &WalletExtension{
-		enclavePublicKey: enclavePublicKey,
-		hostAddr:         config.NodeRPCWebsocketAddress,
-		accountClients:   make(map[common.Address]*rpc.EncRPCClient),
-		unsignedVKs:      make(map[common.Address]*rpc.ViewingKey),
-		unauthedClient:   unauthedClient,
-		persistence:      persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
+		hostAddr:       config.NodeRPCWebsocketAddress,
+		unsignedVKs:    make(map[common.Address]*rpc.ViewingKey),
+		accountManager: accountmanager.NewAccountManager(unauthedClient),
+		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
 	}
 
 	// We reload the existing viewing keys from persistence.
@@ -110,7 +91,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
 			continue
 		}
-		walletExtension.accountClients[accountAddr] = client
+		walletExtension.accountManager.AddClient(accountAddr, client)
 	}
 
 	return walletExtension
@@ -118,39 +99,39 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
 func (we *WalletExtension) Serve(host string, httpPort int, wsPort int) {
-	we.createHTTPServer(host, httpPort)
-	we.createWSServer(host, wsPort)
+	httpServer := we.createHTTPServer(host, httpPort)
+	wsServer := we.createWSServer(host, wsPort)
 
 	go func() {
-		err := we.serverWS.ListenAndServe()
+		err := wsServer.ListenAndServe()
 		if !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
 
-	err := we.serverHTTP.ListenAndServe()
+	err := httpServer.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
 
 func (we *WalletExtension) Shutdown() {
-	if we.serverHTTP != nil {
-		err := we.serverHTTP.Shutdown(context.Background())
+	if we.serverHTTPShutdown != nil {
+		err := we.serverHTTPShutdown(context.Background())
 		if err != nil {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
 	}
 
-	if we.serverWS != nil {
-		err := we.serverWS.Shutdown(context.Background())
+	if we.serverWSShutdown != nil {
+		err := we.serverWSShutdown(context.Background())
 		if err != nil {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
 	}
 }
 
-func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
+func (we *WalletExtension) createHTTPServer(host string, httpPort int) *http.Server {
 	serveMuxHTTP := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
@@ -166,13 +147,17 @@ func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
 	}
 	serveMuxHTTP.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
-	we.serverHTTP = &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
+	we.serverHTTPShutdown = server.Shutdown
+	return server
 }
 
-func (we *WalletExtension) createWSServer(host string, wsPort int) {
+func (we *WalletExtension) createWSServer(host string, wsPort int) *http.Server {
 	serveMuxWS := http.NewServeMux()
 	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSONWS)
-	we.serverWS = &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
+	we.serverWSShutdown = server.Shutdown
+	return server
 }
 
 // Sets up the log file.
@@ -222,13 +207,13 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 		return
 	}
 
-	if rpcReq.method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
+	if rpcReq.Method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
 		readWriter.HandleError(fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
 	}
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = proxyRequest(rpcReq, &rpcResp, we)
+	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp)
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
@@ -238,7 +223,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 	}
 
 	respMap := make(map[string]interface{})
-	respMap[resJSONKeyID] = rpcReq.id
+	respMap[resJSONKeyID] = rpcReq.ID
 	respMap[resJSONKeyRPCVer] = jsonrpc.Version
 	respMap[RespJSONKeyResult] = rpcResp
 
@@ -259,7 +244,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 		readWriter.HandleError(fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
 		return
 	}
-	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.method, rpcRespToSend)
+	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.Method, rpcRespToSend)
 
 	err = readWriter.WriteResponse(rpcRespToSend)
 	if err != nil {
@@ -279,7 +264,7 @@ func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Reques
 	return false
 }
 
-func parseRequest(body []byte) (*rpcRequest, error) {
+func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
@@ -307,10 +292,10 @@ func parseRequest(body []byte) (*rpcRequest, error) {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}
 
-	return &rpcRequest{
-		id:     reqID,
-		method: method,
-		params: params,
+	return &accountmanager.RPCRequest{
+		ID:     reqID,
+		Method: method,
+		Params: params,
 	}, nil
 }
 
@@ -397,7 +382,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	if err != nil {
 		readWriter.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
-	we.accountClients[accAddress] = client
+	we.accountManager.AddClient(accAddress, client)
 
 	we.persistence.PersistViewingKey(vk)
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
