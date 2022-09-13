@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
@@ -63,7 +65,6 @@ const (
 	networkStartPort      = integration.StartPortWalletExtensionTest + 2
 	nodeRPCHTTPPort       = networkStartPort + network.DefaultHostRPCHTTPOffset
 	nodeRPCWSPort         = networkStartPort + network.DefaultHostRPCWSOffset
-	httpProtocol          = "http://"
 
 	// Returned by the EVM to indicate a zero result.
 	zeroResult  = "0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -73,7 +74,8 @@ const (
 )
 
 var (
-	walletExtensionAddrHTTP = fmt.Sprintf("%s:%d", network.Localhost, walletExtensionPort)
+	walletExtensionAddrHTTP = fmt.Sprintf("http://%s:%d", network.Localhost, walletExtensionPort)
+	walletExtensionAddrWS   = fmt.Sprintf("ws://%s:%d", network.Localhost, walletExtensionPortWS)
 	walletExtensionConfig   = createWalletExtensionConfig()
 
 	dummyAccountAddress = gethcommon.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
@@ -355,6 +357,17 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 }
 
+// This is a smoketest to ensure the websocket port is working (since the vast majority of the tests use HTTP instead).
+func TestCanMakeRequestOverWS(t *testing.T) {
+	createWalletExtension(t)
+
+	respJSON := makeWSEthJSONReqAsJSON(rpc.RPCChainID, []string{})
+
+	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
+		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
+	}
+}
+
 func createWalletExtensionConfig() *walletextension.Config {
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
@@ -376,7 +389,7 @@ func createWalletExtension(t *testing.T) *walletextension.WalletExtension {
 	t.Cleanup(walletExtension.Shutdown)
 
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err := waitForWalletExtension(walletExtensionAddrHTTP)
+	err := waitForWalletExtension()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,10 +398,10 @@ func createWalletExtension(t *testing.T) *walletextension.WalletExtension {
 }
 
 // Waits for wallet extension to be ready. Times out after three seconds.
-func waitForWalletExtension(walletExtensionAddr string) error {
+func waitForWalletExtension() error {
 	retries := 30
 	for i := 0; i < retries; i++ {
-		resp, err := http.Get(httpProtocol + walletExtensionAddr + walletextension.PathReady) //nolint:noctx
+		resp, err := http.Get(walletExtensionAddrHTTP + walletextension.PathReady) //nolint:noctx
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
 		}
@@ -400,32 +413,20 @@ func waitForWalletExtension(walletExtensionAddr string) error {
 	return fmt.Errorf("could not establish connection to wallet extension")
 }
 
-// Makes an Ethereum JSON RPC request and returns the response body.
+// Makes an Ethereum JSON RPC request over HTTP and returns the response body as JSON.
+func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
+	respBody := makeHTTPEthJSONReq(method, params)
+	return convertRespBodyToJSON(respBody)
+}
+
+// Makes an Ethereum JSON RPC request over HTTP and returns the response body.
 func makeHTTPEthJSONReq(method string, params interface{}) []byte {
-	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"params":  params,
-		"id":      "1",
-	})
-	if err != nil {
-		panic(err)
-	}
-	reqBody := bytes.NewBuffer(reqBodyBytes)
+	reqBody := prepareRequestBody(method, params)
 
-	var resp *http.Response
-	// We retry for three seconds to handle node start-up time.
-	timeout := time.Now().Add(3 * time.Second)
-	for i := time.Now(); i.Before(timeout); i = time.Now() {
-		resp, err = http.Post(httpProtocol+walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx
-		if err == nil {
-			break
-		}
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
+	resp, err := http.Post(walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx,gosec
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
 	}
-
 	if err != nil {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
@@ -433,21 +434,61 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 		panic("did not receive a response from the wallet extension")
 	}
 
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
+	}
+	return respBody
+}
+
+// Makes an Ethereum JSON RPC request over websockets and returns the response body as JSON.
+func makeWSEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
+	respBody := makeWSEthJSONReq(method, params)
+	return convertRespBodyToJSON(respBody)
+}
+
+// Makes an Ethereum JSON RPC request over websockets and returns the response body.
+func makeWSEthJSONReq(method string, params interface{}) []byte {
+	conn, resp, err := websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if conn != nil {
+		defer conn.Close()
+	}
+	if err != nil {
+		panic(fmt.Errorf("received error response from wallet extension: %w", err))
+	}
+
+	reqBody := prepareRequestBody(method, params)
+	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
+	if err != nil {
+		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
+	}
+
+	_, respBody, err := conn.ReadMessage()
+	if err != nil {
+		panic(fmt.Errorf("received error response when reading from wallet extension websocket: %w", err))
 	}
 
 	return respBody
 }
 
-// Makes an Ethereum JSON RPC request and returns the response body as JSON.
-func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
-	respBody := makeHTTPEthJSONReq(method, params)
+func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
+	reqBodyBytes, err := json.Marshal(map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  method,
+		"params":  params,
+		"id":      "1",
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
+	}
+	return bytes.NewBuffer(reqBodyBytes)
+}
 
+// Converts the response body bytes to JSON.
+func convertRespBodyToJSON(respBody []byte) map[string]interface{} {
 	if respBody[0] != '{' {
 		panic(fmt.Errorf("expected JSON response but received: %s", respBody))
 	}
@@ -463,7 +504,7 @@ func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]inte
 
 // Generates a signed viewing key and submits it to the wallet extension.
 func generateAndSubmitViewingKey(accountAddr string, accountPrivateKey *ecdsa.PrivateKey) error {
-	viewingKey := generateViewingKey(accountAddr, walletExtensionAddrHTTP)
+	viewingKey := generateViewingKey(accountAddr)
 	signature := signViewingKey(accountPrivateKey, viewingKey)
 
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
@@ -474,7 +515,7 @@ func generateAndSubmitViewingKey(accountAddr string, accountPrivateKey *ecdsa.Pr
 		return err
 	}
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
-	resp, err := http.Post(httpProtocol+walletExtensionAddrHTTP+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
+	resp, err := http.Post(walletExtensionAddrHTTP+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
 	if err != nil {
 		return err
 	}
@@ -492,7 +533,7 @@ func generateAndSubmitViewingKey(accountAddr string, accountPrivateKey *ecdsa.Pr
 }
 
 // Generates a viewing key.
-func generateViewingKey(accountAddress string, walletExtensionAddr string) []byte {
+func generateViewingKey(accountAddress string) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeyAddress: accountAddress,
 	})
@@ -500,7 +541,7 @@ func generateViewingKey(accountAddress string, walletExtensionAddr string) []byt
 		panic(err)
 	}
 	generateViewingKeyBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
-	resp, err := http.Post(httpProtocol+walletExtensionAddr+walletextension.PathGenerateViewingKey, "application/json", generateViewingKeyBody) //nolint:noctx
+	resp, err := http.Post(walletExtensionAddrHTTP+walletextension.PathGenerateViewingKey, "application/json", generateViewingKeyBody) //nolint:noctx
 	if err != nil {
 		panic(err)
 	}
@@ -552,7 +593,7 @@ func createObscuroNetwork() (func(), error) {
 	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err = waitForWalletExtension(walletExtensionAddrHTTP)
+	err = waitForWalletExtension()
 	if err != nil {
 		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}

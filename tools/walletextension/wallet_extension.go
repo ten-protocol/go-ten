@@ -408,7 +408,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 type Config struct {
 	WalletExtensionPort     int
 	WalletExtensionPortWS   int
-	NodeRPCHTTPAddress      string // TODO - Remove this unused field.
+	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
 	PersistencePathOverride string // Overrides the persistence file location. Used in tests.

@@ -78,11 +78,19 @@ func (h *HTTPReadWriter) SupportsSubscriptions() bool {
 }
 
 func (w *WSReadWriter) ReadRequest() ([]byte, error) {
-	panic("not implemented")
+	_, msg, err := w.conn.ReadMessage()
+	if err != nil {
+		return nil, fmt.Errorf("could not read request: %w", err)
+	}
+	return msg, nil
 }
 
 func (w *WSReadWriter) WriteResponse(msg []byte) error {
-	panic("not implemented")
+	err := w.conn.WriteMessage(websocket.TextMessage, msg)
+	if err != nil {
+		return fmt.Errorf("could not write response: %w", err)
+	}
+	return nil
 }
 
 func (w *WSReadWriter) HandleError(msg string) {
