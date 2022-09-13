@@ -432,17 +432,9 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 	}
 	reqBody := bytes.NewBuffer(reqBodyBytes)
 
-	var resp *http.Response
-	// We retry for three seconds to handle node start-up time.
-	timeout := time.Now().Add(3 * time.Second)
-	for i := time.Now(); i.Before(timeout); i = time.Now() {
-		resp, err = http.Post(walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx,gosec
-		if err == nil {
-			break
-		}
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
+	resp, err := http.Post(walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx,gosec
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
 	}
 	if err != nil {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
@@ -451,14 +443,10 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 		panic("did not receive a response from the wallet extension")
 	}
 
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
-
 	return respBody
 }
 
@@ -482,22 +470,12 @@ func makeWSEthJSONReq(method string, params interface{}) []byte {
 	}
 	reqBody := bytes.NewBuffer(reqBodyBytes)
 
-	// todo - joel - review need for this spinning
-	var conn *websocket.Conn
-	var resp *http.Response
-	// We retry for three seconds to handle node start-up time.
-	timeout := time.Now().Add(3 * time.Second)
-	for i := time.Now(); i.Before(timeout); i = time.Now() {
-		conn, resp, err = websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
-		if err == nil {
-			break
-		}
-		if conn != nil {
-			conn.Close()
-		}
+	conn, resp, err := websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if conn != nil {
+		defer conn.Close()
 	}
 	if err != nil {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
