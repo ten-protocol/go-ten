@@ -103,35 +103,6 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor common
 	return e.IsBlockAncestor(p, maybeAncestor)
 }
 
-func (e *gethRPCClient) RPCBlockchainFeed() []*types.Block {
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
-	defer cancel()
-
-	var availBlocks []*types.Block
-	block, err := e.client.BlockByNumber(ctx, nil)
-	if err != nil {
-		log.Panic("could not fetch head block. Cause: %s", err)
-	}
-	availBlocks = append(availBlocks, block)
-
-	for {
-		// todo set this to genesis hash
-		if block.ParentHash().Hex() == "0x0000000000000000000000000000000000000000000000000000000000000000" {
-			break
-		}
-		block = e.getParentBlock(block)
-		availBlocks = append(availBlocks, block)
-	}
-
-	// TODO double check the list is ordered [genesis, 1, 2, 3, 4, ..., last]
-	// TODO It's pretty ugly but it avoids creating a new slice
-	// TODO The approach of feeding all the blocks should change from all-blocks-in-memory to a stream
-	for i, j := 0, len(availBlocks)-1; i < j; i, j = i+1, j-1 {
-		availBlocks[i], availBlocks[j] = availBlocks[j], availBlocks[i]
-	}
-	return availBlocks
-}
-
 func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
@@ -212,16 +183,4 @@ func connect(ipaddress string, port uint, connectionTimeout time.Duration) (*eth
 	}
 
 	return c, err
-}
-
-func (e *gethRPCClient) getParentBlock(block *types.Block) *types.Block {
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
-	defer cancel()
-
-	parentBlock, err := e.client.BlockByHash(ctx, block.ParentHash())
-	if err != nil {
-		log.Panic("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err)
-	}
-
-	return parentBlock
 }
