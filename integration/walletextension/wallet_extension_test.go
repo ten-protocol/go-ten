@@ -421,16 +421,7 @@ func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]inte
 
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body.
 func makeHTTPEthJSONReq(method string, params interface{}) []byte {
-	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"params":  params,
-		"id":      "1",
-	})
-	if err != nil {
-		panic(err)
-	}
-	reqBody := bytes.NewBuffer(reqBodyBytes)
+	reqBody := prepareRequestBody(method, params)
 
 	resp, err := http.Post(walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx,gosec
 	if resp != nil && resp.Body != nil {
@@ -458,18 +449,6 @@ func makeWSEthJSONReqAsJSON(method string, params interface{}) map[string]interf
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
 func makeWSEthJSONReq(method string, params interface{}) []byte {
-	// todo - joel - pull out shared logic with makeHTTPEthJSONReq
-	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"params":  params,
-		"id":      "1",
-	})
-	if err != nil {
-		panic(err)
-	}
-	reqBody := bytes.NewBuffer(reqBodyBytes)
-
 	conn, resp, err := websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
@@ -481,6 +460,7 @@ func makeWSEthJSONReq(method string, params interface{}) []byte {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
+	reqBody := prepareRequestBody(method, params)
 	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
 	if err != nil {
 		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
@@ -492,6 +472,19 @@ func makeWSEthJSONReq(method string, params interface{}) []byte {
 	}
 
 	return respBody
+}
+
+func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
+	reqBodyBytes, err := json.Marshal(map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  method,
+		"params":  params,
+		"id":      "1",
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
+	}
+	return bytes.NewBuffer(reqBodyBytes)
 }
 
 // Converts the response body bytes to JSON.
