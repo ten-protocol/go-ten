@@ -469,7 +469,6 @@ func makeWSEthJSONReqAsJSON(method string, params interface{}) map[string]interf
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
 func makeWSEthJSONReq(method string, params interface{}) []byte {
-	// todo - joel - write this logic
 	// todo - joel - pull out shared logic with makeHTTPEthJSONReq
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -482,6 +481,7 @@ func makeWSEthJSONReq(method string, params interface{}) []byte {
 	}
 	reqBody := bytes.NewBuffer(reqBodyBytes)
 
+	// todo - joel - review need for this spinning
 	var conn *websocket.Conn
 	// We retry for three seconds to handle node start-up time.
 	timeout := time.Now().Add(3 * time.Second)
@@ -497,20 +497,18 @@ func makeWSEthJSONReq(method string, params interface{}) []byte {
 	if err != nil {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
-	
-	//if resp == nil {
-	//	panic("did not receive a response from the wallet extension")
-	//}
-	//
-	//if resp.Body != nil {
-	//	defer resp.Body.Close()
-	//}
-	//respBody, err := io.ReadAll(resp.Body)
-	//if err != nil {
-	//	panic(err)
-	//}
 
-	return []byte{} // return respBody
+	err = conn.WriteJSON(reqBody)
+	if err != nil {
+		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
+	}
+
+	_, respBody, err := conn.ReadMessage()
+	if err != nil {
+		panic(fmt.Errorf("received error response when reading from wallet extension websocket: %w", err))
+	}
+
+	return respBody
 }
 
 // Converts the response body bytes to JSON.
