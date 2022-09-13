@@ -90,7 +90,7 @@ func suggestAccountClient(req *RPCRequest, accClients map[common.Address]*rpc.En
 		return nil
 	}
 
-	// check if request Params had a "from" address and if we had a client for that address
+	// check if request params had a "from" address and if we had a client for that address
 	fromClient, found := checkForFromField(paramsMap, accClients)
 	if found {
 		return fromClient
@@ -110,10 +110,10 @@ func suggestAccountClient(req *RPCRequest, accClients map[common.Address]*rpc.En
 	return nil
 }
 
-// Many eth RPC requests provide Params as first argument in a json map with similar fields (e.g. a `from` field)
+// Many eth RPC requests provide params as first argument in a json map with similar fields (e.g. a `from` field)
 func parseParams(args []interface{}) (map[string]interface{}, error) {
 	if len(args) == 0 {
-		return nil, fmt.Errorf("no Params found to unmarshal")
+		return nil, fmt.Errorf("no params found to unmarshal")
 	}
 
 	// only interested in trying first arg
@@ -126,7 +126,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 
 		err := json.Unmarshal(callParamsJSON, &params)
 		if err != nil {
-			return nil, fmt.Errorf("first arg couldn't be unmarshalled into a Params map")
+			return nil, fmt.Errorf("first arg couldn't be unmarshalled into a params map")
 		}
 	}
 
@@ -162,7 +162,7 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 		return nil, fmt.Errorf("eth_call request's `data` field was not of the expected type `string`")
 	}
 
-	// We check that the data field is long enough before removing the leading "0x" (1 bytes/2 chars) and the Method ID
+	// We check that the data field is long enough before removing the leading "0x" (1 bytes/2 chars) and the method ID
 	// (4 bytes/8 chars).
 	if len(dataString) < 10 {
 		return nil, fmt.Errorf("data field is not long enough - no known account found in data bytes")
@@ -208,7 +208,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{})
 	ch := make(chan *types.Log)
 	subscription, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, ch, req.Params...)
 	if err != nil {
-		return fmt.Errorf("could not call %s with Params %v. Cause: %w", req.Method, req.Params, err)
+		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 	}
 
 	go func() {
@@ -229,7 +229,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{})
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
 	if req.Method == rpc.RPCCall {
-		// RPCCall is a sensitive Method that requires a viewing key lookup but the 'from' field is not mandatory in geth
+		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
 		var err error
@@ -248,7 +248,7 @@ func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) e
 func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
 	callParams, err := parseParams(args)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse eth_call Params. Cause: %w", err)
+		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
