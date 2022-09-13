@@ -172,7 +172,7 @@ func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generate
 	return &generated.OffChainResponse{Result: result}, nil
 }
 
-func (s *server) Nonce(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {
+func (s *server) GetTransactionCount(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {
 	result, err := s.enclave.GetTransactionCount(request.EncryptedParams)
 	if err != nil {
 		return nil, err
