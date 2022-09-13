@@ -363,7 +363,7 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 func TestCanMakeRequestOverWS(t *testing.T) {
 	createWalletExtension(t)
 
-	respJSON := makeWSEthJSONReqAsJSON(rpc.RPCChainID, []string{})
+	respJSON, _ := makeWSEthJSONReqAsJSON(rpc.RPCChainID, []string{})
 
 	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
 		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
@@ -374,12 +374,44 @@ func TestCanGetErrorOverWS(t *testing.T) {
 	createWalletExtension(t)
 
 	invalidMethod := "invalidRPCMethod"
-	respJSON := makeWSEthJSONReqAsJSON(invalidMethod, []string{})
+	respJSON, _ := makeWSEthJSONReqAsJSON(invalidMethod, []string{})
 
 	expectedErr := fmt.Sprintf(errInvalidRPCMethod, invalidMethod)
 	if respJSON[readwriter.RespJSONKeyErr] != expectedErr {
 		t.Fatalf("Expected error '%s', got '%s'", expectedErr, respJSON[readwriter.RespJSONKeyErr])
 	}
+}
+
+// TODO - #453 - Build out this test as we expand the subscription functionality.
+func TestCanSubscribeForLogs(t *testing.T) {
+	createWalletExtension(t)
+
+	_, conn := makeWSEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+
+	var receivedLog []byte
+	go func() {
+		var err error
+		_, receivedLog, err = conn.ReadMessage()
+		if err != nil {
+			panic(fmt.Errorf("could not read log from websocket. Cause: %w", err))
+		}
+	}()
+
+	triggerEvent(t)
+
+	// We wait up to thirty seconds for the log.
+	for i := 0; i < 30; i++ {
+		if receivedLog != nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if receivedLog == nil {
+		t.Fatalf("waited for 30 seconds without receiving a log")
+	}
+
+	// todo - joel - check log contents
 }
 
 func createWalletExtensionConfig() *walletextension.Config {
@@ -456,36 +488,42 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 }
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body as JSON.
-func makeWSEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
-	respBody := makeWSEthJSONReq(method, params)
-	return convertRespBodyToJSON(respBody)
+func makeWSEthJSONReqAsJSON(method string, params interface{}) (map[string]interface{}, *websocket.Conn) {
+	respBody, conn := makeWSEthJSONReq(method, params)
+	return convertRespBodyToJSON(respBody), conn
 }
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
-func makeWSEthJSONReq(method string, params interface{}) []byte {
+func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Conn) {
 	conn, resp, err := websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
-	if conn != nil {
-		defer conn.Close()
-	}
 	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
 	reqBody := prepareRequestBody(method, params)
 	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
 	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
 		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
 	}
 
 	_, respBody, err := conn.ReadMessage()
 	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
 		panic(fmt.Errorf("received error response when reading from wallet extension websocket: %w", err))
 	}
 
-	return respBody
+	return respBody, conn
 }
 
 func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
@@ -727,4 +765,24 @@ func fundAccount(dest gethcommon.Address) error {
 	}
 	_, err = sendTransactionAndAwaitConfirmation(faucetWallet, tx)
 	return err
+}
+
+// Causes an event, to allow us to test subscriptions.
+// TODO - #453 - Introduce a simpler way to cause an event.
+func triggerEvent(t *testing.T) {
+	// We cause an event by deploying an ERC20 contract.
+	_, privateKey := registerPrivateKey(t)
+	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
+	err := fundAccount(txWallet.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = txWallet.SignTransaction(&deployERC20Tx)
+	if err != nil {
+		panic(fmt.Errorf("could not sign transaction. Cause: %w", err))
+	}
+	_, err = sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

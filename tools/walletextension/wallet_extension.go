@@ -213,7 +213,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp)
+	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp, readWriter)
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
