@@ -59,12 +59,12 @@ var staticFiles embed.FS
 
 // WalletExtension is a server that handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	hostAddr       string // The address on which the Obscuro host can be reached.
-	multiAccHelper multiacchelper.MultiAccHelper
-	unsignedVKs    map[common.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
-	serverHTTP     *http.Server
-	serverWS       *http.Server
-	persistence    *persistence.Persistence
+	hostAddr           string // The address on which the Obscuro host can be reached.
+	multiAccHelper     multiacchelper.MultiAccHelper
+	unsignedVKs        map[common.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	serverHTTPShutdown func(ctx context.Context) error
+	serverWSShutdown   func(ctx context.Context) error
+	persistence        *persistence.Persistence
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
@@ -99,39 +99,39 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 // Serve listens for and serves Ethereum JSON-RPC requests and viewing-key generation requests.
 func (we *WalletExtension) Serve(host string, httpPort int, wsPort int) {
-	we.createHTTPServer(host, httpPort)
-	we.createWSServer(host, wsPort)
+	httpServer := we.createHTTPServer(host, httpPort)
+	wsServer := we.createWSServer(host, wsPort)
 
 	go func() {
-		err := we.serverWS.ListenAndServe()
+		err := wsServer.ListenAndServe()
 		if !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
 
-	err := we.serverHTTP.ListenAndServe()
+	err := httpServer.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
 
 func (we *WalletExtension) Shutdown() {
-	if we.serverHTTP != nil {
-		err := we.serverHTTP.Shutdown(context.Background())
+	if we.serverHTTPShutdown != nil {
+		err := we.serverHTTPShutdown(context.Background())
 		if err != nil {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
 	}
 
-	if we.serverWS != nil {
-		err := we.serverWS.Shutdown(context.Background())
+	if we.serverWSShutdown != nil {
+		err := we.serverWSShutdown(context.Background())
 		if err != nil {
 			log.Warn("could not shut down wallet extension: %s\n", err)
 		}
 	}
 }
 
-func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
+func (we *WalletExtension) createHTTPServer(host string, httpPort int) *http.Server {
 	serveMuxHTTP := http.NewServeMux()
 
 	// Handles Ethereum JSON-RPC requests received over HTTP.
@@ -147,13 +147,17 @@ func (we *WalletExtension) createHTTPServer(host string, httpPort int) {
 	}
 	serveMuxHTTP.Handle(pathViewingKeys, http.StripPrefix(pathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
-	we.serverHTTP = &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Addr: fmt.Sprintf("%s:%d", host, httpPort), Handler: serveMuxHTTP, ReadHeaderTimeout: 10 * time.Second}
+	we.serverHTTPShutdown = server.Shutdown
+	return server
 }
 
-func (we *WalletExtension) createWSServer(host string, wsPort int) {
+func (we *WalletExtension) createWSServer(host string, wsPort int) *http.Server {
 	serveMuxWS := http.NewServeMux()
 	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSONWS)
-	we.serverWS = &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
+	we.serverWSShutdown = server.Shutdown
+	return server
 }
 
 // Sets up the log file.
