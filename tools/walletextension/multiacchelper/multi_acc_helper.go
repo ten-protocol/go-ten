@@ -1,4 +1,4 @@
-package walletextension
+package multiacchelper
 
 import (
 	"context"
@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -25,8 +26,41 @@ const (
 // multi_acc_helper provides a single location for code that helps wallet extension in determining the appropriate account
 //	to use to send a request when multiple are registered
 
+// ProxyRequest will try to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
+// the request with all clients until it succeeds
+func ProxyRequest(rpcReq *walletextension.RpcRequest, rpcResp *interface{}, accClients map[common.Address]*rpc.EncRPCClient, unauthedClient rpc.Client) error {
+	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
+	suggestedClient := suggestAccountClient(rpcReq, accClients)
+
+	var err error
+	switch {
+	case suggestedClient != nil: // use the suggested client if there is one
+		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
+		// 		The call data guessing won't often be wrong but there could be edge-cases there
+		return performRequest(suggestedClient, rpcReq, rpcResp)
+
+	case len(accClients) > 0: // try registered clients until there's a successful execution
+		log.Info("appropriate client not found, attempting request with up to %d clients", len(accClients))
+		for _, client := range accClients {
+			err = performRequest(client, rpcReq, rpcResp)
+			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
+				// request didn't fail, we don't need to continue trying the other clients
+				return nil
+			}
+		}
+		// every attempt errored
+		return err
+
+	default: // no clients registered, use the unauthenticated one
+		if rpc.IsSensitiveMethod(rpcReq.Method) {
+			return fmt.Errorf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpcReq.Method)
+		}
+		return unauthedClient.Call(rpcResp, rpcReq.Method, rpcReq.Params...)
+	}
+}
+
 // suggestAccountClient works through various methods to try and guess which available client to use for a request, returns nil if none found
-func suggestAccountClient(req *rpcRequest, accClients map[common.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
+func suggestAccountClient(req *walletextension.RpcRequest, accClients map[common.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
 	if len(accClients) == 1 {
 		for _, client := range accClients {
 			// return the first (and only) client
@@ -34,7 +68,7 @@ func suggestAccountClient(req *rpcRequest, accClients map[common.Address]*rpc.En
 		}
 	}
 
-	paramsMap, err := parseParams(req.params)
+	paramsMap, err := parseParams(req.Params)
 	if err != nil {
 		// no further info to deduce calling client
 		return nil
@@ -46,7 +80,7 @@ func suggestAccountClient(req *rpcRequest, accClients map[common.Address]*rpc.En
 		return fromClient
 	}
 
-	if req.method == rpc.RPCCall {
+	if req.Method == rpc.RPCCall {
 		// Otherwise, we search the `data` field for an address matching a registered viewing key.
 		addr, err := searchDataFieldForAccount(paramsMap, accClients)
 		if err == nil {
@@ -58,6 +92,29 @@ func suggestAccountClient(req *rpcRequest, accClients map[common.Address]*rpc.En
 	// 	 	recent transaction hashes for accounts so that receipt lookups know which acc to use
 
 	return nil
+}
+
+// Many eth RPC requests provide params as first argument in a json map with similar fields (e.g. a `from` field)
+func parseParams(args []interface{}) (map[string]interface{}, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("no params found to unmarshal")
+	}
+
+	// only interested in trying first arg
+	params, ok := args[0].(map[string]interface{})
+	if !ok {
+		callParamsJSON, ok := args[0].([]byte)
+		if !ok {
+			return nil, fmt.Errorf("first arg was not a byte array")
+		}
+
+		err := json.Unmarshal(callParamsJSON, &params)
+		if err != nil {
+			return nil, fmt.Errorf("first arg couldn't be unmarshalled into a params map")
+		}
+	}
+
+	return params, nil
 }
 
 func checkForFromField(paramsMap map[string]interface{}, accClients map[common.Address]*rpc.EncRPCClient) (*rpc.EncRPCClient, bool) {
@@ -121,77 +178,21 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	return nil, fmt.Errorf("no known account found in data bytes")
 }
 
-// Many eth RPC requests provide params as first argument in a json map with similar fields (e.g. a `from` field)
-func parseParams(args []interface{}) (map[string]interface{}, error) {
-	if len(args) == 0 {
-		return nil, fmt.Errorf("no params found to unmarshal")
-	}
-
-	// only interested in trying first arg
-	params, ok := args[0].(map[string]interface{})
-	if !ok {
-		callParamsJSON, ok := args[0].([]byte)
-		if !ok {
-			return nil, fmt.Errorf("first arg was not a byte array")
-		}
-
-		err := json.Unmarshal(callParamsJSON, &params)
-		if err != nil {
-			return nil, fmt.Errorf("first arg couldn't be unmarshalled into a params map")
-		}
-	}
-
-	return params, nil
-}
-
-// proxyRequest will try to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
-// the request with all clients until it succeeds
-func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, we *WalletExtension) error {
-	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
-	suggestedClient := suggestAccountClient(rpcReq, we.accountClients)
-
-	var err error
-	switch {
-	case suggestedClient != nil: // use the suggested client if there is one
-		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
-		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		return performRequest(suggestedClient, rpcReq, rpcResp)
-
-	case len(we.accountClients) > 0: // try registered clients until there's a successful execution
-		log.Info("appropriate client not found, attempting request with up to %d clients", len(we.accountClients))
-		for _, client := range we.accountClients {
-			err = performRequest(client, rpcReq, rpcResp)
-			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
-				// request didn't fail, we don't need to continue trying the other clients
-				return nil
-			}
-		}
-		// every attempt errored
-		return err
-
-	default: // no clients registered, use the unauthenticated one
-		if rpc.IsSensitiveMethod(rpcReq.method) {
-			return fmt.Errorf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpcReq.method)
-		}
-		return we.unauthedClient.Call(rpcResp, rpcReq.method, rpcReq.params...)
-	}
-}
-
-func performRequest(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
-	if req.method == rpc.RPCSubscribe {
+func performRequest(client *rpc.EncRPCClient, req *walletextension.RpcRequest, resp *interface{}) error {
+	if req.Method == rpc.RPCSubscribe {
 		return executeSubscribe(client, req, resp)
 	}
 	return executeCall(client, req, resp)
 }
 
-func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{}) error {
-	if len(req.params) == 0 {
+func executeSubscribe(client *rpc.EncRPCClient, req *walletextension.RpcRequest, _ *interface{}) error {
+	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
 	ch := make(chan *types.Log)
-	subscription, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, ch, req.params...)
+	subscription, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, ch, req.Params...)
 	if err != nil {
-		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.method, req.params, err)
+		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 	}
 
 	go func() {
@@ -210,19 +211,19 @@ func executeSubscribe(client *rpc.EncRPCClient, req *rpcRequest, _ *interface{})
 	return nil
 }
 
-func executeCall(client *rpc.EncRPCClient, req *rpcRequest, resp *interface{}) error {
-	if req.method == rpc.RPCCall {
+func executeCall(client *rpc.EncRPCClient, req *walletextension.RpcRequest, resp *interface{}) error {
+	if req.Method == rpc.RPCCall {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
 		var err error
-		req.params, err = setCallFromFieldIfMissing(req.params, *account)
+		req.Params, err = setCallFromFieldIfMissing(req.Params, *account)
 		if err != nil {
 			return err
 		}
 	}
 
-	return client.Call(resp, req.method, req.params...)
+	return client.Call(resp, req.Method, req.Params...)
 }
 
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
