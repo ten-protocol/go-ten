@@ -1,6 +1,7 @@
 package readwriter
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,7 +12,8 @@ import (
 )
 
 const (
-	httpCodeErr = 500
+	RespJSONKeyErr = "error"
+	httpCodeErr    = 500
 )
 
 var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
@@ -93,8 +95,24 @@ func (w *WSReadWriter) WriteResponse(msg []byte) error {
 	return nil
 }
 
+// HandleError logs and prints the error, and writes it to the websocket as a JSON object with a single key, "error".
 func (w *WSReadWriter) HandleError(msg string) {
-	panic("not implemented")
+	log.Error(msg)
+	fmt.Println(msg)
+
+	errMsg, err := json.Marshal(map[string]interface{}{
+		RespJSONKeyErr: msg,
+	})
+	if err != nil {
+		log.Error("could not marshal websocket error message to JSON")
+		return
+	}
+
+	err = w.conn.WriteMessage(websocket.TextMessage, errMsg)
+	if err != nil {
+		log.Error("could not write error message to websocket")
+		return
+	}
 }
 
 func (w *WSReadWriter) SupportsSubscriptions() bool {
