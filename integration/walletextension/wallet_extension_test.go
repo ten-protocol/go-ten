@@ -582,7 +582,7 @@ func registerPrivateKey(t *testing.T) (gethcommon.Address, *ecdsa.PrivateKey) {
 // Submits a transaction and awaits the transaction receipt.
 func sendTransactionAndAwaitConfirmation(txWallet wallet.Wallet, tx types.LegacyTx) (map[string]interface{}, error) {
 	// Set the transaction's nonce.
-	nonceJSON := makeEthJSONReqAsJSON(rpc.RPCNonce, []interface{}{txWallet.Address().Hex(), latestBlock})
+	nonceJSON := makeEthJSONReqAsJSON(rpc.RPCGetTransactionCount, []interface{}{txWallet.Address().Hex(), latestBlock})
 	nonceString, ok := nonceJSON[walletextension.RespJSONKeyResult].(string)
 	if !ok {
 		respJSON, err := json.Marshal(nonceJSON)

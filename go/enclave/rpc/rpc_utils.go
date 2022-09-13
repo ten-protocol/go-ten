@@ -47,6 +47,17 @@ func ExtractTx(sendRawTxParams []byte) (*common.L2Tx, error) {
 	return tx, nil
 }
 
+// ExtractAddress - Returns the address from a common.EncryptedParamsGetTransactionCount blob
+func ExtractAddress(getTransactionCountParams []byte) (gethcommon.Address, error) {
+	var paramsJSONList []string
+	err := json.Unmarshal(getTransactionCountParams, &paramsJSONList)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_getTransactionCount request. Cause: %w", err)
+	}
+	txHash := gethcommon.HexToAddress(paramsJSONList[0]) // The only argument is the transaction hash.
+	return txHash, err
+}
+
 // GetViewingKeyAddressForTransaction returns the address whose viewing key should be used to encrypt the response,
 // given a transaction.
 func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, error) {

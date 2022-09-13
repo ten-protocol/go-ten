@@ -14,7 +14,7 @@ const (
 	RPCGetBalance              = "eth_getBalance"
 	RPCGetCode                 = "eth_getCode"
 	RPCGetTransactionByHash    = "eth_getTransactionByHash"
-	RPCNonce                   = "eth_getTransactionCount"
+	RPCGetTransactionCount     = "eth_getTransactionCount"
 	RPCGetTxReceipt            = "eth_getTransactionReceipt"
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
 	RPCGetBlockHeaderByHash    = "obscuroscan_getBlockHeaderByHash"

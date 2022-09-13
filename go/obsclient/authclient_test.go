@@ -26,7 +26,7 @@ func TestNonceAt_ConvertsNilBlockNumberToLatest(t *testing.T) {
 	// expect mock to be called once with the nonce request, it should have translated nil blockNumber to "latest" string
 	mockRPC.On(
 		"CallContext",
-		testCtx, mock.AnythingOfType("*hexutil.Uint64"), rpc.RPCNonce, []interface{}{testAcc, "latest"},
+		testCtx, mock.AnythingOfType("*hexutil.Uint64"), rpc.RPCGetTransactionCount, []interface{}{testAcc, "latest"},
 	).Return(nil).Run(func(args mock.Arguments) {
 		res := args.Get(1).(*hexutil.Uint64)
 		// set the result pointer in the RPC client
