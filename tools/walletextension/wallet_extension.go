@@ -12,8 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/multiacchelper"
-
 	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
@@ -69,10 +67,10 @@ type WalletExtension struct {
 	persistence    *persistence.Persistence
 }
 
-type RpcRequest struct {
+type rpcRequest struct {
 	id     interface{} // can be string or int
-	Method string
-	Params []interface{}
+	method string
+	params []interface{}
 }
 
 func NewWalletExtension(config Config) *WalletExtension {
@@ -212,13 +210,13 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 		return
 	}
 
-	if rpcReq.Method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
+	if rpcReq.method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
 		readWriter.HandleError(fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
 	}
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = multiacchelper.ProxyRequest(rpcReq, &rpcResp, we.accountClients, we.unauthedClient)
+	err = ProxyRequest(rpcReq, &rpcResp, we.accountClients, we.unauthedClient)
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
@@ -249,7 +247,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 		readWriter.HandleError(fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
 		return
 	}
-	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.Method, rpcRespToSend)
+	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.method, rpcRespToSend)
 
 	err = readWriter.WriteResponse(rpcRespToSend)
 	if err != nil {
@@ -269,7 +267,7 @@ func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Reques
 	return false
 }
 
-func parseRequest(body []byte) (*RpcRequest, error) {
+func parseRequest(body []byte) (*rpcRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
@@ -297,10 +295,10 @@ func parseRequest(body []byte) (*RpcRequest, error) {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}
 
-	return &RpcRequest{
+	return &rpcRequest{
 		id:     reqID,
-		Method: method,
-		Params: params,
+		method: method,
+		params: params,
 	}, nil
 }
 
