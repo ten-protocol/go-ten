@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
@@ -410,13 +411,24 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We retrieve the viewing key address.
-	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
+	tx, txRollupHash, txRollupHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
+
+	// Only return receipts for transactions included in the canonical chain.
+	r, f := e.storage.FetchRollupByHeight(txRollupHeight)
+	if !f {
+		return nil, fmt.Errorf("transaction not included in the canonical chain")
+	}
+
+	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
+		return nil, fmt.Errorf("transaction not included in the canonical chain")
+	}
+
 	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
