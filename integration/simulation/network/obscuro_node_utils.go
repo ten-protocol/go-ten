@@ -27,6 +27,11 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
+const (
+	protocolSeparator = "://"
+	networkTCP        = "tcp"
+)
+
 func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
@@ -251,17 +256,21 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 func isAddressAvailable(address string) bool {
 	// `net.Listen` requires us to strip the protocol, if it exists.
 	addressNoProtocol := address
-	splitAddress := strings.Split(address, "://")
+	splitAddress := strings.Split(address, protocolSeparator)
 	if len(splitAddress) == 2 {
 		addressNoProtocol = splitAddress[1]
 	}
 
-	ln, err := net.Listen("tcp", addressNoProtocol)
+	ln, err := net.Listen(networkTCP, addressNoProtocol)
 	if ln != nil {
-		_ = ln.Close()
+		err = ln.Close()
+		if err != nil {
+			log.Error("could not close listener when checking if address %w was available", address)
+		}
 	}
 	if err != nil {
 		return false
 	}
+
 	return true
 }
