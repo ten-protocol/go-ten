@@ -52,12 +52,12 @@ func randomWithdrawals(length int) []common.Withdrawal {
 	return withdrawals
 }
 
-// Creates a dummy L2Tx for testing
+// CreateL2Tx creates a dummy L2Tx for testing
 func CreateL2Tx() *common.L2Tx {
 	return types.NewTx(CreateL2TxData())
 }
 
-// Creates a dummy types.LegacyTx for testing
+// CreateL2TxData creates a dummy types.LegacyTx for testing
 func CreateL2TxData() *types.LegacyTx {
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	encodedTxData := make([]byte, 0)

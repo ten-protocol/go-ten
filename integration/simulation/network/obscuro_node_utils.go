@@ -22,7 +22,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
@@ -31,50 +30,6 @@ const (
 	protocolSeparator = "://"
 	networkTCP        = "tcp"
 )
-
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
-	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
-	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
-	for i := 0; i < params.NumberOfNodes; i++ {
-		isGenesis := i == 0
-		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
-
-		obscuroNodes[i] = createInMemObscuroNode(
-			int64(i),
-			isGenesis,
-			params.MgmtContractLib,
-			params.ERC20ContractLib,
-			params.AvgGossipPeriod,
-			stats,
-			true,
-			genesisJSON,
-			params.Wallets.NodeWallets[i],
-			l1Clients[i],
-			params.Wallets,
-			p2pLayers[i],
-		)
-	}
-	// make sure the aggregators can talk to each other
-	for i := 0; i < params.NumberOfNodes; i++ {
-		p2pLayers[i].Nodes = obscuroNodes
-	}
-
-	// start each obscuro node
-	for _, m := range obscuroNodes {
-		t := m
-		go t.Start()
-	}
-
-	// Create a handle to each node
-	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
-	for i, node := range obscuroNodes {
-		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
-	}
-	time.Sleep(100 * time.Millisecond)
-
-	return obscuroClients
-}
 
 func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpc.Client, []string) {
 	// handle to the obscuro clients
