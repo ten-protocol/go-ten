@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 
 	"github.com/google/uuid"
@@ -330,14 +332,30 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 	return resp, err
 }
 
-func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
-	// todo user encryption
-	hs := e.storage.FetchHeadState()
-	if hs == nil {
-		return 0
+func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (common.EncryptedResponseGetTxCount, error) {
+	var nonce uint64
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, err
 	}
-	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return s.GetNonce(address)
+
+	address, err := rpc.ExtractAddress(paramBytes)
+	if err != nil {
+		return nil, err
+	}
+	hs := e.storage.FetchHeadState()
+	if hs != nil {
+		// todo: we should return an error when head state is not available, but for current test situations with race
+		// 		conditions we allow it to return zero while head state is uninitialized
+		s := e.storage.CreateStateDB(hs.HeadRollup)
+		nonce = s.GetNonce(address)
+	}
+
+	encCount, err := e.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(hexutil.EncodeUint64(nonce)))
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionCount request. Cause: %w", err)
+	}
+	return encCount, nil
 }
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {

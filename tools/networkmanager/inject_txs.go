@@ -143,7 +143,7 @@ func createWallets(nmConfig Config, l1Client ethadapter.EthClient, l2Client rpc.
 	}
 	for _, l2Wallet := range wallets.AllObsWallets() {
 		var nonce uint64
-		err := l2Client.Call(&nonce, rpc.RPCNonce, l2Wallet.Address())
+		err := l2Client.Call(&nonce, rpc.RPCGetTransactionCount, l2Wallet.Address())
 		if err != nil {
 			panic(fmt.Errorf("could not set L2 wallet nonce. Cause: %w", err))
 		}
