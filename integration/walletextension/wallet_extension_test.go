@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
 	"io"
 	"math/big"
 	"net/http"
@@ -51,14 +52,15 @@ const (
 	testLogs     = "../.build/wallet_extension/"
 	l2ChainIDHex = "0x309"
 
-	reqJSONKeyTo      = "to"
-	reqJSONKeyFrom    = "from"
-	reqJSONKeyData    = "data"
-	respJSONKeyStatus = "status"
-	latestBlock       = "latest"
-	statusSuccess     = "0x1"
-	errInsecure       = "enclave could not respond securely to %s request"
-	errSubscribeFail  = "received an eth_subscribe request but the connection does not support subscriptions"
+	reqJSONKeyTo        = "to"
+	reqJSONKeyFrom      = "from"
+	reqJSONKeyData      = "data"
+	respJSONKeyStatus   = "status"
+	latestBlock         = "latest"
+	statusSuccess       = "0x1"
+	errInsecure         = "enclave could not respond securely to %s request"
+	errSubscribeFail    = "received an eth_subscribe request but the connection does not support subscriptions"
+	errInvalidRPCMethod = "rpc request failed: the method %s does not exist/is not available"
 
 	walletExtensionPort   = int(integration.StartPortWalletExtensionTest)
 	walletExtensionPortWS = int(integration.StartPortWalletExtensionTest + 1)
@@ -357,7 +359,6 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 }
 
-// This is a smoketest to ensure the websocket port is working (since the vast majority of the tests use HTTP instead).
 func TestCanMakeRequestOverWS(t *testing.T) {
 	createWalletExtension(t)
 
@@ -365,6 +366,18 @@ func TestCanMakeRequestOverWS(t *testing.T) {
 
 	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
 		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
+	}
+}
+
+func TestCanGetErrorOverWS(t *testing.T) {
+	createWalletExtension(t)
+
+	invalidMethod := "invalidRPCMethod"
+	respJSON := makeWSEthJSONReqAsJSON(invalidMethod, []string{})
+
+	expectedErr := fmt.Sprintf(errInvalidRPCMethod, invalidMethod)
+	if respJSON[readwriter.RespJSONKeyErr] != expectedErr {
+		t.Fatalf("Expected error '%s', got '%s'", expectedErr, respJSON[readwriter.RespJSONKeyErr])
 	}
 }
 
