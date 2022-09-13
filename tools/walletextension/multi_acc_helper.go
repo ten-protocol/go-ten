@@ -26,17 +26,27 @@ const (
 // account to use to send a request when multiple are registered
 type MultiAccHelper struct {
 	unauthedClient rpc.Client
+	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
+	accountClients map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
 }
 
 func NewMultiAccHelper(unauthedClient rpc.Client) MultiAccHelper {
-	return MultiAccHelper{unauthedClient: unauthedClient}
+	return MultiAccHelper{
+		unauthedClient: unauthedClient,
+		accountClients: make(map[common.Address]*rpc.EncRPCClient),
+	}
+}
+
+// Adds a client to the list of clients per account.
+func (m *MultiAccHelper) addClient(address common.Address, client *rpc.EncRPCClient) {
+	m.accountClients[address] = client
 }
 
 // Tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt the request
 // with all clients until it succeeds
-func (m *MultiAccHelper) proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, accClients map[common.Address]*rpc.EncRPCClient) error {
+func (m *MultiAccHelper) proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
-	suggestedClient := suggestAccountClient(rpcReq, accClients)
+	suggestedClient := suggestAccountClient(rpcReq, m.accountClients)
 
 	switch {
 	case suggestedClient != nil: // use the suggested client if there is one
@@ -44,10 +54,10 @@ func (m *MultiAccHelper) proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, 
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
 		return performRequest(suggestedClient, rpcReq, rpcResp)
 
-	case len(accClients) > 0: // try registered clients until there's a successful execution
-		log.Info("appropriate client not found, attempting request with up to %d clients", len(accClients))
+	case len(m.accountClients) > 0: // try registered clients until there's a successful execution
+		log.Info("appropriate client not found, attempting request with up to %d clients", len(m.accountClients))
 		var err error
-		for _, client := range accClients {
+		for _, client := range m.accountClients {
 			err = performRequest(client, rpcReq, rpcResp)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
