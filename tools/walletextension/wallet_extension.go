@@ -60,8 +60,8 @@ type WalletExtension struct {
 	hostAddr string // The address on which the Obscuro host can be reached.
 	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
 	accountClients map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
-	unauthedClient rpc.Client                           // Unauthenticated client used for non-sensitive requests if no encrypted clients exist.
-	unsignedVKs    map[common.Address]*rpc.ViewingKey   // Map temporarily holding VKs that have been generated but not yet signed
+	multiAccHelper MultiAccHelper
+	unsignedVKs    map[common.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	serverHTTP     *http.Server
 	serverWS       *http.Server
 	persistence    *persistence.Persistence
@@ -85,7 +85,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 		hostAddr:       config.NodeRPCWebsocketAddress,
 		accountClients: make(map[common.Address]*rpc.EncRPCClient),
 		unsignedVKs:    make(map[common.Address]*rpc.ViewingKey),
-		unauthedClient: unauthedClient,
+		multiAccHelper: NewMultiAccHelper(unauthedClient),
 		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
 	}
 
@@ -216,7 +216,7 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = proxyRequest(rpcReq, &rpcResp, we.accountClients, we.unauthedClient)
+	err = we.multiAccHelper.proxyRequest(rpcReq, &rpcResp, we.accountClients)
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {

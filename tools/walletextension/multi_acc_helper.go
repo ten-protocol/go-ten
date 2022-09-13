@@ -22,12 +22,19 @@ const (
 	ethCallAddrPadding  = "000000000000000000000000"
 )
 
-// multi_acc_helper provides a single location for code that helps wallet extension in determining the appropriate account
-//	to use to send a request when multiple are registered
+// MultiAccHelper provides a single location for code that helps wallet extension in determining the appropriate
+// account to use to send a request when multiple are registered
+type MultiAccHelper struct {
+	unauthedClient rpc.Client
+}
+
+func NewMultiAccHelper(unauthedClient rpc.Client) MultiAccHelper {
+	return MultiAccHelper{unauthedClient: unauthedClient}
+}
 
 // Tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt the request
 // with all clients until it succeeds
-func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, accClients map[common.Address]*rpc.EncRPCClient, unauthedClient rpc.Client) error {
+func (m *MultiAccHelper) proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, accClients map[common.Address]*rpc.EncRPCClient) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, accClients)
 
@@ -54,7 +61,7 @@ func proxyRequest(rpcReq *rpcRequest, rpcResp *interface{}, accClients map[commo
 		if rpc.IsSensitiveMethod(rpcReq.method) {
 			return fmt.Errorf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpcReq.method)
 		}
-		return unauthedClient.Call(rpcResp, rpcReq.method, rpcReq.params...)
+		return m.unauthedClient.Call(rpcResp, rpcReq.method, rpcReq.params...)
 	}
 }
 
