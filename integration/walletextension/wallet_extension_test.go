@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"io"
 	"math/big"
 	"net/http"
@@ -442,7 +443,6 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 			resp.Body.Close()
 		}
 	}
-
 	if err != nil {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
@@ -471,6 +471,44 @@ func makeWSEthJSONReqAsJSON(method string, params interface{}) map[string]interf
 func makeWSEthJSONReq(method string, params interface{}) []byte {
 	// todo - joel - write this logic
 	// todo - joel - pull out shared logic with makeHTTPEthJSONReq
+	reqBodyBytes, err := json.Marshal(map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  method,
+		"params":  params,
+		"id":      "1",
+	})
+	if err != nil {
+		panic(err)
+	}
+	reqBody := bytes.NewBuffer(reqBodyBytes)
+
+	var conn *websocket.Conn
+	// We retry for three seconds to handle node start-up time.
+	timeout := time.Now().Add(3 * time.Second)
+	for i := time.Now(); i.Before(timeout); i = time.Now() {
+		conn, _, err = websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
+		if err == nil {
+			break
+		}
+		if conn != nil {
+			conn.Close()
+		}
+	}
+	if err != nil {
+		panic(fmt.Errorf("received error response from wallet extension: %w", err))
+	}
+	
+	//if resp == nil {
+	//	panic("did not receive a response from the wallet extension")
+	//}
+	//
+	//if resp.Body != nil {
+	//	defer resp.Body.Close()
+	//}
+	//respBody, err := io.ReadAll(resp.Body)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	return []byte{} // return respBody
 }
