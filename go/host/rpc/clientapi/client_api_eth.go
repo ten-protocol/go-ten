@@ -137,8 +137,7 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams c
 	if encryptedResponse == nil {
 		return "", err
 	}
-	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
-	return encryptedResponseHex, nil
+	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
