@@ -35,6 +35,7 @@ const (
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "static"
+	wsProtocol             = "ws://"
 
 	reqJSONKeyID        = "id"
 	reqJSONKeyMethod    = "method"
@@ -71,13 +72,13 @@ type WalletExtension struct {
 func NewWalletExtension(config Config) *WalletExtension {
 	setUpLogs(config.LogPath)
 
-	unauthedClient, err := rpc.NewNetworkClient(config.NodeRPCWebsocketAddress)
+	unauthedClient, err := rpc.NewNetworkClient(wsProtocol + config.NodeRPCWebsocketAddress)
 	if err != nil {
 		log.Panic("unable to create temporary client for request - %s", err)
 	}
 
 	walletExtension := &WalletExtension{
-		hostAddr:       config.NodeRPCWebsocketAddress,
+		hostAddr:       wsProtocol + config.NodeRPCWebsocketAddress,
 		unsignedVKs:    make(map[common.Address]*rpc.ViewingKey),
 		accountManager: accountmanager.NewAccountManager(unauthedClient),
 		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
