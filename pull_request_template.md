@@ -5,10 +5,7 @@
 ### What changes were made as part of this PR:
 
 - Provide a high level list of the changes made
-
-### What are the key areas to look at
-
-- Describe the key areas for a reviewer to look at 
+- List key areas for the reviewer 
 
 ### :rotating_light: Definition of done :rotating_light:
 - [ ] Unit tests added to cover new or changed functionality 

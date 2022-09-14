@@ -457,8 +457,8 @@ func createWalletExtensionConfig() *walletextension.Config {
 	return &walletextension.Config{
 		WalletExtensionPort:     walletExtensionPort,
 		WalletExtensionPortWS:   walletExtensionPortWS,
-		NodeRPCHTTPAddress:      fmt.Sprintf("http://%s:%d", network.Localhost, nodeRPCHTTPPort),
-		NodeRPCWebsocketAddress: fmt.Sprintf("ws://%s:%d", network.Localhost, nodeRPCWSPort),
+		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", network.Localhost, nodeRPCHTTPPort),
+		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", network.Localhost, nodeRPCWSPort),
 		PersistencePathOverride: testPersistencePath.Name(),
 	}
 }

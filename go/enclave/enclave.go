@@ -365,15 +365,12 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt encrypted RPC request params. Cause: %w", err)
 	}
-	var paramList []string
-	err = json.Unmarshal(hashBytes, &paramList)
+	var txHex string
+	err = json.Unmarshal(hashBytes, &txHex)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal eth_getTransactionByHash params from JSON. Cause: %w", err)
 	}
-	if len(paramList) == 0 {
-		return nil, fmt.Errorf("required at least one param, but received zero")
-	}
-	txHash := gethcommon.HexToHash(paramList[0])
+	txHash := gethcommon.HexToHash(txHex)
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
