@@ -135,16 +135,9 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
-	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
+	logSubscription, err := c.createAuthenticatedLogSubscription()
 	if err != nil {
-		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
-	}
-	logSubscription := common.LogSubscription{
-		SubscriptionAccount: &common.SubscriptionAccount{
-			Account:   c.Account(),
-			Signature: &accountSignature,
-		},
-		// TODO - #453 - Add the incoming filters.FilterCriteria to the common.LogSubscription.
+		return nil, err
 	}
 
 	encryptedParams, err := c.encryptArgs(logSubscription)
@@ -182,6 +175,21 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	}()
 
 	return subscription, nil
+}
+
+func (c *EncRPCClient) createAuthenticatedLogSubscription() (*common.LogSubscription, error) {
+	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
+	if err != nil {
+		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
+	}
+	logSubscription := common.LogSubscription{
+		SubscriptionAccount: &common.SubscriptionAccount{
+			Account:   c.Account(),
+			Signature: &accountSignature,
+		},
+		// TODO - #453 - Add the incoming filters.FilterCriteria to the common.LogSubscription.
+	}
+	return &logSubscription, nil
 }
 
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
