@@ -107,6 +107,8 @@ func suggestAccountClient(req *RPCRequest, accClients map[common.Address]*rpc.En
 		}
 	}
 
+	// TODO - #453 - Add special logic for log subscriptions.
+
 	// todo: add other mechanisms for determining the correct account to use. E.g. we may want to start caching and
 	// 	 	recent transaction hashes for accounts so that receipt lookups know which acc to use
 

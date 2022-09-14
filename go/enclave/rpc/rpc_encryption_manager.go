@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -94,4 +95,21 @@ func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, 
 	}
 
 	return encryptedBytes, nil
+}
+
+// AuthenticateSubscriptionRequest checks that a subscription request is authenticated correctly.
+func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription common.LogSubscription) error {
+	accountHashBytes := subscription.SubscriptionAccount.Account.Hash().Bytes()
+
+	recoveredViewingPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.SubscriptionAccount.Signature)
+	if err != nil {
+		return fmt.Errorf("could not recover viewing public key from signature to authenticate subscription. Cause: %w", err)
+	}
+
+	viewingPublicKey := rpc.viewingKeys[*subscription.SubscriptionAccount.Account]
+	if viewingPublicKey != ecies.ImportECDSAPublic(recoveredViewingPublicKey) {
+		return fmt.Errorf("viewing key used to authenticate subscription did not match")
+	}
+
+	return nil
 }

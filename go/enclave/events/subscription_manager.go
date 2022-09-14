@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -41,16 +39,9 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
 	}
 
-	// todo - joel - extract any shared logic (see rpcEncryptionManager)
-	accountHashBytes := subscription.SubscriptionAccount.Account.Hash().Bytes()
-	recoveredPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.SubscriptionAccount.Signature)
+	err = s.rpcEncryptionManager.AuthenticateSubscriptionRequest(subscription)
 	if err != nil {
-		return fmt.Errorf("could not recover account address from signature to authenticate subscription. Cause: %w", err)
-	}
-	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
-	if recoveredAddress != *subscription.SubscriptionAccount.Account {
-		// todo - joel - this check doesn't make sense. I'm recovering the viewing key address, but I need the account address
-		panic("jjj bad") // todo - joel - handle better
+		return err
 	}
 
 	s.subscriptions[id] = &subscription
