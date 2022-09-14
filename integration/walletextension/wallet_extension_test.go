@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"io"
 	"math/big"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 

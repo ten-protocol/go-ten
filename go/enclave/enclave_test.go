@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"testing"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -13,8 +16,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"math/big"
-	"testing"
 )
 
 const enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"

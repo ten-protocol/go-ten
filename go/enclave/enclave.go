@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -23,8 +22,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	obscurocrypto "github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
@@ -32,15 +29,18 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/config"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	obscurocrypto "github.com/obscuronet/go-obscuro/go/enclave/crypto"
 )
 
 // StatsCollector Todo - replace with a proper framework

@@ -2,9 +2,10 @@ package datagenerator
 
 import (
 	"crypto/rand"
-	"github.com/ethereum/go-ethereum"
 	"math"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
