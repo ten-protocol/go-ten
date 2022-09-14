@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/eth/filters"
 	"reflect"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -135,7 +136,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
-	logSubscription, err := c.createAuthenticatedLogSubscription()
+	logSubscription, err := c.createAuthenticatedLogSubscription(args)
 	if err != nil {
 		return nil, err
 	}
@@ -177,19 +178,33 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	return subscription, nil
 }
 
-func (c *EncRPCClient) createAuthenticatedLogSubscription() (*common.LogSubscription, error) {
+func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
+	// todo - joel - handle case of no first arg
+	// todo - joel - do some manual testing to check if fields are picked up properly
+
+	filterCriteriaJSON, err := json.Marshal(args[1])
+	if err != nil {
+		panic(err) // todo - joel - fix
+	}
+
+	filterCriteria := &filters.FilterCriteria{}
+	err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+	if err != nil {
+		panic(err) // todo - joel - fix
+	}
+
 	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
 	if err != nil {
 		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
 	}
-	logSubscription := common.LogSubscription{
+
+	return &common.LogSubscription{
 		SubscriptionAccount: &common.SubscriptionAccount{
 			Account:   c.Account(),
 			Signature: &accountSignature,
 		},
-		// TODO - #453 - Add the incoming filters.FilterCriteria to the common.LogSubscription.
-	}
-	return &logSubscription, nil
+		Filter: filterCriteria,
+	}, nil
 }
 
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
