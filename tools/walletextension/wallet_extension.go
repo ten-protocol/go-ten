@@ -16,7 +16,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -181,44 +181,44 @@ func (we *WalletExtension) handleEthJSONHTTP(resp http.ResponseWriter, req *http
 	if we.enableCORS(resp, req) {
 		return
 	}
-	readWriter := readwriter.NewHTTPReadWriter(resp, req)
-	we.handleEthJSON(readWriter)
+	userConn := userconn.NewUserConnHTTP(resp, req)
+	we.handleEthJSON(userConn)
 }
 
 // Handles the Ethereum JSON-RPC request over websockets.
 func (we *WalletExtension) handleEthJSONWS(resp http.ResponseWriter, req *http.Request) {
-	readWriter, err := readwriter.NewWSReadWriter(resp, req)
+	userConn, err := userconn.NewUserConnWS(resp, req)
 	if err != nil {
 		return
 	}
-	we.handleEthJSON(readWriter)
+	we.handleEthJSON(userConn)
 }
 
 // Encrypts the Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
-func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
-	body, err := readWriter.ReadRequest()
+func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
+	body, err := userConn.ReadRequest()
 	if err != nil {
-		readWriter.HandleError(err.Error())
+		userConn.HandleError(err.Error())
 		return
 	}
 
 	rpcReq, err := parseRequest(body)
 	if err != nil {
-		readWriter.HandleError(err.Error())
+		userConn.HandleError(err.Error())
 		return
 	}
 
-	if rpcReq.Method == rpc.RPCSubscribe && !readWriter.SupportsSubscriptions() {
-		readWriter.HandleError(fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
+	if rpcReq.Method == rpc.RPCSubscribe && !userConn.SupportsSubscriptions() {
+		userConn.HandleError(fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
 	}
 
 	var rpcResp interface{}
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp, readWriter)
+	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp, userConn)
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
-			readWriter.HandleError(fmt.Sprintf("rpc request failed: %s", err))
+			userConn.HandleError(fmt.Sprintf("rpc request failed: %s", err))
 			return
 		}
 	}
@@ -242,14 +242,14 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 
 	rpcRespToSend, err := json.Marshal(respMap)
 	if err != nil {
-		readWriter.HandleError(fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
+		userConn.HandleError(fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
 		return
 	}
 	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.Method, rpcRespToSend)
 
-	err = readWriter.WriteResponse(rpcRespToSend)
+	err = userConn.WriteResponse(rpcRespToSend)
 	if err != nil {
-		readWriter.HandleError(err.Error())
+		userConn.HandleError(err.Error())
 		return
 	}
 }
@@ -302,24 +302,24 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 
 // Generates a new viewing key.
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
-	readWriter := readwriter.NewHTTPReadWriter(resp, req)
+	userConn := userconn.NewUserConnHTTP(resp, req)
 
-	body, err := readWriter.ReadRequest()
+	body, err := userConn.ReadRequest()
 	if err != nil {
-		readWriter.HandleError(err.Error())
+		userConn.HandleError(err.Error())
 		return
 	}
 
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		readWriter.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		userConn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
 
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
-		readWriter.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
+		userConn.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
@@ -335,40 +335,40 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 	// We return the hex of the viewing key's public key for MetaMask to sign over.
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
-	err = readWriter.WriteResponse([]byte(viewingKeyHex))
+	err = userConn.WriteResponse([]byte(viewingKeyHex))
 	if err != nil {
-		readWriter.HandleError(fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
+		userConn.HandleError(fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
 		return
 	}
 }
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	readWriter := readwriter.NewHTTPReadWriter(resp, req)
+	userConn := userconn.NewUserConnHTTP(resp, req)
 
-	body, err := readWriter.ReadRequest()
+	body, err := userConn.ReadRequest()
 	if err != nil {
-		readWriter.HandleError(err.Error())
+		userConn.HandleError(err.Error())
 		return
 	}
 
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		readWriter.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		userConn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
 	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
 	vk, found := we.unsignedVKs[accAddress]
 	if !found {
-		readWriter.HandleError(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", accAddress, PathGenerateViewingKey))
+		userConn.HandleError(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", accAddress, PathGenerateViewingKey))
 		return
 	}
 
 	//  We drop the leading "0x".
 	signature, err := hex.DecodeString(reqJSONMap[ReqJSONKeySignature][2:])
 	if err != nil {
-		readWriter.HandleError(fmt.Sprintf("could not decode signature from client to hex: %s", err))
+		userConn.HandleError(fmt.Sprintf("could not decode signature from client to hex: %s", err))
 		return
 	}
 
@@ -381,7 +381,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	// TODO - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
-		readWriter.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
+		userConn.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
 	we.accountManager.AddClient(accAddress, client)
 
