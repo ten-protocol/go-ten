@@ -458,15 +458,6 @@ func createWalletExtensionConfig() *walletextension.Config {
 
 // Creates and serves a wallet extension.
 func createWalletExtension(t *testing.T) *walletextension.WalletExtension {
-	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
-	t.Cleanup(walletExtension.Shutdown)
-
-	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err := waitForWalletExtension()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	return createWalletExtensionWithConfig(t, walletExtensionConfig)
 }
 
