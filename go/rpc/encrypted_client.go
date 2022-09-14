@@ -135,12 +135,12 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
-	signedAccount, err := crypto.Sign(c.Account().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
+	signedAccount, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
 	if err != nil {
-		return nil, fmt.Errorf("could not sign account address to authenticate subscription")
+		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
 	}
 	logSubscription := common.LogSubscription{
-		Account: &common.SubscriptionAccount{
+		SubscriptionAccount: &common.SubscriptionAccount{
 			Account:   c.Account(),
 			Signature: &signedAccount,
 		},

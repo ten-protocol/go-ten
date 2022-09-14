@@ -37,18 +37,21 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 	}
 
 	var subscription common.LogSubscription
-	if err := json.Unmarshal(jsonSubscription, &subscription); err != nil {
+	if err = json.Unmarshal(jsonSubscription, &subscription); err != nil {
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
 	}
 
 	// todo - joel - extract any shared logic (see rpcEncryptionManager)
-	recoveredPublicKey, err := crypto.SigToPub(subscription.Account.Account.Bytes(), *subscription.Account.Signature)
+	accountHashBytes := subscription.SubscriptionAccount.Account.Hash().Bytes()
+	recoveredPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.SubscriptionAccount.Signature)
 	if err != nil {
 		return fmt.Errorf("could not recover account address from signature to authenticate subscription. Cause: %w", err)
 	}
 	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
-	// todo - joel - check the recovered address matches the account address
-	println(recoveredAddress.Hex())
+	if recoveredAddress != *subscription.SubscriptionAccount.Account {
+		// todo - joel - this check doesn't make sense. I'm recovering the viewing key address, but I need the account address
+		panic("jjj bad") // todo - joel - handle better
+	}
 
 	s.subscriptions[id] = &subscription
 	return nil
