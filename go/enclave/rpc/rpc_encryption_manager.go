@@ -106,9 +106,9 @@ func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription commo
 		return fmt.Errorf("could not recover viewing public key from signature to authenticate subscription. Cause: %w", err)
 	}
 
-	viewingPublicKey := rpc.viewingKeys[*subscription.SubscriptionAccount.Account]
-	if viewingPublicKey != ecies.ImportECDSAPublic(recoveredViewingPublicKey) {
-		return fmt.Errorf("viewing key used to authenticate subscription did not match")
+	viewingPublicKey := rpc.viewingKeys[*subscription.SubscriptionAccount.Account].ExportECDSA()
+	if !viewingPublicKey.Equal(recoveredViewingPublicKey) {
+		return fmt.Errorf("viewing key used to authenticate subscription did not match viewing key stored by enclave")
 	}
 
 	return nil

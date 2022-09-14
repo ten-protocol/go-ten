@@ -375,6 +375,7 @@ func TestCanGetErrorOverWS(t *testing.T) {
 
 func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
+	registerPrivateKey(t)
 
 	_, conn := makeWSEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
 
