@@ -35,14 +35,10 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
 	}
 
-	var subscriptions []common.LogSubscription
-	if err = json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
+	var subscription common.LogSubscription
+	if err := json.Unmarshal(jsonSubscription, &subscription); err != nil {
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
 	}
-	if len(subscriptions) != 1 {
-		return fmt.Errorf("expected a single log subscription, received %d", len(subscriptions))
-	}
-	subscription := subscriptions[0]
 
 	subscriptionIDBinary, err := id.MarshalBinary()
 	if err != nil {
