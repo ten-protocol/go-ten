@@ -37,7 +37,7 @@ func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) EncryptionMa
 	}
 }
 
-// DecryptBytes decrypts the bytes with the enclave's private key if viewing keys are enabled.
+// DecryptBytes decrypts the bytes with the enclave's private key.
 func (rpc *EncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error) {
 	bytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {

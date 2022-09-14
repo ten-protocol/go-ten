@@ -138,6 +138,7 @@ func ExtractCallParamData(callParams []byte) ([]byte, error) {
 	return data, nil
 }
 
+// ExtractCallMsg unmarshalls a slice of bytes into an ethereum.CallMsg
 func ExtractCallMsg(callMsgBytes []byte) (*ethereum.CallMsg, error) {
 	var callMsg ethereum.CallMsg
 	err := json.Unmarshal(callMsgBytes, &callMsg)

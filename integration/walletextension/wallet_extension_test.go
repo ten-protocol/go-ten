@@ -429,7 +429,7 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 }
 
-func TestGasEstimate(t *testing.T) {
+func TestSuccessGasEstimate(t *testing.T) {
 	createWalletExtension(t)
 	accountAddr, _ := registerPrivateKey(t)
 	callMsg := datagenerator.CreateCallMsg()
@@ -443,10 +443,9 @@ func TestGasEstimate(t *testing.T) {
 	callMsgHex := hexutil.Encode(callMsgBytes)
 	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCEstimateGas, []string{callMsgHex, latestBlock})
 
-	if getBalanceJSON[walletextension.RespJSONKeyResult].(string) != "0x989680" {
+	if getBalanceJSON[walletextension.RespJSONKeyResult].(string) != "0x12a05f200" {
 		t.Fatalf("unexpected gas")
 	}
-	fmt.Println(getBalanceJSON[walletextension.RespJSONKeyResult] == "0x989680")
 }
 
 func createWalletExtensionConfig() *walletextension.Config {

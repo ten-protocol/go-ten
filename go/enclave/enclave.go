@@ -565,24 +565,31 @@ func (e *enclaveImpl) Stop() error {
 	return nil
 }
 
+// EstimateGas decrypts CallMsg data, runs the gas estimation for the data.
+// Using the callMsg.From Viewing Key, returns the encrypted gas estimation
 func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+	// decrypt the input with the enclave PK
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
 	}
 
+	// extract params from byte slice to array of strings
 	var paramString []string
 	err = json.Unmarshal(paramBytes, &paramString)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
 	}
 
-	decryptedCallMsg, err := rpc.ExtractCallMsg(gethcommon.Hex2Bytes(paramString[0][2:]))
+	// marshall the string into a callMsg
+	callMsg, err := rpc.ExtractCallMsg(gethcommon.Hex2Bytes(paramString[0][2:]))
 	if err != nil {
 		return nil, fmt.Errorf("unable to deserialize call msg - %w", err)
 	}
 
-	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(decryptedCallMsg.From, []byte(hexutil.EncodeUint64(10_000_000)))
+	// encrypt the gas cost with the callMsg.From viewing key
+	// TODO hook the evm gas estimation
+	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From, []byte(hexutil.EncodeUint64(5_000_000_000)))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
 	}
