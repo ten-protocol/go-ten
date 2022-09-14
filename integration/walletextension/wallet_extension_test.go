@@ -421,7 +421,7 @@ func TestCanSubscribeForLogs(t *testing.T) {
 
 func TestCannotSubscribeForLogsWithoutSubmittingViewingKey(t *testing.T) {
 	// By creating the wallet extension from a fresh config, we get a new persistence path, and thus do not
-	// accidentally reload existing viewing keys, allowing the subscription attempt to succeed.
+	// accidentally reload existing viewing keys, which would cause the subscription attempt to succeed.
 	createWalletExtensionWithConfig(t, createWalletExtensionConfig())
 
 	respBody, _ := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
