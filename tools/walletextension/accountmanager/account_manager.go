@@ -226,7 +226,9 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
 				}
 			case err = <-subscription.Err():
-				// TODO - #453 - Route error back to frontend.
+				// An error on this channel means the subscription has ended, so we exit the loop.
+				readWriter.HandleError(err.Error())
+				return
 			}
 		}
 	}()
