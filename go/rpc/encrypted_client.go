@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/obscuronet/go-obscuro/go/common"
 	"reflect"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -15,7 +17,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
@@ -45,7 +47,7 @@ type EncRPCClient struct {
 // NewEncRPCClient sets up a client with a viewing key for encrypted communication (this submits the VK to the enclave)
 func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
-	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
+	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress key for RPC client: %w", err)
 	}
@@ -133,9 +135,23 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
-	// TODO - #453 - Map incoming filters.FilterCriteria to a common.LogSubscription.
+	subscriptionIDBinary, err := args[1].(uuid.UUID).MarshalBinary() // todo - joel - work out where ID really comes from
+	if err != nil {
+		return nil, fmt.Errorf("could not marshall subscription ID to binary to authenticate subscription")
+	}
+	signedSubID, err := crypto.Sign(subscriptionIDBinary, c.viewingKey.PrivateKey.ExportECDSA())
+	if err != nil {
+		return nil, fmt.Errorf("could not sign subscription ID to authenticate subscription")
+	}
+	logSubscription := common.LogSubscription{
+		Account: &common.SubscriptionAccount{
+			Account:   c.Account(),
+			Signature: &signedSubID,
+		},
+		// TODO - #453 - Add the incoming filters.FilterCriteria to the common.LogSubscription.
+	}
 
-	encryptedParams, err := c.encryptArgs(args[1:]...)
+	encryptedParams, err := c.encryptArgs(logSubscription)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
@@ -183,7 +199,7 @@ func (c *EncRPCClient) Stop() {
 	c.obscuroClient.Stop()
 }
 
-func (c *EncRPCClient) Account() *common.Address {
+func (c *EncRPCClient) Account() *gethcommon.Address {
 	return c.viewingKey.Account
 }
 
@@ -213,7 +229,7 @@ func (c *EncRPCClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
 	}
-	encryptedResult := common.Hex2Bytes(resultStr)
+	encryptedResult := gethcommon.Hex2Bytes(resultStr)
 
 	decryptedResult, err := c.viewingKey.PrivateKey.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
