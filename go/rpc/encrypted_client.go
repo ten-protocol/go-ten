@@ -192,7 +192,13 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 		return nil, nil
 	}
 
-	paramsJSON, err := json.Marshal(args)
+	var paramsJSON []byte
+	var err error
+	if len(args) == 1 {
+		paramsJSON, err = json.Marshal(args[0])
+	} else {
+		paramsJSON, err = json.Marshal(args)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("could not json encode request params: %w", err)
 	}
