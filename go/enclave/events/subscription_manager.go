@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
@@ -40,14 +41,10 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
 	}
 
-	subscriptionIDBinary, err := id.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("could not marshall subscription ID to binary to check subscription authentication")
-	}
 	// todo - joel - extract any shared logic (see rpcEncryptionManager)
-	recoveredPublicKey, err := crypto.SigToPub(subscriptionIDBinary, *subscription.Account.Signature)
+	recoveredPublicKey, err := crypto.SigToPub(subscription.Account.Account.Bytes(), *subscription.Account.Signature)
 	if err != nil {
-		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
+		return fmt.Errorf("could not recover account address from signature to authenticate subscription. Cause: %w", err)
 	}
 	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
 	// todo - joel - check the recovered address matches the account address

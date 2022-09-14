@@ -5,9 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"reflect"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -135,18 +135,14 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
-	subscriptionIDBinary, err := args[1].(uuid.UUID).MarshalBinary() // todo - joel - work out where ID really comes from
+	signedAccount, err := crypto.Sign(c.Account().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
 	if err != nil {
-		return nil, fmt.Errorf("could not marshall subscription ID to binary to authenticate subscription")
-	}
-	signedSubID, err := crypto.Sign(subscriptionIDBinary, c.viewingKey.PrivateKey.ExportECDSA())
-	if err != nil {
-		return nil, fmt.Errorf("could not sign subscription ID to authenticate subscription")
+		return nil, fmt.Errorf("could not sign account address to authenticate subscription")
 	}
 	logSubscription := common.LogSubscription{
 		Account: &common.SubscriptionAccount{
 			Account:   c.Account(),
-			Signature: &signedSubID,
+			Signature: &signedAccount,
 		},
 		// TODO - #453 - Add the incoming filters.FilterCriteria to the common.LogSubscription.
 	}
