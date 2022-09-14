@@ -195,5 +195,6 @@ type SubscriptionAccount struct {
 	Account *common.Address
 	// A signature over the account address using the private viewing key. Prevents attackers from subscribing to
 	// (encrypted) logs for other accounts to see the pattern of logs.
+	// TODO - #453 - Note that this does not protect against replay attacks, where someone resends an intercepted subscription request.
 	Signature *[]byte
 }
