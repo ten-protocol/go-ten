@@ -6,6 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -44,7 +47,7 @@ func (m *AccountManager) AddClient(address common.Address, client *rpc.EncRPCCli
 
 // ProxyRequest tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 // the request with all clients until it succeeds
-func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}) error {
+func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := suggestAccountClient(rpcReq, m.accountClients)
 
@@ -52,13 +55,13 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}) 
 	case suggestedClient != nil: // use the suggested client if there is one
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		return performRequest(suggestedClient, rpcReq, rpcResp)
+		return performRequest(suggestedClient, rpcReq, rpcResp, userConn)
 
 	case len(m.accountClients) > 0: // try registered clients until there's a successful execution
 		log.Info("appropriate client not found, attempting request with up to %d clients", len(m.accountClients))
 		var err error
 		for _, client := range m.accountClients {
-			err = performRequest(client, rpcReq, rpcResp)
+			err = performRequest(client, rpcReq, rpcResp, userConn)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
@@ -194,14 +197,14 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	return nil, fmt.Errorf("no known account found in data bytes")
 }
 
-func performRequest(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
+func performRequest(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
 	if req.Method == rpc.RPCSubscribe {
-		return executeSubscribe(client, req, resp)
+		return executeSubscribe(client, req, resp, userConn)
 	}
 	return executeCall(client, req, resp)
 }
 
-func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{}) error {
+func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{}, userConn userconn.UserConn) error {
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
@@ -211,18 +214,37 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{})
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 	}
 
+	// We listen for incoming messages on the subscription.
 	go func() {
 		for {
 			select {
-			case <-ch:
-				// TODO - #453 - Route subscription events back to frontend.
+			case receivedLog := <-ch:
+				jsonLog, err := json.Marshal(receivedLog)
+				if err != nil {
+					log.Error("could not marshal received log to JSON. Cause: %s", err)
+				}
+				err = userConn.WriteResponse(jsonLog)
+				if err != nil {
+					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
+				}
 			case err = <-subscription.Err():
-				// TODO - #453 - Route error back to frontend.
+				// An error on this channel means the subscription has ended, so we exit the loop.
+				userConn.HandleError(err.Error())
+				return
 			}
 		}
 	}()
 
-	// TODO - #453 - Unsubscribe the subscription if the websocket is closed.
+	// We periodically check if the websocket is closed, and terminate the subscription.
+	go func() {
+		for {
+			if userConn.IsClosed() {
+				subscription.Unsubscribe()
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
 
 	return nil
 }
