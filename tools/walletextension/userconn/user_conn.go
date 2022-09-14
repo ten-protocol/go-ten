@@ -1,4 +1,4 @@
-package readwriter
+package userconn
 
 import (
 	"encoding/json"
@@ -18,30 +18,32 @@ const (
 
 var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
 
-// ReadWriter handles reading and writing Ethereum JSON RPC requests.
-type ReadWriter interface {
+// UserConn represents a connection to a user.
+type UserConn interface {
 	ReadRequest() ([]byte, error)
 	WriteResponse(msg []byte) error
 	HandleError(msg string)
 	SupportsSubscriptions() bool
+	IsClosed() bool
 }
 
-// HTTPReadWriter is a ReadWriter over HTTP.
-type HTTPReadWriter struct {
+// Represents a user's connection over HTTP.
+type userConnHTTP struct {
 	resp http.ResponseWriter
 	req  *http.Request
 }
 
-// WSReadWriter is a ReadWriter over websockets.
-type WSReadWriter struct {
-	conn *websocket.Conn
+// Represents a user's connection websockets.
+type userConnWS struct {
+	conn     *websocket.Conn
+	isClosed bool
 }
 
-func NewHTTPReadWriter(resp http.ResponseWriter, req *http.Request) ReadWriter {
-	return &HTTPReadWriter{resp: resp, req: req}
+func NewUserConnHTTP(resp http.ResponseWriter, req *http.Request) UserConn {
+	return &userConnHTTP{resp: resp, req: req}
 }
 
-func NewWSReadWriter(resp http.ResponseWriter, req *http.Request) (ReadWriter, error) {
+func NewUserConnWS(resp http.ResponseWriter, req *http.Request) (UserConn, error) {
 	// We search all the request's headers. If there's a websocket upgrade header, we upgrade to a websocket connection.
 	conn, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
@@ -50,12 +52,12 @@ func NewWSReadWriter(resp http.ResponseWriter, req *http.Request) (ReadWriter, e
 		return nil, err
 	}
 
-	return &WSReadWriter{
+	return &userConnWS{
 		conn: conn,
 	}, nil
 }
 
-func (h *HTTPReadWriter) ReadRequest() ([]byte, error) {
+func (h *userConnHTTP) ReadRequest() ([]byte, error) {
 	body, err := io.ReadAll(h.req.Body)
 	if err != nil {
 		return nil, fmt.Errorf("could not read request body: %w", err)
@@ -63,7 +65,7 @@ func (h *HTTPReadWriter) ReadRequest() ([]byte, error) {
 	return body, nil
 }
 
-func (h *HTTPReadWriter) WriteResponse(msg []byte) error {
+func (h *userConnHTTP) WriteResponse(msg []byte) error {
 	_, err := h.resp.Write(msg)
 	if err != nil {
 		return fmt.Errorf("could not write response: %w", err)
@@ -71,32 +73,42 @@ func (h *HTTPReadWriter) WriteResponse(msg []byte) error {
 	return nil
 }
 
-func (h *HTTPReadWriter) HandleError(msg string) {
+func (h *userConnHTTP) HandleError(msg string) {
 	httpLogAndSendErr(h.resp, msg)
 }
 
-func (h *HTTPReadWriter) SupportsSubscriptions() bool {
+func (h *userConnHTTP) SupportsSubscriptions() bool {
 	return false
 }
 
-func (w *WSReadWriter) ReadRequest() ([]byte, error) {
+func (h *userConnHTTP) IsClosed() bool {
+	return false
+}
+
+func (w *userConnWS) ReadRequest() ([]byte, error) {
 	_, msg, err := w.conn.ReadMessage()
 	if err != nil {
+		if websocket.IsCloseError(err) {
+			w.isClosed = true
+		}
 		return nil, fmt.Errorf("could not read request: %w", err)
 	}
 	return msg, nil
 }
 
-func (w *WSReadWriter) WriteResponse(msg []byte) error {
+func (w *userConnWS) WriteResponse(msg []byte) error {
 	err := w.conn.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {
+		if websocket.IsCloseError(err) {
+			w.isClosed = true
+		}
 		return fmt.Errorf("could not write response: %w", err)
 	}
 	return nil
 }
 
 // HandleError logs and prints the error, and writes it to the websocket as a JSON object with a single key, "error".
-func (w *WSReadWriter) HandleError(msg string) {
+func (w *userConnWS) HandleError(msg string) {
 	log.Error(msg)
 	fmt.Println(msg)
 
@@ -110,13 +122,20 @@ func (w *WSReadWriter) HandleError(msg string) {
 
 	err = w.conn.WriteMessage(websocket.TextMessage, errMsg)
 	if err != nil {
+		if websocket.IsCloseError(err) {
+			w.isClosed = true
+		}
 		log.Error("could not write error message to websocket")
 		return
 	}
 }
 
-func (w *WSReadWriter) SupportsSubscriptions() bool {
+func (w *userConnWS) SupportsSubscriptions() bool {
 	return true
+}
+
+func (w *userConnWS) IsClosed() bool {
+	return w.isClosed
 }
 
 // Logs the error, prints it to the console, and returns the error over HTTP.
