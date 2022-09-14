@@ -88,7 +88,7 @@ func suggestAccountClient(req *RPCRequest, accClients map[common.Address]*rpc.En
 	}
 
 	// TODO - #453 - Add special logic for log subscriptions (should happen before `parseParams`, which cannot handle
-	//  leading log-type parameter)
+	//  the leading log-type parameter)
 
 	paramsMap, err := parseParams(req.Params)
 	if err != nil {

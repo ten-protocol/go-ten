@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/accounts"
