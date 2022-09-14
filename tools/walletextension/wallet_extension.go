@@ -41,9 +41,10 @@ const (
 	reqJSONKeyParams    = "params"
 	ReqJSONKeyAddress   = "address"
 	ReqJSONKeySignature = "signature"
-	resJSONKeyID        = "id"
-	resJSONKeyRPCVer    = "jsonrpc"
+	respJSONKeyID       = "id"
+	respJSONKeyRPCVer   = "jsonrpc"
 	RespJSONKeyResult   = "result"
+	respJSONKeyRoot     = "root"
 
 	// CORS-related constants.
 	corsAllowOrigin  = "Access-Control-Allow-Origin"
@@ -223,17 +224,17 @@ func (we *WalletExtension) handleEthJSON(readWriter readwriter.ReadWriter) {
 	}
 
 	respMap := make(map[string]interface{})
-	respMap[resJSONKeyID] = rpcReq.ID
-	respMap[resJSONKeyRPCVer] = jsonrpc.Version
+	respMap[respJSONKeyID] = rpcReq.ID
+	respMap[respJSONKeyRPCVer] = jsonrpc.Version
 	respMap[RespJSONKeyResult] = rpcResp
 
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	// TODO fix this upstream on the decode
-	if result, found := respMap["result"]; found { //nolint
+	if result, found := respMap[RespJSONKeyResult]; found { //nolint
 		if resultMap, ok := result.(map[string]interface{}); ok {
-			if val, foundRoot := resultMap["root"]; foundRoot {
+			if val, foundRoot := resultMap[respJSONKeyRoot]; foundRoot {
 				if val == "0x" {
-					respMap["result"].(map[string]interface{})["root"] = nil
+					respMap[RespJSONKeyResult].(map[string]interface{})[respJSONKeyRoot] = nil
 				}
 			}
 		}

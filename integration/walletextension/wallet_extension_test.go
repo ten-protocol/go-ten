@@ -53,15 +53,16 @@ const (
 	testLogs     = "../.build/wallet_extension/"
 	l2ChainIDHex = "0x309"
 
-	reqJSONKeyTo        = "to"
-	reqJSONKeyFrom      = "from"
-	reqJSONKeyData      = "data"
-	respJSONKeyStatus   = "status"
-	latestBlock         = "latest"
-	statusSuccess       = "0x1"
-	errInsecure         = "enclave could not respond securely to %s request"
-	errSubscribeFail    = "received an eth_subscribe request but the connection does not support subscriptions"
-	errInvalidRPCMethod = "rpc request failed: the method %s does not exist/is not available"
+	reqJSONKeyTo            = "to"
+	reqJSONKeyFrom          = "from"
+	reqJSONKeyData          = "data"
+	respJSONKeyStatus       = "status"
+	respJSONKeyContractAddr = "contractAddress"
+	latestBlock             = "latest"
+	statusSuccess           = "0x1"
+	errInsecure             = "enclave could not respond securely to %s request"
+	errSubscribeFail        = "received an eth_subscribe request but the connection does not support subscriptions"
+	errInvalidRPCMethod     = "rpc request failed: the method %s does not exist/is not available"
 
 	walletExtensionPort   = int(integration.StartPortWalletExtensionTest)
 	walletExtensionPortWS = int(integration.StartPortWalletExtensionTest + 1)
@@ -350,16 +351,6 @@ func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
 	}
 }
 
-func TestCannotSubscribeOverHTTP(t *testing.T) {
-	createWalletExtension(t)
-
-	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
-
-	if !strings.Contains(string(respBody), errSubscribeFail) {
-		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFail, respBody)
-	}
-}
-
 func TestCanMakeRequestOverWS(t *testing.T) {
 	createWalletExtension(t)
 
@@ -382,36 +373,58 @@ func TestCanGetErrorOverWS(t *testing.T) {
 	}
 }
 
-// TODO - #453 - Build out this test as we expand the subscription functionality.
 func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 
 	_, conn := makeWSEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
 
-	var receivedLog []byte
+	// We watch the connection for events...
+	var receivedLogJSON []byte
 	go func() {
 		var err error
-		_, receivedLog, err = conn.ReadMessage()
+		_, receivedLogJSON, err = conn.ReadMessage()
 		if err != nil {
 			panic(fmt.Errorf("could not read log from websocket. Cause: %w", err))
 		}
 	}()
 
-	triggerEvent(t)
+	// ... then trigger an event...
+	txReceiptJSON := triggerEvent(t)
 
-	// We wait up to thirty seconds for the log.
+	// ... and wait up to thirty seconds for the event to be received.
 	for i := 0; i < 30; i++ {
-		if receivedLog != nil {
+		if receivedLogJSON != nil {
 			break
 		}
 		time.Sleep(time.Second)
 	}
-
-	if receivedLog == nil {
+	if receivedLogJSON == nil {
 		t.Fatalf("waited for 30 seconds without receiving a log")
 	}
 
-	// todo - joel - check log contents
+	// We convert the received JSON to a log object.
+	var receivedLog *types.Log
+	err := json.Unmarshal(receivedLogJSON, &receivedLog)
+	if err != nil {
+		t.Fatalf("could not unmarshall received log from JSON")
+	}
+
+	// We check the event we received was emitted by the expected contract.
+	contractAddr := txReceiptJSON[walletextension.RespJSONKeyResult].(map[string]interface{})[respJSONKeyContractAddr].(string)
+	logAddrLowercase := strings.ToLower(contractAddr)
+	if logAddrLowercase != contractAddr {
+		t.Fatalf("Expected event with contract address '%s', got '%s'", logAddrLowercase, contractAddr)
+	}
+}
+
+func TestCannotSubscribeOverHTTP(t *testing.T) {
+	createWalletExtension(t)
+
+	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+
+	if !strings.Contains(string(respBody), errSubscribeFail) {
+		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFail, respBody)
+	}
 }
 
 func createWalletExtensionConfig() *walletextension.Config {
@@ -769,7 +782,7 @@ func fundAccount(dest gethcommon.Address) error {
 
 // Causes an event, to allow us to test subscriptions.
 // TODO - #453 - Introduce a simpler way to cause an event.
-func triggerEvent(t *testing.T) {
+func triggerEvent(t *testing.T) map[string]interface{} {
 	// We cause an event by deploying an ERC20 contract.
 	_, privateKey := registerPrivateKey(t)
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
@@ -781,8 +794,9 @@ func triggerEvent(t *testing.T) {
 	if err != nil {
 		panic(fmt.Errorf("could not sign transaction. Cause: %w", err))
 	}
-	_, err = sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
+	receipt, err := sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return receipt
 }
