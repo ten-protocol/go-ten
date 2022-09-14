@@ -40,25 +40,23 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 	if err = json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
 	}
-
 	if len(subscriptions) != 1 {
 		return fmt.Errorf("expected a single log subscription, received %d", len(subscriptions))
 	}
-
 	subscription := subscriptions[0]
 
 	idBinary, err := id.MarshalBinary()
 	if err != nil {
-		panic(err) // todo - joel - handle better
+		return fmt.Errorf("could not marshall subscription ID to binary to check subscription authentication")
 	}
-	// todo - joel - extract any shared logic
+	// todo - joel - extract any shared logic (see rpcEncryptionManager)
 	recoveredPublicKey, err := crypto.SigToPub(idBinary, subscription.Account.Signature)
 	if err != nil {
 		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
 	}
 	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
 	// todo - joel - check the recovered address matches the account address
-	println(recoveredAddress)
+	println(recoveredAddress.Hex())
 
 	s.subscriptions[id] = &subscription
 	return nil
