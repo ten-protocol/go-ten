@@ -27,7 +27,6 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager) *Subscr
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
-// TODO - #453 - Check each account in the subscription request is authenticated with a signature.
 func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
 	jsonSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
 	if err != nil {
@@ -35,8 +34,13 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 	}
 
 	var subscription common.LogSubscription
-	if err := json.Unmarshal(jsonSubscription, &subscription); err != nil {
+	if err = json.Unmarshal(jsonSubscription, &subscription); err != nil {
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
+	}
+
+	err = s.rpcEncryptionManager.AuthenticateSubscriptionRequest(subscription)
+	if err != nil {
+		return err
 	}
 
 	s.subscriptions[id] = &subscription

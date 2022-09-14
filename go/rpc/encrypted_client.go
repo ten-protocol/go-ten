@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -15,7 +17,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
@@ -45,7 +47,7 @@ type EncRPCClient struct {
 // NewEncRPCClient sets up a client with a viewing key for encrypted communication (this submits the VK to the enclave)
 func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
-	enclPubECDSA, err := crypto.DecompressPubkey(common.Hex2Bytes(enclavePublicKeyHex))
+	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress key for RPC client: %w", err)
 	}
@@ -133,9 +135,12 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
-	// TODO - #453 - Map incoming filters.FilterCriteria to a common.LogSubscription.
+	logSubscription, err := c.createAuthenticatedLogSubscription()
+	if err != nil {
+		return nil, err
+	}
 
-	encryptedParams, err := c.encryptArgs(args[1:]...)
+	encryptedParams, err := c.encryptArgs(logSubscription)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
@@ -172,6 +177,21 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	return subscription, nil
 }
 
+func (c *EncRPCClient) createAuthenticatedLogSubscription() (*common.LogSubscription, error) {
+	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
+	if err != nil {
+		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
+	}
+	logSubscription := common.LogSubscription{
+		SubscriptionAccount: &common.SubscriptionAccount{
+			Account:   c.Account(),
+			Signature: &accountSignature,
+		},
+		// TODO - #453 - Add the incoming filters.FilterCriteria to the common.LogSubscription.
+	}
+	return &logSubscription, nil
+}
+
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	if ctx == nil {
 		return c.obscuroClient.Call(result, method, args...)
@@ -183,7 +203,7 @@ func (c *EncRPCClient) Stop() {
 	c.obscuroClient.Stop()
 }
 
-func (c *EncRPCClient) Account() *common.Address {
+func (c *EncRPCClient) Account() *gethcommon.Address {
 	return c.viewingKey.Account
 }
 
@@ -219,7 +239,7 @@ func (c *EncRPCClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
 	}
-	encryptedResult := common.Hex2Bytes(resultStr)
+	encryptedResult := gethcommon.Hex2Bytes(resultStr)
 
 	decryptedResult, err := c.viewingKey.PrivateKey.Decrypt(encryptedResult, nil, nil)
 	if err != nil {

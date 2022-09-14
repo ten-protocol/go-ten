@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -27,7 +29,7 @@ type EncryptionManager struct {
 	enclavePrivateKeyECIES *ecies.PrivateKey
 	// TODO - Replace with persistent storage.
 	// TODO - Handle multiple viewing keys per address.
-	viewingKeys map[gethcommon.Address]*ecies.PublicKey
+	viewingKeys map[gethcommon.Address]*ecies.PublicKey // Maps account addresses to viewing public keys.
 }
 
 func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) EncryptionManager {
@@ -59,20 +61,20 @@ func (rpc *EncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, sig
 	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
 
 	// We recover the key based on the signed message and the signature.
-	recoveredPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
+	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
 	if err != nil {
 		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
 	}
-	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
+	recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
 
 	// We decompress the viewing key and create the corresponding ECIES key.
 	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
 	if err != nil {
 		return fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err)
 	}
-	eciesPublicKey := ecies.ImportECDSAPublic(viewingKey)
+	viewingKeyECIES := ecies.ImportECDSAPublic(viewingKey)
 
-	rpc.viewingKeys[recoveredAddress] = eciesPublicKey
+	rpc.viewingKeys[recoveredAccountAddress] = viewingKeyECIES
 
 	return nil
 }
@@ -94,4 +96,21 @@ func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, 
 	}
 
 	return encryptedBytes, nil
+}
+
+// AuthenticateSubscriptionRequest checks that a subscription request is authenticated correctly.
+func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription common.LogSubscription) error {
+	accountHashBytes := subscription.SubscriptionAccount.Account.Hash().Bytes()
+
+	recoveredViewingPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.SubscriptionAccount.Signature)
+	if err != nil {
+		return fmt.Errorf("could not recover viewing public key from signature to authenticate subscription. Cause: %w", err)
+	}
+
+	viewingPublicKey := rpc.viewingKeys[*subscription.SubscriptionAccount.Account].ExportECDSA()
+	if !viewingPublicKey.Equal(recoveredViewingPublicKey) {
+		return fmt.Errorf("viewing key used to authenticate subscription did not match viewing key stored by enclave")
+	}
+
+	return nil
 }

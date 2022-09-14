@@ -87,19 +87,22 @@ func suggestAccountClient(req *RPCRequest, accClients map[common.Address]*rpc.En
 		}
 	}
 
+	// TODO - #453 - Add special logic for log subscriptions (should happen before `parseParams`, which cannot handle
+	//  the leading log-type parameter)
+
 	paramsMap, err := parseParams(req.Params)
 	if err != nil {
 		// no further info to deduce calling client
 		return nil
 	}
 
-	// check if request params had a "from" address and if we had a client for that address
-	fromClient, found := checkForFromField(paramsMap, accClients)
-	if found {
-		return fromClient
-	}
-
 	if req.Method == rpc.RPCCall {
+		// check if request params had a "from" address and if we had a client for that address
+		fromClient, found := checkForFromField(paramsMap, accClients)
+		if found {
+			return fromClient
+		}
+
 		// Otherwise, we search the `data` field for an address matching a registered viewing key.
 		addr, err := searchDataFieldForAccount(paramsMap, accClients)
 		if err == nil {
