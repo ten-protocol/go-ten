@@ -27,20 +27,20 @@ type UserConn interface {
 	IsClosed() bool
 }
 
-// UserConnHTTP represents a user's connection over HTTP.
-type UserConnHTTP struct {
+// Represents a user's connection over HTTP.
+type userConnHTTP struct {
 	resp http.ResponseWriter
 	req  *http.Request
 }
 
-// UserConnWS represents a user's connection websockets.
-type UserConnWS struct {
+// Represents a user's connection websockets.
+type userConnWS struct {
 	conn     *websocket.Conn
 	isClosed bool
 }
 
 func NewUserConnHTTP(resp http.ResponseWriter, req *http.Request) UserConn {
-	return &UserConnHTTP{resp: resp, req: req}
+	return &userConnHTTP{resp: resp, req: req}
 }
 
 func NewUserConnWS(resp http.ResponseWriter, req *http.Request) (UserConn, error) {
@@ -52,12 +52,12 @@ func NewUserConnWS(resp http.ResponseWriter, req *http.Request) (UserConn, error
 		return nil, err
 	}
 
-	return &UserConnWS{
+	return &userConnWS{
 		conn: conn,
 	}, nil
 }
 
-func (h *UserConnHTTP) ReadRequest() ([]byte, error) {
+func (h *userConnHTTP) ReadRequest() ([]byte, error) {
 	body, err := io.ReadAll(h.req.Body)
 	if err != nil {
 		return nil, fmt.Errorf("could not read request body: %w", err)
@@ -65,7 +65,7 @@ func (h *UserConnHTTP) ReadRequest() ([]byte, error) {
 	return body, nil
 }
 
-func (h *UserConnHTTP) WriteResponse(msg []byte) error {
+func (h *userConnHTTP) WriteResponse(msg []byte) error {
 	_, err := h.resp.Write(msg)
 	if err != nil {
 		return fmt.Errorf("could not write response: %w", err)
@@ -73,19 +73,19 @@ func (h *UserConnHTTP) WriteResponse(msg []byte) error {
 	return nil
 }
 
-func (h *UserConnHTTP) HandleError(msg string) {
+func (h *userConnHTTP) HandleError(msg string) {
 	httpLogAndSendErr(h.resp, msg)
 }
 
-func (h *UserConnHTTP) SupportsSubscriptions() bool {
+func (h *userConnHTTP) SupportsSubscriptions() bool {
 	return false
 }
 
-func (h *UserConnHTTP) IsClosed() bool {
+func (h *userConnHTTP) IsClosed() bool {
 	return false
 }
 
-func (w *UserConnWS) ReadRequest() ([]byte, error) {
+func (w *userConnWS) ReadRequest() ([]byte, error) {
 	_, msg, err := w.conn.ReadMessage()
 	if err != nil {
 		if websocket.IsCloseError(err) {
@@ -96,7 +96,7 @@ func (w *UserConnWS) ReadRequest() ([]byte, error) {
 	return msg, nil
 }
 
-func (w *UserConnWS) WriteResponse(msg []byte) error {
+func (w *userConnWS) WriteResponse(msg []byte) error {
 	err := w.conn.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {
 		if websocket.IsCloseError(err) {
@@ -108,7 +108,7 @@ func (w *UserConnWS) WriteResponse(msg []byte) error {
 }
 
 // HandleError logs and prints the error, and writes it to the websocket as a JSON object with a single key, "error".
-func (w *UserConnWS) HandleError(msg string) {
+func (w *userConnWS) HandleError(msg string) {
 	log.Error(msg)
 	fmt.Println(msg)
 
@@ -130,11 +130,11 @@ func (w *UserConnWS) HandleError(msg string) {
 	}
 }
 
-func (w *UserConnWS) SupportsSubscriptions() bool {
+func (w *userConnWS) SupportsSubscriptions() bool {
 	return true
 }
 
-func (w *UserConnWS) IsClosed() bool {
+func (w *userConnWS) IsClosed() bool {
 	return w.isClosed
 }
 

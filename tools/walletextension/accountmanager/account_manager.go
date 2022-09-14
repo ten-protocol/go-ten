@@ -240,6 +240,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 		for {
 			if userConn.IsClosed() {
 				subscription.Unsubscribe()
+				return
 			}
 			time.Sleep(100 * time.Millisecond)
 		}

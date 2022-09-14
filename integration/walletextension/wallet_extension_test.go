@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
 	"github.com/gorilla/websocket"
 
@@ -368,8 +368,8 @@ func TestCanGetErrorOverWS(t *testing.T) {
 	respJSON, _ := makeWSEthJSONReqAsJSON(invalidMethod, []string{})
 
 	expectedErr := fmt.Sprintf(errInvalidRPCMethod, invalidMethod)
-	if respJSON[readwriter.RespJSONKeyErr] != expectedErr {
-		t.Fatalf("Expected error '%s', got '%s'", expectedErr, respJSON[readwriter.RespJSONKeyErr])
+	if respJSON[userconn.RespJSONKeyErr] != expectedErr {
+		t.Fatalf("Expected error '%s', got '%s'", expectedErr, respJSON[userconn.RespJSONKeyErr])
 	}
 }
 
