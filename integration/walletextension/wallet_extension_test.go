@@ -429,19 +429,13 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 }
 
-func TestSuccessGasEstimate(t *testing.T) {
+func TestCanEstimateGasAfterSubmittingViewingKey(t *testing.T) {
 	createWalletExtension(t)
 	accountAddr, _ := registerPrivateKey(t)
 	callMsg := datagenerator.CreateCallMsg()
 	callMsg.From = accountAddr
 
-	callMsgBytes, err := json.Marshal(callMsg)
-	if err != nil {
-		t.Fatalf("unable to marshal CallMsg - %s", err)
-	}
-
-	callMsgHex := hexutil.Encode(callMsgBytes)
-	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCEstimateGas, []string{callMsgHex, latestBlock})
+	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCEstimateGas, []interface{}{callMsg, latestBlock})
 
 	if getBalanceJSON[walletextension.RespJSONKeyResult].(string) != "0x12a05f200" {
 		t.Fatalf("unexpected gas")

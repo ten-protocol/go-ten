@@ -99,7 +99,7 @@ func suggestAccountClient(req *RPCRequest, accClients map[common.Address]*rpc.En
 		return fromClient
 	}
 
-	if req.Method == rpc.RPCCall {
+	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
 		// Otherwise, we search the `data` field for an address matching a registered viewing key.
 		addr, err := searchDataFieldForAccount(paramsMap, accClients)
 		if err == nil {
@@ -250,7 +250,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	if req.Method == rpc.RPCCall {
+	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()

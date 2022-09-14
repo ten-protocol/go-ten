@@ -6,41 +6,35 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/events"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/google/uuid"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-
-	"github.com/ethereum/go-ethereum/params"
-
-	"github.com/obscuronet/go-obscuro/go/common/profiler"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
-
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/config"
-
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
-
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
-	obscurocrypto "github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	gethcore "github.com/ethereum/go-ethereum/core"
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 // StatsCollector Todo - replace with a proper framework
@@ -57,7 +51,7 @@ type enclaveImpl struct {
 	blockResolver        db.BlockResolver
 	mempool              mempool.Manager
 	statsCollector       StatsCollector
-	l1Blockchain         *core.BlockChain
+	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
 	subscriptionManager  *events.SubscriptionManager
@@ -65,7 +59,7 @@ type enclaveImpl struct {
 	chain *rollupchain.RollupChain
 
 	txCh          chan *common.L2Tx
-	roundWinnerCh chan *obscurocore.Rollup
+	roundWinnerCh chan *core.Rollup
 	exitCh        chan bool
 
 	// Todo - disabled temporarily until TN1 is released
@@ -79,7 +73,7 @@ type enclaveImpl struct {
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
 	enclavePubKey []byte            // the public key of the above
 
-	transactionBlobCrypto obscurocrypto.TransactionBlobCrypto
+	transactionBlobCrypto crypto.TransactionBlobCrypto
 	profiler              *profiler.Profiler
 }
 
@@ -135,7 +129,7 @@ func NewEnclave(
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// Todo - check the minimum difficulty parameter
-	var l1Blockchain *core.BlockChain
+	var l1Blockchain *gethcore.BlockChain
 	if config.ValidateL1Blocks {
 		if config.GenesisJSON == nil {
 			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
@@ -159,17 +153,17 @@ func NewEnclave(
 	common.LogWithID(nodeShortID, "Generating the Obscuro key")
 
 	// todo - save this to the db
-	enclaveKey, err := crypto.GenerateKey()
+	enclaveKey, err := gethcrypto.GenerateKey()
 	if err != nil {
 		log.Panic("Failed to generate enclave key. Cause: %s", err)
 	}
-	serializedEnclavePubKey := crypto.CompressPubkey(&enclaveKey.PublicKey)
+	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
 	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey))
 
-	obscuroKey := obscurocrypto.GetObscuroKey()
+	obscuroKey := crypto.GetObscuroKey()
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
-	transactionBlobCrypto := obscurocrypto.NewTransactionBlobCryptoImpl()
+	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl()
 
 	obscuroBridge := bridge.New(
 		config.ERC20ContractAddresses[0],
@@ -201,7 +195,7 @@ func NewEnclave(
 		subscriptionManager:   subscriptionManager,
 		chain:                 chain,
 		txCh:                  make(chan *common.L2Tx),
-		roundWinnerCh:         make(chan *obscurocore.Rollup),
+		roundWinnerCh:         make(chan *core.Rollup),
 		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
 		erc20ContractLib:      erc20ContractLib,
@@ -270,7 +264,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) (common.BlockSubmissionResp
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
-	r := obscurocore.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
+	r := core.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
 
 	// only store if the parent exists
 	_, found := e.storage.FetchRollup(r.Header.ParentHash)
@@ -474,9 +468,9 @@ func (e *enclaveImpl) Attestation() *common.AttestationReport {
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 func (e *enclaveImpl) GenerateSecret() common.EncryptedSharedEnclaveSecret {
-	secret := obscurocrypto.GenerateEntropy()
+	secret := crypto.GenerateEntropy()
 	e.storage.StoreSecret(secret)
-	encSec, err := obscurocrypto.EncryptSecret(e.enclavePubKey, secret, e.nodeShortID)
+	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.nodeShortID)
 	if err != nil {
 		log.Panic("failed to encrypt secret. Cause: %s", err)
 	}
@@ -485,7 +479,7 @@ func (e *enclaveImpl) GenerateSecret() common.EncryptedSharedEnclaveSecret {
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
 func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
-	secret, err := obscurocrypto.DecryptSecret(s, e.enclaveKey)
+	secret, err := crypto.DecryptSecret(s, e.enclaveKey)
 	if err != nil {
 		return err
 	}
@@ -511,7 +505,7 @@ func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.Encrypt
 	if secret == nil {
 		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
 	}
-	return obscurocrypto.EncryptSecret(att.PubKey, *secret, e.nodeShortID)
+	return crypto.EncryptSecret(att.PubKey, *secret, e.nodeShortID)
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
@@ -521,7 +515,7 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 func (e *enclaveImpl) StoreAttestation(att *common.AttestationReport) error {
 	common.LogWithID(e.nodeShortID, "Store attestation. Owner: %s", att.Owner)
 	// Store the attestation
-	key, err := crypto.DecompressPubkey(att.PubKey)
+	key, err := gethcrypto.DecompressPubkey(att.PubKey)
 	if err != nil {
 		return fmt.Errorf("failed to parse public key %w", err)
 	}
@@ -572,16 +566,26 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract params from byte slice to array of strings
-	var paramString []string
+	var paramString []interface{}
 	err = json.Unmarshal(paramBytes, &paramString)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
 	}
 
-	// marshall the string into a callMsg
-	callMsg, err := rpc.ExtractCallMsg(gethcommon.Hex2Bytes(paramString[0][2:]))
+	// params must always be [hex of callMsg, block number]
+	if len(paramString) != 2 {
+		return nil, fmt.Errorf("invalid number of params, expected 2 got %d", len(paramString))
+	}
+
+	// convert the params[0] into an ethereum.CallMsg
+	callMsgBytes, err := json.Marshal(paramString[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to deserialize call msg - %w", err)
+		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
+	}
+	var callMsg ethereum.CallMsg
+	err = json.Unmarshal(callMsgBytes, &callMsg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
 	}
 
 	// encrypt the gas cost with the callMsg.From viewing key

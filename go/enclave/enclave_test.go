@@ -16,6 +16,8 @@ import (
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
+	"github.com/stretchr/testify/assert"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -36,28 +38,30 @@ func init() { //nolint:gochecknoinits
 // TestGasEstimation runs the GasEstimation tests
 func TestGasEstimation(t *testing.T) {
 	tests := map[string]func(t *testing.T, w wallet.Wallet, enclave common.Enclave, vk *rpc.ViewingKey){
-		"gasEstimateSuccess":        gasEstimateSuccess,
-		"gasEstimateNoVKRegistered": gasEstimateNoVKRegistered,
-		"gasEstimateNoCallMsgFrom":  gasEstimateNoCallMsgFrom,
-		"gasEstimateInvalidCallMsg": gasEstimateInvalidCallMsg,
+		"gasEstimateSuccess":          gasEstimateSuccess,
+		"gasEstimateNoVKRegistered":   gasEstimateNoVKRegistered,
+		"gasEstimateNoCallMsgFrom":    gasEstimateNoCallMsgFrom,
+		"gasEstimateInvalidCallMsg":   gasEstimateInvalidCallMsg,
+		"gasEstimateInvalidBytes":     gasEstimateInvalidBytes,
+		"gasEstimateInvalidNumParams": gasEstimateInvalidNumParams,
 	}
 
 	for name, test := range tests {
 		// create the enclave
-		randomEnclave := createRandomEnclave()
+		testEnclave := createTestEnclave()
 
 		// create the wallet
 		w := datagenerator.RandomWallet(integration.ObscuroChainID)
 
 		// register the VK with the enclave
-		vk, err := registerWalletViewingKey(t, randomEnclave, w)
+		vk, err := registerWalletViewingKey(t, testEnclave, w)
 		if err != nil {
 			t.Fatalf("unable to register wallets VK - %s", err)
 		}
 
 		// execute the tests
 		t.Run(name, func(t *testing.T) {
-			test(t, w, randomEnclave, vk)
+			test(t, w, testEnclave, vk)
 		})
 	}
 }
@@ -66,33 +70,30 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 	// create the callMsg
 	callMsg := datagenerator.CreateCallMsg()
 	callMsg.From = w.Address()
-	callMsgBytes, err := json.Marshal(callMsg)
-	if err != nil {
-		t.Error(err)
-	}
 
-	// callMsg serialized as a Hex
-	callMsgHex := "0x" + gethcommon.Bytes2Hex(callMsgBytes)
+	// create the request payload
+	req := []interface{}{callMsg, nil}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// callMsg encrypted with the VK
-	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, []byte("[\""+callMsgHex+"\"]"), nil, nil)
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
 	if err != nil {
-		t.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %s", []byte{123}, err)
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
 	}
 
 	// Run gas Estimation
 	gas, err := enclave.EstimateGas(encryptedParams)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// decrypt with the VK
 	decryptedResult, err := vk.PrivateKey.Decrypt(gas, nil, nil)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// parse it to Uint64
@@ -113,81 +114,123 @@ func gasEstimateNoVKRegistered(t *testing.T, _ wallet.Wallet, enclave common.Enc
 	// create the callMsg
 	callMsg := datagenerator.CreateCallMsg()
 	callMsg.From = w.Address()
-	callMsgBytes, err := json.Marshal(callMsg)
-	if err != nil {
-		t.Error(err)
-	}
 
-	// callMsg serialized as a Hex
-	callMsgHex := "0x" + gethcommon.Bytes2Hex(callMsgBytes)
+	// create the request
+	req := []interface{}{callMsg, nil}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// callMsg encrypted with the VK
-	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, []byte("[\""+callMsgHex+"\"]"), nil, nil)
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
 	if err != nil {
-		t.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %s", []byte{123}, err)
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
 	}
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if err == nil {
-		t.Fatal("enclave does not have the viewing key to successfully encrypt")
+	if !assert.ErrorContains(t, err, "could not encrypt bytes because it does not have a viewing key for account") {
+		t.Fatalf("unexpected error - %s", err)
 	}
 }
 
 func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Enclave, _ *rpc.ViewingKey) {
 	// create the callMsg
 	callMsg := datagenerator.CreateCallMsg()
-	callMsgBytes, err := json.Marshal(callMsg)
-	if err != nil {
-		t.Error(err)
-	}
 
-	// callMsg serialized as a Hex
-	callMsgHex := "0x" + gethcommon.Bytes2Hex(callMsgBytes)
+	// create the request
+	req := []interface{}{callMsg, nil}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// callMsg encrypted with the VK
-	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, []byte("[\""+callMsgHex+"\"]"), nil, nil)
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
 	if err != nil {
-		t.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %s", []byte{123}, err)
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
 	}
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if err == nil {
-		t.Fatal("enclave does not have the viewing key to successfully encrypt")
+	if !assert.ErrorContains(t, err, "could not encrypt bytes because it does not have a viewing key for account") {
+		t.Fatalf("unexpected error - %s", err)
 	}
 }
 
 func gasEstimateInvalidCallMsg(t *testing.T, _ wallet.Wallet, enclave common.Enclave, _ *rpc.ViewingKey) {
 	// create a L2Tx instead
 	callMsg := datagenerator.CreateL2Tx()
-	callMsgBytes, err := json.Marshal(callMsg)
-	if err != nil {
-		t.Error(err)
-	}
 
-	// callMsg serialized as a Hex
-	callMsgHex := "0x" + gethcommon.Bytes2Hex(callMsgBytes)
+	// create the request
+	req := []interface{}{callMsg, nil}
+	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// callMsg encrypted with the VK
-	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, []byte("[\""+callMsgHex+"\"]"), nil, nil)
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
 	if err != nil {
-		t.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %s", []byte{123}, err)
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
 	}
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if err == nil {
-		t.Fatal("enclave should not parse invalid params")
+	if !assert.ErrorContains(t, err, "cannot unmarshal") {
+		t.Fatalf("unexpected error - %s", err)
+	}
+}
+
+func gasEstimateInvalidBytes(t *testing.T, w wallet.Wallet, enclave common.Enclave, _ *rpc.ViewingKey) {
+	// create the callMsg
+	callMsg := datagenerator.CreateCallMsg()
+	callMsg.From = w.Address()
+
+	// create the request
+	req := []interface{}{callMsg, nil}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reqBytes = append(reqBytes, []byte("this should break stuff")...)
+
+	// callMsg encrypted with the VK
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
+	if err != nil {
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
+	}
+
+	// Run gas Estimation
+	_, err = enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, err, "invalid character") {
+		t.Fatalf("unexpected error - %s", err)
+	}
+}
+
+func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.Enclave, _ *rpc.ViewingKey) {
+	// create the callMsg
+	callMsg := datagenerator.CreateCallMsg()
+	callMsg.From = w.Address()
+
+	// create the request
+	req := []interface{}{callMsg}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// callMsg encrypted with the VK
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
+	if err != nil {
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
+	}
+
+	// Run gas Estimation
+	_, err = enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, err, "invalid number of params") {
+		t.Fatal("unexpected error")
 	}
 }
 
@@ -209,8 +252,8 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 	return key, enclave.AddViewingKey(encryptedViewingKeyBytes, key.SignedKey)
 }
 
-// createRandomEnclave returns a new instance of the enclave with random values
-func createRandomEnclave() common.Enclave {
+// createTestEnclave returns a test instance of the enclave
+func createTestEnclave() common.Enclave {
 	rndAddr := gethcommon.HexToAddress("contract1")
 	rndAddr2 := gethcommon.HexToAddress("contract2")
 	enclaveConfig := config.EnclaveConfig{
