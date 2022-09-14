@@ -32,6 +32,7 @@ type (
 	EncryptedParamsGetTxReceipt    []byte // As above, but for an RPC getTransactionReceipt request.
 	EncryptedParamsLogSubscription []byte // As above, but for an RPC logs subscription request.
 	EncryptedParamsSendRawTx       []byte // As above, but for an RPC sendRawTransaction request.
+	EncryptedParamsEstimateGas     []byte // As above, but for an RPC estimateGas request.
 
 	EncryptedResponseGetBalance   []byte // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
 	EncryptedResponseCall         []byte // As above, but for an RPC call request.
@@ -40,6 +41,7 @@ type (
 	EncryptedResponseGetTxByHash  []byte // As above, but for an RPC getTransactionByHash request.
 	EncryptedLogSubscription      []byte // As above, but for a log subscription request.
 	EncryptedLogs                 []byte // As above, but for a log subscription response.
+	EncryptedResponseEstimateGas  []byte // As above, but for an RPC estimateGas response.
 
 	Nonce         = uint64
 	EncodedRollup []byte

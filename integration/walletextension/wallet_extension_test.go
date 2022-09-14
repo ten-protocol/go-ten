@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"io"
 	"math/big"
 	"net/http"
@@ -353,6 +354,26 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	if !strings.Contains(string(respBody), errSubscribeFail) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFail, respBody)
 	}
+}
+
+func TestGasEstimate(t *testing.T) {
+	createWalletExtension(t)
+	accountAddr, _ := registerPrivateKey(t)
+	callMsg := datagenerator.CreateCallMsg()
+	callMsg.From = accountAddr
+
+	callMsgBytes, err := json.Marshal(callMsg)
+	if err != nil {
+		t.Fatalf("unable to marshal CallMsg - %s", err)
+	}
+
+	callMsgHex := hexutil.Encode(callMsgBytes)
+	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCEstimateGas, []string{callMsgHex, latestBlock})
+
+	if getBalanceJSON[walletextension.RespJSONKeyResult].(string) != "0x989680" {
+		t.Fatalf("unexpected gas")
+	}
+	fmt.Println(getBalanceJSON[walletextension.RespJSONKeyResult] == "0x989680")
 }
 
 func createWalletExtensionConfig() *walletextension.Config {

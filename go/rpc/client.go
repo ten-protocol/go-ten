@@ -17,6 +17,7 @@ const (
 	RPCNonce                   = "eth_getTransactionCount"
 	RPCGetTxReceipt            = "eth_getTransactionReceipt"
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
+	RPCEstimateGas             = "eth_estimateGas"
 	RPCGetBlockHeaderByHash    = "obscuroscan_getBlockHeaderByHash"
 	RPCGetCurrentRollupHead    = "obscuroscan_getCurrentRollupHead"
 	RPCGetRollup               = "obscuroscan_getRollup"

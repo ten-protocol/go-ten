@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
@@ -532,6 +533,30 @@ func (e *enclaveImpl) Stop() error {
 	}
 
 	return nil
+}
+
+func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
+	}
+
+	var paramString []string
+	err = json.Unmarshal(paramBytes, &paramString)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
+	}
+
+	decryptedCallMsg, err := rpc.ExtractCallMsg(gethcommon.Hex2Bytes(paramString[0][2:]))
+	if err != nil {
+		return nil, fmt.Errorf("unable to deserialize call msg - %w", err)
+	}
+
+	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(decryptedCallMsg.From, []byte(hexutil.EncodeUint64(10_000_000)))
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
+	}
+	return encryptedGasCost, nil
 }
 
 func (e *enclaveImpl) checkGas(tx *types.Transaction) error {

@@ -94,10 +94,21 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 	return &encryptedResponseHex, nil
 }
 
-// EstimateGas is a placeholder for an RPC method required by MetaMask/Remix.
-func (api *EthereumAPI) EstimateGas(_ context.Context, _ interface{}, _ *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
-	// TODO - Return a non-dummy gas estimate.
-	return 5_000_000_000, nil
+// EstimateGas tries to estimate the gas needed to execute a
+// specific transaction based on the pending state. There is no guarantee that this is the
+// true gas limit requirement as other transactions may be added or removed by miners, but
+// it should provide a basis for setting a reasonable default.
+func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*string, error) {
+	encryptedResponse, err := api.host.EnclaveClient().EstimateGas(encryptedParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if encryptedResponse == nil {
+		return nil, nil //nolint:nilnil
+	}
+	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
+	return &encryptedResponseHex, nil
 }
 
 // SendRawTransaction sends the encrypted transaction.
