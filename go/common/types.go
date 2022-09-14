@@ -185,8 +185,8 @@ func (h *Header) Hash() L2RootHash {
 }
 
 type LogSubscription struct {
-	Accounts []*SubscriptionAccount
-	Filters  []*filters.FilterCriteria
+	Account *SubscriptionAccount
+	Filters *filters.FilterCriteria
 }
 
 // SubscriptionAccount is an authenticated account used when subscribing to logs.

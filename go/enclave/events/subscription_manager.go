@@ -35,6 +35,7 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
 	}
 
+	// TODO - #453 - Check if we can submit the subscriptions as a single item, rather than a list.
 	var subscriptions []common.LogSubscription
 	if err = json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
 		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
@@ -46,20 +47,18 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 
 	subscription := subscriptions[0]
 
-	for _, account := range subscription.Accounts {
-		idBinary, err := id.MarshalBinary()
-		if err != nil {
-			panic(err) // todo - joel - handle better
-		}
-		// todo - joel - extract any shared logic
-		recoveredPublicKey, err := crypto.SigToPub(idBinary, account.Signature)
-		if err != nil {
-			return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
-		}
-		recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
-		// todo - joel - check the recovered address matches the account address
-		println(recoveredAddress)
+	idBinary, err := id.MarshalBinary()
+	if err != nil {
+		panic(err) // todo - joel - handle better
 	}
+	// todo - joel - extract any shared logic
+	recoveredPublicKey, err := crypto.SigToPub(idBinary, subscription.Account.Signature)
+	if err != nil {
+		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
+	}
+	recoveredAddress := crypto.PubkeyToAddress(*recoveredPublicKey)
+	// todo - joel - check the recovered address matches the account address
+	println(recoveredAddress)
 
 	s.subscriptions[id] = &subscription
 	return nil
