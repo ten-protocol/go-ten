@@ -591,7 +591,6 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 }
 
 // Distributes logs to subscribed clients.
-// TODO - #453 - Distribute logs specifically based on subscription IDs, rather than sending all logs to everyone.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	for _, encryptedLogs := range result.SubscribedLogs {
 		// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not

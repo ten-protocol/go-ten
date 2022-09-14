@@ -67,9 +67,12 @@ func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash common.H
 // NonceAt retrieves the nonce for the account registered on this client (due to obscuro privacy restrictions,
 // nonce cannot be requested for other accounts)
 func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uint64, error) {
-	var result hexutil.Uint64
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.RPCNonce, ac.account, toBlockNumArg(blockNumber))
-	return uint64(result), err
+	var result string
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.RPCGetTransactionCount, ac.account, toBlockNumArg(blockNumber))
+	if err != nil {
+		return 0, err
+	}
+	return hexutil.DecodeUint64(result)
 }
 
 func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
@@ -90,8 +93,7 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	if err != nil {
 		return big.NewInt(0), err
 	}
-	balance, err := hexutil.DecodeBig(result)
-	return balance, err
+	return hexutil.DecodeBig(result)
 }
 
 func (ac *AuthObsClient) Address() common.Address {

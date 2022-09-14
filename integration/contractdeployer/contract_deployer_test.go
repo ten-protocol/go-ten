@@ -43,7 +43,7 @@ var (
 		ContractName:      contractdeployer.GuessingGameContract,
 		ConstructorParams: []string{guessingGameParamOne, guessingGameParamTwo},
 	}
-	nodeAddress = fmt.Sprintf("%s:%d", config.NodeHost, config.NodePort)
+	nodeAddress = fmt.Sprintf("ws://%s:%d", config.NodeHost, config.NodePort)
 )
 
 func TestCanDeployGuessingGameContract(t *testing.T) {

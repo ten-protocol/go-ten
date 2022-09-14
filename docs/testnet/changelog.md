@@ -6,6 +6,9 @@
     command line options respectively for each. For more information see the
     [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) documentation. 
 
+* Transaction receipts:
+  * Only return receipts for transactions which were included in a canonical rollup.
+
 ## September 2022-09-07
 * Tokens / ERC20 contracts
   * The ERC20 'HOC' and 'POC' tokens are now funded with 18 decimal places of precision. Previously funding of 50 

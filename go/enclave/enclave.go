@@ -1,12 +1,15 @@
 package enclave
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 
@@ -331,14 +334,30 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 	return resp, err
 }
 
-func (e *enclaveImpl) Nonce(address gethcommon.Address) uint64 {
-	// todo user encryption
-	hs := e.storage.FetchHeadState()
-	if hs == nil {
-		return 0
+func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (common.EncryptedResponseGetTxCount, error) {
+	var nonce uint64
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, err
 	}
-	s := e.storage.CreateStateDB(hs.HeadRollup)
-	return s.GetNonce(address)
+
+	address, err := rpc.ExtractAddress(paramBytes)
+	if err != nil {
+		return nil, err
+	}
+	hs := e.storage.FetchHeadState()
+	if hs != nil {
+		// todo: we should return an error when head state is not available, but for current test situations with race
+		// 		conditions we allow it to return zero while head state is uninitialized
+		s := e.storage.CreateStateDB(hs.HeadRollup)
+		nonce = s.GetNonce(address)
+	}
+
+	encCount, err := e.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(hexutil.EncodeUint64(nonce)))
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionCount request. Cause: %w", err)
+	}
+	return encCount, nil
 }
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
@@ -393,13 +412,24 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We retrieve the viewing key address.
-	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
+	tx, txRollupHash, txRollupHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
+
+	// Only return receipts for transactions included in the canonical chain.
+	r, f := e.storage.FetchRollupByHeight(txRollupHeight)
+	if !f {
+		return nil, fmt.Errorf("transaction not included in the canonical chain")
+	}
+
+	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
+		return nil, fmt.Errorf("transaction not included in the canonical chain")
+	}
+
 	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
