@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/readwriter"
 
@@ -213,6 +214,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 	}
 
+	// We listen for incoming messages on the subscription.
 	go func() {
 		for {
 			select {
@@ -233,7 +235,15 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 		}
 	}()
 
-	// TODO - #453 - Unsubscribe the subscription if the websocket is closed.
+	// We periodically check if the websocket is closed, and terminate the subscription.
+	go func() {
+		for {
+			if readWriter.IsClosed() {
+				subscription.Unsubscribe()
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
 
 	return nil
 }

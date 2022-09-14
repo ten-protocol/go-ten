@@ -24,6 +24,7 @@ type ReadWriter interface {
 	WriteResponse(msg []byte) error
 	HandleError(msg string)
 	SupportsSubscriptions() bool
+	IsClosed() bool
 }
 
 // HTTPReadWriter is a ReadWriter over HTTP.
@@ -34,7 +35,8 @@ type HTTPReadWriter struct {
 
 // WSReadWriter is a ReadWriter over websockets.
 type WSReadWriter struct {
-	conn *websocket.Conn
+	conn     *websocket.Conn
+	isClosed bool
 }
 
 func NewHTTPReadWriter(resp http.ResponseWriter, req *http.Request) ReadWriter {
@@ -79,9 +81,16 @@ func (h *HTTPReadWriter) SupportsSubscriptions() bool {
 	return false
 }
 
+func (h *HTTPReadWriter) IsClosed() bool {
+	return false
+}
+
 func (w *WSReadWriter) ReadRequest() ([]byte, error) {
 	_, msg, err := w.conn.ReadMessage()
 	if err != nil {
+		if websocket.IsCloseError(err) {
+			w.isClosed = true
+		}
 		return nil, fmt.Errorf("could not read request: %w", err)
 	}
 	return msg, nil
@@ -90,6 +99,9 @@ func (w *WSReadWriter) ReadRequest() ([]byte, error) {
 func (w *WSReadWriter) WriteResponse(msg []byte) error {
 	err := w.conn.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {
+		if websocket.IsCloseError(err) {
+			w.isClosed = true
+		}
 		return fmt.Errorf("could not write response: %w", err)
 	}
 	return nil
@@ -110,6 +122,9 @@ func (w *WSReadWriter) HandleError(msg string) {
 
 	err = w.conn.WriteMessage(websocket.TextMessage, errMsg)
 	if err != nil {
+		if websocket.IsCloseError(err) {
+			w.isClosed = true
+		}
 		log.Error("could not write error message to websocket")
 		return
 	}
@@ -117,6 +132,10 @@ func (w *WSReadWriter) HandleError(msg string) {
 
 func (w *WSReadWriter) SupportsSubscriptions() bool {
 	return true
+}
+
+func (w *WSReadWriter) IsClosed() bool {
+	return w.isClosed
 }
 
 // Logs the error, prints it to the console, and returns the error over HTTP.
