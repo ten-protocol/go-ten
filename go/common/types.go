@@ -193,7 +193,7 @@ type LogSubscription struct {
 type SubscriptionAccount struct {
 	// The account the events relate to.
 	Account *common.Address
-	// A signature over the subscription ID using the private viewing key. Prevents attackers from subscribing to
+	// A signature over the account address using the private viewing key. Prevents attackers from subscribing to
 	// (encrypted) logs for other accounts to see the pattern of logs.
 	Signature *[]byte
 }
