@@ -180,33 +180,37 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 }
 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
-	if len(args) < 2 {
-		return nil, fmt.Errorf("no filter criteria object passed when creating log subscription")
-	}
-
-	filterCriteriaJSON, err := json.Marshal(args[1])
-	if err != nil {
-		return nil, fmt.Errorf("could not marshall filter criteria to JSON. Cause: %w", err)
-	}
-
-	filterCriteria := &filters.FilterCriteria{}
-	err = json.Unmarshal(filterCriteriaJSON, &filterCriteria)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshall filter criteria to JSON. Cause: %w", err)
-	}
-
 	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
 	if err != nil {
 		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
 	}
 
-	return &common.LogSubscription{
+	logSubscription := &common.LogSubscription{
 		SubscriptionAccount: &common.SubscriptionAccount{
 			Account:   c.Account(),
 			Signature: &accountSignature,
 		},
-		Filter: filterCriteria,
-	}, nil
+	}
+
+	// If there are less than two arguments, it means no filter criteria was passed.
+	if len(args) < 2 {
+		logSubscription.Filter = &filters.FilterCriteria{}
+	} else {
+		filterCriteriaJSON, err := json.Marshal(args[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not marshall filter criteria to JSON. Cause: %w", err)
+		}
+
+		filterCriteria := &filters.FilterCriteria{}
+		err = json.Unmarshal(filterCriteriaJSON, &filterCriteria)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshall filter criteria to JSON. Cause: %w", err)
+		}
+
+		logSubscription.Filter = filterCriteria
+	}
+
+	return logSubscription, nil
 }
 
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
