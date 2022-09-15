@@ -3,10 +3,11 @@ package test
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/host/node"

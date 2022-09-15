@@ -43,17 +43,14 @@ import (
 )
 
 const (
-	testLogs     = "../.build/wallet_extension/"
-	l2ChainIDHex = "0x309"
+	testLogs = "../.build/wallet_extension/"
 
 	reqJSONKeyTo            = "to"
-	reqJSONKeyFrom          = "from"
 	reqJSONKeyData          = "data"
 	respJSONKeyStatus       = "status"
 	respJSONKeyContractAddr = "contractAddress"
 	latestBlock             = "latest"
 	statusSuccess           = "0x1"
-	errInsecure             = "enclave could not respond securely to %s request"
 	errInvalidRPCMethod     = "rpc request failed: the method %s does not exist/is not available"
 
 	walletExtensionPort   = int(integration.StartPortWalletExtensionTest)
@@ -74,8 +71,7 @@ var (
 	walletExtensionAddrWS   = fmt.Sprintf("ws://%s:%d", network.Localhost, walletExtensionPortWS)
 	walletExtensionConfig   = createWalletExtensionConfig()
 
-	dummyAccountAddress = gethcommon.HexToAddress("0x8D97689C9818892B700e27F316cc3E41e17fBeb9")
-	deployERC20Tx       = types.LegacyTx{
+	deployERC20Tx = types.LegacyTx{
 		Gas:      1025_000_000,
 		GasPrice: gethcommon.Big1,
 		Data:     erc20contract.L2BytecodeWithDefaultSupply("TST"),
@@ -92,18 +88,6 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Exit(m.Run())
-}
-
-func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-	test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
-	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCGetBalance)
-
-	if !strings.Contains(string(respBody), expectedErr) {
-		t.Fatalf("Expected error message to contain \"%s\", got \"%s\"", expectedErr, respBody)
-	}
 }
 
 func TestCanCallWithoutSettingFromField(t *testing.T) {
@@ -123,49 +107,6 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 
 	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
 		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
-	}
-}
-
-func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-	test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
-	// deposit any funds in the ERC20 contract.
-	balanceData := erc20contractlib.CreateBalanceOfData(dummyAccountAddress)
-	convertedData := (hexutil.Bytes)(balanceData)
-	reqParams := map[string]interface{}{
-		reqJSONKeyTo: bridge.HOCContract,
-		// We send the request from a different address than the one we created a viewing key for.
-		reqJSONKeyFrom: dummyAccountAddress.Hex(),
-		reqJSONKeyData: convertedData,
-	}
-
-	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCCall, []interface{}{reqParams, latestBlock})
-	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCCall)
-
-	if !strings.Contains(string(respBody), expectedErr) {
-		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
-	}
-}
-
-func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-	test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	// We submit a transaction using another account.
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
-	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
-	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployERC20Tx)
-
-	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCSendRawTransaction, []interface{}{txBinaryHex})
-	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCSendRawTransaction)
-
-	if !strings.Contains(string(respBody), expectedErr) {
-		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -46,7 +47,7 @@ func (api *DummyEthAPI) setViewingKey(viewingKeyHexBytes []byte) error {
 	return nil
 }
 
-func (api *DummyEthAPI) ChainId() (*hexutil.Big, error) {
+func (api *DummyEthAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
 	chainID, err := hexutil.DecodeBig(l2ChainIDHex)
 	return (*hexutil.Big)(chainID), err
 }
