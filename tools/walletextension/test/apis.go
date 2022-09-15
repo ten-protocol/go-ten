@@ -8,6 +8,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -67,6 +68,11 @@ func (api *DummyEthAPI) GetTransactionReceipt(context.Context, common.EncryptedP
 
 func (api *DummyEthAPI) SendRawTransaction(context.Context, common.EncryptedParamsSendRawTx) (string, error) {
 	return api.encryptedSuccess()
+}
+
+func (api *DummyEthAPI) EstimateGas(context.Context, common.EncryptedParamsEstimateGas, *rpc.BlockNumberOrHash) (*string, error) {
+	encryptedSuccess, err := api.encryptedSuccess()
+	return &encryptedSuccess, err
 }
 
 // Returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
