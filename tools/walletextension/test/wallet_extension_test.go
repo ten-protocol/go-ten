@@ -1,25 +1,21 @@
 package test
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
-	"time"
 
+	"github.com/ethereum/go-ethereum/node"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/gorilla/websocket"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
 
 var (
-	upgrader       = websocket.Upgrader{}
 	localhost      = "127.0.0.1"
 	walExtPortHTTP = integration.StartPortWalletExtensionUnitTest
 	walExtPortWS   = integration.StartPortWalletExtensionUnitTest + 1
@@ -29,8 +25,7 @@ var (
 )
 
 func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
-	shutdown, err := createWalExt()
-	defer shutdown()
+	err := createWalExt(t)
 	if err != nil {
 		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
 	}
@@ -46,8 +41,7 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 }
 
 func TestCannotSubscribeOverHTTP(t *testing.T) {
-	shutdown, err := createWalExt()
-	defer shutdown()
+	err := createWalExt(t)
 	if err != nil {
 		t.Fatalf("could not create wallet extension")
 	}
@@ -58,16 +52,15 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 }
 
-func createWalExt() (func(), error) {
-	server, err := createDummyHost()
+func createWalExt(t *testing.T) error {
+	err := createDummyHost(t)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
-		server.Shutdown(context.Background()) //nolint:errcheck
-		return nil, fmt.Errorf("could not create persistence file for wallet extension tests")
+		return fmt.Errorf("could not create persistence file for wallet extension tests")
 	}
 	cfg := walletextension.Config{
 		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", nodePortWS),
@@ -75,42 +68,34 @@ func createWalExt() (func(), error) {
 	}
 
 	walExt := walletextension.NewWalletExtension(cfg)
+	t.Cleanup(walExt.Shutdown)
 	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
 
 	err = WaitForEndpoint(walExtAddr + walletextension.PathReady)
 	if err != nil {
-		walExt.Shutdown()
-		server.Shutdown(context.Background()) //nolint:errcheck
-		return nil, err
+		return err
 	}
 
-	return func() {
-		server.Shutdown(context.Background()) //nolint:errcheck
-		walExt.Shutdown()
-	}, nil
+	return nil
 }
 
-// Creates a dummy host that the wallet extension can connect to.
-func createDummyHost() (*http.Server, error) {
-	serveMux := http.NewServeMux()
-	serveMux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {})
-	serveMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			panic("could not upgrade websocket connection in request")
-		}
-	})
-	server := &http.Server{Addr: fmt.Sprintf("%s:%d", localhost, nodePortWS), Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
-
-	go func() {
-		server.ListenAndServe() //nolint:errcheck
-	}()
-
-	err := WaitForEndpoint(fmt.Sprintf("http://%s:%d/ready", localhost, nodePortWS))
+// Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
+func createDummyHost(t *testing.T) error {
+	cfg := node.Config{
+		WSHost:    localhost,
+		WSPort:    int(nodePortWS),
+		WSOrigins: []string{"*"},
+	}
+	rpcServerNode, err := node.New(&cfg)
 	if err != nil {
-		server.Shutdown(context.Background()) //nolint:errcheck
-		return nil, fmt.Errorf("could not retrieve host endpoint after waiting")
+		return fmt.Errorf("could not create new client server. Cause: %s", err)
+	}
+	t.Cleanup(func() { rpcServerNode.Close() })
+
+	err = rpcServerNode.Start()
+	if err != nil {
+		return fmt.Errorf("could not create new client server. Cause: %s", err)
 	}
 
-	return server, nil
+	return nil
 }
