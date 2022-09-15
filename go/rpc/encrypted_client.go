@@ -108,7 +108,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return ErrNilResponse
 	}
 
-	// method is sensitive, so we decrypt it before unmarshalling the result
+	// method is sensitive, so we decrypt it before unmarshaling the result
 	decrypted, err := c.decryptResponse(rawResult)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt response for %s call - %w", method, err)
@@ -164,7 +164,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				var decryptedLogs []*types.Log
 				err = json.Unmarshal(receivedLog.Data, &decryptedLogs)
 				if err != nil {
-					log.Error("could not unmarshall log from subscription. Cause: %s", err)
+					log.Error("could not unmarshal log from subscription. Cause: %s", err)
 				}
 
 				for _, decryptedLog := range decryptedLogs {
@@ -197,18 +197,19 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	if len(args) < 2 {
 		logSubscription.Filter = &filters.FilterCriteria{}
 	} else {
+		// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria.
 		filterCriteriaJSON, err := json.Marshal(args[1])
 		if err != nil {
-			return nil, fmt.Errorf("could not marshall filter criteria to JSON. Cause: %w", err)
+			return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
 		}
 
-		filterCriteria := &filters.FilterCriteria{}
-		err = json.Unmarshal(filterCriteriaJSON, &filterCriteria)
+		filterCriteria := filters.FilterCriteria{}
+		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
 		if err != nil {
-			return nil, fmt.Errorf("could not unmarshall filter criteria to JSON. Cause: %w", err)
+			return nil, fmt.Errorf("could not unmarshal filter criteria to JSON. Cause: %w", err)
 		}
 
-		logSubscription.Filter = filterCriteria
+		logSubscription.Filter = &filterCriteria
 	}
 
 	return logSubscription, nil
@@ -328,7 +329,7 @@ func assertResultIsPointer(result interface{}) {
 			panic("result MUST be a pointer else Call cannot populate it")
 		}
 		if reflect.ValueOf(result).IsNil() {
-			// we panic if result is a nil pointer, cannot unmarshall json to it. Pointer must be initialized.
+			// we panic if result is a nil pointer, cannot unmarshal json to it. Pointer must be initialized.
 			// if you see this then the calling code probably used: `var resObj *ResType` instead of: `var resObj ResType`
 			panic("result pointer must be initialized else Call cannot populate it")
 		}
