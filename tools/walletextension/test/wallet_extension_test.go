@@ -117,6 +117,34 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 	}
 }
 
+func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T) {
+	createDummyHost(t)
+	createWalExt(t)
+
+	// todo - joel - update naming below
+	// todo - joel - get rid of equivalent integration test
+
+	// We submit viewing keys for ten arbitrary accounts.
+	var viewingKeys [][]byte
+	for i := 0; i < 10; i++ {
+		_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
+		viewingKeys = append(viewingKeys, viewingKeyBytes)
+	}
+
+	// We set the API to decrypt with an arbitrary key from the list we just generated.
+	arbitraryPrivateKey := viewingKeys[len(viewingKeys)/2]
+	err := dummyEthAPI.setViewingKey(arbitraryPrivateKey)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{}})
+
+	if !strings.Contains(string(respBody), successMsg) {
+		t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
+	}
+}
+
 func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	createDummyHost(t)
 	shutdown := createWalExt(t)
