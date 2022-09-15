@@ -38,6 +38,12 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 
 	walExt := walletextension.NewWalletExtension(cfg)
 	defer walExt.Shutdown()
+
+	err = WaitForWalletExtension(walExtAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
 
 	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})

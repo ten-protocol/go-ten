@@ -485,28 +485,12 @@ func createWalletExtensionWithConfig(t *testing.T, config *walletextension.Confi
 	t.Cleanup(walletExtension.Shutdown)
 
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err := waitForWalletExtension()
+	err := test.WaitForWalletExtension(walletExtensionAddrHTTP)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return walletExtension
-}
-
-// Waits for wallet extension to be ready. Times out after three seconds.
-func waitForWalletExtension() error {
-	retries := 30
-	for i := 0; i < retries; i++ {
-		resp, err := http.Get(walletExtensionAddrHTTP + walletextension.PathReady) //nolint:noctx
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
-		if err == nil {
-			return nil
-		}
-		time.Sleep(300 * time.Millisecond)
-	}
-	return fmt.Errorf("could not establish connection to wallet extension")
 }
 
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body as JSON.
@@ -660,7 +644,7 @@ func createObscuroNetwork() (func(), error) {
 	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err = waitForWalletExtension()
+	err = test.WaitForWalletExtension(walletExtensionAddrHTTP)
 	if err != nil {
 		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}

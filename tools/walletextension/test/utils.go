@@ -6,7 +6,26 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
+
+// WaitForWalletExtension waits for wallet extension to be ready. Times out after three seconds.
+func WaitForWalletExtension(walExtAddr string) error {
+	retries := 30
+	for i := 0; i < retries; i++ {
+		resp, err := http.Get(walExtAddr + walletextension.PathReady) //nolint:noctx
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+		if err == nil {
+			return nil
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	return fmt.Errorf("could not establish connection to wallet extension")
+}
 
 // MakeHTTPEthJSONReq makes an Ethereum JSON RPC request over HTTP and returns the response body.
 func MakeHTTPEthJSONReq(address string, method string, params interface{}) []byte {
