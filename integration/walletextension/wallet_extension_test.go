@@ -49,7 +49,6 @@ const (
 	respJSONKeyContractAddr = "contractAddress"
 	latestBlock             = "latest"
 	statusSuccess           = "0x1"
-	errInvalidRPCMethod     = "rpc request failed: the method %s does not exist/is not available"
 
 	walletExtensionPort   = int(integration.StartPortWalletExtensionTest)
 	walletExtensionPortWS = int(integration.StartPortWalletExtensionTest + 1)
