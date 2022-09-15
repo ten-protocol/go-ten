@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // WaitForEndpoint waits for the endpoint to be available. Times out after three seconds.
@@ -45,6 +47,39 @@ func MakeHTTPEthJSONReq(address string, method string, params interface{}) []byt
 		panic(err)
 	}
 	return respBody
+}
+
+// MakeWSEthJSONReq makes an Ethereum JSON RPC request over websockets and returns the response body.
+func MakeWSEthJSONReq(address string, method string, params interface{}) ([]byte, *websocket.Conn) {
+	conn, resp, err := websocket.DefaultDialer.Dial(address, nil)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
+		panic(fmt.Errorf("received error response from wallet extension: %w", err))
+	}
+
+	reqBody := PrepareRequestBody(method, params)
+	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
+	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
+		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
+	}
+
+	_, respBody, err := conn.ReadMessage()
+	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
+		panic(fmt.Errorf("received error response when reading from wallet extension websocket: %w", err))
+	}
+
+	return respBody, conn
 }
 
 // PrepareRequestBody formats a method and its parameters as a Ethereum JSON RPC request.

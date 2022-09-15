@@ -23,6 +23,8 @@ const (
 	reqJSONKeyData      = "data"
 	ethCallPaddedArgLen = 64
 	ethCallAddrPadding  = "000000000000000000000000"
+
+	ErrNoViewingKey = "method %s cannot be called with an unauthorised client - no signed viewing keys found"
 )
 
 // AccountManager provides a single location for code that helps wallet extension in determining the appropriate
@@ -72,7 +74,7 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, 
 
 	default: // no clients registered, use the unauthenticated one
 		if rpc.IsSensitiveMethod(rpcReq.Method) {
-			return fmt.Errorf("method %s cannot be called with an unauthorised client - no signed viewing keys found", rpcReq.Method)
+			return fmt.Errorf(ErrNoViewingKey, rpcReq.Method)
 		}
 		return m.unauthedClient.Call(rpcResp, rpcReq.Method, rpcReq.Params...)
 	}
