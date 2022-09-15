@@ -88,13 +88,13 @@ func createDummyHost(t *testing.T) error {
 	}
 	rpcServerNode, err := node.New(&cfg)
 	if err != nil {
-		return fmt.Errorf("could not create new client server. Cause: %s", err)
+		return fmt.Errorf("could not create new client server. Cause: %w", err)
 	}
 	t.Cleanup(func() { rpcServerNode.Close() })
 
 	err = rpcServerNode.Start()
 	if err != nil {
-		return fmt.Errorf("could not create new client server. Cause: %s", err)
+		return fmt.Errorf("could not create new client server. Cause: %w", err)
 	}
 
 	return nil
