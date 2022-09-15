@@ -63,7 +63,8 @@ const (
 	latestBlock             = "latest"
 	statusSuccess           = "0x1"
 	errInsecure             = "enclave could not respond securely to %s request"
-	errSubscribeFail        = "received an eth_subscribe request but the connection does not support subscriptions"
+	errSubscribeFailHTTP    = "received an eth_subscribe request but the connection does not support subscriptions"
+	errSubscribeFailVK      = "method eth_subscribe cannot be called with an unauthorised client - no signed viewing keys found"
 	errInvalidRPCMethod     = "rpc request failed: the method %s does not exist/is not available"
 
 	walletExtensionPort   = int(integration.StartPortWalletExtensionTest)
@@ -377,6 +378,7 @@ func TestCanGetErrorOverWS(t *testing.T) {
 
 func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
+	registerPrivateKey(t)
 
 	_, conn := makeWSEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
 
@@ -419,13 +421,25 @@ func TestCanSubscribeForLogs(t *testing.T) {
 	}
 }
 
+func TestCannotSubscribeForLogsWithoutSubmittingViewingKey(t *testing.T) {
+	// By creating the wallet extension from a fresh config, we get a new persistence path, and thus do not
+	// accidentally reload existing viewing keys, which would cause the subscription attempt to succeed.
+	createWalletExtensionWithConfig(t, createWalletExtensionConfig())
+
+	respBody, _ := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+
+	if !strings.Contains(string(respBody), errSubscribeFailVK) {
+		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFailVK, respBody)
+	}
+}
+
 func TestCannotSubscribeOverHTTP(t *testing.T) {
 	createWalletExtension(t)
 
 	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
 
-	if !strings.Contains(string(respBody), errSubscribeFail) {
-		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFail, respBody)
+	if !strings.Contains(string(respBody), errSubscribeFailHTTP) {
+		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFailHTTP, respBody)
 	}
 }
 
@@ -459,7 +473,12 @@ func createWalletExtensionConfig() *walletextension.Config {
 
 // Creates and serves a wallet extension.
 func createWalletExtension(t *testing.T) *walletextension.WalletExtension {
-	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
+	return createWalletExtensionWithConfig(t, walletExtensionConfig)
+}
+
+// Creates and serves a wallet extension with custom configuration.
+func createWalletExtensionWithConfig(t *testing.T, config *walletextension.Config) *walletextension.WalletExtension {
+	walletExtension := walletextension.NewWalletExtension(*config)
 	t.Cleanup(walletExtension.Shutdown)
 
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)

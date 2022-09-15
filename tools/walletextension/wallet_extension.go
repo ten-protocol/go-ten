@@ -175,7 +175,11 @@ func setUpLogs(logPath string) {
 }
 
 // Used to check whether the server is ready.
-func (we *WalletExtension) handleReady(http.ResponseWriter, *http.Request) {}
+func (we *WalletExtension) handleReady(resp http.ResponseWriter, req *http.Request) {
+	if we.enableCORS(resp, req) {
+		return
+	}
+}
 
 // Handles the Ethereum JSON-RPC request over HTTP.
 func (we *WalletExtension) handleEthJSONHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -303,6 +307,10 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 
 // Generates a new viewing key.
 func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
+	if we.enableCORS(resp, req) {
+		return
+	}
+
 	userConn := userconn.NewUserConnHTTP(resp, req)
 
 	body, err := userConn.ReadRequest()
@@ -345,6 +353,10 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 
 // Submits the viewing key and signed bytes to the enclave.
 func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
+	if we.enableCORS(resp, req) {
+		return
+	}
+
 	userConn := userconn.NewUserConnHTTP(resp, req)
 
 	body, err := userConn.ReadRequest()
