@@ -20,8 +20,6 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/ethereum/go-ethereum/eth/filters"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
 	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
@@ -426,7 +424,7 @@ func TestCannotSubscribeForLogsWithoutSubmittingViewingKey(t *testing.T) {
 	// accidentally reload existing viewing keys, which would cause the subscription attempt to succeed.
 	createWalletExtensionWithConfig(t, createWalletExtensionConfig())
 
-	respBody, _ := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+	respBody, _ := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{}})
 
 	if !strings.Contains(string(respBody), errSubscribeFailVK) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFailVK, respBody)
@@ -436,7 +434,7 @@ func TestCannotSubscribeForLogsWithoutSubmittingViewingKey(t *testing.T) {
 func TestCannotSubscribeOverHTTP(t *testing.T) {
 	createWalletExtension(t)
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{}})
 
 	if !strings.Contains(string(respBody), errSubscribeFailHTTP) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFailHTTP, respBody)
