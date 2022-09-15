@@ -64,18 +64,16 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 	}
 
 	for _, method := range rpc.SensitiveMethods {
-		var params interface{}
+		// Subscriptions have to be tested separately, as they return results differently.
 		if method == rpc.RPCSubscribe {
-			params = []interface{}{rpc.RPCSubscriptionTypeLogs}
-		} else {
-			params = []interface{}{map[string]interface{}{}}
+			continue
 		}
 
 		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
-		respBody, _ := MakeWSEthJSONReq(walExtAddrWS, method, params)
+		respBody, _ := MakeWSEthJSONReq(walExtAddrWS, method, []interface{}{map[string]interface{}{}})
 
-		if !strings.Contains(string(respBody), "success") { // todo - joel - use constant
-			t.Fatalf("expected response containing '%s', got '%s'", "success", string(respBody)) // todo - joel - use constant
+		if !strings.Contains(string(respBody), successMsg) {
+			t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
 		}
 	}
 }

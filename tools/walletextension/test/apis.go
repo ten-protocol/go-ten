@@ -11,6 +11,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+const (
+	successMsg = "success"
+)
+
 // DummyObscuroAPI provides dummies for operations defined in the `obscuro_` namespace.
 type DummyObscuroAPI struct{}
 
@@ -19,7 +23,7 @@ func (api *DummyObscuroAPI) AddViewingKey([]byte, []byte) error {
 }
 
 // DummyEthAPI provides dummies for the RPC operations defined in the `eth_` namespace. For each sensitive RPC
-// operation, it returns the message "success", encrypted with the viewing key set via `setViewingKey`.
+// operation, it returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
 type DummyEthAPI struct {
 	viewingKey *ecies.PublicKey
 }
@@ -61,12 +65,12 @@ func (api *DummyEthAPI) GetTransactionReceipt(context.Context, common.EncryptedP
 	return &encryptedSuccess, err
 }
 
-func (api *DummyEthAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
+func (api *DummyEthAPI) SendRawTransaction(context.Context, common.EncryptedParamsSendRawTx) (string, error) {
 	return api.encryptedSuccess()
 }
 
-// Returns the message "success", encrypted with the viewing key set via `setViewingKey`.
+// Returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
 func (api *DummyEthAPI) encryptedSuccess() (string, error) {
-	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, []byte("success"), nil, nil) // todo - joel - use constant
+	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, []byte(successMsg), nil, nil)
 	return gethcommon.Bytes2Hex(encryptedBytes), err
 }
