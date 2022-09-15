@@ -56,6 +56,8 @@ const (
 	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 )
 
+var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe)
+
 //go:embed static
 var staticFiles embed.FS
 
@@ -214,7 +216,8 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	}
 
 	if rpcReq.Method == rpc.RPCSubscribe && !userConn.SupportsSubscriptions() {
-		userConn.HandleError(fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe))
+		userConn.HandleError(ErrSubscribeFailHTTP)
+		return
 	}
 
 	var rpcResp interface{}

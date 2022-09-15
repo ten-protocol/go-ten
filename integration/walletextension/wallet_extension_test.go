@@ -16,6 +16,7 @@ import (
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/test"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
@@ -62,7 +63,6 @@ const (
 	latestBlock             = "latest"
 	statusSuccess           = "0x1"
 	errInsecure             = "enclave could not respond securely to %s request"
-	errSubscribeFailHTTP    = "received an eth_subscribe request but the connection does not support subscriptions"
 	errSubscribeFailVK      = "method eth_subscribe cannot be called with an unauthorised client - no signed viewing keys found"
 	errInvalidRPCMethod     = "rpc request failed: the method %s does not exist/is not available"
 
@@ -117,7 +117,7 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 func TestCannotGetBalanceWithoutSubmittingViewingKey(t *testing.T) {
 	createWalletExtension(t)
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
 	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCGetBalance)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -140,7 +140,7 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	createWalletExtension(t)
 	registerPrivateKey(t)
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCGetBalance, []string{dummyAccountAddress.Hex(), latestBlock})
 	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCGetBalance)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -167,7 +167,7 @@ func TestCannotCallWithoutSubmittingViewingKey(t *testing.T) {
 		reqJSONKeyData: "0x" + gethcommon.Bytes2Hex(transferTxBytes),
 	}
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCCall, []interface{}{reqParams, latestBlock})
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCCall, []interface{}{reqParams, latestBlock})
 	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCCall)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -231,7 +231,7 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 		reqJSONKeyData: convertedData,
 	}
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCCall, []interface{}{reqParams, latestBlock})
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCCall, []interface{}{reqParams, latestBlock})
 	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCCall)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -249,7 +249,7 @@ func TestCannotSubmitTxWithoutSubmittingViewingKey(t *testing.T) {
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
 	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployERC20Tx)
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCSendRawTransaction, []interface{}{txBinaryHex})
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCSendRawTransaction, []interface{}{txBinaryHex})
 	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCSendRawTransaction)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -303,7 +303,7 @@ func TestCannotSubmitTxFromAnotherAddressAfterSubmittingViewingKey(t *testing.T)
 	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
 	txBinaryHex := signAndSerialiseTransaction(txWallet, &deployERC20Tx)
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCSendRawTransaction, []interface{}{txBinaryHex})
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCSendRawTransaction, []interface{}{txBinaryHex})
 	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCSendRawTransaction)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -432,16 +432,6 @@ func TestCannotSubscribeForLogsWithoutSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-func TestCannotSubscribeOverHTTP(t *testing.T) {
-	createWalletExtension(t)
-
-	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{}})
-
-	if !strings.Contains(string(respBody), errSubscribeFailHTTP) {
-		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFailHTTP, respBody)
-	}
-}
-
 func TestCanEstimateGasAfterSubmittingViewingKey(t *testing.T) {
 	createWalletExtension(t)
 	accountAddr, _ := registerPrivateKey(t)
@@ -460,7 +450,7 @@ func TestCannotEstimateGasWithoutSubmittingViewingKey(t *testing.T) {
 
 	callMsg := datagenerator.CreateCallMsg()
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCEstimateGas, []interface{}{callMsg, latestBlock})
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, rpc.RPCEstimateGas, []interface{}{callMsg, latestBlock})
 	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCEstimateGas)
 
 	if !strings.Contains(string(respBody), expectedErr) {
@@ -494,7 +484,7 @@ func createWalletExtensionWithConfig(t *testing.T, config *walletextension.Confi
 	t.Cleanup(walletExtension.Shutdown)
 
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err := waitForWalletExtension()
+	err := test.WaitForEndpoint(walletExtensionAddrHTTP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -502,48 +492,10 @@ func createWalletExtensionWithConfig(t *testing.T, config *walletextension.Confi
 	return walletExtension
 }
 
-// Waits for wallet extension to be ready. Times out after three seconds.
-func waitForWalletExtension() error {
-	retries := 30
-	for i := 0; i < retries; i++ {
-		resp, err := http.Get(walletExtensionAddrHTTP + walletextension.PathReady) //nolint:noctx
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
-		if err == nil {
-			return nil
-		}
-		time.Sleep(300 * time.Millisecond)
-	}
-	return fmt.Errorf("could not establish connection to wallet extension")
-}
-
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body as JSON.
 func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]interface{} {
-	respBody := makeHTTPEthJSONReq(method, params)
+	respBody := test.MakeHTTPEthJSONReq(walletExtensionAddrHTTP, method, params)
 	return convertRespBodyToJSON(respBody)
-}
-
-// Makes an Ethereum JSON RPC request over HTTP and returns the response body.
-func makeHTTPEthJSONReq(method string, params interface{}) []byte {
-	reqBody := prepareRequestBody(method, params)
-
-	resp, err := http.Post(walletExtensionAddrHTTP, "text/html", reqBody) //nolint:noctx,gosec
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		panic(fmt.Errorf("received error response from wallet extension: %w", err))
-	}
-	if resp == nil {
-		panic("did not receive a response from the wallet extension")
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	return respBody
 }
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body as JSON.
@@ -565,7 +517,7 @@ func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Con
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
-	reqBody := prepareRequestBody(method, params)
+	reqBody := test.PrepareRequestBody(method, params)
 	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
 	if err != nil {
 		if conn != nil {
@@ -583,19 +535,6 @@ func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Con
 	}
 
 	return respBody, conn
-}
-
-func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
-	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"params":  params,
-		"id":      "1",
-	})
-	if err != nil {
-		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
-	}
-	return bytes.NewBuffer(reqBodyBytes)
 }
 
 // Converts the response body bytes to JSON.
@@ -704,7 +643,7 @@ func createObscuroNetwork() (func(), error) {
 	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err = waitForWalletExtension()
+	err = test.WaitForEndpoint(walletExtensionAddrHTTP)
 	if err != nil {
 		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}
