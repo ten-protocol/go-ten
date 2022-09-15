@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -14,7 +15,8 @@ import (
 )
 
 const (
-	successMsg = "success"
+	successMsg   = "success"
+	l2ChainIDHex = "0x309"
 )
 
 // DummyObscuroAPI provides dummies for operations defined in the `obscuro_` namespace.
@@ -43,6 +45,11 @@ func (api *DummyEthAPI) setViewingKey(viewingKeyHexBytes []byte) error {
 	}
 	api.viewingKey = ecies.ImportECDSAPublic(viewingKey)
 	return nil
+}
+
+func (api *DummyEthAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
+	chainID, err := hexutil.DecodeBig(l2ChainIDHex)
+	return (*hexutil.Big)(chainID), err
 }
 
 func (api *DummyEthAPI) Call(context.Context, common.EncryptedParamsCall) (string, error) {
