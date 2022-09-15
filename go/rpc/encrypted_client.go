@@ -28,7 +28,7 @@ const (
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
-// for these methods, the RPC method's requests and responses should be encrypted
+// SensitiveMethods for which the RPC requests and responses should be encrypted
 var SensitiveMethods = []string{
 	RPCCall,
 	RPCGetBalance,

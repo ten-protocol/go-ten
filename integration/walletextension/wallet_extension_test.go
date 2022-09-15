@@ -296,16 +296,6 @@ func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
 	}
 }
 
-func TestCanMakeRequestOverWS(t *testing.T) {
-	createWalletExtension(t)
-
-	respJSON, _ := makeWSEthJSONReqAsJSON(rpc.RPCChainID, []string{})
-
-	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
-		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
-	}
-}
-
 func TestCanGetErrorOverWS(t *testing.T) {
 	createWalletExtension(t)
 
@@ -418,41 +408,8 @@ func makeHTTPEthJSONReqAsJSON(method string, params interface{}) map[string]inte
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body as JSON.
 func makeWSEthJSONReqAsJSON(method string, params interface{}) (map[string]interface{}, *websocket.Conn) {
-	respBody, conn := makeWSEthJSONReq(method, params)
+	respBody, conn := test.MakeWSEthJSONReq(walletExtensionAddrWS, method, params)
 	return convertRespBodyToJSON(respBody), conn
-}
-
-// Makes an Ethereum JSON RPC request over websockets and returns the response body.
-func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Conn) {
-	conn, resp, err := websocket.DefaultDialer.Dial(walletExtensionAddrWS, nil)
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
-		panic(fmt.Errorf("received error response from wallet extension: %w", err))
-	}
-
-	reqBody := test.PrepareRequestBody(method, params)
-	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
-	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
-		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
-	}
-
-	_, respBody, err := conn.ReadMessage()
-	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
-		panic(fmt.Errorf("received error response when reading from wallet extension websocket: %w", err))
-	}
-
-	return respBody, conn
 }
 
 // Converts the response body bytes to JSON.

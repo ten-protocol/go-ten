@@ -3,11 +3,13 @@ package test
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/gorilla/websocket"
@@ -23,18 +25,21 @@ var (
 	walExtPortWS   = integration.StartPortWalletExtensionUnitTest + 1
 	nodePortWS     = integration.StartPortWalletExtensionUnitTest + 2
 	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
+	walExtAddrWS   = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
 )
 
 func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	shutdown, err := createWalExt()
 	defer shutdown()
 	if err != nil {
-		t.Fatalf("could not create wallet extension")
+		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
 	}
 
 	for _, method := range rpc.SensitiveMethods {
-		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{})
-		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey+"\n", method)) {
+		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
+		respBody, _ := MakeWSEthJSONReq(walExtAddrWS, method, []interface{}{})
+
+		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey, method)) {
 			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(accountmanager.ErrNoViewingKey, method), string(respBody))
 		}
 	}
@@ -87,14 +92,15 @@ func createWalExt() (func(), error) {
 
 // Creates a dummy host that the wallet extension can connect to.
 func createDummyHost() (*http.Server, error) {
-	server := &http.Server{Addr: fmt.Sprintf("%s:%d", localhost, nodePortWS)} //nolint:gosec
-	http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {})
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {})
+	serveMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			panic("could not upgrade websocket connection in request")
 		}
 	})
+	server := &http.Server{Addr: fmt.Sprintf("%s:%d", localhost, nodePortWS), Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
 
 	go func() {
 		server.ListenAndServe() //nolint:errcheck
