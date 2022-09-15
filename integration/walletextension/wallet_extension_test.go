@@ -57,8 +57,7 @@ const (
 	nodeRPCWSPort         = networkStartPort + network.DefaultHostRPCWSOffset
 
 	// Returned by the EVM to indicate a zero result.
-	zeroResult  = "0x0000000000000000000000000000000000000000000000000000000000000000"
-	zeroBalance = "0x0"
+	zeroResult = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 	faucetAlloc = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
@@ -104,33 +103,6 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 
 	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
 		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
-	}
-}
-
-func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) {
-	createWalletExtension(t)
-
-	// We submit a viewing key for a random account.
-	var accountAddrs []string
-	for i := 0; i < 10; i++ {
-		privateKey, err := crypto.GenerateKey()
-		if err != nil {
-			t.Fatal(err)
-		}
-		accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey).String()
-		_, err = test.GenerateAndSubmitViewingKey(walletExtensionAddrHTTP, accountAddr, privateKey)
-		if err != nil {
-			t.Fatalf(err.Error())
-		}
-		accountAddrs = append(accountAddrs, accountAddr)
-	}
-
-	// We request the balance of a random account about halfway through the list.
-	randAccountAddr := accountAddrs[len(accountAddrs)/2]
-	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCGetBalance, []string{randAccountAddr, latestBlock})
-
-	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
-		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
 	}
 }
 

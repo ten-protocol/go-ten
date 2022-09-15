@@ -121,9 +121,6 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 	createDummyHost(t)
 	createWalExt(t)
 
-	// todo - joel - update naming below
-	// todo - joel - get rid of equivalent integration test
-
 	// We submit viewing keys for ten arbitrary accounts.
 	var viewingKeys [][]byte
 	for i := 0; i < 10; i++ {
@@ -132,8 +129,8 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 	}
 
 	// We set the API to decrypt with an arbitrary key from the list we just generated.
-	arbitraryPrivateKey := viewingKeys[len(viewingKeys)/2]
-	err := dummyEthAPI.setViewingKey(arbitraryPrivateKey)
+	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
+	err := dummyEthAPI.setViewingKey(arbitraryViewingKey)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
