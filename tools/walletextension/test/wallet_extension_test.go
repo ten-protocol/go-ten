@@ -3,8 +3,10 @@ package test
 import (
 	"context"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -22,6 +24,21 @@ var (
 	nodePortWS     = integration.StartPortWalletExtensionUnitTest + 2
 	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
 )
+
+func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
+	shutdown, err := createWalExt()
+	defer shutdown()
+	if err != nil {
+		t.Fatalf("could not create wallet extension")
+	}
+
+	for _, method := range rpc.SensitiveMethods {
+		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{})
+		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey+"\n", method)) {
+			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(accountmanager.ErrNoViewingKey, method), string(respBody))
+		}
+	}
+}
 
 func TestCannotSubscribeOverHTTP(t *testing.T) {
 	shutdown, err := createWalExt()
