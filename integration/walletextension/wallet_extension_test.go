@@ -485,7 +485,7 @@ func createWalletExtensionWithConfig(t *testing.T, config *walletextension.Confi
 	t.Cleanup(walletExtension.Shutdown)
 
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err := test.WaitForWalletExtension(walletExtensionAddrHTTP)
+	err := test.WaitForEndpoint(walletExtensionAddrHTTP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -644,7 +644,7 @@ func createObscuroNetwork() (func(), error) {
 	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
 	defer walletExtension.Shutdown()
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
-	err = test.WaitForWalletExtension(walletExtensionAddrHTTP)
+	err = test.WaitForEndpoint(walletExtensionAddrHTTP)
 	if err != nil {
 		return obscuroNetwork.TearDown, fmt.Errorf("failed to create test Obscuro network. Cause: %w", err)
 	}

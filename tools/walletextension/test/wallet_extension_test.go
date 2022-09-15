@@ -37,7 +37,10 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 }
 
 func createWalExt() (func(), error) {
-	server := createDummyHost()
+	server, err := createDummyHost()
+	if err != nil {
+		return nil, err
+	}
 
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
@@ -52,7 +55,7 @@ func createWalExt() (func(), error) {
 	walExt := walletextension.NewWalletExtension(cfg)
 	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
 
-	err = WaitForWalletExtension(walExtAddr)
+	err = WaitForEndpoint(walExtAddr + walletextension.PathReady)
 	if err != nil {
 		walExt.Shutdown()
 		server.Shutdown(context.Background()) //nolint:errcheck
@@ -66,8 +69,9 @@ func createWalExt() (func(), error) {
 }
 
 // Creates a dummy host that the wallet extension can connect to.
-func createDummyHost() *http.Server {
+func createDummyHost() (*http.Server, error) {
 	server := &http.Server{Addr: fmt.Sprintf("%s:%d", localhost, nodePortWS)} //nolint:gosec
+	http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -79,5 +83,11 @@ func createDummyHost() *http.Server {
 		server.ListenAndServe() //nolint:errcheck
 	}()
 
-	return server
+	err := WaitForEndpoint(fmt.Sprintf("http://%s:%d/ready", localhost, nodePortWS))
+	if err != nil {
+		server.Shutdown(context.Background()) //nolint:errcheck
+		return nil, fmt.Errorf("could not retrieve host endpoint after waiting")
+	}
+
+	return server, nil
 }

@@ -7,15 +7,13 @@ import (
 	"io"
 	"net/http"
 	"time"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
 
-// WaitForWalletExtension waits for wallet extension to be ready. Times out after three seconds.
-func WaitForWalletExtension(walExtAddr string) error {
+// WaitForEndpoint waits for the endpoint to be available. Times out after three seconds.
+func WaitForEndpoint(addr string) error {
 	retries := 30
 	for i := 0; i < retries; i++ {
-		resp, err := http.Get(walExtAddr + walletextension.PathReady) //nolint:noctx
+		resp, err := http.Get(addr) //nolint:noctx,gosec
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
 		}
