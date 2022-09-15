@@ -5,8 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"reflect"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -179,18 +180,19 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 }
 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
-	// todo - joel - handle case of no first arg
-	// todo - joel - do some manual testing to check if fields are picked up properly
+	if len(args) < 2 {
+		return nil, fmt.Errorf("no filter criteria object passed when creating log subscription")
+	}
 
 	filterCriteriaJSON, err := json.Marshal(args[1])
 	if err != nil {
-		panic(err) // todo - joel - fix
+		return nil, fmt.Errorf("could not marshall filter criteria to JSON. Cause: %w", err)
 	}
 
 	filterCriteria := &filters.FilterCriteria{}
-	err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+	err = json.Unmarshal(filterCriteriaJSON, &filterCriteria)
 	if err != nil {
-		panic(err) // todo - joel - fix
+		return nil, fmt.Errorf("could not unmarshall filter criteria to JSON. Cause: %w", err)
 	}
 
 	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
