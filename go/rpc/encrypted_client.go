@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ethereum/go-ethereum/eth/filters"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -106,7 +108,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return ErrNilResponse
 	}
 
-	// method is sensitive, so we decrypt it before unmarshalling the result
+	// method is sensitive, so we decrypt it before unmarshaling the result
 	decrypted, err := c.decryptResponse(rawResult)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt response for %s call - %w", method, err)
@@ -136,7 +138,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
 	}
 
-	logSubscription, err := c.createAuthenticatedLogSubscription()
+	logSubscription, err := c.createAuthenticatedLogSubscription(args)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +164,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				var decryptedLogs []*types.Log
 				err = json.Unmarshal(receivedLog.Data, &decryptedLogs)
 				if err != nil {
-					log.Error("could not unmarshall log from subscription. Cause: %s", err)
+					log.Error("could not unmarshal log from subscription. Cause: %s", err)
 				}
 
 				for _, decryptedLog := range decryptedLogs {
@@ -178,19 +180,39 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	return subscription, nil
 }
 
-func (c *EncRPCClient) createAuthenticatedLogSubscription() (*common.LogSubscription, error) {
+func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
 	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
 	if err != nil {
 		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
 	}
-	logSubscription := common.LogSubscription{
+
+	logSubscription := &common.LogSubscription{
 		SubscriptionAccount: &common.SubscriptionAccount{
 			Account:   c.Account(),
 			Signature: &accountSignature,
 		},
-		// TODO - #453 - Add the incoming filters.FilterCriteria to the common.LogSubscription.
 	}
-	return &logSubscription, nil
+
+	// If there are less than two arguments, it means no filter criteria was passed.
+	if len(args) < 2 {
+		logSubscription.Filter = &filters.FilterCriteria{}
+	} else {
+		// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria.
+		filterCriteriaJSON, err := json.Marshal(args[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+		}
+
+		filterCriteria := filters.FilterCriteria{}
+		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal filter criteria to JSON. Cause: %w", err)
+		}
+
+		logSubscription.Filter = &filterCriteria
+	}
+
+	return logSubscription, nil
 }
 
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
@@ -307,7 +329,7 @@ func assertResultIsPointer(result interface{}) {
 			panic("result MUST be a pointer else Call cannot populate it")
 		}
 		if reflect.ValueOf(result).IsNil() {
-			// we panic if result is a nil pointer, cannot unmarshall json to it. Pointer must be initialized.
+			// we panic if result is a nil pointer, cannot unmarshal json to it. Pointer must be initialized.
 			// if you see this then the calling code probably used: `var resObj *ResType` instead of: `var resObj ResType`
 			panic("result pointer must be initialized else Call cannot populate it")
 		}

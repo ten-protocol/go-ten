@@ -14,14 +14,13 @@ import (
 	"testing"
 	"time"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/test"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
 	"github.com/gorilla/websocket"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
@@ -380,7 +379,7 @@ func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 	registerPrivateKey(t)
 
-	_, conn := makeWSEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+	_, conn := makeWSEthJSONReqAsJSON(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{}})
 
 	// We watch the connection for events...
 	var receivedLogJSON []byte
@@ -426,7 +425,7 @@ func TestCannotSubscribeForLogsWithoutSubmittingViewingKey(t *testing.T) {
 	// accidentally reload existing viewing keys, which would cause the subscription attempt to succeed.
 	createWalletExtensionWithConfig(t, createWalletExtensionConfig())
 
-	respBody, _ := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+	respBody, _ := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{}})
 
 	if !strings.Contains(string(respBody), errSubscribeFailVK) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFailVK, respBody)
@@ -785,4 +784,13 @@ func triggerEvent(t *testing.T) map[string]interface{} {
 		t.Fatal(err)
 	}
 	return receipt
+}
+
+// A structure that JSON-serialises to the expected format for subscription filter criteria.
+type filterCriteriaJSON struct {
+	BlockHash *gethcommon.Hash     `json:"blockHash"`
+	FromBlock *gethrpc.BlockNumber `json:"fromBlock"`
+	ToBlock   *gethrpc.BlockNumber `json:"toBlock"`
+	Addresses interface{}          `json:"address"`
+	Topics    []interface{}        `json:"topics"`
 }
