@@ -94,16 +94,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-
-	respJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCChainID, []string{})
-
-	if respJSON[walletextension.RespJSONKeyResult] != l2ChainIDHex {
-		t.Fatalf("Expected chainId of %s, got %s", l2ChainIDHex, respJSON[walletextension.RespJSONKeyResult])
-	}
-}
-
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	createWalletExtension(t)
 	test.RegisterPrivateKey(t, walletExtensionAddrHTTP)

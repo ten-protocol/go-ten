@@ -31,6 +31,19 @@ var (
 	dummyEthAPI    = &DummyEthAPI{}
 )
 
+func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
+	err := createWalExt(t)
+	if err != nil {
+		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
+	}
+
+	respBody, _ := MakeWSEthJSONReq(walExtAddrWS, rpc.RPCChainID, []interface{}{})
+
+	if !strings.Contains(string(respBody), l2ChainIDHex) {
+		t.Fatalf("expected response containing '%s', got '%s'", l2ChainIDHex, string(respBody))
+	}
+}
+
 func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	err := createWalExt(t)
 	if err != nil {
