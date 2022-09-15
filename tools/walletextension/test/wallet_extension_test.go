@@ -2,11 +2,12 @@ package test
 
 import (
 	"fmt"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/host/node"
 	"os"
 	"strings"
 	"testing"
+
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/host/node"
 
 	gethnode "github.com/ethereum/go-ethereum/node"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
