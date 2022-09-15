@@ -3,14 +3,15 @@ package test
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/gorilla/websocket"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
-	"net/http"
-	"os"
-	"testing"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 
 func TestCannotSubscribeOverHTTP(t *testing.T) {
 	server := createDummyHost()
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(context.Background()) //nolint:errcheck
 
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
@@ -47,7 +48,7 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 
 // Creates a dummy host that the wallet extension can connect to.
 func createDummyHost() *http.Server {
-	server := &http.Server{Addr: fmt.Sprintf("%s:%d", localhost, nodePortWS)}
+	server := &http.Server{Addr: fmt.Sprintf("%s:%d", localhost, nodePortWS)} //nolint:gosec
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -56,7 +57,7 @@ func createDummyHost() *http.Server {
 	})
 
 	go func() {
-		server.ListenAndServe()
+		server.ListenAndServe() //nolint:errcheck
 	}()
 
 	return server

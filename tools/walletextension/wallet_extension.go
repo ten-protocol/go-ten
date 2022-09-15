@@ -56,9 +56,7 @@ const (
 	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 )
 
-var (
-	ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe)
-)
+var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe)
 
 //go:embed static
 var staticFiles embed.FS
