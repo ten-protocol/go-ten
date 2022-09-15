@@ -10,7 +10,6 @@ import (
 	"time"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/test"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -105,17 +104,6 @@ func TestCanMakeNonSensitiveRequestWithoutSubmittingViewingKey(t *testing.T) {
 	}
 }
 
-func TestCanGetOwnBalanceAfterSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-	accountAddr, _, _ := test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCGetBalance, []string{accountAddr.String(), latestBlock})
-
-	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
-		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
-	}
-}
-
 func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 	createWalletExtension(t)
 	test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
@@ -125,27 +113,6 @@ func TestCannotGetAnothersBalanceAfterSubmittingViewingKey(t *testing.T) {
 
 	if !strings.Contains(string(respBody), expectedErr) {
 		t.Fatalf("Expected error message to contain \"%s\", got \"%s\"", expectedErr, respBody)
-	}
-}
-
-func TestCanCallAfterSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-	accountAddress, _, _ := test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
-	// deposit any funds in the ERC20 contract.
-	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
-	convertedData := (hexutil.Bytes)(balanceData)
-	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.HOCContract.Hex(),
-		reqJSONKeyFrom: accountAddress.String(),
-		reqJSONKeyData: convertedData,
-	}
-
-	callJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCCall, []interface{}{reqParams, latestBlock})
-
-	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
-		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
 	}
 }
 
@@ -189,40 +156,6 @@ func TestCannotCallForAnotherAddressAfterSubmittingViewingKey(t *testing.T) {
 
 	if !strings.Contains(string(respBody), expectedErr) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", expectedErr, respBody)
-	}
-}
-
-func TestCanSubmitTxAndGetTxReceiptAndTxAfterSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-	_, privateKey, _ := test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	txWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), privateKey)
-	err := fundAccount(txWallet.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
-	signedTx, err := txWallet.SignTransaction(&deployERC20Tx)
-	if err != nil {
-		panic(fmt.Errorf("could not sign transaction. Cause: %w", err))
-	}
-
-	// We check the transaction receipt contains the correct transaction hash.
-	txReceiptJSON, err := sendTransactionAndAwaitConfirmation(txWallet, deployERC20Tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	txReceiptResult := fmt.Sprintf("%s", txReceiptJSON[walletextension.RespJSONKeyResult])
-	expectedTxReceiptJSON := fmt.Sprintf("transactionHash:%s", signedTx.Hash())
-	if !strings.Contains(txReceiptResult, expectedTxReceiptJSON) {
-		t.Fatalf("Expected transaction receipt containing %s, got %s", expectedTxReceiptJSON, txReceiptResult)
-	}
-
-	// We check we can retrieve the transaction by hash.
-	getTxJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCGetTransactionByHash, []string{signedTx.Hash().Hex()})
-	getTxJSONResult := fmt.Sprintf("%s", getTxJSON[walletextension.RespJSONKeyResult])
-	expectedGetTxJSON := fmt.Sprintf("hash:%s", signedTx.Hash())
-	if !strings.Contains(getTxJSONResult, expectedGetTxJSON) {
-		t.Fatalf("Expected transaction containing %s, got %s", expectedGetTxJSON, getTxJSONResult)
 	}
 }
 
@@ -342,19 +275,6 @@ func TestCanSubscribeForLogs(t *testing.T) {
 	logAddrLowercase := strings.ToLower(contractAddr)
 	if logAddrLowercase != contractAddr {
 		t.Fatalf("Expected event with contract address '%s', got '%s'", logAddrLowercase, contractAddr)
-	}
-}
-
-func TestCanEstimateGasAfterSubmittingViewingKey(t *testing.T) {
-	createWalletExtension(t)
-	accountAddr, _, _ := test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-	callMsg := datagenerator.CreateCallMsg()
-	callMsg.From = accountAddr
-
-	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCEstimateGas, []interface{}{callMsg, latestBlock})
-
-	if getBalanceJSON[walletextension.RespJSONKeyResult].(string) != "0x12a05f200" {
-		t.Fatalf("unexpected gas")
 	}
 }
 
