@@ -456,6 +456,19 @@ func TestCanEstimateGasAfterSubmittingViewingKey(t *testing.T) {
 	}
 }
 
+func TestCannotEstimateGasWithoutSubmittingViewingKey(t *testing.T) {
+	createWalletExtension(t)
+
+	callMsg := datagenerator.CreateCallMsg()
+
+	respBody := makeHTTPEthJSONReq(rpc.RPCEstimateGas, []interface{}{callMsg, latestBlock})
+	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCEstimateGas)
+
+	if !strings.Contains(string(respBody), expectedErr) {
+		t.Fatalf("Expected error message to contain \"%s\", got \"%s\"", expectedErr, respBody)
+	}
+}
+
 func createWalletExtensionConfig() *walletextension.Config {
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {

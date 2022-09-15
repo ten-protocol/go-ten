@@ -572,7 +572,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
 	}
 
-	// params must always be [hex of callMsg, block number]
+	// params must always be [callMsg, block number]
 	if len(paramString) != 2 {
 		return nil, fmt.Errorf("invalid number of params, expected 2 got %d", len(paramString))
 	}
@@ -592,7 +592,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	// TODO hook the evm gas estimation
 	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From, []byte(hexutil.EncodeUint64(5_000_000_000)))
 	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
+		return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
 	}
 	return encryptedGasCost, nil
 }
