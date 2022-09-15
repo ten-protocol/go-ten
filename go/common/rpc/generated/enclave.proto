@@ -84,6 +84,9 @@ service EnclaveProto {
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
 
   rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse) {}
+
+  // EstimateGas returns the estimation of gas used for the given transactions
+  rpc EstimateGas(EstimateGasRequest) returns (EstimateGasResponse) {}
 }
 
 message IsReadyRequest {}
@@ -245,6 +248,14 @@ message UnsubscribeRequest {
   bytes id = 1;
 }
 message UnsubscribeResponse {}
+
+message EstimateGasRequest {
+  bytes encryptedParams = 1;
+}
+
+message EstimateGasResponse {
+  bytes encryptedResponse = 1;
+}
 
 // Nested message types.
 

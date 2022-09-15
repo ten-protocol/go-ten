@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -134,4 +135,14 @@ func ExtractCallParamData(callParams []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
 	}
 	return data, nil
+}
+
+// ExtractCallMsg unmarshalls a slice of bytes into an ethereum.CallMsg
+func ExtractCallMsg(callMsgBytes []byte) (*ethereum.CallMsg, error) {
+	var callMsg ethereum.CallMsg
+	err := json.Unmarshal(callMsgBytes, &callMsg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse bytes into CallMsg - %w", err)
+	}
+	return &callMsg, nil
 }

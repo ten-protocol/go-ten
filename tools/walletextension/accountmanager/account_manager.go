@@ -253,7 +253,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	if req.Method == rpc.RPCCall {
+	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
 		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
 		//	and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
@@ -277,7 +277,8 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
-	if callParams[reqJSONKeyFrom] != nil {
+	// TODO remove this and use the json marshalled objects
+	if callParams[reqJSONKeyFrom] != nil || callParams["From"] != nil {
 		return args, nil
 	}
 

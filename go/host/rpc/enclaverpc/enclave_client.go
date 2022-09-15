@@ -438,3 +438,16 @@ func (c *Client) Unsubscribe(id uuid.UUID) error {
 	})
 	return err
 }
+
+func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.EstimateGas(timeoutCtx, &generated.EstimateGasRequest{
+		EncryptedParams: encryptedParams,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.EncryptedResponse, nil
+}
