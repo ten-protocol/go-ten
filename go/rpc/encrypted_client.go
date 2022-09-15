@@ -29,7 +29,7 @@ const (
 )
 
 // for these methods, the RPC method's requests and responses should be encrypted
-var sensitiveMethods = []string{
+var SensitiveMethods = []string{
 	RPCCall,
 	RPCGetBalance,
 	RPCGetTransactionByHash,
@@ -312,7 +312,7 @@ func (c *EncRPCClient) registerViewingKey() error {
 
 // IsSensitiveMethod indicates whether the RPC method's requests and responses should be encrypted.
 func IsSensitiveMethod(method string) bool {
-	for _, m := range sensitiveMethods {
+	for _, m := range SensitiveMethods {
 		if m == method {
 			return true
 		}
