@@ -1,7 +1,9 @@
 package test
 
 import (
+	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"os"
 	"strings"
 	"testing"
@@ -19,7 +21,8 @@ import (
 )
 
 const (
-	localhost = "127.0.0.1"
+	localhost        = "127.0.0.1"
+	errFailedDecrypt = "failed to decrypt result with viewing key"
 )
 
 var (
@@ -85,6 +88,40 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 
 		if !strings.Contains(string(respBody), successMsg) {
 			t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
+		}
+	}
+}
+
+func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T) {
+	err := createWalExt(t)
+	if err != nil {
+		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
+	}
+
+	RegisterPrivateKey(t, walExtAddr)
+
+	// We set the API to decrypt with a key different to the viewing key we just submitted.
+	arbitraryPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatalf(fmt.Sprintf("failed to generate private key. Cause: %s", err))
+	}
+	arbitraryPublicKeyBytesHex := hex.EncodeToString(crypto.CompressPubkey(&arbitraryPrivateKey.PublicKey))
+	err = dummyEthAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	for _, method := range rpc.SensitiveMethods {
+		// Subscriptions have to be tested separately, as they return results differently.
+		if method == rpc.RPCSubscribe {
+			continue
+		}
+
+		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
+		respBody, _ := MakeWSEthJSONReq(walExtAddrWS, method, []interface{}{map[string]interface{}{}})
+
+		if !strings.Contains(string(respBody), errFailedDecrypt) {
+			t.Fatalf("expected response containing '%s', got '%s'", errFailedDecrypt, string(respBody))
 		}
 	}
 }
