@@ -12,8 +12,6 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/test"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
-
 	"github.com/gorilla/websocket"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
@@ -149,18 +147,6 @@ func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
 
 	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
 		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
-	}
-}
-
-func TestCanGetErrorOverWS(t *testing.T) {
-	createWalletExtension(t)
-
-	invalidMethod := "invalidRPCMethod"
-	respJSON, _ := makeWSEthJSONReqAsJSON(invalidMethod, []string{})
-
-	expectedErr := fmt.Sprintf(errInvalidRPCMethod, invalidMethod)
-	if respJSON[userconn.RespJSONKeyErr] != expectedErr {
-		t.Fatalf("Expected error '%s', got '%s'", expectedErr, respJSON[userconn.RespJSONKeyErr])
 	}
 }
 

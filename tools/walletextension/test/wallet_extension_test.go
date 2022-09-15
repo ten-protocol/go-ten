@@ -84,8 +84,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 			continue
 		}
 
-		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
-		respBody, _ := MakeWSEthJSONReq(walExtAddrWS, method, []interface{}{map[string]interface{}{}})
+		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{}})
 
 		if !strings.Contains(string(respBody), successMsg) {
 			t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
@@ -118,8 +117,7 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 			continue
 		}
 
-		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
-		respBody, _ := MakeWSEthJSONReq(walExtAddrWS, method, []interface{}{map[string]interface{}{}})
+		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{}})
 
 		if !strings.Contains(string(respBody), errFailedDecrypt) {
 			t.Fatalf("expected response containing '%s', got '%s'", errFailedDecrypt, string(respBody))
