@@ -35,9 +35,9 @@ import (
 )
 
 const (
-	apiVersion1             = "1.0"
-	apiNamespaceObscuro     = "obscuro"
-	apiNamespaceEthereum    = "eth"
+	APIVersion1             = "1.0"
+	APINamespaceObscuro     = "obscuro"
+	APINamespaceEth         = "eth"
 	apiNamespaceObscuroScan = "obscuroscan"
 	apiNamespaceNetwork     = "net"
 	apiNamespaceTest        = "test"
@@ -127,38 +127,38 @@ func NewHost(
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
 		rpcAPIs := []rpc.API{
 			{
-				Namespace: apiNamespaceObscuro,
-				Version:   apiVersion1,
+				Namespace: APINamespaceObscuro,
+				Version:   APIVersion1,
 				Service:   clientapi.NewObscuroAPI(node),
 				Public:    true,
 			},
 			{
-				Namespace: apiNamespaceEthereum,
-				Version:   apiVersion1,
+				Namespace: APINamespaceEth,
+				Version:   APIVersion1,
 				Service:   clientapi.NewEthereumAPI(node),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceObscuroScan,
-				Version:   apiVersion1,
+				Version:   APIVersion1,
 				Service:   clientapi.NewObscuroScanAPI(node),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceNetwork,
-				Version:   apiVersion1,
+				Version:   APIVersion1,
 				Service:   clientapi.NewNetworkAPI(node),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceTest,
-				Version:   apiVersion1,
+				Version:   APIVersion1,
 				Service:   clientapi.NewTestAPI(node),
 				Public:    true,
 			},
 			{
-				Namespace: apiNamespaceEthereum,
-				Version:   apiVersion1,
+				Namespace: APINamespaceEth,
+				Version:   APIVersion1,
 				Service:   clientapi.NewFilterAPI(node, node.logsCh),
 				Public:    true,
 			},
