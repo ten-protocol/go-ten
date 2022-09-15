@@ -1,9 +1,10 @@
 package common
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // Enclave represents the API of the service that runs inside the TEE.
@@ -101,6 +102,9 @@ type Enclave interface {
 
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error
+
+	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on the pending state.
+	EstimateGas(encryptedParams EncryptedParamsEstimateGas) (EncryptedResponseEstimateGas, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

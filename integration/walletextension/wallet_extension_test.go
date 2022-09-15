@@ -15,6 +15,7 @@ import (
 	"time"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
@@ -438,6 +439,32 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 
 	if !strings.Contains(string(respBody), errSubscribeFailHTTP) {
 		t.Fatalf("Expected error message \"%s\", got \"%s\"", errSubscribeFailHTTP, respBody)
+	}
+}
+
+func TestCanEstimateGasAfterSubmittingViewingKey(t *testing.T) {
+	createWalletExtension(t)
+	accountAddr, _ := registerPrivateKey(t)
+	callMsg := datagenerator.CreateCallMsg()
+	callMsg.From = accountAddr
+
+	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCEstimateGas, []interface{}{callMsg, latestBlock})
+
+	if getBalanceJSON[walletextension.RespJSONKeyResult].(string) != "0x12a05f200" {
+		t.Fatalf("unexpected gas")
+	}
+}
+
+func TestCannotEstimateGasWithoutSubmittingViewingKey(t *testing.T) {
+	createWalletExtension(t)
+
+	callMsg := datagenerator.CreateCallMsg()
+
+	respBody := makeHTTPEthJSONReq(rpc.RPCEstimateGas, []interface{}{callMsg, latestBlock})
+	expectedErr := fmt.Sprintf(errInsecure, rpc.RPCEstimateGas)
+
+	if !strings.Contains(string(respBody), expectedErr) {
+		t.Fatalf("Expected error message to contain \"%s\", got \"%s\"", expectedErr, respBody)
 	}
 }
 
