@@ -24,12 +24,25 @@ var (
 )
 
 func TestCannotSubscribeOverHTTP(t *testing.T) {
+	shutdown, err := createWalExt()
+	defer shutdown()
+	if err != nil {
+		t.Fatalf("could not create wallet extension")
+	}
+
+	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
+		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
+	}
+}
+
+func createWalExt() (func(), error) {
 	server := createDummyHost()
-	defer server.Shutdown(context.Background()) //nolint:errcheck
 
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
-		panic("could not create persistence file for wallet extension tests")
+		server.Shutdown(context.Background()) //nolint:errcheck
+		return nil, fmt.Errorf("could not create persistence file for wallet extension tests")
 	}
 	cfg := walletextension.Config{
 		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", nodePortWS),
@@ -37,19 +50,19 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 
 	walExt := walletextension.NewWalletExtension(cfg)
-	defer walExt.Shutdown()
+	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
 
 	err = WaitForWalletExtension(walExtAddr)
 	if err != nil {
-		t.Fatal(err)
+		walExt.Shutdown()
+		server.Shutdown(context.Background()) //nolint:errcheck
+		return nil, err
 	}
 
-	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
-
-	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
-	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
-		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
-	}
+	return func() {
+		server.Shutdown(context.Background()) //nolint:errcheck
+		walExt.Shutdown()
+	}, nil
 }
 
 // Creates a dummy host that the wallet extension can connect to.
