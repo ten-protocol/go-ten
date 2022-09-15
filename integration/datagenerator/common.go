@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -52,16 +54,32 @@ func randomWithdrawals(length int) []common.Withdrawal {
 	return withdrawals
 }
 
-// Creates a dummy L2Tx for testing
+// CreateL2Tx Creates a dummy L2Tx for testing
 func CreateL2Tx() *common.L2Tx {
 	return types.NewTx(CreateL2TxData())
 }
 
-// Creates a dummy types.LegacyTx for testing
+// CreateL2TxData Creates a dummy types.LegacyTx for testing
 func CreateL2TxData() *types.LegacyTx {
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	encodedTxData := make([]byte, 0)
 	return &types.LegacyTx{
 		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: big.NewInt(1), Data: encodedTxData,
+	}
+}
+
+// CreateCallMsg Creates a dummy ethereum.CallMsg for testing
+func CreateCallMsg() *ethereum.CallMsg {
+	to := RandomAddress()
+	return &ethereum.CallMsg{
+		From:       RandomAddress(),
+		To:         &to,
+		Gas:        randomUInt64(),
+		GasPrice:   big.NewInt(int64(randomUInt64())),
+		GasFeeCap:  nil,
+		GasTipCap:  nil,
+		Value:      big.NewInt(int64(randomUInt64())),
+		Data:       make([]byte, 0),
+		AccessList: nil,
 	}
 }

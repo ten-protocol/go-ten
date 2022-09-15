@@ -277,6 +277,14 @@ func (s *server) Unsubscribe(_ context.Context, req *generated.UnsubscribeReques
 	return &generated.UnsubscribeResponse{}, err
 }
 
+func (s *server) EstimateGas(_ context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
+	encryptedBalance, err := s.enclave.EstimateGas(req.EncryptedParams)
+	if err != nil {
+		return nil, err
+	}
+	return &generated.EstimateGasResponse{EncryptedResponse: encryptedBalance}, nil
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
