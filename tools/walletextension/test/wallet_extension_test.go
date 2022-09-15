@@ -52,10 +52,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
 	}
 
-	_, _, viewingKeyBytes, err := registerPrivateKey(walExtAddr)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 
 	// We pass the viewing key to the API, so that the RPC layer can properly encrypt responses.
 	err = dummyEthAPI.setViewingKey(viewingKeyBytes)

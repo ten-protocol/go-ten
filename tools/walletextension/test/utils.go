@@ -13,6 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"io"
 	"net/http"
+	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -103,26 +104,22 @@ func PrepareRequestBody(method string, params interface{}) *bytes.Buffer {
 	return bytes.NewBuffer(reqBodyBytes)
 }
 
-// todo - joel - move this back to the integration tests, to replace the existing one
-
-// Generates a new account and registers it with the node.
-func registerPrivateKey(walExtAddr string) (gethcommon.Address, *ecdsa.PrivateKey, []byte, error) {
+// RegisterPrivateKey generates a new account and registers it with the node.
+func RegisterPrivateKey(t *testing.T, walExtAddr string) (gethcommon.Address, *ecdsa.PrivateKey, []byte) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
-		return gethcommon.Address{}, nil, nil, err
+		t.Fatalf(err.Error())
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
-	viewingKeyBytes, err := generateAndSubmitViewingKey(walExtAddr, accountAddr.String(), privateKey)
+	viewingKeyBytes, err := GenerateAndSubmitViewingKey(walExtAddr, accountAddr.String(), privateKey)
 	if err != nil {
-		return gethcommon.Address{}, nil, nil, err
+		t.Fatalf(err.Error())
 	}
-	return accountAddr, privateKey, viewingKeyBytes, nil
+	return accountAddr, privateKey, viewingKeyBytes
 }
 
-// todo - joel - use this in integration tests, delete the one there
-
-// Generates a signed viewing key and submits it to the wallet extension.
-func generateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) ([]byte, error) {
+// GenerateAndSubmitViewingKey generates a signed viewing key and submits it to the wallet extension.
+func GenerateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) ([]byte, error) {
 	viewingKeyBytes := generateViewingKey(walExtAddr, accountAddr)
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
 
@@ -148,10 +145,12 @@ func generateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountP
 	if err != nil {
 		return nil, err
 	}
+	err = resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
 	return viewingKeyBytes, resp.Body.Close()
 }
-
-// todo - joel - use this in integration tests, delete the one there
 
 // Generates a viewing key.
 func generateViewingKey(walExtAddr string, accountAddress string) []byte {
@@ -173,8 +172,6 @@ func generateViewingKey(walExtAddr string, accountAddress string) []byte {
 	resp.Body.Close()
 	return viewingKey
 }
-
-// todo - joel - use this in integration tests, delete the one there
 
 // Signs a viewing key.
 func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
