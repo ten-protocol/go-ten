@@ -134,21 +134,6 @@ func TestCanDecryptSuccessfullyAfterSubmittingMultipleViewingKeys(t *testing.T) 
 	}
 }
 
-func TestCanDecryptSuccessfullyAfterRestartingWalletExtension(t *testing.T) {
-	walletExtension := createWalletExtension(t)
-	accountAddr, _, _ := test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	// We shut down the wallet extension and restart it, forcing the viewing keys to be reloaded.
-	walletExtension.Shutdown()
-	createWalletExtension(t)
-
-	getBalanceJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCGetBalance, []string{accountAddr.String(), latestBlock})
-
-	if getBalanceJSON[walletextension.RespJSONKeyResult] != zeroBalance {
-		t.Fatalf("Expected balance of %s, got %s", zeroBalance, getBalanceJSON[walletextension.RespJSONKeyResult])
-	}
-}
-
 func TestCanSubscribeForLogs(t *testing.T) {
 	createWalletExtension(t)
 	test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
@@ -209,14 +194,9 @@ func createWalletExtensionConfig() *walletextension.Config {
 	}
 }
 
-// Creates and serves a wallet extension.
-func createWalletExtension(t *testing.T) *walletextension.WalletExtension {
-	return createWalletExtensionWithConfig(t, walletExtensionConfig)
-}
-
 // Creates and serves a wallet extension with custom configuration.
-func createWalletExtensionWithConfig(t *testing.T, config *walletextension.Config) *walletextension.WalletExtension {
-	walletExtension := walletextension.NewWalletExtension(*config)
+func createWalletExtension(t *testing.T) {
+	walletExtension := walletextension.NewWalletExtension(*walletExtensionConfig)
 	t.Cleanup(walletExtension.Shutdown)
 
 	go walletExtension.Serve(network.Localhost, walletExtensionPort, walletExtensionPortWS)
@@ -224,8 +204,6 @@ func createWalletExtensionWithConfig(t *testing.T, config *walletextension.Confi
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	return walletExtension
 }
 
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body as JSON.

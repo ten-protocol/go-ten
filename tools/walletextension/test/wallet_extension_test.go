@@ -32,14 +32,13 @@ var (
 	nodePortWS     = integration.StartPortWalletExtensionUnitTest + 2
 	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
 	walExtAddrWS   = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
+	walExtCfg      = createWalExtCfg()
 	dummyEthAPI    = &DummyEthAPI{}
 )
 
 func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
-	err := createWalExt(t)
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
-	}
+	createDummyHost(t)
+	createWalExt(t)
 
 	respBody, _ := MakeWSEthJSONReq(walExtAddrWS, rpc.RPCChainID, []interface{}{})
 
@@ -49,10 +48,8 @@ func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 }
 
 func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
-	err := createWalExt(t)
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
-	}
+	createDummyHost(t)
+	createWalExt(t)
 
 	for _, method := range rpc.SensitiveMethods {
 		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
@@ -65,15 +62,12 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 }
 
 func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
-	err := createWalExt(t)
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
-	}
+	createDummyHost(t)
+	createWalExt(t)
 
+	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
 	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
-
-	// We pass the viewing key to the API, so that the RPC layer can properly encrypt responses.
-	err = dummyEthAPI.setViewingKey(viewingKeyBytes)
+	err := dummyEthAPI.setViewingKey(viewingKeyBytes)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -93,10 +87,8 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 }
 
 func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T) {
-	err := createWalExt(t)
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("could not create wallet extension. Cause: %s", err.Error()))
-	}
+	createDummyHost(t)
+	createWalExt(t)
 
 	RegisterPrivateKey(t, walExtAddr)
 
@@ -125,11 +117,31 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 	}
 }
 
-func TestCannotSubscribeOverHTTP(t *testing.T) {
-	err := createWalExt(t)
+func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
+	createDummyHost(t)
+	shutdown := createWalExt(t)
+
+	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
+	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
+	err := dummyEthAPI.setViewingKey(viewingKeyBytes)
 	if err != nil {
-		t.Fatalf("could not create wallet extension")
+		t.Fatalf(err.Error())
 	}
+
+	// We shut down the wallet extension and restart it, forcing the viewing keys to be reloaded.
+	shutdown()
+	createWalExt(t)
+
+	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{}})
+
+	if !strings.Contains(string(respBody), successMsg) {
+		t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
+	}
+}
+
+func TestCannotSubscribeOverHTTP(t *testing.T) {
+	createDummyHost(t)
+	createWalExt(t)
 
 	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
 	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
@@ -137,35 +149,32 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	}
 }
 
-func createWalExt(t *testing.T) error {
-	err := createDummyHost(t)
-	if err != nil {
-		return err
-	}
-
+func createWalExtCfg() *walletextension.Config {
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
-		return fmt.Errorf("could not create persistence file for wallet extension tests")
+		panic("could not create persistence file for wallet extension tests")
 	}
-	cfg := walletextension.Config{
+	return &walletextension.Config{
 		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", nodePortWS),
 		PersistencePathOverride: testPersistencePath.Name(),
 	}
+}
 
-	walExt := walletextension.NewWalletExtension(cfg)
+func createWalExt(t *testing.T) func() {
+	walExt := walletextension.NewWalletExtension(*walExtCfg)
 	t.Cleanup(walExt.Shutdown)
 	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
 
-	err = WaitForEndpoint(walExtAddr + walletextension.PathReady)
+	err := WaitForEndpoint(walExtAddr + walletextension.PathReady)
 	if err != nil {
-		return err
+		t.Fatalf(err.Error())
 	}
 
-	return nil
+	return walExt.Shutdown
 }
 
 // Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
-func createDummyHost(t *testing.T) error {
+func createDummyHost(t *testing.T) {
 	cfg := gethnode.Config{
 		WSHost:    localhost,
 		WSPort:    int(nodePortWS),
@@ -187,14 +196,12 @@ func createDummyHost(t *testing.T) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("could not create new client server. Cause: %w", err)
+		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
 	}
 	t.Cleanup(func() { rpcServerNode.Close() })
 
 	err = rpcServerNode.Start()
 	if err != nil {
-		return fmt.Errorf("could not create new client server. Cause: %w", err)
+		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
 	}
-
-	return nil
 }
