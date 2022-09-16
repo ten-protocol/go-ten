@@ -41,13 +41,12 @@ var (
 	nodePortWS     = integration.StartPortWalletExtensionUnitTest + 2
 	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
 	walExtAddrWS   = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
-	walExtCfg      = createWalExtCfg()
 	dummyAPI       = NewDummyAPI()
 )
 
 func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	respBody, _ := MakeWSEthJSONReq(walExtAddrWS, rpc.RPCChainID, []interface{}{})
 
@@ -58,7 +57,7 @@ func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 
 func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	for _, method := range rpc.SensitiveMethods {
 		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
@@ -72,7 +71,7 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 
 func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	_, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
@@ -93,7 +92,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 
 func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	RegisterPrivateKey(t, walExtAddr)
 
@@ -121,7 +120,7 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 
 func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	// We submit viewing keys for ten arbitrary accounts.
 	var viewingKeys [][]byte
@@ -143,7 +142,7 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 
 func TestCanCallWithoutSettingFromField(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	accountAddr, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
@@ -159,14 +158,15 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 
 func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	createDummyHost(t)
-	shutdown := createWalExt(t)
+	walExtCfg := createWalExtCfg()
+	shutdown := createWalExt(t, walExtCfg)
 
 	_, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	// We shut down the wallet extension and restart it, forcing the viewing keys to be reloaded.
+	// We shut down the wallet extension and restart it with the same config, forcing the viewing keys to be reloaded.
 	shutdown()
-	createWalExt(t)
+	createWalExt(t, walExtCfg)
 
 	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
@@ -177,7 +177,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 
 func TestCanSubscribeForLogs(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	_, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
@@ -219,7 +219,7 @@ func TestCanSubscribeForLogs(t *testing.T) {
 
 func TestCannotSubscribeOverHTTP(t *testing.T) {
 	createDummyHost(t)
-	createWalExt(t)
+	createWalExt(t, createWalExtCfg())
 
 	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs})
 	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
@@ -238,7 +238,7 @@ func createWalExtCfg() *walletextension.Config {
 	}
 }
 
-func createWalExt(t *testing.T) func() {
+func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 	walExt := walletextension.NewWalletExtension(*walExtCfg)
 	t.Cleanup(walExt.Shutdown)
 	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
