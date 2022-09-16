@@ -133,9 +133,9 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("only subscriptions of type %s are supported", RPCSubscriptionTypeLogs)
 	}
 
-	logCh, ok := ch.(chan *types.Log)
+	logCh, ok := ch.(chan types.Log)
 	if !ok {
-		return nil, fmt.Errorf("expected a channel of type `chan *types.Log`, got %T", ch)
+		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
 
 	logSubscription, err := c.createAuthenticatedLogSubscription(args)
@@ -168,7 +168,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				}
 
 				for _, decryptedLog := range decryptedLogs {
-					logCh <- decryptedLog
+					logCh <- *decryptedLog
 				}
 
 			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
