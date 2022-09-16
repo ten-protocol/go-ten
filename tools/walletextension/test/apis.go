@@ -15,15 +15,28 @@ import (
 )
 
 const (
-	successMsg   = "success"
-	l2ChainIDHex = "0x309"
+	successMsg           = "success"
+	l2ChainIDHex         = "0x309"
+	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 )
 
 // DummyAPI provides dummies for the RPC operations defined in the `eth_` namespace. For each sensitive RPC
 // operation, it decrypts the parameters using the enclave's private key, then echoes them back to the caller encrypted
-// with the viewing key set using the `setViewingKey` method.
+// with the viewing key set using the `setViewingKey` method, mimicking the privacy behaviour of the host.
 type DummyAPI struct {
-	viewingKey *ecies.PublicKey
+	enclavePrivateKey *ecies.PrivateKey
+	viewingKey        *ecies.PublicKey
+}
+
+func NewDummyAPI() *DummyAPI {
+	enclavePrivateKey, err := crypto.HexToECDSA(enclavePrivateKeyHex)
+	if err != nil {
+		panic(fmt.Errorf("failed to create enclave private key. Cause: %s", err))
+	}
+
+	return &DummyAPI{
+		enclavePrivateKey: ecies.ImportECDSA(enclavePrivateKey),
+	}
 }
 
 func (api *DummyAPI) AddViewingKey([]byte, []byte) error {
@@ -50,39 +63,40 @@ func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,reviv
 	return (*hexutil.Big)(chainID), err
 }
 
-func (api *DummyAPI) Call(context.Context, common.EncryptedParamsCall) (string, error) {
-	return api.encryptedSuccess()
+func (api *DummyAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (string, error) {
+	return api.encryptedSuccess(encryptedParams)
 }
 
-func (api *DummyAPI) GetBalance(context.Context, common.EncryptedParamsGetBalance) (string, error) {
-	return api.encryptedSuccess()
+func (api *DummyAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (string, error) {
+	return api.encryptedSuccess(encryptedParams)
 }
 
-func (api *DummyAPI) GetTransactionByHash(context.Context, common.EncryptedParamsGetTxByHash) (*string, error) {
-	encryptedSuccess, err := api.encryptedSuccess()
+func (api *DummyAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
+	encryptedSuccess, err := api.encryptedSuccess(encryptedParams)
 	return &encryptedSuccess, err
 }
 
-func (api *DummyAPI) GetTransactionCount(context.Context, common.EncryptedParamsGetTxCount) (string, error) {
-	return api.encryptedSuccess()
+func (api *DummyAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
+	return api.encryptedSuccess(encryptedParams)
 }
 
-func (api *DummyAPI) GetTransactionReceipt(context.Context, common.EncryptedParamsGetTxReceipt) (*string, error) {
-	encryptedSuccess, err := api.encryptedSuccess()
+func (api *DummyAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
+	encryptedSuccess, err := api.encryptedSuccess(encryptedParams)
 	return &encryptedSuccess, err
 }
 
-func (api *DummyAPI) SendRawTransaction(context.Context, common.EncryptedParamsSendRawTx) (string, error) {
-	return api.encryptedSuccess()
+func (api *DummyAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
+	return api.encryptedSuccess(encryptedParams)
 }
 
-func (api *DummyAPI) EstimateGas(context.Context, common.EncryptedParamsEstimateGas, *rpc.BlockNumberOrHash) (*string, error) {
-	encryptedSuccess, err := api.encryptedSuccess()
+func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*string, error) {
+	encryptedSuccess, err := api.encryptedSuccess(encryptedParams)
 	return &encryptedSuccess, err
 }
 
 // Returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
-func (api *DummyAPI) encryptedSuccess() (string, error) {
+func (api *DummyAPI) encryptedSuccess(encryptedParams []byte) (string, error) {
+
 	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, []byte(successMsg), nil, nil)
 	return gethcommon.Bytes2Hex(encryptedBytes), err
 }

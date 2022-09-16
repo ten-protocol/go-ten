@@ -33,7 +33,7 @@ var (
 	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
 	walExtAddrWS   = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
 	walExtCfg      = createWalExtCfg()
-	dummyAPI       = &DummyAPI{}
+	dummyAPI       = NewDummyAPI()
 )
 
 func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
