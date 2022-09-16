@@ -184,7 +184,7 @@ func TestCanSubscribeForLogs(t *testing.T) {
 
 	_, conn := MakeWSEthJSONReq(walExtAddrWS, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
 
-	// We set a timeout to kill the test, in case we never receive a log...
+	// We set a timeout to kill the test, in case we never receive a log.
 	go func() {
 		time.Sleep(3 * time.Second)
 		panic("timed out waiting to receive a log via the subscription")
