@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	successMsg           = "success"
 	l2ChainIDHex         = "0x309"
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 )
@@ -31,7 +30,7 @@ type DummyAPI struct {
 func NewDummyAPI() *DummyAPI {
 	enclavePrivateKey, err := crypto.HexToECDSA(enclavePrivateKeyHex)
 	if err != nil {
-		panic(fmt.Errorf("failed to create enclave private key. Cause: %s", err))
+		panic(fmt.Errorf("failed to create enclave private key. Cause: %w", err))
 	}
 
 	return &DummyAPI{
@@ -94,7 +93,7 @@ func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.Encry
 	return &reEncryptParams, err
 }
 
-// Returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
+// Decrypts the params with the enclave key, and returns them encrypted with the viewing key set via `setViewingKey`.
 func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (string, error) {
 	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
 	if err != nil {

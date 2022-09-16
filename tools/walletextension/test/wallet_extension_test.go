@@ -24,6 +24,7 @@ import (
 const (
 	localhost        = "127.0.0.1"
 	errFailedDecrypt = "failed to decrypt result with viewing key"
+	dummyParams      = "dummyParams"
 )
 
 var (
@@ -78,7 +79,6 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 			continue
 		}
 
-		dummyParams := "dummyParams"
 		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 		if !strings.Contains(string(respBody), dummyParams) {
@@ -136,7 +136,6 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 		t.Fatalf(err.Error())
 	}
 
-	dummyParams := "dummyParams"
 	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 	if !strings.Contains(string(respBody), dummyParams) {
@@ -159,7 +158,6 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	shutdown()
 	createWalExt(t)
 
-	dummyParams := "dummyParams"
 	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 	if !strings.Contains(string(respBody), dummyParams) {
