@@ -296,10 +296,9 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 	}
 
 	// override the existing args
-	fmt.Printf("Overriding CallMSG From: %s to %s\n", callMsg.From.Hex(), account.Hex())
 	callMsg.From = account
 
-	// do not modify existing arguments
+	// do not modify other existing arguments
 	request := []interface{}{callMsg}
 	for i := 1; i < len(args); i++ {
 		request = append(request, args[i])

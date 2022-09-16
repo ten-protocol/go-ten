@@ -3,42 +3,36 @@ package walletextension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
+
 	"math/big"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/test"
-
-	"github.com/gorilla/websocket"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
-
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/gorilla/websocket"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/test"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
@@ -99,7 +93,6 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 		Data: balanceData,
 	}
 
-	fmt.Printf("Test Executing with accountAddress: %s\n", accountAddress.Hex())
 	callJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCCall, []interface{}{request, latestBlock})
 
 	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {

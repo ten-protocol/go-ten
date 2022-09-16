@@ -6,10 +6,10 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // ExtractTxHash returns the transaction hash from the params of an eth_getTransactionReceipt request.
@@ -78,4 +78,28 @@ func ConvertToCallMsg(callMsgInterface interface{}) (*ethereum.CallMsg, error) {
 		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
 	}
 	return &callMsg, err
+}
+
+// ExtractEthCall extracts the eth_call [ethereum.CallMsg, gethrpc.BlockNumberOrHash] from a byte slice
+func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberOrHash, error) {
+	// extract params from byte slice to array of strings
+	var paramList []interface{}
+	err := json.Unmarshal(paramBytes, &paramList)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
+	}
+
+	// params are [callMsg, block number (optional)]
+	// todo: handle blocknum, for now we always assume "latest" as with other methods
+	if len(paramList) == 0 {
+		return nil, nil, fmt.Errorf("required at least one param, but received zero")
+	}
+
+	// convert the params[0] into an ethereum.CallMsg
+	callMsg, err := ConvertToCallMsg(paramList[0])
+	if err != nil {
+		return nil, nil, err
+	}
+	// todo actually hook the block number
+	return callMsg, nil, nil
 }

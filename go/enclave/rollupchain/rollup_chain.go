@@ -659,22 +659,9 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
 	}
 
-	// extract params from byte slice to array of strings
-	var paramString []interface{}
-	err = json.Unmarshal(paramBytes, &paramString)
+	callMsg, _, err := rpc.ExtractEthCall(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
-	}
-
-	// params must always be [callMsg, block number]
-	if len(paramString) != 2 {
-		return nil, fmt.Errorf("invalid number of params, expected 2 got %d", len(paramString))
-	}
-
-	// convert the params[0] into an ethereum.CallMsg
-	callMsg, err := rpc.ConvertToCallMsg(paramString[0])
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
 	hs := rc.storage.FetchHeadState()
@@ -686,7 +673,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if !f {
 		panic("not found")
 	}
-	fmt.Printf("RollupChain Executing with FromAddress: %s\n", callMsg.From.Hex())
+
 	log.Trace("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To.Hex(), callMsg.From.Hex(), hexutils.BytesToHex(callMsg.Data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
 	result, err := evm.ExecuteOffChainCall(callMsg.From, callMsg.To, callMsg.Data, s, r.Header, rc.storage, rc.chainConfig)
