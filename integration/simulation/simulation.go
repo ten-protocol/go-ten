@@ -42,9 +42,9 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
-	ctx              context.Context
 	LogChannel       chan types.Log
 	Subscriptions    []ethereum.Subscription
+	ctx              context.Context
 }
 
 // Start executes the simulation given all the Params. Injects transactions.
@@ -109,6 +109,11 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 }
 
 func (s *Simulation) trackLogs() {
+	// In-memory clients cannot handle subscriptions for now.
+	if s.Params.IsInMem {
+		return
+	}
+
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {
 			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannel)

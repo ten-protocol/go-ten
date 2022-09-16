@@ -43,5 +43,6 @@ type SimParams struct {
 	// Contains all the wallets required by the simulation
 	Wallets *SimWallets
 
-	StartPort int // The port from which to start allocating ports. Must be unique across all simulations.
+	StartPort int  // The port from which to start allocating ports. Must be unique across all simulations.
+	IsInMem   bool // Denotes that the sim does not have a full RPC layer.
 }
