@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/state"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
@@ -62,12 +64,12 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 }
 
 // FilterRelevantLogs filters out logs that are not subscribed too, and organises the logs by their subscribing ID.
-func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUID][]*types.Log {
+func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, db *state.StateDB) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	for _, log := range logs {
 		for subscriptionID, subscription := range s.subscriptions {
-			logIsRelevant := isRelevant(log, subscription)
+			logIsRelevant := isRelevant(log, subscription, db)
 			if !logIsRelevant {
 				continue
 			}
@@ -99,11 +101,11 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 }
 
 // Indicates whether the log is relevant for the subscription. A lifecycle log is considered relevant to everyone.
-func isRelevant(log *types.Log, sub *common.LogSubscription) bool {
+func isRelevant(log *types.Log, sub *common.LogSubscription, db *state.StateDB) bool {
 	var nonContractAddrs []*gethcommon.Address
 	for _, topic := range log.Topics {
 		addr := gethcommon.HexToAddress(topic.Hex())
-		if isContractAddr(addr) { // todo - joel - write this logic. requires a check against the evm
+		if db.GetCode(addr) == nil { // If there is code associated with the address, it's a contract address.
 			nonContractAddrs = append(nonContractAddrs, &addr)
 		}
 	}
