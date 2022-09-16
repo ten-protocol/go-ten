@@ -60,13 +60,12 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 }
 
 // FilterRelevantLogs filters out logs that are not subscribed too, and organises the logs by their subscribing ID.
-// TODO - #453 - Return which account each log is relevant to.
 func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	for _, log := range logs {
 		for subscriptionID, subscription := range s.subscriptions {
-			logIsRelevant, _ := isRelevant(log, subscription)
+			logIsRelevant := isRelevant(log, subscription)
 			if !logIsRelevant {
 				continue
 			}
@@ -97,12 +96,23 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 	return result, nil
 }
 
-// Indicates whether the log is relevant for any subscription, and returns the matching subscription account if so.
-// A lifecycle log is considered relevant to everyone.
-// TODO - #453 - Filter logs, instead of considering all logs relevant to everyone.
-func isRelevant(log *types.Log, sub *common.LogSubscription) (bool, *common.SubscriptionAccount) {
-	// Work out if this is an account or lifecycle log
-	// If the former, establish whether it is relevant to any subscription
-	// Return the first account for which the log matches, so it can be used for encryption
-	return true, nil
+// Indicates whether the log is relevant for the subscription. A lifecycle log is considered relevant to everyone.
+func isRelevant(log *types.Log, sub *common.LogSubscription) bool {
+	if isLifecycleLog() {
+		return true
+	}
+
+	// todo - joel - what about topics? how is relevancy really defined?
+
+	for _, addr := range sub.Filter.Addresses {
+		if addr == log.Address {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isLifecycleLog() bool {
+	return true // todo - joel - don't always return true here
 }
