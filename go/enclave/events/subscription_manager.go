@@ -101,7 +101,6 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 // A lifecycle log is considered relevant to everyone.
 // TODO - #453 - Filter logs, instead of considering all logs relevant to everyone.
 func isRelevant(log *types.Log, sub *common.LogSubscription) (bool, *common.SubscriptionAccount) {
-	// Extract addresses from the logs
 	// Work out if this is an account or lifecycle log
 	// If the former, establish whether it is relevant to any subscription
 	// Return the first account for which the log matches, so it can be used for encryption
