@@ -3,7 +3,6 @@ package walletextension
 import (
 	"encoding/json"
 	"fmt"
-
 	"math/big"
 	"os"
 	"strings"
