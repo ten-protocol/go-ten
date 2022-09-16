@@ -43,18 +43,17 @@ func (api *DummyAPI) AddViewingKey([]byte, []byte) error {
 }
 
 // Determines which key the API will encrypt responses with.
-func (api *DummyAPI) setViewingKey(viewingKeyHexBytes []byte) error {
+func (api *DummyAPI) setViewingKey(viewingKeyHexBytes []byte) {
 	viewingKeyBytes, err := hex.DecodeString(string(viewingKeyHexBytes))
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
 	if err != nil {
-		return fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err)
+		panic(fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err))
 	}
 	api.viewingKey = ecies.ImportECDSAPublic(viewingKey)
-	return nil
 }
 
 func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive

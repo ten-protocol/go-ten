@@ -68,10 +68,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 
 	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
 	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
-	err := dummyAPI.setViewingKey(viewingKeyBytes)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
@@ -99,10 +96,7 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 		t.Fatalf(fmt.Sprintf("failed to generate private key. Cause: %s", err))
 	}
 	arbitraryPublicKeyBytesHex := hex.EncodeToString(crypto.CompressPubkey(&arbitraryPrivateKey.PublicKey))
-	err = dummyAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	dummyAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
@@ -131,15 +125,28 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 
 	// We set the API to decrypt with an arbitrary key from the list we just generated.
 	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
-	err := dummyAPI.setViewingKey(arbitraryViewingKey)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	dummyAPI.setViewingKey(arbitraryViewingKey)
 
 	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 	if !strings.Contains(string(respBody), dummyParams) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
+	}
+}
+
+func TestCanCallWithoutSettingFromField(t *testing.T) {
+	createDummyHost(t)
+	createWalExt(t)
+
+	accountAddr, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
+	dummyAPI.setViewingKey(viewingKeyBytes)
+
+	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCCall, []interface{}{map[string]interface{}{}})
+
+	// We check the automatically-set `from` field is present.
+	fromJSON := fmt.Sprintf("\"from\":\"%s\"", strings.ToLower(accountAddr.Hex()))
+	if !strings.Contains(string(respBody), fromJSON) {
+		t.Fatalf("expected response containing '%s', got '%s'", fromJSON, string(respBody))
 	}
 }
 
@@ -149,10 +156,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 
 	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
 	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
-	err := dummyAPI.setViewingKey(viewingKeyBytes)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	// We shut down the wallet extension and restart it, forcing the viewing keys to be reloaded.
 	shutdown()

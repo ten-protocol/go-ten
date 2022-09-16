@@ -24,7 +24,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
@@ -43,8 +42,6 @@ import (
 const (
 	testLogs = "../.build/wallet_extension/"
 
-	reqJSONKeyTo            = "to"
-	reqJSONKeyData          = "data"
 	respJSONKeyStatus       = "status"
 	respJSONKeyContractAddr = "contractAddress"
 	latestBlock             = "latest"
@@ -55,9 +52,6 @@ const (
 	networkStartPort      = integration.StartPortWalletExtensionTest + 2
 	nodeRPCHTTPPort       = networkStartPort + network.DefaultHostRPCHTTPOffset
 	nodeRPCWSPort         = networkStartPort + network.DefaultHostRPCWSOffset
-
-	// Returned by the EVM to indicate a zero result.
-	zeroResult = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 	faucetAlloc = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
@@ -84,26 +78,6 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Exit(m.Run())
-}
-
-func TestCanCallWithoutSettingFromField(t *testing.T) {
-	createWalletExtension(t)
-	accountAddress, _, _ := test.RegisterPrivateKey(t, walletExtensionAddrHTTP)
-
-	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
-	// deposit any funds in the ERC20 contract.
-	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
-	convertedData := (hexutil.Bytes)(balanceData)
-	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.HOCContract,
-		reqJSONKeyData: convertedData,
-	}
-
-	callJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCCall, []interface{}{reqParams, latestBlock})
-
-	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
-		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
-	}
 }
 
 func TestCanSubscribeForLogs(t *testing.T) {
