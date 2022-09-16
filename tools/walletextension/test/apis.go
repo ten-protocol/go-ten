@@ -64,39 +64,47 @@ func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,reviv
 }
 
 func (api *DummyAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (string, error) {
-	return api.encryptedSuccess(encryptedParams)
+	return api.reEncryptParams(encryptedParams)
 }
 
 func (api *DummyAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (string, error) {
-	return api.encryptedSuccess(encryptedParams)
+	return api.reEncryptParams(encryptedParams)
 }
 
 func (api *DummyAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
-	encryptedSuccess, err := api.encryptedSuccess(encryptedParams)
-	return &encryptedSuccess, err
+	reEncryptParams, err := api.reEncryptParams(encryptedParams)
+	return &reEncryptParams, err
 }
 
 func (api *DummyAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
-	return api.encryptedSuccess(encryptedParams)
+	return api.reEncryptParams(encryptedParams)
 }
 
 func (api *DummyAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
-	encryptedSuccess, err := api.encryptedSuccess(encryptedParams)
-	return &encryptedSuccess, err
+	reEncryptParams, err := api.reEncryptParams(encryptedParams)
+	return &reEncryptParams, err
 }
 
 func (api *DummyAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
-	return api.encryptedSuccess(encryptedParams)
+	return api.reEncryptParams(encryptedParams)
 }
 
 func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*string, error) {
-	encryptedSuccess, err := api.encryptedSuccess(encryptedParams)
-	return &encryptedSuccess, err
+	reEncryptParams, err := api.reEncryptParams(encryptedParams)
+	return &reEncryptParams, err
 }
 
 // Returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
-func (api *DummyAPI) encryptedSuccess(encryptedParams []byte) (string, error) {
+func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (string, error) {
+	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not decrypt params with enclave private key")
+	}
 
-	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, []byte(successMsg), nil, nil)
+	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, params, nil, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not encrypt params with viewing key")
+	}
+
 	return gethcommon.Bytes2Hex(encryptedBytes), err
 }

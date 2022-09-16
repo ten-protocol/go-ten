@@ -78,10 +78,11 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 			continue
 		}
 
-		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{}})
+		dummyParams := "dummyParams"
+		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{"params": dummyParams}})
 
-		if !strings.Contains(string(respBody), successMsg) {
-			t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
+		if !strings.Contains(string(respBody), dummyParams) {
+			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
 		}
 	}
 }
@@ -135,10 +136,11 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 		t.Fatalf(err.Error())
 	}
 
-	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{}})
+	dummyParams := "dummyParams"
+	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
-	if !strings.Contains(string(respBody), successMsg) {
-		t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
+	if !strings.Contains(string(respBody), dummyParams) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
 	}
 }
 
@@ -157,10 +159,11 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	shutdown()
 	createWalExt(t)
 
-	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{}})
+	dummyParams := "dummyParams"
+	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
-	if !strings.Contains(string(respBody), successMsg) {
-		t.Fatalf("expected response containing '%s', got '%s'", successMsg, string(respBody))
+	if !strings.Contains(string(respBody), dummyParams) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
 	}
 }
 
