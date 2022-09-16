@@ -19,22 +19,19 @@ const (
 	l2ChainIDHex = "0x309"
 )
 
-// DummyObscuroAPI provides dummies for operations defined in the `obscuro_` namespace.
-type DummyObscuroAPI struct{}
-
-func (api *DummyObscuroAPI) AddViewingKey([]byte, []byte) error {
-	return nil
-}
-
-// DummyEthAPI provides dummies for the RPC operations defined in the `eth_` namespace. For each sensitive RPC
+// DummyAPI provides dummies for the RPC operations defined in the `eth_` namespace. For each sensitive RPC
 // operation, it decrypts the parameters using the enclave's private key, then echoes them back to the caller encrypted
 // with the viewing key set using the `setViewingKey` method.
-type DummyEthAPI struct {
+type DummyAPI struct {
 	viewingKey *ecies.PublicKey
 }
 
+func (api *DummyAPI) AddViewingKey([]byte, []byte) error {
+	return nil
+}
+
 // Determines which key the API will encrypt responses with.
-func (api *DummyEthAPI) setViewingKey(viewingKeyHexBytes []byte) error {
+func (api *DummyAPI) setViewingKey(viewingKeyHexBytes []byte) error {
 	viewingKeyBytes, err := hex.DecodeString(string(viewingKeyHexBytes))
 	if err != nil {
 		return err
@@ -48,44 +45,44 @@ func (api *DummyEthAPI) setViewingKey(viewingKeyHexBytes []byte) error {
 	return nil
 }
 
-func (api *DummyEthAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
+func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
 	chainID, err := hexutil.DecodeBig(l2ChainIDHex)
 	return (*hexutil.Big)(chainID), err
 }
 
-func (api *DummyEthAPI) Call(context.Context, common.EncryptedParamsCall) (string, error) {
+func (api *DummyAPI) Call(context.Context, common.EncryptedParamsCall) (string, error) {
 	return api.encryptedSuccess()
 }
 
-func (api *DummyEthAPI) GetBalance(context.Context, common.EncryptedParamsGetBalance) (string, error) {
+func (api *DummyAPI) GetBalance(context.Context, common.EncryptedParamsGetBalance) (string, error) {
 	return api.encryptedSuccess()
 }
 
-func (api *DummyEthAPI) GetTransactionByHash(context.Context, common.EncryptedParamsGetTxByHash) (*string, error) {
+func (api *DummyAPI) GetTransactionByHash(context.Context, common.EncryptedParamsGetTxByHash) (*string, error) {
 	encryptedSuccess, err := api.encryptedSuccess()
 	return &encryptedSuccess, err
 }
 
-func (api *DummyEthAPI) GetTransactionCount(context.Context, common.EncryptedParamsGetTxCount) (string, error) {
+func (api *DummyAPI) GetTransactionCount(context.Context, common.EncryptedParamsGetTxCount) (string, error) {
 	return api.encryptedSuccess()
 }
 
-func (api *DummyEthAPI) GetTransactionReceipt(context.Context, common.EncryptedParamsGetTxReceipt) (*string, error) {
+func (api *DummyAPI) GetTransactionReceipt(context.Context, common.EncryptedParamsGetTxReceipt) (*string, error) {
 	encryptedSuccess, err := api.encryptedSuccess()
 	return &encryptedSuccess, err
 }
 
-func (api *DummyEthAPI) SendRawTransaction(context.Context, common.EncryptedParamsSendRawTx) (string, error) {
+func (api *DummyAPI) SendRawTransaction(context.Context, common.EncryptedParamsSendRawTx) (string, error) {
 	return api.encryptedSuccess()
 }
 
-func (api *DummyEthAPI) EstimateGas(context.Context, common.EncryptedParamsEstimateGas, *rpc.BlockNumberOrHash) (*string, error) {
+func (api *DummyAPI) EstimateGas(context.Context, common.EncryptedParamsEstimateGas, *rpc.BlockNumberOrHash) (*string, error) {
 	encryptedSuccess, err := api.encryptedSuccess()
 	return &encryptedSuccess, err
 }
 
 // Returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
-func (api *DummyEthAPI) encryptedSuccess() (string, error) {
+func (api *DummyAPI) encryptedSuccess() (string, error) {
 	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, []byte(successMsg), nil, nil)
 	return gethcommon.Bytes2Hex(encryptedBytes), err
 }

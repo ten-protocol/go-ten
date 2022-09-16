@@ -33,7 +33,7 @@ var (
 	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
 	walExtAddrWS   = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
 	walExtCfg      = createWalExtCfg()
-	dummyEthAPI    = &DummyEthAPI{}
+	dummyAPI       = &DummyAPI{}
 )
 
 func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
@@ -67,7 +67,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 
 	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
 	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
-	err := dummyEthAPI.setViewingKey(viewingKeyBytes)
+	err := dummyAPI.setViewingKey(viewingKeyBytes)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -98,7 +98,7 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 		t.Fatalf(fmt.Sprintf("failed to generate private key. Cause: %s", err))
 	}
 	arbitraryPublicKeyBytesHex := hex.EncodeToString(crypto.CompressPubkey(&arbitraryPrivateKey.PublicKey))
-	err = dummyEthAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
+	err = dummyAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -130,7 +130,7 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 
 	// We set the API to decrypt with an arbitrary key from the list we just generated.
 	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
-	err := dummyEthAPI.setViewingKey(arbitraryViewingKey)
+	err := dummyAPI.setViewingKey(arbitraryViewingKey)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -148,7 +148,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 
 	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
 	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
-	err := dummyEthAPI.setViewingKey(viewingKeyBytes)
+	err := dummyAPI.setViewingKey(viewingKeyBytes)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -210,13 +210,13 @@ func createDummyHost(t *testing.T) {
 		{
 			Namespace: node.APINamespaceObscuro,
 			Version:   node.APIVersion1,
-			Service:   &DummyObscuroAPI{},
+			Service:   dummyAPI,
 			Public:    true,
 		},
 		{
 			Namespace: node.APINamespaceEth,
 			Version:   node.APIVersion1,
-			Service:   dummyEthAPI,
+			Service:   dummyAPI,
 			Public:    true,
 		},
 	})
