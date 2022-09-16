@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -90,6 +93,32 @@ func (api *DummyAPI) SendRawTransaction(_ context.Context, encryptedParams commo
 func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*string, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
 	return &reEncryptParams, err
+}
+
+func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
+	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params with enclave private key")
+	}
+
+	notifier, _ := rpc.NotifierFromContext(ctx)
+	sub := notifier.CreateSubscription()
+	go func() {
+		for {
+			// Like the host, we wrap the encrypted log bytes in the data field of an unencrypted "wrapper" log object.
+			jsonLog, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{}, Data: params}})
+			if err != nil {
+				panic(fmt.Errorf("could not marshal log to JSON"))
+			}
+			wrapperLog := types.Log{
+				Topics: []gethcommon.Hash{},
+				Data:   jsonLog,
+			}
+			notifier.Notify(sub.ID, &wrapperLog) //nolint:errcheck
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+	return sub, nil
 }
 
 // Decrypts the params with the enclave key, and returns them encrypted with the viewing key set via `setViewingKey`.

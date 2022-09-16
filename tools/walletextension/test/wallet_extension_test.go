@@ -2,10 +2,16 @@ package test
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"strings"
 	"testing"
+	"time"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -15,7 +21,6 @@ import (
 	gethnode "github.com/ethereum/go-ethereum/node"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
@@ -25,7 +30,10 @@ const (
 	localhost        = "127.0.0.1"
 	errFailedDecrypt = "failed to decrypt result with viewing key"
 	dummyParams      = "dummyParams"
+	magicNumber      = 123789
 )
+
+var dummyHash = gethcommon.BigToHash(big.NewInt(magicNumber))
 
 var (
 	walExtPortHTTP = integration.StartPortWalletExtensionUnitTest
@@ -66,7 +74,6 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t)
 
-	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
 	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
@@ -154,7 +161,6 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	createDummyHost(t)
 	shutdown := createWalExt(t)
 
-	// We register a viewing key and pass it to the API, so that the RPC layer can properly encrypt responses.
 	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
@@ -169,11 +175,53 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	}
 }
 
+func TestCanSubscribeForLogs(t *testing.T) {
+	createDummyHost(t)
+	createWalExt(t)
+
+	_, _, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
+	dummyAPI.setViewingKey(viewingKeyBytes)
+
+	_, conn := MakeWSEthJSONReq(walExtAddrWS, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
+
+	// We watch the connection for events...
+	var receivedLogJSON []byte
+	go func() {
+		var err error
+		_, receivedLogJSON, err = conn.ReadMessage()
+		if err != nil {
+			panic(fmt.Errorf("could not read log from websocket. Cause: %w", err))
+		}
+	}()
+
+	// ... and wait up to one second for the event to be received.
+	for i := 0; i < 10; i++ {
+		println("jjj", i)
+		if receivedLogJSON != nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if receivedLogJSON == nil {
+		t.Fatalf("waited for one second without receiving a log")
+	}
+
+	var receivedLog *types.Log
+	err := json.Unmarshal(receivedLogJSON, &receivedLog)
+	if err != nil {
+		t.Fatalf("could not unmarshall received log from JSON")
+	}
+
+	if !strings.Contains(string(receivedLog.Data), dummyHash.Hex()) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), string(receivedLog.Data))
+	}
+}
+
 func TestCannotSubscribeOverHTTP(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t)
 
-	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filters.FilterCriteria{}})
+	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs})
 	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
 		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
 	}
@@ -234,4 +282,13 @@ func createDummyHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
 	}
+}
+
+// A structure that JSON-serialises to the expected format for subscription filter criteria.
+type filterCriteriaJSON struct {
+	BlockHash *gethcommon.Hash     `json:"blockHash"`
+	FromBlock *gethrpc.BlockNumber `json:"fromBlock"`
+	ToBlock   *gethrpc.BlockNumber `json:"toBlock"`
+	Addresses interface{}          `json:"address"`
+	Topics    []interface{}        `json:"topics"`
 }
