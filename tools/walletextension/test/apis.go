@@ -27,7 +27,8 @@ func (api *DummyObscuroAPI) AddViewingKey([]byte, []byte) error {
 }
 
 // DummyEthAPI provides dummies for the RPC operations defined in the `eth_` namespace. For each sensitive RPC
-// operation, it returns the message `successMsg`, encrypted with the viewing key set via `setViewingKey`.
+// operation, it decrypts the parameters using the enclave's private key, then echoes them back to the caller encrypted
+// with the viewing key set using the `setViewingKey` method.
 type DummyEthAPI struct {
 	viewingKey *ecies.PublicKey
 }
