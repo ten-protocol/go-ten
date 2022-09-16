@@ -86,7 +86,7 @@ func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberO
 	var paramList []interface{}
 	err := json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
+		return nil, nil, fmt.Errorf("unable to decode EthCall params - %w", err)
 	}
 
 	// params are [callMsg, block number]
