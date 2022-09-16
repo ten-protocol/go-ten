@@ -241,7 +241,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs, rc.storage.CreateStateDB(head.Hash()))
+	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs, rc.storage.CreateStateDB(head.Header.ParentHash))
 
 	// TODO - #453 - Check this recursive logic works correctly (i.e. each block submission response contains the logs
 	//  of all its ancestors as well).
