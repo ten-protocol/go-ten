@@ -164,7 +164,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				var decryptedLogs []*types.Log
 				err = json.Unmarshal(receivedLog.Data, &decryptedLogs)
 				if err != nil {
-					log.Error("could not unmarshal log from subscription. Cause: %s", err)
+					log.Error("could not unmarshal log from `data` field of log received from subscription. Cause: %s", err)
 				}
 
 				for _, decryptedLog := range decryptedLogs {
