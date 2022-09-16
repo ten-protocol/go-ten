@@ -184,30 +184,20 @@ func TestCanSubscribeForLogs(t *testing.T) {
 
 	_, conn := MakeWSEthJSONReq(walExtAddrWS, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
 
-	// We watch the connection for events...
-	var receivedLogJSON []byte
+	// We set a timeout to kill the test, in case we never receive a log...
 	go func() {
-		var err error
-		_, receivedLogJSON, err = conn.ReadMessage()
-		if err != nil {
-			panic(fmt.Errorf("could not read log from websocket. Cause: %w", err))
-		}
+		time.Sleep(3 * time.Second)
+		panic("timed out waiting to receive a log via the subscription")
 	}()
 
-	// ... and wait up to one second for the event to be received.
-	for i := 0; i < 10; i++ {
-		println("jjj", i)
-		if receivedLogJSON != nil {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if receivedLogJSON == nil {
-		t.Fatalf("waited for one second without receiving a log")
+	// We watch the connection to receive a log...
+	_, receivedLogJSON, err := conn.ReadMessage()
+	if err != nil {
+		panic(fmt.Errorf("could not read log from websocket. Cause: %w", err))
 	}
 
 	var receivedLog *types.Log
-	err := json.Unmarshal(receivedLogJSON, &receivedLog)
+	err = json.Unmarshal(receivedLogJSON, &receivedLog)
 	if err != nil {
 		t.Fatalf("could not unmarshall received log from JSON")
 	}
