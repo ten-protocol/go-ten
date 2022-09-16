@@ -120,7 +120,21 @@ func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, 
 }
 
 func (c *inMemObscuroClient) Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
-	panic("not implemented")
+	if len(args) == 0 {
+		return nil, fmt.Errorf("received a subscription request but no subscription type as specified")
+	}
+
+	subscriptionType, ok := args[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("first argument to subscription request must be of type string, got %T", args[0])
+	}
+
+	switch subscriptionType {
+	case rpc.RPCSubscriptionTypeLogs:
+		panic("todo - joel - implement this")
+	}
+
+	return nil, fmt.Errorf("unknown subscription type: %s", subscriptionType)
 }
 
 func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
@@ -237,6 +251,10 @@ func (c *inMemObscuroClient) getBalance(result interface{}, args []interface{}) 
 	}
 	*result.(*interface{}) = encryptedResponse
 	return nil
+}
+
+func (c *inMemObscuroClient) logs(args []interface{}) error {
+	panic("todo - joel - not implemented")
 }
 
 func (c *inMemObscuroClient) Stop() {

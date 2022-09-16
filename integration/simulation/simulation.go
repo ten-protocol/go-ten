@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -41,6 +43,8 @@ type Simulation struct {
 	Stats            *stats.Stats
 	Params           *params.SimParams
 	ctx              context.Context
+	LogChannel       chan types.Log
+	Subscriptions    []ethereum.Subscription
 }
 
 // Start executes the simulation given all the Params. Injects transactions.
@@ -53,6 +57,7 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
+	s.trackLogs()              // Capture emitted logs, to validate later
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
 	s.deployObscuroERC20s()    // Deploy the Obscuro HOC and POC ERC20 contracts
 	s.prefundL1Accounts()      // Prefund every L1 wallet
@@ -100,6 +105,18 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 		}
 		time.Sleep(s.Params.AvgBlockDuration)
 		log.Trace("Waiting for the Obscuro genesis rollup...")
+	}
+}
+
+func (s *Simulation) trackLogs() {
+	for _, clients := range s.RPCHandles.AuthObsClients {
+		for _, client := range clients {
+			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannel)
+			if err != nil {
+				panic(fmt.Errorf("subscription failed. Cause: %w", err))
+			}
+			s.Subscriptions = append(s.Subscriptions, sub)
+		}
 	}
 }
 
