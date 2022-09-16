@@ -2,7 +2,10 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -48,4 +51,18 @@ type Client interface {
 	Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
 	// Stop closes the client.
 	Stop()
+}
+
+// ConvertToCallMsg converts the interface to a *ethereum.CallMsg
+func ConvertToCallMsg(callMsgInterface interface{}) (*ethereum.CallMsg, error) {
+	callMsgBytes, err := json.Marshal(callMsgInterface)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
+	}
+	var callMsg ethereum.CallMsg
+	err = json.Unmarshal(callMsgBytes, &callMsg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
+	}
+	return &callMsg, err
 }

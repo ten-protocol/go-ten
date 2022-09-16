@@ -5,20 +5,11 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-)
-
-const (
-	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
-	CallFieldTo   = "to"
-	CallFieldFrom = "from"
-	CallFieldData = "data"
 )
 
 // ExtractTxHash returns the transaction hash from the params of an eth_getTransactionReceipt request.
@@ -70,79 +61,16 @@ func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, er
 	return sender, nil
 }
 
-// ExtractCallParamTo extracts and parses the `to` field of an eth_call request.
-func ExtractCallParamTo(callParams []byte) (*gethcommon.Address, error) {
-	var paramsJSONMap []interface{}
-	err := json.Unmarshal(callParams, &paramsJSONMap)
+// ConvertToCallMsg converts the interface to a *ethereum.CallMsg
+func ConvertToCallMsg(callMsgInterface interface{}) (*ethereum.CallMsg, error) {
+	callMsgBytes, err := json.Marshal(callMsgInterface)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(callParams), err)
+		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
 	}
-
-	// to field is null on contract creation
-	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	if to := txArgs.(map[string]interface{})[CallFieldTo]; to == nil {
-		return nil, nil //nolint:nilnil
-	}
-
-	contractAddressString, ok := txArgs.(map[string]interface{})[CallFieldTo].(string)
-	if !ok {
-		return nil, fmt.Errorf("`to` field in request params was missing or not of expected type string")
-	}
-	contractAddress := gethcommon.HexToAddress(contractAddressString)
-	return &contractAddress, nil
-}
-
-// ExtractCallParamFrom extracts and parses the `from` field of an eth_call request.
-// This is also the address whose viewing key should be used to encrypt the response.
-func ExtractCallParamFrom(callParams []byte) (gethcommon.Address, error) {
-	var paramsJSONMap []interface{}
-	err := json.Unmarshal(callParams, &paramsJSONMap)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not parse JSON params in eth_call request. JSON "+
-			"params are: %s. Cause: %w", string(callParams), err)
-	}
-
-	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	fromString, ok := txArgs.(map[string]interface{})[CallFieldFrom].(string)
-	if !ok {
-		return gethcommon.Address{}, fmt.Errorf("`from` field in request params is missing or was not of " +
-			"expected type string. The `from` field is required to encrypt the response")
-	}
-
-	from := gethcommon.HexToAddress(fromString)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
-	}
-	return from, nil
-}
-
-// ExtractCallParamData extracts and parses the `data` field of an eth_call request.
-func ExtractCallParamData(callParams []byte) ([]byte, error) {
-	var paramsJSONMap []interface{}
-	err := json.Unmarshal(callParams, &paramsJSONMap)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse JSON params in eth_call request. JSON params are: %s. Cause: %w", string(callParams), err)
-	}
-
-	txArgs := paramsJSONMap[0] // The first argument is the transaction arguments, the second the block, the third the state overrides.
-	dataString, ok := txArgs.(map[string]interface{})[CallFieldData].(string)
-	if !ok {
-		return nil, fmt.Errorf("`data` field in request params is missing or was not of expected type string")
-	}
-
-	data, err := hexutil.Decode(dataString)
-	if err != nil {
-		return nil, fmt.Errorf("could not decode data in Call request. Cause: %w", err)
-	}
-	return data, nil
-}
-
-// ExtractCallMsg unmarshalls a slice of bytes into an ethereum.CallMsg
-func ExtractCallMsg(callMsgBytes []byte) (*ethereum.CallMsg, error) {
 	var callMsg ethereum.CallMsg
-	err := json.Unmarshal(callMsgBytes, &callMsg)
+	err = json.Unmarshal(callMsgBytes, &callMsg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse bytes into CallMsg - %w", err)
+		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
 	}
-	return &callMsg, nil
+	return &callMsg, err
 }

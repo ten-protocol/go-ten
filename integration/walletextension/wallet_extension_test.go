@@ -3,6 +3,7 @@ package walletextension
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"os"
 	"strings"
@@ -123,13 +124,13 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	// We submit a transaction to the Obscuro ERC20 contract. By transferring an amount of zero, we avoid the need to
 	// deposit any funds in the ERC20 contract.
 	balanceData := erc20contractlib.CreateBalanceOfData(accountAddress)
-	convertedData := (hexutil.Bytes)(balanceData)
-	reqParams := map[string]interface{}{
-		reqJSONKeyTo:   bridge.HOCContract,
-		reqJSONKeyData: convertedData,
+	request := ethereum.CallMsg{
+		To:   &bridge.HOCContract,
+		Data: balanceData,
 	}
 
-	callJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCCall, []interface{}{reqParams, latestBlock})
+	fmt.Printf("Test Executing with accountAddress: %s\n", accountAddress.Hex())
+	callJSON := makeHTTPEthJSONReqAsJSON(rpc.RPCCall, []interface{}{request, latestBlock})
 
 	if callJSON[walletextension.RespJSONKeyResult] != zeroResult {
 		t.Fatalf("Expected call result of %s, got %s", zeroResult, callJSON[walletextension.RespJSONKeyResult])
