@@ -34,6 +34,7 @@ type inMemObscuroClient struct {
 	ethAPI           *clientapi.EthereumAPI
 	obscuroScanAPI   *clientapi.ObscuroScanAPI
 	testAPI          *clientapi.TestAPI
+	filterAPI        *host.FilterAPI
 	enclavePublicKey *ecies.PublicKey
 }
 
@@ -50,6 +51,7 @@ func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
 		ethAPI:           clientapi.NewEthereumAPI(nodeHost),
 		obscuroScanAPI:   clientapi.NewObscuroScanAPI(nodeHost),
 		testAPI:          clientapi.NewTestAPI(nodeHost),
+		filterAPI:        nodeHost.FilterAPI(),
 		enclavePublicKey: enclPubKey,
 	}
 }
@@ -131,7 +133,18 @@ func (c *inMemObscuroClient) Subscribe(ctx context.Context, namespace string, ch
 
 	switch subscriptionType {
 	case rpc.RPCSubscriptionTypeLogs:
-		panic("todo - joel - implement this")
+		enc, err := getEncryptedBytes(args[1:], rpc.RPCSubscribe)
+		if err != nil {
+			return nil, err
+		}
+		_, err = (*c.filterAPI).Logs(ctx, enc)
+		if err != nil {
+			return nil, err
+		}
+		// We return a nil subscription even if the subscription succeeds, because we do not have the ability to cast
+		// the subscription to a `ClientSubscription` (this is internal to Geth). The logs will still arrive over the
+		// channel, but we lose the ability to terminate the subscription.
+		return nil, nil
 	}
 
 	return nil, fmt.Errorf("unknown subscription type: %s", subscriptionType)

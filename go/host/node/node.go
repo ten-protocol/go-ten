@@ -70,6 +70,7 @@ type Node struct {
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
 	logsCh       chan *types.Log            // The channel that logs are sent to
+	filterAPI    *host.FilterAPI            // The filter API used to handle events.
 
 	nodeDB *db.DB // Stores the node's publicly-available data
 
@@ -124,6 +125,9 @@ func NewHost(
 		ethWallet: ethWallet,
 	}
 
+	filterAPI := clientapi.NewFilterAPI(node, node.logsCh)
+	node.filterAPI = &filterAPI
+
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
 		rpcAPIs := []rpc.API{
 			{
@@ -159,7 +163,7 @@ func NewHost(
 			{
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
-				Service:   clientapi.NewFilterAPI(node, node.logsCh),
+				Service:   node.filterAPI,
 				Public:    true,
 			},
 		}
@@ -266,6 +270,10 @@ func (a *Node) DB() *db.DB {
 
 func (a *Node) EnclaveClient() common.Enclave {
 	return a.enclaveClient
+}
+
+func (a *Node) FilterAPI() *host.FilterAPI {
+	return a.filterAPI
 }
 
 func (a *Node) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {

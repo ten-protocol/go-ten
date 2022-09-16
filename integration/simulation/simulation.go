@@ -108,6 +108,7 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 	}
 }
 
+// Creates a log subscription on every auth client, and routes the output to `s.LogChannel`.
 func (s *Simulation) trackLogs() {
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {

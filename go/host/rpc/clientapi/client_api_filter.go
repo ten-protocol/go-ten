@@ -29,7 +29,7 @@ type FilterAPI struct {
 	gethFilterAPI *filters.PublicFilterAPI
 }
 
-func NewFilterAPI(host host.Host, logsCh chan *types.Log) *FilterAPI {
+func NewFilterAPI(host host.Host, logsCh chan *types.Log) host.FilterAPI {
 	return &FilterAPI{
 		host:          host,
 		gethFilterAPI: filters.NewPublicFilterAPI(events.NewBackend(logsCh), false, 5*time.Minute),

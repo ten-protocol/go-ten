@@ -1,8 +1,10 @@
 package host
 
 import (
+	"context"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -14,6 +16,7 @@ type Host interface {
 	Config() *config.HostConfig
 	DB() *db.DB
 	EnclaveClient() common.Enclave
+	FilterAPI() *FilterAPI // Allows us to grab the properly hooked-up filter API from the in-mem simulation tests.
 
 	// Start initializes the main loop of the host.
 	Start()
@@ -57,4 +60,9 @@ type StatsCollector interface {
 	NewBlock(block *types.Block)
 	NewRollup(node gethcommon.Address)
 	RollupWithMoreRecentProof()
+}
+
+// FilterAPI lives here because the in-memory client requires a method to return the host's FilterAPI.
+type FilterAPI interface {
+	Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error)
 }
