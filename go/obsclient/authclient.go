@@ -77,7 +77,7 @@ func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uin
 
 func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	var hex string
-	err := ac.rpcClient.CallContext(ctx, &hex, rpc.RPCCall, toCallArg(msg), toBlockNumArg(blockNumber))
+	err := ac.rpcClient.CallContext(ctx, &hex, rpc.RPCCall, msg, toBlockNumArg(blockNumber))
 	return []byte(hex), err
 }
 

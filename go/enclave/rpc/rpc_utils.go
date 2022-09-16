@@ -89,10 +89,9 @@ func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberO
 		return nil, nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
 	}
 
-	// params are [callMsg, block number (optional)]
-	// todo: handle blocknum, for now we always assume "latest" as with other methods
-	if len(paramList) == 0 {
-		return nil, nil, fmt.Errorf("required at least one param, but received zero")
+	// params are [callMsg, block number]
+	if len(paramList) != 2 {
+		return nil, nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
 	}
 
 	// convert the params[0] into an ethereum.CallMsg

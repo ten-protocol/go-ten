@@ -712,12 +712,13 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
 	}
-	if len(paramList) < 2 {
-		return nil, fmt.Errorf("required exactly two params, but received zero")
+	if len(paramList) != 2 {
+		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
 	}
 	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
 	address := gethcommon.HexToAddress(paramList[0])
 	blockNumber := gethrpc.BlockNumber(0)
+
 	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
 	if err != nil {
 		return nil, fmt.Errorf("could not parse requested rollup number")

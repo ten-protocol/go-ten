@@ -229,7 +229,7 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "required at least one param") {
+	if !assert.ErrorContains(t, err, " required exactly two params, but received 0") {
 		t.Fatal("unexpected error")
 	}
 }
