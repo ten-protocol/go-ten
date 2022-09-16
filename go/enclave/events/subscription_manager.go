@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -98,21 +100,23 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 
 // Indicates whether the log is relevant for the subscription. A lifecycle log is considered relevant to everyone.
 func isRelevant(log *types.Log, sub *common.LogSubscription) bool {
-	if isLifecycleLog() {
-		return true
-	}
-
-	// todo - joel - what about topics? how is relevancy really defined?
-
-	for _, addr := range sub.Filter.Addresses {
-		if addr == log.Address {
-			return true
+	var nonContractAddrs []*gethcommon.Address
+	for _, topic := range log.Topics {
+		addr := gethcommon.HexToAddress(topic.Hex())
+		if isContractAddr(addr) { // todo - joel - write this logic. requires a check against the evm
+			nonContractAddrs = append(nonContractAddrs, &addr)
 		}
 	}
 
-	return false
-}
+	if len(nonContractAddrs) == 0 {
+		// All the topic addresses are contract addresses, so this is a log event, and is relevant to everyone.
+		return true
+	}
 
-func isLifecycleLog() bool {
-	return true // todo - joel - don't always return true here
+	for _, addr := range nonContractAddrs {
+		if addr == sub.SubscriptionAccount.Account {
+			return true
+		}
+	}
+	return false
 }
