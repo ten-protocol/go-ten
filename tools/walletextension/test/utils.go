@@ -11,8 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
@@ -38,7 +39,7 @@ func WaitForEndpoint(addr string) error {
 
 // MakeHTTPEthJSONReq makes an Ethereum JSON RPC request over HTTP and returns the response body.
 func MakeHTTPEthJSONReq(walExtAddr string, method string, params interface{}) []byte {
-	reqBody := PrepareRequestBody(method, params)
+	reqBody := prepareRequestBody(method, params)
 
 	resp, err := http.Post(walExtAddr, "text/html", reqBody) //nolint:noctx,gosec
 	if resp != nil && resp.Body != nil {
@@ -71,7 +72,7 @@ func MakeWSEthJSONReq(walExtAddr string, method string, params interface{}) ([]b
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
-	reqBody := PrepareRequestBody(method, params)
+	reqBody := prepareRequestBody(method, params)
 	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
 	if err != nil {
 		if conn != nil {
@@ -91,8 +92,22 @@ func MakeWSEthJSONReq(walExtAddr string, method string, params interface{}) ([]b
 	return respBody, conn
 }
 
-// PrepareRequestBody formats a method and its parameters as a Ethereum JSON RPC request.
-func PrepareRequestBody(method string, params interface{}) *bytes.Buffer {
+// RegisterPrivateKey generates a new account and registers it with the node.
+func RegisterPrivateKey(t *testing.T, walExtAddr string) (gethcommon.Address, []byte) {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
+	viewingKeyBytes, err := generateAndSubmitViewingKey(walExtAddr, accountAddr.String(), privateKey)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	return accountAddr, viewingKeyBytes
+}
+
+// Formats a method and its parameters as a Ethereum JSON RPC request.
+func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  method,
@@ -105,22 +120,8 @@ func PrepareRequestBody(method string, params interface{}) *bytes.Buffer {
 	return bytes.NewBuffer(reqBodyBytes)
 }
 
-// RegisterPrivateKey generates a new account and registers it with the node.
-func RegisterPrivateKey(t *testing.T, walExtAddr string) (gethcommon.Address, *ecdsa.PrivateKey, []byte) {
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
-	viewingKeyBytes, err := GenerateAndSubmitViewingKey(walExtAddr, accountAddr.String(), privateKey)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	return accountAddr, privateKey, viewingKeyBytes
-}
-
-// GenerateAndSubmitViewingKey generates a signed viewing key and submits it to the wallet extension.
-func GenerateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) ([]byte, error) {
+// Generates a signed viewing key and submits it to the wallet extension.
+func generateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) ([]byte, error) {
 	viewingKeyBytes := generateViewingKey(walExtAddr, accountAddr)
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
 
