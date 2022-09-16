@@ -215,7 +215,7 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 	callMsg.From = w.Address()
 
 	// create the request
-	req := []interface{}{callMsg}
+	var req []interface{}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -229,7 +229,7 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "invalid number of params") {
+	if !assert.ErrorContains(t, err, "required at least one param") {
 		t.Fatal("unexpected error")
 	}
 }

@@ -360,12 +360,15 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt encrypted RPC request params. Cause: %w", err)
 	}
-	var txHex string
-	err = json.Unmarshal(hashBytes, &txHex)
+	var paramList []string
+	err = json.Unmarshal(hashBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal eth_getTransactionByHash params from JSON. Cause: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
 	}
-	txHash := gethcommon.HexToHash(txHex)
+	if len(paramList) == 0 {
+		return nil, fmt.Errorf("required at least one param, but received zero")
+	}
+	txHash := gethcommon.HexToHash(paramList[0])
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
@@ -567,19 +570,20 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract params from byte slice to array of strings
-	var paramString []interface{}
-	err = json.Unmarshal(paramBytes, &paramString)
+	var paramList []interface{}
+	err = json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
 	}
 
-	// params must always be [callMsg, block number]
-	if len(paramString) != 2 {
-		return nil, fmt.Errorf("invalid number of params, expected 2 got %d", len(paramString))
+	// params are [callMsg, block number (optional)]
+	// todo: handle blocknum, for now we always assume "latest" as with other methods
+	if len(paramList) == 0 {
+		return nil, fmt.Errorf("required at least one param, but received zero")
 	}
 
 	// convert the params[0] into an ethereum.CallMsg
-	callMsgBytes, err := json.Marshal(paramString[0])
+	callMsgBytes, err := json.Marshal(paramList[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
 	}
