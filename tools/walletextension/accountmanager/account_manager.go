@@ -210,7 +210,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
-	ch := make(chan *types.Log)
+	ch := make(chan types.Log)
 	subscription, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, ch, req.Params...)
 	if err != nil {
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)

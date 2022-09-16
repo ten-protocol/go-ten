@@ -133,9 +133,9 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("only subscriptions of type %s are supported", RPCSubscriptionTypeLogs)
 	}
 
-	logCh, ok := ch.(chan<- types.Log)
+	logCh, ok := ch.(chan types.Log)
 	if !ok {
-		return nil, fmt.Errorf("expected a channel of type `chan<- types.Log`, got %T", ch)
+		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
 
 	logSubscription, err := c.createAuthenticatedLogSubscription(args)
