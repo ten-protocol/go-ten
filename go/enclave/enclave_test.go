@@ -3,9 +3,10 @@ package enclave
 import (
 	"crypto/rand"
 	"encoding/json"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"testing"
+
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
