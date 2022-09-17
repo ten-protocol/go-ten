@@ -178,7 +178,7 @@ func gasEstimateInvalidCallMsg(t *testing.T, _ wallet.Wallet, enclave common.Enc
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "`to` field in request params was missing") {
+	if !assert.ErrorContains(t, err, "unexpected type supplied in `to` field") {
 		t.Fatalf("unexpected error - %s", err)
 	}
 }
