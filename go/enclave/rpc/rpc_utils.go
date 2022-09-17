@@ -3,11 +3,13 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"strings"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -15,9 +17,10 @@ import (
 
 const (
 	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
-	CallFieldTo   = "to"
-	CallFieldFrom = "from"
-	CallFieldData = "data"
+	CallFieldTo    = "to"
+	CallFieldFrom  = "from"
+	CallFieldData  = "data"
+	CallFieldValue = "value"
 )
 
 // ExtractTxHash returns the transaction hash from the params of an eth_getTransactionReceipt request.
@@ -90,41 +93,45 @@ func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberO
 
 	// geth lowercases the field name and uses the last seen value
 	var toString, fromString, dataString string
+	var to, from gethcommon.Address
+	var data []byte
 	var ok bool
 	for field, val := range paramList[0].(map[string]interface{}) {
 		switch strings.ToLower(field) {
 		case CallFieldTo:
 			toString, ok = val.(string)
 			if !ok {
-				return nil, nil, fmt.Errorf("`to` field in request params was missing or not of expected type string")
+				return nil, nil, fmt.Errorf("unexpected type supplied in `to` field")
 			}
+			to = gethcommon.HexToAddress(toString)
 		case CallFieldFrom:
 			fromString, ok = val.(string)
 			if !ok {
-				return nil, nil, fmt.Errorf("`from` field in request params is missing or was not of " +
-					"expected type string. The `from` field is required to encrypt the response")
+				return nil, nil, fmt.Errorf("unexpected type supplied in `from` field")
 			}
+			from = gethcommon.HexToAddress(fromString)
 		case CallFieldData:
-			toString, ok = val.(string)
+			dataString, ok = val.(string)
 			if !ok {
-				return nil, nil, fmt.Errorf("`data` field in request params is missing or was not of expected type string")
+				return nil, nil, fmt.Errorf("unexpected type supplied in `data` field")
 			}
-		}
-	}
-	to := gethcommon.HexToAddress(toString)
 
-	// data can be nil
-	var data []byte
-	if len(dataString) > 0 {
-		data, err = hexutil.Decode(dataString)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
+			// data can be nil
+			if len(dataString) > 0 {
+				data, err = hexutil.Decode(dataString)
+				if err != nil {
+					return nil, nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
+				}
+			}
+		case CallFieldValue:
+			// todo Add the value field
+			log.Warn("Value field called in the CallMsg - but no implemented yet")
 		}
 	}
 
 	// convert the params[0] into an ethereum.CallMsg
 	callMsg := &ethereum.CallMsg{
-		From:       gethcommon.HexToAddress(fromString),
+		From:       from,
 		To:         &to,
 		Gas:        0,
 		GasPrice:   nil,

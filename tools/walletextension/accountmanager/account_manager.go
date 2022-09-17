@@ -252,7 +252,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	// never modify the original request as it can be reused
+	// never modify the original request as it might be reused
 	clonedRequest := RPCRequest{
 		ID:     req.ID,
 		Method: req.Method,
