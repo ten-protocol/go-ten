@@ -25,7 +25,7 @@ func encodeTx(tx *common.L2Tx) string {
 	return "0x" + txBinaryHex
 }
 
-func toCallArg(msg ethereum.CallMsg) interface{} {
+func ToCallArg(msg ethereum.CallMsg) interface{} {
 	arg := map[string]interface{}{
 		"from": msg.From,
 		"to":   msg.To,

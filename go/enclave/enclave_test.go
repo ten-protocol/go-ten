@@ -3,6 +3,7 @@ package enclave
 import (
 	"crypto/rand"
 	"encoding/json"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"testing"
 
@@ -38,12 +39,13 @@ func init() { //nolint:gochecknoinits
 // TestGasEstimation runs the GasEstimation tests
 func TestGasEstimation(t *testing.T) {
 	tests := map[string]func(t *testing.T, w wallet.Wallet, enclave common.Enclave, vk *rpc.ViewingKey){
-		"gasEstimateSuccess":          gasEstimateSuccess,
-		"gasEstimateNoVKRegistered":   gasEstimateNoVKRegistered,
-		"gasEstimateNoCallMsgFrom":    gasEstimateNoCallMsgFrom,
-		"gasEstimateInvalidCallMsg":   gasEstimateInvalidCallMsg,
-		"gasEstimateInvalidBytes":     gasEstimateInvalidBytes,
-		"gasEstimateInvalidNumParams": gasEstimateInvalidNumParams,
+		"gasEstimateSuccess":             gasEstimateSuccess,
+		"gasEstimateNoVKRegistered":      gasEstimateNoVKRegistered,
+		"gasEstimateNoCallMsgFrom":       gasEstimateNoCallMsgFrom,
+		"gasEstimateInvalidCallMsg":      gasEstimateInvalidCallMsg,
+		"gasEstimateInvalidBytes":        gasEstimateInvalidBytes,
+		"gasEstimateInvalidNumParams":    gasEstimateInvalidNumParams,
+		"gasEstimateInvalidParamParsing": gasEstimateInvalidParamParsing,
 	}
 
 	for name, test := range tests {
@@ -72,7 +74,7 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 	callMsg.From = w.Address()
 
 	// create the request payload
-	req := []interface{}{callMsg, nil}
+	req := []interface{}{obsclient.ToCallArg(*callMsg), nil}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +118,7 @@ func gasEstimateNoVKRegistered(t *testing.T, _ wallet.Wallet, enclave common.Enc
 	callMsg.From = w.Address()
 
 	// create the request
-	req := []interface{}{callMsg, nil}
+	req := []interface{}{obsclient.ToCallArg(*callMsg), nil}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +142,7 @@ func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Encl
 	callMsg := datagenerator.CreateCallMsg()
 
 	// create the request
-	req := []interface{}{callMsg, nil}
+	req := []interface{}{obsclient.ToCallArg(*callMsg), nil}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +191,7 @@ func gasEstimateInvalidBytes(t *testing.T, w wallet.Wallet, enclave common.Encla
 	callMsg.From = w.Address()
 
 	// create the request
-	req := []interface{}{callMsg, nil}
+	req := []interface{}{obsclient.ToCallArg(*callMsg), nil}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -230,6 +232,31 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
 	if !assert.ErrorContains(t, err, "required at least 1 params, but received 0") {
+		t.Fatal("unexpected error")
+	}
+}
+
+func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave common.Enclave, _ *rpc.ViewingKey) {
+	// create the callMsg
+	callMsg := datagenerator.CreateCallMsg()
+	callMsg.From = w.Address()
+
+	// create the request
+	req := []interface{}{callMsg}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// callMsg encrypted with the VK
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
+	if err != nil {
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
+	}
+
+	// Run gas Estimation
+	_, err = enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, err, "unexpected type supplied in `value` field") {
 		t.Fatal("unexpected error")
 	}
 }

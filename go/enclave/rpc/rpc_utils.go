@@ -3,16 +3,15 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 const (
@@ -92,9 +91,10 @@ func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberO
 	}
 
 	// geth lowercases the field name and uses the last seen value
-	var toString, fromString, dataString string
+	var toString, fromString, dataString, valueString string
 	var to, from gethcommon.Address
 	var data []byte
+	var value *big.Int
 	var ok bool
 	for field, val := range paramList[0].(map[string]interface{}) {
 		switch strings.ToLower(field) {
@@ -124,8 +124,14 @@ func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberO
 				}
 			}
 		case CallFieldValue:
-			// todo Add the value field
-			log.Warn("Value field called in the CallMsg - but no implemented yet")
+			valueString, ok = val.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf("unexpected type supplied in `value` field")
+			}
+			value, err = hexutil.DecodeBig(valueString)
+			if err != nil {
+				return nil, nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
+			}
 		}
 	}
 
@@ -137,7 +143,7 @@ func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberO
 		GasPrice:   nil,
 		GasFeeCap:  nil,
 		GasTipCap:  nil,
-		Value:      nil,
+		Value:      value,
 		Data:       data,
 		AccessList: nil,
 	}
