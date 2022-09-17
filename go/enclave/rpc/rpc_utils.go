@@ -3,13 +3,21 @@ package rpc
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
+)
+
+const (
+	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
+	CallFieldTo   = "to"
+	CallFieldFrom = "from"
+	CallFieldData = "data"
 )
 
 // ExtractTxHash returns the transaction hash from the params of an eth_getTransactionReceipt request.
@@ -66,20 +74,6 @@ func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, er
 	return sender, nil
 }
 
-// ConvertToCallMsg converts the interface to a *ethereum.CallMsg
-func ConvertToCallMsg(callMsgInterface interface{}) (*ethereum.CallMsg, error) {
-	callMsgBytes, err := json.Marshal(callMsgInterface)
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
-	}
-	var callMsg ethereum.CallMsg
-	err = json.Unmarshal(callMsgBytes, &callMsg)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
-	}
-	return &callMsg, err
-}
-
 // ExtractEthCall extracts the eth_call [ethereum.CallMsg, gethrpc.BlockNumberOrHash] from a byte slice
 func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberOrHash, error) {
 	// extract params from byte slice to array of strings
@@ -89,16 +83,58 @@ func ExtractEthCall(paramBytes []byte) (*ethereum.CallMsg, *gethrpc.BlockNumberO
 		return nil, nil, fmt.Errorf("unable to decode EthCall params - %w", err)
 	}
 
-	// params are [callMsg, block number]
-	if len(paramList) != 2 {
-		return nil, nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
+	// params are [callMsg, block number (optional) ]
+	if len(paramList) < 1 {
+		return nil, nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
+	}
+
+	// geth lowercases the field name and uses the last seen value
+	var toString, fromString, dataString string
+	var ok bool
+	for field, val := range paramList[0].(map[string]interface{}) {
+		switch strings.ToLower(field) {
+		case CallFieldTo:
+			toString, ok = val.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf("`to` field in request params was missing or not of expected type string")
+			}
+		case CallFieldFrom:
+			fromString, ok = val.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf("`from` field in request params is missing or was not of " +
+					"expected type string. The `from` field is required to encrypt the response")
+			}
+		case CallFieldData:
+			toString, ok = val.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf("`data` field in request params is missing or was not of expected type string")
+			}
+		}
+	}
+	to := gethcommon.HexToAddress(toString)
+
+	// data can be nil
+	var data []byte
+	if len(dataString) > 0 {
+		data, err = hexutil.Decode(dataString)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
+		}
 	}
 
 	// convert the params[0] into an ethereum.CallMsg
-	callMsg, err := ConvertToCallMsg(paramList[0])
-	if err != nil {
-		return nil, nil, err
+	callMsg := &ethereum.CallMsg{
+		From:       gethcommon.HexToAddress(fromString),
+		To:         &to,
+		Gas:        0,
+		GasPrice:   nil,
+		GasFeeCap:  nil,
+		GasTipCap:  nil,
+		Value:      nil,
+		Data:       data,
+		AccessList: nil,
 	}
+
 	// todo actually hook the block number
 	return callMsg, nil, nil
 }

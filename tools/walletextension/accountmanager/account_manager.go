@@ -288,7 +288,6 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 
 	// We only modify `eth_call` requests where the `from` field is not set.
 	if callMsg.From != common.HexToAddress("0x0") {
-		fmt.Printf("Not overring found From: %s\n", callMsg.From.Hex())
 		return args, nil
 	}
 

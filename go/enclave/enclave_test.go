@@ -178,7 +178,7 @@ func gasEstimateInvalidCallMsg(t *testing.T, _ wallet.Wallet, enclave common.Enc
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "cannot unmarshal") {
+	if !assert.ErrorContains(t, err, "`to` field in request params was missing") {
 		t.Fatalf("unexpected error - %s", err)
 	}
 }
@@ -229,7 +229,7 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, " required exactly two params, but received 0") {
+	if !assert.ErrorContains(t, err, "required at least 1 params, but received 0") {
 		t.Fatal("unexpected error")
 	}
 }

@@ -718,7 +718,6 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
 	address := gethcommon.HexToAddress(paramList[0])
 	blockNumber := gethrpc.BlockNumber(0)
-
 	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
 	if err != nil {
 		return nil, fmt.Errorf("could not parse requested rollup number")
