@@ -102,11 +102,11 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 
 // Indicates whether the log is relevant for the subscription. A lifecycle log is considered relevant to everyone.
 func isRelevant(log *types.Log, sub *common.LogSubscription, db *state.StateDB) bool {
-	var nonContractAddrs []*gethcommon.Address
+	var nonContractAddrs []string
 	for _, topic := range log.Topics {
 		addr := gethcommon.HexToAddress(topic.Hex())
 		if db.GetCode(addr) == nil { // If there is code associated with the address, it's a contract address.
-			nonContractAddrs = append(nonContractAddrs, &addr)
+			nonContractAddrs = append(nonContractAddrs, addr.Hex())
 		}
 	}
 
@@ -116,7 +116,7 @@ func isRelevant(log *types.Log, sub *common.LogSubscription, db *state.StateDB) 
 	}
 
 	for _, addr := range nonContractAddrs {
-		if addr.Hex() == sub.SubscriptionAccount.Account.Hex() {
+		if addr == sub.SubscriptionAccount.Account.Hex() {
 			return true
 		}
 	}
