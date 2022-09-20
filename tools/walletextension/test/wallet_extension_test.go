@@ -157,8 +157,9 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 
 	for _, method := range []string{rpc.RPCCall, rpc.RPCEstimateGas} {
 		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{
-			"To":   "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC",
-			"data": "0x70a0823100000000000000000000000013e23ca74de0206c56ebae8d51b5622eff1e9944",
+			"To":    "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC",
+			"data":  "0x70a0823100000000000000000000000013e23ca74de0206c56ebae8d51b5622eff1e9944",
+			"value": nil,
 		}})
 
 		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )

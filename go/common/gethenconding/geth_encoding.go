@@ -29,6 +29,9 @@ func ExtractEthCall(paramBytes interface{}) (*ethereum.CallMsg, error) {
 	var ok bool
 	var err error
 	for field, val := range paramBytes.(map[string]interface{}) {
+		if val == nil {
+			continue
+		}
 		switch strings.ToLower(field) {
 		case CallFieldTo:
 			toString, ok = val.(string)
