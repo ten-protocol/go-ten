@@ -241,8 +241,13 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	// todo - joel - the creation of the state DB doesn't seem right
-	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs, rc.storage.CreateStateDB(head.Header.ParentHash))
+
+	subscribedLogs := map[uuid.UUID][]*types.Log{}
+	// For the genesis block, we do not emit any events, because we cannot yet validate whether all the topics refer to
+	// code addresses, since the state DB hasn't yet been constructed to check against.
+	if head.Header.ParentHash != common.GenesisHash {
+		subscribedLogs = rc.subscriptionManager.FilterRelevantLogs(logs, rc.storage.CreateStateDB(head.Header.ParentHash))
+	}
 
 	// TODO - #453 - Check this recursive logic works correctly (i.e. each block submission response contains the logs
 	//  of all its ancestors as well).
