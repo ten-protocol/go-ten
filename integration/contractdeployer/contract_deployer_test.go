@@ -49,7 +49,7 @@ var (
 func TestCanDeployGuessingGameContract(t *testing.T) {
 	createObscuroNetwork(t)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 	contractAddr, err := contractdeployer.Deploy(config)
 	if err != nil {
 		panic(err)
