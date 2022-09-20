@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -252,42 +254,78 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
-		// RPCCall is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory in geth
-		//	and is often not included from metamask etc. So we ensure it is populated here.
+	// never modify the original request as it might be reused
+	clonedRequest := req.Clone()
+
+	if clonedRequest.Method == rpc.RPCCall || clonedRequest.Method == rpc.RPCEstimateGas {
+		// Any method using an ethereum.CallMsg is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory
+		// and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
 		var err error
-		req.Params, err = setCallFromFieldIfMissing(req.Params, *account)
+		clonedRequest.Params, err = setCallFromFieldIfMissing(clonedRequest.Params, *account)
 		if err != nil {
 			return err
 		}
 	}
 
-	return client.Call(resp, req.Method, req.Params...)
+	return client.Call(resp, clonedRequest.Method, clonedRequest.Params...)
 }
 
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
 func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
-	callParams, err := parseParams(args)
+	if len(args) == 0 {
+		return nil, fmt.Errorf("no params found to unmarshal")
+	}
+
+	callMsg, err := convertToCallMsg(args[0])
 	if err != nil {
-		return nil, fmt.Errorf("could not parse eth_call params. Cause: %w", err)
+		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
-	// TODO remove this and use the json marshalled objects
-	if callParams[reqJSONKeyFrom] != nil || callParams["From"] != nil {
+	if callMsg.From != common.HexToAddress("0x0") {
 		return args, nil
 	}
 
-	callParams[reqJSONKeyFrom] = account
-	args[0] = callParams
-	return args, nil
+	// override the existing args
+	callMsg.From = account
+
+	// do not modify other existing arguments
+	request := []interface{}{callMsg}
+	for i := 1; i < len(args); i++ {
+		request = append(request, args[i])
+	}
+
+	return request, nil
 }
 
 type RPCRequest struct {
 	ID     interface{} // can be string or int
 	Method string
 	Params []interface{}
+}
+
+// Clone returns a new instance of the *RPCRequest
+func (r *RPCRequest) Clone() *RPCRequest {
+	return &RPCRequest{
+		ID:     r.ID,
+		Method: r.Method,
+		Params: r.Params,
+	}
+}
+
+// convertToCallMsg converts the interface to a *ethereum.CallMsg
+func convertToCallMsg(callMsgInterface interface{}) (*ethereum.CallMsg, error) {
+	callMsgBytes, err := json.Marshal(callMsgInterface)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
+	}
+	var callMsg ethereum.CallMsg
+	err = json.Unmarshal(callMsgBytes, &callMsg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
+	}
+	return &callMsg, err
 }

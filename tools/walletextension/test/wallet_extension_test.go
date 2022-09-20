@@ -73,7 +73,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	_, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
+	vkAddress, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range rpc.SensitiveMethods {
@@ -83,6 +83,14 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 		}
 
 		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{"params": dummyParams}})
+
+		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )
+		if method == rpc.RPCCall || method == rpc.RPCEstimateGas {
+			if !strings.Contains(string(respBody), strings.ToLower(vkAddress.Hex())) {
+				t.Fatalf("expected response containing '%s', got '%s'", strings.ToLower(vkAddress.Hex()), string(respBody))
+			}
+			continue
+		}
 
 		if !strings.Contains(string(respBody), dummyParams) {
 			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -144,15 +152,16 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	accountAddr, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
+	vkAddress, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	respBody := MakeHTTPEthJSONReq(walExtAddr, rpc.RPCCall, []interface{}{map[string]interface{}{}})
+	for _, method := range []string{rpc.RPCCall, rpc.RPCEstimateGas} {
+		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{}})
 
-	// We check the automatically-set `from` field is present.
-	fromJSON := fmt.Sprintf("\"from\":\"%s\"", strings.ToLower(accountAddr.Hex()))
-	if !strings.Contains(string(respBody), fromJSON) {
-		t.Fatalf("expected response containing '%s', got '%s'", fromJSON, string(respBody))
+		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )
+		if !strings.Contains(string(respBody), strings.ToLower(vkAddress.Hex())) {
+			t.Fatalf("expected response containing '%s', got '%s'", strings.ToLower(vkAddress.Hex()), string(respBody))
+		}
 	}
 }
 
