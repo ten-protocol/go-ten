@@ -15,6 +15,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+const (
+	zeroBytesHex = "000000000000000000000000"
+)
+
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
@@ -102,21 +106,32 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 
 // Indicates whether the log is relevant for the subscription. A lifecycle log is considered relevant to everyone.
 func isRelevant(log *types.Log, sub *common.LogSubscription, db *state.StateDB) bool {
+	// We determine whether there are any user addresses in the topics. If there is no code associated with an address,
+	// it's a user address.
 	var nonContractAddrs []string
 	for _, topic := range log.Topics {
-		addr := gethcommon.HexToAddress(topic.Hex())
-		if db.GetCode(addr) == nil { // If there is code associated with the address, it's a contract address.
+		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
+		// (potentially) be user addresses.
+		topicHex := topic.Hex()
+		if topicHex[2:len(zeroBytesHex)/2] != zeroBytesHex {
+			continue
+		}
+
+		addr := gethcommon.HexToAddress(topicHex)
+		if db.GetCode(addr) == nil {
 			nonContractAddrs = append(nonContractAddrs, addr.Hex())
 		}
 	}
 
+	// If all the topics are contract addresses, this is a lifecycle event, and is therefore relevant to everyone.
 	if len(nonContractAddrs) == 0 {
-		// All the topic addresses are contract addresses, so this is a log event, and is relevant to everyone.
 		return true
 	}
 
+	// Otherwise, this is a user event, so we check if the subscription's account is authorised to view it.
+	accountHex := sub.SubscriptionAccount.Account.Hex()
 	for _, addr := range nonContractAddrs {
-		if addr == sub.SubscriptionAccount.Account.Hex() {
+		if addr == accountHex {
 			return true
 		}
 	}
