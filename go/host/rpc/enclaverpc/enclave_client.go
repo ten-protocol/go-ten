@@ -244,7 +244,7 @@ func (c *Client) SubmitRollup(rollup common.ExtRollup) {
 	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
 	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to submit rollup. Cause: %s", err)
+		common.PanicWithID(c.nodeShortID, "Could not submit rollup. Cause: %s", err)
 	}
 }
 
