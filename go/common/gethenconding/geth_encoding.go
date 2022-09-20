@@ -22,7 +22,7 @@ const (
 // ExtractEthCall extracts the eth_call ethereum.CallMsg from an interface{}
 func ExtractEthCall(paramBytes interface{}) (*ethereum.CallMsg, error) {
 	// geth lowercases the field name and uses the last seen value
-	var toString, fromString, dataString, valueString string
+	var valString string
 	var to, from gethcommon.Address
 	var data []byte
 	var value *big.Int
@@ -32,38 +32,25 @@ func ExtractEthCall(paramBytes interface{}) (*ethereum.CallMsg, error) {
 		if val == nil {
 			continue
 		}
+		valString, ok = val.(string)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type supplied in `%s` field", field)
+		}
+		if len(strings.TrimSpace(valString)) == 0 {
+			continue
+		}
 		switch strings.ToLower(field) {
 		case CallFieldTo:
-			toString, ok = val.(string)
-			if !ok {
-				return nil, fmt.Errorf("unexpected type supplied in `to` field")
-			}
-			to = gethcommon.HexToAddress(toString)
+			to = gethcommon.HexToAddress(valString)
 		case CallFieldFrom:
-			fromString, ok = val.(string)
-			if !ok {
-				return nil, fmt.Errorf("unexpected type supplied in `from` field")
-			}
-			from = gethcommon.HexToAddress(fromString)
+			from = gethcommon.HexToAddress(valString)
 		case CallFieldData:
-			dataString, ok = val.(string)
-			if !ok {
-				return nil, fmt.Errorf("unexpected type supplied in `data` field")
-			}
-
-			// data can be nil
-			if len(dataString) > 0 {
-				data, err = hexutil.Decode(dataString)
-				if err != nil {
-					return nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
-				}
+			data, err = hexutil.Decode(valString)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
 			}
 		case CallFieldValue:
-			valueString, ok = val.(string)
-			if !ok {
-				return nil, fmt.Errorf("unexpected type supplied in `value` field")
-			}
-			value, err = hexutil.DecodeBig(valueString)
+			value, err = hexutil.DecodeBig(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}

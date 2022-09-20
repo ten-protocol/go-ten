@@ -160,6 +160,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 			"To":    "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC",
 			"data":  "0x70a0823100000000000000000000000013e23ca74de0206c56ebae8d51b5622eff1e9944",
 			"value": nil,
+			"Value": "",
 		}})
 
 		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )
