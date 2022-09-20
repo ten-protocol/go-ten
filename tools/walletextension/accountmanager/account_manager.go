@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -253,11 +255,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
 	// never modify the original request as it might be reused
-	clonedRequest := RPCRequest{
-		ID:     req.ID,
-		Method: req.Method,
-		Params: req.Params,
-	}
+	clonedRequest := req.Clone()
 
 	if clonedRequest.Method == rpc.RPCCall || clonedRequest.Method == rpc.RPCEstimateGas {
 		// Any method using an ethereum.CallMsg is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory
@@ -281,7 +279,7 @@ func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]in
 		return nil, fmt.Errorf("no params found to unmarshal")
 	}
 
-	callMsg, err := rpc.ConvertToCallMsg(args[0])
+	callMsg, err := convertToCallMsg(args[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
 	}
@@ -307,4 +305,27 @@ type RPCRequest struct {
 	ID     interface{} // can be string or int
 	Method string
 	Params []interface{}
+}
+
+// Clone returns a new instance of the *RPCRequest
+func (r *RPCRequest) Clone() *RPCRequest {
+	return &RPCRequest{
+		ID:     r.ID,
+		Method: r.Method,
+		Params: r.Params,
+	}
+}
+
+// convertToCallMsg converts the interface to a *ethereum.CallMsg
+func convertToCallMsg(callMsgInterface interface{}) (*ethereum.CallMsg, error) {
+	callMsgBytes, err := json.Marshal(callMsgInterface)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
+	}
+	var callMsg ethereum.CallMsg
+	err = json.Unmarshal(callMsgBytes, &callMsg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
+	}
+	return &callMsg, err
 }
