@@ -366,11 +366,8 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 	}
 }
 
-// todo - joel - update description
-// todo - joel - ensure you only get your own, not everyone's
-// Terminates all subscriptions, and checks that we have not received events for either the HOC or POC ERC20 contracts,
-// since they are filtered out by our visibility logic.
-// TODO - #453 - Extend logic of this test.
+// Terminates all subscriptions. Checks that we have received events for both the HOC or POC ERC20 contracts, but only
+// those where our address is one of the topics.
 func checkLogsReceived(t *testing.T, s *Simulation) {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
@@ -384,6 +381,7 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 	var gotHOCEvent bool
 	var gotPOCEvent bool
 	for {
+		// todo - joel - ensure you only get your own, not everyone's
 		select {
 		case receivedLog := <-s.LogChannel:
 			if receivedLog.Address.Hex() == "0x"+bridge.HOCAddr {
