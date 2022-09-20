@@ -71,18 +71,31 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, db *state.StateDB) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
-	for subscriptionID, subscription := range s.subscriptions {
-		for _, log := range logs {
-			logIsRelevant := isRelevant(log, subscription, db)
-			if !logIsRelevant {
-				continue
-			}
+	for _, log := range logs {
+		userAddrs := getUserAddrs(log, db)
 
-			logsForSubID, found := relevantLogs[subscriptionID]
-			if !found {
-				relevantLogs[subscriptionID] = []*types.Log{log}
-			} else {
-				relevantLogs[subscriptionID] = append(logsForSubID, log)
+		// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
+		if len(userAddrs) == 0 {
+			for subscriptionID := range s.subscriptions {
+				logsForSubID, found := relevantLogs[subscriptionID]
+				if !found {
+					relevantLogs[subscriptionID] = []*types.Log{log}
+				} else {
+					relevantLogs[subscriptionID] = append(logsForSubID, log)
+				}
+			}
+			continue
+		}
+
+		// Otherwise, we check whether the log is relevant to each subscription.
+		for subscriptionID, subscription := range s.subscriptions {
+			if isRelevant(userAddrs, subscription) {
+				logsForSubID, found := relevantLogs[subscriptionID]
+				if !found {
+					relevantLogs[subscriptionID] = []*types.Log{log}
+				} else {
+					relevantLogs[subscriptionID] = append(logsForSubID, log)
+				}
 			}
 		}
 	}
@@ -104,11 +117,11 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 	return result, nil
 }
 
-// Indicates whether the log is relevant for the subscription. A lifecycle log is considered relevant to everyone.
-func isRelevant(log *types.Log, sub *common.LogSubscription, db *state.StateDB) bool {
-	// We determine whether there are any user addresses in the topics. If there is no code associated with an address,
-	// it's a user address.
+// Extracts the (potential) user addresses from the topics. If there is no code associated with an address, it's a user
+// address.
+func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 	var nonContractAddrs []string
+
 	for _, topic := range log.Topics {
 		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
 		// (potentially) be user addresses.
@@ -123,14 +136,13 @@ func isRelevant(log *types.Log, sub *common.LogSubscription, db *state.StateDB) 
 		}
 	}
 
-	// If all the topics are contract addresses, this is a lifecycle event, and is therefore relevant to everyone.
-	if len(nonContractAddrs) == 0 {
-		return true
-	}
+	return nonContractAddrs
+}
 
-	// Otherwise, this is a user event, so we check if the subscription's account is authorised to view it.
+// Indicates whether the log is relevant for the subscription.
+func isRelevant(userAddrs []string, sub *common.LogSubscription) bool {
 	accountHex := sub.SubscriptionAccount.Account.Hex()
-	for _, addr := range nonContractAddrs {
+	for _, addr := range userAddrs {
 		if addr == accountHex {
 			return true
 		}
