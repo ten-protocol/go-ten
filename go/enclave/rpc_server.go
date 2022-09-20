@@ -65,8 +65,12 @@ func StartServer(
 
 // Status returns a nil error to indicate that the server is ready.
 func (s *server) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
+	errStr := ""
 	status, err := s.enclave.Status()
-	return &generated.StatusResponse{Status: int32(status), Error: err.Error()}, nil
+	if err != nil {
+		errStr = err.Error()
+	}
+	return &generated.StatusResponse{Status: int32(status), Error: errStr}, nil
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
