@@ -404,6 +404,7 @@ func checkReceivedHOCAndPOCLogs(t *testing.T, channel chan types.Log) {
 		case <-time.After(time.Second):
 			if !(gotHOCEvent && gotPOCEvent) {
 				t.Errorf("did not receive events for both the HOC and POC contracts")
+				return
 			}
 		}
 	}
