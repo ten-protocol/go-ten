@@ -116,7 +116,7 @@ func isRelevant(log *types.Log, sub *common.LogSubscription, db *state.StateDB) 
 	}
 
 	for _, addr := range nonContractAddrs {
-		if addr == sub.SubscriptionAccount.Account {
+		if addr.Hex() == sub.SubscriptionAccount.Account.Hex() {
 			return true
 		}
 	}
