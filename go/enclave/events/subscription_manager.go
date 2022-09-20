@@ -71,8 +71,8 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, db *state.StateDB) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
-	for _, log := range logs {
-		for subscriptionID, subscription := range s.subscriptions {
+	for subscriptionID, subscription := range s.subscriptions {
+		for _, log := range logs {
 			logIsRelevant := isRelevant(log, subscription, db)
 			if !logIsRelevant {
 				continue
