@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
@@ -55,6 +58,8 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		SimulationTime:   params.SimulationTime,
 		Stats:            stats,
 		Params:           params,
+		LogChannel:       make(chan types.Log),
+		Subscriptions:    []ethereum.Subscription{},
 	}
 
 	// execute the simulation

@@ -35,6 +35,7 @@ func TestGethSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold: 0.7, // nodes might stop producing rollups but the geth network is still going
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationGethInMem,
+		IsInMem:                   true,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

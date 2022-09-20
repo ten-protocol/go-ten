@@ -34,8 +34,10 @@ import (
 type ERC20 string
 
 const (
-	HOC ERC20 = "HOC"
-	POC ERC20 = "POC"
+	HOC     ERC20 = "HOC"
+	POC     ERC20 = "POC"
+	HOCAddr       = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
+	POCAddr       = "9802F661d17c65527D7ABB59DAAD5439cb125a67"
 )
 
 var HOCOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")

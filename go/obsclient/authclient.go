@@ -96,6 +96,11 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return hexutil.DecodeBig(result)
 }
 
+func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, _ ethereum.FilterQuery, ch chan types.Log) (ethereum.Subscription, error) {
+	// TODO - #453 - Parse the arguments from the Ethereum filter query.
+	return ac.rpcClient.Subscribe(ctx, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, nil)
+}
+
 func (ac *AuthObsClient) Address() common.Address {
 	return ac.account
 }
