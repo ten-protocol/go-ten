@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -284,7 +286,7 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 		return nil, fmt.Errorf("no params found to unmarshal")
 	}
 
-	callMsg, err := convertToCallMsg(args[0])
+	callMsg, err := gethenconding.ExtractEthCall(args[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
 	}
