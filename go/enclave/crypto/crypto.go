@@ -84,7 +84,7 @@ func encryptWithPublicKey(msg []byte, pub *ecdsa.PublicKey) ([]byte, error) {
 func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, error) {
 	plaintext, err := ecies.ImportECDSA(priv).Decrypt(ciphertext, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt with private key. %w", err)
+		return nil, fmt.Errorf("could not decrypt with private key. %w", err)
 	}
 	return plaintext, nil
 }

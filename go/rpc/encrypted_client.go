@@ -260,7 +260,7 @@ func (c *EncRPCClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
 
 	decryptedResult, err := c.viewingKey.PrivateKey.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt result with viewing key - %w", err)
+		return nil, fmt.Errorf("could not decrypt result with viewing key - %w", err)
 	}
 
 	return decryptedResult, nil

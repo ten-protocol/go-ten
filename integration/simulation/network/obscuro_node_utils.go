@@ -199,7 +199,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 			defer wg.Done()
 			err := c.Call(nil, rpc.RPCStopHost)
 			if err != nil {
-				log.Error("Failed to stop Obscuro node. Cause: %s", err)
+				log.Error("Could not stop Obscuro node. Cause: %s", err)
 			}
 			c.Stop()
 		}(client)

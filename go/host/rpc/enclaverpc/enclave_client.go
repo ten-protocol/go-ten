@@ -310,7 +310,7 @@ func (c *Client) Stop() error {
 
 	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
 	if err != nil {
-		return fmt.Errorf("failed to stop enclave: %w", err)
+		return fmt.Errorf("could not stop enclave: %w", err)
 	}
 	return nil
 }
