@@ -71,6 +71,11 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, db *state.StateDB) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
+	// If there are no subscriptions, we do not need to do any processing.
+	if len(s.subscriptions) == 0 {
+		return relevantLogs
+	}
+
 	for _, log := range logs {
 		userAddrs := getUserAddrs(log, db)
 
