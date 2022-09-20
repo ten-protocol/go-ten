@@ -63,13 +63,10 @@ func StartServer(
 	return closeHandle, nil
 }
 
-// IsReady returns a nil error to indicate that the server is ready.
-func (s *server) IsReady(context.Context, *generated.IsReadyRequest) (*generated.IsReadyResponse, error) {
-	errStr := ""
-	if err := s.enclave.IsReady(); err != nil {
-		errStr = err.Error()
-	}
-	return &generated.IsReadyResponse{Error: errStr}, nil
+// Status returns a nil error to indicate that the server is ready.
+func (s *server) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
+	status, err := s.enclave.Status()
+	return &generated.StatusResponse{Status: int32(status), Error: err.Error()}, nil
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
@@ -95,11 +92,6 @@ func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRe
 		errStr = err.Error()
 	}
 	return &generated.InitEnclaveResponse{Error: errStr}, nil
-}
-
-func (s *server) IsInitialised(context.Context, *generated.IsInitialisedRequest) (*generated.IsInitialisedResponse, error) {
-	isInitialised := s.enclave.IsInitialised()
-	return &generated.IsInitialisedResponse{IsInitialised: isInitialised}, nil
 }
 
 func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {

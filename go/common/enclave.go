@@ -7,10 +7,18 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
+type Status int
+
+const (
+	Running Status = iota
+	AwaitingSecret
+	Unavailable
+)
+
 // Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
-	// IsReady checks whether the enclave is ready to process requests - only implemented by the RPC layer
-	IsReady() error
+	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
+	Status() (Status, error)
 
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation() *AttestationReport
@@ -26,9 +34,6 @@ type Enclave interface {
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
-
-	// IsInitialised - true if the shared secret is available
-	IsInitialised() bool
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
 	ProduceGenesis(blkHash gethcommon.Hash) BlockSubmissionResponse

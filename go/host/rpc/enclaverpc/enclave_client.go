@@ -74,22 +74,22 @@ func (c *Client) StopClient() error {
 	return c.connection.Close()
 }
 
-func (c *Client) IsReady() error {
+func (c *Client) Status() (common.Status, error) {
 	if c.connection.GetState() != connectivity.Ready {
-		return errors.New("RPC connection is not ready")
+		return common.Unavailable, errors.New("RPC connection is not ready")
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	resp, err := c.protoClient.IsReady(timeoutCtx, &generated.IsReadyRequest{})
+	resp, err := c.protoClient.Status(timeoutCtx, &generated.StatusRequest{})
 	if err != nil {
-		return err
+		return common.Unavailable, err
 	}
 	if resp.GetError() != "" {
-		return errors.New(resp.GetError())
+		return common.Unavailable, errors.New(resp.GetError())
 	}
-	return nil
+	return common.Status(resp.GetStatus()), nil
 }
 
 func (c *Client) Attestation() *common.AttestationReport {
@@ -142,17 +142,6 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 		return errors.New(resp.GetError())
 	}
 	return nil
-}
-
-func (c *Client) IsInitialised() bool {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.IsInitialised(timeoutCtx, &generated.IsInitialisedRequest{})
-	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to establish enclave initialisation status. Cause: %s", err)
-	}
-	return response.IsInitialised
 }
 
 func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
