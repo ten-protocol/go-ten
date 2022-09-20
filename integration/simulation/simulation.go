@@ -42,8 +42,8 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
-	LogChannel       chan types.Log
-	Subscriptions    []ethereum.Subscription
+	LogChannels      map[string]chan types.Log // Maps an owner to the channel on which they receive logs for all their wallets.
+	Subscriptions    []ethereum.Subscription   // A slice of all created event subscriptions.
 	ctx              context.Context
 }
 
@@ -115,9 +115,11 @@ func (s *Simulation) trackLogs() {
 		return
 	}
 
-	for _, clients := range s.RPCHandles.AuthObsClients {
+	for owner, clients := range s.RPCHandles.AuthObsClients {
+		s.LogChannels[owner] = make(chan types.Log)
+
 		for _, client := range clients {
-			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannel)
+			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannels[owner])
 			if err != nil {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
