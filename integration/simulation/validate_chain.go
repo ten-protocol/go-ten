@@ -368,6 +368,7 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 
 // Terminates all subscriptions. Checks that we have received events for both the HOC or POC ERC20 contracts, but only
 // those where our address is one of the topics.
+// TODO - #453 - Ensure subscriptions only receive their own events, and not those of others.
 func checkLogsReceived(t *testing.T, s *Simulation) {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
@@ -381,7 +382,6 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 	var gotHOCEvent bool
 	var gotPOCEvent bool
 	for {
-		// todo - joel - ensure you only get your own, not everyone's
 		select {
 		case receivedLog := <-s.LogChannel:
 			if receivedLog.Address.Hex() == "0x"+bridge.HOCAddr {
@@ -394,7 +394,7 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 				return
 			}
 
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(time.Second):
 			// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
 			if !(gotHOCEvent && gotPOCEvent) {
 				t.Errorf("did not receive events for both the HOC and POC contracts")
