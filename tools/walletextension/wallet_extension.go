@@ -226,7 +226,7 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	if err != nil {
 		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
 		if !errors.Is(err, rpc.ErrNilResponse) {
-			userConn.HandleError(fmt.Sprintf("rpc request failed: %s", err))
+			userConn.HandleError(fmt.Sprintf("rpc request unsuccessful: %s", err))
 			return
 		}
 	}
