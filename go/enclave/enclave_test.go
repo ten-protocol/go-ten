@@ -232,7 +232,7 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "unexpected type supplied in `value` field") {
+	if !assert.ErrorContains(t, err, "unexpected type supplied in") {
 		t.Fatal("unexpected error")
 	}
 }
