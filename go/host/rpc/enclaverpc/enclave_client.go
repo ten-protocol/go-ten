@@ -282,7 +282,7 @@ func (c *Client) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, 
 
 	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to determine round winner. Cause: %s", err)
+		return common.ExtRollup{}, false, fmt.Errorf("could not determine round winner. Cause: %w", err)
 	}
 
 	if response.Winner {
