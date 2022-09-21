@@ -240,7 +240,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	// For the genesis block, we do not emit any events, because we cannot yet validate whether all the topics refer to
 	// code addresses, since the state DB hasn't yet been constructed to check against.
 	if head.Header.ParentHash != common.GenesisHash {
-		subscribedLogs = rc.subscriptionManager.FilterRelevantLogs(logs, rc.storage.CreateStateDB(head.Header.ParentHash))
+		subscribedLogs = rc.subscriptionManager.FilterRelevantLogs(logs, &rc.storage, head.Header.ParentHash)
 	}
 
 	// TODO - #453 - Check this recursive logic works correctly (i.e. each block submission response contains the logs

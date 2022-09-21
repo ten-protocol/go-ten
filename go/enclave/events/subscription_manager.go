@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+
 	"github.com/ethereum/go-ethereum/core/state"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -68,7 +70,7 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 }
 
 // FilterRelevantLogs filters out logs that are not subscribed too, and organises the logs by their subscribing ID.
-func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, db *state.StateDB) map[uuid.UUID][]*types.Log {
+func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, storage *db.Storage, dbHash common.L2RootHash) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	// If there are no subscriptions, we do not need to do any processing.
@@ -76,8 +78,11 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, db *state.St
 		return relevantLogs
 	}
 
+	// We only create the state DB if there are any active subscriptions.
+	stateDB := (*storage).CreateStateDB(dbHash)
+
 	for _, log := range logs {
-		userAddrs := getUserAddrs(log, db)
+		userAddrs := getUserAddrs(log, stateDB)
 
 		// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
 		if len(userAddrs) == 0 {
