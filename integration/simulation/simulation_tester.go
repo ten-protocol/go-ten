@@ -15,7 +15,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
-	stats2 "github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	simstats "github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	"github.com/google/uuid"
 )
@@ -30,7 +30,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
-	stats := stats2.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
+	stats := simstats.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
 	fmt.Printf("Creating network\n")
 	defer netw.TearDown()
