@@ -27,8 +27,6 @@ var (
 	}
 )
 
-// TODO - #453 - Support subscriptions for pending and removed logs if needed.
-
 // Backend is a custom backend for Geth's `PublicFilterAPI`.
 type Backend struct {
 	logsCh <-chan *types.Log
