@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
 	zeroBytesHex = "000000000000000000000000"
 )
 
@@ -118,13 +119,13 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 // Extracts the (potential) user addresses from the topics. If there is no code associated with an address, it's a user
 // address.
 func getUserAddrs(log *types.Log, db *state.StateDB) []string {
-	var nonContractAddrs []string //nolint:prealloc
+	var userAddrs []string //nolint:prealloc
 
 	for _, topic := range log.Topics {
 		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
 		// (potentially) be user addresses.
 		topicHex := topic.Hex()
-		if topicHex[2:len(zeroBytesHex)/2] != zeroBytesHex {
+		if topicHex[2:len(zeroBytesHex)+2] != zeroBytesHex {
 			continue
 		}
 
@@ -134,10 +135,10 @@ func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 			continue
 		}
 
-		nonContractAddrs = append(nonContractAddrs, addr.Hex())
+		userAddrs = append(userAddrs, addr.Hex())
 	}
 
-	return nonContractAddrs
+	return userAddrs
 }
 
 // Indicates whether the log is relevant for the subscription.

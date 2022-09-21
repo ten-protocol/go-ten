@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
@@ -31,6 +30,8 @@ const (
 	txThreshold = 5
 	// The maximum number of blocks an Obscuro node can fall behind
 	maxBlockDelay = 5
+	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
+	zeroBytesHex = "000000000000000000000000"
 )
 
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
@@ -366,7 +367,8 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 	}
 }
 
-// Terminates all subscriptions. Checks that we have received events for both the HOC or POC ERC20 contracts.
+// Terminates all subscriptions. Checks that we have received events, and that they are as expected (relevant to the
+// account that received them, and emitted by the HOC or POC ERC20 contracts.
 func checkLogsReceived(t *testing.T, s *Simulation) {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
@@ -377,35 +379,64 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 		sub.Unsubscribe()
 	}
 
-	for _, channel := range s.LogChannels {
-		checkReceivedHOCAndPOCLogs(t, channel)
+	logsReceived := 0
+	for owner, channel := range s.LogChannels {
+		logsReceived += checkReceivedHOCAndPOCLogs(t, owner, channel)
+	}
+	if logsReceived == 0 {
+		t.Errorf("no logs received during simulation")
 	}
 }
 
-// Checks that the owner has received the relevant HOC and POC logs.
-// TODO - #453 - Once the filtering by subscription ID is implemented, check client does not receive irrelevant logs.
-func checkReceivedHOCAndPOCLogs(t *testing.T, channel chan types.Log) {
-	var gotHOCEvent bool
-	var gotPOCEvent bool
+// Checks that the owner has only received relevant logs, and only from the HOC or POC contracts.
+func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan types.Log) int {
+	logsReceived := 0
+
 	for {
 		select {
 		case receivedLog := <-channel:
-			if receivedLog.Address.Hex() == "0x"+bridge.HOCAddr {
-				gotHOCEvent = true
-			} else if receivedLog.Address.Hex() == "0x"+bridge.POCAddr {
-				gotPOCEvent = true
+			logsReceived++
+
+			if !isRelevant(owner, receivedLog) {
+				t.Errorf("received log that was not relevant (neither a lifecycle event not a relevant user event)")
 			}
-			if gotHOCEvent && gotPOCEvent {
-				// We have received both HOC and POC events. The test is successful.
-				return
+
+			logAddrHex := receivedLog.Address.Hex()
+			if logAddrHex != "0x"+bridge.HOCAddr && logAddrHex != "0x"+bridge.POCAddr {
+				t.Errorf("expected log from the HOC or POC contracts, but got a log from %s", logAddrHex)
 			}
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
-		case <-time.After(time.Minute):
-			if !(gotHOCEvent && gotPOCEvent) {
-				t.Errorf("did not receive events for both the HOC and POC contracts")
-				return
-			}
+		default:
+			return logsReceived
 		}
 	}
+}
+
+// Checks whether the log is relevant to the recipient (either a lifecycle event or a relevant user event).
+func isRelevant(owner string, receivedLog types.Log) bool {
+	// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can (potentially)
+	// be user addresses. We filter these out. In theory, we should also check whether the topics are contract
+	// addresses, but in practice no events of this type are sent in the simulations.
+	var userAddrs []string
+	for _, topic := range receivedLog.Topics {
+		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
+		// (potentially) be user addresses.
+		topicHex := topic.Hex()
+		if topicHex[2:len(zeroBytesHex)+2] == zeroBytesHex {
+			userAddrs = append(userAddrs, gethcommon.HexToAddress(topicHex).Hex())
+		}
+	}
+
+	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
+	if len(userAddrs) == 0 {
+		return true
+	}
+
+	for _, addr := range userAddrs {
+		if addr == owner {
+			return true
+		}
+	}
+	return false
 }

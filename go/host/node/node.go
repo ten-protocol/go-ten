@@ -592,12 +592,18 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 
 // Distributes logs to subscribed clients.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
-	for _, encryptedLogs := range result.SubscribedLogs {
+	for subscriptionID, encryptedLogs := range result.SubscribedLogs {
+		subscriptionIDBytes, err := subscriptionID.MarshalBinary()
+		if err != nil {
+			log.Error("could not marshal subscription ID to bytes. Cause: %s", err)
+		}
+
 		// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
-		// encrypted bytes. To get around this, we place the encrypted log bytes into a "fake" log's data field.
+		// encrypted bytes. To get around this, we place the encrypted log bytes into the data field of a "fake" log.
 		wrapperLog := types.Log{
-			// TODO - #453 - Tag the "fake" log objects with a topic that's the padded subscription ID instead.
-			Topics: []gethcommon.Hash{gethcommon.BytesToHash([]byte("placeholder"))},
+			// We tag each "fake" log with the padded subscription ID. This allows us to reuse Geth's subscription
+			// machinery to automatically filter out logs for other subscription IDs on the client side.
+			Topics: []gethcommon.Hash{gethcommon.BytesToHash(subscriptionIDBytes)},
 			Data:   encryptedLogs,
 		}
 		a.logsCh <- &wrapperLog
