@@ -23,10 +23,10 @@ type Enclave interface {
 	Status() (Status, error)
 
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
-	Attestation() *AttestationReport
+	Attestation() (*AttestationReport, error)
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-	GenerateSecret() EncryptedSharedEnclaveSecret
+	GenerateSecret() (EncryptedSharedEnclaveSecret, error)
 
 	// ShareSecret - verify the attestation and return the shared secret (encrypted with the key from the attestation)
 	ShareSecret(report *AttestationReport) (EncryptedSharedEnclaveSecret, error)
@@ -38,13 +38,13 @@ type Enclave interface {
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) BlockSubmissionResponse
+	ProduceGenesis(blkHash gethcommon.Hash) (BlockSubmissionResponse, error)
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
+	IngestBlocks(blocks []*types.Block) ([]BlockSubmissionResponse, error)
 
 	// Start - start speculative execution
-	Start(block types.Block)
+	Start(block types.Block) error
 
 	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
 	// it is the responsibility of the host to gossip the returned rollup
@@ -53,7 +53,7 @@ type Enclave interface {
 	SubmitBlock(block types.Block) (BlockSubmissionResponse, error)
 
 	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup ExtRollup)
+	SubmitRollup(rollup ExtRollup) error
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
