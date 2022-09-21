@@ -124,7 +124,7 @@ func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
 		// (potentially) be user addresses.
 		topicHex := topic.Hex()
-		if topicHex[2:len(zeroBytesHex)/2] != zeroBytesHex {
+		if topicHex[2:len(zeroBytesHex)+2] != zeroBytesHex {
 			continue
 		}
 
