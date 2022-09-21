@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Strategy interface allows for flexible strategies for retrying/polling functions, the usage should be:
+// Strategy interface allows for flexible strategies for retrying/polling functions.
 type Strategy interface {
 	// NextRetryInterval calls can be considered as marking the completion of an attempt
 	NextRetryInterval() time.Duration // returns the duration to sleep before making the next attempt (may not be fixed, e.g. if strategy is to back-off)
@@ -14,7 +14,7 @@ type Strategy interface {
 	Reset()                           // reset is called before the first attempt is made, can be used for recording start time or setting attempts to zero
 }
 
-func NewTimeoutStrategy(timeout time.Duration, interval time.Duration) *timeoutStrategy {
+func NewTimeoutStrategy(timeout time.Duration, interval time.Duration) Strategy {
 	return &timeoutStrategy{
 		timeout:  timeout,
 		interval: interval,
