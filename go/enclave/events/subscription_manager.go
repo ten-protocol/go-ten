@@ -86,6 +86,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 	}
 
 	stateDB := s.storage.CreateStateDB(rollupHash)
+	
 	for _, log := range logs {
 		userAddrs := getUserAddrs(log, stateDB)
 
