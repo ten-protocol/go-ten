@@ -7,12 +7,14 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
+// Status represents the enclave's current status - the status and behaviour of the host is a function of the status of the enclave
+// since the host's responsibility is to manage communication in and out of the enclave.
 type Status int
 
 const (
-	Running Status = iota
-	AwaitingSecret
-	Unavailable
+	Running        Status = iota // the enclave is running, accepting L1 blocks
+	AwaitingSecret               // the enclave has not received the network secret and cannot process L1 blocks
+	Unavailable                  // the enclave is unavailable (no guarantee it will self-recover)
 )
 
 // Enclave represents the API of the service that runs inside the TEE.

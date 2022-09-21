@@ -63,7 +63,7 @@ func StartServer(
 	return closeHandle, nil
 }
 
-// Status returns a nil error to indicate that the server is ready.
+// Status returns the current status of the server as an enum value (see common.Status for details)
 func (s *server) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
 	errStr := ""
 	status, err := s.enclave.Status()
