@@ -85,9 +85,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 		relevantLogs[subscriptionID] = []*types.Log{}
 	}
 
-	// We only create the state DB if there are any active subscriptions.
 	stateDB := s.storage.CreateStateDB(rollupHash)
-
 	for _, log := range logs {
 		userAddrs := getUserAddrs(log, stateDB)
 
