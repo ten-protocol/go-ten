@@ -113,7 +113,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			defer wg.Done()
 			err := AwaitReceipt(ctx, faucetClient, txHash)
 			if err != nil {
-				panic(fmt.Sprintf("faucet transfer transaction failed. Cause: %s", err))
+				panic(fmt.Sprintf("faucet transfer transaction unsuccessful. Cause: %s", err))
 			}
 		}(txHash)
 	}
