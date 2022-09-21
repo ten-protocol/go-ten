@@ -69,8 +69,9 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterRelevantLogs filters out logs that are not subscribed too, and organises the logs by their subscribing ID.
-func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, storage *db.Storage, dbHash common.L2RootHash) map[uuid.UUID][]*types.Log {
+// FilterRelevantLogs filters out logs that are not subscribed to, and organises the logs by their subscribing ID.
+// It uses a state DB created from the rollup with the given hash to identify lifecycle vs user topics.
+func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, storage *db.Storage, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	// If there are no subscriptions, we do not need to do any processing.
@@ -79,7 +80,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, storage *db.
 	}
 
 	// We only create the state DB if there are any active subscriptions.
-	stateDB := (*storage).CreateStateDB(dbHash)
+	stateDB := (*storage).CreateStateDB(rollupHash)
 
 	for _, log := range logs {
 		userAddrs := getUserAddrs(log, stateDB)
