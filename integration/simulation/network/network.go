@@ -36,7 +36,7 @@ type RPCHandles struct {
 	// an obscuro client per obscuro node in the network (used for things like validation rather than transactions on behalf of sim accounts)
 	ObscuroClients []rpc.Client
 
-	// an RPC client per node per wallet, with a viewing key setup (on the client and registered on its corresponding host enclave),
+	// an RPC client per node per wallet, with a viewing key set up (on the client and registered on its corresponding host enclave),
 	//	to mimic user acc interaction via a wallet extension
 	// map of owner addresses to RPC clients for that owner (one per L2 node)
 	// todo: simplify this with a client per node when we have clients that can support multiple wallets

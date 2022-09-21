@@ -28,7 +28,7 @@ import (
 
 const (
 	localhost        = "127.0.0.1"
-	errFailedDecrypt = "failed to decrypt result with viewing key"
+	errFailedDecrypt = "could not decrypt result with viewing key"
 	dummyParams      = "dummyParams"
 	magicNumber      = 123789
 )

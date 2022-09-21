@@ -225,8 +225,8 @@ func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse,
 	processTime := time.Now()
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		log.Error("Failed to submit block. Cause: %s", err)
-		return common.BlockSubmissionResponse{}, fmt.Errorf("failed to submit block. Cause: %w", err)
+		log.Error("Could not submit block. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
 	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
 
@@ -244,7 +244,7 @@ func (c *Client) SubmitRollup(rollup common.ExtRollup) {
 	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
 	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to submit rollup. Cause: %s", err)
+		common.PanicWithID(c.nodeShortID, "Could not submit rollup. Cause: %s", err)
 	}
 }
 
@@ -310,7 +310,7 @@ func (c *Client) Stop() error {
 
 	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
 	if err != nil {
-		return fmt.Errorf("failed to stop enclave: %w", err)
+		return fmt.Errorf("could not stop enclave: %w", err)
 	}
 	return nil
 }

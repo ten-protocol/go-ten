@@ -176,7 +176,7 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager)
+	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage)
 	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
@@ -356,7 +356,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
 	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt encrypted RPC request params. Cause: %w", err)
+		return nil, fmt.Errorf("could not decrypt encrypted RPC request params. Cause: %w", err)
 	}
 	var paramList []string
 	err = json.Unmarshal(hashBytes, &paramList)

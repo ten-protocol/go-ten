@@ -111,7 +111,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	// method is sensitive, so we decrypt it before unmarshaling the result
 	decrypted, err := c.decryptResponse(rawResult)
 	if err != nil {
-		return fmt.Errorf("failed to decrypt response for %s call - %w", method, err)
+		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
 	}
 
 	// process the decrypted result to get the desired type and set it on the result pointer
@@ -260,7 +260,7 @@ func (c *EncRPCClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
 
 	decryptedResult, err := c.viewingKey.PrivateKey.Decrypt(encryptedResult, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt result with viewing key - %w", err)
+		return nil, fmt.Errorf("could not decrypt result with viewing key - %w", err)
 	}
 
 	return decryptedResult, nil

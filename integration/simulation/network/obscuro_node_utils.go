@@ -185,7 +185,7 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {
-			panic(fmt.Sprintf("failed to create enclave server: %v", err))
+			panic(fmt.Sprintf("could not create enclave server: %v", err))
 		}
 	}
 }
@@ -199,7 +199,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 			defer wg.Done()
 			err := c.Call(nil, rpc.RPCStopHost)
 			if err != nil {
-				log.Error("Failed to stop Obscuro node. Cause: %s", err)
+				log.Error("Could not stop Obscuro node. Cause: %s", err)
 			}
 			c.Stop()
 		}(client)
