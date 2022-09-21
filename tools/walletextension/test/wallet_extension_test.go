@@ -73,7 +73,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	vkAddress, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
+	_, viewingKeyBytes := RegisterPrivateKey(t, walExtAddr)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range rpc.SensitiveMethods {
@@ -83,14 +83,6 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 		}
 
 		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{"params": dummyParams}})
-
-		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )
-		if method == rpc.RPCCall || method == rpc.RPCEstimateGas {
-			if !strings.Contains(string(respBody), strings.ToLower(vkAddress.Hex())) {
-				t.Fatalf("expected response containing '%s', got '%s'", strings.ToLower(vkAddress.Hex()), string(respBody))
-			}
-			continue
-		}
 
 		if !strings.Contains(string(respBody), dummyParams) {
 			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -156,10 +148,15 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range []string{rpc.RPCCall, rpc.RPCEstimateGas} {
-		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{}})
+		respBody := MakeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{
+			"To":    "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC",
+			"data":  "0x70a0823100000000000000000000000013e23ca74de0206c56ebae8d51b5622eff1e9944",
+			"value": nil,
+			"Value": "",
+		}})
 
 		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )
-		if !strings.Contains(string(respBody), strings.ToLower(vkAddress.Hex())) {
+		if !strings.Contains(strings.ToLower(string(respBody)), strings.ToLower(vkAddress.Hex())) {
 			t.Fatalf("expected response containing '%s', got '%s'", strings.ToLower(vkAddress.Hex()), string(respBody))
 		}
 	}

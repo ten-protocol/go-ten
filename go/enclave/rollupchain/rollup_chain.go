@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -665,7 +667,19 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
 	}
 
-	callMsg, _, err := rpc.ExtractEthCall(paramBytes)
+	// extract params from byte slice to array of strings
+	var paramList []interface{}
+	err = json.Unmarshal(paramBytes, &paramList)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode EthCall params - %w", err)
+	}
+
+	// params are [callMsg, block number (optional) ]
+	if len(paramList) < 1 {
+		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
+	}
+
+	callMsg, err := gethenconding.ExtractEthCall(paramList[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}

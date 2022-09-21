@@ -43,7 +43,6 @@ func TestGasEstimation(t *testing.T) {
 		"gasEstimateSuccess":             gasEstimateSuccess,
 		"gasEstimateNoVKRegistered":      gasEstimateNoVKRegistered,
 		"gasEstimateNoCallMsgFrom":       gasEstimateNoCallMsgFrom,
-		"gasEstimateInvalidCallMsg":      gasEstimateInvalidCallMsg,
 		"gasEstimateInvalidBytes":        gasEstimateInvalidBytes,
 		"gasEstimateInvalidNumParams":    gasEstimateInvalidNumParams,
 		"gasEstimateInvalidParamParsing": gasEstimateInvalidParamParsing,
@@ -162,30 +161,6 @@ func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Encl
 	}
 }
 
-func gasEstimateInvalidCallMsg(t *testing.T, _ wallet.Wallet, enclave common.Enclave, _ *rpc.ViewingKey) {
-	// create a L2Tx instead
-	callMsg := datagenerator.CreateL2Tx()
-
-	// create the request
-	req := []interface{}{callMsg, nil}
-	reqBytes, err := json.Marshal(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// callMsg encrypted with the VK
-	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
-	if err != nil {
-		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
-	}
-
-	// Run gas Estimation
-	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "unexpected type supplied in `to` field") {
-		t.Fatalf("unexpected error - %s", err)
-	}
-}
-
 func gasEstimateInvalidBytes(t *testing.T, w wallet.Wallet, enclave common.Enclave, _ *rpc.ViewingKey) {
 	// create the callMsg
 	callMsg := datagenerator.CreateCallMsg()
@@ -257,7 +232,7 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "unexpected type supplied in `value` field") {
+	if !assert.ErrorContains(t, err, "unexpected type supplied in") {
 		t.Fatal("unexpected error")
 	}
 }

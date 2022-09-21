@@ -8,16 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
 	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -27,6 +25,12 @@ const (
 	ethCallAddrPadding  = "000000000000000000000000"
 
 	ErrNoViewingKey = "method %s cannot be called with an unauthorised client - no signed viewing keys found"
+
+	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
+	CallFieldTo    = "to"
+	CallFieldFrom  = "from"
+	CallFieldData  = "data"
+	CallFieldValue = "value"
 )
 
 // AccountManager provides a single location for code that helps wallet extension in determining the appropriate
@@ -34,18 +38,18 @@ const (
 type AccountManager struct {
 	unauthedClient rpc.Client
 	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
-	accountClients map[common.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	accountClients map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
 }
 
 func NewAccountManager(unauthedClient rpc.Client) AccountManager {
 	return AccountManager{
 		unauthedClient: unauthedClient,
-		accountClients: make(map[common.Address]*rpc.EncRPCClient),
+		accountClients: make(map[gethcommon.Address]*rpc.EncRPCClient),
 	}
 }
 
 // AddClient adds a client to the list of clients, keyed by account address.
-func (m *AccountManager) AddClient(address common.Address, client *rpc.EncRPCClient) {
+func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRPCClient) {
 	m.accountClients[address] = client
 }
 
@@ -83,7 +87,7 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, 
 }
 
 // suggestAccountClient works through various methods to try and guess which available client to use for a request, returns nil if none found
-func suggestAccountClient(req *RPCRequest, accClients map[common.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
+func suggestAccountClient(req *RPCRequest, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
 	if len(accClients) == 1 {
 		for _, client := range accClients {
 			// return the first (and only) client
@@ -140,7 +144,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 	return params, nil
 }
 
-func checkForFromField(paramsMap map[string]interface{}, accClients map[common.Address]*rpc.EncRPCClient) (*rpc.EncRPCClient, bool) {
+func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*rpc.EncRPCClient, bool) {
 	fromVal, found := paramsMap[reqJSONKeyFrom]
 	if !found {
 		return nil, false
@@ -151,14 +155,14 @@ func checkForFromField(paramsMap map[string]interface{}, accClients map[common.A
 		return nil, false
 	}
 
-	fromAddr := common.HexToAddress(fromStr)
+	fromAddr := gethcommon.HexToAddress(fromStr)
 	client, found := accClients[fromAddr]
 	return client, found
 }
 
 // Extracts the arguments from the request's `data` field. If any of them, after removing padding, match the viewing
 // key address, we return that address. Otherwise, we return nil.
-func searchDataFieldForAccount(callParams map[string]interface{}, accClients map[common.Address]*rpc.EncRPCClient) (*common.Address, error) {
+func searchDataFieldForAccount(callParams map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*gethcommon.Address, error) {
 	// We ensure that the `data` field is present.
 	data := callParams[reqJSONKeyData]
 	if data == nil {
@@ -192,7 +196,7 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 			continue
 		}
 
-		maybeAddress := common.HexToAddress(dataArg[len(ethCallAddrPadding):])
+		maybeAddress := gethcommon.HexToAddress(dataArg[len(ethCallAddrPadding):])
 		if _, ok := accClients[maybeAddress]; ok {
 			return &maybeAddress, nil
 		}
@@ -274,23 +278,23 @@ func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) e
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
-func setCallFromFieldIfMissing(args []interface{}, account common.Address) ([]interface{}, error) {
+func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) ([]interface{}, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("no params found to unmarshal")
 	}
 
-	callMsg, err := convertToCallMsg(args[0])
+	callMsg, err := gethenconding.ExtractEthCallMapString(args[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
-	if callMsg.From != common.HexToAddress("0x0") {
+	if callMsg[gethenconding.CallFieldFrom] != gethcommon.HexToAddress("0x0").Hex() {
 		return args, nil
 	}
 
 	// override the existing args
-	callMsg.From = account
+	callMsg[gethenconding.CallFieldFrom] = account.Hex()
 
 	// do not modify other existing arguments
 	request := []interface{}{callMsg}
@@ -314,18 +318,4 @@ func (r *RPCRequest) Clone() *RPCRequest {
 		Method: r.Method,
 		Params: r.Params,
 	}
-}
-
-// convertToCallMsg converts the interface to a *ethereum.CallMsg
-func convertToCallMsg(callMsgInterface interface{}) (*ethereum.CallMsg, error) {
-	callMsgBytes, err := json.Marshal(callMsgInterface)
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
-	}
-	var callMsg ethereum.CallMsg
-	err = json.Unmarshal(callMsgBytes, &callMsg)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
-	}
-	return &callMsg, err
 }
