@@ -105,11 +105,16 @@ func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRe
 }
 
 func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
-	genesisRollup := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
+	genesisRollup, err := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
+	if err != nil {
+		return nil, err
+	}
+
 	blockSubmissionResponse, err := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
 	if err != nil {
 		return nil, err
 	}
+	
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 

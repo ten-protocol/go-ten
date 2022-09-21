@@ -622,7 +622,10 @@ func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 // Called only by the first enclave to bootstrap the network
 func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
 	// Create the genesis rollup and submit it to the management contract
-	genesisResponse := a.enclaveClient.ProduceGenesis(block.Hash())
+	genesisResponse, err := a.enclaveClient.ProduceGenesis(block.Hash())
+	if err != nil {
+		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
+	}
 	common.LogWithID(
 		a.shortID,
 		"Initialising network. Genesis rollup r_%d.",

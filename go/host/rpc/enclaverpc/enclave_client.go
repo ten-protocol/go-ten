@@ -144,20 +144,22 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
+func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to produce genesis block. Cause: %s", err)
+		log.Error("could not produce genesis block. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce genesis block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+		log.Error("could not produce block submission response. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
-	return blockSubmissionResponse
+	return blockSubmissionResponse, nil
 }
 
 func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionResponse {

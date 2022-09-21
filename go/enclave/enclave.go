@@ -230,13 +230,13 @@ func (e *enclaveImpl) Start(block types.Block) {
 	*/
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
 	return common.BlockSubmissionResponse{
 		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
 		IngestedBlock:  true,
-	}
+	}, nil
 }
 
 // IngestBlocks is used to update the enclave with the full history of the L1 chain to date.

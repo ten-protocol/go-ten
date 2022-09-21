@@ -38,7 +38,7 @@ type Enclave interface {
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) BlockSubmissionResponse
+	ProduceGenesis(blkHash gethcommon.Hash) (BlockSubmissionResponse, error)
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
 	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
