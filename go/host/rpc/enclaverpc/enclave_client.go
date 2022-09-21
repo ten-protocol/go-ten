@@ -94,7 +94,7 @@ func (c *Client) Attestation() (*common.AttestationReport, error) {
 
 	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve attestation. Cause: %s", err)
+		return nil, fmt.Errorf("failed to retrieve attestation. Cause: %w", err)
 	}
 	return rpc.FromAttestationReportMsg(response.AttestationReportMsg), nil
 }
@@ -105,7 +105,7 @@ func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 
 	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate secret. Cause: %s", err)
+		return nil, fmt.Errorf("failed to generate secret. Cause: %w", err)
 	}
 	return response.EncryptedSharedEnclaveSecret, nil
 }
@@ -177,7 +177,7 @@ func (c *Client) IngestBlocks(blocks []*types.Block) ([]common.BlockSubmissionRe
 	for i, r := range responses {
 		blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(r)
 		if err != nil {
-			return nil, fmt.Errorf("could not produce block submission response. Cause: %s", err)
+			return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 		}
 		result[i] = blockSubmissionResponse
 	}

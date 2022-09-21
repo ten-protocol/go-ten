@@ -211,7 +211,10 @@ func (a *Node) Start() {
 	latestBlock := a.bootstrapNode()
 
 	// start the enclave speculative work from last block
-	a.enclaveClient.Start(latestBlock)
+	err = a.enclaveClient.Start(latestBlock)
+	if err != nil {
+		log.Panic(err.Error())
+	}
 
 	if a.config.IsGenesis {
 		_, err = a.initialiseProtocol(&latestBlock)
@@ -425,11 +428,16 @@ func (a *Node) startProcessing() {
 				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
 			}
 
-			go a.enclaveClient.SubmitRollup(common.ExtRollup{
-				Header:          rol.Header,
-				TxHashes:        rol.TxHashes,
-				EncryptedTxBlob: rol.Transactions,
-			})
+			go func() {
+				err := a.enclaveClient.SubmitRollup(common.ExtRollup{
+					Header:          rol.Header,
+					TxHashes:        rol.TxHashes,
+					EncryptedTxBlob: rol.Transactions,
+				})
+				if err != nil {
+					common.ErrorWithID(a.shortID, err.Error())
+				}
+			}()
 
 		case tx := <-a.txP2PCh:
 			if _, err := a.enclaveClient.SubmitTx(tx); err != nil {

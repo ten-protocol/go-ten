@@ -146,7 +146,10 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
-	s.enclave.Start(bl)
+	err := s.enclave.Start(bl)
+	if err != nil {
+		return nil, err
+	}
 	return &generated.StartResponse{}, nil
 }
 
@@ -166,7 +169,10 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 
 func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollupRequest) (*generated.SubmitRollupResponse, error) {
 	extRollup := rpc.FromExtRollupMsg(request.ExtRollup)
-	s.enclave.SubmitRollup(extRollup)
+	err := s.enclave.SubmitRollup(extRollup)
+	if err != nil {
+		return nil, err
+	}
 	return &generated.SubmitRollupResponse{}, nil
 }
 
