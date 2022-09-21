@@ -29,7 +29,7 @@ func (p *Profiler) Start() error {
 	go func() {
 		address := fmt.Sprintf("0.0.0.0:%d", p.port)
 		log.Info("Profiler started @%s ", address)
-		log.Info("%v", http.ListenAndServe(address, nil))
+		log.Info("%v", http.ListenAndServe(address, nil)) //nolint:gosec
 	}()
 	return nil
 }

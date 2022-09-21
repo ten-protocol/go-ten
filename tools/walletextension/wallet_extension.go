@@ -189,7 +189,7 @@ func (we *WalletExtension) handleEthJSONHTTP(resp http.ResponseWriter, req *http
 		return
 	}
 	userConn := userconn.NewUserConnHTTP(resp, req)
-	we.handleEthJSON(userConn)
+	we.handleEthJSON(userConn) //nolint:contextcheck
 }
 
 // Handles the Ethereum JSON-RPC request over websockets.
@@ -198,7 +198,7 @@ func (we *WalletExtension) handleEthJSONWS(resp http.ResponseWriter, req *http.R
 	if err != nil {
 		return
 	}
-	we.handleEthJSON(userConn)
+	we.handleEthJSON(userConn) //nolint:contextcheck
 }
 
 // Encrypts the Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
@@ -395,7 +395,7 @@ func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	// TODO - Create the clients lazily, to reduce connections to the host.
-	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
+	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk) //nolint:contextcheck
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 	}
