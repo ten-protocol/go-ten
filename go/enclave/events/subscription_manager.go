@@ -133,7 +133,7 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 // Extracts the (potential) user addresses from the topics. If there is no code associated with an address, it's a user
 // address.
 func getUserAddrs(log *types.Log, db *state.StateDB) []string {
-	var nonContractAddrs []string
+	var nonContractAddrs []string //nolint:prealloc
 
 	for _, topic := range log.Topics {
 		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
