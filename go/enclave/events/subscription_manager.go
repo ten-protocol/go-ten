@@ -67,7 +67,6 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 
 // RemoveSubscription removes the log subscription with the given ID from the enclave. If there is no subscription with
 // the given ID, nothing is deleted.
-// TODO - #453 - Consider whether the deletion needs to be authenticated as well, to prevent attackers deleting subscriptions.
 func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
 }
