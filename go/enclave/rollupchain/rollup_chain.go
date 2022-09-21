@@ -247,8 +247,8 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 
 	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
 	// block is missed.
-	// TODO - #453 - Should we be including the parent logs based on the subscriptions at the time, or recalculating
-	//  based on the current subscriptions?
+	// TODO - Should we be including the parent logs based on the subscriptions at the time, or recalculating based on
+	//  the current subscriptions?
 	for subscriptionID, logs := range subscribedLogs {
 		logsForID, found := parentLogs[subscriptionID]
 		if !found {

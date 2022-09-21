@@ -119,7 +119,7 @@ func (s *Simulation) trackLogs() {
 	subscriptionsCreated := 0
 	for wallet, clients := range s.RPCHandles.AuthObsClients {
 		subscriptionsCreated++
-		// TODO - #453 - Consider enabling subscriptions for all wallets, following performance optimisations.
+		// TODO - Consider enabling subscriptions for all wallets, following performance optimisations.
 		if subscriptionsCreated > maxSubscriptions {
 			break
 		}
@@ -134,7 +134,7 @@ func (s *Simulation) trackLogs() {
 			s.Subscriptions = append(s.Subscriptions, sub)
 
 			// We only subscribe on a single client for each wallet, to reduce the load on the simulation.
-			// TODO - #453 - Consider enabling subscriptions for all clients on each wallet, following performance optimisations.
+			// TODO - Consider enabling subscriptions for all clients on each wallet, following performance optimisations.
 			break //nolint:staticcheck
 		}
 	}
