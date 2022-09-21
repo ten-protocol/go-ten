@@ -120,6 +120,6 @@ func (api *ObscuroScanAPI) GetTotalTransactions() *big.Int {
 }
 
 // Attestation returns the node's attestation details.
-func (api *ObscuroScanAPI) Attestation() *common.AttestationReport {
+func (api *ObscuroScanAPI) Attestation() (*common.AttestationReport, error) {
 	return api.host.EnclaveClient().Attestation()
 }

@@ -221,35 +221,36 @@ func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
 }
 
-func (e *enclaveImpl) Start(block types.Block) {
+func (e *enclaveImpl) Start(block types.Block) error {
 	// todo - reinstate after TN1
 	/*	if e.config.SpeculativeExecution {
 			//start the speculative rollup execution loop on its own go routine
 			go e.start(block)
 		}
 	*/
+	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
 	return common.BlockSubmissionResponse{
 		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
 		IngestedBlock:  true,
-	}
+	}, nil
 }
 
 // IngestBlocks is used to update the enclave with the full history of the L1 chain to date.
-func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionResponse {
+func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) ([]common.BlockSubmissionResponse, error) {
 	result := make([]common.BlockSubmissionResponse, len(blocks))
 	for i, block := range blocks {
 		response := e.chain.IngestBlock(block)
 		result[i] = response
 		if !response.IngestedBlock {
-			return result // We return early, as all descendant blocks will also fail verification.
+			return result, nil // We return early, as all descendant blocks will also fail verification.
 		}
 	}
-	return result
+	return result, nil
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
@@ -267,7 +268,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) (common.BlockSubmissionResp
 	return bsr, nil
 }
 
-func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
+func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) error {
 	r := core.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
 
 	// only store if the parent exists
@@ -277,6 +278,8 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 	} else {
 		common.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", common.ShortHash(r.Hash()))
 	}
+
+	return nil
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -462,26 +465,29 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup
 	return &extRollup, nil
 }
 
-func (e *enclaveImpl) Attestation() *common.AttestationReport {
+func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 	if e.enclavePubKey == nil {
-		log.Panic("public key not initialized, we can't produce the attestation report")
+		log.Error("public key not initialized, we can't produce the attestation report")
+		return nil, fmt.Errorf("public key not initialized, we can't produce the attestation report")
 	}
 	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
-		log.Panic("Failed to produce remote report.")
+		log.Error("could not produce remote report")
+		return nil, fmt.Errorf("could not produce remote report")
 	}
-	return report
+	return report, nil
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() common.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	secret := crypto.GenerateEntropy()
 	e.storage.StoreSecret(secret)
 	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.nodeShortID)
 	if err != nil {
-		log.Panic("failed to encrypt secret. Cause: %s", err)
+		log.Error("failed to encrypt secret. Cause: %s", err)
+		return nil, fmt.Errorf("failed to encrypt secret. Cause: %w", err)
 	}
-	return encSec
+	return encSec, nil
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave

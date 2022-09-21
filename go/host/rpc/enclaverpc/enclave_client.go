@@ -9,8 +9,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"google.golang.org/grpc/connectivity"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -33,8 +31,6 @@ type Client struct {
 	config      config.HostConfig
 	nodeShortID uint64
 }
-
-// TODO - Avoid panicking and return errors instead where appropriate.
 
 func NewClient(config config.HostConfig) *Client {
 	nodeShortID := common.ShortAddress(config.ID)
@@ -92,26 +88,26 @@ func (c *Client) Status() (common.Status, error) {
 	return common.Status(resp.GetStatus()), nil
 }
 
-func (c *Client) Attestation() *common.AttestationReport {
+func (c *Client) Attestation() (*common.AttestationReport, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to retrieve attestation. Cause: %s", err)
+		return nil, fmt.Errorf("failed to retrieve attestation. Cause: %w", err)
 	}
-	return rpc.FromAttestationReportMsg(response.AttestationReportMsg)
+	return rpc.FromAttestationReportMsg(response.AttestationReportMsg), nil
 }
 
-func (c *Client) GenerateSecret() common.EncryptedSharedEnclaveSecret {
+func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to generate secret. Cause: %s", err)
+		return nil, fmt.Errorf("failed to generate secret. Cause: %w", err)
 	}
-	return response.EncryptedSharedEnclaveSecret
+	return response.EncryptedSharedEnclaveSecret, nil
 }
 
 func (c *Client) ShareSecret(report *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
@@ -144,23 +140,23 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) common.BlockSubmissionResponse {
+func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to produce genesis block. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce genesis block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
-	return blockSubmissionResponse
+	return blockSubmissionResponse, nil
 }
 
-func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionResponse {
+func (c *Client) IngestBlocks(blocks []*types.Block) ([]common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -168,38 +164,41 @@ func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionRes
 	for _, block := range blocks {
 		encodedBlock, err := common.EncodeBlock(block)
 		if err != nil {
-			common.PanicWithID(c.nodeShortID, "Failed to ingest blocks. Cause: %s", err)
+			return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 		}
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
 	response, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to ingest blocks. Cause: %s", err)
+		return nil, fmt.Errorf("could not ingest blocks. Cause: %w", err)
 	}
 	responses := response.GetBlockSubmissionResponses()
 	result := make([]common.BlockSubmissionResponse, len(responses))
 	for i, r := range responses {
 		blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(r)
 		if err != nil {
-			common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+			return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 		}
 		result[i] = blockSubmissionResponse
 	}
-	return result
+	return result, nil
 }
 
-func (c *Client) Start(block types.Block) {
+func (c *Client) Start(block types.Block) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to encode block. Cause: %s", err)
+		return fmt.Errorf("could not encode block. Cause: %w", err)
 	}
+
 	_, err := c.protoClient.Start(timeoutCtx, &generated.StartRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to start enclave. Cause: %s", err)
+		return fmt.Errorf("could not start enclave. Cause: %w", err)
 	}
+
+	return nil
 }
 
 func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse, error) {
@@ -208,33 +207,31 @@ func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse,
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to encode block. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	processTime := time.Now()
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		log.Error("Could not submit block. Cause: %s", err)
 		return common.BlockSubmissionResponse{}, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
-	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) SubmitRollup(rollup common.ExtRollup) {
+func (c *Client) SubmitRollup(rollup common.ExtRollup) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
 	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Could not submit rollup. Cause: %s", err)
+		return fmt.Errorf("could not submit rollup. Cause: %w", err)
 	}
+	return nil
 }
 
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -284,7 +281,7 @@ func (c *Client) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, 
 
 	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to determine round winner. Cause: %s", err)
+		return common.ExtRollup{}, false, fmt.Errorf("could not determine round winner. Cause: %w", err)
 	}
 
 	if response.Winner {

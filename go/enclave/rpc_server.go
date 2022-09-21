@@ -74,13 +74,19 @@ func (s *server) Status(context.Context, *generated.StatusRequest) (*generated.S
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
-	attestation := s.enclave.Attestation()
+	attestation, err := s.enclave.Attestation()
+	if err != nil {
+		return nil, err
+	}
 	msg := rpc.ToAttestationReportMsg(attestation)
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
 func (s *server) GenerateSecret(context.Context, *generated.GenerateSecretRequest) (*generated.GenerateSecretResponse, error) {
-	secret := s.enclave.GenerateSecret()
+	secret, err := s.enclave.GenerateSecret()
+	if err != nil {
+		return nil, err
+	}
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
@@ -99,11 +105,16 @@ func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRe
 }
 
 func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
-	genesisRollup := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
+	genesisRollup, err := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
+	if err != nil {
+		return nil, err
+	}
+
 	blockSubmissionResponse, err := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
 	if err != nil {
 		return nil, err
 	}
+
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 
@@ -114,7 +125,11 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 		blocks = append(blocks, &bl)
 	}
 
-	r := s.enclave.IngestBlocks(blocks)
+	r, err := s.enclave.IngestBlocks(blocks)
+	if err != nil {
+		return nil, err
+	}
+
 	blockSubmissionResponses := make([]*generated.BlockSubmissionResponseMsg, len(r))
 	for i, response := range r {
 		b, err := rpc.ToBlockSubmissionResponseMsg(response)
@@ -131,7 +146,10 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
-	s.enclave.Start(bl)
+	err := s.enclave.Start(bl)
+	if err != nil {
+		return nil, err
+	}
 	return &generated.StartResponse{}, nil
 }
 
@@ -151,7 +169,10 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 
 func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollupRequest) (*generated.SubmitRollupResponse, error) {
 	extRollup := rpc.FromExtRollupMsg(request.ExtRollup)
-	s.enclave.SubmitRollup(extRollup)
+	err := s.enclave.SubmitRollup(extRollup)
+	if err != nil {
+		return nil, err
+	}
 	return &generated.SubmitRollupResponse{}, nil
 }
 
