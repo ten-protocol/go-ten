@@ -44,7 +44,7 @@ type Enclave interface {
 	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
 
 	// Start - start speculative execution
-	Start(block types.Block)
+	Start(block types.Block) error
 
 	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
 	// it is the responsibility of the host to gossip the returned rollup

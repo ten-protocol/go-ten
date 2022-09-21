@@ -9,8 +9,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"google.golang.org/grpc/connectivity"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -150,13 +148,11 @@ func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmission
 
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
 	if err != nil {
-		log.Error("could not produce genesis block. Cause: %s", err)
 		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce genesis block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		log.Error("could not produce block submission response. Cause: %s", err)
 		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
 	return blockSubmissionResponse, nil
@@ -190,18 +186,21 @@ func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionRes
 	return result
 }
 
-func (c *Client) Start(block types.Block) {
+func (c *Client) Start(block types.Block) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to encode block. Cause: %s", err)
+		return fmt.Errorf("could not encode block. Cause: %w", err)
 	}
+
 	_, err := c.protoClient.Start(timeoutCtx, &generated.StartRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to start enclave. Cause: %s", err)
+		return fmt.Errorf("could not start enclave. Cause: %w", err)
 	}
+
+	return nil
 }
 
 func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse, error) {
@@ -210,20 +209,17 @@ func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse,
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to encode block. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	processTime := time.Now()
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		log.Error("Could not submit block. Cause: %s", err)
 		return common.BlockSubmissionResponse{}, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
-	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
 	return blockSubmissionResponse, nil
 }

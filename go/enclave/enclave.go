@@ -221,13 +221,14 @@ func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
 }
 
-func (e *enclaveImpl) Start(block types.Block) {
+func (e *enclaveImpl) Start(block types.Block) error {
 	// todo - reinstate after TN1
 	/*	if e.config.SpeculativeExecution {
 			//start the speculative rollup execution loop on its own go routine
 			go e.start(block)
 		}
 	*/
+	return nil
 }
 
 func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
