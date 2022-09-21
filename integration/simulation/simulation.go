@@ -115,18 +115,19 @@ func (s *Simulation) trackLogs() {
 		return
 	}
 
-	for owner, clients := range s.RPCHandles.AuthObsClients {
-		s.LogChannels[owner] = make(chan types.Log)
+	for wallet, clients := range s.RPCHandles.AuthObsClients {
+		s.LogChannels[wallet] = make(chan types.Log)
 
 		for _, client := range clients {
-			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannels[owner])
+			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannels[wallet])
 			if err != nil {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
 			s.Subscriptions = append(s.Subscriptions, sub)
 
-			// We only subscribe for one client, to reduce the load on the simulation.
-			return
+			// We only subscribe on a single client for a single wallet, to reduce the load on the simulation.
+			// TODO - #453 - Consider enabling subscriptions for all clients on all wallets, based on performance optimisations.
+			return //nolint:staticcheck
 		}
 	}
 }
