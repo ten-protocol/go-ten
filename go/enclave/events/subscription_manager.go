@@ -144,9 +144,11 @@ func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 		}
 
 		addr := gethcommon.HexToAddress(topicHex)
-		if db.GetCode(addr) == nil {
-			nonContractAddrs = append(nonContractAddrs, addr.Hex())
+		if db.GetCode(addr) != nil {
+			continue
 		}
+
+		nonContractAddrs = append(nonContractAddrs, addr.Hex())
 	}
 
 	return nonContractAddrs
