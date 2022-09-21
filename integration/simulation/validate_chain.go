@@ -401,7 +401,7 @@ func checkReceivedHOCAndPOCLogs(t *testing.T, channel chan types.Log) {
 			}
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
-		case <-time.After(10 * time.Second):
+		case <-time.After(time.Minute):
 			if !(gotHOCEvent && gotPOCEvent) {
 				t.Errorf("did not receive events for both the HOC and POC contracts")
 				return
