@@ -143,6 +143,7 @@ func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 			continue
 		}
 
+		// If there is code associated with an address, it is not a user address.
 		addr := gethcommon.HexToAddress(topicHex)
 		if db.GetCode(addr) != nil {
 			continue
