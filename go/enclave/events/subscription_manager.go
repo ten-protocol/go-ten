@@ -81,6 +81,10 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 		return relevantLogs
 	}
 
+	for subscriptionID, _ := range s.subscriptions {
+		relevantLogs[subscriptionID] = []*types.Log{}
+	}
+
 	// We only create the state DB if there are any active subscriptions.
 	stateDB := s.storage.CreateStateDB(rollupHash)
 
@@ -90,12 +94,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 		// We check whether the log is relevant to each subscription.
 		for subscriptionID, subscription := range s.subscriptions {
 			if isRelevant(userAddrs, subscription) {
-				logsForSubID, found := relevantLogs[subscriptionID]
-				if !found {
-					relevantLogs[subscriptionID] = []*types.Log{log}
-				} else {
-					relevantLogs[subscriptionID] = append(logsForSubID, log)
-				}
+				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
 			}
 		}
 	}
