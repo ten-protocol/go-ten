@@ -24,11 +24,15 @@ const (
 // - All types are string
 // - All keys are lowercase
 // - There is only one key per value
+// - From field is set by default
 func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) {
 	// geth lowercase the field name and uses the last seen value
 	var valString string
 	var ok bool
-	callMsg := map[string]string{}
+	callMsg := map[string]string{
+		// From field is set by default
+		"from": gethcommon.HexToAddress("0x0").Hex(),
+	}
 	for field, val := range paramBytes.(map[string]interface{}) {
 		if val == nil {
 			continue
