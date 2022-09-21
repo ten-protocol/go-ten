@@ -81,7 +81,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 		return relevantLogs
 	}
 
-	for subscriptionID, _ := range s.subscriptions {
+	for subscriptionID := range s.subscriptions {
 		relevantLogs[subscriptionID] = []*types.Log{}
 	}
 
