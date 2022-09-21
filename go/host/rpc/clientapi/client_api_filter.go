@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/google/uuid"
@@ -18,10 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/host/events"
 )
-
-// Filters out nothing. The filtering is performed on the enclave side instead, based on the filters in the
-// `common.EncryptedLogSubscription`.
-var emptyFilter = filters.FilterCriteria{}
 
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.
 type FilterAPI struct {
@@ -38,27 +36,38 @@ func NewFilterAPI(host host.Host, logsCh chan *types.Log) *FilterAPI {
 
 // Logs returns a log subscription.
 func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
-	id, err := uuid.NewUUID()
+	subscriptionID, err := uuid.NewUUID()
 	if err != nil {
 		return nil, fmt.Errorf("could not generate new UUID for subscription. Cause: %w", err)
 	}
 
-	err = api.host.Subscribe(id, encryptedParams)
+	err = api.host.Subscribe(subscriptionID, encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
 
-	// TODO - #453 - Use padded subscription ID as the topic instead in the filter, to auto-remove irrelevant logs.
-	subscription, err := api.gethFilterAPI.Logs(ctx, emptyFilter)
+	subscriptionIDBytes, err := subscriptionID.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal subscription ID to bytes. Cause: %w", err)
+	}
+
+	// The "real" filtering is performed on the enclave side instead, based on the filters in the
+	// `common.EncryptedLogSubscription`. Here, we simply filter using a padded subscription ID. This allows us to
+	// reuse Geth's subscription machinery to automatically filter out logs for other subscription IDs.
+	filter := filters.FilterCriteria{
+		Topics: [][]gethcommon.Hash{{gethcommon.BytesToHash(subscriptionIDBytes)}},
+	}
+
+	subscription, err := api.gethFilterAPI.Logs(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
 	go func() {
 		<-subscription.Err() // This channel's sole purpose is to be closed when the subscription is unsubscribed.
-		err = api.host.Unsubscribe(id)
+		err = api.host.Unsubscribe(subscriptionID)
 		if err != nil {
-			log.Error("could not unsubscribe from subscription %s", id)
+			log.Error("could not unsubscribe from subscription %s", subscriptionID)
 		}
 	}()
 
