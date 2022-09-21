@@ -53,7 +53,7 @@ type Enclave interface {
 	SubmitBlock(block types.Block) (BlockSubmissionResponse, error)
 
 	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup ExtRollup)
+	SubmitRollup(rollup ExtRollup) error
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)

@@ -268,7 +268,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block) (common.BlockSubmissionResp
 	return bsr, nil
 }
 
-func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
+func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) error {
 	r := core.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
 
 	// only store if the parent exists
@@ -278,6 +278,8 @@ func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) {
 	} else {
 		common.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", common.ShortHash(r.Hash()))
 	}
+
+	return nil
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
