@@ -32,8 +32,6 @@ type Client struct {
 	nodeShortID uint64
 }
 
-// TODO - Avoid panicking and return errors instead where appropriate.
-
 func NewClient(config config.HostConfig) *Client {
 	nodeShortID := common.ShortAddress(config.ID)
 
@@ -158,7 +156,7 @@ func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmission
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionResponse {
+func (c *Client) IngestBlocks(blocks []*types.Block) ([]common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -166,24 +164,24 @@ func (c *Client) IngestBlocks(blocks []*types.Block) []common.BlockSubmissionRes
 	for _, block := range blocks {
 		encodedBlock, err := common.EncodeBlock(block)
 		if err != nil {
-			common.PanicWithID(c.nodeShortID, "Failed to ingest blocks. Cause: %s", err)
+			return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 		}
 		encodedBlocks = append(encodedBlocks, encodedBlock)
 	}
 	response, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to ingest blocks. Cause: %s", err)
+		return nil, fmt.Errorf("could not ingest blocks. Cause: %w", err)
 	}
 	responses := response.GetBlockSubmissionResponses()
 	result := make([]common.BlockSubmissionResponse, len(responses))
 	for i, r := range responses {
 		blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(r)
 		if err != nil {
-			common.PanicWithID(c.nodeShortID, "Failed to produce block submission response. Cause: %s", err)
+			return nil, fmt.Errorf("could not produce block submission response. Cause: %s", err)
 		}
 		result[i] = blockSubmissionResponse
 	}
-	return result
+	return result, nil
 }
 
 func (c *Client) Start(block types.Block) error {

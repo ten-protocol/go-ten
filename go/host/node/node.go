@@ -945,7 +945,10 @@ func (a *Node) bootstrapNode() types.Block {
 		cb := *currentBlock
 		a.processBlock(&cb)
 		// TODO ingest one block at a time or batch the blocks
-		result := a.enclaveClient.IngestBlocks([]*types.Block{&cb})
+		result, err := a.enclaveClient.IngestBlocks([]*types.Block{&cb})
+		if err != nil {
+			log.Panic(err.Error())
+		}
 		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
 			common.LogWithID(
 				a.shortID,

@@ -114,7 +114,7 @@ func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGen
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 
@@ -125,7 +125,11 @@ func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocks
 		blocks = append(blocks, &bl)
 	}
 
-	r := s.enclave.IngestBlocks(blocks)
+	r, err := s.enclave.IngestBlocks(blocks)
+	if err != nil {
+		return nil, err
+	}
+
 	blockSubmissionResponses := make([]*generated.BlockSubmissionResponseMsg, len(r))
 	for i, response := range r {
 		b, err := rpc.ToBlockSubmissionResponseMsg(response)

@@ -41,7 +41,7 @@ type Enclave interface {
 	ProduceGenesis(blkHash gethcommon.Hash) (BlockSubmissionResponse, error)
 
 	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(blocks []*types.Block) []BlockSubmissionResponse
+	IngestBlocks(blocks []*types.Block) ([]BlockSubmissionResponse, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error
