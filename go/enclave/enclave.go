@@ -206,9 +206,12 @@ func NewEnclave(
 	}
 }
 
-// IsReady is only implemented by the RPC wrapper
-func (e *enclaveImpl) IsReady() error {
-	return nil // The enclave is local so it is always ready
+// Status is only implemented by the RPC wrapper
+func (e *enclaveImpl) Status() (common.Status, error) {
+	if e.storage.FetchSecret() == nil {
+		return common.AwaitingSecret, nil
+	}
+	return common.Running, nil // The enclave is local so it is always ready
 }
 
 // StopClient is only implemented by the RPC wrapper
@@ -540,10 +543,6 @@ func (e *enclaveImpl) Subscribe(id uuid.UUID, encryptedSubscription common.Encry
 func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {
 	e.subscriptionManager.RemoveSubscription(id)
 	return nil
-}
-
-func (e *enclaveImpl) IsInitialised() bool {
-	return e.storage.FetchSecret() != nil
 }
 
 func (e *enclaveImpl) Stop() error {

@@ -361,7 +361,7 @@ func (a *Node) Stop() {
 // Waits for enclave to be available, printing a wait message every two seconds.
 func (a *Node) waitForEnclave() {
 	counter := 0
-	for err := a.enclaveClient.IsReady(); err != nil; {
+	for _, err := a.enclaveClient.Status(); err != nil; {
 		if counter >= 20 {
 			common.LogWithID(a.shortID, "Waiting for enclave on %s. Latest connection attempt failed with: %v", a.config.EnclaveRPCAddress, err)
 			counter = 0

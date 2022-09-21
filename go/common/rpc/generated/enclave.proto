@@ -6,8 +6,8 @@ package generated;
 
 // TODO - Remove these comments which duplicate those in common/enclave.go.
 service EnclaveProto {
-  // IsReady is used to check whether the server is ready for requests.
-  rpc IsReady(IsReadyRequest) returns (IsReadyResponse) {}
+  // Status is used to check whether the server is ready for requests.
+  rpc Status(StatusRequest) returns (StatusResponse) {}
 
   // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
@@ -23,9 +23,6 @@ service EnclaveProto {
 
   // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
-
-  // IsInitialised - true if the shared secret is available
-  rpc IsInitialised(IsInitialisedRequest) returns (IsInitialisedResponse) {}
 
   // ProduceGenesis - the genesis enclave produces the genesis rollup
   rpc ProduceGenesis(ProduceGenesisRequest) returns (ProduceGenesisResponse) {}
@@ -89,9 +86,10 @@ service EnclaveProto {
   rpc EstimateGas(EstimateGasRequest) returns (EstimateGasResponse) {}
 }
 
-message IsReadyRequest {}
-message IsReadyResponse {
-  string error = 1;
+message StatusRequest {}
+message StatusResponse {
+  int32 status = 1;
+  string error = 2;
 }
 
 message AttestationRequest {}
@@ -124,11 +122,6 @@ message InitEnclaveRequest {
 }
 message InitEnclaveResponse {
   string error = 1;}
-
-message IsInitialisedRequest {}
-message IsInitialisedResponse {
-  bool isInitialised = 1;
-}
 
 message ProduceGenesisRequest {
   bytes blockHash = 1;
