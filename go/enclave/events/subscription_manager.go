@@ -48,7 +48,7 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 
 	var subscriptions []common.LogSubscription
 	if err := json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
-		return fmt.Errorf("could not unmarshall log subscription from JSON. Cause: %w", err)
+		return fmt.Errorf("could not unmarshal log subscription from JSON. Cause: %w", err)
 	}
 
 	if len(subscriptions) != 1 {

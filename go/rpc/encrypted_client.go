@@ -108,7 +108,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return ErrNilResponse
 	}
 
-	// method is sensitive, so we decrypt it before unmarshaling the result
+	// method is sensitive, so we decrypt it before unmarshalling the result
 	decrypted, err := c.decryptHexString(rawResult)
 	if err != nil {
 		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)

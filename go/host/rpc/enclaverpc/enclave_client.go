@@ -400,7 +400,7 @@ func (c *Client) Subscribe(id uuid.UUID, encryptedParams common.EncryptedParamsL
 
 	idBinary, err := id.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("could not marshall subscription ID to binary. Cause: %w", err)
+		return fmt.Errorf("could not marshal subscription ID to binary. Cause: %w", err)
 	}
 
 	_, err = c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
@@ -416,7 +416,7 @@ func (c *Client) Unsubscribe(id uuid.UUID) error {
 
 	idBinary, err := id.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("could not marshall subscription ID to binary. Cause: %w", err)
+		return fmt.Errorf("could not marshal subscription ID to binary. Cause: %w", err)
 	}
 
 	_, err = c.protoClient.Unsubscribe(timeoutCtx, &generated.UnsubscribeRequest{

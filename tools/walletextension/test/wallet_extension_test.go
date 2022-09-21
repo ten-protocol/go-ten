@@ -205,7 +205,7 @@ func TestCanSubscribeForLogs(t *testing.T) {
 	var receivedLog *types.Log
 	err = json.Unmarshal(receivedLogJSON, &receivedLog)
 	if err != nil {
-		t.Fatalf("could not unmarshall received log from JSON")
+		t.Fatalf("could not unmarshal received log from JSON")
 	}
 
 	if !strings.Contains(string(receivedLog.Data), dummyHash.Hex()) {
