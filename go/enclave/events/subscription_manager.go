@@ -103,15 +103,25 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 }
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
-// TODO - #453 - Encrypt logs, rather than just serialising them as JSON.
 func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
 	result := map[uuid.UUID]common.EncryptedLogs{}
 	for subID, logs := range logsBySubID {
+		subscription, found := s.subscriptions[subID]
+		if !found {
+			return nil, fmt.Errorf("could not find subscription with ID %s", subID.String())
+		}
+
 		jsonLogs, err := json.Marshal(logs)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
+		}
+
+		encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.SubscriptionAccount.Account, jsonLogs)
 		if err != nil {
 			return nil, err
 		}
-		result[subID] = jsonLogs
+
+		result[subID] = encryptedLogs
 	}
 	return result, nil
 }
