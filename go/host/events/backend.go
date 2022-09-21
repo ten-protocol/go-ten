@@ -27,6 +27,8 @@ var (
 	}
 )
 
+// TODO - #453 - Support subscriptions for pending and removed logs if needed.
+
 // Backend is a custom backend for Geth's `PublicFilterAPI`.
 type Backend struct {
 	logsCh <-chan *types.Log
@@ -66,7 +68,6 @@ func (b Backend) SubscribeChainEvent(chan<- core.ChainEvent) event.Subscription 
 	return event.NewSubscription(nilProducer)
 }
 
-// TODO - #453 - Handle removed logs.
 func (b Backend) SubscribeRemovedLogsEvent(chan<- core.RemovedLogsEvent) event.Subscription {
 	return event.NewSubscription(nilProducer)
 }
@@ -86,7 +87,6 @@ func (b Backend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	return event.NewSubscription(logsProducer)
 }
 
-// TODO - #453 - Handle pending logs.
 func (b Backend) SubscribePendingLogsEvent(chan<- []*types.Log) event.Subscription {
 	return event.NewSubscription(nilProducer)
 }
