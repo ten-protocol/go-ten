@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+
+	"github.com/ethereum/go-ethereum/core/state"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -11,16 +17,22 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+const (
+	zeroBytesHex = "000000000000000000000000"
+)
+
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
 	rpcEncryptionManager *rpc.EncryptionManager
+	storage              db.Storage
 	subscriptions        map[uuid.UUID]*common.LogSubscription
 }
 
-func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager) *SubscriptionManager {
+func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage db.Storage) *SubscriptionManager {
 	return &SubscriptionManager{
 		rpcEncryptionManager: rpcEncryptionManager,
+		storage:              storage,
 		subscriptions:        map[uuid.UUID]*common.LogSubscription{},
 	}
 }
@@ -59,23 +71,31 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterRelevantLogs filters out logs that are not subscribed too, and organises the logs by their subscribing ID.
-// TODO - #453 - Return which account each log is relevant to.
-func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log) map[uuid.UUID][]*types.Log {
+// FilterRelevantLogs filters out logs that are not subscribed to, and organises the logs by their subscribing ID.
+// It uses a state DB created from the rollup with the given hash to identify lifecycle vs user topics.
+func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
-	for _, log := range logs {
-		for subscriptionID, subscription := range s.subscriptions {
-			logIsRelevant, _ := isRelevant(log, subscription)
-			if !logIsRelevant {
-				continue
-			}
+	// If there are no subscriptions, we do not need to do any processing.
+	if len(s.subscriptions) == 0 {
+		return relevantLogs
+	}
 
-			logsForSubID, found := relevantLogs[subscriptionID]
-			if !found {
-				relevantLogs[subscriptionID] = []*types.Log{log}
-			} else {
-				relevantLogs[subscriptionID] = append(logsForSubID, log)
+	for subscriptionID := range s.subscriptions {
+		relevantLogs[subscriptionID] = []*types.Log{}
+	}
+
+	stateDB := s.storage.CreateStateDB(rollupHash)
+
+	for _, log := range logs {
+		println("jjj got log")
+		userAddrs := getUserAddrs(log, stateDB)
+
+		// We check whether the log is relevant to each subscription.
+		for subscriptionID, subscription := range s.subscriptions {
+			println("jjj have sub")
+			if isRelevant(userAddrs, subscription) {
+				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
 			}
 		}
 	}
@@ -97,12 +117,44 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 	return result, nil
 }
 
-// Indicates whether the log is relevant for any subscription, and returns the matching subscription account if so.
-// A lifecycle log is considered relevant to everyone.
-// TODO - #453 - Filter logs, instead of considering all logs relevant to everyone.
-func isRelevant(log *types.Log, sub *common.LogSubscription) (bool, *common.SubscriptionAccount) {
-	// Work out if this is an account or lifecycle log
-	// If the former, establish whether it is relevant to any subscription
-	// Return the first account for which the log matches, so it can be used for encryption
-	return true, nil
+// Extracts the (potential) user addresses from the topics. If there is no code associated with an address, it's a user
+// address.
+func getUserAddrs(log *types.Log, db *state.StateDB) []string {
+	var nonContractAddrs []string //nolint:prealloc
+
+	for _, topic := range log.Topics {
+		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
+		// (potentially) be user addresses.
+		topicHex := topic.Hex()
+		if topicHex[2:len(zeroBytesHex)/2] != zeroBytesHex {
+			continue
+		}
+
+		// If there is code associated with an address, it is not a user address.
+		addr := gethcommon.HexToAddress(topicHex)
+		if db.GetCode(addr) != nil {
+			continue
+		}
+
+		nonContractAddrs = append(nonContractAddrs, addr.Hex())
+	}
+
+	return nonContractAddrs
+}
+
+// Indicates whether the log is relevant for the subscription.
+func isRelevant(userAddrs []string, sub *common.LogSubscription) bool {
+	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
+	if len(userAddrs) == 0 {
+		return true
+	}
+
+	accountHex := sub.SubscriptionAccount.Account.Hex()
+	for _, addr := range userAddrs {
+		if addr == accountHex {
+			return true
+		}
+	}
+
+	return false
 }

@@ -95,7 +95,7 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 }
 
 // EstimateGas requests the enclave the gas estimation based on the callMsg supplied params (encrypted)
-func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*string, error) {
+func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (*string, error) {
 	encryptedResponse, err := api.host.EnclaveClient().EstimateGas(encryptedParams)
 	if err != nil {
 		return nil, err

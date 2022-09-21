@@ -42,8 +42,8 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
-	LogChannel       chan types.Log
-	Subscriptions    []ethereum.Subscription
+	LogChannels      map[string]chan types.Log // Maps an owner to the channel on which they receive logs for all their wallets.
+	Subscriptions    []ethereum.Subscription   // A slice of all created event subscriptions.
 	ctx              context.Context
 }
 
@@ -108,20 +108,26 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 	}
 }
 
-// We subscribe to logs on every authenticated client, and redirect them to the simulation's log channel.
+// We subscribe to logs on an arbitrary authenticated client.
 func (s *Simulation) trackLogs() {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
 		return
 	}
 
-	for _, clients := range s.RPCHandles.AuthObsClients {
+	for wallet, clients := range s.RPCHandles.AuthObsClients {
+		s.LogChannels[wallet] = make(chan types.Log)
+
 		for _, client := range clients {
-			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannel)
+			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannels[wallet])
 			if err != nil {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
 			s.Subscriptions = append(s.Subscriptions, sub)
+
+			// We only subscribe on a single client for a single wallet, to reduce the load on the simulation.
+			// TODO - #453 - Consider enabling subscriptions for all clients on all wallets, based on performance optimisations.
+			return //nolint:staticcheck
 		}
 	}
 }

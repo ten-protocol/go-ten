@@ -26,7 +26,7 @@ func TestDoWithTimeoutStrategy_SuccessAfterRetries(t *testing.T) {
 	assert.Equal(t, 3, count, "expected function to be called 3 times before succeeding")
 }
 
-func TestDoWithTimeoutStrategy_FailAfterTimeout(t *testing.T) {
+func TestDoWithTimeoutStrategy_UnsuccessfulAfterTimeout(t *testing.T) {
 	var count int
 	testFunc := func() error {
 		count = count + 1

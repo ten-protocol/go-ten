@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -178,7 +176,7 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager)
+	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage)
 	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
@@ -361,7 +359,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
 	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt encrypted RPC request params. Cause: %w", err)
+		return nil, fmt.Errorf("could not decrypt encrypted RPC request params. Cause: %w", err)
 	}
 	var paramList []string
 	err = json.Unmarshal(hashBytes, &paramList)
@@ -568,28 +566,9 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
 	}
 
-	// extract params from byte slice to array of strings
-	var paramList []interface{}
-	err = json.Unmarshal(paramBytes, &paramList)
+	callMsg, _, err := rpc.ExtractEthCall(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EstimateGas params - %w", err)
-	}
-
-	// params are [callMsg, block number (optional)]
-	// todo: handle blocknum, for now we always assume "latest" as with other methods
-	if len(paramList) == 0 {
-		return nil, fmt.Errorf("required at least one param, but received zero")
-	}
-
-	// convert the params[0] into an ethereum.CallMsg
-	callMsgBytes, err := json.Marshal(paramList[0])
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
-	}
-	var callMsg ethereum.CallMsg
-	err = json.Unmarshal(callMsgBytes, &callMsg)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse callMsg - %w", err)
+		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
 	// encrypt the gas cost with the callMsg.From viewing key

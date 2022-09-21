@@ -4,9 +4,10 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // utils for converting to RPC message format - mostly ported from geth client
@@ -24,7 +25,7 @@ func encodeTx(tx *common.L2Tx) string {
 	return "0x" + txBinaryHex
 }
 
-func toCallArg(msg ethereum.CallMsg) interface{} {
+func ToCallArg(msg ethereum.CallMsg) interface{} {
 	arg := map[string]interface{}{
 		"from": msg.From,
 		"to":   msg.To,
