@@ -36,7 +36,7 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (gene
 		// We marshal to text rather than to bytes because bytes cannot be used as a map key in protobufs.
 		uuidString, err := id.MarshalText()
 		if err != nil {
-			return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshall UUID to string. Cause: %w", err)
+			return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal UUID to string. Cause: %w", err)
 		}
 		subscribedLogsMsg[string(uuidString)] = log
 	}

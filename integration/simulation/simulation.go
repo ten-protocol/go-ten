@@ -178,7 +178,7 @@ func (s *Simulation) deployObscuroERC20s() {
 
 			err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash())
 			if err != nil {
-				panic(fmt.Sprintf("ERC20 deployment transaction failed. Cause: %s", err))
+				panic(fmt.Sprintf("ERC20 deployment transaction unsuccessful. Cause: %s", err))
 			}
 		}(token)
 	}

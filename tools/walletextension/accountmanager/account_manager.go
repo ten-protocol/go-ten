@@ -137,7 +137,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 
 		err := json.Unmarshal(callParamsJSON, &params)
 		if err != nil {
-			return nil, fmt.Errorf("first arg couldn't be unmarshalled into a params map")
+			return nil, fmt.Errorf("first arg couldn't be unmarshaled into a params map")
 		}
 	}
 
@@ -285,7 +285,7 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 
 	callMsg, err := gethenconding.ExtractEthCallMapString(args[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
+		return nil, fmt.Errorf("unable to marshal callMsg - %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.

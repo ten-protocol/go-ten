@@ -108,8 +108,8 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return ErrNilResponse
 	}
 
-	// method is sensitive, so we decrypt it before unmarshaling the result
-	decrypted, err := c.decryptResponse(rawResult)
+	// method is sensitive, so we decrypt it before unmarshalling the result
+	decrypted, err := c.decryptHexString(rawResult)
 	if err != nil {
 		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
 	}
@@ -157,17 +157,23 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	go func() {
 		for {
 			select {
-			case receivedLog := <-clientChannel:
-				// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
-				// encrypted bytes. To get around this, we place the encrypted log bytes into a "fake" log's data field.
-				// TODO - #453 - Add decryption of logs here once it's added on the enclave side.
-				var decryptedLogs []*types.Log
-				err = json.Unmarshal(receivedLog.Data, &decryptedLogs)
+			case wrapperLog := <-clientChannel:
+				// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects,
+				// and not encrypted bytes. To get around this, the encrypted log bytes are placed into a "fake" log's
+				// data field.
+				encryptedLogs := wrapperLog.Data
+				jsonLogs, err := c.decryptResponse(encryptedLogs)
+				if err != nil {
+					log.Error("could not decrypt logs received from subscription. Cause: %s", err)
+				}
+
+				var logs []*types.Log
+				err = json.Unmarshal(jsonLogs, &logs)
 				if err != nil {
 					log.Error("could not unmarshal log from `data` field of log received from subscription. Cause: %s", err)
 				}
 
-				for _, decryptedLog := range decryptedLogs {
+				for _, decryptedLog := range logs {
 					logCh <- *decryptedLog
 				}
 
@@ -251,18 +257,19 @@ func (c *EncRPCClient) encryptParamBytes(params []byte) ([]byte, error) {
 	return encryptedParams, nil
 }
 
-func (c *EncRPCClient) decryptResponse(resultBlob interface{}) ([]byte, error) {
+func (c *EncRPCClient) decryptHexString(resultBlob interface{}) ([]byte, error) {
 	resultStr, ok := resultBlob.(string)
 	if !ok {
 		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
 	}
-	encryptedResult := gethcommon.Hex2Bytes(resultStr)
+	return c.decryptResponse(gethcommon.Hex2Bytes(resultStr))
+}
 
-	decryptedResult, err := c.viewingKey.PrivateKey.Decrypt(encryptedResult, nil, nil)
+func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
+	decryptedResult, err := c.viewingKey.PrivateKey.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt result with viewing key - %w", err)
 	}
-
 	return decryptedResult, nil
 }
 
