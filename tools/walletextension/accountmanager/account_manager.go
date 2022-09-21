@@ -283,18 +283,18 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 		return nil, fmt.Errorf("no params found to unmarshal")
 	}
 
-	callMsg, err := gethenconding.ExtractEthCall(args[0])
+	callMsg, err := gethenconding.ExtractEthCallMapString(args[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshall callMsg - %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
-	if callMsg.From != gethcommon.HexToAddress("0x0") {
+	if callMsg[gethenconding.CallFieldFrom] != gethcommon.HexToAddress("0x0").Hex() {
 		return args, nil
 	}
 
 	// override the existing args
-	callMsg.From = account
+	callMsg[gethenconding.CallFieldFrom] = account.Hex()
 
 	// do not modify other existing arguments
 	request := []interface{}{callMsg}

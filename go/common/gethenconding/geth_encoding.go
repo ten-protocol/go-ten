@@ -19,6 +19,44 @@ const (
 	CallFieldValue = "value"
 )
 
+// ExtractEthCallMapString extracts the eth_call ethereum.CallMsg from an interface{}
+// it ensures that :
+// - All types are string
+// - All keys are lowercase
+// - There is only one key per value
+func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) {
+	// geth lowercase the field name and uses the last seen value
+	var valString string
+	var ok bool
+	callMsg := map[string]string{}
+	for field, val := range paramBytes.(map[string]interface{}) {
+		if val == nil {
+			continue
+		}
+		valString, ok = val.(string)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type supplied in `%s` field", field)
+		}
+		if len(strings.TrimSpace(valString)) == 0 {
+			continue
+		}
+		switch strings.ToLower(field) {
+		case CallFieldTo:
+			callMsg[CallFieldTo] = valString
+		case CallFieldFrom:
+			callMsg[CallFieldFrom] = valString
+		case CallFieldData:
+			callMsg[CallFieldData] = valString
+		case CallFieldValue:
+			callMsg[CallFieldValue] = valString
+		default:
+			callMsg[field] = valString
+		}
+	}
+
+	return callMsg, nil
+}
+
 // ExtractEthCall extracts the eth_call ethereum.CallMsg from an interface{}
 func ExtractEthCall(paramBytes interface{}) (*ethereum.CallMsg, error) {
 	// geth lowercases the field name and uses the last seen value
