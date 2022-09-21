@@ -462,26 +462,29 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup
 	return &extRollup, nil
 }
 
-func (e *enclaveImpl) Attestation() *common.AttestationReport {
+func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 	if e.enclavePubKey == nil {
-		log.Panic("public key not initialized, we can't produce the attestation report")
+		log.Error("public key not initialized, we can't produce the attestation report")
+		return nil, fmt.Errorf("public key not initialized, we can't produce the attestation report")
 	}
 	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
-		log.Panic("Failed to produce remote report.")
+		log.Error("could not produce remote report")
+		return nil, fmt.Errorf("could not produce remote report")
 	}
-	return report
+	return report, nil
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() common.EncryptedSharedEnclaveSecret {
+func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	secret := crypto.GenerateEntropy()
 	e.storage.StoreSecret(secret)
 	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.nodeShortID)
 	if err != nil {
-		log.Panic("failed to encrypt secret. Cause: %s", err)
+		log.Error("failed to encrypt secret. Cause: %s", err)
+		return nil, fmt.Errorf("failed to encrypt secret. Cause: %w", err)
 	}
-	return encSec
+	return encSec, nil
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave

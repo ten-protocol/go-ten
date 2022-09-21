@@ -74,13 +74,19 @@ func (s *server) Status(context.Context, *generated.StatusRequest) (*generated.S
 }
 
 func (s *server) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
-	attestation := s.enclave.Attestation()
+	attestation, err := s.enclave.Attestation()
+	if err != nil {
+		return nil, err
+	}
 	msg := rpc.ToAttestationReportMsg(attestation)
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
 func (s *server) GenerateSecret(context.Context, *generated.GenerateSecretRequest) (*generated.GenerateSecretResponse, error) {
-	secret := s.enclave.GenerateSecret()
+	secret, err := s.enclave.GenerateSecret()
+	if err != nil {
+		return nil, err
+	}
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 

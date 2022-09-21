@@ -92,26 +92,26 @@ func (c *Client) Status() (common.Status, error) {
 	return common.Status(resp.GetStatus()), nil
 }
 
-func (c *Client) Attestation() *common.AttestationReport {
+func (c *Client) Attestation() (*common.AttestationReport, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to retrieve attestation. Cause: %s", err)
+		return nil, fmt.Errorf("failed to retrieve attestation. Cause: %s", err)
 	}
-	return rpc.FromAttestationReportMsg(response.AttestationReportMsg)
+	return rpc.FromAttestationReportMsg(response.AttestationReportMsg), nil
 }
 
-func (c *Client) GenerateSecret() common.EncryptedSharedEnclaveSecret {
+func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
 	if err != nil {
-		common.PanicWithID(c.nodeShortID, "Failed to generate secret. Cause: %s", err)
+		return nil, fmt.Errorf("failed to generate secret. Cause: %s", err)
 	}
-	return response.EncryptedSharedEnclaveSecret
+	return response.EncryptedSharedEnclaveSecret, nil
 }
 
 func (c *Client) ShareSecret(report *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {

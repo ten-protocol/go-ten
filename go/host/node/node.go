@@ -232,19 +232,28 @@ func (a *Node) Start() {
 func (a *Node) broadcastSecret() error {
 	common.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
 	// Create the shared secret and submit it to the management contract for storage
-	attestation := a.enclaveClient.Attestation()
+	attestation, err := a.enclaveClient.Attestation()
+	if err != nil {
+		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
+	}
 	if attestation.Owner != a.config.ID {
 		return fmt.Errorf("genesis node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), attestation.Owner.Hex())
 	}
 
 	encodedAttestation, err := common.EncodeAttestation(attestation)
 	if err != nil {
-		return fmt.Errorf("could not encode attestation Cause: %w", err)
+		return fmt.Errorf("could not encode attestation. Cause: %w", err)
 	}
+
+	secret, err := a.enclaveClient.GenerateSecret()
+	if err != nil {
+		return fmt.Errorf("could not generate secret. Cause: %w", err)
+	}
+
 	l1tx := &ethadapter.L1InitializeSecretTx{
 		AggregatorID:  &a.config.ID,
 		Attestation:   encodedAttestation,
-		InitialSecret: a.enclaveClient.GenerateSecret(),
+		InitialSecret: secret,
 		HostAddress:   a.config.P2PPublicAddress,
 	}
 	initialiseSecretTx := a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
@@ -654,7 +663,10 @@ func (a *Node) signAndBroadcastTx(tx types.TxData, tries int) error {
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() error {
 	common.LogWithID(a.shortID, "Requesting secret.")
-	att := a.enclaveClient.Attestation()
+	att, err := a.enclaveClient.Attestation()
+	if err != nil {
+		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
+	}
 	if att.Owner != a.config.ID {
 		return fmt.Errorf("node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
 	}
