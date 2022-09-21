@@ -98,22 +98,29 @@ func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.Encry
 func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
 	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params with enclave private key")
+		return nil, fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
 	notifier, _ := rpc.NotifierFromContext(ctx)
 	sub := notifier.CreateSubscription()
 	go func() {
 		for {
-			// Like the host, we wrap the encrypted log bytes in the data field of an unencrypted "wrapper" log object.
-			jsonLog, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{}, Data: params}})
+			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{}, Data: params}})
 			if err != nil {
-				panic(fmt.Errorf("could not marshal log to JSON"))
+				panic("could not marshal log to JSON")
 			}
+
+			encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, jsonLogs, nil, nil)
+			if err != nil {
+				panic("could not encrypt logs with viewing key")
+			}
+
+			// Like the host, we wrap the encrypted log bytes in the data field of an unencrypted "wrapper" log object.
 			wrapperLog := types.Log{
 				Topics: []gethcommon.Hash{},
-				Data:   jsonLog,
+				Data:   encryptedBytes,
 			}
+
 			notifier.Notify(sub.ID, &wrapperLog) //nolint:errcheck
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -125,7 +132,7 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (string, error) {
 	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
 	if err != nil {
-		return "", fmt.Errorf("could not decrypt params with enclave private key")
+		return "", fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
 	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, params, nil, nil)
