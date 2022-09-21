@@ -185,7 +185,7 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 		}
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
 		if err != nil {
-			panic(fmt.Sprintf("failed to create enclave server: %v", err))
+			panic(fmt.Sprintf("could not create enclave server: %v", err))
 		}
 	}
 }
