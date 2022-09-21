@@ -108,7 +108,7 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 	}
 }
 
-// We subscribe to logs on every authenticated client, and redirect them to the simulation's log channel.
+// We subscribe to logs on an arbitrary authenticated client.
 func (s *Simulation) trackLogs() {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
@@ -124,6 +124,9 @@ func (s *Simulation) trackLogs() {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
 			s.Subscriptions = append(s.Subscriptions, sub)
+
+			// We only subscribe for one client, to reduce the load on the simulation.
+			return
 		}
 	}
 }
