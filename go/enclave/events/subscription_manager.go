@@ -87,20 +87,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 	for _, log := range logs {
 		userAddrs := getUserAddrs(log, stateDB)
 
-		// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
-		if len(userAddrs) == 0 {
-			for subscriptionID := range s.subscriptions {
-				logsForSubID, found := relevantLogs[subscriptionID]
-				if !found {
-					relevantLogs[subscriptionID] = []*types.Log{log}
-				} else {
-					relevantLogs[subscriptionID] = append(logsForSubID, log)
-				}
-			}
-			continue
-		}
-
-		// Otherwise, we check whether the log is relevant to each subscription.
+		// We check whether the log is relevant to each subscription.
 		for subscriptionID, subscription := range s.subscriptions {
 			if isRelevant(userAddrs, subscription) {
 				logsForSubID, found := relevantLogs[subscriptionID]
@@ -157,11 +144,17 @@ func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 
 // Indicates whether the log is relevant for the subscription.
 func isRelevant(userAddrs []string, sub *common.LogSubscription) bool {
+	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
+	if len(userAddrs) == 0 {
+		return true
+	}
+
 	accountHex := sub.SubscriptionAccount.Account.Hex()
 	for _, addr := range userAddrs {
 		if addr == accountHex {
 			return true
 		}
 	}
+
 	return false
 }
