@@ -225,8 +225,8 @@ func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse,
 	processTime := time.Now()
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
 	if err != nil {
-		log.Error("Failed to submit block. Cause: %s", err)
-		return common.BlockSubmissionResponse{}, fmt.Errorf("failed to submit block. Cause: %w", err)
+		log.Error("Could not submit block. Cause: %s", err)
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
 	log.Debug("Block %s processed by the enclave over RPC in %s", block.Hash().Hex(), time.Since(processTime))
 
