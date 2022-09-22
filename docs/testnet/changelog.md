@@ -1,15 +1,19 @@
 # Obscuro Testnet Change Log
 
-## September 2022-09-22
+## September 2022-09-22 (v0.4)
 * Wallet extension:
   * The wallet extension now supports separate ports for HTTP and WebSocket connections. Use the `--port` and `--portWS` 
     command line options respectively for each. For more information see the
     [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) documentation. 
-
+* Event subscription:
+  * An early preview of event subscriptions is available in this release, though note that this is still undergoing 
+    testing and feature enhancements and therefore is liable to issues and instability. For more information on the 
+    functionality available reach out to the development team on the discord 
+    [active testnet developers](https://discord.com/channels/916052669955727371/1004752710077259838) channel. 
 * Transaction receipts:
   * Only return receipts for transactions which were included in a canonical rollup.
 
-## September 2022-09-07
+## September 2022-09-07 (v0.3)
 * Tokens / ERC20 contracts
   * The ERC20 'HOC' and 'POC' tokens are now funded with 18 decimal places of precision. Previously funding of 50 
     tokens was erroneously made as 50 10^-18. This means tokens imported into Metamask will display correctly. Note that
@@ -18,7 +22,7 @@
   * Viewing keys are now persisted across wallet extension restarts
   * Enhanced logging for registering of viewing keys
 
-## August 2022-08-22
+## August 2022-08-22 (v0.2)
 * Account balances:
   * Added correct calculation of account balances (previously, all accounts were allocated infinite funds).
 * Tokens / ERC20 contracts
