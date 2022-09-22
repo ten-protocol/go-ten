@@ -3,6 +3,8 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
@@ -106,7 +108,7 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 
 		// We check whether the log is relevant to each subscription.
 		for subscriptionID, subscription := range s.subscriptions {
-			if isRelevant(userAddrs, subscription.SubscriptionAccount.Account) {
+			if isRelevant(userAddrs, subscription.SubscriptionAccount.Account) && !isFilteredOut(log, subscription.Filter) {
 				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
 			}
 		}
@@ -173,6 +175,63 @@ func isRelevant(userAddrs []string, account *gethcommon.Address) bool {
 
 	for _, addr := range userAddrs {
 		if addr == account.Hex() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Applies `filterLogs`, below, to determine whether the log should be filtered out.
+func isFilteredOut(log *types.Log, filterCriteria *filters.FilterCriteria) bool {
+	filteredLogs := filterLogs([]*types.Log{log}, filterCriteria.FromBlock, filterCriteria.ToBlock, filterCriteria.Addresses, filterCriteria.Topics)
+	if len(filteredLogs) == 0 {
+		return true
+	}
+	return false
+}
+
+// Lifted from eth/filters/filter.go in the go-ethereum repository.
+// filterLogs creates a slice of logs matching the given criteria.
+func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash) []*types.Log {
+	var ret []*types.Log
+Logs:
+	for _, log := range logs {
+		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Uint64() > log.BlockNumber {
+			continue
+		}
+		if toBlock != nil && toBlock.Int64() >= 0 && toBlock.Uint64() < log.BlockNumber {
+			continue
+		}
+
+		if len(addresses) > 0 && !includes(addresses, log.Address) {
+			continue
+		}
+		// If the to filtered topics is greater than the amount of topics in logs, skip.
+		if len(topics) > len(log.Topics) {
+			continue
+		}
+		for i, sub := range topics {
+			match := len(sub) == 0 // empty rule set == wildcard
+			for _, topic := range sub {
+				if log.Topics[i] == topic {
+					match = true
+					break
+				}
+			}
+			if !match {
+				continue Logs
+			}
+		}
+		ret = append(ret, log)
+	}
+	return ret
+}
+
+// Lifted from eth/filters/filter.go in the go-ethereum repository.
+func includes(addresses []gethcommon.Address, a gethcommon.Address) bool {
+	for _, addr := range addresses {
+		if addr == a {
 			return true
 		}
 	}
