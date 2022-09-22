@@ -183,7 +183,7 @@ func isRelevant(userAddrs []string, account *gethcommon.Address) bool {
 	return false
 }
 
-// Applies `filterLogs`, below, to determine whether the log should be filtered out.
+// Applies `filterLogs`, below, to determine whether the log should be filtered out based on the user's subscription criteria.
 func isFilteredOut(log *types.Log, filterCriteria *filters.FilterCriteria) bool {
 	filteredLogs := filterLogs([]*types.Log{log}, filterCriteria.FromBlock, filterCriteria.ToBlock, filterCriteria.Addresses, filterCriteria.Topics)
 	return len(filteredLogs) == 0

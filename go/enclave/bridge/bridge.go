@@ -34,23 +34,27 @@ import (
 type ERC20 string
 
 const (
-	HOC     ERC20 = "HOC"
-	POC     ERC20 = "POC"
-	HOCAddr       = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
+	HOC            ERC20 = "HOC"
+	POC            ERC20 = "POC"
+	HOCAddr              = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
+	pocAddr              = "9802F661d17c65527D7ABB59DAAD5439cb125a67"
+	bridgeAddr           = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	hocOwnerKeyHex       = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
+	pocOwnerKeyHex       = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
 )
 
-var HOCOwner, _ = crypto.HexToECDSA("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682")
+var HOCOwner, _ = crypto.HexToECDSA(hocOwnerKeyHex)
 
-// HOCContract X- address of the deployed "hocus" erc20 on the L2
+// HOCContract - address of the deployed "hocus" erc20 on the L2
 var HOCContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes(HOCAddr))
 
-var POCOwner, _ = crypto.HexToECDSA("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8")
+var POCOwner, _ = crypto.HexToECDSA(pocOwnerKeyHex)
 
 // POCContract - address of the deployed "pocus" erc20 on the L2
-var POCContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("9802F661d17c65527D7ABB59DAAD5439cb125a67"))
+var POCContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes(pocAddr))
 
 // BridgeAddress - address of the virtual bridge
-var BridgeAddress = gethcommon.BytesToAddress(gethcommon.Hex2Bytes("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+var BridgeAddress = gethcommon.BytesToAddress(gethcommon.Hex2Bytes(bridgeAddr))
 
 // ERC20Mapping - maps an L1 Erc20 to an L2 Erc20 address
 type ERC20Mapping struct {
