@@ -1,4 +1,4 @@
-# Handling Sensitive Information
+# Sensitive APIs
 
 Obscuro supports a subset of Ethereum's [JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/).
 
@@ -7,26 +7,8 @@ contain the balance of an account. An attacker could intercept this response to 
 this, the requests and responses for methods deemed sensitive are encrypted and decrypted by the 
 [wallet extension](wallet-extension.md). To provide a good user experience, this process is invisible to the end user.
 
-This page details which JSON-RPC API methods are supported, which ones are deemed sensitive, and the rules governing 
-who is able to decrypt the response to a given method call.
-
-## Supported JSON-RPC API methods
-
-Obscuro nodes support the following JSON-RPC API methods:
-
-* `eth_chainId`
-* `eth_blockNumber`
-* `eth_getBalance`
-* `eth_getBlockByNumber`
-* `eth_getBlockByHash`
-* `eth_gasPrice`
-* `eth_call`
-* `eth_getTransactionReceipt`
-* `eth_estimateGas`
-* `eth_sendRawTransaction`
-* `eth_getCode`
-* `eth_getTransactionCount`
-* `eth_getTransactionByHash`
+This page details which JSON-RPC API methods are deemed sensitive, and the rules governing who is able to decrypt the 
+response to a given method call.
 
 ## Sensitive JSON-RPC API Methods
 
