@@ -239,7 +239,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 
 	rc.storage.SaveNewHead(bs, head, receipts, logs)
 
-	subscribedLogs := rc.subscriptionManager.FilterRelevantLogs(logs, head.Header.Hash())
+	subscribedLogs := rc.subscriptionManager.FilteredSubscribedLogs(logs, head.Header.Hash())
 	return bs, logs, subscribedLogs
 }
 

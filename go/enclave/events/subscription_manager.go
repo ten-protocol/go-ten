@@ -71,9 +71,23 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterRelevantLogs filters out logs that are not subscribed to, and organises the logs by their subscribing ID.
-// It uses a state DB created from the rollup with the given hash to identify lifecycle vs user topics.
-func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
+// FilteredLogs filters out irrelevant logs.
+func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address) []*types.Log {
+	allLogs := []*types.Log{}
+	stateDB := s.storage.CreateStateDB(rollupHash)
+
+	for _, log := range logs {
+		userAddrs := getUserAddrs(log, stateDB)
+		if isRelevant(userAddrs, account) {
+			allLogs = append(allLogs, log)
+		}
+	}
+
+	return allLogs
+}
+
+// FilteredSubscribedLogs filters out irrelevant logs and those that are not subscribed to, and organises them by their subscribing ID.
+func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	// If there are no subscriptions, we do not need to do any processing.
@@ -92,7 +106,7 @@ func (s *SubscriptionManager) FilterRelevantLogs(logs []*types.Log, rollupHash c
 
 		// We check whether the log is relevant to each subscription.
 		for subscriptionID, subscription := range s.subscriptions {
-			if isRelevant(userAddrs, subscription) {
+			if isRelevant(userAddrs, subscription.SubscriptionAccount.Account) {
 				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
 			}
 		}
@@ -151,15 +165,14 @@ func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 }
 
 // Indicates whether the log is relevant for the subscription.
-func isRelevant(userAddrs []string, sub *common.LogSubscription) bool {
+func isRelevant(userAddrs []string, account *gethcommon.Address) bool {
 	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
 	if len(userAddrs) == 0 {
 		return true
 	}
 
-	accountHex := sub.SubscriptionAccount.Account.Hex()
 	for _, addr := range userAddrs {
-		if addr == accountHex {
+		if addr == account.Hex() {
 			return true
 		}
 	}
