@@ -238,7 +238,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 			nodeAddr, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
 	}
 
-	checkTransactionReceipts(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
+	checkTransactionReceipts(t, s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
@@ -327,7 +327,7 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 }
 
 // Checks that there is a receipt available for each L2 transaction.
-func checkTransactionReceipts(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
+func checkTransactionReceipts(t *testing.T, ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
 
 	for _, tx := range l2Txs {
@@ -335,10 +335,11 @@ func checkTransactionReceipts(ctx context.Context, nodeIdx int, rpcHandles *netw
 		// We check that there is a receipt available for each transaction
 		rec, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
-			panic(err)
+			t.Errorf("could not retrieve receipt for transaction %s. Cause: %s", tx.Hash().Hex(), err)
+			continue
 		}
 		if rec.Status == types.ReceiptStatusFailed {
-			log.Info("Transaction %s has failed.", tx.Hash().Hex())
+			log.Info("Transaction %s failed.", tx.Hash().Hex())
 		}
 	}
 }
