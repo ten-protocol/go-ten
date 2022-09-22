@@ -238,7 +238,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 			nodeAddr, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
 	}
 
-	checkTransactionReceipts(t, s.ctx, nodeIdx, rpcHandles, s.TxInjector)
+	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
 
@@ -327,18 +327,27 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 }
 
 // Checks that there is a receipt available for each L2 transaction.
-func checkTransactionReceipts(t *testing.T, ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
+func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
 
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
+
 		// We check that there is a receipt available for each transaction
-		rec, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
+		receipt, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
 			t.Errorf("could not retrieve receipt for transaction %s. Cause: %s", tx.Hash().Hex(), err)
 			continue
 		}
-		if rec.Status == types.ReceiptStatusFailed {
+
+		// We check that the logs are relevant to the sender.
+		for _, retrievedLog := range receipt.Logs {
+			if !isRelevant(sender.Hex(), *retrievedLog) {
+				t.Errorf("receipt contained log that was not relevant (neither a lifecycle event nor relevant to the sender)")
+			}
+		}
+
+		if receipt.Status == types.ReceiptStatusFailed {
 			log.Info("Transaction %s failed.", tx.Hash().Hex())
 		}
 	}
@@ -399,7 +408,7 @@ func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan types.L
 			logsReceived++
 
 			if !isRelevant(owner, receivedLog) {
-				t.Errorf("received log that was not relevant (neither a lifecycle event not a relevant user event)")
+				t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
 			}
 
 			logAddrHex := receivedLog.Address.Hex()
