@@ -1,6 +1,6 @@
 # Obscuro Testnet Change Log
 
-## September 2022-09-xx
+## September 2022-09-22
 * Wallet extension:
   * The wallet extension now supports separate ports for HTTP and WebSocket connections. Use the `--port` and `--portWS` 
     command line options respectively for each. For more information see the
