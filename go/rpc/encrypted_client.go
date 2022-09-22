@@ -133,11 +133,6 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("only subscriptions of type %s are supported", RPCSubscriptionTypeLogs)
 	}
 
-	logCh, ok := ch.(chan types.Log)
-	if !ok {
-		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
-	}
-
 	logSubscription, err := c.createAuthenticatedLogSubscription(args)
 	if err != nil {
 		return nil, err
@@ -148,6 +143,10 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
 
+	logCh, ok := ch.(chan types.Log)
+	if !ok {
+		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
+	}
 	clientChannel := make(chan *types.Log)
 	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
@@ -201,18 +200,10 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	if len(args) < 2 {
 		logSubscription.Filter = &filters.FilterCriteria{}
 	} else {
-		// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria.
-		filterCriteriaJSON, err := json.Marshal(args[1])
-		if err != nil {
-			return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+		filterCriteria, ok := args[1].(filters.FilterCriteria)
+		if !ok {
+			return nil, fmt.Errorf("first argument was of type %T. Expected `filters.FilterCriteria`", args[1])
 		}
-
-		filterCriteria := filters.FilterCriteria{}
-		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
-		if err != nil {
-			return nil, fmt.Errorf("could not unmarshal filter criteria to JSON. Cause: %w", err)
-		}
-
 		logSubscription.Filter = &filterCriteria
 	}
 

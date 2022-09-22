@@ -3,10 +3,11 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/ethereum/go-ethereum"
 
