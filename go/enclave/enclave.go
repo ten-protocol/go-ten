@@ -309,7 +309,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		e.txCh <- decryptedTx
 	}
 
-	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(decryptedTx)
+	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
 	}
@@ -385,7 +385,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, err
 	}
 
-	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
+	viewingKeyAddress, err := rpc.GetSender(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
 	}
@@ -403,6 +403,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
+	// We decrypt the transaction bytes.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
@@ -412,7 +413,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, err
 	}
 
-	// We retrieve the viewing key address.
+	// We retrieve the transaction.
 	tx, txRollupHash, txRollupHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, db.ErrTxNotFound) {
@@ -426,14 +427,8 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	if !f {
 		return nil, fmt.Errorf("transaction not included in the canonical chain")
 	}
-
 	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
 		return nil, fmt.Errorf("transaction not included in the canonical chain")
-	}
-
-	viewingKeyAddress, err := rpc.GetViewingKeyAddressForTransaction(tx)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
 	}
 
 	// We retrieve the transaction receipt.
@@ -444,15 +439,30 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		}
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+
+	// We retrieve the sender's address.
+	sender, err := rpc.GetSender(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
+	}
+
+	// We filter out irrelevant logs.
+	logs := txReceipt.Logs
+	filteredLogs := e.subscriptionManager.FilteredLogs(logs, txRollupHash, &sender)
+	txReceipt.Logs = filteredLogs
+
+	// We marshal the receipt to JSON.
 	txReceiptBytes, err := txReceipt.MarshalJSON()
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 
-	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txReceiptBytes)
+	// We encrypt the receipt.
+	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, txReceiptBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
 	}
+
 	return encryptedTxReceipt, nil
 }
 
