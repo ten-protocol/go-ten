@@ -3,7 +3,6 @@ package rawdb
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/status-im/keycard-go/hexutils"
@@ -181,14 +180,12 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) *core.BlockSt
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) {
-	// We use gobs instead of RLP here, because RLP cannot handle maps.
-	buffer := new(bytes.Buffer)
-	encoder := gob.NewEncoder(buffer)
-	if err := encoder.Encode(logs); err != nil {
+	bytes, err := rlp.EncodeToBytes(logs)
+	if err != nil {
 		log.Panic("could not encode logs. Cause: %s", err)
 	}
 
-	if err := db.Put(logsKey(blockHash), buffer.Bytes()); err != nil {
+	if err := db.Put(logsKey(blockHash), bytes); err != nil {
 		log.Panic("could not put logs in DB. Cause: %s", err)
 	}
 }
@@ -199,13 +196,12 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) []*types.
 		return nil
 	}
 
-	decoder := gob.NewDecoder(bytes.NewBuffer(data))
-	var logs []*types.Log
-	if err := decoder.Decode(&logs); err != nil {
+	logs := new([]*types.Log)
+	if err := rlp.Decode(bytes.NewReader(data), logs); err != nil {
 		log.Panic("could not decode logs. Cause: %s", err)
 	}
 
-	return logs
+	return *logs
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
