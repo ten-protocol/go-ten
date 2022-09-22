@@ -51,9 +51,9 @@ func ExtractAddress(getTransactionCountParams []byte) (gethcommon.Address, error
 	return txHash, err
 }
 
-// GetViewingKeyAddressForTransaction returns the address whose viewing key should be used to encrypt the response,
+// GetSender returns the address whose viewing key should be used to encrypt the response,
 // given a transaction.
-func GetViewingKeyAddressForTransaction(tx *common.L2Tx) (gethcommon.Address, error) {
+func GetSender(tx *common.L2Tx) (gethcommon.Address, error) {
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
 	signer := types.NewLondonSigner(tx.ChainId())
 	sender, err := signer.Sender(tx)
