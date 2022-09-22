@@ -86,8 +86,8 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 	return allLogs
 }
 
-// FilteredLogsBySubID filters out irrelevant logs and those that are not subscribed to, and organises the logs by their subscribing ID.
-func (s *SubscriptionManager) FilteredLogsBySubID(logs []*types.Log, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
+// FilteredSubscribedLogs filters out irrelevant logs and those that are not subscribed to, and organises them by their subscribing ID.
+func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
 	// If there are no subscriptions, we do not need to do any processing.

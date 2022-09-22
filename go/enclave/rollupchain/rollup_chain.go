@@ -242,7 +242,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, map
 	// For the genesis block, we do not emit any events, because we cannot yet validate whether all the topics refer to
 	// code addresses, since the state DB hasn't yet been constructed to check against.
 	if head.Header.ParentHash != common.GenesisHash {
-		subscribedLogs = rc.subscriptionManager.FilteredLogsBySubID(logs, head.Header.ParentHash)
+		subscribedLogs = rc.subscriptionManager.FilteredSubscribedLogs(logs, head.Header.ParentHash)
 	}
 
 	// We append the rollup's logs to the logs of the parent rollup. This is to ensure events are not missed if a
