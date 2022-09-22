@@ -200,10 +200,20 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	if len(args) < 2 {
 		logSubscription.Filter = &filters.FilterCriteria{}
 	} else {
-		filterCriteria, ok := args[1].(filters.FilterCriteria)
-		if !ok {
-			return nil, fmt.Errorf("first argument was of type %T. Expected `filters.FilterCriteria`", args[1])
+		// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
+		// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
+		// FilterCriteria.
+		filterCriteriaJSON, err := json.Marshal(args[1])
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
 		}
+
+		filterCriteria := filters.FilterCriteria{}
+		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
+		}
+
 		logSubscription.Filter = &filterCriteria
 	}
 

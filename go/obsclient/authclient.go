@@ -15,6 +15,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
+const (
+	filterKeyBlockHash = "blockHash"
+	filterKeyFromBlock = "fromBlock"
+	filterKeyToBlock   = "toBlock"
+	filterKeyAddress   = "address"
+	filterKeyTopics    = "topics"
+)
+
 // AuthObsClient extends the functionality of the ObsClient for all methods that require encryption when communicating with the enclave
 // It is created with an EncRPCClient rather than basic RPC client so encryption/decryption is supported
 //
@@ -98,8 +106,15 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return hexutil.DecodeBig(result)
 }
 
-func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterQuery filters.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
-	return ac.rpcClient.Subscribe(ctx, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, filterQuery)
+func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
+	filterCriteriaMap := map[string]interface{}{
+		filterKeyBlockHash: filterCriteria.BlockHash,
+		filterKeyFromBlock: filterCriteria.FromBlock,
+		filterKeyToBlock:   filterCriteria.ToBlock,
+		filterKeyAddress:   filterCriteria.Addresses,
+		filterKeyTopics:    filterCriteria.Topics,
+	}
+	return ac.rpcClient.Subscribe(ctx, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, filterCriteriaMap)
 }
 
 func (ac *AuthObsClient) Address() common.Address {
