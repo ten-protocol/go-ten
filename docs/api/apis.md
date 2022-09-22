@@ -7,19 +7,19 @@ page details which JSON-RPC API methods are supported.
 
 Obscuro nodes support the following JSON-RPC API methods over both HTTP and websockets:
 
-* `eth_chainId`
 * `eth_blockNumber`
-* `eth_getBalance`
-* `eth_getBlockByNumber`
-* `eth_getBlockByHash`
-* `eth_gasPrice`
 * `eth_call`
-* `eth_getTransactionReceipt`
+* `eth_chainId`
 * `eth_estimateGas`
-* `eth_sendRawTransaction`
+* `eth_gasPrice`
+* `eth_getBalance`
+* `eth_getBlockByHash`
+* `eth_getBlockByNumber`
 * `eth_getCode`
-* `eth_getTransactionCount`
 * `eth_getTransactionByHash`
+* `eth_getTransactionCount`
+* `eth_getTransactionReceipt`
+* `eth_sendRawTransaction`
 
 ## Supported subscription methods
 
