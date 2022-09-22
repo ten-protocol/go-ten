@@ -412,8 +412,8 @@ func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan types.L
 			}
 
 			logAddrHex := receivedLog.Address.Hex()
-			if logAddrHex != "0x"+bridge.HOCAddr && logAddrHex != "0x"+bridge.POCAddr {
-				t.Errorf("expected log from the HOC or POC contracts, but got a log from %s", logAddrHex)
+			if logAddrHex != "0x"+bridge.HOCAddr {
+				t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
 			}
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
