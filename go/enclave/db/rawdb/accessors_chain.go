@@ -6,8 +6,6 @@ import (
 	"encoding/gob"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/google/uuid"
-
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -182,7 +180,7 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) *core.BlockSt
 	return bs
 }
 
-func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs map[uuid.UUID][]*types.Log) {
+func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) {
 	// We use gobs instead of RLP here, because RLP cannot handle maps.
 	buffer := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buffer)
@@ -195,14 +193,14 @@ func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs map
 	}
 }
 
-func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) map[uuid.UUID][]*types.Log {
+func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) []*types.Log {
 	data, _ := kv.Get(logsKey(blockHash))
 	if data == nil {
 		return nil
 	}
 
 	decoder := gob.NewDecoder(bytes.NewBuffer(data))
-	var logs map[uuid.UUID][]*types.Log
+	var logs []*types.Log
 	if err := decoder.Decode(&logs); err != nil {
 		log.Panic("could not decode logs. Cause: %s", err)
 	}
