@@ -447,9 +447,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We filter out irrelevant logs.
-	logs := txReceipt.Logs
-	filteredLogs := e.subscriptionManager.FilteredLogs(logs, txRollupHash, &sender)
-	txReceipt.Logs = filteredLogs
+	txReceipt.Logs = e.subscriptionManager.FilteredLogs(txReceipt.Logs, txRollupHash, &sender)
 
 	// We marshal the receipt to JSON.
 	txReceiptBytes, err := txReceipt.MarshalJSON()
