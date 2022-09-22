@@ -106,7 +106,7 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 
 		// We check whether the log is relevant to each subscription.
 		for subscriptionID, subscription := range s.subscriptions {
-			if isRelevant(userAddrs, subscription.SubscriptionAccount.Account) {
+			if isRelevant(userAddrs, subscription.Account) {
 				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
 			}
 		}
@@ -129,7 +129,7 @@ func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log
 			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 		}
 
-		encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.SubscriptionAccount.Account, jsonLogs)
+		encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.Account, jsonLogs)
 		if err != nil {
 			return nil, err
 		}
