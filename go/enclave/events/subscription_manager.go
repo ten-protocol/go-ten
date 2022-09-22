@@ -3,8 +3,9 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
@@ -185,15 +186,12 @@ func isRelevant(userAddrs []string, account *gethcommon.Address) bool {
 // Applies `filterLogs`, below, to determine whether the log should be filtered out.
 func isFilteredOut(log *types.Log, filterCriteria *filters.FilterCriteria) bool {
 	filteredLogs := filterLogs([]*types.Log{log}, filterCriteria.FromBlock, filterCriteria.ToBlock, filterCriteria.Addresses, filterCriteria.Topics)
-	if len(filteredLogs) == 0 {
-		return true
-	}
-	return false
+	return len(filteredLogs) == 0
 }
 
 // Lifted from eth/filters/filter.go in the go-ethereum repository.
 // filterLogs creates a slice of logs matching the given criteria.
-func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash) []*types.Log {
+func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash) []*types.Log { //nolint:gocognit
 	var ret []*types.Log
 Logs:
 	for _, log := range logs {
