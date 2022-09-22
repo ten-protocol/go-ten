@@ -100,14 +100,14 @@ func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, 
 
 // AuthenticateSubscriptionRequest checks that a subscription request is authenticated correctly.
 func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription common.LogSubscription) error {
-	accountHashBytes := subscription.SubscriptionAccount.Account.Hash().Bytes()
+	accountHashBytes := subscription.Account.Hash().Bytes()
 
-	recoveredViewingPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.SubscriptionAccount.Signature)
+	recoveredViewingPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.Signature)
 	if err != nil {
 		return fmt.Errorf("could not recover viewing public key from signature to authenticate subscription. Cause: %w", err)
 	}
 
-	viewingPublicKey := rpc.viewingKeys[*subscription.SubscriptionAccount.Account].ExportECDSA()
+	viewingPublicKey := rpc.viewingKeys[*subscription.Account].ExportECDSA()
 	if !viewingPublicKey.Equal(recoveredViewingPublicKey) {
 		return fmt.Errorf("viewing key used to authenticate subscription did not match viewing key stored by enclave")
 	}

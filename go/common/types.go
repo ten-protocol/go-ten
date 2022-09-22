@@ -186,17 +186,14 @@ func (h *Header) Hash() L2RootHash {
 	return hash
 }
 
+// LogSubscription is an authenticated subscription to logs.
 type LogSubscription struct {
-	SubscriptionAccount *SubscriptionAccount
-	Filter              *filters.FilterCriteria
-}
-
-// SubscriptionAccount is an authenticated account used when subscribing to logs.
-type SubscriptionAccount struct {
 	// The account the events relate to.
 	Account *common.Address
-	// A signature over the account address using the private viewing key. Prevents attackers from subscribing to
+	// A signature over the account address using a private viewing key. Prevents attackers from subscribing to
 	// (encrypted) logs for other accounts to see the pattern of logs.
 	// TODO - This does not protect against replay attacks, where someone resends an intercepted subscription request.
 	Signature *[]byte
+	// A subscriber-defined filter to apply to the stream of logs.
+	Filter *filters.FilterCriteria
 }

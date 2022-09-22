@@ -193,10 +193,8 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	}
 
 	logSubscription := &common.LogSubscription{
-		SubscriptionAccount: &common.SubscriptionAccount{
-			Account:   c.Account(),
-			Signature: &accountSignature,
-		},
+		Account:   c.Account(),
+		Signature: &accountSignature,
 	}
 
 	// If there are less than two arguments, it means no filter criteria was passed.
