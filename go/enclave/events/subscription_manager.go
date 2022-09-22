@@ -71,7 +71,7 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
 }
 
-// FilteredLogs filters out logs that are not subscribed to.
+// FilteredLogs filters out irrelevant logs.
 func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address) []*types.Log {
 	allLogs := []*types.Log{}
 	stateDB := s.storage.CreateStateDB(rollupHash)
@@ -86,7 +86,7 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 	return allLogs
 }
 
-// FilteredLogsBySubID filters out logs that are not subscribed to, and organises the logs by their subscribing ID.
+// FilteredLogsBySubID filters out irrelevant logs and those that are not subscribed to, and organises the logs by their subscribing ID.
 func (s *SubscriptionManager) FilteredLogsBySubID(logs []*types.Log, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
 	relevantLogs := map[uuid.UUID][]*types.Log{}
 
