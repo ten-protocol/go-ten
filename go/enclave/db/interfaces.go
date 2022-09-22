@@ -3,7 +3,6 @@ package db
 import (
 	"crypto/ecdsa"
 
-	"github.com/google/uuid"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -54,11 +53,11 @@ type RollupResolver interface {
 
 type BlockStateStorage interface {
 	// FetchBlockState returns the block state and logs for the given block, and a boolean indicating if the block was found.
-	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, map[uuid.UUID][]*types.Log, bool)
+	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, []*types.Log, bool)
 	// FetchHeadState returns the head block state. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
 	// SaveNewHead save the rollup-block mapping
-	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs map[uuid.UUID][]*types.Log)
+	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log)
 	// CreateStateDB create a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) *state.StateDB
 	// EmptyStateDB create the original empty StateDB
