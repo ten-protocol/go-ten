@@ -3,6 +3,7 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/eth/filters"
 	"math/big"
 	"sync"
 	"time"
@@ -127,7 +128,11 @@ func (s *Simulation) trackLogs() {
 		s.LogChannels[wallet] = make(chan types.Log)
 
 		for _, client := range clients {
-			sub, err := client.SubscribeFilterLogs(context.Background(), ethereum.FilterQuery{}, s.LogChannels[wallet])
+			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
+			hocFilter := filters.FilterCriteria{
+				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + bridge.HOCAddr)},
+			}
+			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, s.LogChannels[wallet])
 			if err != nil {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}

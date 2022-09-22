@@ -2,6 +2,7 @@ package obsclient
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/eth/filters"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -96,7 +97,7 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return hexutil.DecodeBig(result)
 }
 
-func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery, ch chan types.Log) (ethereum.Subscription, error) {
+func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterQuery filters.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
 	return ac.rpcClient.Subscribe(ctx, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, filterQuery)
 }
 
