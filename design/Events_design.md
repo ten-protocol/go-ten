@@ -266,38 +266,42 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
   how much or to whom.
 
 - Events included in transaction receipts should be filtered to only include events which are visible to the transaction submitter.
-  
-### Prerequisites
-
-An event `E1` is emitted after executing transaction `TX1` with a from address `A1`.
-`E1` is formed of multiple topics, 2 of which are addresses (`A2` and `A3`), and there are some other random values.
-
-An event `E2` is emitted by a transaction `TX2` from an address `A4`.
-`E2` is formed of multiple topics, none of which are addresses.
-
-User `U1`- owner of `A1` subscribes to all events.
 
 ### Implementation
 
-1. The Obscuro `Subscription` call, and the `Event query` call must take a list of signed owning accounts. Each account must be signed with the latest
-   viewing key (to prevent someone from asking random events, just to leak info). The call will fail if there are no
-   viewing keys for all those accounts. 
+TODO - Build out these sections
+
+#### Obscuro encrypted RPC client
+
+TODO
+
+#### Obscuro host
+
+The "Obscuro Host" is responsible in setting up the subscriptions and dispatching the events it receives from the enclave.
+
+#### Obscuro enclave
+
+1. The Obscuro `Subscription` call, and the `Event query` call must take a list of signed owning accounts. Each account 
+   must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info). The 
+   call will fail if there are no viewing keys for all those accounts.
 
    Note: This is possible because the subscription call is implemented on Obscuro, and
    made by the wallet_extension, so it doesn't have to be compatible with Ethereum. For our RPC client it will be an
    authenticated subscription.
 
-2. The "Obscuro Host" is responsible in setting up the subscriptions and dispatching the events it receives from the enclave.
-
-3. Upon ingesting a rollup included in a block, the enclave runs all the usual filtering logic on each emitted event, and determines if there 
+2. Upon ingesting a rollup included in a block, the enclave runs all the usual filtering logic on each emitted event, and determines if there
    is any subscription that requested it.
 
-4. Then, there is an extra step (inside the enclave as well) to determine whether the event is relevant for any account which is
+3. Then, there is an extra step (inside the enclave as well) to determine whether the event is relevant for any account which is
    authenticated for that subscription.
 
-5. The last step is to encrypt the event with the authenticated viewing key and stream it from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
+4. The last step is to encrypt the event with the authenticated viewing key and stream it from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
 
-## Security and usability of the proposed design
+#### Wallet extension
+
+TODO
+
+### Security and usability of the proposed design
 
 App developers will be able to use the existing libraries unchanged, as long as they connect through a wallet extension with registered viewing keys.
 
@@ -313,7 +317,7 @@ The fact that the wallet extension adds signed accounts to each subscription req
 
 An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed to it, but will not show on Charlie's UI.
 
-## Open implementation questions
+### Open implementation questions
 
 1. What's the lifespan for a subscription in the enclave, unsubscribe option + an expiry?
 
@@ -325,14 +329,14 @@ An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed
 
 5. How do events interact with the revelation period?
 
-## Alternatives considered
+### Alternatives considered
 
-### All events are public by default 
+#### All events are public by default 
 
 This is not possible as it breaks the most fundamental contact, the `ERC20`, which contains the `Transfer` event.
 If all events were public by default then, we either break the ERC20 api by removing the event, or we lose privacy
 
-### Add a third visibility rule that says that 
+#### Add a third visibility rule that says that 
 
 Rule 3: A signer of a transaction can view all events emitted during the execution of that transaction.
 
