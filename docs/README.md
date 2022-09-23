@@ -26,15 +26,10 @@ This is the same as `Adding New Doc Site Pages`, above, but omitting step #3.
 You can check your changes (e.g. the Markdown formatting) by serving the changes locally as follows:
 
 1. [Install Jekyll](https://jekyllrb.com/docs/installation/)
-2. Run the Jekyll `build` command to build the updated HTML pages:
+2. Run the Jekyll `serve` command below to serve the updated pages on a local webserver at `http://127.0.0.1:4000`. Any 
+   changes will be automatically reflected
 
    ```
    cd ./docs
-   bundle exec jekyll build
-   ```
-
-3. Run the Jekyll `serve` command to serve the updated pages on a local webserver at `http://127.0.0.1:4000`:
-
-   ```
    bundle exec jekyll serve
    ```

@@ -49,8 +49,12 @@ pages:
         url: wallet-extension/wallet-extension.html
       - title: Configure MetaMask
         url: wallet-extension/configure-metamask.html
-      - title: Handling Sensitive Data
-        url: wallet-extension/handling-sensitive-data.html
+  - title: API
+    children:
+      - title: APIs
+        url: api/apis.html
+      - title: Sensitive APIs
+        url: api/sensitive-apis.html
   - title: Whitepaper
     children:
       - title: Abstract
