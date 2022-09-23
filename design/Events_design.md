@@ -305,15 +305,20 @@ For an incoming logs subscription request, the host's RPC API has two roles to p
 1. Request the creation of the new subscription on the enclave
 2. Create a Geth `rpc.Subscription` object to return from the API call
 
-The former is straightforward, with the subscription request forwarded to the enclave via a dedicated API.
+The former is straightforward, with the subscription request forwarded to the enclave via the API described above.
 
 For the latter, we minimise custom code by creating an instance of Geth's `PublicFilterAPI` with a custom `Backend` 
-object. The `Backend` must implement `SubscribeLogsEvent`, which is responsible for routing new logs to all existing 
-logs subscriptions. The host then creates individual logs subscriptions using `PublicFilterAPI.Logs` which takes a 
-filter criteria that is used to filter irrelevant logs from the master list returned by `SubscribeLogsEvent`.
+object. The `Backend` must implement `SubscribeLogsEvent`, which is provided a channel and is responsible for sending 
+all new logs onto that channel. We implement `SubscribeLogsEvent` by pushing a new log to the channel whenever a new 
+log is returned from the enclave via a block submission response.
+
+// TODO - Talk about wrapper logs here
+
+The host then creates individual logs subscriptions using `PublicFilterAPI.Logs`, which takes a filter criteria and 
+automatically applies it to the contents of the master list returned by `SubscribeLogsEvent` to determine the set of 
+logs to return on that subscription.
 
 // TODO - Talk about special filtering based on subscription ID as the topic
-// TODO - Talk about how `SubscribeLogsEvent` is powered by the `BlockSubmissionResponse` contents
 
 #### Obscuro encrypted RPC client
 
