@@ -271,21 +271,32 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
 
 #### Obscuro enclave
 
-1. The Obscuro `Subscription` call, and the `Event query` call must take a list of signed owning accounts. Each account
-   must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info). The
-   call will fail if there are no viewing keys for all those accounts.
+The enclave exposes two methods, one to add a new logs subscription, and one to delete a logs subscription. The method 
+to add a new subscription takes a `LogSubscription` object, defined as follows:
 
-   Note: This is possible because the subscription call is implemented on Obscuro, and
-   made by the wallet_extension, so it doesn't have to be compatible with Ethereum. For our RPC client it will be an
-   authenticated subscription.
+```
+LogSubscription {
+    Account   // The account address the events relate to.
+    Signature // A signature over the account address using a private viewing key.
+    Filter    // A subscriber-defined filter to apply to the stream of logs.
+}
+```
 
-2. Upon ingesting a rollup included in a block, the enclave runs all the usual filtering logic on each emitted event, and determines if there
-   is any subscription that requested it.
+If a new logs subscription is added successfully, a UUID is returned for that subscription. This ID is used when 
+deleting the subscription.
 
-3. Then, there is an extra step (inside the enclave as well) to determine whether the event is relevant for any account which is
-   authenticated for that subscription.
+The signature is used to ensure that the client is authorised to create a subscription for the given account, to 
+prevent attackers from creating subscriptions to analyse the pattern of logs.
 
-4. The last step is to encrypt the event with the authenticated viewing key and stream it from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
+Each time the host requests the enclave to ingest a new block, the enclave includes a mapping of logs subscription IDs 
+to the associated logs as a field in the block submission response. To achieve this, the enclave extracts all the logs 
+from the block's transactions, then creates a mapping from each subscription ID to the logs that subscription should 
+receive, defined as the overlap between those matching the `LogSubscription.Filter` and those passing the relevancy 
+test (based on the user address in `LogSubscription.Account`) for that subscription. For each subscription ID, the list 
+of logs is encrypted with the viewing key corresponding to the `LogSubscription.Account`.
+
+Logs are also included in transaction receipts. The enclave filters these logs to only include those that pass the 
+relevancy test (using the transaction's sender as the user address).
 
 #### Obscuro host
 
@@ -323,9 +334,12 @@ logs subscription only supports returning Geth's `types.Log` objects. To overcom
 the `data` field of a fake "wrapper" log. The encrypted RPC client retrieves the encrypted log bytes from the `data`
 field and decrypts them with the corresponding private key before returning the log events to the user.
 
+// TODO - Talk about the creation of the `LogSubscription` objects
+
 #### Wallet extension
 
 // TODO - Talk about mapping from the subscription channel to the websocket
+// TODO - Review for duplication with stuff in the "Considerations and Constraints" section, above
 
 ### Security and usability of the proposed design
 
