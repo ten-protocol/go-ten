@@ -285,18 +285,24 @@ LogSubscription {
 If a new logs subscription is added successfully, a UUID is returned for that subscription. This ID is used when 
 deleting the subscription.
 
-The signature is used to ensure that the client is authorised to create a subscription for the given account, to 
-prevent attackers from creating subscriptions to analyse the pattern of logs.
+The signature is used to ensure that the client is authorised to create a subscription for the given account. This  
+prevents attackers from creating subscriptions to analyse the pattern of logs.
 
-Each time the host requests the enclave to ingest a new block, the enclave includes a mapping of logs subscription IDs 
-to the associated logs as a field in the block submission response. To achieve this, the enclave extracts all the logs 
-from the block's transactions, then creates a mapping from each subscription ID to the logs that subscription should 
-receive, defined as the overlap between those matching the `LogSubscription.Filter` and those passing the relevancy 
-test (based on the user address in `LogSubscription.Account`) for that subscription. For each subscription ID, the list 
-of logs is encrypted with the viewing key corresponding to the `LogSubscription.Account`.
+Each time the host sends the enclave a new block to ingest, the enclave responds with a block submission response. 
+We will extend this response to include a mapping from each subscription ID to the associated logs. To achieve this, 
+the enclave extracts all the logs from the block's transactions, then creates a mapping from each subscription ID to 
+the set of logs that subscription should receive. This set is defined on a per-subscription basis as the overlap 
+between those matching the `LogSubscription.Filter` and those passing the relevancy test (based on the user address in 
+`LogSubscription.Account`) for that subscription. For each subscription ID, the set of logs is encrypted with the 
+viewing key corresponding to the `LogSubscription.Account`.
 
-Logs are also included in transaction receipts. The enclave filters these logs to only include those that pass the 
-relevancy test (using the transaction's sender as the user address).
+Logs are also included in transaction receipts. Whenever the host requests a transaction receipt, the enclave filters 
+out the receipt's logs to only include those that pass the relevancy test (using the transaction's sender as the user 
+address).
+
+// TODO - Explain that the add subscription params are encrypted
+
+// TODO - Talk about inclusion of historical logs
 
 #### Obscuro host
 
