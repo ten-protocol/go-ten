@@ -240,22 +240,9 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmi
 	}, nil
 }
 
-// IngestBlocks is used to update the enclave with the full history of the L1 chain to date.
-func (e *enclaveImpl) IngestBlocks(blocks []*types.Block) ([]common.BlockSubmissionResponse, error) {
-	result := make([]common.BlockSubmissionResponse, len(blocks))
-	for i, block := range blocks {
-		response := e.chain.IngestBlock(block)
-		result[i] = response
-		if !response.IngestedBlock {
-			return result, nil // We return early, as all descendant blocks will also fail verification.
-		}
-	}
-	return result, nil
-}
-
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block) (common.BlockSubmissionResponse, error) {
-	bsr := e.chain.SubmitBlock(block)
+func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (common.BlockSubmissionResponse, error) {
+	bsr := e.chain.SubmitBlock(block, isLatest)
 
 	if bsr.RollupHead != nil {
 		hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())

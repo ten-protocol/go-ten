@@ -40,17 +40,16 @@ type Enclave interface {
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
 	ProduceGenesis(blkHash gethcommon.Hash) (BlockSubmissionResponse, error)
 
-	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(blocks []*types.Block) ([]BlockSubmissionResponse, error)
-
 	// Start - start speculative execution
 	Start(block types.Block) error
 
-	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
-	// it is the responsibility of the host to gossip the returned rollup
+	// SubmitBlock - Used for the host to submit blocks to the enclave, these may be:
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
+	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
-	// submitting a block before receiving a parent of it, will result in it being ignored
-	SubmitBlock(block types.Block) (BlockSubmissionResponse, error)
+	// submitting a block before receiving ancestors of it, will result in it being ignored
+	SubmitBlock(block types.Block, isLatest bool) (BlockSubmissionResponse, error)
 
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(rollup ExtRollup) error
