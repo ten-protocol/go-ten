@@ -26,4 +26,4 @@ sudo docker run -e OE_SIMULATION=0 --privileged -v /dev/sgx:/dev/sgx -p 127.0.0.
 go-obscuro/go/host/main/host --id=1 --isGenesis=true --p2pBindAddress=0.0.0.0:10000 --p2pPublicAddress=127.0.0.1:10000 --enclaveRPCAddress=localhost:11000 --clientRPCHost=0.0.0.0 --clientRPCPortHttp=13000 --l1NodePort=12100 --privateKey=$PRIV_KEY_ONE > ./run_logs.txt 2>&1 &
 go-obscuro/go/host/main/host --id=2 --isGenesis=false --p2pBindAddress=0.0.0.0:10001 --p2pPublicAddress=127.0.0.1:10001 --enclaveRPCAddress=localhost:11001 --clientRPCHost=localhost --clientRPCPortHttp=13001 --l1NodePort=12101 --privateKey=$PRIV_KEY_TWO > ./run_logs.txt 2>&1 &
 cd go-obscuro
-sudo ./tools/obscuroscan/main/obscuroscan --rpcServerAddress=127.0.0.1:13001 --address=0.0.0.0:80 > ../run_logs.txt 2>&1 &
+sudo ./tools/obscuroscan/main/obscuroscan --rpcServerAddress=http://127.0.0.1:13000 --address=0.0.0.0:80 > ../run_logs.txt 2>&1 &
