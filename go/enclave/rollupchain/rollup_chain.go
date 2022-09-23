@@ -99,37 +99,6 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 	return rolGenesis, b
 }
 
-func (rc *RollupChain) IngestBlock(block *types.Block) common.BlockSubmissionResponse {
-	// We ignore a failure on the genesis block, since insertion of the genesis also produces a failure in Geth
-	// (at least with Clique, where it fails with a `vote nonce not 0x00..0 or 0xff..f`).
-	if ingestionFailedResponse := rc.insertBlockIntoL1Chain(block); !rc.isGenesisBlock(block) && ingestionFailedResponse != nil {
-		return *ingestionFailedResponse
-	}
-
-	rc.storage.StoreBlock(block)
-	bs, _, subscribedLogs := rc.updateState(block)
-	if bs == nil {
-		return rc.noBlockStateBlockSubmissionResponse(block)
-	}
-
-	var rollup common.ExtRollup
-	if bs.FoundNewRollup {
-		hr, f := rc.storage.FetchRollup(bs.HeadRollup)
-		if !f {
-			log.Panic(msgNoRollup)
-		}
-
-		rollup = hr.ToExtRollup(rc.transactionBlobCrypto)
-	}
-
-	encryptedLogs, err := rc.subscriptionManager.EncryptLogs(subscribedLogs)
-	if err != nil {
-		log.Panic("Could not encrypt logs. Cause: %s", err)
-	}
-
-	return rc.newBlockSubmissionResponse(bs, rollup, encryptedLogs)
-}
-
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
 // BlockSubmissionResponse if the insertion failed.
 func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) *common.BlockSubmissionResponse {
@@ -450,21 +419,16 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResponse {
+func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.BlockSubmissionResponse {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
-
-	// The genesis block should always be ingested, not submitted, so we ignore it if it's passed in here.
-	if rc.isGenesisBlock(&block) {
-		return common.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block was genesis block."}
-	}
 
 	_, foundBlock := rc.storage.FetchBlock(block.Hash())
 	if foundBlock {
 		return common.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
 	}
 
-	if ingestionFailedResponse := rc.insertBlockIntoL1Chain(&block); ingestionFailedResponse != nil {
+	if ingestionFailedResponse := rc.insertBlockIntoL1Chain(&block); !rc.isGenesisBlock(&block) && ingestionFailedResponse != nil {
 		return *ingestionFailedResponse
 	}
 
@@ -485,6 +449,16 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}
 
+	encryptedLogs, err := rc.subscriptionManager.EncryptLogs(subscribedLogs)
+	if err != nil {
+		log.Panic("Could not encrypt logs. Cause: %s", err)
+	}
+
+	if !isLatest {
+		// no need to produce rollup, we're behind the L1, so rollup will be outdated
+		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs)
+	}
+
 	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
 	r := rc.produceRollup(&block, blockState)
 	rc.signRollup(r)
@@ -493,11 +467,6 @@ func (rc *RollupChain) SubmitBlock(block types.Block) common.BlockSubmissionResp
 	rc.storage.StoreRollup(r)
 
 	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
-
-	encryptedLogs, err := rc.subscriptionManager.EncryptLogs(subscribedLogs)
-	if err != nil {
-		log.Panic("Could not encrypt logs. Cause: %s", err)
-	}
 
 	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs)
 }

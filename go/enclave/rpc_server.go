@@ -118,32 +118,6 @@ func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGen
 	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
 }
 
-func (s *server) IngestBlocks(_ context.Context, request *generated.IngestBlocksRequest) (*generated.IngestBlocksResponse, error) {
-	blocks := make([]*types.Block, 0)
-	for _, encodedBlock := range request.EncodedBlocks {
-		bl := s.decodeBlock(encodedBlock)
-		blocks = append(blocks, &bl)
-	}
-
-	r, err := s.enclave.IngestBlocks(blocks)
-	if err != nil {
-		return nil, err
-	}
-
-	blockSubmissionResponses := make([]*generated.BlockSubmissionResponseMsg, len(r))
-	for i, response := range r {
-		b, err := rpc.ToBlockSubmissionResponseMsg(response)
-		if err != nil {
-			return nil, err
-		}
-		blockSubmissionResponses[i] = &b
-	}
-
-	return &generated.IngestBlocksResponse{
-		BlockSubmissionResponses: blockSubmissionResponses,
-	}, nil
-}
-
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
 	err := s.enclave.Start(bl)
@@ -155,7 +129,7 @@ func (s *server) Start(_ context.Context, request *generated.StartRequest) (*gen
 
 func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
-	blockSubmissionResponse, err := s.enclave.SubmitBlock(bl)
+	blockSubmissionResponse, err := s.enclave.SubmitBlock(bl, request.IsLatest)
 	if err != nil {
 		return nil, err
 	}

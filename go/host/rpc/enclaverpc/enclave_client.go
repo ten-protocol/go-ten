@@ -156,34 +156,6 @@ func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmission
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) IngestBlocks(blocks []*types.Block) ([]common.BlockSubmissionResponse, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	encodedBlocks := make([][]byte, 0)
-	for _, block := range blocks {
-		encodedBlock, err := common.EncodeBlock(block)
-		if err != nil {
-			return nil, fmt.Errorf("could not encode block. Cause: %w", err)
-		}
-		encodedBlocks = append(encodedBlocks, encodedBlock)
-	}
-	response, err := c.protoClient.IngestBlocks(timeoutCtx, &generated.IngestBlocksRequest{EncodedBlocks: encodedBlocks})
-	if err != nil {
-		return nil, fmt.Errorf("could not ingest blocks. Cause: %w", err)
-	}
-	responses := response.GetBlockSubmissionResponses()
-	result := make([]common.BlockSubmissionResponse, len(responses))
-	for i, r := range responses {
-		blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(r)
-		if err != nil {
-			return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
-		}
-		result[i] = blockSubmissionResponse
-	}
-	return result, nil
-}
-
 func (c *Client) Start(block types.Block) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
@@ -201,7 +173,7 @@ func (c *Client) Start(block types.Block) error {
 	return nil
 }
 
-func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitBlock(block types.Block, isLatest bool) (common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -210,7 +182,7 @@ func (c *Client) SubmitBlock(block types.Block) (common.BlockSubmissionResponse,
 		return common.BlockSubmissionResponse{}, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes()})
+	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
 	if err != nil {
 		return common.BlockSubmissionResponse{}, fmt.Errorf("could not submit block. Cause: %w", err)
 	}

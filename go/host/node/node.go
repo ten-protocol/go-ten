@@ -478,7 +478,8 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		a.processBlock(decoded)
 
 		// submit each block to the enclave for ingestion plus validation
-		result, err = a.enclaveClient.SubmitBlock(*decoded)
+		// todo: isLatest should only be true when we're not behind
+		result, err = a.enclaveClient.SubmitBlock(*decoded, true)
 		if err != nil {
 			return err
 		}
@@ -952,20 +953,19 @@ func (a *Node) bootstrapNode() types.Block {
 	for {
 		cb := *currentBlock
 		a.processBlock(&cb)
-		// TODO ingest one block at a time or batch the blocks
-		result, err := a.enclaveClient.IngestBlocks([]*types.Block{&cb})
+		result, err := a.enclaveClient.SubmitBlock(cb, false)
 		if err != nil {
 			log.Panic(err.Error())
 		}
-		if !result[0].IngestedBlock && result[0].BlockNotIngestedCause != "" {
+		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
 			common.LogWithID(
 				a.shortID,
 				"Failed to ingest block b_%d. Cause: %s",
-				common.ShortHash(result[0].BlockHeader.Hash()),
-				result[0].BlockNotIngestedCause,
+				common.ShortHash(result.BlockHeader.Hash()),
+				result.BlockNotIngestedCause,
 			)
 		}
-		a.storeBlockProcessingResult(result[0])
+		a.storeBlockProcessingResult(result)
 
 		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(cb.Number().Int64() + 1))
 		if err != nil {

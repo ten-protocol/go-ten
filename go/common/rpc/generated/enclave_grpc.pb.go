@@ -36,14 +36,14 @@ type EnclaveProtoClient interface {
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
 	ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error)
-	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(ctx context.Context, in *IngestBlocksRequest, opts ...grpc.CallOption) (*IngestBlocksResponse, error)
 	// Start - start speculative execution
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
-	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
-	// it is the responsibility of the host to gossip the returned rollup
+	// SubmitBlock - Used for the host to submit blocks to the enclave, these may be:
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
+	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
-	// submitting a block before receiving a parent of it, will result in it being ignored
+	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(ctx context.Context, in *SubmitRollupRequest, opts ...grpc.CallOption) (*SubmitRollupResponse, error)
@@ -143,15 +143,6 @@ func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveReq
 func (c *enclaveProtoClient) ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error) {
 	out := new(ProduceGenesisResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ProduceGenesis", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *enclaveProtoClient) IngestBlocks(ctx context.Context, in *IngestBlocksRequest, opts ...grpc.CallOption) (*IngestBlocksResponse, error) {
-	out := new(IngestBlocksResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/IngestBlocks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -329,14 +320,14 @@ type EnclaveProtoServer interface {
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
 	ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error)
-	// IngestBlocks - feed L1 blocks into the enclave to catch up
-	IngestBlocks(context.Context, *IngestBlocksRequest) (*IngestBlocksResponse, error)
 	// Start - start speculative execution
 	Start(context.Context, *StartRequest) (*StartResponse, error)
-	// SubmitBlock - When a new POBI round starts, the host submits a block to the enclave, which responds with a rollup
-	// it is the responsibility of the host to gossip the returned rollup
+	// SubmitBlock - Used for the host to submit blocks to the enclave, these may be:
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
+	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
-	// submitting a block before receiving a parent of it, will result in it being ignored
+	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(context.Context, *SubmitRollupRequest) (*SubmitRollupResponse, error)
@@ -396,9 +387,6 @@ func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclave
 }
 func (UnimplementedEnclaveProtoServer) ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProduceGenesis not implemented")
-}
-func (UnimplementedEnclaveProtoServer) IngestBlocks(context.Context, *IngestBlocksRequest) (*IngestBlocksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IngestBlocks not implemented")
 }
 func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
@@ -586,24 +574,6 @@ func _EnclaveProto_ProduceGenesis_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).ProduceGenesis(ctx, req.(*ProduceGenesisRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EnclaveProto_IngestBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IngestBlocksRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).IngestBlocks(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/IngestBlocks",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).IngestBlocks(ctx, req.(*IngestBlocksRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -948,10 +918,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ProduceGenesis",
 			Handler:    _EnclaveProto_ProduceGenesis_Handler,
-		},
-		{
-			MethodName: "IngestBlocks",
-			Handler:    _EnclaveProto_IngestBlocks_Handler,
 		},
 		{
 			MethodName: "Start",
