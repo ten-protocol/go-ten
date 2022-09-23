@@ -9,7 +9,7 @@ It covers two aspects:
 - the visibility rules for events.
 - technical implementation details.
 
-## Ethereum Events
+## Ethereum Events Design
 
 To help dApp developers design applications with a good UX, the ethereum developers invented the concept of "events" or "logs", which
 are pieces of information emitted from smart contracts, which can be streamed in real time to external applications that
@@ -63,12 +63,12 @@ requester.
 
 *Note that there is no constraint on data access, since all data is public.*
 
-## Obscuro Design
+## Obscuro Events Design
 
 In Obscuro, we aim to maintain the same building blocks that are found in Ethereum: events and subscriptions, and will try
 to implement the privacy concerns with as little disruption as possible.
 
-### Event visibility rules
+### Event types
 
 There are a couple of cases that must be considered in order to decide whether Alice is entitled to view an event:
 
@@ -77,8 +77,7 @@ There are a couple of cases that must be considered in order to decide whether A
    relevancy.)
 3. The event that is not relevant to Alice was emitted as a result of a Tx sent by Bob.
 
-
-#### Event relevancy
+### Event relevancy
 
 In Obscuro (inherited from Ethereum), end users can have multiple accounts. The account address is how accounts are
 referenced.
@@ -94,7 +93,7 @@ from the existing information available in the event, and to also allow the deve
 
 Let's analyse a couple of events from ERC20 and Uniswap, grouped by whether they contain address fields.
 
-##### With end-user address topics
+#### With end-user address topics
 
 All the events in this section contain at least one end-user address topic.
 
@@ -152,8 +151,7 @@ All the events in this section contain at least one end-user address topic.
 What all these events have in common is that the address topics like: `sender`, `recipient`, `owner`, `to`, etc, represent the 
 accounts which are affected by this transaction, and which are thus directly interested in it.
 
-
-##### Without end-user address fields
+#### Without end-user address fields
 
 ```solidity
     /// @notice Emitted when a pool is created
@@ -195,10 +193,10 @@ What these events have in common is that they are not user-specific. They repres
 
 *Note that they might contain address fields, but these are addresses of smart contracts.*
 
-#### Visibility Rules
+### Event visibility Rules
 
-Users should be able to request and read all events that are relevant to them. By relevant, we mean that the user was somehow involved in the transaction
-that emitted that event, and this event might be of interest to them.
+Users should be able to request and read all events that are relevant to them. By relevant, we mean that the user was 
+somehow involved in the transaction that emitted that event, and this event might be of interest to them.
 
 The implicit rules we propose are:
 
@@ -213,19 +211,20 @@ There is another case, where an event might contain a field that happens to look
 During the evaluation phase, the VM must check each address field for the ``getCode`` function, to determine what type of address it is.  
 If at least one of the addresses is not a smart contract, then the event will fall under rule 1.
 
-#### Adjusting the visibility rules
+### Adjusting the event visibility rules
 
 In case the rules above are not providing the desired functionality, the developer will have a couple of options to adjust visibility. 
 
 For example, if one of the lifecycle events should only be visible to the administrators, the developer can add that address as a topic.
 
-In case an event contains a user address topic that should not contribute to relevancy, the developer can remove the `"indexed"` and thus the event will become invisible to that user. 
-This might not be ideal in case this address has to be used for subscribing. 
+In case an event contains a user address topic that should not contribute to relevancy, the developer can remove the 
+`"indexed"` and thus the event will become invisible to that user. This might not be ideal in case this address has to 
+be used for subscribing. 
 
 As the ultimate flexible mechanism we propose a programmatic way to determine whether a requester is allowed to view an event. 
 
-If the implicit rules are not satisfactory, the smart contract developer can define a view function called ``eventVisibility``, which will be called
-by the Obscuro VM behind the scenes.
+If the implicit rules are not satisfactory, the smart contract developer can define a view function called 
+``eventVisibility``, which will be called by the Obscuro VM behind the scenes.
 
 ```solidity
    // If declared in a smart contract, this function will be called by the Obscuro VM to determine whether the requester
@@ -240,16 +239,16 @@ by the Obscuro VM behind the scenes.
 ```    
 
 To determine the visibility of an event, the Obscuro VM will do the following:
+
 1. call the `eventVisibility` with the event being requested and the requester.
 2. If the function exists and returns 'true', then return the event. If it returns `false`, then the event is invisible.
 3. If the function does not exist, apply the implicit rules.
 
-
-### Technical implementation
+## Obscuro events technical implementation
 
 The task is to implement the visibility rules described above without changing the query and subscription API from a user's point of view.
 
-#### Constraints and Considerations 
+### Constraints and Considerations 
 
 We already have a tool called the "Wallet Extension", which acts as a proxy between the wallet and the obscuro node, and manages viewing keys.
 
@@ -268,7 +267,7 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
 
 - Events included in transaction receipts should be filtered to only include events which are visible to the transaction submitter.
   
-#### Prerequisites
+### Prerequisites
 
 An event `E1` is emitted after executing transaction `TX1` with a from address `A1`.
 `E1` is formed of multiple topics, 2 of which are addresses (`A2` and `A3`), and there are some other random values.
@@ -278,7 +277,7 @@ An event `E2` is emitted by a transaction `TX2` from an address `A4`.
 
 User `U1`- owner of `A1` subscribes to all events.
 
-#### Implementation
+### Implementation
 
 1. The Obscuro `Subscription` call, and the `Event query` call must take a list of signed owning accounts. Each account must be signed with the latest
    viewing key (to prevent someone from asking random events, just to leak info). The call will fail if there are no
@@ -288,22 +287,17 @@ User `U1`- owner of `A1` subscribes to all events.
    made by the wallet_extension, so it doesn't have to be compatible with Ethereum. For our RPC client it will be an
    authenticated subscription.
 
-
 2. The "Obscuro Host" is responsible in setting up the subscriptions and dispatching the events it receives from the enclave.
 
-
 3. Upon ingesting a rollup included in a block, the enclave runs all the usual filtering logic on each emitted event, and determines if there 
-   is any subscription that requested it. 
-
+   is any subscription that requested it.
 
 4. Then, there is an extra step (inside the enclave as well) to determine whether the event is relevant for any account which is
    authenticated for that subscription.
 
-
 5. The last step is to encrypt the event with the authenticated viewing key and stream it from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
 
-
-### Security and Usability of the proposed design
+## Security and usability of the proposed design
 
 App developers will be able to use the existing libraries unchanged, as long as they connect through a wallet extension with registered viewing keys.
 
@@ -319,28 +313,24 @@ The fact that the wallet extension adds signed accounts to each subscription req
 
 An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed to it, but will not show on Charlie's UI.
 
-
 ## Open implementation questions
 
-1. what's the lifespan for a subscription in the enclave, unsubscribe option + an expiry?
+1. What's the lifespan for a subscription in the enclave, unsubscribe option + an expiry?
 
-2. still pretty worried about perf and DoS potential, but we can test for it and try to optimise/prioritise traffic etc. Maybe we need read-only nodes to services these requests in production (normal nodes but the host doesn't give it any transactions/other work).
+2. Still pretty worried about perf and DoS potential, but we can test for it and try to optimise/prioritise traffic etc. Maybe we need read-only nodes to services these requests in production (normal nodes but the host doesn't give it any transactions/other work).
 
-3. very minor information leak for the host about their users, host owner can see how many relevant events their subscribers are getting back. Tbf that's no different from it seeing how many transactions that user is submitting etc., just a measure of their activity I guess and not tied to their acc address at all
+3. Very minor information leak for the host about their users, host owner can see how many relevant events their subscribers are getting back. Tbf that's no different from it seeing how many transactions that user is submitting etc., just a measure of their activity I guess and not tied to their acc address at all
 
 4. Todo: Can you clarify in the doc whether the events are discarded after being distributed, or are stored for future subscribers?
 
 5. How do events interact with the revelation period?
 
-
 ## Alternatives considered
-
 
 ### All events are public by default 
 
 This is not possible as it breaks the most fundamental contact, the `ERC20`, which contains the `Transfer` event.
 If all events were public by default then, we either break the ERC20 api by removing the event, or we lose privacy
-
 
 ### Add a third visibility rule that says that 
 
