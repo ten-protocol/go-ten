@@ -269,20 +269,10 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
 
 ### Implementation
 
-TODO - Build out these sections
-
-#### Obscuro encrypted RPC client
-
-TODO
-
-#### Obscuro host
-
-The "Obscuro Host" is responsible in setting up the subscriptions and dispatching the events it receives from the enclave.
-
 #### Obscuro enclave
 
-1. The Obscuro `Subscription` call, and the `Event query` call must take a list of signed owning accounts. Each account 
-   must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info). The 
+1. The Obscuro `Subscription` call, and the `Event query` call must take a list of signed owning accounts. Each account
+   must be signed with the latest viewing key (to prevent someone from asking random events, just to leak info). The
    call will fail if there are no viewing keys for all those accounts.
 
    Note: This is possible because the subscription call is implemented on Obscuro, and
@@ -297,9 +287,45 @@ The "Obscuro Host" is responsible in setting up the subscriptions and dispatchin
 
 4. The last step is to encrypt the event with the authenticated viewing key and stream it from the host and then sent to the wallet extension, where it is decrypted, and streamed further to the App.
 
+#### Obscuro host
+
+For an incoming logs subscription request, the host's RPC API has two roles to perform:
+
+1. Request the creation of the new subscription on the enclave
+2. Create a Geth `rpc.Subscription` object to return from the API call
+
+The former is straightforward, with the subscription request forwarded to the enclave via a dedicated API.
+
+For the latter, we minimise custom code by creating an instance of Geth's `PublicFilterAPI` with a custom `Backend` 
+object. The `Backend` must implement `SubscribeLogsEvent`, which is responsible for routing new logs to all existing 
+logs subscriptions. The host then creates individual logs subscriptions using `PublicFilterAPI.Logs` which takes a 
+filter criteria that is used to filter irrelevant logs from the master list returned by `SubscribeLogsEvent`.
+
+// TODO - Talk about special filtering based on subscription ID as the topic
+// TODO - Talk about how `SubscribeLogsEvent` is powered by the `BlockSubmissionResponse` contents
+
+#### Obscuro encrypted RPC client
+
+Due to their sensitive nature, events-related requests and responses are required to pass through the encrypted RPC
+client.
+
+The encrypted RPC client only handles events via the `eth_subscribe` and `eth_unsubscribe` APIs using the type `logs`
+(see [here](https://ethereum.org/en/developers/tutorials/using-websockets/#eth-subscribe)). A consequence of this is
+that events are only available in Obscuro over a websocket connection.
+
+In response to the incoming `eth_subscribe` request, the client creates a `logs` subscription to the host by making a
+`rpc.Client.Subscribe` call via the embedded Geth client. For privacy, the filter criteria passed as a parameter to
+`rpc.Client.Subscribe` is encrypted using the enclave public key, to protect it from eavesdroppers.
+
+The log events emitted by the subscription must be encrypted with the encrypted client's viewing key, to prevent them
+being read by eavesdroppers. This is problematic, since the encrypted logs will be of type `[]byte`, whereas a Geth
+logs subscription only supports returning Geth's `types.Log` objects. To overcome this, the encrypted log is stored in
+the `data` field of a fake "wrapper" log. The encrypted RPC client retrieves the encrypted log bytes from the `data`
+field and decrypts them with the corresponding private key before returning the log events to the user.
+
 #### Wallet extension
 
-TODO
+// TODO - Talk about mapping from the subscription channel to the websocket
 
 ### Security and usability of the proposed design
 
@@ -336,7 +362,7 @@ An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed
 This is not possible as it breaks the most fundamental contact, the `ERC20`, which contains the `Transfer` event.
 If all events were public by default then, we either break the ERC20 api by removing the event, or we lose privacy
 
-#### Add a third visibility rule that says that 
+#### Add a third visibility rule giving the signer of the transaction total visibility
 
 Rule 3: A signer of a transaction can view all events emitted during the execution of that transaction.
 
