@@ -83,4 +83,4 @@ services:
     ports:
       - "3306:3306"
       - "8080:8080"
-    image: ghcr.io/edgelesssys/edgelessdb-sgx-1gb:latest
+    image: ghcr.io/edgelesssys/edgelessdb-sgx-4gb:latest

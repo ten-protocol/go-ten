@@ -122,7 +122,7 @@ Docker Engine is installed and running. The `docker` group is created but no use
 ## Start Edgeless Database
 1. Run EdgelessDB on an SGX-capable system:
 
-     `docker run --name my-edb -p3306:3306 -p8080:8080 --privileged -v /dev/sgx:/dev/sgx -t ghcr.io/edgelesssys/edgelessdb-sgx-1gb`
+     `docker run --name my-edb -p3306:3306 -p8080:8080 --privileged -v /dev/sgx:/dev/sgx -t ghcr.io/edgelesssys/edgelessdb-sgx-4gb`
 
 ## Start Enclave
 1. Create a Dockerfile so the Docker image can be created:
