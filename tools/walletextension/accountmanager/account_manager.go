@@ -25,12 +25,6 @@ const (
 	ethCallAddrPadding  = "000000000000000000000000"
 
 	ErrNoViewingKey = "method %s cannot be called with an unauthorised client - no signed viewing keys found"
-
-	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
-	CallFieldTo    = "to"
-	CallFieldFrom  = "from"
-	CallFieldData  = "data"
-	CallFieldValue = "value"
 )
 
 // AccountManager provides a single location for code that helps wallet extension in determining the appropriate
