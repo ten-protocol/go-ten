@@ -268,6 +268,11 @@ func (s *server) Unsubscribe(_ context.Context, req *generated.UnsubscribeReques
 	return &generated.UnsubscribeResponse{}, err
 }
 
+func (s *server) NewFilter(_ context.Context, req *generated.NewFilterRequest) (*generated.NewFilterResponse, error) {
+	encryptedResponse, err := s.enclave.NewFilter(req.EncryptedFilter)
+	return &generated.NewFilterResponse{EncryptedResponse: encryptedResponse}, err
+}
+
 func (s *server) EstimateGas(_ context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
 	encryptedBalance, err := s.enclave.EstimateGas(req.EncryptedParams)
 	if err != nil {

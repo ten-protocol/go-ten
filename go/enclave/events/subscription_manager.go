@@ -74,6 +74,11 @@ func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
 	delete(s.subscriptions, id)
 }
 
+func (s *SubscriptionManager) AddFilter(encryptedFilter common.EncryptedParamsNewFilter) (common.EncryptedResponseNewFilter, error) {
+	// todo - joel - write logic here
+	return nil, nil
+}
+
 // FilteredLogs filters out irrelevant logs.
 func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address) []*types.Log {
 	allLogs := []*types.Log{}

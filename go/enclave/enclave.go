@@ -548,6 +548,10 @@ func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {
 	return nil
 }
 
+func (e *enclaveImpl) NewFilter(encryptedFilter common.EncryptedParamsNewFilter) (common.EncryptedResponseNewFilter, error) {
+	return e.subscriptionManager.AddFilter(encryptedFilter)
+}
+
 func (e *enclaveImpl) Stop() error {
 	if e.config.SpeculativeExecution {
 		e.exitCh <- true
