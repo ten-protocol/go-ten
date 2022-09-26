@@ -102,6 +102,9 @@ type Enclave interface {
 	// with the given ID, it is overwritten.
 	Subscribe(id uuid.UUID, encryptedParams EncryptedParamsLogSubscription) error
 
+	// todo - joel - describe
+	NewFilter(encryptedParams EncryptedParamsNewFilter) (EncryptedResponseNewFilter, error)
+
 	// Unsubscribe removes the log subscription with the given ID from the enclave. If there is no subscription with
 	// the given ID, nothing is deleted.
 	Unsubscribe(id uuid.UUID) error

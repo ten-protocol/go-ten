@@ -77,9 +77,14 @@ service EnclaveProto {
   // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
   rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
 
+  // todo - joel - describe
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
 
+  // todo - joel - describe
   rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse) {}
+
+  // todo - joel - describe
+  rpc NewFilter(NewFilterRequest) returns (NewFilterResponse) {}
 
   // EstimateGas returns the estimation of gas used for the given transactions
   rpc EstimateGas(EstimateGasRequest) returns (EstimateGasResponse) {}
@@ -235,6 +240,13 @@ message UnsubscribeRequest {
   bytes id = 1;
 }
 message UnsubscribeResponse {}
+
+message NewFilterRequest {
+  bytes encryptedFilter = 1;
+}
+message NewFilterResponse {
+  bytes encryptedResponse = 1;
+}
 
 message EstimateGasRequest {
   bytes encryptedParams = 1;

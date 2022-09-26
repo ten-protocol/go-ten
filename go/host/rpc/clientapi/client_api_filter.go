@@ -73,3 +73,8 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 	return subscription, nil
 }
+
+// NewFilter sets up a subscription that can be queried using GetFilterChanges.
+func (api *FilterAPI) NewFilter(encryptedParams common.EncryptedParamsNewFilter) (common.EncryptedResponseNewFilter, error) {
+	return api.host.EnclaveClient().NewFilter(encryptedParams)
+}

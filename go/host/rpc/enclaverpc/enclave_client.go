@@ -382,6 +382,19 @@ func (c *Client) Subscribe(id uuid.UUID, encryptedParams common.EncryptedParamsL
 	return err
 }
 
+func (c *Client) NewFilter(encryptedParams common.EncryptedParamsNewFilter) (common.EncryptedResponseNewFilter, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.NewFilter(timeoutCtx, &generated.NewFilterRequest{
+		EncryptedFilter: encryptedParams,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.EncryptedResponse, nil
+}
+
 func (c *Client) Unsubscribe(id uuid.UUID) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
