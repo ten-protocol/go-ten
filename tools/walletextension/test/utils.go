@@ -73,35 +73,8 @@ func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
 func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Conn) {
-	conn, resp, err := websocket.DefaultDialer.Dial(walExtAddrWS, nil)
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
-		panic(fmt.Errorf("received error response from wallet extension: %w", err))
-	}
-
 	reqBody := prepareRequestBody(method, params)
-	err = conn.WriteMessage(websocket.TextMessage, reqBody.Bytes())
-	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
-		panic(fmt.Errorf("received error response when writing to wallet extension websocket: %w", err))
-	}
-
-	_, respBody, err := conn.ReadMessage()
-	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
-		panic(fmt.Errorf("received error response when reading from wallet extension websocket: %w", err))
-	}
-
-	return respBody, conn
+	return makeRequestWS(walExtAddrWS, reqBody.Bytes())
 }
 
 // Formats a method and its parameters as a Ethereum JSON RPC request.
@@ -154,6 +127,9 @@ func generateViewingKey(accountAddress string) []byte {
 	}
 	generateViewingKeyBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
 	resp, err := http.Post(walExtAddr+walletextension.PathGenerateViewingKey, "application/json", generateViewingKeyBody) //nolint:noctx
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -161,12 +137,9 @@ func generateViewingKey(accountAddress string) []byte {
 	if err != nil {
 		panic(err)
 	}
-	// todo - joel - defer this properly
-	resp.Body.Close()
 	return viewingKey
 }
 
-// todo - joel - consolidate with above
 func generateViewingKeyWS(accountAddress string) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeyAddress: accountAddress,
@@ -174,29 +147,9 @@ func generateViewingKeyWS(accountAddress string) []byte {
 	if err != nil {
 		panic(err)
 	}
-	generateViewingKeyBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
 
-	conn, resp, err := websocket.DefaultDialer.Dial(walExtAddrWS+walletextension.PathGenerateViewingKey, nil)
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
-		panic(fmt.Errorf("received error response from wallet extension: %w", err))
-	}
-
-	err = conn.WriteMessage(websocket.TextMessage, generateViewingKeyBody.Bytes()) //nolint:noctx
-	if err != nil {
-		panic(err)
-	}
-
-	_, viewingKey, err := conn.ReadMessage()
-	if err != nil {
-		panic(err)
-	}
-	return viewingKey
+	viewingKeyBytes, _ := makeRequestWS(walExtAddrWS+walletextension.PathGenerateViewingKey, generateViewingKeyBodyBytes)
+	return viewingKeyBytes
 }
 
 // Signs a viewing key.
@@ -223,28 +176,17 @@ func submitViewingKey(accountAddr string, signature []byte) {
 	if err != nil {
 		panic(err)
 	}
+
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
 	resp, err := http.Post(walExtAddr+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
-	if err != nil {
-		panic(err)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, err := io.ReadAll(resp.Body)
-		if err == nil {
-			panic(fmt.Errorf("request to add viewing key failed with status %s: %s", resp.Status, respBody))
-		}
-		panic(fmt.Errorf("request to add viewing key failed with status %s", resp.Status))
-	}
-	if err != nil {
-		panic(err)
-	}
-	err = resp.Body.Close()
 	if err != nil {
 		panic(err)
 	}
 }
 
-// todo - joel - consolidate with above
 func submitViewingKeyWS(accountAddr string, signature []byte) {
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
@@ -253,11 +195,15 @@ func submitViewingKeyWS(accountAddr string, signature []byte) {
 	if err != nil {
 		panic(err)
 	}
-	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
 
-	conn, resp, err := websocket.DefaultDialer.Dial(walExtAddrWS+walletextension.PathSubmitViewingKey, nil)
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
+	makeRequestWS(walExtAddrWS+walletextension.PathSubmitViewingKey, submitViewingKeyBodyBytes)
+}
+
+// Sends the body to the URL over a websocket connection, and returns the result.
+func makeRequestWS(url string, body []byte) ([]byte, *websocket.Conn) {
+	conn, dialResp, err := websocket.DefaultDialer.Dial(url, nil)
+	if dialResp != nil && dialResp.Body != nil {
+		defer dialResp.Body.Close()
 	}
 	if err != nil {
 		if conn != nil {
@@ -266,13 +212,14 @@ func submitViewingKeyWS(accountAddr string, signature []byte) {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
-	err = conn.WriteMessage(websocket.TextMessage, submitViewingKeyBody.Bytes()) //nolint:noctx
+	err = conn.WriteMessage(websocket.TextMessage, body) //nolint:noctx
 	if err != nil {
 		panic(err)
 	}
 
-	_, _, err = conn.ReadMessage()
+	_, reqResp, err := conn.ReadMessage()
 	if err != nil {
 		panic(err)
 	}
+	return reqResp, conn
 }
