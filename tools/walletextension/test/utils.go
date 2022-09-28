@@ -124,36 +124,6 @@ func generateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountP
 	return submitViewingKey(walExtAddr, accountAddr, signature, viewingKeyBytes)
 }
 
-func submitViewingKey(walExtAddr string, accountAddr string, signature []byte, viewingKeyBytes []byte) []byte {
-	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
-		walletextension.ReqJSONKeyAddress:   accountAddr,
-	})
-	if err != nil {
-		panic(err)
-	}
-	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
-	resp, err := http.Post(walExtAddr+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
-	if err != nil {
-		panic(err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, err := io.ReadAll(resp.Body)
-		if err == nil {
-			panic(fmt.Errorf("request to add viewing key failed with status %s: %s", resp.Status, respBody))
-		}
-		panic(fmt.Errorf("request to add viewing key failed with status %s", resp.Status))
-	}
-	if err != nil {
-		panic(err)
-	}
-	err = resp.Body.Close()
-	if err != nil {
-		panic(err)
-	}
-	return viewingKeyBytes
-}
-
 // Generates a viewing key.
 func generateViewingKey(walExtAddr string, accountAddress string) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
@@ -188,4 +158,35 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 	signatureWithLeadBytes := append([]byte("0"), signature...)
 
 	return signatureWithLeadBytes
+}
+
+// Submits a viewing key.
+func submitViewingKey(walExtAddr string, accountAddr string, signature []byte, viewingKeyBytes []byte) []byte {
+	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
+		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
+		walletextension.ReqJSONKeyAddress:   accountAddr,
+	})
+	if err != nil {
+		panic(err)
+	}
+	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
+	resp, err := http.Post(walExtAddr+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, err := io.ReadAll(resp.Body)
+		if err == nil {
+			panic(fmt.Errorf("request to add viewing key failed with status %s: %s", resp.Status, respBody))
+		}
+		panic(fmt.Errorf("request to add viewing key failed with status %s", resp.Status))
+	}
+	if err != nil {
+		panic(err)
+	}
+	err = resp.Body.Close()
+	if err != nil {
+		panic(err)
+	}
+	return viewingKeyBytes
 }
