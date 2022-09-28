@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	errFailedDecrypt = "could not decrypt result with viewing key"
+	errFailedDecrypt = "could not decrypt bytes with viewing key"
 	dummyParams      = "dummyParams"
 	magicNumber      = 123789
 )
