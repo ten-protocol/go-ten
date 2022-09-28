@@ -193,8 +193,6 @@ func TestCanRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T) {
 	_, viewingKeyBytes := registerPrivateKey(t, true)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	time.Sleep(100 * time.Millisecond) // todo - joel - better wait
-
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
 		if method == rpc.RPCSubscribe {
