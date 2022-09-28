@@ -21,8 +21,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// WaitForEndpoint waits for the endpoint to be available. Times out after three seconds.
-func WaitForEndpoint(addr string) error {
+// Waits for the endpoint to be available. Times out after three seconds.
+func waitForEndpoint(addr string) error {
 	retries := 30
 	for i := 0; i < retries; i++ {
 		resp, err := http.Get(addr) //nolint:noctx,gosec
@@ -37,8 +37,8 @@ func WaitForEndpoint(addr string) error {
 	return fmt.Errorf("could not establish connection to wallet extension")
 }
 
-// MakeHTTPEthJSONReq makes an Ethereum JSON RPC request over HTTP and returns the response body.
-func MakeHTTPEthJSONReq(walExtAddr string, method string, params interface{}) []byte {
+// Makes an Ethereum JSON RPC request over HTTP and returns the response body.
+func makeHTTPEthJSONReq(walExtAddr string, method string, params interface{}) []byte {
 	reqBody := prepareRequestBody(method, params)
 
 	resp, err := http.Post(walExtAddr, "text/html", reqBody) //nolint:noctx,gosec
@@ -59,8 +59,8 @@ func MakeHTTPEthJSONReq(walExtAddr string, method string, params interface{}) []
 	return respBody
 }
 
-// MakeWSEthJSONReq makes an Ethereum JSON RPC request over websockets and returns the response body.
-func MakeWSEthJSONReq(walExtAddr string, method string, params interface{}) ([]byte, *websocket.Conn) {
+// Makes an Ethereum JSON RPC request over websockets and returns the response body.
+func makeWSEthJSONReq(walExtAddr string, method string, params interface{}) ([]byte, *websocket.Conn) {
 	conn, resp, err := websocket.DefaultDialer.Dial(walExtAddr, nil)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
@@ -92,8 +92,8 @@ func MakeWSEthJSONReq(walExtAddr string, method string, params interface{}) ([]b
 	return respBody, conn
 }
 
-// RegisterPrivateKey generates a new account and registers it with the node.
-func RegisterPrivateKey(t *testing.T, walExtAddr string) (gethcommon.Address, []byte) {
+// Generates a new account and registers it with the node.
+func registerPrivateKey(t *testing.T, walExtAddr string) (gethcommon.Address, []byte) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf(err.Error())
