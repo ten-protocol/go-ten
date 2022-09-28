@@ -190,9 +190,27 @@ func TestCanRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	registerPrivateKey(t, true)
+	_, viewingKeyBytes := registerPrivateKey(t, true)
+	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	// todo - joel - actually try and do something, as a test, using a ws request
+	for _, method := range rpc.SensitiveMethods {
+		// Subscriptions have to be tested separately, as they return results differently.
+		if method == rpc.RPCSubscribe {
+			continue
+		}
+
+		_, conn := makeWSEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
+		_, respBody, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("could not read response from websocket")
+		}
+
+		if !strings.Contains(string(respBody), dummyParams) {
+			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
+		}
+
+		return // We only need to test a single sensitive method.
+	}
 }
 
 func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
@@ -206,14 +224,14 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 
 	// We set a timeout to kill the test, in case we never receive a log.
 	timeout := time.AfterFunc(3*time.Second, func() {
-		panic("timed out waiting to receive a log via the subscription")
+		t.Fatalf("timed out waiting to receive a log via the subscription")
 	})
 	defer timeout.Stop()
 
 	// We watch the connection to receive a log...
 	_, receivedLogJSON, err := conn.ReadMessage()
 	if err != nil {
-		panic(fmt.Errorf("could not read log from websocket. Cause: %w", err))
+		t.Fatalf("could not read log from websocket. Cause: %s", err)
 	}
 
 	var receivedLog *types.Log
