@@ -131,7 +131,7 @@ jobs:
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}  testnetlatest=true \
             --vnet-name ObscuroHostTestnet01VNET --subnet ObscuroHostTestnet01Subnet \
-            --size Standard_DC2s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
+            --size Standard_DC4s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
             --public-ip-sku Basic --authentication-type password
 
       - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
