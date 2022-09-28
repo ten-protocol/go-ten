@@ -6,11 +6,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 	"time"
+
+	gethnode "github.com/ethereum/go-ethereum/node"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/host/node"
+	"github.com/obscuronet/go-obscuro/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -27,11 +32,70 @@ const (
 )
 
 var (
-	walExtPortHTTP = integration.StartPortWalletExtensionUnitTest
-	walExtPortWS   = integration.StartPortWalletExtensionUnitTest + 1
-	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
-	walExtAddrWS   = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
+	walExtPort   = integration.StartPortWalletExtensionUnitTest
+	walExtPortWS = integration.StartPortWalletExtensionUnitTest + 1
+	walExtAddr   = fmt.Sprintf("http://%s:%d", localhost, walExtPort)
+	walExtAddrWS = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
+	nodePortWS   = integration.StartPortWalletExtensionUnitTest + 2
+	dummyAPI     = NewDummyAPI()
 )
+
+func createWalExtCfg() *walletextension.Config {
+	testPersistencePath, err := os.CreateTemp("", "")
+	if err != nil {
+		panic("could not create persistence file for wallet extension tests")
+	}
+	return &walletextension.Config{
+		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", nodePortWS),
+		PersistencePathOverride: testPersistencePath.Name(),
+	}
+}
+
+func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
+	walExt := walletextension.NewWalletExtension(*walExtCfg)
+	t.Cleanup(walExt.Shutdown)
+	go walExt.Serve(localhost, int(walExtPort), int(walExtPortWS))
+
+	err := waitForEndpoint(walExtAddr + walletextension.PathReady)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	return walExt.Shutdown
+}
+
+// Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
+func createDummyHost(t *testing.T) {
+	cfg := gethnode.Config{
+		WSHost:    localhost,
+		WSPort:    int(nodePortWS),
+		WSOrigins: []string{"*"},
+	}
+	rpcServerNode, err := gethnode.New(&cfg)
+	rpcServerNode.RegisterAPIs([]gethrpc.API{
+		{
+			Namespace: node.APINamespaceObscuro,
+			Version:   node.APIVersion1,
+			Service:   dummyAPI,
+			Public:    true,
+		},
+		{
+			Namespace: node.APINamespaceEth,
+			Version:   node.APIVersion1,
+			Service:   dummyAPI,
+			Public:    true,
+		},
+	})
+	if err != nil {
+		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
+	}
+	t.Cleanup(func() { rpcServerNode.Close() })
+
+	err = rpcServerNode.Start()
+	if err != nil {
+		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
+	}
+}
 
 // Waits for the endpoint to be available. Times out after three seconds.
 func waitForEndpoint(addr string) error {
@@ -212,7 +276,7 @@ func makeRequestWS(url string, body []byte) ([]byte, *websocket.Conn) {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
-	err = conn.WriteMessage(websocket.TextMessage, body) //nolint:noctx
+	err = conn.WriteMessage(websocket.TextMessage, body)
 	if err != nil {
 		panic(err)
 	}

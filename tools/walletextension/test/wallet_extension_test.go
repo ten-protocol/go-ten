@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -16,13 +15,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/host/node"
-
-	gethnode "github.com/ethereum/go-ethereum/node"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
 
@@ -33,11 +28,6 @@ const (
 )
 
 var dummyHash = gethcommon.BigToHash(big.NewInt(magicNumber))
-
-var (
-	nodePortWS = integration.StartPortWalletExtensionUnitTest + 2
-	dummyAPI   = NewDummyAPI()
-)
 
 func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	createDummyHost(t)
@@ -238,63 +228,6 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 
 	if !strings.Contains(string(receivedLog.Data), dummyHash.Hex()) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), string(receivedLog.Data))
-	}
-}
-
-func createWalExtCfg() *walletextension.Config {
-	testPersistencePath, err := os.CreateTemp("", "")
-	if err != nil {
-		panic("could not create persistence file for wallet extension tests")
-	}
-	return &walletextension.Config{
-		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", nodePortWS),
-		PersistencePathOverride: testPersistencePath.Name(),
-	}
-}
-
-func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
-	walExt := walletextension.NewWalletExtension(*walExtCfg)
-	t.Cleanup(walExt.Shutdown)
-	go walExt.Serve(localhost, int(walExtPortHTTP), int(walExtPortWS))
-
-	err := waitForEndpoint(walExtAddr + walletextension.PathReady)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-
-	return walExt.Shutdown
-}
-
-// Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
-func createDummyHost(t *testing.T) {
-	cfg := gethnode.Config{
-		WSHost:    localhost,
-		WSPort:    int(nodePortWS),
-		WSOrigins: []string{"*"},
-	}
-	rpcServerNode, err := gethnode.New(&cfg)
-	rpcServerNode.RegisterAPIs([]gethrpc.API{
-		{
-			Namespace: node.APINamespaceObscuro,
-			Version:   node.APIVersion1,
-			Service:   dummyAPI,
-			Public:    true,
-		},
-		{
-			Namespace: node.APINamespaceEth,
-			Version:   node.APIVersion1,
-			Service:   dummyAPI,
-			Public:    true,
-		},
-	})
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
-	}
-	t.Cleanup(func() { rpcServerNode.Close() })
-
-	err = rpcServerNode.Start()
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
 	}
 }
 
