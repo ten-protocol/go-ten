@@ -35,17 +35,15 @@ const (
 var dummyHash = gethcommon.BigToHash(big.NewInt(magicNumber))
 
 var (
-	walExtPortWS = integration.StartPortWalletExtensionUnitTest + 1
-	nodePortWS   = integration.StartPortWalletExtensionUnitTest + 2
-	walExtAddrWS = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
-	dummyAPI     = NewDummyAPI()
+	nodePortWS = integration.StartPortWalletExtensionUnitTest + 2
+	dummyAPI   = NewDummyAPI()
 )
 
 func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	respBody, _ := makeWSEthJSONReq(walExtAddrWS, rpc.RPCChainID, []interface{}{})
+	respBody, _ := makeWSEthJSONReq(rpc.RPCChainID, []interface{}{})
 
 	if !strings.Contains(string(respBody), l2ChainIDHex) {
 		t.Fatalf("expected response containing '%s', got '%s'", l2ChainIDHex, string(respBody))
@@ -58,7 +56,7 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 
 	for _, method := range rpc.SensitiveMethods {
 		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
-		respBody, _ := makeWSEthJSONReq(walExtAddrWS, method, []interface{}{})
+		respBody, _ := makeWSEthJSONReq(method, []interface{}{})
 
 		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey, method)) {
 			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(accountmanager.ErrNoViewingKey, method), string(respBody))
@@ -79,7 +77,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 			continue
 		}
 
-		respBody := makeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{"params": dummyParams}})
+		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 		if !strings.Contains(string(respBody), dummyParams) {
 			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -107,7 +105,7 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 			continue
 		}
 
-		respBody := makeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{}})
+		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{}})
 
 		if !strings.Contains(string(respBody), errFailedDecrypt) {
 			t.Fatalf("expected response containing '%s', got '%s'", errFailedDecrypt, string(respBody))
@@ -130,7 +128,7 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
 	dummyAPI.setViewingKey(arbitraryViewingKey)
 
-	respBody := makeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 	if !strings.Contains(string(respBody), dummyParams) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -145,7 +143,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range []string{rpc.RPCCall, rpc.RPCEstimateGas} {
-		respBody := makeHTTPEthJSONReq(walExtAddr, method, []interface{}{map[string]interface{}{
+		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{
 			"To":    "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC",
 			"data":  "0x70a0823100000000000000000000000013e23ca74de0206c56ebae8d51b5622eff1e9944",
 			"value": nil,
@@ -171,7 +169,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	shutdown()
 	createWalExt(t, walExtCfg)
 
-	respBody := makeHTTPEthJSONReq(walExtAddr, rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 	if !strings.Contains(string(respBody), dummyParams) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -182,18 +180,19 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	respBody := makeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs})
+	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs})
 	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
 		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
 	}
 }
 
-func TestCanRegisterViewingKeyOverWebsockets(t *testing.T) {
+func TestCanRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	// This will blow up if private keys cannot be registered over websockets.
 	registerPrivateKey(t, true)
+
+	// todo - joel - actually try and do something, as a test, using a ws request
 }
 
 func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
@@ -203,7 +202,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	_, viewingKeyBytes := registerPrivateKey(t, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	_, conn := makeWSEthJSONReq(walExtAddrWS, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
+	_, conn := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
 
 	// We set a timeout to kill the test, in case we never receive a log.
 	timeout := time.AfterFunc(3*time.Second, func() {
