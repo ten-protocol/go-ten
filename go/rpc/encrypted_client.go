@@ -164,12 +164,15 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				jsonLogs, err := c.decryptResponse(encryptedLogs)
 				if err != nil {
 					log.Error("could not decrypt logs received from subscription. Cause: %s", err)
+					continue
 				}
 
 				var logs []*types.Log
 				err = json.Unmarshal(jsonLogs, &logs)
 				if err != nil {
-					log.Error("could not unmarshal log from `data` field of log received from subscription. Cause: %s", err)
+					log.Error("could not unmarshal log from `data` field of log received from subscription. "+
+						"Data field contents: %s. Cause: %s", string(jsonLogs), err)
+					continue
 				}
 
 				for _, decryptedLog := range logs {
@@ -267,7 +270,7 @@ func (c *EncRPCClient) decryptHexString(resultBlob interface{}) ([]byte, error) 
 func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 	decryptedResult, err := c.viewingKey.PrivateKey.Decrypt(encryptedBytes, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt result with viewing key - %w", err)
+		return nil, fmt.Errorf("could not decrypt bytes with viewing key. Cause: %w. Bytes: %s", err, string(encryptedBytes))
 	}
 	return decryptedResult, nil
 }
