@@ -116,33 +116,17 @@ func waitForEndpoint(addr string) error {
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body.
 func makeHTTPEthJSONReq(method string, params interface{}) []byte {
 	reqBody := prepareRequestBody(method, params)
-
-	resp, err := http.Post(walExtAddr, "text/html", reqBody) //nolint:noctx,gosec
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		panic(fmt.Errorf("received error response from wallet extension: %w", err))
-	}
-	if resp == nil {
-		panic("did not receive a response from the wallet extension")
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	return respBody
+	return makeRequestHTTP(walExtAddr, reqBody)
 }
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
 func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Conn) {
 	reqBody := prepareRequestBody(method, params)
-	return makeRequestWS(walExtAddrWS, reqBody.Bytes())
+	return makeRequestWS(walExtAddrWS, reqBody)
 }
 
 // Formats a method and its parameters as a Ethereum JSON RPC request.
-func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
+func prepareRequestBody(method string, params interface{}) []byte {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  method,
@@ -152,7 +136,7 @@ func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
 	if err != nil {
 		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
 	}
-	return bytes.NewBuffer(reqBodyBytes)
+	return reqBodyBytes
 }
 
 // Generates a new account and registers it with the node.
@@ -163,48 +147,15 @@ func registerPrivateKey(t *testing.T, useWS bool) (gethcommon.Address, []byte) {
 	}
 	accountAddr := crypto.PubkeyToAddress(accountPrivateKey.PublicKey)
 
-	var viewingKeyBytes []byte
-	if useWS {
-		viewingKeyBytes = generateViewingKeyWS(accountAddr.String())
-	} else {
-		viewingKeyBytes = generateViewingKey(accountAddr.String())
-	}
-
+	viewingKeyBytes := generateViewingKey(accountAddr.String(), useWS)
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
-
-	if useWS {
-		submitViewingKeyWS(accountAddr.String(), signature)
-	} else {
-		submitViewingKey(accountAddr.String(), signature)
-	}
+	submitViewingKey(accountAddr.String(), signature, useWS)
 
 	return accountAddr, viewingKeyBytes
 }
 
 // Generates a viewing key.
-func generateViewingKey(accountAddress string) []byte {
-	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.ReqJSONKeyAddress: accountAddress,
-	})
-	if err != nil {
-		panic(err)
-	}
-	generateViewingKeyBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
-	resp, err := http.Post(walExtAddr+walletextension.PathGenerateViewingKey, "application/json", generateViewingKeyBody) //nolint:noctx
-	if resp != nil && resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		panic(err)
-	}
-	viewingKey, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	return viewingKey
-}
-
-func generateViewingKeyWS(accountAddress string) []byte {
+func generateViewingKey(accountAddress string, useWS bool) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeyAddress: accountAddress,
 	})
@@ -212,8 +163,11 @@ func generateViewingKeyWS(accountAddress string) []byte {
 		panic(err)
 	}
 
-	viewingKeyBytes, _ := makeRequestWS(walExtAddrWS+walletextension.PathGenerateViewingKey, generateViewingKeyBodyBytes)
-	return viewingKeyBytes
+	if useWS {
+		viewingKeyBytes, _ := makeRequestWS(walExtAddrWS+walletextension.PathGenerateViewingKey, generateViewingKeyBodyBytes)
+		return viewingKeyBytes
+	}
+	return makeRequestHTTP(walExtAddr+walletextension.PathGenerateViewingKey, generateViewingKeyBodyBytes)
 }
 
 // Signs a viewing key.
@@ -232,7 +186,7 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 }
 
 // Submits a viewing key.
-func submitViewingKey(accountAddr string, signature []byte) {
+func submitViewingKey(accountAddr string, signature []byte, useWS bool) {
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
 		walletextension.ReqJSONKeyAddress:   accountAddr,
@@ -241,26 +195,28 @@ func submitViewingKey(accountAddr string, signature []byte) {
 		panic(err)
 	}
 
-	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
-	resp, err := http.Post(walExtAddr+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
+	if useWS {
+		makeRequestWS(walExtAddrWS+walletextension.PathSubmitViewingKey, submitViewingKeyBodyBytes)
+	} else {
+		makeRequestHTTP(walExtAddr+walletextension.PathSubmitViewingKey, submitViewingKeyBodyBytes)
+	}
+}
+
+// Sends the body to the URL over HTTP, and returns the result.
+func makeRequestHTTP(url string, body []byte) []byte {
+	generateViewingKeyBody := bytes.NewBuffer(body)
+	resp, err := http.Post(url, "application/json", generateViewingKeyBody) //nolint:noctx,gosec
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
 		panic(err)
 	}
-}
-
-func submitViewingKeyWS(accountAddr string, signature []byte) {
-	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
-		walletextension.ReqJSONKeyAddress:   accountAddr,
-	})
+	viewingKey, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
-
-	makeRequestWS(walExtAddrWS+walletextension.PathSubmitViewingKey, submitViewingKeyBodyBytes)
+	return viewingKey
 }
 
 // Sends the body to the URL over a websocket connection, and returns the result.
