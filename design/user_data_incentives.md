@@ -1,8 +1,9 @@
 # User interaction with Obscuro 
 
-In a typical transparrent blockchain, there are service providers like "Infura" who act as the interface to the blockchain from the point of view of most users.
+In a typical transparent blockchain, there are service providers like "Infura" who act as the interface to the blockchain from the point of view of most users.
 
 They can perform this service relatively cheap, because all data is visible to everyone, so they can employ efficient caching techniques. 
+They also personally gain from understanding the user queries, and from analysing the exposed data.
 
 As a result, the crypto users have become used to this as a free service, and take it for granted.
 
@@ -21,6 +22,7 @@ It gets a bit more complicated when privacy is added to the mix, because the res
 Only logic run inside an approved TEE is able to return a result, since it is the only place where that data is visible.
 
 This means that it is now much more difficult to create a cheap caching layer.
+Also, the service provider will not gain any insights from this service since all traffic and processing is encrypted.
 
 
 ## Delegate to the nodes
@@ -42,10 +44,11 @@ Here is a list and analyisis of various potential reasons for offering this serv
 
 #### 1. App developer
 
-Someone developed an dApp and wants to support the users, since they are directly interested in the growth of the application. It could be a company, or a DAO.
-A game developer would not want to reply to requests made by a DEX user.
+Someone developed a dApp and wants to support its users, since they are directly interested in the growth of the application. It could be a company, or a DAO.
+E.g.: A game developer would not want to reply to requests made by a DEX user.
 
 For this to be feasible, the enclave must be able to restrict requests to a whitelist of apps. Which is a technical feature that has to be implemented. 
+Also the wallet extension (tooling) needs to know which node to use for which call.
 
 
 #### 2. Fees
@@ -94,6 +97,7 @@ type RPCTxReceiver struct {
 The transaction is wrapped together with a node address, and signed with the viewing key. 
 
 A node will only accept transactions via RPC if they're addressed to it, and thus can use this payload to claim a reward. 
+This wrapper will then be gossiped to the other nodes accompanied by the signed viewing key.
 
 
 ##### Outstanding problems to solve
@@ -115,5 +119,6 @@ Assuming we solve the claiming problem, the question is how much should a node r
 - A fixed amount per transaction
 - A percentage of the fee paid by the transaction 
 
-What amount would make running an L2 node that offers a useful service a reasonably profitable business.
+What amount would make running an L2 node that offers a useful service a reasonably profitable business?
+Is that amount sustainable from the fees collected by the network? Is thre any help required from the foundation?
 
