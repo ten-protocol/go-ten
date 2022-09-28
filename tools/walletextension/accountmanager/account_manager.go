@@ -221,14 +221,21 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 		for {
 			select {
 			case receivedLog := <-ch:
+				if userConn.IsClosed() {
+					log.Info("received log but websocket was closed")
+					return
+				}
+
 				jsonLog, err := json.Marshal(receivedLog)
 				if err != nil {
 					log.Error("could not marshal received log to JSON. Cause: %s", err)
 				}
+
 				err = userConn.WriteResponse(jsonLog)
 				if err != nil {
 					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
 				}
+
 			case err = <-subscription.Err():
 				// An error on this channel means the subscription has ended, so we exit the loop.
 				userConn.HandleError(err.Error())
