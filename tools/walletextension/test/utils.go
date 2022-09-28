@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration"
 	"io"
 	"net/http"
 	"testing"
@@ -19,6 +20,15 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	localhost = "127.0.0.1"
+)
+
+var (
+	walExtPortHTTP = integration.StartPortWalletExtensionUnitTest
+	walExtAddr     = fmt.Sprintf("http://%s:%d", localhost, walExtPortHTTP)
 )
 
 // Waits for the endpoint to be available. Times out after three seconds.
@@ -92,17 +102,6 @@ func makeWSEthJSONReq(walExtAddr string, method string, params interface{}) ([]b
 	return respBody, conn
 }
 
-// Generates a new account and registers it with the node.
-func registerPrivateKey(t *testing.T, walExtAddr string) (gethcommon.Address, []byte) {
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
-	viewingKeyBytes := generateAndSubmitViewingKey(walExtAddr, accountAddr.String(), privateKey)
-	return accountAddr, viewingKeyBytes
-}
-
 // Formats a method and its parameters as a Ethereum JSON RPC request.
 func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
@@ -117,15 +116,42 @@ func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
 	return bytes.NewBuffer(reqBodyBytes)
 }
 
-// Generates a signed viewing key and submits it to the wallet extension.
-func generateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) []byte {
-	viewingKeyBytes := generateViewingKey(walExtAddr, accountAddr)
+// Generates a new account and registers it with the node.
+func registerPrivateKey(t *testing.T, useWS bool) (gethcommon.Address, []byte) {
+	accountPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	accountAddr := crypto.PubkeyToAddress(accountPrivateKey.PublicKey)
+
+	viewingKeyBytes := generateViewingKey(accountAddr.String())
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
-	return submitViewingKey(walExtAddr, accountAddr, signature, viewingKeyBytes)
+	return accountAddr, submitViewingKey(accountAddr.String(), signature, viewingKeyBytes)
 }
 
 // Generates a viewing key.
-func generateViewingKey(walExtAddr string, accountAddress string) []byte {
+func generateViewingKey(accountAddress string) []byte {
+	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
+		walletextension.ReqJSONKeyAddress: accountAddress,
+	})
+	if err != nil {
+		panic(err)
+	}
+	generateViewingKeyBody := bytes.NewBuffer(generateViewingKeyBodyBytes)
+	resp, err := http.Post(walExtAddr+walletextension.PathGenerateViewingKey, "application/json", generateViewingKeyBody) //nolint:noctx
+	if err != nil {
+		panic(err)
+	}
+	viewingKey, err := io.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	resp.Body.Close()
+	return viewingKey
+}
+
+// todo - joel - consolidate with above
+func generateViewingKeyWS(accountAddress string) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeyAddress: accountAddress,
 	})
@@ -161,7 +187,7 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 }
 
 // Submits a viewing key.
-func submitViewingKey(walExtAddr string, accountAddr string, signature []byte, viewingKeyBytes []byte) []byte {
+func submitViewingKey(accountAddr string, signature []byte, viewingKeyBytes []byte) []byte {
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
 		walletextension.ReqJSONKeyAddress:   accountAddr,
