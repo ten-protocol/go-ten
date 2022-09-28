@@ -181,7 +181,25 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	}
 }
 
-func TestCanSubscribeForLogs(t *testing.T) {
+func TestCannotSubscribeOverHTTP(t *testing.T) {
+	createDummyHost(t)
+	createWalExt(t, createWalExtCfg())
+
+	respBody := makeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs})
+	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
+		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
+	}
+}
+
+func TestCanRegisterViewingKeyOverWebsockets(t *testing.T) {
+	createDummyHost(t)
+	createWalExt(t, createWalExtCfg())
+
+	// This will blow up if private keys cannot be registered over websockets.
+	registerPrivateKey(t, walExtAddrWS)
+}
+
+func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
@@ -210,16 +228,6 @@ func TestCanSubscribeForLogs(t *testing.T) {
 
 	if !strings.Contains(string(receivedLog.Data), dummyHash.Hex()) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), string(receivedLog.Data))
-	}
-}
-
-func TestCannotSubscribeOverHTTP(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
-
-	respBody := makeHTTPEthJSONReq(walExtAddr, rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs})
-	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
-		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
 	}
 }
 
