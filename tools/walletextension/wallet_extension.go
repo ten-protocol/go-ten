@@ -54,6 +54,8 @@ const (
 	reqOptions       = "OPTIONS"
 	corsAllowHeaders = "Access-Control-Allow-Headers"
 	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
+
+	successMsg = "success"
 )
 
 var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe)
@@ -432,6 +434,12 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	we.persistence.PersistViewingKey(vk)
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(we.unsignedVKs, accAddress)
+
+	err = userConn.WriteResponse([]byte(successMsg))
+	if err != nil {
+		userConn.HandleError(fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
+		return
+	}
 }
 
 // Config contains the configuration required by the WalletExtension.

@@ -270,4 +270,9 @@ func submitViewingKeyWS(accountAddr string, signature []byte) {
 	if err != nil {
 		panic(err)
 	}
+
+	_, _, err = conn.ReadMessage()
+	if err != nil {
+		panic(err)
+	}
 }

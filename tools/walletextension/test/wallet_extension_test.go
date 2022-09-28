@@ -193,17 +193,15 @@ func TestCanRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T) {
 	_, viewingKeyBytes := registerPrivateKey(t, true)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
+	time.Sleep(100 * time.Millisecond) // todo - joel - better wait
+
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
 		if method == rpc.RPCSubscribe {
 			continue
 		}
 
-		_, conn := makeWSEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
-		_, respBody, err := conn.ReadMessage()
-		if err != nil {
-			t.Fatalf("could not read response from websocket")
-		}
+		respBody, _ := makeWSEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
 
 		if !strings.Contains(string(respBody), dummyParams) {
 			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
