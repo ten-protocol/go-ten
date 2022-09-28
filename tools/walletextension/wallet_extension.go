@@ -191,56 +191,46 @@ func (we *WalletExtension) handleReady(resp http.ResponseWriter, req *http.Reque
 	}
 }
 
-// todo - joel - use helper to reduce duplication below
-
-// Handles the Ethereum JSON-RPC request over HTTP.
 func (we *WalletExtension) handleEthJSONHTTP(resp http.ResponseWriter, req *http.Request) {
-	if we.enableCORS(resp, req) {
-		return
-	}
-	userConn := userconn.NewUserConnHTTP(resp, req)
-	we.handleEthJSON(userConn)
+	we.handleRequestHTTP(resp, req, we.handleEthJSON)
 }
 
-// Handles the Ethereum JSON-RPC request over websockets.
 func (we *WalletExtension) handleEthJSONWS(resp http.ResponseWriter, req *http.Request) {
-	userConn, err := userconn.NewUserConnWS(resp, req)
-	if err != nil {
-		return
-	}
-	we.handleEthJSON(userConn)
+	we.handleRequestWS(resp, req, we.handleEthJSON)
 }
 
 func (we *WalletExtension) handleGenerateViewingKeyHTTP(resp http.ResponseWriter, req *http.Request) {
-	if we.enableCORS(resp, req) {
-		return
-	}
-	userConn := userconn.NewUserConnHTTP(resp, req)
-	we.handleGenerateViewingKey(userConn)
+	we.handleRequestHTTP(resp, req, we.handleGenerateViewingKey)
 }
 
 func (we *WalletExtension) handleGenerateViewingKeyWS(resp http.ResponseWriter, req *http.Request) {
-	userConn, err := userconn.NewUserConnWS(resp, req)
-	if err != nil {
-		return
-	}
-	we.handleGenerateViewingKey(userConn)
+	we.handleRequestWS(resp, req, we.handleGenerateViewingKey)
 }
 
 func (we *WalletExtension) handleSubmitViewingKeyHTTP(resp http.ResponseWriter, req *http.Request) {
+	we.handleRequestHTTP(resp, req, we.handleSubmitViewingKey)
+}
+
+func (we *WalletExtension) handleSubmitViewingKeyWS(resp http.ResponseWriter, req *http.Request) {
+	we.handleRequestWS(resp, req, we.handleSubmitViewingKey)
+}
+
+// Creates an HTTP connection to handle the request.
+func (we *WalletExtension) handleRequestHTTP(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
 	if we.enableCORS(resp, req) {
 		return
 	}
 	userConn := userconn.NewUserConnHTTP(resp, req)
-	we.handleSubmitViewingKey(userConn)
+	fun(userConn)
 }
 
-func (we *WalletExtension) handleSubmitViewingKeyWS(resp http.ResponseWriter, req *http.Request) {
+// Creates a websocket connection to handle the request.
+func (we *WalletExtension) handleRequestWS(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
 	userConn, err := userconn.NewUserConnWS(resp, req)
 	if err != nil {
 		return
 	}
-	we.handleSubmitViewingKey(userConn)
+	fun(userConn)
 }
 
 // Encrypts the Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
