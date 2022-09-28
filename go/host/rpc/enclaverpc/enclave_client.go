@@ -43,7 +43,7 @@ func NewClient(config config.HostConfig) *Client {
 
 	// We wait for the RPC connection to be ready.
 	currentTime := time.Now()
-	deadline := currentTime.Add(30 * time.Second)
+	deadline := currentTime.Add(60 * time.Second)
 	currentState := connection.GetState()
 	for currentState == connectivity.Idle || currentState == connectivity.Connecting || currentState == connectivity.TransientFailure {
 		connection.Connect()
