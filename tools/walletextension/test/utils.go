@@ -54,7 +54,7 @@ func createWalExtCfg() *walletextension.Config {
 func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 	walExt := walletextension.NewWalletExtension(*walExtCfg)
 	t.Cleanup(walExt.Shutdown)
-	go walExt.Serve(localhost, int(walExtPort), int(walExtPortWS))
+	go walExt.Serve(localhost, walExtPort, walExtPortWS)
 
 	err := waitForEndpoint(walExtAddr + walletextension.PathReady)
 	if err != nil {
@@ -68,7 +68,7 @@ func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 func createDummyHost(t *testing.T) {
 	cfg := gethnode.Config{
 		WSHost:    localhost,
-		WSPort:    int(nodePortWS),
+		WSPort:    nodePortWS,
 		WSOrigins: []string{"*"},
 	}
 	rpcServerNode, err := gethnode.New(&cfg)
