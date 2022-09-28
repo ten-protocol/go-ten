@@ -99,10 +99,7 @@ func registerPrivateKey(t *testing.T, walExtAddr string) (gethcommon.Address, []
 		t.Fatalf(err.Error())
 	}
 	accountAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
-	viewingKeyBytes, err := generateAndSubmitViewingKey(walExtAddr, accountAddr.String(), privateKey)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	viewingKeyBytes := generateAndSubmitViewingKey(walExtAddr, accountAddr.String(), privateKey)
 	return accountAddr, viewingKeyBytes
 }
 
@@ -121,37 +118,40 @@ func prepareRequestBody(method string, params interface{}) *bytes.Buffer {
 }
 
 // Generates a signed viewing key and submits it to the wallet extension.
-func generateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) ([]byte, error) {
+func generateAndSubmitViewingKey(walExtAddr string, accountAddr string, accountPrivateKey *ecdsa.PrivateKey) []byte {
 	viewingKeyBytes := generateViewingKey(walExtAddr, accountAddr)
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
+	return submitViewingKey(walExtAddr, accountAddr, signature, viewingKeyBytes)
+}
 
+func submitViewingKey(walExtAddr string, accountAddr string, signature []byte, viewingKeyBytes []byte) []byte {
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
 		walletextension.ReqJSONKeyAddress:   accountAddr,
 	})
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	submitViewingKeyBody := bytes.NewBuffer(submitViewingKeyBodyBytes)
 	resp, err := http.Post(walExtAddr+walletextension.PathSubmitViewingKey, "application/json", submitViewingKeyBody) //nolint:noctx
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, err := io.ReadAll(resp.Body)
 		if err == nil {
-			return nil, fmt.Errorf("request to add viewing key failed with status %s: %s", resp.Status, respBody)
+			panic(fmt.Errorf("request to add viewing key failed with status %s: %s", resp.Status, respBody))
 		}
-		return nil, fmt.Errorf("request to add viewing key failed with status %s", resp.Status)
+		panic(fmt.Errorf("request to add viewing key failed with status %s", resp.Status))
 	}
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return viewingKeyBytes, resp.Body.Close()
+	return viewingKeyBytes
 }
 
 // Generates a viewing key.

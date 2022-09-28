@@ -141,8 +141,8 @@ func (we *WalletExtension) createHTTPServer(host string, httpPort int) *http.Ser
 	// Handles Ethereum JSON-RPC requests received over HTTP.
 	serveMuxHTTP.HandleFunc(pathRoot, we.handleEthJSONHTTP)
 	serveMuxHTTP.HandleFunc(PathReady, we.handleReady)
-	serveMuxHTTP.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKey)
-	serveMuxHTTP.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKey)
+	serveMuxHTTP.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKeyHTTP)
+	serveMuxHTTP.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKeyHTTP)
 
 	// Serves the web assets for the management of viewing keys.
 	noPrefixStaticFiles, err := fs.Sub(staticFiles, staticDir)
@@ -158,7 +158,13 @@ func (we *WalletExtension) createHTTPServer(host string, httpPort int) *http.Ser
 
 func (we *WalletExtension) createWSServer(host string, wsPort int) *http.Server {
 	serveMuxWS := http.NewServeMux()
+
+	// Handles Ethereum JSON-RPC requests received over websockets.
 	serveMuxWS.HandleFunc(pathRoot, we.handleEthJSONWS)
+	serveMuxWS.HandleFunc(PathReady, we.handleReady)
+	serveMuxWS.HandleFunc(PathGenerateViewingKey, we.handleGenerateViewingKeyWS)
+	serveMuxWS.HandleFunc(PathSubmitViewingKey, we.handleSubmitViewingKeyWS)
+
 	server := &http.Server{Addr: fmt.Sprintf("%s:%d", host, wsPort), Handler: serveMuxWS, ReadHeaderTimeout: 10 * time.Second}
 	we.serverWSShutdown = server.Shutdown
 	return server
@@ -183,6 +189,8 @@ func (we *WalletExtension) handleReady(resp http.ResponseWriter, req *http.Reque
 	}
 }
 
+// todo - joel - use helper to reduce duplication below
+
 // Handles the Ethereum JSON-RPC request over HTTP.
 func (we *WalletExtension) handleEthJSONHTTP(resp http.ResponseWriter, req *http.Request) {
 	if we.enableCORS(resp, req) {
@@ -199,6 +207,38 @@ func (we *WalletExtension) handleEthJSONWS(resp http.ResponseWriter, req *http.R
 		return
 	}
 	we.handleEthJSON(userConn)
+}
+
+func (we *WalletExtension) handleGenerateViewingKeyHTTP(resp http.ResponseWriter, req *http.Request) {
+	if we.enableCORS(resp, req) {
+		return
+	}
+	userConn := userconn.NewUserConnHTTP(resp, req)
+	we.handleGenerateViewingKey(userConn)
+}
+
+func (we *WalletExtension) handleGenerateViewingKeyWS(resp http.ResponseWriter, req *http.Request) {
+	userConn, err := userconn.NewUserConnWS(resp, req)
+	if err != nil {
+		return
+	}
+	we.handleGenerateViewingKey(userConn)
+}
+
+func (we *WalletExtension) handleSubmitViewingKeyHTTP(resp http.ResponseWriter, req *http.Request) {
+	if we.enableCORS(resp, req) {
+		return
+	}
+	userConn := userconn.NewUserConnHTTP(resp, req)
+	we.handleSubmitViewingKey(userConn)
+}
+
+func (we *WalletExtension) handleSubmitViewingKeyWS(resp http.ResponseWriter, req *http.Request) {
+	userConn, err := userconn.NewUserConnWS(resp, req)
+	if err != nil {
+		return
+	}
+	we.handleSubmitViewingKey(userConn)
 }
 
 // Encrypts the Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
@@ -309,13 +349,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 }
 
 // Generates a new viewing key.
-func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, req *http.Request) {
-	if we.enableCORS(resp, req) {
-		return
-	}
-
-	userConn := userconn.NewUserConnHTTP(resp, req)
-
+func (we *WalletExtension) handleGenerateViewingKey(userConn userconn.UserConn) {
 	body, err := userConn.ReadRequest()
 	if err != nil {
 		userConn.HandleError(err.Error())
@@ -355,13 +389,7 @@ func (we *WalletExtension) handleGenerateViewingKey(resp http.ResponseWriter, re
 }
 
 // Submits the viewing key and signed bytes to the enclave.
-func (we *WalletExtension) handleSubmitViewingKey(resp http.ResponseWriter, req *http.Request) {
-	if we.enableCORS(resp, req) {
-		return
-	}
-
-	userConn := userconn.NewUserConnHTTP(resp, req)
-
+func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	body, err := userConn.ReadRequest()
 	if err != nil {
 		userConn.HandleError(err.Error())
