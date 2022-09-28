@@ -20,6 +20,13 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
+const (
+	// These are the addresses that the end-to-end tests expect to be prefunded when run locally. Corresponds to
+	// private key hex "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb".
+	e2eTestPrefundedL1Addr = "0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
+	// TODO - Also prefund the L1 HOC and POC addresses used for the end-to-end tests when run locally.
+)
+
 func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, *common.Address, []ethadapter.EthClient, *gethnetwork.GethNetwork) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
@@ -28,9 +35,9 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	}
 
 	// get the node wallet addresses to prefund them with Eth, so they can submit rollups, deploy contracts, deposit to the bridge, etc
-	walletAddresses := make([]string, len(wallets.AllEthWallets()))
-	for i, w := range wallets.AllEthWallets() {
-		walletAddresses[i] = w.Address().String()
+	walletAddresses := []string{e2eTestPrefundedL1Addr}
+	for _, w := range wallets.AllEthWallets() {
+		walletAddresses = append(walletAddresses, w.Address().String())
 	}
 
 	// kickoff the network with the prefunded wallet addresses
