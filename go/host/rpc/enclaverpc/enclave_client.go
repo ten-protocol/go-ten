@@ -5,8 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"time"
+
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"google.golang.org/grpc/connectivity"
 

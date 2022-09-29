@@ -1,8 +1,9 @@
 package rpc
 
 import (
-	"github.com/ethereum/go-ethereum/rpc"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"

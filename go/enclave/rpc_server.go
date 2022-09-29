@@ -3,8 +3,9 @@ package enclave
 import (
 	"context"
 	"fmt"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"net"
+
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 

@@ -3,18 +3,19 @@ package clientapi
 import (
 	"context"
 	"fmt"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/host"
 
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.
 type FilterAPI struct {
-	host          host.Host
-	gethFilterAPI *filters.PublicFilterAPI
+	host host.Host
 }
 
 func NewFilterAPI(host host.Host) *FilterAPI {
@@ -27,7 +28,7 @@ func NewFilterAPI(host host.Host) *FilterAPI {
 func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
-		panic("jjj not supported") // todo - joel - better handling
+		return nil, fmt.Errorf("creation of subscriptions is not supported")
 	}
 	subscription := notifier.CreateSubscription()
 
@@ -41,8 +42,10 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		for {
 			select {
 			case encryptedLog := <-matchedLogs:
-				println("jjj notifying")
-				notifier.Notify(subscription.ID, encryptedLog)
+				err := notifier.Notify(subscription.ID, encryptedLog)
+				if err != nil {
+					log.Error("could not send encrypted log to client on subscription %s", subscription.ID)
+				}
 
 			case <-subscription.Err(): // client send an unsubscribe request
 				// todo - joel - call unsubscribe

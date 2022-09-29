@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"reflect"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"reflect"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 
@@ -151,15 +152,11 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, err
 	}
 
-	println("jjj subscription set up")
-
 	go func() {
 		for {
 			select {
 			case encryptedLogs := <-clientChannel:
-				// todo - joel - check we're not sending back empty log lists
-				// todo - joel - get rid of the ridiculous log wrapping
-				println("jjj here got a log")
+				// todo - joel - avoid sending back empty log lists
 
 				jsonLogs, err := c.decryptResponse(encryptedLogs)
 				if err != nil {
@@ -180,7 +177,6 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				}
 
 			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
-				println("jjj sub err")
 				break
 			}
 		}
