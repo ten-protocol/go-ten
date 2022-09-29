@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -16,6 +18,10 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+)
+
+const (
+	connRetryInterval = 500 * time.Millisecond
 )
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
@@ -131,8 +137,18 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	// this channel holds blocks that have been received from the geth network but not yet processed by the host,
 	// with more than 1 capacity the buffer provides resilience in case of intermittent RPC or processing issues
 	ch := make(chan *types.Header, 100)
-	sub, err := e.client.SubscribeNewHead(ctx, ch)
+	var sub ethereum.Subscription
+	var err error
+	err = retry.Do(func() error {
+		sub, err = e.client.SubscribeNewHead(ctx, ch)
+		if err != nil {
+			log.Warn("could not subscribe for new head blocks, retrying...")
+		}
+		return err
+	}, retry.NewTimeoutStrategy(e.timeout, connRetryInterval))
 	if err != nil {
+		// todo: handle this scenario better after refactor of node.go (health monitor report L1 unavailable, be able to recover without restarting host)
+		// couldn't connect after timeout period, cannot continue
 		log.Panic("could not subscribe for new head blocks. Cause: %s", err)
 	}
 
