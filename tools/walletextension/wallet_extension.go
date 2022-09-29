@@ -418,6 +418,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
+		return
 	}
 	we.accountManager.AddClient(accAddress, client)
 
