@@ -112,7 +112,11 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 	}
 	paramsTopic := paramsMap[0][filter].(map[string]interface{})[filterKeyTopics].([]interface{})[0].([]interface{})[0].(string)
 
-	notifier, _ := rpc.NotifierFromContext(ctx)
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return nil, fmt.Errorf("creation of subscriptions is not supported")
+	}
+
 	sub := notifier.CreateSubscription()
 	go func() {
 		for {

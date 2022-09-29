@@ -327,11 +327,13 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-func (a *Node) Subscribe(id uuid.UUID, encryptedLogSubscription common.EncryptedParamsLogSubscription) error {
-	err := a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
+func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []*types.Log) error {
+	// todo - joel - use ID passed in as a param
+	err := a.EnclaveClient().Subscribe(uuid.New(), encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
 	}
+	// todo - joel - set up matchedLogs as a return channel for logs
 	return nil
 }
 
