@@ -225,11 +225,12 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 		t.Fatalf("could not unmarshal received log from JSON")
 	}
 
-	// todo - joel - use constants, rename, etc.
-	logData := resp[accountmanager.JSONKeyParams].(map[string]interface{})[accountmanager.JSONKeyResult].(map[string]interface{})[jsonKeyTopics].([]interface{})[0].(string)
+	// We extract the topic from the received logs. The API should have set this based on the filter we passed when subscribing.
+	logMap := resp[accountmanager.JSONKeyParams].(map[string]interface{})[accountmanager.JSONKeyResult].(map[string]interface{})
+	logTopic := logMap[jsonKeyTopics].([]interface{})[0].(string)
 
-	if !strings.Contains(string(logData), dummyHash.Hex()) {
-		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), string(logData))
+	if !strings.Contains(logTopic, dummyHash.Hex()) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), logTopic)
 	}
 }
 

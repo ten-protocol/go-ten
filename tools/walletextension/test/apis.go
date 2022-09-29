@@ -20,6 +20,8 @@ import (
 const (
 	l2ChainIDHex         = "0x309"
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
+	filter               = "Filter"
+	filterKeyTopics      = "Topics"
 )
 
 // DummyAPI provides dummies for the RPC operations defined in the `eth_` namespace. For each sensitive RPC
@@ -101,20 +103,20 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 		return nil, fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	// todo - joel - describe, rename, comments, etc.
-	var x []map[string]interface{}
-	err = json.Unmarshal(params, &x)
+	// We set the topic from the filter as a topic in the response logs, to provide additional assurance that we are
+	// a) decrypting the params correctly, and b) returning the logs correctly via the wallet extension.
+	var paramsMap []map[string]interface{}
+	err = json.Unmarshal(params, &paramsMap)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not unmarshal params from JSON")
 	}
-	y := x[0]["Filter"].(map[string]interface{})["Topics"].([]interface{})[0].([]interface{})[0].(string)
-	println(y)
+	paramsTopic := paramsMap[0][filter].(map[string]interface{})[filterKeyTopics].([]interface{})[0].([]interface{})[0].(string)
 
 	notifier, _ := rpc.NotifierFromContext(ctx)
 	sub := notifier.CreateSubscription()
 	go func() {
 		for {
-			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{gethcommon.HexToHash(y)}}})
+			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{gethcommon.HexToHash(paramsTopic)}}})
 			if err != nil {
 				panic("could not marshal log to JSON")
 			}
