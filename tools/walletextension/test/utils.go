@@ -6,13 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"io"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"

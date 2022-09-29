@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"strings"
 	"time"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
@@ -330,7 +331,7 @@ func prepareLogResponse(receivedLog types.Log) ([]byte, error) {
 
 	jsonResponse, err := json.Marshal(respMap)
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %s", err)
+		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %w", err)
 	}
 	return jsonResponse, nil
 }
