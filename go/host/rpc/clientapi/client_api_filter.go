@@ -36,7 +36,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	}
 	subscription := notifier.CreateSubscription()
 
-	matchedLogs := make(chan []*types.Log)
+	matchedLogs := make(chan []byte)
 	// todo - joel - feed the logs from the host to this channel based on the subscription IDs
 	err := api.host.Subscribe(subscription.ID, encryptedParams, matchedLogs)
 	if err != nil {
@@ -45,17 +45,24 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 	go func() {
 		for {
+			time.Sleep(time.Second)
+			matchedLogs <- []byte("hey joel jjj")
+		}
+	}()
+
+	go func() {
+		for {
 			select {
-			case logs := <-matchedLogs:
-				for _, log := range logs {
-					log := log
-					notifier.Notify(subscription.ID, &log)
-				}
+			case encryptedLog := <-matchedLogs:
+				println("jjj notifying")
+				notifier.Notify(subscription.ID, encryptedLog)
+
 			case <-subscription.Err(): // client send an unsubscribe request
-				// todo - joel - kill of channel here and call unsubscribe
+				// todo - joel - kill off channel here and call unsubscribe
 				return
+
 			case <-notifier.Closed(): // connection dropped
-				// todo - joel - kill of channel here and call unsubscribe
+				// todo - joel - kill off channel here and call unsubscribe
 				return
 			}
 		}

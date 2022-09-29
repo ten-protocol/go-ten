@@ -25,7 +25,7 @@ type Host interface {
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
-	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []*types.Log) error
+	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// Unsubscribe terminates a log subscription between the host and the enclave.
 	Unsubscribe(id uuid.UUID) error
 	// Stop gracefully stops the host execution.

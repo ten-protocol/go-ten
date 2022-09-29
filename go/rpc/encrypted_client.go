@@ -11,10 +11,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -143,43 +139,49 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
 
-	logCh, ok := ch.(chan types.Log)
-	if !ok {
-		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
-	}
-	clientChannel := make(chan *types.Log)
+	//logCh, ok := ch.(chan types.Log)
+	//if !ok {
+	//	return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
+	//}
+	clientChannel := make(chan []byte)
 	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
 	}
 
+	println("jjj subscription set up")
+
 	go func() {
 		for {
 			select {
 			case wrapperLog := <-clientChannel:
-				// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects,
-				// and not encrypted bytes. To get around this, the encrypted log bytes are placed into a "fake" log's
-				// data field.
-				encryptedLogs := wrapperLog.Data
-				jsonLogs, err := c.decryptResponse(encryptedLogs)
-				if err != nil {
-					log.Error("could not decrypt logs received from subscription. Cause: %s", err)
-					continue
-				}
-
-				var logs []*types.Log
-				err = json.Unmarshal(jsonLogs, &logs)
-				if err != nil {
-					log.Error("could not unmarshal log from `data` field of log received from subscription. "+
-						"Data field contents: %s. Cause: %s", string(jsonLogs), err)
-					continue
-				}
-
-				for _, decryptedLog := range logs {
-					logCh <- *decryptedLog
-				}
+				// todo - joel - get rid of the ridiculous log wrapping
+				println("jjj here got a log")
+				println(wrapperLog)
+				//// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects,
+				//// and not encrypted bytes. To get around this, the encrypted log bytes are placed into a "fake" log's
+				//// data field.
+				//encryptedLogs := wrapperLog.Data
+				//jsonLogs, err := c.decryptResponse(encryptedLogs)
+				//if err != nil {
+				//	log.Error("could not decrypt logs received from subscription. Cause: %s", err)
+				//	continue
+				//}
+				//
+				//var logs []*types.Log
+				//err = json.Unmarshal(jsonLogs, &logs)
+				//if err != nil {
+				//	log.Error("could not unmarshal log from `data` field of log received from subscription. "+
+				//		"Data field contents: %s. Cause: %s", string(jsonLogs), err)
+				//	continue
+				//}
+				//
+				//for _, decryptedLog := range logs {
+				//	logCh <- *decryptedLog
+				//}
 
 			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
+				println("jjj sub err")
 				break
 			}
 		}

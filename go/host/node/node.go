@@ -327,7 +327,7 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []*types.Log) error {
+func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error {
 	// todo - joel - use ID passed in as a param
 	err := a.EnclaveClient().Subscribe(uuid.New(), encryptedLogSubscription)
 	if err != nil {
