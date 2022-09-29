@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"io"
 	"net/http"
 	"os"
@@ -128,10 +129,10 @@ func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Con
 // Formats a method and its parameters as a Ethereum JSON RPC request.
 func prepareRequestBody(method string, params interface{}) []byte {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"params":  params,
-		"id":      "1",
+		walletextension.JSONKeyRPCVer: jsonrpc.Version,
+		walletextension.JSONKeyMethod: method,
+		walletextension.JSONKeyParams: params,
+		walletextension.JSONKeyID:     "1",
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
@@ -157,7 +158,7 @@ func registerPrivateKey(t *testing.T, useWS bool) (gethcommon.Address, []byte) {
 // Generates a viewing key.
 func generateViewingKey(accountAddress string, useWS bool) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.ReqJSONKeyAddress: accountAddress,
+		walletextension.JSONKeyAddress: accountAddress,
 	})
 	if err != nil {
 		panic(err)
@@ -188,8 +189,8 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 // Submits a viewing key.
 func submitViewingKey(accountAddr string, signature []byte, useWS bool) {
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
-		walletextension.ReqJSONKeyAddress:   accountAddr,
+		walletextension.JSONKeySignature: hex.EncodeToString(signature),
+		walletextension.JSONKeyAddress:   accountAddr,
 	})
 	if err != nil {
 		panic(err)

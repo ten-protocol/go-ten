@@ -37,15 +37,14 @@ const (
 	staticDir              = "static"
 	wsProtocol             = "ws://"
 
-	reqJSONKeyID        = "id"
-	reqJSONKeyMethod    = "method"
-	reqJSONKeyParams    = "params"
-	ReqJSONKeyAddress   = "address"
-	ReqJSONKeySignature = "signature"
-	respJSONKeyID       = "id"
-	respJSONKeyRPCVer   = "jsonrpc"
-	RespJSONKeyResult   = "result"
-	respJSONKeyRoot     = "root"
+	JSONKeyAddress   = "address"
+	JSONKeyID        = "id"
+	JSONKeyMethod    = "method"
+	JSONKeyParams    = "params"
+	JSONKeyResult    = "result"
+	jsonKeyRoot      = "root"
+	JSONKeyRPCVer    = "jsonrpc"
+	JSONKeySignature = "signature"
 
 	// CORS-related constants.
 	corsAllowOrigin  = "Access-Control-Allow-Origin"
@@ -264,17 +263,17 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	}
 
 	respMap := make(map[string]interface{})
-	respMap[respJSONKeyID] = rpcReq.ID
-	respMap[respJSONKeyRPCVer] = jsonrpc.Version
-	respMap[RespJSONKeyResult] = rpcResp
+	respMap[JSONKeyID] = rpcReq.ID
+	respMap[JSONKeyRPCVer] = jsonrpc.Version
+	respMap[JSONKeyResult] = rpcResp
 
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	// TODO fix this upstream on the decode
-	if result, found := respMap[RespJSONKeyResult]; found { //nolint
+	if result, found := respMap[JSONKeyResult]; found { //nolint
 		if resultMap, ok := result.(map[string]interface{}); ok {
-			if val, foundRoot := resultMap[respJSONKeyRoot]; foundRoot {
+			if val, foundRoot := resultMap[jsonKeyRoot]; foundRoot {
 				if val == "0x" {
-					respMap[RespJSONKeyResult].(map[string]interface{})[respJSONKeyRoot] = nil
+					respMap[JSONKeyResult].(map[string]interface{})[jsonKeyRoot] = nil
 				}
 			}
 		}
@@ -315,12 +314,12 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 	}
 
 	var reqID interface{}
-	err = json.Unmarshal(reqJSONMap[reqJSONKeyID], &reqID)
+	err = json.Unmarshal(reqJSONMap[JSONKeyID], &reqID)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal id from JSON-RPC request body: %w", err)
 	}
 	var method string
-	err = json.Unmarshal(reqJSONMap[reqJSONKeyMethod], &method)
+	err = json.Unmarshal(reqJSONMap[JSONKeyMethod], &method)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %w", err)
 	}
@@ -328,7 +327,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 
 	// we extract the params into a JSON list
 	var params []interface{}
-	err = json.Unmarshal(reqJSONMap[reqJSONKeyParams], &params)
+	err = json.Unmarshal(reqJSONMap[JSONKeyParams], &params)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}
@@ -362,7 +361,7 @@ func (we *WalletExtension) handleGenerateViewingKey(userConn userconn.UserConn) 
 	}
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
+	accAddress := common.HexToAddress(reqJSONMap[JSONKeyAddress])
 	we.unsignedVKs[accAddress] = &rpc.ViewingKey{
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyEcies,
@@ -394,7 +393,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 		userConn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
-	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
+	accAddress := common.HexToAddress(reqJSONMap[JSONKeyAddress])
 	vk, found := we.unsignedVKs[accAddress]
 	if !found {
 		userConn.HandleError(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", accAddress, PathGenerateViewingKey))
@@ -402,7 +401,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	}
 
 	//  We drop the leading "0x".
-	signature, err := hex.DecodeString(reqJSONMap[ReqJSONKeySignature][2:])
+	signature, err := hex.DecodeString(reqJSONMap[JSONKeySignature][2:])
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("could not decode signature from client to hex: %s", err))
 		return

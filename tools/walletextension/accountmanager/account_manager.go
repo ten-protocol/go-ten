@@ -226,11 +226,13 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 					return
 				}
 
+				// todo - joel - pull the logic to prepare the response body out
 				jsonLog, err := json.Marshal(receivedLog)
 				if err != nil {
 					log.Error("could not marshal received log to JSON. Cause: %s", err)
 				}
 
+				log.Info("Forwarding log from Obscuro node: %s", jsonLog)
 				err = userConn.WriteResponse(jsonLog)
 				if err != nil {
 					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
