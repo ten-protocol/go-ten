@@ -27,6 +27,8 @@ const (
 	JSONKeyResult     = "result"
 	JSONKeyRPCVersion = "jsonrpc"
 
+	methodEthSubscription = "eth_subscription"
+
 	ethCallPaddedArgLen = 64
 	ethCallAddrPadding  = "000000000000000000000000"
 
@@ -232,27 +234,17 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 					return
 				}
 
-				// todo - joel - pull the logic to prepare the response body out
-				paramsMap := make(map[string]interface{})
-				// todo - joel - add subscription ID
-				paramsMap[JSONKeyResult] = receivedLog
-
-				// todo - log is becoming malformed, in particular the data field
-
-				respMap := make(map[string]interface{})
-				respMap[JSONKeyRPCVersion] = jsonrpc.Version
-				respMap[JSONKeyMethod] = "eth_subscription" // todo - use constant
-				respMap[JSONKeyParams] = paramsMap
-
-				jsonResponse, err := json.Marshal(respMap)
+				jsonResponse, err := prepareLogResponse(receivedLog)
 				if err != nil {
-					panic(err) // todo - joel - handle more graciously
+					log.Error("could not marshal log response to JSON. Cause: %s", err)
+					continue
 				}
 
 				log.Info("Forwarding log from Obscuro node: %s", jsonResponse)
 				err = userConn.WriteResponse(jsonResponse)
 				if err != nil {
 					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
+					continue
 				}
 
 			case err = <-subscription.Err():
@@ -323,6 +315,24 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 	}
 
 	return request, nil
+}
+
+// Formats the log to be sent as an Eth JSON-RPC response.
+func prepareLogResponse(receivedLog types.Log) ([]byte, error) {
+	paramsMap := make(map[string]interface{})
+	// TODO - The response body should also contain the original subscription ID (e.g for unsubscriptions).
+	paramsMap[JSONKeyResult] = receivedLog
+
+	respMap := make(map[string]interface{})
+	respMap[JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[JSONKeyMethod] = methodEthSubscription
+	respMap[JSONKeyParams] = paramsMap
+
+	jsonResponse, err := json.Marshal(respMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %s", err)
+	}
+	return jsonResponse, nil
 }
 
 type RPCRequest struct {
