@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"strings"
 	"time"
 
@@ -19,8 +20,13 @@ import (
 )
 
 const (
-	reqJSONKeyFrom      = "from"
-	reqJSONKeyData      = "data"
+	jsonKeyData       = "data"
+	jsonKeyFrom       = "from"
+	JSONKeyMethod     = "method"
+	JSONKeyParams     = "params"
+	JSONKeyResult     = "result"
+	JSONKeyRPCVersion = "jsonrpc"
+
 	ethCallPaddedArgLen = 64
 	ethCallAddrPadding  = "000000000000000000000000"
 
@@ -139,7 +145,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 }
 
 func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*rpc.EncRPCClient, bool) {
-	fromVal, found := paramsMap[reqJSONKeyFrom]
+	fromVal, found := paramsMap[jsonKeyFrom]
 	if !found {
 		return nil, false
 	}
@@ -158,7 +164,7 @@ func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcomm
 // key address, we return that address. Otherwise, we return nil.
 func searchDataFieldForAccount(callParams map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*gethcommon.Address, error) {
 	// We ensure that the `data` field is present.
-	data := callParams[reqJSONKeyData]
+	data := callParams[jsonKeyData]
 	if data == nil {
 		return nil, fmt.Errorf("eth_call request did not have its `data` field set")
 	}
@@ -227,13 +233,24 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 				}
 
 				// todo - joel - pull the logic to prepare the response body out
-				jsonLog, err := json.Marshal(receivedLog)
+				paramsMap := make(map[string]interface{})
+				// todo - joel - add subscription ID
+				paramsMap[JSONKeyResult] = receivedLog
+
+				// todo - log is becoming malformed, in particular the data field
+
+				respMap := make(map[string]interface{})
+				respMap[JSONKeyRPCVersion] = jsonrpc.Version
+				respMap[JSONKeyMethod] = "eth_subscription" // todo - use constant
+				respMap[JSONKeyParams] = paramsMap
+
+				jsonResponse, err := json.Marshal(respMap)
 				if err != nil {
-					log.Error("could not marshal received log to JSON. Cause: %s", err)
+					panic(err) // todo - joel - handle more graciously
 				}
 
-				log.Info("Forwarding log from Obscuro node: %s", jsonLog)
-				err = userConn.WriteResponse(jsonLog)
+				log.Info("Forwarding log from Obscuro node: %s", jsonResponse)
+				err = userConn.WriteResponse(jsonResponse)
 				if err != nil {
 					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
 				}

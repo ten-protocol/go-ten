@@ -101,11 +101,20 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 		return nil, fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
+	// todo - joel - describe, rename, comments, etc.
+	var x []map[string]interface{}
+	err = json.Unmarshal(params, &x)
+	if err != nil {
+		panic(err)
+	}
+	y := x[0]["Filter"].(map[string]interface{})["Topics"].([]interface{})[0].([]interface{})[0].(string)
+	println(y)
+
 	notifier, _ := rpc.NotifierFromContext(ctx)
 	sub := notifier.CreateSubscription()
 	go func() {
 		for {
-			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{}, Data: params}})
+			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{gethcommon.HexToHash(y)}}})
 			if err != nil {
 				panic("could not marshal log to JSON")
 			}

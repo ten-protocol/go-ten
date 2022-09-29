@@ -39,11 +39,7 @@ const (
 
 	JSONKeyAddress   = "address"
 	JSONKeyID        = "id"
-	JSONKeyMethod    = "method"
-	JSONKeyParams    = "params"
-	JSONKeyResult    = "result"
 	jsonKeyRoot      = "root"
-	JSONKeyRPCVer    = "jsonrpc"
 	JSONKeySignature = "signature"
 
 	// CORS-related constants.
@@ -264,16 +260,16 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 
 	respMap := make(map[string]interface{})
 	respMap[JSONKeyID] = rpcReq.ID
-	respMap[JSONKeyRPCVer] = jsonrpc.Version
-	respMap[JSONKeyResult] = rpcResp
+	respMap[accountmanager.JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[accountmanager.JSONKeyResult] = rpcResp
 
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	// TODO fix this upstream on the decode
-	if result, found := respMap[JSONKeyResult]; found { //nolint
+	if result, found := respMap[accountmanager.JSONKeyResult]; found { //nolint
 		if resultMap, ok := result.(map[string]interface{}); ok {
 			if val, foundRoot := resultMap[jsonKeyRoot]; foundRoot {
 				if val == "0x" {
-					respMap[JSONKeyResult].(map[string]interface{})[jsonKeyRoot] = nil
+					respMap[accountmanager.JSONKeyResult].(map[string]interface{})[jsonKeyRoot] = nil
 				}
 			}
 		}
@@ -319,7 +315,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 		return nil, fmt.Errorf("could not unmarshal id from JSON-RPC request body: %w", err)
 	}
 	var method string
-	err = json.Unmarshal(reqJSONMap[JSONKeyMethod], &method)
+	err = json.Unmarshal(reqJSONMap[accountmanager.JSONKeyMethod], &method)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %w", err)
 	}
@@ -327,7 +323,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 
 	// we extract the params into a JSON list
 	var params []interface{}
-	err = json.Unmarshal(reqJSONMap[JSONKeyParams], &params)
+	err = json.Unmarshal(reqJSONMap[accountmanager.JSONKeyParams], &params)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}

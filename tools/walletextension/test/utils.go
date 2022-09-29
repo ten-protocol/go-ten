@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"io"
 	"net/http"
 	"os"
@@ -129,10 +130,10 @@ func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Con
 // Formats a method and its parameters as a Ethereum JSON RPC request.
 func prepareRequestBody(method string, params interface{}) []byte {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.JSONKeyRPCVer: jsonrpc.Version,
-		walletextension.JSONKeyMethod: method,
-		walletextension.JSONKeyParams: params,
-		walletextension.JSONKeyID:     "1",
+		accountmanager.JSONKeyRPCVersion: jsonrpc.Version,
+		accountmanager.JSONKeyMethod:     method,
+		accountmanager.JSONKeyParams:     params,
+		walletextension.JSONKeyID:        "1",
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))

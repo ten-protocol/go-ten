@@ -10,8 +10,6 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ethereum/go-ethereum/crypto"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -25,6 +23,7 @@ const (
 	errFailedDecrypt = "could not decrypt bytes with viewing key"
 	dummyParams      = "dummyParams"
 	magicNumber      = 123789
+	jsonKeyTopics    = "topics"
 )
 
 var dummyHash = gethcommon.BigToHash(big.NewInt(magicNumber))
@@ -215,19 +214,22 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	defer timeout.Stop()
 
 	// We watch the connection to receive a log...
-	_, receivedLogJSON, err := conn.ReadMessage()
+	_, respJSON, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("could not read log from websocket. Cause: %s", err)
 	}
 
-	var receivedLog *types.Log
-	err = json.Unmarshal(receivedLogJSON, &receivedLog)
+	var resp map[string]interface{}
+	err = json.Unmarshal(respJSON, &resp)
 	if err != nil {
 		t.Fatalf("could not unmarshal received log from JSON")
 	}
 
-	if !strings.Contains(string(receivedLog.Data), dummyHash.Hex()) {
-		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), string(receivedLog.Data))
+	// todo - joel - use constants, rename, etc.
+	logData := resp[accountmanager.JSONKeyParams].(map[string]interface{})[accountmanager.JSONKeyResult].(map[string]interface{})[jsonKeyTopics].([]interface{})[0].(string)
+
+	if !strings.Contains(string(logData), dummyHash.Hex()) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), string(logData))
 	}
 }
 
