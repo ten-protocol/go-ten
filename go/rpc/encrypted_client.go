@@ -156,8 +156,6 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		for {
 			select {
 			case encryptedLogs := <-clientChannel:
-				// todo - joel - avoid sending back empty log lists
-
 				jsonLogs, err := c.decryptResponse(encryptedLogs)
 				if err != nil {
 					log.Error("could not decrypt logs received from subscription. Cause: %s", err)
