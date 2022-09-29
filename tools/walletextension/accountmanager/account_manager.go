@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
@@ -21,13 +23,6 @@ import (
 )
 
 const (
-	jsonKeyData       = "data"
-	jsonKeyFrom       = "from"
-	JSONKeyMethod     = "method"
-	JSONKeyParams     = "params"
-	JSONKeyResult     = "result"
-	JSONKeyRPCVersion = "jsonrpc"
-
 	methodEthSubscription = "eth_subscription"
 
 	ethCallPaddedArgLen = 64
@@ -148,7 +143,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 }
 
 func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*rpc.EncRPCClient, bool) {
-	fromVal, found := paramsMap[jsonKeyFrom]
+	fromVal, found := paramsMap[common.JSONKeyFrom]
 	if !found {
 		return nil, false
 	}
@@ -167,7 +162,7 @@ func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcomm
 // key address, we return that address. Otherwise, we return nil.
 func searchDataFieldForAccount(callParams map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*gethcommon.Address, error) {
 	// We ensure that the `data` field is present.
-	data := callParams[jsonKeyData]
+	data := callParams[common.JSONKeyData]
 	if data == nil {
 		return nil, fmt.Errorf("eth_call request did not have its `data` field set")
 	}
@@ -322,12 +317,12 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 func prepareLogResponse(receivedLog types.Log) ([]byte, error) {
 	paramsMap := make(map[string]interface{})
 	// TODO - The response body should also contain the original subscription ID (e.g for unsubscriptions).
-	paramsMap[JSONKeyResult] = receivedLog
+	paramsMap[common.JSONKeyResult] = receivedLog
 
 	respMap := make(map[string]interface{})
-	respMap[JSONKeyRPCVersion] = jsonrpc.Version
-	respMap[JSONKeyMethod] = methodEthSubscription
-	respMap[JSONKeyParams] = paramsMap
+	respMap[common.JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[common.JSONKeyMethod] = methodEthSubscription
+	respMap[common.JSONKeyParams] = paramsMap
 
 	jsonResponse, err := json.Marshal(respMap)
 	if err != nil {

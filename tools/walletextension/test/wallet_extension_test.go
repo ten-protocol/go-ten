@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -226,7 +228,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	}
 
 	// We extract the topic from the received logs. The API should have set this based on the filter we passed when subscribing.
-	logMap := resp[accountmanager.JSONKeyParams].(map[string]interface{})[accountmanager.JSONKeyResult].(map[string]interface{})
+	logMap := resp[common.JSONKeyParams].(map[string]interface{})[common.JSONKeyResult].(map[string]interface{})
 	logTopic := logMap[jsonKeyTopics].([]interface{})[0].(string)
 
 	if !strings.Contains(logTopic, dummyHash.Hex()) {

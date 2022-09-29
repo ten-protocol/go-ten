@@ -6,14 +6,15 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/gorilla/websocket"
 )
 
 const (
-	RespJSONKeyErr = "error"
-	httpCodeErr    = 500
+	httpCodeErr = 500
 )
 
 var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket connections.
@@ -113,7 +114,7 @@ func (w *userConnWS) HandleError(msg string) {
 	fmt.Println(msg)
 
 	errMsg, err := json.Marshal(map[string]interface{}{
-		RespJSONKeyErr: msg,
+		common.JSONKeyErr: msg,
 	})
 	if err != nil {
 		log.Error("could not marshal websocket error message to JSON")

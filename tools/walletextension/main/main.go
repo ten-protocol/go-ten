@@ -6,12 +6,13 @@ import (
 	"net"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 )
 
 const (
-	tcp       = "tcp"
-	localhost = "127.0.0.1"
+	tcp = "tcp"
 )
 
 func main() {
@@ -43,9 +44,9 @@ func main() {
 	walletExtension := walletextension.NewWalletExtension(config)
 	defer walletExtension.Shutdown()
 
-	go walletExtension.Serve(localhost, config.WalletExtensionPort, config.WalletExtensionPortWS)
+	go walletExtension.Serve(common.Localhost, config.WalletExtensionPort, config.WalletExtensionPortWS)
 
-	walletExtensionAddr := fmt.Sprintf("%s:%d", localhost, config.WalletExtensionPort)
+	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPort)
 	fmt.Printf("💡 Wallet extension started - visit http://%s/viewingkeys/ to generate an ephemeral viewing key.\n", walletExtensionAddr)
 
 	select {}
