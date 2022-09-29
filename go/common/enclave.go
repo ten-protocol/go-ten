@@ -1,10 +1,9 @@
 package common
 
 import (
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/google/uuid"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Status represents the enclave's current status - the status and behaviour of the host is a function of the status of the enclave
@@ -100,11 +99,11 @@ type Enclave interface {
 	// Subscribe adds a log subscription to the enclave under the given ID, provided the request is authenticated
 	// correctly. The events will be populated in the BlockSubmissionResponse. If there is an existing subscription
 	// with the given ID, it is overwritten.
-	Subscribe(id uuid.UUID, encryptedParams EncryptedParamsLogSubscription) error
+	Subscribe(id rpc.ID, encryptedParams EncryptedParamsLogSubscription) error
 
 	// Unsubscribe removes the log subscription with the given ID from the enclave. If there is no subscription with
 	// the given ID, nothing is deleted.
-	Unsubscribe(id uuid.UUID) error
+	Unsubscribe(id rpc.ID) error
 
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
 	StopClient() error
@@ -123,5 +122,5 @@ type BlockSubmissionResponse struct {
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 
-	SubscribedLogs map[uuid.UUID]EncryptedLogs // The logs produced by the block and all its ancestors for each subscription ID.
+	SubscribedLogs map[rpc.ID]EncryptedLogs // The logs produced by the block and all its ancestors for each subscription ID.
 }

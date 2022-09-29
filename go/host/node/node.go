@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -69,7 +67,7 @@ type Node struct {
 	forkRPCCh    chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
-	logsCh       chan *types.Log            // The channel that logs are sent to
+	logsChs      map[rpc.ID]chan []byte     // The channels that logs are sent to, one per subscription
 
 	nodeDB *db.DB // Stores the node's publicly-available data
 
@@ -112,7 +110,7 @@ func NewHost(
 		forkRPCCh:    make(chan []common.EncodedBlock),
 		rollupsP2PCh: make(chan common.EncodedRollup),
 		txP2PCh:      make(chan common.EncryptedTx),
-		logsCh:       make(chan *types.Log),
+		logsChs:      map[rpc.ID]chan []byte{},
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -159,7 +157,7 @@ func NewHost(
 			{
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
-				Service:   clientapi.NewFilterAPI(node, node.logsCh),
+				Service:   clientapi.NewFilterAPI(node),
 				Public:    true,
 			},
 		}
@@ -327,19 +325,21 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-func (a *Node) Subscribe(id uuid.UUID, encryptedLogSubscription common.EncryptedParamsLogSubscription) error {
+func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error {
 	err := a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
 	}
+	a.logsChs[id] = matchedLogs
 	return nil
 }
 
-func (a *Node) Unsubscribe(id uuid.UUID) error {
+func (a *Node) Unsubscribe(id rpc.ID) error {
 	err := a.EnclaveClient().Unsubscribe(id)
 	if err != nil {
 		return fmt.Errorf("could not terminate subscription %s with enclave. Cause: %w", id, err)
 	}
+	delete(a.logsChs, id)
 	return nil
 }
 
@@ -611,20 +611,7 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 // Distributes logs to subscribed clients.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	for subscriptionID, encryptedLogs := range result.SubscribedLogs {
-		subscriptionIDBytes, err := subscriptionID.MarshalBinary()
-		if err != nil {
-			log.Error("could not marshal subscription ID to bytes. Cause: %s", err)
-		}
-
-		// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
-		// encrypted bytes. To get around this, we place the encrypted log bytes into the data field of a "fake" log.
-		wrapperLog := types.Log{
-			// We tag each "fake" log with the padded subscription ID. This allows us to reuse Geth's subscription
-			// machinery to automatically filter out logs for other subscription IDs on the client side.
-			Topics: []gethcommon.Hash{gethcommon.BytesToHash(subscriptionIDBytes)},
-			Data:   encryptedLogs,
-		}
-		a.logsCh <- &wrapperLog
+		a.logsChs[subscriptionID] <- encryptedLogs
 	}
 }
 

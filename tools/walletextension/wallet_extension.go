@@ -12,6 +12,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
@@ -20,7 +22,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 
@@ -36,16 +38,6 @@ const (
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "static"
 	wsProtocol             = "ws://"
-
-	reqJSONKeyID        = "id"
-	reqJSONKeyMethod    = "method"
-	reqJSONKeyParams    = "params"
-	ReqJSONKeyAddress   = "address"
-	ReqJSONKeySignature = "signature"
-	respJSONKeyID       = "id"
-	respJSONKeyRPCVer   = "jsonrpc"
-	RespJSONKeyResult   = "result"
-	respJSONKeyRoot     = "root"
 
 	// CORS-related constants.
 	corsAllowOrigin  = "Access-Control-Allow-Origin"
@@ -67,7 +59,7 @@ var staticFiles embed.FS
 type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
 	accountManager     accountmanager.AccountManager
-	unsignedVKs        map[common.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	unsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	serverHTTPShutdown func(ctx context.Context) error
 	serverWSShutdown   func(ctx context.Context) error
 	persistence        *persistence.Persistence
@@ -83,7 +75,7 @@ func NewWalletExtension(config Config) *WalletExtension {
 
 	walletExtension := &WalletExtension{
 		hostAddr:       wsProtocol + config.NodeRPCWebsocketAddress,
-		unsignedVKs:    make(map[common.Address]*rpc.ViewingKey),
+		unsignedVKs:    make(map[gethcommon.Address]*rpc.ViewingKey),
 		accountManager: accountmanager.NewAccountManager(unauthedClient),
 		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
 	}
@@ -264,17 +256,17 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	}
 
 	respMap := make(map[string]interface{})
-	respMap[respJSONKeyID] = rpcReq.ID
-	respMap[respJSONKeyRPCVer] = jsonrpc.Version
-	respMap[RespJSONKeyResult] = rpcResp
+	respMap[common.JSONKeyID] = rpcReq.ID
+	respMap[common.JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[common.JSONKeyResult] = rpcResp
 
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	// TODO fix this upstream on the decode
-	if result, found := respMap[RespJSONKeyResult]; found { //nolint
+	if result, found := respMap[common.JSONKeyResult]; found { //nolint
 		if resultMap, ok := result.(map[string]interface{}); ok {
-			if val, foundRoot := resultMap[respJSONKeyRoot]; foundRoot {
+			if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
 				if val == "0x" {
-					respMap[RespJSONKeyResult].(map[string]interface{})[respJSONKeyRoot] = nil
+					respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
 				}
 			}
 		}
@@ -315,12 +307,12 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 	}
 
 	var reqID interface{}
-	err = json.Unmarshal(reqJSONMap[reqJSONKeyID], &reqID)
+	err = json.Unmarshal(reqJSONMap[common.JSONKeyID], &reqID)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal id from JSON-RPC request body: %w", err)
 	}
 	var method string
-	err = json.Unmarshal(reqJSONMap[reqJSONKeyMethod], &method)
+	err = json.Unmarshal(reqJSONMap[common.JSONKeyMethod], &method)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %w", err)
 	}
@@ -328,7 +320,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 
 	// we extract the params into a JSON list
 	var params []interface{}
-	err = json.Unmarshal(reqJSONMap[reqJSONKeyParams], &params)
+	err = json.Unmarshal(reqJSONMap[common.JSONKeyParams], &params)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal params list from JSON-RPC request body: %w", err)
 	}
@@ -362,7 +354,7 @@ func (we *WalletExtension) handleGenerateViewingKey(userConn userconn.UserConn) 
 	}
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
+	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
 	we.unsignedVKs[accAddress] = &rpc.ViewingKey{
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyEcies,
@@ -394,7 +386,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 		userConn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
-	accAddress := common.HexToAddress(reqJSONMap[ReqJSONKeyAddress])
+	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
 	vk, found := we.unsignedVKs[accAddress]
 	if !found {
 		userConn.HandleError(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", accAddress, PathGenerateViewingKey))
@@ -402,7 +394,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	}
 
 	//  We drop the leading "0x".
-	signature, err := hex.DecodeString(reqJSONMap[ReqJSONKeySignature][2:])
+	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("could not decode signature from client to hex: %s", err))
 		return

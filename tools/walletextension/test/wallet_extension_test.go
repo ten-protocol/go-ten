@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -25,6 +25,7 @@ const (
 	errFailedDecrypt = "could not decrypt bytes with viewing key"
 	dummyParams      = "dummyParams"
 	magicNumber      = 123789
+	jsonKeyTopics    = "topics"
 )
 
 var dummyHash = gethcommon.BigToHash(big.NewInt(magicNumber))
@@ -215,19 +216,23 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	defer timeout.Stop()
 
 	// We watch the connection to receive a log...
-	_, receivedLogJSON, err := conn.ReadMessage()
+	_, respJSON, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("could not read log from websocket. Cause: %s", err)
 	}
 
-	var receivedLog *types.Log
-	err = json.Unmarshal(receivedLogJSON, &receivedLog)
+	var resp map[string]interface{}
+	err = json.Unmarshal(respJSON, &resp)
 	if err != nil {
 		t.Fatalf("could not unmarshal received log from JSON")
 	}
 
-	if !strings.Contains(string(receivedLog.Data), dummyHash.Hex()) {
-		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), string(receivedLog.Data))
+	// We extract the topic from the received logs. The API should have set this based on the filter we passed when subscribing.
+	logMap := resp[common.JSONKeyParams].(map[string]interface{})[common.JSONKeyResult].(map[string]interface{})
+	logTopic := logMap[jsonKeyTopics].([]interface{})[0].(string)
+
+	if !strings.Contains(logTopic, dummyHash.Hex()) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), logTopic)
 	}
 }
 

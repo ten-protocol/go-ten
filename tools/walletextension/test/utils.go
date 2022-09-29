@@ -12,8 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/obscuronet/go-obscuro/go/host/node"
 	"github.com/obscuronet/go-obscuro/integration"
 
@@ -27,15 +30,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const (
-	localhost = "127.0.0.1"
-)
-
 var (
 	walExtPort   = integration.StartPortWalletExtensionUnitTest
 	walExtPortWS = integration.StartPortWalletExtensionUnitTest + 1
-	walExtAddr   = fmt.Sprintf("http://%s:%d", localhost, walExtPort)
-	walExtAddrWS = fmt.Sprintf("ws://%s:%d", localhost, walExtPortWS)
+	walExtAddr   = fmt.Sprintf("http://%s:%d", common.Localhost, walExtPort)
+	walExtAddrWS = fmt.Sprintf("ws://%s:%d", common.Localhost, walExtPortWS)
 	nodePortWS   = integration.StartPortWalletExtensionUnitTest + 2
 	dummyAPI     = NewDummyAPI()
 )
@@ -54,7 +53,7 @@ func createWalExtCfg() *walletextension.Config {
 func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 	walExt := walletextension.NewWalletExtension(*walExtCfg)
 	t.Cleanup(walExt.Shutdown)
-	go walExt.Serve(localhost, walExtPort, walExtPortWS)
+	go walExt.Serve(common.Localhost, walExtPort, walExtPortWS)
 
 	err := waitForEndpoint(walExtAddr + walletextension.PathReady)
 	if err != nil {
@@ -67,7 +66,7 @@ func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 // Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
 func createDummyHost(t *testing.T) {
 	cfg := gethnode.Config{
-		WSHost:    localhost,
+		WSHost:    common.Localhost,
 		WSPort:    nodePortWS,
 		WSOrigins: []string{"*"},
 	}
@@ -128,10 +127,10 @@ func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Con
 // Formats a method and its parameters as a Ethereum JSON RPC request.
 func prepareRequestBody(method string, params interface{}) []byte {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"params":  params,
-		"id":      "1",
+		common.JSONKeyRPCVersion: jsonrpc.Version,
+		common.JSONKeyMethod:     method,
+		common.JSONKeyParams:     params,
+		common.JSONKeyID:         "1",
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))
@@ -157,7 +156,7 @@ func registerPrivateKey(t *testing.T, useWS bool) (gethcommon.Address, []byte) {
 // Generates a viewing key.
 func generateViewingKey(accountAddress string, useWS bool) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.ReqJSONKeyAddress: accountAddress,
+		common.JSONKeyAddress: accountAddress,
 	})
 	if err != nil {
 		panic(err)
@@ -188,8 +187,8 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 // Submits a viewing key.
 func submitViewingKey(accountAddr string, signature []byte, useWS bool) {
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		walletextension.ReqJSONKeySignature: hex.EncodeToString(signature),
-		walletextension.ReqJSONKeyAddress:   accountAddr,
+		common.JSONKeySignature: hex.EncodeToString(signature),
+		common.JSONKeyAddress:   accountAddr,
 	})
 	if err != nil {
 		panic(err)

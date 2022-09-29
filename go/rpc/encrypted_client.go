@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/rpc"
 
@@ -147,7 +146,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	if !ok {
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
-	clientChannel := make(chan *types.Log)
+	clientChannel := make(chan []byte)
 	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
@@ -156,11 +155,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	go func() {
 		for {
 			select {
-			case wrapperLog := <-clientChannel:
-				// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects,
-				// and not encrypted bytes. To get around this, the encrypted log bytes are placed into a "fake" log's
-				// data field.
-				encryptedLogs := wrapperLog.Data
+			case encryptedLogs := <-clientChannel:
 				jsonLogs, err := c.decryptResponse(encryptedLogs)
 				if err != nil {
 					log.Error("could not decrypt logs received from subscription. Cause: %s", err)

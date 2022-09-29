@@ -8,6 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,8 +23,8 @@ import (
 )
 
 const (
-	reqJSONKeyFrom      = "from"
-	reqJSONKeyData      = "data"
+	methodEthSubscription = "eth_subscription"
+
 	ethCallPaddedArgLen = 64
 	ethCallAddrPadding  = "000000000000000000000000"
 
@@ -139,7 +143,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 }
 
 func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*rpc.EncRPCClient, bool) {
-	fromVal, found := paramsMap[reqJSONKeyFrom]
+	fromVal, found := paramsMap[common.JSONKeyFrom]
 	if !found {
 		return nil, false
 	}
@@ -158,7 +162,7 @@ func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcomm
 // key address, we return that address. Otherwise, we return nil.
 func searchDataFieldForAccount(callParams map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*gethcommon.Address, error) {
 	// We ensure that the `data` field is present.
-	data := callParams[reqJSONKeyData]
+	data := callParams[common.JSONKeyData]
 	if data == nil {
 		return nil, fmt.Errorf("eth_call request did not have its `data` field set")
 	}
@@ -226,14 +230,17 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 					return
 				}
 
-				jsonLog, err := json.Marshal(receivedLog)
+				jsonResponse, err := prepareLogResponse(receivedLog)
 				if err != nil {
-					log.Error("could not marshal received log to JSON. Cause: %s", err)
+					log.Error("could not marshal log response to JSON. Cause: %s", err)
+					continue
 				}
 
-				err = userConn.WriteResponse(jsonLog)
+				log.Info("Forwarding log from Obscuro node: %s", jsonResponse)
+				err = userConn.WriteResponse(jsonResponse)
 				if err != nil {
 					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
+					continue
 				}
 
 			case err = <-subscription.Err():
@@ -304,6 +311,24 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 	}
 
 	return request, nil
+}
+
+// Formats the log to be sent as an Eth JSON-RPC response.
+func prepareLogResponse(receivedLog types.Log) ([]byte, error) {
+	paramsMap := make(map[string]interface{})
+	// TODO - The response body should also contain the original subscription ID (e.g for unsubscriptions).
+	paramsMap[common.JSONKeyResult] = receivedLog
+
+	respMap := make(map[string]interface{})
+	respMap[common.JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[common.JSONKeyMethod] = methodEthSubscription
+	respMap[common.JSONKeyParams] = paramsMap
+
+	jsonResponse, err := json.Marshal(respMap)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal log response to JSON. Cause: %w", err)
+	}
+	return jsonResponse, nil
 }
 
 type RPCRequest struct {

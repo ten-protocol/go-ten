@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"google.golang.org/grpc/connectivity"
 
@@ -366,33 +366,23 @@ func (c *Client) StoreAttestation(report *common.AttestationReport) error {
 	return nil
 }
 
-func (c *Client) Subscribe(id uuid.UUID, encryptedParams common.EncryptedParamsLogSubscription) error {
+func (c *Client) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	idBinary, err := id.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("could not marshal subscription ID to binary. Cause: %w", err)
-	}
-
-	_, err = c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
-		Id:                    idBinary,
+	_, err := c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
+		Id:                    []byte(id),
 		EncryptedSubscription: encryptedParams,
 	})
 	return err
 }
 
-func (c *Client) Unsubscribe(id uuid.UUID) error {
+func (c *Client) Unsubscribe(id gethrpc.ID) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	idBinary, err := id.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("could not marshal subscription ID to binary. Cause: %w", err)
-	}
-
-	_, err = c.protoClient.Unsubscribe(timeoutCtx, &generated.UnsubscribeRequest{
-		Id: idBinary,
+	_, err := c.protoClient.Unsubscribe(timeoutCtx, &generated.UnsubscribeRequest{
+		Id: []byte(id),
 	})
 	return err
 }
