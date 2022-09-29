@@ -131,6 +131,7 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 			}
 
 			// Like the host, we wrap the encrypted log bytes in the data field of an unencrypted "wrapper" log object.
+			// todo - joel - update this
 			wrapperLog := types.Log{
 				Topics: []gethcommon.Hash{},
 				Data:   encryptedBytes,
