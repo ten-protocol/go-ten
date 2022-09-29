@@ -15,8 +15,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/params"
-
-	"github.com/google/uuid"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -539,11 +538,11 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon
 	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
 }
 
-func (e *enclaveImpl) Subscribe(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
+func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
 	return e.subscriptionManager.AddSubscription(id, encryptedSubscription)
 }
 
-func (e *enclaveImpl) Unsubscribe(id uuid.UUID) error {
+func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) error {
 	e.subscriptionManager.RemoveSubscription(id)
 	return nil
 }

@@ -12,11 +12,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/google/uuid"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -30,20 +30,20 @@ const (
 type SubscriptionManager struct {
 	rpcEncryptionManager *rpc.EncryptionManager
 	storage              db.Storage
-	subscriptions        map[uuid.UUID]*common.LogSubscription
+	subscriptions        map[gethrpc.ID]*common.LogSubscription
 }
 
 func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage db.Storage) *SubscriptionManager {
 	return &SubscriptionManager{
 		rpcEncryptionManager: rpcEncryptionManager,
 		storage:              storage,
-		subscriptions:        map[uuid.UUID]*common.LogSubscription{},
+		subscriptions:        map[gethrpc.ID]*common.LogSubscription{},
 	}
 }
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
-func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
+func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
 	jsonSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
 	if err != nil {
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
@@ -70,7 +70,7 @@ func (s *SubscriptionManager) AddSubscription(id uuid.UUID, encryptedSubscriptio
 
 // RemoveSubscription removes the log subscription with the given ID from the enclave. If there is no subscription with
 // the given ID, nothing is deleted.
-func (s *SubscriptionManager) RemoveSubscription(id uuid.UUID) {
+func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	delete(s.subscriptions, id)
 }
 
@@ -90,8 +90,8 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 }
 
 // FilteredSubscribedLogs filters out irrelevant logs and those that are not subscribed to, and organises them by their subscribing ID.
-func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[uuid.UUID][]*types.Log {
-	relevantLogs := map[uuid.UUID][]*types.Log{}
+func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
+	relevantLogs := map[gethrpc.ID][]*types.Log{}
 
 	// If there are no subscriptions, we do not need to do any processing.
 	if len(s.subscriptions) == 0 {
@@ -119,12 +119,12 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 }
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) EncryptLogs(logsBySubID map[uuid.UUID][]*types.Log) (map[uuid.UUID]common.EncryptedLogs, error) {
-	result := map[uuid.UUID]common.EncryptedLogs{}
+func (s *SubscriptionManager) EncryptLogs(logsBySubID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID]common.EncryptedLogs, error) {
+	result := map[gethrpc.ID]common.EncryptedLogs{}
 	for subID, logs := range logsBySubID {
 		subscription, found := s.subscriptions[subID]
 		if !found {
-			return nil, fmt.Errorf("could not find subscription with ID %s", subID.String())
+			return nil, fmt.Errorf("could not find subscription with ID %s", subID)
 		}
 
 		jsonLogs, err := json.Marshal(logs)

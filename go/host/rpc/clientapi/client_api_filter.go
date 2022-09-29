@@ -58,11 +58,11 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 				notifier.Notify(subscription.ID, encryptedLog)
 
 			case <-subscription.Err(): // client send an unsubscribe request
-				// todo - joel - kill off channel here and call unsubscribe
+				// todo - joel - call unsubscribe
 				return
 
 			case <-notifier.Closed(): // connection dropped
-				// todo - joel - kill off channel here and call unsubscribe
+				// todo - joel - call unsubscribe
 				return
 			}
 		}

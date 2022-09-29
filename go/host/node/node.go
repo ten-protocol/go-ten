@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -328,8 +326,7 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 }
 
 func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error {
-	// todo - joel - use ID passed in as a param
-	err := a.EnclaveClient().Subscribe(uuid.New(), encryptedLogSubscription)
+	err := a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
 	}
@@ -337,7 +334,7 @@ func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 	return nil
 }
 
-func (a *Node) Unsubscribe(id uuid.UUID) error {
+func (a *Node) Unsubscribe(id rpc.ID) error {
 	err := a.EnclaveClient().Unsubscribe(id)
 	if err != nil {
 		return fmt.Errorf("could not terminate subscription %s with enclave. Cause: %w", id, err)
@@ -613,17 +610,13 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 // Distributes logs to subscribed clients.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	for subscriptionID, encryptedLogs := range result.SubscribedLogs {
-		subscriptionIDBytes, err := subscriptionID.MarshalBinary()
-		if err != nil {
-			log.Error("could not marshal subscription ID to bytes. Cause: %s", err)
-		}
-
+		// todo - joel - kill off all this dumb wrapping
 		// Due to our reuse of the Geth log subscription API, we have to return the logs as types.Log objects, and not
 		// encrypted bytes. To get around this, we place the encrypted log bytes into the data field of a "fake" log.
 		wrapperLog := types.Log{
 			// We tag each "fake" log with the padded subscription ID. This allows us to reuse Geth's subscription
 			// machinery to automatically filter out logs for other subscription IDs on the client side.
-			Topics: []gethcommon.Hash{gethcommon.BytesToHash(subscriptionIDBytes)},
+			Topics: []gethcommon.Hash{gethcommon.BytesToHash([]byte(subscriptionID))},
 			Data:   encryptedLogs,
 		}
 		a.logsCh <- &wrapperLog

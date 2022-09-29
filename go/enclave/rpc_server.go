@@ -3,9 +3,8 @@ package enclave
 import (
 	"context"
 	"fmt"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"net"
-
-	"github.com/google/uuid"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
@@ -249,22 +248,12 @@ func (s *server) StoreAttestation(_ context.Context, req *generated.StoreAttesta
 }
 
 func (s *server) Subscribe(_ context.Context, req *generated.SubscribeRequest) (*generated.SubscribeResponse, error) {
-	id, err := uuid.FromBytes(req.Id)
-	if err != nil {
-		return &generated.SubscribeResponse{}, fmt.Errorf("could not deserialise UUID. Cause: %w", err)
-	}
-
-	err = s.enclave.Subscribe(id, req.EncryptedSubscription)
+	err := s.enclave.Subscribe(gethrpc.ID(req.Id), req.EncryptedSubscription)
 	return &generated.SubscribeResponse{}, err
 }
 
 func (s *server) Unsubscribe(_ context.Context, req *generated.UnsubscribeRequest) (*generated.UnsubscribeResponse, error) {
-	id, err := uuid.FromBytes(req.Id)
-	if err != nil {
-		return &generated.UnsubscribeResponse{}, fmt.Errorf("could not deserialise UUID. Cause: %w", err)
-	}
-
-	err = s.enclave.Unsubscribe(id)
+	err := s.enclave.Unsubscribe(gethrpc.ID(req.Id))
 	return &generated.UnsubscribeResponse{}, err
 }
 
