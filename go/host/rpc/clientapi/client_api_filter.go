@@ -42,17 +42,16 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		for {
 			select {
 			case encryptedLog := <-matchedLogs:
-				err := notifier.Notify(subscription.ID, encryptedLog)
+				err = notifier.Notify(subscription.ID, encryptedLog)
 				if err != nil {
 					log.Error("could not send encrypted log to client on subscription %s", subscription.ID)
 				}
 
 			case <-subscription.Err(): // client send an unsubscribe request
-				// todo - joel - call unsubscribe
-				return
-
-			case <-notifier.Closed(): // connection dropped
-				// todo - joel - call unsubscribe
+				err = api.host.Unsubscribe(subscription.ID)
+				if err != nil {
+					log.Error("could not unsubscribe from subscription %s", subscription.ID)
+				}
 				return
 			}
 		}

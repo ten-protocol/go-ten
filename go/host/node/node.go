@@ -339,7 +339,7 @@ func (a *Node) Unsubscribe(id rpc.ID) error {
 	if err != nil {
 		return fmt.Errorf("could not terminate subscription %s with enclave. Cause: %w", id, err)
 	}
-	// todo - joel - need to remove the channel from a.logsCh
+	delete(a.logsChs, id)
 	return nil
 }
 
