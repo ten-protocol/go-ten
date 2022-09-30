@@ -153,13 +153,20 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 	}
 
 	// We set the response to the subscription's ID.
-	// todo - joel - add a timeout here
-	idAndEncLog := <-clientChannel
-	if result != nil {
-		err = c.setResult([]byte(idAndEncLog.SubID), result)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract result from subscription response: %w", err)
+	select {
+	case idAndEncLog := <-clientChannel:
+		if idAndEncLog.SubID == "" || idAndEncLog.EncLog != nil {
+			return nil, fmt.Errorf("expected an initial subscription response with the subscription ID only")
 		}
+		if result != nil {
+			err = c.setResult([]byte(idAndEncLog.SubID), result)
+			if err != nil {
+				return nil, fmt.Errorf("failed to extract result from subscription response: %w", err)
+			}
+		}
+
+	case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
+		return nil, fmt.Errorf("did not receive the intial subscription response with the subscription ID")
 	}
 
 	go func() {

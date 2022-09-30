@@ -26,7 +26,7 @@ type Host interface {
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// Unsubscribe terminates a log subscription between the host and the enclave.
-	Unsubscribe(id rpc.ID) error
+	Unsubscribe(id rpc.ID)
 	// Stop gracefully stops the host execution.
 	Stop()
 }

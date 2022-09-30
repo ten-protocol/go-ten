@@ -90,8 +90,8 @@ func ParseConfig() config.HostConfig {
 	cfg.P2PPublicAddress = *p2pPublicAddress
 	cfg.L1NodeHost = *l1NodeHost
 	cfg.L1NodeWebsocketPort = uint(*l1NodePort)
-	cfg.ClientRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
-	cfg.EnclaveRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
+	cfg.ClientRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
+	cfg.EnclaveRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
 	cfg.L1RPCTimeout = time.Duration(*l1RPCTimeoutSecs) * time.Second
 	cfg.P2PConnectionTimeout = time.Duration(*p2pConnectionTimeoutSecs) * time.Second
 	cfg.RollupContractAddress = common.HexToAddress(*rollupContractAddress)
