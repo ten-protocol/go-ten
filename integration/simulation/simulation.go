@@ -45,8 +45,8 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
-	LogChannels      map[string]chan types.Log // Maps an owner to the channel on which they receive logs for all their wallets.
-	Subscriptions    []ethereum.Subscription   // A slice of all created event subscriptions.
+	LogChannels      map[string]chan common.IDAndLog // Maps an owner to the channel on which they receive logs for all their wallets.
+	Subscriptions    []ethereum.Subscription         // A slice of all created event subscriptions.
 	ctx              context.Context
 }
 
@@ -66,14 +66,14 @@ func (s *Simulation) Start() {
 	s.prefundL1Accounts()      // Prefund every L1 wallet
 
 	timer := time.Now()
-	log.Info("Starting injection")
+	fmt.Printf("Starting injection\n")
 	go s.TxInjector.Start()
 
 	stoppingDelay := s.Params.AvgBlockDuration * 7
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - stoppingDelay)
-	log.Info("Stopping injection")
+	fmt.Printf("Stopping injection\n")
 
 	s.TxInjector.Stop()
 
@@ -126,7 +126,7 @@ func (s *Simulation) trackLogs() {
 			break
 		}
 
-		s.LogChannels[wallet] = make(chan types.Log)
+		s.LogChannels[wallet] = make(chan common.IDAndLog)
 
 		for _, client := range clients {
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
