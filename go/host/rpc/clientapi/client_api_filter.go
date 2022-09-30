@@ -38,6 +38,9 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
 
+	// todo - joel - send back ID immediately
+	// We return the ID of the newly-created subscription.
+
 	go func() {
 		for {
 			select {

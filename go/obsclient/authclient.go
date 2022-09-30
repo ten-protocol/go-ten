@@ -116,7 +116,7 @@ func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria
 		filterKeyAddress:   filterCriteria.Addresses,
 		filterKeyTopics:    filterCriteria.Topics,
 	}
-	return ac.rpcClient.Subscribe(ctx, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, filterCriteriaMap)
+	return ac.rpcClient.Subscribe(ctx, nil, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, filterCriteriaMap)
 }
 
 func (ac *AuthObsClient) Address() gethcommon.Address {

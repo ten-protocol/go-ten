@@ -122,7 +122,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return nil
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
@@ -147,9 +147,19 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
 	clientChannel := make(chan common.IDAndEncLog)
-	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
+	subscription, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
+	}
+
+	// We set the response to the subscription's ID.
+	// todo - joel - add a timeout here
+	idAndEncLog := <-clientChannel
+	if result != nil {
+		err = c.setResult([]byte(idAndEncLog.SubID), result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract result from subscription response: %w", err)
+		}
 	}
 
 	go func() {
