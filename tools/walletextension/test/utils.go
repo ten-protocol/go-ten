@@ -130,7 +130,7 @@ func prepareRequestBody(method string, params interface{}) []byte {
 		common.JSONKeyRPCVersion: jsonrpc.Version,
 		common.JSONKeyMethod:     method,
 		common.JSONKeyParams:     params,
-		common.JSONKeyID:         "1",
+		common.JSONKeyID:         common.JSONID,
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))

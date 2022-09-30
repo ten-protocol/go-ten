@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"math/big"
 	"regexp"
 	"strings"
@@ -240,10 +241,26 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 
 // Checks that the response to a subscription request is correctly-formatted.
 func validateSubscriptionResponse(t *testing.T, resp []byte) {
-	pattern := "{\"id\":\"1\",\"jsonrpc\":\"2.0\",\"result\":\"0x.*\"}"
-	regex := regexp.MustCompile(pattern)
-	if !regex.MatchString(string(resp)) {
-		t.Fatalf("subscription response did not match regular expression. response was %s, expected pattern is %s", string(resp), pattern)
+	var respJSON map[string]interface{}
+	err := json.Unmarshal(resp, &respJSON)
+	if err != nil {
+		t.Fatalf("could not unmarshal subscription response to JSON")
+	}
+
+	id := respJSON[common.JSONKeyID]
+	jsonRPCVersion := respJSON[common.JSONKeyRPCVersion]
+	result := respJSON[common.JSONKeyResult]
+
+	if id != common.JSONID {
+		t.Fatalf("subscription response did not contain expected ID. Expected 1, got %s", id)
+	}
+	if jsonRPCVersion != jsonrpc.Version {
+		t.Fatalf("subscription response did not contain expected RPC version. Expected 2.0, got %s", jsonRPCVersion)
+	}
+	pattern := "0x.*"
+	resultString, ok := result.(string)
+	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
+		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
 	}
 }
 
