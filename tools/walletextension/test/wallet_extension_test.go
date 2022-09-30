@@ -252,7 +252,7 @@ func validateSubscriptionResponse(t *testing.T, resp []byte) {
 	jsonRPCVersion := respJSON[common.JSONKeyRPCVersion]
 	result := respJSON[common.JSONKeyResult]
 
-	if id != common.JSONID {
+	if id != jsonID {
 		t.Fatalf("subscription response did not contain expected ID. Expected 1, got %s", id)
 	}
 	if jsonRPCVersion != jsonrpc.Version {
