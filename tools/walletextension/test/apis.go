@@ -119,7 +119,7 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 
 	subscription := notifier.CreateSubscription()
 
-	err = notifier.Notify(subscription.ID, common.IDAndEncLog{ //nolint:contextcheck
+	err = notifier.Notify(subscription.ID, common.IDAndEncLog{
 		SubID: subscription.ID,
 	})
 	if err != nil {

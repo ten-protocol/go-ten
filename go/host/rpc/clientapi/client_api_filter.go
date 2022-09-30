@@ -39,7 +39,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	}
 
 	// We return the ID of the newly-created subscription, before returning any log events.
-	err = notifier.Notify(subscription.ID, common.IDAndEncLog{ //nolint:contextcheck
+	err = notifier.Notify(subscription.ID, common.IDAndEncLog{
 		SubID: subscription.ID,
 	})
 	if err != nil {
