@@ -240,7 +240,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 
 // Checks that the response to a subscription request is correctly-formatted.
 func validateSubscriptionResponse(t *testing.T, resp []byte) {
-	pattern := "{\"id\":\"1\",\"jsonrpc\":\"2.0\",\"result\":\"0x.{32}\"}"
+	pattern := "{\"id\":\"1\",\"jsonrpc\":\"2.0\",\"result\":\"0x.*\"}"
 	regex := regexp.MustCompile(pattern)
 	if !regex.MatchString(string(resp)) {
 		t.Fatalf("subscription response did not match regular expression. response was %s, expected pattern is %s", string(resp), pattern)
