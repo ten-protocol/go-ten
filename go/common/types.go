@@ -202,12 +202,12 @@ type LogSubscription struct {
 
 // IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.
 type IDAndEncLog struct {
-	ID     rpc.ID
+	SubID  rpc.ID
 	EncLog []byte
 }
 
-// IDAndLog pairs a encrypted log with the ID of the subscription that generated it.
+// IDAndLog pairs a log with the ID of the subscription that generated it.
 type IDAndLog struct {
-	ID  rpc.ID
-	Log *types.Log
+	SubID rpc.ID
+	Log   *types.Log
 }

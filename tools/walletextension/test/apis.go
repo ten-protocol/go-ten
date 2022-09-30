@@ -132,7 +132,7 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 			}
 
 			idAndEncLog := common.IDAndEncLog{
-				ID:     sub.ID,
+				SubID:  sub.ID,
 				EncLog: encryptedBytes,
 			}
 			notifier.Notify(sub.ID, idAndEncLog) //nolint:errcheck

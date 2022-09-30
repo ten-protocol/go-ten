@@ -33,6 +33,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	stats := simstats.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
 	fmt.Printf("Creating network\n")
+	log.Info("Creating network")
 	defer netw.TearDown()
 	networkClients, err := netw.Create(params, stats)
 	// Return early if the network was not created
@@ -65,13 +66,16 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 
 	// execute the simulation
 	fmt.Printf("Starting simulation\n")
+	log.Info("Starting simulation")
 	simulation.Start()
 
 	// run tests
 	fmt.Printf("Validating simulation results\n")
+	log.Info("Validating simulation results")
 	checkNetworkValidity(t, &simulation)
 
 	fmt.Printf("Stopping simulation\n")
+	log.Info("Stopping simulation")
 	simulation.Stop()
 
 	// generate and print the final stats

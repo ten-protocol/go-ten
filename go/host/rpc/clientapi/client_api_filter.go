@@ -43,7 +43,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 			select {
 			case encryptedLog := <-matchedLogs:
 				idAndEncLog := common.IDAndEncLog{
-					ID:     subscription.ID,
+					SubID:  subscription.ID,
 					EncLog: encryptedLog,
 				}
 				err = notifier.Notify(subscription.ID, idAndEncLog)

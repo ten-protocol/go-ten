@@ -267,21 +267,21 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	// never modify the original request as it might be reused
-	clonedRequest := req.Clone()
+	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
+		// Never modify the original request, as it might be reused.
+		req = req.Clone()
 
-	if clonedRequest.Method == rpc.RPCCall || clonedRequest.Method == rpc.RPCEstimateGas {
 		// Any method using an ethereum.CallMsg is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory
 		// and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
 		var err error
-		clonedRequest.Params, err = setCallFromFieldIfMissing(clonedRequest.Params, *account)
+		req.Params, err = setCallFromFieldIfMissing(req.Params, *account)
 		if err != nil {
 			return err
 		}
 	}
 
-	return client.Call(resp, clonedRequest.Method, clonedRequest.Params...)
+	return client.Call(resp, req.Method, req.Params...)
 }
 
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
@@ -317,7 +317,7 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 // Formats the log to be sent as an Eth JSON-RPC response.
 func prepareLogResponse(idAndLog common.IDAndLog) ([]byte, error) {
 	paramsMap := make(map[string]interface{})
-	paramsMap[wecommon.JSONKeySubscription] = idAndLog.ID
+	paramsMap[wecommon.JSONKeySubscription] = idAndLog.SubID
 	paramsMap[wecommon.JSONKeyResult] = idAndLog.Log
 
 	respMap := make(map[string]interface{})

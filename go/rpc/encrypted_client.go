@@ -172,8 +172,8 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 
 				for _, decryptedLog := range logs {
 					idAndLog := common.IDAndLog{
-						ID:  idAndEncLog.ID,
-						Log: decryptedLog,
+						SubID: idAndEncLog.SubID,
+						Log:   decryptedLog,
 					}
 					logCh <- idAndLog
 				}
