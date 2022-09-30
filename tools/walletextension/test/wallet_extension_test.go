@@ -4,12 +4,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"math/big"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
