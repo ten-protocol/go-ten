@@ -42,11 +42,11 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		for {
 			select {
 			case encryptedLog := <-matchedLogs:
-				idAndLog := common.IDAndEncLog{
+				idAndEncLog := common.IDAndEncLog{
 					ID:     subscription.ID,
 					EncLog: encryptedLog,
 				}
-				err = notifier.Notify(subscription.ID, idAndLog)
+				err = notifier.Notify(subscription.ID, idAndEncLog)
 				if err != nil {
 					log.Error("could not send encrypted log to client on subscription %s", subscription.ID)
 				}

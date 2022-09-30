@@ -103,8 +103,8 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 		return nil, fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	// We set the topic from the filter as a topic in the response logs, to provide additional assurance that we are
-	// a) decrypting the params correctly, and b) returning the logs correctly via the wallet extension.
+	// We set the topic from the filter as a topic in the response logs, so that we can check in the tests that we are
+	// a) decrypting the params correctly, and b) returning the logs with the correct contents via the wallet extension.
 	var paramsMap []map[string]interface{}
 	err = json.Unmarshal(params, &paramsMap)
 	if err != nil {
@@ -117,6 +117,7 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 		return nil, fmt.Errorf("creation of subscriptions is not supported")
 	}
 
+	// We emit a log every hundred milliseconds.
 	sub := notifier.CreateSubscription()
 	go func() {
 		for {
@@ -130,7 +131,12 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 				panic("could not encrypt logs with viewing key")
 			}
 
-			notifier.Notify(sub.ID, encryptedBytes) //nolint:errcheck
+			idAndEncLog := common.IDAndEncLog{
+				ID:     sub.ID,
+				EncLog: encryptedBytes,
+			}
+			notifier.Notify(sub.ID, idAndEncLog) //nolint:errcheck
+
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()

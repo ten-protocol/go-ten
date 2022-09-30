@@ -142,7 +142,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
 
-	logCh, ok := ch.(chan types.Log)
+	logCh, ok := ch.(chan common.IDAndLog)
 	if !ok {
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
@@ -171,7 +171,11 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				}
 
 				for _, decryptedLog := range logs {
-					logCh <- *decryptedLog
+					idAndLog := common.IDAndLog{
+						ID:  idAndEncLog.ID,
+						Log: decryptedLog,
+					}
+					logCh <- idAndLog
 				}
 
 			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
