@@ -333,7 +333,7 @@ func prepareLogResponse(idAndLog common.IDAndLog) ([]byte, error) {
 }
 
 type RPCRequest struct {
-	ID     interface{} // can be string or int
+	ID     json.RawMessage
 	Method string
 	Params []interface{}
 }

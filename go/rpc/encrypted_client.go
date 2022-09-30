@@ -94,7 +94,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	var rawResult interface{}
 	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
 	if err != nil {
-		return fmt.Errorf("%s rpc call failed - %w", method, err)
+		return err
 	}
 
 	// if caller not interested in response, we're done

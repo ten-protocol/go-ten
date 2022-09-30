@@ -12,6 +12,8 @@ import (
 	"os"
 	"time"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
@@ -244,20 +246,35 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		return
 	}
 
-	var rpcResp interface{}
+	respMap := make(map[string]interface{})
+	respMap[common.JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[common.JSONKeyID] = rpcReq.ID
+
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
+	var rpcResp interface{}
 	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp, userConn)
-	if err != nil {
-		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-		if !errors.Is(err, rpc.ErrNilResponse) {
-			userConn.HandleError(fmt.Sprintf("rpc request unsuccessful: %s", err))
-			return
+
+	// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
+	if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
+		fmt.Printf("Error %s. Resp: %v\n", err, rpcResp)
+		errMap := make(map[string]interface{})
+		respMap[common.JSONKeyErr] = errMap
+
+		errMap[common.JSONKeyMessage] = err.Error()
+
+		var e gethrpc.Error
+		ok := errors.As(err, &e)
+		if ok {
+			errMap[common.JSONKeyCode] = e.ErrorCode()
+		}
+
+		var de gethrpc.DataError
+		ok = errors.As(err, &de)
+		if ok {
+			errMap[common.JSONKeyData] = de.ErrorData()
 		}
 	}
 
-	respMap := make(map[string]interface{})
-	respMap[common.JSONKeyID] = rpcReq.ID
-	respMap[common.JSONKeyRPCVersion] = jsonrpc.Version
 	respMap[common.JSONKeyResult] = rpcResp
 
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
@@ -306,11 +323,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 			"If you're trying to generate a viewing key, visit %s", err, pathViewingKeys)
 	}
 
-	var reqID interface{}
-	err = json.Unmarshal(reqJSONMap[common.JSONKeyID], &reqID)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal id from JSON-RPC request body: %w", err)
-	}
+	reqID := reqJSONMap[common.JSONKeyID]
 	var method string
 	err = json.Unmarshal(reqJSONMap[common.JSONKeyMethod], &method)
 	if err != nil {
