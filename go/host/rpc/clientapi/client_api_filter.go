@@ -38,6 +38,15 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
 
+	// We return the ID of the newly-created subscription, before returning any log events.
+	err = notifier.Notify(subscription.ID, common.IDAndEncLog{
+		SubID: subscription.ID,
+	})
+	if err != nil {
+		api.host.Unsubscribe(subscription.ID)
+		return nil, fmt.Errorf("could not send subscription ID to client on subscription %s", subscription.ID)
+	}
+
 	go func() {
 		for {
 			select {
@@ -52,10 +61,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 				}
 
 			case <-subscription.Err(): // client sent an unsubscribe request
-				err = api.host.Unsubscribe(subscription.ID)
-				if err != nil {
-					log.Error("could not unsubscribe from subscription %s", subscription.ID)
-				}
+				api.host.Unsubscribe(subscription.ID)
 				return
 			}
 		}

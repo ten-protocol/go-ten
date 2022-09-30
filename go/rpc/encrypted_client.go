@@ -122,7 +122,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	return nil
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("subscription did not specify its type")
 	}
@@ -147,45 +147,53 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
 	clientChannel := make(chan common.IDAndEncLog)
-	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
+	subscription, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
 	}
 
-	go func() {
-		for {
-			select {
-			case idAndEncLog := <-clientChannel:
-				jsonLogs, err := c.decryptResponse(idAndEncLog.EncLog)
-				if err != nil {
-					log.Error("could not decrypt logs received from subscription. Cause: %s", err)
-					continue
-				}
+	err = c.setResultToSubID(clientChannel, result, subscription)
+	if err != nil {
+		subscription.Unsubscribe()
+		return nil, err
+	}
 
-				var logs []*types.Log
-				err = json.Unmarshal(jsonLogs, &logs)
-				if err != nil {
-					log.Error("could not unmarshal log from `data` field of log received from subscription. "+
-						"Data field contents: %s. Cause: %s", string(jsonLogs), err)
-					continue
-				}
-
-				for _, decryptedLog := range logs {
-					idAndLog := common.IDAndLog{
-						SubID: idAndEncLog.SubID,
-						Log:   decryptedLog,
-					}
-					logCh <- idAndLog
-				}
-
-			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
-				log.Error("subscription closed")
-				break
-			}
-		}
-	}()
+	go c.forwardLogs(clientChannel, logCh, subscription)
 
 	return subscription, nil
+}
+
+func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh chan common.IDAndLog, subscription *rpc.ClientSubscription) {
+	for {
+		select {
+		case idAndEncLog := <-clientChannel:
+			jsonLogs, err := c.decryptResponse(idAndEncLog.EncLog)
+			if err != nil {
+				log.Error("could not decrypt logs received from subscription. Cause: %s", err)
+				continue
+			}
+
+			var logs []*types.Log
+			err = json.Unmarshal(jsonLogs, &logs)
+			if err != nil {
+				log.Error("could not unmarshal log from `data` field of log received from subscription. "+
+					"Data field contents: %s. Cause: %s", string(jsonLogs), err)
+				continue
+			}
+
+			for _, decryptedLog := range logs {
+				idAndLog := common.IDAndLog{
+					SubID: idAndEncLog.SubID,
+					Log:   decryptedLog,
+				}
+				logCh <- idAndLog
+			}
+
+		case <-subscription.Err():
+			log.Error("subscription closed")
+			break
+		}
+	}
 }
 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
@@ -221,6 +229,24 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	}
 
 	return logSubscription, nil
+}
+
+func (c *EncRPCClient) setResultToSubID(clientChannel chan common.IDAndEncLog, result interface{}, subscription *rpc.ClientSubscription) error {
+	select {
+	case idAndEncLog := <-clientChannel:
+		if idAndEncLog.SubID == "" || idAndEncLog.EncLog != nil {
+			return fmt.Errorf("expected an initial subscription response with the subscription ID only")
+		}
+		if result != nil {
+			err := c.setResult([]byte(idAndEncLog.SubID), result)
+			if err != nil {
+				return fmt.Errorf("failed to extract result from subscription response: %w", err)
+			}
+		}
+	case <-subscription.Err():
+		return fmt.Errorf("did not receive the initial subscription response with the subscription ID")
+	}
+	return nil
 }
 
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {

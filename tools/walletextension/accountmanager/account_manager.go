@@ -211,12 +211,12 @@ func performRequest(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}
 	return executeCall(client, req, resp)
 }
 
-func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{}, userConn userconn.UserConn) error {
+func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
 	ch := make(chan common.IDAndLog)
-	subscription, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, ch, req.Params...)
+	subscription, err := client.Subscribe(context.Background(), resp, rpc.RPCSubscribeNamespace, ch, req.Params...)
 	if err != nil {
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 	}

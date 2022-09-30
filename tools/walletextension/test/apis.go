@@ -117,8 +117,16 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 		return nil, fmt.Errorf("creation of subscriptions is not supported")
 	}
 
+	subscription := notifier.CreateSubscription()
+
+	err = notifier.Notify(subscription.ID, common.IDAndEncLog{
+		SubID: subscription.ID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not send subscription ID to client on subscription %s", subscription.ID)
+	}
+
 	// We emit a log every hundred milliseconds.
-	sub := notifier.CreateSubscription()
 	go func() {
 		for {
 			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{gethcommon.HexToHash(paramsTopic)}}})
@@ -132,15 +140,15 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 			}
 
 			idAndEncLog := common.IDAndEncLog{
-				SubID:  sub.ID,
+				SubID:  subscription.ID,
 				EncLog: encryptedBytes,
 			}
-			notifier.Notify(sub.ID, idAndEncLog) //nolint:errcheck
+			notifier.Notify(subscription.ID, idAndEncLog) //nolint:errcheck
 
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
-	return sub, nil
+	return subscription, nil
 }
 
 // Decrypts the params with the enclave key, and returns them encrypted with the viewing key set via `setViewingKey`.

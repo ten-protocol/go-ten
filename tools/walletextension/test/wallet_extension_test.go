@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
@@ -207,7 +210,8 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	_, viewingKeyBytes := registerPrivateKey(t, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	_, conn := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
+	resp, conn := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
+	validateSubscriptionResponse(t, resp)
 
 	// We set a timeout to kill the test, in case we never receive a log.
 	timeout := time.AfterFunc(3*time.Second, func() {
@@ -216,23 +220,48 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	defer timeout.Stop()
 
 	// We watch the connection to receive a log...
-	_, respJSON, err := conn.ReadMessage()
+	_, logRespJSON, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("could not read log from websocket. Cause: %s", err)
 	}
 
-	var resp map[string]interface{}
-	err = json.Unmarshal(respJSON, &resp)
+	var logResp map[string]interface{}
+	err = json.Unmarshal(logRespJSON, &logResp)
 	if err != nil {
 		t.Fatalf("could not unmarshal received log from JSON")
 	}
 
 	// We extract the topic from the received logs. The API should have set this based on the filter we passed when subscribing.
-	logMap := resp[common.JSONKeyParams].(map[string]interface{})[common.JSONKeyResult].(map[string]interface{})
+	logMap := logResp[common.JSONKeyParams].(map[string]interface{})[common.JSONKeyResult].(map[string]interface{})
 	logTopic := logMap[jsonKeyTopics].([]interface{})[0].(string)
 
 	if !strings.Contains(logTopic, dummyHash.Hex()) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), logTopic)
+	}
+}
+
+// Checks that the response to a subscription request is correctly-formatted.
+func validateSubscriptionResponse(t *testing.T, resp []byte) {
+	var respJSON map[string]interface{}
+	err := json.Unmarshal(resp, &respJSON)
+	if err != nil {
+		t.Fatalf("could not unmarshal subscription response to JSON")
+	}
+
+	id := respJSON[common.JSONKeyID]
+	jsonRPCVersion := respJSON[common.JSONKeyRPCVersion]
+	result := respJSON[common.JSONKeyResult]
+
+	if id != jsonID {
+		t.Fatalf("subscription response did not contain expected ID. Expected 1, got %s", id)
+	}
+	if jsonRPCVersion != jsonrpc.Version {
+		t.Fatalf("subscription response did not contain expected RPC version. Expected 2.0, got %s", jsonRPCVersion)
+	}
+	pattern := "0x.*"
+	resultString, ok := result.(string)
+	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
+		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
 	}
 }
 
