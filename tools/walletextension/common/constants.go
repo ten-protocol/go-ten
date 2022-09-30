@@ -15,6 +15,6 @@ const (
 	JSONKeyRPCVersion   = "jsonrpc"
 	JSONKeySignature    = "signature"
 	JSONKeySubscription = "subscription"
-	JSONKeyCode       = "code"
-	JSONKeyMessage    = "message"
+	JSONKeyCode         = "code"
+	JSONKeyMessage      = "message"
 )
