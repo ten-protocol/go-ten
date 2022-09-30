@@ -146,7 +146,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	if !ok {
 		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
-	clientChannel := make(chan []byte)
+	clientChannel := make(chan common.IDAndEncLog)
 	subscription, err := c.obscuroClient.Subscribe(ctx, namespace, clientChannel, subscriptionType, encryptedParams)
 	if err != nil {
 		return nil, err
@@ -155,8 +155,8 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	go func() {
 		for {
 			select {
-			case encryptedLogs := <-clientChannel:
-				jsonLogs, err := c.decryptResponse(encryptedLogs)
+			case idAndEncLog := <-clientChannel:
+				jsonLogs, err := c.decryptResponse(idAndEncLog.EncLog)
 				if err != nil {
 					log.Error("could not decrypt logs received from subscription. Cause: %s", err)
 					continue
@@ -175,6 +175,7 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 				}
 
 			case <-subscription.Err(): // This channel's sole purpose is to be closed when the subscription is unsubscribed.
+				log.Error("subscription closed")
 				break
 			}
 		}

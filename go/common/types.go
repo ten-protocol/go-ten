@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -196,4 +198,16 @@ type LogSubscription struct {
 	Signature *[]byte
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria
+}
+
+// IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.
+type IDAndEncLog struct {
+	ID     rpc.ID
+	EncLog []byte
+}
+
+// IDAndLog pairs a encrypted log with the ID of the subscription that generated it.
+type IDAndLog struct {
+	ID  rpc.ID
+	Log *types.Log
 }
