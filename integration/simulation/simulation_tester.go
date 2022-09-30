@@ -2,11 +2,12 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"math/rand"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/obscuronet/go-obscuro/go/common/log"

@@ -2,8 +2,9 @@ package obsclient
 
 import (
 	"context"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 

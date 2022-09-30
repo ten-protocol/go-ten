@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"strings"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
@@ -235,9 +236,6 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 					log.Error("could not marshal log response to JSON. Cause: %s", err)
 					continue
 				}
-
-				x := string(jsonResponse)
-				println(x)
 
 				log.Info("Forwarding log from Obscuro node: %s", jsonResponse)
 				err = userConn.WriteResponse(jsonResponse)
