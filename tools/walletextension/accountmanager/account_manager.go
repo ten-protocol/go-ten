@@ -15,7 +15,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -231,11 +230,14 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 					return
 				}
 
-				jsonResponse, err := prepareLogResponse(*idAndLog.Log)
+				jsonResponse, err := prepareLogResponse(idAndLog)
 				if err != nil {
 					log.Error("could not marshal log response to JSON. Cause: %s", err)
 					continue
 				}
+
+				x := string(jsonResponse)
+				println(x)
 
 				log.Info("Forwarding log from Obscuro node: %s", jsonResponse)
 				err = userConn.WriteResponse(jsonResponse)
@@ -315,10 +317,10 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 }
 
 // Formats the log to be sent as an Eth JSON-RPC response.
-func prepareLogResponse(receivedLog types.Log) ([]byte, error) {
+func prepareLogResponse(idAndLog common.IDAndLog) ([]byte, error) {
 	paramsMap := make(map[string]interface{})
-	// TODO - The response body should also contain the original subscription ID (e.g for unsubscriptions).
-	paramsMap[wecommon.JSONKeyResult] = receivedLog
+	paramsMap[wecommon.JSONKeySubscription] = idAndLog.ID
+	paramsMap[wecommon.JSONKeyResult] = idAndLog.Log
 
 	respMap := make(map[string]interface{})
 	respMap[wecommon.JSONKeyRPCVersion] = jsonrpc.Version
