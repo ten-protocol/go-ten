@@ -399,19 +399,19 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 }
 
 // Checks that the owner has only received relevant logs, and only from the HOC or POC contracts.
-func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan types.Log) int {
+func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
 	logsReceived := 0
 
 	for {
 		select {
-		case receivedLog := <-channel:
+		case idAndLog := <-channel:
 			logsReceived++
 
-			if !isRelevant(owner, receivedLog) {
+			if !isRelevant(owner, *idAndLog.Log) {
 				t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
 			}
 
-			logAddrHex := receivedLog.Address.Hex()
+			logAddrHex := idAndLog.Log.Address.Hex()
 			if logAddrHex != "0x"+bridge.HOCAddr {
 				t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
 			}

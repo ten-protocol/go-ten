@@ -4,12 +4,14 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -29,7 +31,7 @@ const (
 // The methods in this client are analogous to the methods in geth's EthClient and should behave the same unless noted otherwise.
 type AuthObsClient struct {
 	ObsClient
-	account common.Address
+	account gethcommon.Address
 }
 
 // NewAuthObsClient constructs an AuthObsClient for sensitive communication with an enclave.
@@ -61,14 +63,14 @@ func DialWithAuth(rpcurl string, wal wallet.Wallet) (*AuthObsClient, error) {
 }
 
 // TransactionByHash returns transaction (if found), isPending (always false currently as we don't search the mempool), error
-func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
+func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.Hash) (*types.Transaction, bool, error) {
 	var tx types.Transaction
 	err := ac.rpcClient.CallContext(ctx, &tx, rpc.RPCGetTransactionByHash, hash.Hex())
 	// todo: revisit isPending result value, included for ethclient equivalence but hardcoded currently
 	return &tx, false, err
 }
 
-func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
+func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
 	var receipt types.Receipt
 	err := ac.rpcClient.CallContext(ctx, &receipt, rpc.RPCGetTxReceipt, txHash)
 	return &receipt, err
@@ -106,7 +108,7 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	return hexutil.DecodeBig(result)
 }
 
-func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan types.Log) (ethereum.Subscription, error) {
+func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan common.IDAndLog) (ethereum.Subscription, error) {
 	filterCriteriaMap := map[string]interface{}{
 		filterKeyBlockHash: filterCriteria.BlockHash,
 		filterKeyFromBlock: filterCriteria.FromBlock,
@@ -117,6 +119,6 @@ func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria
 	return ac.rpcClient.Subscribe(ctx, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, filterCriteriaMap)
 }
 
-func (ac *AuthObsClient) Address() common.Address {
+func (ac *AuthObsClient) Address() gethcommon.Address {
 	return ac.account
 }

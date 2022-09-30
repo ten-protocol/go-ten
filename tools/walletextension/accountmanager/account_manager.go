@@ -8,13 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/obscuronet/go-obscuro/go/common"
+
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
@@ -143,7 +144,7 @@ func parseParams(args []interface{}) (map[string]interface{}, error) {
 }
 
 func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*rpc.EncRPCClient, bool) {
-	fromVal, found := paramsMap[common.JSONKeyFrom]
+	fromVal, found := paramsMap[wecommon.JSONKeyFrom]
 	if !found {
 		return nil, false
 	}
@@ -162,7 +163,7 @@ func checkForFromField(paramsMap map[string]interface{}, accClients map[gethcomm
 // key address, we return that address. Otherwise, we return nil.
 func searchDataFieldForAccount(callParams map[string]interface{}, accClients map[gethcommon.Address]*rpc.EncRPCClient) (*gethcommon.Address, error) {
 	// We ensure that the `data` field is present.
-	data := callParams[common.JSONKeyData]
+	data := callParams[wecommon.JSONKeyData]
 	if data == nil {
 		return nil, fmt.Errorf("eth_call request did not have its `data` field set")
 	}
@@ -214,7 +215,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
-	ch := make(chan types.Log)
+	ch := make(chan common.IDAndLog)
 	subscription, err := client.Subscribe(context.Background(), rpc.RPCSubscribeNamespace, ch, req.Params...)
 	if err != nil {
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
@@ -224,13 +225,13 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 	go func() {
 		for {
 			select {
-			case receivedLog := <-ch:
+			case idAndLog := <-ch:
 				if userConn.IsClosed() {
 					log.Info("received log but websocket was closed")
 					return
 				}
 
-				jsonResponse, err := prepareLogResponse(receivedLog)
+				jsonResponse, err := prepareLogResponse(idAndLog)
 				if err != nil {
 					log.Error("could not marshal log response to JSON. Cause: %s", err)
 					continue
@@ -266,21 +267,21 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, _ *interface{},
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	// never modify the original request as it might be reused
-	clonedRequest := req.Clone()
+	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
+		// Never modify the original request, as it might be reused.
+		req = req.Clone()
 
-	if clonedRequest.Method == rpc.RPCCall || clonedRequest.Method == rpc.RPCEstimateGas {
 		// Any method using an ethereum.CallMsg is a sensitive method that requires a viewing key lookup but the 'from' field is not mandatory
 		// and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
 		var err error
-		clonedRequest.Params, err = setCallFromFieldIfMissing(clonedRequest.Params, *account)
+		req.Params, err = setCallFromFieldIfMissing(req.Params, *account)
 		if err != nil {
 			return err
 		}
 	}
 
-	return client.Call(resp, clonedRequest.Method, clonedRequest.Params...)
+	return client.Call(resp, req.Method, req.Params...)
 }
 
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
@@ -314,15 +315,15 @@ func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) (
 }
 
 // Formats the log to be sent as an Eth JSON-RPC response.
-func prepareLogResponse(receivedLog types.Log) ([]byte, error) {
+func prepareLogResponse(idAndLog common.IDAndLog) ([]byte, error) {
 	paramsMap := make(map[string]interface{})
-	// TODO - The response body should also contain the original subscription ID (e.g for unsubscriptions).
-	paramsMap[common.JSONKeyResult] = receivedLog
+	paramsMap[wecommon.JSONKeySubscription] = idAndLog.SubID
+	paramsMap[wecommon.JSONKeyResult] = idAndLog.Log
 
 	respMap := make(map[string]interface{})
-	respMap[common.JSONKeyRPCVersion] = jsonrpc.Version
-	respMap[common.JSONKeyMethod] = methodEthSubscription
-	respMap[common.JSONKeyParams] = paramsMap
+	respMap[wecommon.JSONKeyRPCVersion] = jsonrpc.Version
+	respMap[wecommon.JSONKeyMethod] = methodEthSubscription
+	respMap[wecommon.JSONKeyParams] = paramsMap
 
 	jsonResponse, err := json.Marshal(respMap)
 	if err != nil {
