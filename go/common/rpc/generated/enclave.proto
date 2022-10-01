@@ -161,7 +161,7 @@ message OffChainRequest {
 }
 message OffChainResponse {
   bytes result = 1;
-  string error = 2;
+  bytes error = 2;
 }
 
 message GetTransactionCountRequest {

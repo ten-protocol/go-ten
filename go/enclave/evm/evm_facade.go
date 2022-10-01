@@ -130,32 +130,38 @@ func secret(storage db.Storage) []byte {
 }
 
 // copy pasted from geth
-func newRevertError(result *gethcore.ExecutionResult) *revertError {
+func newRevertError(result *gethcore.ExecutionResult) RevertError {
 	reason, errUnpack := abi.UnpackRevert(result.Revert())
 	err := errors.New("execution reverted")
 	if errUnpack == nil {
 		err = fmt.Errorf("execution reverted: %v", reason)
 	}
-	return &revertError{
-		error:  err,
-		reason: hexutil.Encode(result.Revert()),
+	return RevertError{
+		Err:    err.Error(),
+		Reason: hexutil.Encode(result.Revert()),
+		Code:   3, // todo - magic number
 	}
 }
 
-// revertError is an API error that encompassas an EVM revertal with JSON error
+// RevertError is an API error that encompasses an EVM revertal with JSON error
 // code and a binary data blob.
-type revertError struct {
-	error
-	reason string // revert reason hex encoded
+type RevertError struct {
+	Err    string
+	Reason string // revert Reason hex encoded
+	Code   int
+}
+
+func (e RevertError) Error() string {
+	return e.Err
 }
 
 // ErrorCode returns the JSON error code for a revertal.
 // See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
-func (e *revertError) ErrorCode() int {
-	return 3
+func (e RevertError) ErrorCode() int {
+	return e.Code
 }
 
-// ErrorData returns the hex encoded revert reason.
-func (e *revertError) ErrorData() interface{} {
-	return e.reason
+// ErrorData returns the hex encoded revert Reason.
+func (e RevertError) ErrorData() interface{} {
+	return e.Reason
 }

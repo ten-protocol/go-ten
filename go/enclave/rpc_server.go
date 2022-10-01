@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 
@@ -157,8 +158,14 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
 	result, err := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
+	var errorJSON []byte
+	var merr error
 	if err != nil {
-		return nil, err
+		errorJSON, merr = json.Marshal(err)
+		if merr != nil {
+			return nil, merr
+		}
+		return &generated.OffChainResponse{Error: errorJSON}, nil
 	}
 	return &generated.OffChainResponse{Result: result}, nil
 }
