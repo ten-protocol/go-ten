@@ -273,9 +273,9 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		if ok {
 			errMap[common.JSONKeyData] = de.ErrorData()
 		}
+	} else {
+		respMap[common.JSONKeyResult] = rpcResp
 	}
-
-	respMap[common.JSONKeyResult] = rpcResp
 
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 	// TODO fix this upstream on the decode

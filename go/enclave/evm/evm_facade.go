@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -100,7 +102,7 @@ func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data [
 	}
 	err = s.Error()
 	if err != nil {
-		return nil, err
+		return nil, newErrorWithReasonAndCode(err)
 	}
 
 	// If the result contains a revert reason, try to unpack and return it.
@@ -129,39 +131,52 @@ func secret(storage db.Storage) []byte {
 	return secret[:]
 }
 
-// copy pasted from geth
-func newRevertError(result *gethcore.ExecutionResult) RevertError {
+func newErrorWithReasonAndCode(err error) SerialisableError {
+	result := SerialisableError{
+		Err: err.Error(),
+	}
+
+	var e gethrpc.Error
+	ok := errors.As(err, &e)
+	if ok {
+		result.Code = e.ErrorCode()
+	}
+	var de gethrpc.DataError
+	ok = errors.As(err, &de)
+	if ok {
+		result.Reason = de.ErrorData()
+	}
+	return result
+}
+
+func newRevertError(result *gethcore.ExecutionResult) SerialisableError {
 	reason, errUnpack := abi.UnpackRevert(result.Revert())
 	err := errors.New("execution reverted")
 	if errUnpack == nil {
 		err = fmt.Errorf("execution reverted: %v", reason)
 	}
-	return RevertError{
+	return SerialisableError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number
 	}
 }
 
-// RevertError is an API error that encompasses an EVM revertal with JSON error
-// code and a binary data blob.
-type RevertError struct {
+// SerialisableError is an API error that encompasses an EVM error with a code
+type SerialisableError struct {
 	Err    string
-	Reason string // revert Reason hex encoded
+	Reason interface{}
 	Code   int
 }
 
-func (e RevertError) Error() string {
+func (e SerialisableError) Error() string {
 	return e.Err
 }
 
-// ErrorCode returns the JSON error code for a revertal.
-// See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
-func (e RevertError) ErrorCode() int {
+func (e SerialisableError) ErrorCode() int {
 	return e.Code
 }
 
-// ErrorData returns the hex encoded revert Reason.
-func (e RevertError) ErrorData() interface{} {
+func (e SerialisableError) ErrorData() interface{} {
 	return e.Reason
 }

@@ -232,7 +232,7 @@ func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedPara
 	}
 	if len(response.Error) > 0 {
 		// todo - handle other types of errors
-		var result evm.RevertError
+		var result evm.SerialisableError
 		err = json.Unmarshal(response.Error, &result)
 		if err != nil {
 			return nil, err
