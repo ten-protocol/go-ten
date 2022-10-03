@@ -98,10 +98,6 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 		return relevantLogs
 	}
 
-	for subscriptionID := range s.subscriptions {
-		relevantLogs[subscriptionID] = []*types.Log{}
-	}
-
 	stateDB := s.storage.CreateStateDB(rollupHash)
 
 	for _, log := range logs {
@@ -110,7 +106,11 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 		// We check whether the log is relevant to each subscription.
 		for subscriptionID, subscription := range s.subscriptions {
 			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(log, subscription.Filter) {
-				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
+				if relevantLogs[subscriptionID] == nil {
+					relevantLogs[subscriptionID] = []*types.Log{log}
+				} else {
+					relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
+				}
 			}
 		}
 	}
