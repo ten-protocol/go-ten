@@ -342,9 +342,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 		// We check that the logs are relevant to the sender.
 		for _, retrievedLog := range receipt.Logs {
-			if !isRelevant(sender.Hex(), *retrievedLog) {
-				t.Errorf("receipt contained log that was not relevant (neither a lifecycle event nor relevant to the sender)")
-			}
+			assertIsRelevant(t, sender.Hex(), *retrievedLog)
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
@@ -415,9 +413,7 @@ out:
 	}
 
 	for _, receivedLog := range logsReceived {
-		if !isRelevant(owner, *receivedLog) {
-			t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
-		}
+		assertIsRelevant(t, owner, *receivedLog)
 
 		logAddrHex := receivedLog.Address.Hex()
 		if logAddrHex != "0x"+bridge.HOCAddr {
@@ -429,7 +425,7 @@ out:
 }
 
 // Checks whether the log is relevant to the recipient (either a lifecycle event or a relevant user event).
-func isRelevant(owner string, receivedLog types.Log) bool {
+func assertIsRelevant(t *testing.T, owner string, receivedLog types.Log) {
 	// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can (potentially)
 	// be user addresses. We filter these out. In theory, we should also check whether the topics are contract
 	// addresses, but in practice no events of this type are sent in the simulations.
@@ -445,13 +441,15 @@ func isRelevant(owner string, receivedLog types.Log) bool {
 
 	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
 	if len(userAddrs) == 0 {
-		return true
+		return
 	}
 
 	for _, addr := range userAddrs {
 		if addr == owner {
-			return true
+			return
 		}
 	}
-	return false
+
+	// If we've fallen through to here, it means the log was not relevant.
+	t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
 }
