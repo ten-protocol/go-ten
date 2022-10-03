@@ -3,9 +3,12 @@ package enclaverpc
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
@@ -211,8 +214,14 @@ func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedPara
 	if err != nil {
 		return nil, err
 	}
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
+	if len(response.Error) > 0 {
+		// The enclave always returns a SerialisableError
+		var result evm.SerialisableError
+		err = json.Unmarshal(response.Error, &result)
+		if err != nil {
+			return nil, err
+		}
+		return nil, result
 	}
 	return response.Result, nil
 }

@@ -593,8 +593,10 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 
 // Distributes logs to subscribed clients.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
-	for subscriptionID, encryptedLogs := range result.SubscribedLogs {
-		a.logsChs[subscriptionID] <- encryptedLogs
+	for subscriptionID, encLogsByRollup := range result.SubscribedLogs {
+		for _, encryptedLogs := range encLogsByRollup {
+			a.logsChs[subscriptionID] <- encryptedLogs
+		}
 	}
 }
 

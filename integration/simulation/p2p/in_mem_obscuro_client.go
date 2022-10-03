@@ -119,7 +119,7 @@ func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, 
 	return c.Call(result, method, args...)
 }
 
-func (c *inMemObscuroClient) Subscribe(ctx context.Context, result interface{}, namespace string, channel interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
+func (c *inMemObscuroClient) Subscribe(context.Context, interface{}, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
 	panic("not implemented")
 }
 

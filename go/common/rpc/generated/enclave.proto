@@ -140,7 +140,7 @@ message OffChainRequest {
 }
 message OffChainResponse {
   bytes result = 1;
-  string error = 2;
+  bytes error = 2;
 }
 
 message GetTransactionCountRequest {
@@ -241,7 +241,7 @@ message BlockSubmissionResponseMsg {
   bool ingestedNewRollup = 5;
   HeaderMsg rollupHead = 6;
   repeated SecretResponseMsg producedSecretResponses = 7;
-  map<string, bytes> subscribedLogs = 8;
+  bytes subscribedLogs = 8;
 }
 
 message ExtRollupMsg {

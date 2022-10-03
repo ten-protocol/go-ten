@@ -13,8 +13,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -63,19 +61,6 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 
 		return nil
 	}
-}
-
-// EncodeTx formats a transaction for sending to the enclave
-func EncodeTx(tx *common.L2Tx) string {
-	txBinary, err := tx.MarshalBinary()
-	if err != nil {
-		panic(err)
-	}
-
-	// We convert the transaction binary to the form expected for sending transactions via RPC.
-	txBinaryHex := gethcommon.Bytes2Hex(txBinary)
-
-	return "0x" + txBinaryHex
 }
 
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.

@@ -28,6 +28,8 @@ const (
 	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
 	// type, for example.
 	txThreshold = 5
+	// As above, but for the number of logs received via subscriptions.
+	logsThreshold = 5
 	// The maximum number of blocks an Obscuro node can fall behind
 	maxBlockDelay = 5
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
@@ -342,9 +344,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 		// We check that the logs are relevant to the sender.
 		for _, retrievedLog := range receipt.Logs {
-			if !isRelevant(sender.Hex(), *retrievedLog) {
-				t.Errorf("receipt contained log that was not relevant (neither a lifecycle event nor relevant to the sender)")
-			}
+			assertIsRelevant(t, sender.Hex(), *retrievedLog)
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
@@ -393,38 +393,41 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 	for owner, channel := range s.LogChannels {
 		logsReceived += checkReceivedHOCAndPOCLogs(t, owner, channel)
 	}
-	if logsReceived == 0 {
+	if logsReceived < logsThreshold {
 		t.Errorf("no logs received during simulation")
 	}
 }
 
 // Checks that the owner has only received relevant logs, and only from the HOC or POC contracts.
 func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
-	logsReceived := 0
+	var logsReceived []*types.Log
 
+out:
 	for {
 		select {
 		case idAndLog := <-channel:
-			logsReceived++
-
-			if !isRelevant(owner, *idAndLog.Log) {
-				t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
-			}
-
-			logAddrHex := idAndLog.Log.Address.Hex()
-			if logAddrHex != "0x"+bridge.HOCAddr {
-				t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
-			}
+			logsReceived = append(logsReceived, idAndLog.Log)
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
 		default:
-			return logsReceived
+			break out
 		}
 	}
+
+	for _, receivedLog := range logsReceived {
+		assertIsRelevant(t, owner, *receivedLog)
+
+		logAddrHex := receivedLog.Address.Hex()
+		if logAddrHex != "0x"+bridge.HOCAddr {
+			t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
+		}
+	}
+
+	return len(logsReceived)
 }
 
-// Checks whether the log is relevant to the recipient (either a lifecycle event or a relevant user event).
-func isRelevant(owner string, receivedLog types.Log) bool {
+// Asserts that the log is relevant to the recipient (either a lifecycle event or a relevant user event).
+func assertIsRelevant(t *testing.T, owner string, receivedLog types.Log) {
 	// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can (potentially)
 	// be user addresses. We filter these out. In theory, we should also check whether the topics are contract
 	// addresses, but in practice no events of this type are sent in the simulations.
@@ -440,13 +443,15 @@ func isRelevant(owner string, receivedLog types.Log) bool {
 
 	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
 	if len(userAddrs) == 0 {
-		return true
+		return
 	}
 
 	for _, addr := range userAddrs {
 		if addr == owner {
-			return true
+			return
 		}
 	}
-	return false
+
+	// If we've fallen through to here, it means the log was not relevant.
+	t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
 }

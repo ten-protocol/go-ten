@@ -119,7 +119,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) c
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[gethrpc.ID]common.EncryptedLogs) common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs common.EncLogsByRollupByID) common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		log.Panic(msgNoRollup)
@@ -151,7 +151,7 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 //  STATE
 
 // Recursively calculates the state, logs and subscribed logs for the given block.
-func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log, map[gethrpc.ID][]*types.Log) {
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log, common.LogsByRollupByID) {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
@@ -642,6 +642,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	log.Trace("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To.Hex(), callMsg.From.Hex(), hexutils.BytesToHex(callMsg.Data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
 	result, err := evm.ExecuteOffChainCall(callMsg.From, callMsg.To, callMsg.Data, s, r.Header, rc.storage, rc.chainConfig)
+	// todo - clarify this error handling
 	if err != nil {
 		return nil, err
 	}

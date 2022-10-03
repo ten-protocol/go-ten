@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
@@ -44,25 +46,25 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
 func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
-	jsonSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
+	encodedSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
 	if err != nil {
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
 	}
 
-	var subscriptions []common.LogSubscription
-	if err := json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
-		return fmt.Errorf("could not unmarshal log subscription from JSON. Cause: %w", err)
+	var subscription common.LogSubscription
+	if err = rlp.DecodeBytes(encodedSubscription, &subscription); err != nil {
+		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
-
-	if len(subscriptions) != 1 {
-		return fmt.Errorf("expected a single log subscription, received %d", len(subscriptions))
-	}
-	subscription := subscriptions[0]
 
 	err = s.rpcEncryptionManager.AuthenticateSubscriptionRequest(subscription)
 	if err != nil {
 		return err
 	}
+
+	// For subscriptions, only the Topics and Addresses fields of the filter are applied.
+	subscription.Filter.BlockHash = nil
+	subscription.Filter.FromBlock = nil
+	subscription.Filter.ToBlock = nil
 
 	s.subscriptions[id] = &subscription
 	return nil
@@ -90,16 +92,12 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 }
 
 // FilteredSubscribedLogs filters out irrelevant logs and those that are not subscribed to, and organises them by their subscribing ID.
-func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
-	relevantLogs := map[gethrpc.ID][]*types.Log{}
+func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) common.LogsByRollupByID {
+	relevantLogs := common.LogsByRollupByID{}
 
 	// If there are no subscriptions, we do not need to do any processing.
 	if len(s.subscriptions) == 0 {
 		return relevantLogs
-	}
-
-	for subscriptionID := range s.subscriptions {
-		relevantLogs[subscriptionID] = []*types.Log{}
 	}
 
 	stateDB := s.storage.CreateStateDB(rollupHash)
@@ -110,7 +108,15 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 		// We check whether the log is relevant to each subscription.
 		for subscriptionID, subscription := range s.subscriptions {
 			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(log, subscription.Filter) {
-				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], log)
+				if relevantLogs[subscriptionID] == nil {
+					relevantLogs[subscriptionID] = map[uint64][]*types.Log{}
+				}
+
+				if relevantLogs[subscriptionID][log.BlockNumber] == nil {
+					relevantLogs[subscriptionID][log.BlockNumber] = []*types.Log{}
+				}
+
+				relevantLogs[subscriptionID][log.BlockNumber] = append(relevantLogs[subscriptionID][log.BlockNumber], log)
 			}
 		}
 	}
@@ -119,26 +125,33 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 }
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) EncryptLogs(logsBySubID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID]common.EncryptedLogs, error) {
-	result := map[gethrpc.ID]common.EncryptedLogs{}
-	for subID, logs := range logsBySubID {
+func (s *SubscriptionManager) EncryptLogs(logsByRollupByID common.LogsByRollupByID) (common.EncLogsByRollupByID, error) {
+	result := common.EncLogsByRollupByID{}
+
+	for subID, logByRollupNum := range logsByRollupByID {
 		subscription, found := s.subscriptions[subID]
 		if !found {
 			return nil, fmt.Errorf("could not find subscription with ID %s", subID)
 		}
 
-		jsonLogs, err := json.Marshal(logs)
-		if err != nil {
-			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
+		encLogsByRollup := map[uint64][]byte{}
+		for rollupNum, logs := range logByRollupNum {
+			jsonLogs, err := json.Marshal(logs)
+			if err != nil {
+				return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
+			}
+
+			encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.Account, jsonLogs)
+			if err != nil {
+				return nil, err
+			}
+
+			encLogsByRollup[rollupNum] = encryptedLogs
 		}
 
-		encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.Account, jsonLogs)
-		if err != nil {
-			return nil, err
-		}
-
-		result[subID] = encryptedLogs
+		result[subID] = encLogsByRollup
 	}
+
 	return result, nil
 }
 

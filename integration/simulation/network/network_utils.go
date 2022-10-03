@@ -31,7 +31,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/host"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
-	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
 const (
@@ -45,11 +45,11 @@ const (
 	DefaultL1RPCTimeout      = 15 * time.Second
 )
 
-func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereum_mock.Node {
-	mockEthNetwork := ethereum_mock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
+func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, avgNetworkLatency time.Duration, stats *stats.Stats) *ethereummock.Node {
+	mockEthNetwork := ethereummock.NewMockEthNetwork(avgBlockDuration, avgNetworkLatency, stats)
 	ethereumMockCfg := defaultMockEthNodeCfg(nrNodes, avgBlockDuration)
 	// create an in memory mock ethereum node responsible with notifying the layer 2 node about blocks
-	miner := ethereum_mock.NewMiner(gethcommon.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
+	miner := ethereummock.NewMiner(gethcommon.BigToAddress(big.NewInt(id)), ethereumMockCfg, mockEthNetwork, stats)
 	mockEthNetwork.CurrentNode = miner
 	return miner
 }
@@ -150,8 +150,8 @@ func createSocketObscuroNode(
 	)
 }
 
-func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum_mock.MiningConfig {
-	return ethereum_mock.MiningConfig{
+func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {
+	return ethereummock.MiningConfig{
 		PowTime: func() time.Duration {
 			// This formula might feel counter-intuitive, but it is a good approximation for Proof of Work.
 			// It creates a uniform distribution up to nrMiners*avgDuration

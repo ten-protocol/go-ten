@@ -32,6 +32,7 @@ type Host interface {
 }
 
 // MockHost extends Host with additional methods that are only used for integration testing.
+// todo - remove this interface
 type MockHost interface {
 	Host
 

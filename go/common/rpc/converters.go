@@ -1,9 +1,9 @@
 package rpc
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -30,9 +30,9 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
 
-	subscribedLogsMsg := make(map[string][]byte)
-	for id, log := range response.SubscribedLogs {
-		subscribedLogsMsg[string(id)] = log
+	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
+	if err != nil {
+		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
 	}
 
 	return generated.BlockSubmissionResponseMsg{
@@ -42,7 +42,7 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (gene
 		ProducedRollup:          &producedRollupMsg,
 		IngestedNewRollup:       response.FoundNewHead,
 		RollupHead:              ToRollupHeaderMsg(response.RollupHead),
-		SubscribedLogs:          subscribedLogsMsg,
+		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
 }
@@ -77,9 +77,9 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (common.BlockSubmissionResponse, error) {
-	subscribedLogs := make(map[rpc.ID]common.EncryptedLogs)
-	for id, log := range msg.SubscribedLogs {
-		subscribedLogs[rpc.ID(id)] = log
+	var subscribedLogs common.EncLogsByRollupByID
+	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
+		return common.BlockSubmissionResponse{}, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
 	}
 
 	return common.BlockSubmissionResponse{
