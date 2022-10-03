@@ -12,6 +12,8 @@ import (
 	"os"
 	"time"
 
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
@@ -244,32 +246,26 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		return
 	}
 
-	var rpcResp interface{}
-	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
-	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp, userConn)
-	if err != nil {
-		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
-		if !errors.Is(err, rpc.ErrNilResponse) {
-			userConn.HandleError(fmt.Sprintf("rpc request unsuccessful: %s", err))
-			return
-		}
-	}
-
 	respMap := make(map[string]interface{})
-	respMap[common.JSONKeyID] = rpcReq.ID
+	// all responses must contain the request id. Both successful and unsuccessful.
 	respMap[common.JSONKeyRPCVersion] = jsonrpc.Version
-	respMap[common.JSONKeyResult] = rpcResp
+	respMap[common.JSONKeyID] = rpcReq.ID
 
-	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
-	// TODO fix this upstream on the decode
-	if result, found := respMap[common.JSONKeyResult]; found { //nolint
-		if resultMap, ok := result.(map[string]interface{}); ok {
-			if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
-				if val == "0x" {
-					respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
-				}
-			}
-		}
+	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
+	var rpcResp interface{}
+	err = we.accountManager.ProxyRequest(rpcReq, &rpcResp, userConn)
+
+	if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
+		createErrorResponse(respMap, err)
+	} else if errors.Is(err, rpc.ErrNilResponse) {
+		// if err was for a nil response then we will return an RPC result of null to the caller (this is a valid "not-found" response for some methods)
+		respMap[common.JSONKeyResult] = nil
+	} else {
+		respMap[common.JSONKeyResult] = rpcResp
+
+		// TODO fix this upstream on the decode
+		// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+		adjustStateRoot(rpcResp, respMap)
 	}
 
 	rpcRespToSend, err := json.Marshal(respMap)
@@ -283,6 +279,35 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	if err != nil {
 		userConn.HandleError(err.Error())
 		return
+	}
+}
+
+func createErrorResponse(respMap map[string]interface{}, err error) {
+	errMap := make(map[string]interface{})
+	respMap[common.JSONKeyErr] = errMap
+
+	errMap[common.JSONKeyMessage] = err.Error()
+
+	var e gethrpc.Error
+	ok := errors.As(err, &e)
+	if ok {
+		errMap[common.JSONKeyCode] = e.ErrorCode()
+	}
+
+	var de gethrpc.DataError
+	ok = errors.As(err, &de)
+	if ok {
+		errMap[common.JSONKeyData] = de.ErrorData()
+	}
+}
+
+func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
+	if resultMap, ok := rpcResp.(map[string]interface{}); ok {
+		if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
+			if val == "0x" {
+				respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
+			}
+		}
 	}
 }
 
@@ -306,11 +331,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 			"If you're trying to generate a viewing key, visit %s", err, pathViewingKeys)
 	}
 
-	var reqID interface{}
-	err = json.Unmarshal(reqJSONMap[common.JSONKeyID], &reqID)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal id from JSON-RPC request body: %w", err)
-	}
+	reqID := reqJSONMap[common.JSONKeyID]
 	var method string
 	err = json.Unmarshal(reqJSONMap[common.JSONKeyMethod], &method)
 	if err != nil {
