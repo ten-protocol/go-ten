@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rlp"
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -137,7 +138,13 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 		return nil, err
 	}
 
-	encryptedParams, err := c.encryptArgs(logSubscription)
+	// We use RLP instead of JSON marshaling here, as for some reason the filter criteria doesn't unmarshal correctly from JSON.
+	encodedLogSubscription, err := rlp.EncodeToBytes(logSubscription)
+	if err != nil {
+		return nil, err
+	}
+
+	encryptedParams, err := c.encryptParamBytes(encodedLogSubscription)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
 	}
@@ -223,6 +230,11 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
 		if err != nil {
 			return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
+		}
+
+		// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
+		if filterCriteria.BlockHash == nil {
+			filterCriteria.BlockHash = &gethcommon.Hash{}
 		}
 
 		logSubscription.Filter = &filterCriteria

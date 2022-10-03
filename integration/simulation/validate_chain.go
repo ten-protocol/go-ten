@@ -3,7 +3,6 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"sync"
 	"testing"
@@ -424,9 +423,6 @@ out:
 		}
 	}
 
-	// todo - joel - reenable this
-	//assertNoDupeLogs(t, logsReceived)
-
 	return len(logsReceived)
 }
 
@@ -458,39 +454,4 @@ func assertIsRelevant(t *testing.T, owner string, receivedLog types.Log) {
 
 	// If we've fallen through to here, it means the log was not relevant.
 	t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
-}
-
-// Asserts that there are no duplicate logs in the provided list.
-func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
-	logCount := make(map[string]int)
-
-	for _, item := range logs {
-		logBytes, err := rlp.EncodeToBytes(item)
-		if err != nil {
-			t.Errorf("could not encode log to RLP to check for duplicate logs")
-			continue
-		}
-		logBytesHex := gethcommon.Bytes2Hex(logBytes)
-
-		// check if the item/element exist in the duplicate_frequency map
-		_, exist := logCount[logBytesHex]
-		if exist {
-			logCount[logBytesHex]++ // increase counter by 1 if already in the map
-		} else {
-			logCount[logBytesHex] = 1 // else start counting from 1
-		}
-	}
-
-	for logBytesHex, count := range logCount {
-		if count > 1 {
-			var item *types.Log
-			logBytes := gethcommon.Hex2Bytes(logBytesHex)
-			err := rlp.DecodeBytes(logBytes, &item)
-			if err != nil {
-				t.Errorf("could not decode log from RLP to check for duplicate logs")
-				continue
-			}
-			t.Errorf("received duplicate log")
-		}
-	}
 }
