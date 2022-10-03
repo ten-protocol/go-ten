@@ -31,8 +31,8 @@ type IDAndLog struct {
 	Log   *types.Log
 }
 
-// LogsByID is a map of subscription IDs to logs.
-type LogsByID = map[rpc.ID][]*types.Log
+// LogsByRollupByID is a double-map from subscription IDs to rollup numbers to logs generated in that rollup.
+type LogsByRollupByID = map[rpc.ID]map[uint64][]*types.Log
 
-// EncLogsByID is a map of subscription IDs to encrypted logs.
-type EncLogsByID = map[rpc.ID]EncryptedLogs
+// EncLogsByRollupByID is identical to LogsByRollupByID, but with the logs encrypted as bytes.
+type EncLogsByRollupByID = map[rpc.ID]map[uint64][]byte
