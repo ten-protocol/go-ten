@@ -26,12 +26,8 @@ type EnclaveProtoClient interface {
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(ctx context.Context, in *AttestationRequest, opts ...grpc.CallOption) (*AttestationResponse, error)
-	// StoreAttestation - saves the attestation data of a counterparty to verify signatures against it.
-	StoreAttestation(ctx context.Context, in *StoreAttestationRequest, opts ...grpc.CallOption) (*StoreAttestationResponse, error)
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 	GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error)
-	// ShareSecret - return the shared secret encrypted with the key from the attestation
-	ShareSecret(ctx context.Context, in *FetchSecretRequest, opts ...grpc.CallOption) (*ShareSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
@@ -104,27 +100,9 @@ func (c *enclaveProtoClient) Attestation(ctx context.Context, in *AttestationReq
 	return out, nil
 }
 
-func (c *enclaveProtoClient) StoreAttestation(ctx context.Context, in *StoreAttestationRequest, opts ...grpc.CallOption) (*StoreAttestationResponse, error) {
-	out := new(StoreAttestationResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/StoreAttestation", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *enclaveProtoClient) GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error) {
 	out := new(GenerateSecretResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GenerateSecret", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *enclaveProtoClient) ShareSecret(ctx context.Context, in *FetchSecretRequest, opts ...grpc.CallOption) (*ShareSecretResponse, error) {
-	out := new(ShareSecretResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ShareSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -310,12 +288,8 @@ type EnclaveProtoServer interface {
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error)
-	// StoreAttestation - saves the attestation data of a counterparty to verify signatures against it.
-	StoreAttestation(context.Context, *StoreAttestationRequest) (*StoreAttestationResponse, error)
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 	GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error)
-	// ShareSecret - return the shared secret encrypted with the key from the attestation
-	ShareSecret(context.Context, *FetchSecretRequest) (*ShareSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
@@ -373,14 +347,8 @@ func (UnimplementedEnclaveProtoServer) Status(context.Context, *StatusRequest) (
 func (UnimplementedEnclaveProtoServer) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Attestation not implemented")
 }
-func (UnimplementedEnclaveProtoServer) StoreAttestation(context.Context, *StoreAttestationRequest) (*StoreAttestationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StoreAttestation not implemented")
-}
 func (UnimplementedEnclaveProtoServer) GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateSecret not implemented")
-}
-func (UnimplementedEnclaveProtoServer) ShareSecret(context.Context, *FetchSecretRequest) (*ShareSecretResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShareSecret not implemented")
 }
 func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InitEnclave not implemented")
@@ -488,24 +456,6 @@ func _EnclaveProto_Attestation_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_StoreAttestation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StoreAttestationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).StoreAttestation(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/StoreAttestation",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).StoreAttestation(ctx, req.(*StoreAttestationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _EnclaveProto_GenerateSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GenerateSecretRequest)
 	if err := dec(in); err != nil {
@@ -520,24 +470,6 @@ func _EnclaveProto_GenerateSecret_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).GenerateSecret(ctx, req.(*GenerateSecretRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EnclaveProto_ShareSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FetchSecretRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).ShareSecret(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/ShareSecret",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).ShareSecret(ctx, req.(*FetchSecretRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -900,16 +832,8 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_Attestation_Handler,
 		},
 		{
-			MethodName: "StoreAttestation",
-			Handler:    _EnclaveProto_StoreAttestation_Handler,
-		},
-		{
 			MethodName: "GenerateSecret",
 			Handler:    _EnclaveProto_GenerateSecret_Handler,
-		},
-		{
-			MethodName: "ShareSecret",
-			Handler:    _EnclaveProto_ShareSecret_Handler,
 		},
 		{
 			MethodName: "InitEnclave",
