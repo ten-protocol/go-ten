@@ -161,6 +161,7 @@ func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generate
 	var errorJSON []byte
 	var merr error
 	if err != nil {
+		// serialise the error object returned by the evm into a json
 		errorJSON, merr = json.Marshal(err)
 		if merr != nil {
 			return nil, merr

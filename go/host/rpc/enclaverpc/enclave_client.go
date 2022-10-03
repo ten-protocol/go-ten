@@ -231,7 +231,7 @@ func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedPara
 		return nil, err
 	}
 	if len(response.Error) > 0 {
-		// todo - handle other types of errors
+		// The enclave always returns a SerialisableError
 		var result evm.SerialisableError
 		err = json.Unmarshal(response.Error, &result)
 		if err != nil {

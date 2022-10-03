@@ -100,6 +100,8 @@ func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data [
 		// this error is ignored by geth. logging just in case
 		log.Error("Error applying msg: %s", err)
 	}
+
+	// Read the error stored in the database.
 	err = s.Error()
 	if err != nil {
 		return nil, newErrorWithReasonAndCode(err)
@@ -114,6 +116,8 @@ func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data [
 
 func initParams(storage db.Storage, noBaseFee bool) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	chain := &ObscuroChainContext{storage: storage}
+
+	// Todo - temporarily enable the evm tracer to check what sort of extra info we receive
 	tracer := logger.NewStructLogger(&logger.Config{Debug: true})
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
@@ -162,7 +166,7 @@ func newRevertError(result *gethcore.ExecutionResult) SerialisableError {
 	}
 }
 
-// SerialisableError is an API error that encompasses an EVM error with a code
+// SerialisableError is an API error that encompasses an EVM error with a code and a reason
 type SerialisableError struct {
 	Err    string
 	Reason interface{}
