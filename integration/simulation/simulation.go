@@ -31,8 +31,7 @@ import (
 )
 
 const (
-	allocObsWallets  = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
-	maxSubscriptions = 2               // Limits the number of wallets we create subscriptions for, for performance reasons.
+	allocObsWallets = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 var initialBalance = common.ValueInWei(big.NewInt(5000))
@@ -120,14 +119,7 @@ func (s *Simulation) trackLogs() {
 		return
 	}
 
-	subscriptionsCreated := 0
 	for wallet, clients := range s.RPCHandles.AuthObsClients {
-		subscriptionsCreated++
-		// TODO - Consider enabling subscriptions for all wallets, following performance optimisations.
-		if subscriptionsCreated > maxSubscriptions {
-			break
-		}
-
 		s.LogChannels[wallet] = make(chan common.IDAndLog)
 
 		for _, client := range clients {
@@ -140,10 +132,6 @@ func (s *Simulation) trackLogs() {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
 			s.Subscriptions = append(s.Subscriptions, sub)
-
-			// We only subscribe on a single client for each wallet, to reduce the load on the simulation.
-			// TODO - Consider enabling subscriptions for all clients on each wallet, following performance optimisations.
-			break //nolint:staticcheck
 		}
 	}
 }

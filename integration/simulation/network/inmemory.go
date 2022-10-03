@@ -18,11 +18,11 @@ import (
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
-	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
 type basicNetworkOfInMemoryNodes struct {
-	ethNodes       []*ethereum_mock.Node
+	ethNodes       []*ethereummock.Node
 	obscuroClients []rpc.Client
 }
 
@@ -33,7 +33,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 // Create inits and starts the nodes, wires them up, and populates the network objects
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
-	n.ethNodes = make([]*ethereum_mock.Node, params.NumberOfNodes)
+	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
 	n.obscuroClients = make([]rpc.Client, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
@@ -77,7 +77,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
-		n.ethNodes[i].Network.(*ethereum_mock.MockEthNetwork).AllNodes = n.ethNodes
+		n.ethNodes[i].Network.(*ethereummock.MockEthNetwork).AllNodes = n.ethNodes
 		p2pLayers[i].Nodes = obscuroNodes
 	}
 

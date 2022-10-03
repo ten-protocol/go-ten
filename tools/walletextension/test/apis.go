@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,8 +22,6 @@ import (
 const (
 	l2ChainIDHex         = "0x309"
 	enclavePrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
-	filter               = "Filter"
-	filterKeyTopics      = "Topics"
 )
 
 // DummyAPI provides dummies for the RPC operations defined in the `eth_` namespace. For each sensitive RPC
@@ -98,19 +98,18 @@ func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.Encry
 }
 
 func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
-	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
+	encodedParams, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
 	// We set the topic from the filter as a topic in the response logs, so that we can check in the tests that we are
 	// a) decrypting the params correctly, and b) returning the logs with the correct contents via the wallet extension.
-	var paramsMap []map[string]interface{}
-	err = json.Unmarshal(params, &paramsMap)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal params from JSON")
+	var params common.LogSubscription
+	if err = rlp.DecodeBytes(encodedParams, &params); err != nil {
+		return nil, fmt.Errorf("could not decocde log subscription request from RLP. Cause: %w", err)
 	}
-	paramsTopic := paramsMap[0][filter].(map[string]interface{})[filterKeyTopics].([]interface{})[0].([]interface{})[0].(string)
+	paramsTopic := params.Filter.Topics[0][0]
 
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
@@ -129,7 +128,7 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 	// We emit a log every hundred milliseconds.
 	go func() {
 		for {
-			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{gethcommon.HexToHash(paramsTopic)}}})
+			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{paramsTopic}}})
 			if err != nil {
 				panic("could not marshal log to JSON")
 			}

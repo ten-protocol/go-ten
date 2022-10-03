@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
@@ -44,25 +46,25 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
 // correctly. If there is an existing subscription with the given ID, it is overwritten.
 func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
-	jsonSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
+	encodedSubscription, err := s.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
 	if err != nil {
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
 	}
 
-	var subscriptions []common.LogSubscription
-	if err := json.Unmarshal(jsonSubscription, &subscriptions); err != nil {
-		return fmt.Errorf("could not unmarshal log subscription from JSON. Cause: %w", err)
+	var subscription common.LogSubscription
+	if err = rlp.DecodeBytes(encodedSubscription, &subscription); err != nil {
+		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
-
-	if len(subscriptions) != 1 {
-		return fmt.Errorf("expected a single log subscription, received %d", len(subscriptions))
-	}
-	subscription := subscriptions[0]
 
 	err = s.rpcEncryptionManager.AuthenticateSubscriptionRequest(subscription)
 	if err != nil {
 		return err
 	}
+
+	// For subscriptions, only the Topics and Addresses fields of the filter are applied.
+	subscription.Filter.BlockHash = nil
+	subscription.Filter.FromBlock = nil
+	subscription.Filter.ToBlock = nil
 
 	s.subscriptions[id] = &subscription
 	return nil
