@@ -61,6 +61,11 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		return err
 	}
 
+	// For subscriptions, only the Topics and Addresses fields of the filter are applied.
+	subscription.Filter.BlockHash = nil
+	subscription.Filter.FromBlock = nil
+	subscription.Filter.ToBlock = nil
+
 	s.subscriptions[id] = &subscription
 	return nil
 }
