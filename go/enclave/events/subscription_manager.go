@@ -3,8 +3,9 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 

@@ -5,8 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"reflect"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/log"

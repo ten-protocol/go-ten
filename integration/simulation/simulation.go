@@ -31,8 +31,7 @@ import (
 )
 
 const (
-	allocObsWallets  = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
-	maxSubscriptions = 2               // Limits the number of wallets we create subscriptions for, for performance reasons.
+	allocObsWallets = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 var initialBalance = common.ValueInWei(big.NewInt(5000))
