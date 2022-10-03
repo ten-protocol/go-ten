@@ -3,10 +3,11 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"sync"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 

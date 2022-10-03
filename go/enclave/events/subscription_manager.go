@@ -92,8 +92,8 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 }
 
 // FilteredSubscribedLogs filters out irrelevant logs and those that are not subscribed to, and organises them by their subscribing ID.
-func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
-	relevantLogs := map[gethrpc.ID][]*types.Log{}
+func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) common.LogsByID {
+	relevantLogs := common.LogsByID{}
 
 	// If there are no subscriptions, we do not need to do any processing.
 	if len(s.subscriptions) == 0 {
@@ -121,8 +121,8 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 }
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) EncryptLogs(logsBySubID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID]common.EncryptedLogs, error) {
-	result := map[gethrpc.ID]common.EncryptedLogs{}
+func (s *SubscriptionManager) EncryptLogs(logsBySubID common.LogsByID) (common.EncLogsByID, error) {
+	result := common.EncLogsByID{}
 	for subID, logs := range logsBySubID {
 		subscription, found := s.subscriptions[subID]
 		if !found {

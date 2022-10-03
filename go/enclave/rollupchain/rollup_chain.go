@@ -151,7 +151,7 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 //  STATE
 
 // Recursively calculates the state, logs and subscribed logs for the given block.
-func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log, map[gethrpc.ID][]*types.Log) {
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log, common.LogsByID) {
 	// This method is called recursively in case of Re-orgs. Stop when state was calculated already.
 	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
