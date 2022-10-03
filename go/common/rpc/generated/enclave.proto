@@ -261,7 +261,7 @@ message BlockSubmissionResponseMsg {
   ExtRollupMsg producedRollup = 4;
   bool ingestedNewRollup = 5;
   HeaderMsg rollupHead = 6;
-  map<string, bytes> subscribedLogs = 7;
+  bytes subscribedLogs = 7;
 }
 
 message ExtRollupMsg {
