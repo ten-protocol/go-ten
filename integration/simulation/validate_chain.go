@@ -400,27 +400,32 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 
 // Checks that the owner has only received relevant logs, and only from the HOC or POC contracts.
 func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
-	logsReceived := 0
+	var logsReceived []*types.Log
 
+out:
 	for {
 		select {
 		case idAndLog := <-channel:
-			logsReceived++
-
-			if !isRelevant(owner, *idAndLog.Log) {
-				t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
-			}
-
-			logAddrHex := idAndLog.Log.Address.Hex()
-			if logAddrHex != "0x"+bridge.HOCAddr {
-				t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
-			}
+			logsReceived = append(logsReceived, idAndLog.Log)
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
 		default:
-			return logsReceived
+			break out
 		}
 	}
+
+	for _, receivedLog := range logsReceived {
+		if !isRelevant(owner, *receivedLog) {
+			t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
+		}
+
+		logAddrHex := receivedLog.Address.Hex()
+		if logAddrHex != "0x"+bridge.HOCAddr {
+			t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
+		}
+	}
+
+	return len(logsReceived)
 }
 
 // Checks whether the log is relevant to the recipient (either a lifecycle event or a relevant user event).
