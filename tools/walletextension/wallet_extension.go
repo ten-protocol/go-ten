@@ -275,18 +275,10 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		}
 	} else {
 		respMap[common.JSONKeyResult] = rpcResp
-	}
 
-	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
-	// TODO fix this upstream on the decode
-	if result, found := respMap[common.JSONKeyResult]; found { //nolint
-		if resultMap, ok := result.(map[string]interface{}); ok {
-			if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
-				if val == "0x" {
-					respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
-				}
-			}
-		}
+		// TODO fix this upstream on the decode
+		// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
+		adjustStateRoot(rpcResp, respMap)
 	}
 
 	rpcRespToSend, err := json.Marshal(respMap)
@@ -300,6 +292,16 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	if err != nil {
 		userConn.HandleError(err.Error())
 		return
+	}
+}
+
+func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
+	if resultMap, ok := rpcResp.(map[string]interface{}); ok {
+		if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
+			if val == "0x" {
+				respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
+			}
+		}
 	}
 }
 
