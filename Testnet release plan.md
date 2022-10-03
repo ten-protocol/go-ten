@@ -41,6 +41,7 @@ Note that there is no protocol work listed here. These are the tasks that are or
 
 ## V5
 1. Optimise sharing of the secret
+   - create a mechanism based on incentives where anyone should be able to respond to a secret request , and be rewarded for that 
 2. Support a larger number of aggregators
    a) gossip
    b) dynamic discovery
@@ -49,6 +50,9 @@ Note that there is no protocol work listed here. These are the tasks that are or
    a) Malicious actors
 
 4. Design and implement new Wallet extension experience
+   - with our current approach of having a local encryption/decryption extension, we won't be able to support mobile wallets
+   - if we go with a javascript wrapper that developers have to implement, we won't be able to use MetaMask (anywhere)
+   - so an important outcome here is not necessarily that we 'design and implement mobile experience', but rather we revisit that whole piece around UX before going into production
 
 5. Optimise and implement the l1 interaction
     - how to ignore failed transactions
