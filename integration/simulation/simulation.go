@@ -120,14 +120,7 @@ func (s *Simulation) trackLogs() {
 		return
 	}
 
-	subscriptionsCreated := 0
 	for wallet, clients := range s.RPCHandles.AuthObsClients {
-		subscriptionsCreated++
-		// TODO - Consider enabling subscriptions for all wallets, following performance optimisations.
-		if subscriptionsCreated > maxSubscriptions {
-			break
-		}
-
 		s.LogChannels[wallet] = make(chan common.IDAndLog)
 
 		for _, client := range clients {
@@ -140,10 +133,6 @@ func (s *Simulation) trackLogs() {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
 			s.Subscriptions = append(s.Subscriptions, sub)
-
-			// We only subscribe on a single client for each wallet, to reduce the load on the simulation.
-			// TODO - Consider enabling subscriptions for all clients on each wallet, following performance optimisations.
-			break //nolint:staticcheck
 		}
 	}
 }
