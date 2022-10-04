@@ -345,9 +345,9 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 			continue
 		}
 
-		// We check that the logs are relevant to the sender.
+		// We check that the receipt's logs are relevant to the sender.
 		for _, retrievedLog := range receipt.Logs {
-			assertIsRelevant(t, sender.Hex(), *retrievedLog)
+			assertRelevantLogsOnly(t, sender.Hex(), *retrievedLog)
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
@@ -420,7 +420,7 @@ out:
 	}
 
 	for _, receivedLog := range logsReceived {
-		assertIsRelevant(t, owner, *receivedLog)
+		assertRelevantLogsOnly(t, owner, *receivedLog)
 		assertNoDupeLogs(t, logsReceived)
 
 		logAddrHex := receivedLog.Address.Hex()
@@ -433,7 +433,7 @@ out:
 }
 
 // Asserts that the log is relevant to the recipient (either a lifecycle event or a relevant user event).
-func assertIsRelevant(t *testing.T, owner string, receivedLog types.Log) {
+func assertRelevantLogsOnly(t *testing.T, owner string, receivedLog types.Log) {
 	// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can (potentially)
 	// be user addresses. We filter these out. In theory, we should also check whether the topics are contract
 	// addresses, but in practice no events of this type are sent in the simulations.
