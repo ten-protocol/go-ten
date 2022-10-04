@@ -380,8 +380,7 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 	}
 }
 
-// Terminates all subscriptions. Checks that we have received events, and that they are as expected (relevant to the
-// account that received them, and emitted by the HOC or POC ERC20 contracts.
+// Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
