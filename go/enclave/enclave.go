@@ -523,6 +523,7 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 	return e.rpcEncryptionManager.AddViewingKey(encryptedViewingKeyBytes, signature)
 }
 
+// storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
 func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 	common.LogWithID(e.nodeShortID, "Store attestation. Owner: %s", att.Owner)
 	// Store the attestation
@@ -610,11 +611,13 @@ func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
 	return nil
 }
 
+// processNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
 func (e *enclaveImpl) processNetworkSecretMsgs(block types.Block) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
 	for _, tx := range block.Transactions() {
 		t := e.mgmtContractLib.DecodeTx(tx)
 
+		// this transaction is for a node that has joined the network and needs to be sent the network secret
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
 			common.LogWithID(e.nodeShortID, "Process shared secret request. Block: %d. Tx: %d",
 				block.NumberU64(), common.ShortHash(tx.Hash()))
@@ -626,6 +629,7 @@ func (e *enclaveImpl) processNetworkSecretMsgs(block types.Block) []*common.Prod
 			responses = append(responses, resp)
 		}
 
+		// this transaction was created by the genesis node, we need to store their attested key to decrypt their rollup
 		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
 			// TODO - Ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
 			//  our node will never be able to speak to other nodes.
