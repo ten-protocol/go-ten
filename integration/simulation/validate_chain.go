@@ -56,7 +56,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
-	checkLogsReceived(t, s)
+	checkReceivedLogs(t, s)
 }
 
 // checkEthereumBlockchainValidity: sanity check of the state of all L1 nodes
@@ -382,7 +382,7 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 
 // Terminates all subscriptions. Checks that we have received events, and that they are as expected (relevant to the
 // account that received them, and emitted by the HOC or POC ERC20 contracts.
-func checkLogsReceived(t *testing.T, s *Simulation) {
+func checkReceivedLogs(t *testing.T, s *Simulation) {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
 		return
@@ -395,7 +395,7 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 	logsReceived := 0
 	for owner, channels := range s.LogChannels {
 		for _, channel := range channels {
-			logsReceived += checkReceivedLogs(t, owner, channel)
+			logsReceived += checkReceivedLogsClient(t, owner, channel)
 		}
 	}
 	if logsReceived < logsThreshold {
@@ -403,8 +403,8 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 	}
 }
 
-// Checks that the owner has only received relevant logs, with no duplicates, and only from the HOC contract.
-func checkReceivedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+// Checks that the client's subscription has only received relevant logs, with no duplicates, and only from the HOC contract.
+func checkReceivedLogsClient(t *testing.T, owner string, channel chan common.IDAndLog) int {
 	var logsReceived []*types.Log
 
 out:
