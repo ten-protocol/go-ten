@@ -36,14 +36,44 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (gene
 	}
 
 	return generated.BlockSubmissionResponseMsg{
-		BlockHeader:           ToBlockHeaderMsg(response.BlockHeader),
-		IngestedBlock:         response.IngestedBlock,
-		BlockNotIngestedCause: response.BlockNotIngestedCause,
-		ProducedRollup:        &producedRollupMsg,
-		IngestedNewRollup:     response.FoundNewHead,
-		RollupHead:            ToRollupHeaderMsg(response.RollupHead),
-		SubscribedLogs:        subscribedLogBytes,
+		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
+		IngestedBlock:           response.IngestedBlock,
+		BlockNotIngestedCause:   response.BlockNotIngestedCause,
+		ProducedRollup:          &producedRollupMsg,
+		IngestedNewRollup:       response.FoundNewHead,
+		RollupHead:              ToRollupHeaderMsg(response.RollupHead),
+		SubscribedLogs:          subscribedLogBytes,
+		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
+}
+
+func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.SecretResponseMsg {
+	respMsgs := make([]*generated.SecretResponseMsg, len(responses))
+
+	for i, resp := range responses {
+		msg := generated.SecretResponseMsg{
+			Secret:      resp.Secret,
+			RequesterID: resp.RequesterID.Bytes(),
+			HostAddress: resp.HostAddress,
+		}
+		respMsgs[i] = &msg
+	}
+
+	return respMsgs
+}
+
+func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common.ProducedSecretResponse {
+	respList := make([]*common.ProducedSecretResponse, len(secretResponses))
+
+	for i, msgResp := range secretResponses {
+		r := common.ProducedSecretResponse{
+			Secret:      msgResp.Secret,
+			RequesterID: gethcommon.BytesToAddress(msgResp.RequesterID),
+			HostAddress: msgResp.HostAddress,
+		}
+		respList[i] = &r
+	}
+	return respList
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (common.BlockSubmissionResponse, error) {
@@ -53,13 +83,14 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 	}
 
 	return common.BlockSubmissionResponse{
-		BlockHeader:           FromBlockHeaderMsg(msg.GetBlockHeader()),
-		IngestedBlock:         msg.IngestedBlock,
-		BlockNotIngestedCause: msg.BlockNotIngestedCause,
-		ProducedRollup:        FromExtRollupMsg(msg.ProducedRollup),
-		FoundNewHead:          msg.IngestedNewRollup,
-		RollupHead:            FromRollupHeaderMsg(msg.RollupHead),
-		SubscribedLogs:        subscribedLogs,
+		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
+		IngestedBlock:           msg.IngestedBlock,
+		BlockNotIngestedCause:   msg.BlockNotIngestedCause,
+		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
+		FoundNewHead:            msg.IngestedNewRollup,
+		RollupHead:              FromRollupHeaderMsg(msg.RollupHead),
+		SubscribedLogs:          subscribedLogs,
+		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 	}, nil
 }
 

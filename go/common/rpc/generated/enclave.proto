@@ -12,14 +12,8 @@ service EnclaveProto {
   // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
 
-  // StoreAttestation - saves the attestation data of a counterparty to verify signatures against it.
-  rpc StoreAttestation(StoreAttestationRequest) returns (StoreAttestationResponse) {}
-
   // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
   rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
-
-  // ShareSecret - return the shared secret encrypted with the key from the attestation
-  rpc ShareSecret(FetchSecretRequest) returns (ShareSecretResponse) {}
 
   // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
@@ -99,21 +93,6 @@ message AttestationResponse {
 message GenerateSecretRequest {}
 message GenerateSecretResponse {
   bytes encryptedSharedEnclaveSecret = 1;
-}
-
-message FetchSecretRequest {
-  AttestationReportMsg attestationReportMsg = 1;
-}
-message ShareSecretResponse {
-  bytes encryptedSharedEnclaveSecret = 1;
-  string error = 2;
-}
-
-message StoreAttestationRequest {
-  AttestationReportMsg attestationReportMsg = 1;
-}
-message StoreAttestationResponse {
-  string error = 1;
 }
 
 message InitEnclaveRequest {
@@ -261,7 +240,8 @@ message BlockSubmissionResponseMsg {
   ExtRollupMsg producedRollup = 4;
   bool ingestedNewRollup = 5;
   HeaderMsg rollupHead = 6;
-  bytes subscribedLogs = 7;
+  repeated SecretResponseMsg producedSecretResponses = 7;
+  bytes subscribedLogs = 8;
 }
 
 message ExtRollupMsg {
@@ -293,6 +273,12 @@ message HeaderMsg {
   bytes MixDigest = 20;
   uint64 BaseFee = 21;
   uint64 RollupNonce = 22;
+}
+
+message SecretResponseMsg {
+  bytes Secret = 1;
+  bytes RequesterID = 2;
+  string HostAddress = 3;
 }
 
 message WithdrawalMsg {

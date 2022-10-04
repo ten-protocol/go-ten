@@ -91,12 +91,6 @@ func (s *server) GenerateSecret(context.Context, *generated.GenerateSecretReques
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
-func (s *server) ShareSecret(_ context.Context, request *generated.FetchSecretRequest) (*generated.ShareSecretResponse, error) {
-	attestationReport := rpc.FromAttestationReportMsg(request.AttestationReportMsg)
-	secret, err := s.enclave.ShareSecret(attestationReport)
-	return &generated.ShareSecretResponse{EncryptedSharedEnclaveSecret: secret}, err
-}
-
 func (s *server) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
 	errStr := ""
 	if err := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); err != nil {
@@ -245,15 +239,6 @@ func (s *server) GetCode(_ context.Context, request *generated.GetCodeRequest) (
 		return nil, err
 	}
 	return &generated.GetCodeResponse{Code: code}, nil
-}
-
-func (s *server) StoreAttestation(_ context.Context, req *generated.StoreAttestationRequest) (*generated.StoreAttestationResponse, error) {
-	err := s.enclave.StoreAttestation(rpc.FromAttestationReportMsg(req.AttestationReportMsg))
-	resp := ""
-	if err != nil {
-		resp = err.Error()
-	}
-	return &generated.StoreAttestationResponse{Error: resp}, nil
 }
 
 func (s *server) Subscribe(_ context.Context, req *generated.SubscribeRequest) (*generated.SubscribeResponse, error) {

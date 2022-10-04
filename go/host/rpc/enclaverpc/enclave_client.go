@@ -113,22 +113,6 @@ func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	return response.EncryptedSharedEnclaveSecret, nil
 }
 
-func (c *Client) ShareSecret(report *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	attestationReportMsg := rpc.ToAttestationReportMsg(report)
-	request := generated.FetchSecretRequest{AttestationReportMsg: &attestationReportMsg}
-	response, err := c.protoClient.ShareSecret(timeoutCtx, &request)
-	if err != nil {
-		return nil, err
-	}
-	if response.GetError() != "" {
-		return nil, errors.New(response.GetError())
-	}
-	return response.EncryptedSharedEnclaveSecret, nil
-}
-
 func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
@@ -356,23 +340,6 @@ func (c *Client) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash
 		return nil, err
 	}
 	return resp.Code, nil
-}
-
-func (c *Client) StoreAttestation(report *common.AttestationReport) error {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	msg := rpc.ToAttestationReportMsg(report)
-	resp, err := c.protoClient.StoreAttestation(timeoutCtx, &generated.StoreAttestationRequest{
-		AttestationReportMsg: &msg,
-	})
-	if err != nil {
-		return err
-	}
-	if resp.Error != "" {
-		return fmt.Errorf(resp.Error)
-	}
-	return nil
 }
 
 func (c *Client) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {

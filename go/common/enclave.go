@@ -27,12 +27,6 @@ type Enclave interface {
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 	GenerateSecret() (EncryptedSharedEnclaveSecret, error)
 
-	// ShareSecret - verify the attestation and return the shared secret (encrypted with the key from the attestation)
-	ShareSecret(report *AttestationReport) (EncryptedSharedEnclaveSecret, error)
-
-	// StoreAttestation - store the public key against the counterparties
-	StoreAttestation(report *AttestationReport) error
-
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
@@ -122,5 +116,14 @@ type BlockSubmissionResponse struct {
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
 	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
 
+	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
+
 	SubscribedLogs EncLogsByRollupByID // The logs produced by the block and all its ancestors for each subscription ID.
+}
+
+// ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block
+type ProducedSecretResponse struct {
+	Secret      []byte
+	RequesterID gethcommon.Address
+	HostAddress string
 }

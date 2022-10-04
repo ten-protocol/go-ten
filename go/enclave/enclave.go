@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -250,6 +252,8 @@ func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (common.Bloc
 		}
 		e.mempool.RemoveMempoolTxs(hr, e.storage)
 	}
+
+	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	return bsr, nil
 }
@@ -496,7 +500,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 }
 
 // ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
-func (e *enclaveImpl) ShareSecret(att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
+func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
 	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
 	data, err := e.attestationProvider.VerifyReport(att)
 	if err != nil {
@@ -519,7 +523,8 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 	return e.rpcEncryptionManager.AddViewingKey(encryptedViewingKeyBytes, signature)
 }
 
-func (e *enclaveImpl) StoreAttestation(att *common.AttestationReport) error {
+// storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
+func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 	common.LogWithID(e.nodeShortID, "Store attestation. Owner: %s", att.Owner)
 	// Store the attestation
 	key, err := gethcrypto.DecompressPubkey(att.PubKey)
@@ -604,6 +609,67 @@ func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
 		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
 	}
 	return nil
+}
+
+// processNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
+func (e *enclaveImpl) processNetworkSecretMsgs(block types.Block) []*common.ProducedSecretResponse {
+	var responses []*common.ProducedSecretResponse
+	for _, tx := range block.Transactions() {
+		t := e.mgmtContractLib.DecodeTx(tx)
+
+		// this transaction is for a node that has joined the network and needs to be sent the network secret
+		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
+			common.LogWithID(e.nodeShortID, "Process shared secret request. Block: %d. Tx: %d",
+				block.NumberU64(), common.ShortHash(tx.Hash()))
+			resp, err := e.processSecretRequest(scrtReqTx)
+			if err != nil {
+				common.ErrorWithID(e.nodeShortID, "Failed to process shared secret request. Cause: %s", err)
+				continue
+			}
+			responses = append(responses, resp)
+		}
+
+		// this transaction was created by the genesis node, we need to store their attested key to decrypt their rollup
+		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
+			// TODO - Ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
+			//  our node will never be able to speak to other nodes.
+			// there must be a way to make sure that this transaction can only be sent once.
+			att, err := common.DecodeAttestation(initSecretTx.Attestation)
+			if err != nil {
+				common.ErrorWithID(e.nodeShortID, "Could not decode attestation report. Cause: %s", err)
+			}
+
+			err = e.storeAttestation(att)
+			if err != nil {
+				common.ErrorWithID(e.nodeShortID, "Could not store the attestation report. Cause: %s", err)
+			}
+		}
+	}
+	return responses
+}
+
+func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*common.ProducedSecretResponse, error) {
+	att, err := common.DecodeAttestation(req.Attestation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode attestation - %w", err)
+	}
+
+	secret, err := e.verifyAttestationAndEncryptSecret(att)
+	if err != nil {
+		return nil, fmt.Errorf("secret request failed, no response will be published - %w", err)
+	}
+
+	// Store the attested key only if the attestation process succeeded.
+	err = e.storeAttestation(att)
+	if err != nil {
+		return nil, fmt.Errorf("could not store attestation, no response will be published. Cause: %w", err)
+	}
+
+	return &common.ProducedSecretResponse{
+		Secret:      secret,
+		RequesterID: att.Owner,
+		HostAddress: att.HostAddress,
+	}, nil
 }
 
 // Todo - reinstate speculative execution after TN1

@@ -495,6 +495,13 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		return fmt.Errorf("did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
 	}
 
+	for _, secretResponse := range result.ProducedSecretResponses {
+		err := a.publishSharedSecretResponse(secretResponse)
+		if err != nil {
+			common.ErrorWithID(a.shortID, "failed to publish response to secret request - %s", err)
+		}
+	}
+
 	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
 	if result.ProducedRollup.Header == nil {
 		return nil
@@ -521,34 +528,11 @@ func (a *Node) processBlock(b *types.Block) {
 			continue
 		}
 
-		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			common.LogWithID(a.shortID, "Process shared secret request. Block: %d. Tx: %d", b.NumberU64(), common.ShortHash(tx.Hash()))
-			err := a.processSharedSecretRequest(scrtReqTx)
-			if err != nil {
-				common.ErrorWithID(a.shortID, "Failed to process shared secret request. Cause: %s", err)
-				continue
-			}
-		}
-
 		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			err := a.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
 				common.ErrorWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
 				continue
-			}
-		}
-
-		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
-			// TODO - Ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
-			//  our node will never be able to speak to other nodes.
-			// there must be a way to make sure that this transaction can only be sent once.
-			att, err := common.DecodeAttestation(initSecretTx.Attestation)
-			if err != nil {
-				common.ErrorWithID(a.shortID, "Could not decode attestation report. Cause: %s", err)
-			}
-			err = a.enclaveClient.StoreAttestation(att)
-			if err != nil {
-				common.ErrorWithID(a.shortID, "Could not store the attestation report. Cause: %s", err)
 			}
 		}
 	}
@@ -705,32 +689,7 @@ func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretTx) error {
-	att, err := common.DecodeAttestation(scrtReqTx.Attestation)
-	if err != nil {
-		common.LogWithID(a.shortID, "Failed to decode attestation. %s", err)
-		return nil
-	}
-
-	jsonAttestation, err := json.Marshal(att)
-	if err == nil {
-		common.LogWithID(a.shortID, "Received attestation request: %s", jsonAttestation)
-	} else {
-		common.LogWithID(a.shortID, "Received attestation request but it was unprintable.")
-	}
-
-	secret, err := a.enclaveClient.ShareSecret(att)
-	if err != nil {
-		common.LogWithID(a.shortID, "Secret request failed, no response will be published. %s", err)
-		return nil
-	}
-
-	// Store the attested key only if the attestation process succeeded.
-	err = a.enclaveClient.StoreAttestation(att)
-	if err != nil {
-		return fmt.Errorf("could not store attestation. Cause: %w", err)
-	}
-
+func (a *Node) publishSharedSecretResponse(scrtResponse *common.ProducedSecretResponse) error {
 	// todo: implement proper protocol so only one host responds to this secret requests initially
 	// 	for now we just have the genesis host respond until protocol implemented
 	if !a.config.IsGenesis {
@@ -738,14 +697,14 @@ func (a *Node) processSharedSecretRequest(scrtReqTx *ethadapter.L1RequestSecretT
 	}
 
 	l1tx := &ethadapter.L1RespondSecretTx{
-		Secret:      secret,
-		RequesterID: att.Owner,
+		Secret:      scrtResponse.Secret,
+		RequesterID: scrtResponse.RequesterID,
 		AttesterID:  a.config.ID,
-		HostAddress: att.HostAddress,
+		HostAddress: scrtResponse.HostAddress,
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 	respondSecretTx := a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false)
-	err = a.signAndBroadcastTx(respondSecretTx, l1TxTriesSecret)
+	err := a.signAndBroadcastTx(respondSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 	}
