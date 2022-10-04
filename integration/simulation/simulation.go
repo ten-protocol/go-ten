@@ -44,8 +44,8 @@ type Simulation struct {
 	SimulationTime   time.Duration
 	Stats            *stats.Stats
 	Params           *params.SimParams
-	LogChannels      map[string]chan common.IDAndLog // Maps an owner to the channel on which they receive logs for all their wallets.
-	Subscriptions    []ethereum.Subscription         // A slice of all created event subscriptions.
+	LogChannels      map[string][]chan common.IDAndLog // Maps an owner to the channels on which they receive logs for each client.
+	Subscriptions    []ethereum.Subscription           // A slice of all created event subscriptions.
 	ctx              context.Context
 }
 
@@ -112,26 +112,31 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 	}
 }
 
-// We subscribe to logs on an arbitrary authenticated client.
+// We subscribe to logs on every client for every wallet.
 func (s *Simulation) trackLogs() {
 	// In-memory clients cannot handle subscriptions for now.
 	if s.Params.IsInMem {
 		return
 	}
 
-	for wallet, clients := range s.RPCHandles.AuthObsClients {
-		s.LogChannels[wallet] = make(chan common.IDAndLog)
+	for owner, clients := range s.RPCHandles.AuthObsClients {
+		// There is a subscription, and corresponding log channel, per owner per client.
+		s.LogChannels[owner] = []chan common.IDAndLog{}
 
 		for _, client := range clients {
+			channel := make(chan common.IDAndLog)
+
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
 			hocFilter := filters.FilterCriteria{
 				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + bridge.HOCAddr)},
 			}
-			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, s.LogChannels[wallet])
+			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, channel)
 			if err != nil {
 				panic(fmt.Errorf("subscription failed. Cause: %w", err))
 			}
 			s.Subscriptions = append(s.Subscriptions, sub)
+
+			s.LogChannels[owner] = append(s.LogChannels[owner], channel)
 		}
 	}
 }

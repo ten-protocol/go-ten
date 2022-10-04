@@ -6,6 +6,9 @@ import (
 	"math/big"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
@@ -390,16 +393,18 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 	}
 
 	logsReceived := 0
-	for owner, channel := range s.LogChannels {
-		logsReceived += checkReceivedHOCAndPOCLogs(t, owner, channel)
+	for owner, channels := range s.LogChannels {
+		for _, channel := range channels {
+			logsReceived += checkReceivedLogs(t, owner, channel)
+		}
 	}
 	if logsReceived < logsThreshold {
 		t.Errorf("no logs received during simulation")
 	}
 }
 
-// Checks that the owner has only received relevant logs, and only from the HOC or POC contracts.
-func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+// Checks that the owner has only received relevant logs, with no duplicates, and only from the HOC contract.
+func checkReceivedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
 	var logsReceived []*types.Log
 
 out:
@@ -409,13 +414,15 @@ out:
 			logsReceived = append(logsReceived, idAndLog.Log)
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
-		default:
+		// However, if we use a `default` case, only the first one arrives. Some minimal wait is required.
+		case <-time.After(time.Millisecond):
 			break out
 		}
 	}
 
 	for _, receivedLog := range logsReceived {
 		assertIsRelevant(t, owner, *receivedLog)
+		assertNoDupeLogs(t, logsReceived)
 
 		logAddrHex := receivedLog.Address.Hex()
 		if logAddrHex != "0x"+bridge.HOCAddr {
@@ -454,4 +461,39 @@ func assertIsRelevant(t *testing.T, owner string, receivedLog types.Log) {
 
 	// If we've fallen through to here, it means the log was not relevant.
 	t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
+}
+
+// Asserts that there are no duplicate logs in the provided list.
+func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
+	logCount := make(map[string]int)
+
+	for _, item := range logs {
+		logBytes, err := rlp.EncodeToBytes(item)
+		if err != nil {
+			t.Errorf("could not encode log to RLP to check for duplicate logs")
+			continue
+		}
+		logBytesHex := gethcommon.Bytes2Hex(logBytes)
+
+		// check if the item/element exist in the duplicate_frequency map
+		_, exist := logCount[logBytesHex]
+		if exist {
+			logCount[logBytesHex]++ // increase counter by 1 if already in the map
+		} else {
+			logCount[logBytesHex] = 1 // else start counting from 1
+		}
+	}
+
+	for logBytesHex, count := range logCount {
+		if count > 1 {
+			var item *types.Log
+			logBytes := gethcommon.Hex2Bytes(logBytesHex)
+			err := rlp.DecodeBytes(logBytes, &item)
+			if err != nil {
+				t.Errorf("could not decode log from RLP to check for duplicate logs")
+				continue
+			}
+			t.Errorf("received duplicate log")
+		}
+	}
 }

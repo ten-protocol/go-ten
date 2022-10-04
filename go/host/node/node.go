@@ -67,15 +67,12 @@ type Node struct {
 	forkRPCCh    chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
 	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
-	logsChs      map[rpc.ID]chan []byte     // The channels that logs are sent to, one per subscription
 
 	nodeDB *db.DB // Stores the node's publicly-available data
 
-	// library to handle Management Contract lib operations
-	mgmtContractLib mgmtcontractlib.MgmtContractLib
-
-	// Wallet used to issue ethereum transactions
-	ethWallet wallet.Wallet
+	mgmtContractLib  mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
+	ethWallet        wallet.Wallet                   // Wallet used to issue ethereum transactions
+	logSubscriptions map[rpc.ID]logSubscription      // The channels that logs are sent to, one per subscription
 }
 
 func NewHost(
@@ -110,16 +107,14 @@ func NewHost(
 		forkRPCCh:    make(chan []common.EncodedBlock),
 		rollupsP2PCh: make(chan common.EncodedRollup),
 		txP2PCh:      make(chan common.EncryptedTx),
-		logsChs:      map[rpc.ID]chan []byte{},
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
 		nodeDB: db.NewInMemoryDB(),
 
-		// library that provides a handler for Management Contract
-		mgmtContractLib: mgmtContractLib,
-		// the nodes ethereum wallet
-		ethWallet: ethWallet,
+		mgmtContractLib:  mgmtContractLib, // library that provides a handler for Management Contract
+		ethWallet:        ethWallet,       // the node's ethereum wallet
+		logSubscriptions: map[rpc.ID]logSubscription{},
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
@@ -325,12 +320,12 @@ func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	a.txP2PCh <- tx
 }
 
-func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error {
+func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	err := a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
 	}
-	a.logsChs[id] = matchedLogs
+	a.logSubscriptions[id] = logSubscription{ch: matchedLogsCh}
 	return nil
 }
 
@@ -339,7 +334,11 @@ func (a *Node) Unsubscribe(id rpc.ID) {
 	if err != nil {
 		log.Error("could not terminate subscription %s with enclave. Cause: %s", id, err)
 	}
-	delete(a.logsChs, id)
+	logSubscription, found := a.logSubscriptions[id]
+	if found {
+		close(logSubscription.ch)
+		delete(a.logSubscriptions, id)
+	}
 }
 
 func (a *Node) Stop() {
@@ -591,11 +590,37 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	}
 }
 
-// Distributes logs to subscribed clients.
+// Distributes logs to subscribed clients. We only send logs for rollups the subscription hasn't seen before.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
+	latestSeenRollupByID := map[rpc.ID]uint64{}
+
 	for subscriptionID, encLogsByRollup := range result.SubscribedLogs {
-		for _, encryptedLogs := range encLogsByRollup {
-			a.logsChs[subscriptionID] <- encryptedLogs
+		logSub, found := a.logSubscriptions[subscriptionID]
+		if !found {
+			log.Error("received a log for subscription with ID %s, but no such subscription exists", subscriptionID)
+			continue
+		}
+
+		for rollupNumber, encryptedLogs := range encLogsByRollup {
+			// We have received a log from a rollup this subscription hasn't seen before.
+			if rollupNumber > logSub.latestSeenRollup {
+				a.logSubscriptions[subscriptionID].ch <- encryptedLogs
+			}
+
+			// We update the latest rollup number if this is the highest one we've seen so far.
+			currentLatestSeenRollup, exists := latestSeenRollupByID[subscriptionID]
+			if !exists || rollupNumber > currentLatestSeenRollup {
+				latestSeenRollupByID[subscriptionID] = rollupNumber
+			}
+		}
+	}
+
+	// We update the latest seen rollup for each subscription. We must do this in a separate loop, as if we update it
+	// as we go, we may miss a set of logs if we process the logs for rollup N before we process those for rollup N-1.
+	for subscriptionID, logSub := range a.logSubscriptions {
+		newLatestSeenRollup, exists := latestSeenRollupByID[subscriptionID]
+		if exists && newLatestSeenRollup > logSub.latestSeenRollup {
+			logSub.latestSeenRollup = newLatestSeenRollup
 		}
 	}
 }
@@ -1021,4 +1046,10 @@ func retryWithBackoff(tries int, funcToRetry func() error) error {
 		time.Sleep(pause)
 		pause = pause * 2
 	}
+}
+
+// Pairs the latest seen rollup for a log subscription with the channel on which new logs should be sent.
+type logSubscription struct {
+	latestSeenRollup uint64      // The latest rollup for which logs have been distributed to this subscription.
+	ch               chan []byte // The channel that logs for this subscription are sent to.
 }
