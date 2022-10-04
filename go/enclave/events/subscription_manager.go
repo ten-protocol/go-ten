@@ -63,8 +63,9 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 
 	// For subscriptions, only the Topics and Addresses fields of the filter are applied.
 	subscription.Filter.BlockHash = nil
-	subscription.Filter.FromBlock = nil
 	subscription.Filter.ToBlock = nil
+	// We set this to the current rollup height, so that historical logs aren't returned.
+	subscription.Filter.FromBlock = s.storage.FetchHeadBlock().Number()
 
 	s.subscriptions[id] = &subscription
 	return nil
