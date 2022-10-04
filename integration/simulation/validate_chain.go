@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -392,16 +393,18 @@ func checkLogsReceived(t *testing.T, s *Simulation) {
 	}
 
 	logsReceived := 0
-	for owner, channel := range s.LogChannels {
-		logsReceived += checkReceivedHOCAndPOCLogs(t, owner, channel)
+	for owner, channels := range s.LogChannels {
+		for _, channel := range channels {
+			logsReceived += checkReceivedLogs(t, owner, channel)
+		}
 	}
 	if logsReceived < logsThreshold {
 		t.Errorf("no logs received during simulation")
 	}
 }
 
-// Checks that the owner has only received relevant logs, and only from the HOC or POC contracts.
-func checkReceivedHOCAndPOCLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+// Checks that the owner has only received relevant logs, with no duplicates, and only from the HOC contract.
+func checkReceivedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
 	var logsReceived []*types.Log
 
 out:
@@ -411,7 +414,8 @@ out:
 			logsReceived = append(logsReceived, idAndLog.Log)
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
-		default:
+		// However, if we use a `default` case, only the first one arrives. Some minimal wait is required.
+		case <-time.After(time.Millisecond):
 			break out
 		}
 	}

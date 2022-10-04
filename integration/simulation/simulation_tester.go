@@ -60,7 +60,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		SimulationTime:   params.SimulationTime,
 		Stats:            stats,
 		Params:           params,
-		LogChannels:      make(map[string]chan common.IDAndLog),
+		LogChannels:      make(map[string][]chan common.IDAndLog),
 		Subscriptions:    []ethereum.Subscription{},
 	}
 

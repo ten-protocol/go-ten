@@ -606,11 +606,37 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	}
 }
 
-// Distributes logs to subscribed clients.
+// Distributes logs to subscribed clients. We only send logs for rollups the subscription hasn't seen before.
 func (a *Node) sendLogsToSubscribers(result common.BlockSubmissionResponse) {
+	latestSeenRollupByID := map[rpc.ID]uint64{}
+
 	for subscriptionID, encLogsByRollup := range result.SubscribedLogs {
-		for _, encryptedLogs := range encLogsByRollup {
-			a.logSubscriptions[subscriptionID].ch <- encryptedLogs
+		logSub, found := a.logSubscriptions[subscriptionID]
+		if !found {
+			log.Error("received a log for subscription with ID %s, but no such subscription exists", subscriptionID)
+			continue
+		}
+
+		for rollupNumber, encryptedLogs := range encLogsByRollup {
+			// We have received a log from a rollup this subscription hasn't seen before.
+			if rollupNumber > logSub.latestSeenRollup {
+				a.logSubscriptions[subscriptionID].ch <- encryptedLogs
+			}
+
+			// We update the latest rollup number if this is the highest one we've seen so far.
+			currentLatestSeenRollup, exists := latestSeenRollupByID[subscriptionID]
+			if !exists || rollupNumber > currentLatestSeenRollup {
+				latestSeenRollupByID[subscriptionID] = rollupNumber
+			}
+		}
+	}
+
+	// We update the latest seen rollup for each subscription. We must do this in a separate loop, as if we update it
+	// as we go, we may miss a set of logs if we process the logs for rollup N before we process those for rollup N-1.
+	for subscriptionID, logSub := range a.logSubscriptions {
+		newLatestSeenRollup, exists := latestSeenRollupByID[subscriptionID]
+		if exists && newLatestSeenRollup > logSub.latestSeenRollup {
+			logSub.latestSeenRollup = newLatestSeenRollup
 		}
 	}
 }
