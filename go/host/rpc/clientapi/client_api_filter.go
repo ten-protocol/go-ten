@@ -3,6 +3,7 @@ package clientapi
 import (
 	"context"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -71,7 +72,14 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 }
 
 // GetLogs returns the logs matching the filter.
-// TODO - #1016 - Implement this method.
-func (api *FilterAPI) GetLogs(ctx context.Context, encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
-	return api.host.EnclaveClient().GetLogs(encryptedParams)
+func (api *FilterAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (*string, error) {
+	encryptedResponse, err := api.host.EnclaveClient().GetLogs(encryptedParams)
+	if err != nil {
+		return nil, err
+	}
+	if encryptedResponse == nil {
+		return nil, err
+	}
+	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
+	return &encryptedResponseHex, nil
 }

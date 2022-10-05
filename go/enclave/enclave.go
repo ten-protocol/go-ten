@@ -600,7 +600,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
-	return nil, fmt.Errorf("implement this")
+	return nil, fmt.Errorf("eth_getLogs is not implemented")
 }
 
 func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
