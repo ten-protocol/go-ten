@@ -591,7 +591,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// encrypt the gas cost with the callMsg.From viewing key
-	// TODO hook the evm gas estimation
+	// TODO hook up the evm gas estimation
 	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From, []byte(hexutil.EncodeUint64(5_000_000_000)))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
@@ -600,7 +600,40 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
-	return nil, fmt.Errorf("eth_getLogs is not implemented")
+	// We decrypt the params.
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decrypt params in GetLogs request. Cause: %w", err)
+	}
+
+	// We extract the two params - the address the logs are for, and the filter criteria.
+	var paramsList []interface{}
+	err = json.Unmarshal(paramBytes, &paramsList)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode GetLogs params - %w", err)
+	}
+	if len(paramsList) < 2 {
+		return nil, fmt.Errorf("expected exactly 2 params in GetLogs request, but received %d", len(paramsList))
+	}
+	forAddressHex, ok := paramsList[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("expected first argument in GetLogs request to be of type string, but got %T", paramsList[0])
+	}
+	forAddress := gethcommon.HexToAddress(forAddressHex)
+
+	// TODO - #1016 - Return the actual logs, rather than an empty list.
+	logs := []*types.Log{}
+
+	// We encode and encrypt the logs with the viewing key for the requester's address.
+	logBytes, err := json.Marshal(logs)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
+	}
+	encryptedLogs, err := e.rpcEncryptionManager.EncryptWithViewingKey(forAddress, logBytes)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to GetLogs request. Cause: %w", err)
+	}
+	return encryptedLogs, nil
 }
 
 func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
