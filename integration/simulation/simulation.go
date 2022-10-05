@@ -59,7 +59,7 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	time.Sleep(1 * time.Second)
 
-	s.trackLogs()              // Capture emitted logs, to validate later
+	s.trackLogs()              // Create log subscriptions, to validate that they're working correctly later.
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
 	s.deployObscuroERC20s()    // Deploy the Obscuro HOC and POC ERC20 contracts
 	s.prefundL1Accounts()      // Prefund every L1 wallet

@@ -3,6 +3,8 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"sync"
 	"testing"
@@ -382,35 +384,43 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
-	// In-memory clients cannot handle subscriptions for now.
-	if s.Params.IsInMem {
-		return
-	}
-
-	for _, sub := range s.Subscriptions {
-		sub.Unsubscribe()
-	}
-
-	logsReceived := 0
-	for owner, channels := range s.LogChannels {
-		for _, channel := range channels {
-			logsReceived += checkReceivedLogsClient(t, owner, channel)
+	logsFromSnapshots := 0
+	for _, clients := range s.RPCHandles.AuthObsClients {
+		for _, client := range clients {
+			logsFromSnapshots += checkSnapshotLogs(t, client.Address(), client)
 		}
 	}
-	if logsReceived < logsThreshold {
-		t.Errorf("no logs received during simulation")
+	if logsFromSnapshots < logsThreshold {
+		t.Errorf("only received %d logs from snapshots, expected at least %d", logsFromSnapshots, logsThreshold)
+	}
+
+	// In-memory clients cannot handle subscriptions for now.
+	if !s.Params.IsInMem {
+		for _, sub := range s.Subscriptions {
+			sub.Unsubscribe()
+		}
+
+		logsFromSubscriptions := 0
+		for owner, channels := range s.LogChannels {
+			for _, channel := range channels {
+				logsFromSubscriptions += checkSubscribedLogs(t, owner, channel)
+			}
+		}
+		if logsFromSubscriptions < logsThreshold {
+			t.Errorf("only received %d logs from subscriptions, expected at least %d", logsFromSubscriptions, logsThreshold)
+		}
 	}
 }
 
-// Checks that the client's subscription has only received relevant logs, with no duplicates, and only from the HOC contract.
-func checkReceivedLogsClient(t *testing.T, owner string, channel chan common.IDAndLog) int {
-	var logsReceived []*types.Log
+// Checks that a subscription has received the expected logs.
+func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+	var logs []*types.Log
 
 out:
 	for {
 		select {
 		case idAndLog := <-channel:
-			logsReceived = append(logsReceived, idAndLog.Log)
+			logs = append(logs, idAndLog.Log)
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
 		// However, if we use a `default` case, only the first one arrives. Some minimal wait is required.
@@ -419,17 +429,33 @@ out:
 		}
 	}
 
-	for _, receivedLog := range logsReceived {
-		assertRelevantLogsOnly(t, owner, *receivedLog)
-		assertNoDupeLogs(t, logsReceived)
-
-		logAddrHex := receivedLog.Address.Hex()
-		if logAddrHex != "0x"+bridge.HOCAddr {
-			t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
-		}
+	for _, receivedLog := range logs {
+		assertLogsValid(t, owner, receivedLog, logs)
 	}
 
-	return len(logsReceived)
+	return len(logs)
+}
+
+func checkSnapshotLogs(t *testing.T, owner gethcommon.Address, client *obsclient.AuthObsClient) int {
+	// todo - joel - add more complex filter criteria
+	logs, err := client.GetLogs(context.Background(), owner, filters.FilterCriteria{})
+	if err != nil {
+		t.Errorf("could not retrieve logs for client")
+	}
+
+	println(logs)
+	return 0
+}
+
+// Asserts that the logs meet various criteria.
+func assertLogsValid(t *testing.T, owner string, receivedLog *types.Log, logsReceived []*types.Log) {
+	assertRelevantLogsOnly(t, owner, *receivedLog)
+	assertNoDupeLogs(t, logsReceived)
+
+	logAddrHex := receivedLog.Address.Hex()
+	if logAddrHex != "0x"+bridge.HOCAddr {
+		t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
+	}
 }
 
 // Asserts that the log is relevant to the recipient (either a lifecycle event or a relevant user event).
