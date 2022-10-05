@@ -3,12 +3,13 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"math/big"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
