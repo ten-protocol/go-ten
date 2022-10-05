@@ -259,6 +259,14 @@ func (s *server) EstimateGas(_ context.Context, req *generated.EstimateGasReques
 	return &generated.EstimateGasResponse{EncryptedResponse: encryptedBalance}, nil
 }
 
+func (s *server) GetLogs(_ context.Context, req *generated.GetLogsRequest) (*generated.GetLogsResponse, error) {
+	encryptedLogs, err := s.enclave.GetLogs(req.EncryptedParams)
+	if err != nil {
+		return nil, err
+	}
+	return &generated.GetLogsResponse{EncryptedResponse: encryptedLogs}, nil
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

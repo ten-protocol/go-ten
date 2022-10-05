@@ -39,6 +39,7 @@ var SensitiveMethods = []string{
 	RPCSendRawTransaction,
 	RPCSubscribe,
 	RPCEstimateGas,
+	RPCGetLogs,
 }
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption

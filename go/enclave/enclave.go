@@ -599,6 +599,10 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	return encryptedGasCost, nil
 }
 
+func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
+	return nil, fmt.Errorf("eth_getLogs is not implemented")
+}
+
 func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
 	txGasPrice := tx.GasPrice()
 	if txGasPrice == nil {

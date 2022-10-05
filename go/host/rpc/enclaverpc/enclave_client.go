@@ -375,3 +375,16 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 	}
 	return resp.EncryptedResponse, nil
 }
+
+func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.GetLogs(timeoutCtx, &generated.GetLogsRequest{
+		EncryptedParams: encryptedParams,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.EncryptedResponse, nil
+}

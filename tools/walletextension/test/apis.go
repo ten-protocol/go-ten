@@ -150,6 +150,11 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 	return subscription, nil
 }
 
+func (api *DummyAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (*string, error) {
+	reEncryptParams, err := api.reEncryptParams(encryptedParams)
+	return &reEncryptParams, err
+}
+
 // Decrypts the params with the enclave key, and returns them encrypted with the viewing key set via `setViewingKey`.
 func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (string, error) {
 	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)

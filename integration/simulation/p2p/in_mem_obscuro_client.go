@@ -32,6 +32,7 @@ const (
 type inMemObscuroClient struct {
 	obscuroAPI       *clientapi.ObscuroAPI
 	ethAPI           *clientapi.EthereumAPI
+	filterAPI        *clientapi.FilterAPI
 	obscuroScanAPI   *clientapi.ObscuroScanAPI
 	testAPI          *clientapi.TestAPI
 	enclavePublicKey *ecies.PublicKey
@@ -109,6 +110,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.RPCGetBalance:
 		return c.getBalance(result, args)
 
+	case rpc.RPCGetLogs:
+		return c.getLogs(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -140,7 +144,7 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	}
 	encryptedResponse, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`eth_getTransactionByHash` call failed. Cause: %w", err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetTransactionByHash, err)
 	}
 
 	// GetTransactionByHash returns string pointer, we want string
@@ -157,7 +161,7 @@ func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) err
 	}
 	encryptedResponse, err := c.ethAPI.Call(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`eth_call` call failed. Cause: %w", err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCCall, err)
 	}
 	*result.(*interface{}) = encryptedResponse
 	return nil
@@ -170,7 +174,7 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 	}
 	encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`obscuro_getTransactionReceipt` call failed. Cause: %w", err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetTxReceipt, err)
 	}
 
 	// GetTransactionReceipt returns string pointer, we want string
@@ -206,7 +210,7 @@ func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) e
 
 	extRollup, err := c.obscuroScanAPI.GetRollup(hash)
 	if err != nil {
-		return fmt.Errorf("`obscuro_getRollup` call failed. Cause: %w", err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetRollup, err)
 	}
 	*result.(**common.ExtRollup) = extRollup
 	return nil
@@ -219,7 +223,7 @@ func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []inte
 	}
 	encryptedResponse, err := c.ethAPI.GetTransactionCount(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("GetTransactionCount call failed. Cause: %w", err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetTransactionCount, err)
 	}
 
 	*result.(*interface{}) = encryptedResponse
@@ -233,7 +237,20 @@ func (c *inMemObscuroClient) getBalance(result interface{}, args []interface{}) 
 	}
 	encryptedResponse, err := c.ethAPI.GetBalance(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`eth_getBalance` call failed. Cause: %w", err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetBalance, err)
+	}
+	*result.(*interface{}) = encryptedResponse
+	return nil
+}
+
+func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) error {
+	enc, err := getEncryptedBytes(args, rpc.RPCGetLogs)
+	if err != nil {
+		return err
+	}
+	encryptedResponse, err := c.filterAPI.GetLogs(context.Background(), enc)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetLogs, err)
 	}
 	*result.(*interface{}) = encryptedResponse
 	return nil
