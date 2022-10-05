@@ -65,7 +65,7 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.Filter.BlockHash = nil
 	subscription.Filter.ToBlock = nil
 	// We set this to the current rollup height, so that historical logs aren't returned.
-	subscription.Filter.FromBlock = s.storage.FetchHeadBlock().Number()
+	subscription.Filter.FromBlock = s.storage.FetchHeadRollup().Number()
 
 	s.subscriptions[id] = &subscription
 	return nil

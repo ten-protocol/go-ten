@@ -345,7 +345,7 @@ func NextNonce(ctx context.Context, clients *network.RPCHandles, w wallet.Wallet
 
 		counter++
 		if counter > nonceTimeoutMillis {
-			panic(fmt.Sprintf("transaction injector failed to retrieve nonce after thirty seconds for address %s. "+
+			panic(fmt.Sprintf("transaction injector could not retrieve nonce after thirty seconds for address %s. "+
 				"Local nonce was %d, remote nonce was %d", w.Address().Hex(), localNonce, remoteNonce))
 		}
 		time.Sleep(time.Millisecond)
