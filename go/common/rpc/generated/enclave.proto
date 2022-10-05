@@ -77,6 +77,8 @@ service EnclaveProto {
 
   // EstimateGas returns the estimation of gas used for the given transactions
   rpc EstimateGas(EstimateGasRequest) returns (EstimateGasResponse) {}
+
+  rpc GetLogs(GetLogsRequest) returns (GetLogsResponse) {}
 }
 
 message StatusRequest {}
@@ -220,6 +222,14 @@ message EstimateGasRequest {
 }
 
 message EstimateGasResponse {
+  bytes encryptedResponse = 1;
+}
+
+message GetLogsRequest {
+  bytes encryptedParams = 1;
+}
+
+message GetLogsResponse {
   bytes encryptedResponse = 1;
 }
 

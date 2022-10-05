@@ -73,5 +73,5 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 // GetLogs returns the logs matching the filter.
 // TODO - #1016 - Implement this method.
 func (api *FilterAPI) GetLogs(ctx context.Context, encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
-	return nil, fmt.Errorf("eth_getLogs is not implemented")
+	return api.host.EnclaveClient().GetLogs(encryptedParams)
 }
