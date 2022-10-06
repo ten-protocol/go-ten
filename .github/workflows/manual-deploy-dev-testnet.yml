@@ -1,9 +1,10 @@
 # Deploys an Obscuro network on Azure for DEV Testnet
 #
-# The Obscuro network is composed of 3 obscuro nodes running on individual vms
-# It exposes the following ports:
-# HTTP:       8025, 8026, 8027
-# WebSocket:  9000, 9001, 9002
+# The Obscuro network is composed of 2 obscuro nodes running on individual vms.
+#
+# The L1 network consists of 2 geth nodes running on a docker container and exposes the following ports:
+# HTTP:       8025, 8026
+# WebSocket:  9000, 9001
 #
 
 name: '[M] Deploy Dev-Testnet'
@@ -52,10 +53,10 @@ jobs:
           name: dev-testnet-gethnetwork
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs 15 --numNodes=3 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_2 }}
-          # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
+          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs 15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_2 }}
+          # Ports start at 9000 for Websockets and 8000 for Start port and 8025 for Http Port
           # Each node has Port + id
-          ports: '8025 8026 8027 9000 9001 9002'
+          ports: '8025 8026 9000 9001'
           cpu: 2
           memory: 4
 
@@ -124,35 +125,27 @@ jobs:
 
     strategy:
       matrix:
-        host_id: [ 0,1,2 ]
+        host_id: [ 0,1 ]
         include:
           # Hardcoded host addresses
           - host_addr: 0x0000000000000000000000000000000000000000
             host_id: 0
           - host_addr: 0x0000000000000000000000000000000000000001
             host_id: 1
-          - host_addr: 0x0000000000000000000000000000000000000002
-            host_id: 2
           # Hardcoded host prefunded keys
           - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
             host_id: 0
           - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
             host_id: 1
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_2
-            host_id: 2
           - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
             host_id: 0
           - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
             host_id: 1
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_2
-            host_id: 2
           # Ensure there is a genesis node
           - is_genesis: true
             host_id: 0
           - is_genesis: false
             host_id: 1
-          - is_genesis: false
-            host_id: 2
 
     steps:
       - name: 'Extract branch name'
