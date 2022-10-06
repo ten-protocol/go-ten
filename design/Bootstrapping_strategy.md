@@ -19,7 +19,7 @@ We propose that Obscuro starts out similarly to the L2s. Centralised block produ
 
 This is in essence a very simplified "POBI" with a a single aggregator (SA).
 
-The SA is operated by the Obscuro Foundation (or delegated to Obscuro Labs), and is configured as a variable in the Obscuro Management Contract (MC) on Ethereum. 
+The SA is operated by the Obscuro Foundation, and is configured as a variable in the Obscuro Management Contract (MC) on Ethereum. 
 Only the foundation has the power to set the designated SA.
 
 Note that this means that the "Consensus problem" becomes relatively simple in this first stage. 
