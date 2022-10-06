@@ -114,6 +114,9 @@ func suggestAccountClient(req *RPCRequest, accClients map[gethcommon.Address]*rp
 		}
 	}
 
+	// TODO - #1016 - Use the first topic to determine which account to make a log subscription or get logs request from.
+	//  Currently, the request is attempted on all clients.
+
 	// todo: add other mechanisms for determining the correct account to use. E.g. we may want to start caching and
 	// 	 	recent transaction hashes for accounts so that receipt lookups know which acc to use
 
@@ -275,10 +278,19 @@ func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) e
 		// and is often not included from metamask etc. So we ensure it is populated here.
 		account := client.Account()
 		var err error
-		req.Params, err = setCallFromFieldIfMissing(req.Params, *account)
+		req.Params, err = setFromFieldIfMissing(req.Params, *account)
 		if err != nil {
 			return err
 		}
+	}
+
+	if req.Method == rpc.RPCGetLogs {
+		// Never modify the original request, as it might be reused.
+		req = req.Clone()
+
+		// We add the account to the list of arguments, so we know which account to use to filter the logs and encrypt
+		// the result.
+		req.Params = append(req.Params, client.Account().Hex())
 	}
 
 	return client.Call(resp, req.Method, req.Params...)
@@ -287,7 +299,7 @@ func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) e
 // The enclave requires the `from` field to be set so that it can encrypt the response, but sources like MetaMask often
 // don't set it. So we check whether it's present; if absent, we walk through the arguments in the request's `data`
 // field, and if any of the arguments match our viewing key address, we set the `from` field to that address.
-func setCallFromFieldIfMissing(args []interface{}, account gethcommon.Address) ([]interface{}, error) {
+func setFromFieldIfMissing(args []interface{}, account gethcommon.Address) ([]interface{}, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("no params found to unmarshal")
 	}

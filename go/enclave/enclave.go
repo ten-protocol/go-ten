@@ -607,25 +607,21 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		return nil, fmt.Errorf("unable to decrypt params in GetLogs request. Cause: %w", err)
 	}
 
-	// We extract the two params - the address the logs are for, and the filter criteria.
+	// We verify the params.
 	var paramsList []interface{}
 	err = json.Unmarshal(paramBytes, &paramsList)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode GetLogs params - %w", err)
 	}
-	if len(paramsList) < 2 {
-		return nil, fmt.Errorf("expected exactly 2 params in GetLogs request, but received %d", len(paramsList))
+	if len(paramsList) != 2 {
+		return nil, fmt.Errorf("expected 2 params in GetLogs request, but received %d", len(paramsList))
 	}
-	forAddressHex, ok := paramsList[0].(string)
-	if !ok {
-		return nil, fmt.Errorf("expected first argument in GetLogs request to be of type string, but got %T", paramsList[0])
-	}
-	forAddress := gethcommon.HexToAddress(forAddressHex)
 
+	// We extract the first param, the filter for the logs.
 	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
 	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
 	// FilterCriteria.
-	filterJSON, err := json.Marshal(paramsList[1])
+	filterJSON, err := json.Marshal(paramsList[0])
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
 	}
@@ -634,6 +630,13 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
 	}
+
+	// We extract the second param, the address the logs are for.
+	forAddressHex, ok := paramsList[1].(string)
+	if !ok {
+		return nil, fmt.Errorf("expected second argument in GetLogs request to be of type string, but got %T", paramsList[0])
+	}
+	forAddress := gethcommon.HexToAddress(forAddressHex)
 
 	// We retrieve the relevant logs that match the filter.
 	headBlockHash := e.storage.FetchHeadBlock().Hash()
