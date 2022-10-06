@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
@@ -437,7 +438,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs = e.subscriptionManager.FilteredLogs(txReceipt.Logs, txRollupHash, &sender)
+	txReceipt.Logs = e.subscriptionManager.FilteredLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
 
 	// We marshal the receipt to JSON.
 	txReceiptBytes, err := txReceipt.MarshalJSON()
@@ -621,11 +622,48 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 
-	// TODO - #1016 - Return the actual logs, rather than an empty list.
-	logs := []*types.Log{}
+	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
+	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
+	// FilterCriteria.
+	filterCriteriaJSON, err := json.Marshal(paramsList[1])
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+	}
+
+	filterCriteria := filters.FilterCriteria{}
+	err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
+	}
+
+	//blockHashString, ok := filterCriteriaMap["BlockHash"].(string),
+	//blockHash := gethcommon.BytesToHash(blockHashString)
+	//fromHash, ok := filterCriteriaMap["FromBlock"].(float64),
+	//toBlock, ok  :=   filterCriteriaMap["ToBlock"].(float64),
+	//addresses, ok := filterCriteriaMap["Addresses"].([]string),
+	//topics, ok := filterCriteriaMap["Topics"].[string],
+
+	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
+	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
+	// FilterCriteria.
+	filter := filters.FilterCriteria{
+		//BlockHash: filterCriteriaMap["BlockHash"],
+		//FromBlock: filterCriteriaMap["FromBlock"],
+		//ToBlock:   filterCriteriaMap["ToBlock"],
+		//Addresses: filterCriteriaMap["Addresses"],
+		//Topics:    filterCriteriaMap["Topics"],
+	}
+
+	headBlockHash := e.storage.FetchHeadBlock().Hash()
+	_, logs, found := e.storage.FetchBlockState(headBlockHash)
+	if !found {
+		log.Error("could not retrieve logs for head state. Something is wrong")
+		return nil, fmt.Errorf("could not retrieve logs for head state. Something is wrong")
+	}
+	filteredLogs := e.subscriptionManager.FilteredLogs(logs, e.storage.FetchHeadRollup().Hash(), &forAddress, &filter)
 
 	// We encode and encrypt the logs with the viewing key for the requester's address.
-	logBytes, err := json.Marshal(logs)
+	logBytes, err := json.Marshal(filteredLogs)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 	}
