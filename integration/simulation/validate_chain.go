@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
@@ -435,14 +434,8 @@ out:
 
 func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
-	// todo - joel - revert this crazy filter
-	//blockHash := gethcommon.HexToAddress("0x" + bridge.HOCAddr).Hash()
-	hocFilter := filters.FilterCriteria{
-		FromBlock: big.NewInt(3),
-		ToBlock:   big.NewInt(4),
-		//BlockHash: &blockHash,
+	hocFilter := common.FilterCriteriaJSON{
 		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + bridge.HOCAddr)},
-		//Topics:    [][]gethcommon.Hash{{blockHash}},
 	}
 	logs, err := client.GetLogs(context.Background(), hocFilter)
 	if err != nil {

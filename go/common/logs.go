@@ -36,3 +36,12 @@ type LogsByRollupByID = map[rpc.ID]map[uint64][]*types.Log
 
 // EncLogsByRollupByID is identical to LogsByRollupByID, but with the logs encrypted as bytes.
 type EncLogsByRollupByID = map[rpc.ID]map[uint64][]byte
+
+// FilterCriteriaJSON is a structure that JSON-serialises to the expected format for log filter criteria.
+type FilterCriteriaJSON struct {
+	BlockHash *common.Hash     `json:"blockHash"`
+	FromBlock *rpc.BlockNumber `json:"fromBlock"`
+	ToBlock   *rpc.BlockNumber `json:"toBlock"`
+	Addresses interface{}      `json:"address"`
+	Topics    []interface{}    `json:"topics"`
+}

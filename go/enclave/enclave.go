@@ -625,33 +625,14 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
 	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
 	// FilterCriteria.
-	filterCriteriaJSON, err := json.Marshal(paramsList[1])
+	filterJSON, err := json.Marshal(paramsList[1])
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
 	}
-
-	filterCriteria := filters.FilterCriteria{}
-	err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+	filter := filters.FilterCriteria{}
+	err = filter.UnmarshalJSON(filterJSON)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
-	}
-
-	//blockHashString, ok := filterCriteriaMap["BlockHash"].(string),
-	//blockHash := gethcommon.BytesToHash(blockHashString)
-	//fromHash, ok := filterCriteriaMap["FromBlock"].(float64),
-	//toBlock, ok  :=   filterCriteriaMap["ToBlock"].(float64),
-	//addresses, ok := filterCriteriaMap["Addresses"].([]string),
-	//topics, ok := filterCriteriaMap["Topics"].[string],
-
-	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
-	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
-	// FilterCriteria.
-	filter := filters.FilterCriteria{
-		//BlockHash: filterCriteriaMap["BlockHash"],
-		//FromBlock: filterCriteriaMap["FromBlock"],
-		//ToBlock:   filterCriteriaMap["ToBlock"],
-		//Addresses: filterCriteriaMap["Addresses"],
-		//Topics:    filterCriteriaMap["Topics"],
 	}
 
 	headBlockHash := e.storage.FetchHeadBlock().Hash()

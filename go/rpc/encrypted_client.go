@@ -220,6 +220,7 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	if len(args) < 2 {
 		logSubscription.Filter = &filters.FilterCriteria{}
 	} else {
+		// TODO - Consider switching to using the common.FilterCriteriaJSON type. Should allow us to avoid RLP serialisation.
 		// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
 		// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
 		// FilterCriteria.
