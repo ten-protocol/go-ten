@@ -635,6 +635,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
 	}
 
+	// We retrieve the relevant logs that match the filter.
 	headBlockHash := e.storage.FetchHeadBlock().Hash()
 	_, logs, found := e.storage.FetchBlockState(headBlockHash)
 	if !found {
