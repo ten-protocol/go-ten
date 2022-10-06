@@ -29,5 +29,5 @@ WORKDIR /home/go-obscuro/integration/gethnetwork/main
 RUN go build
 
 # expose the http and the ws ports to the host
-EXPOSE 8025 8026 8027 9000 9001 9002
-ENTRYPOINT ["/home/go-obscuro/integration/gethnetwork/main/main", "--numNodes=3", "--startPort=8000","--websocketStartPort=9000"]
+EXPOSE 8025 8026 9000 9001
+ENTRYPOINT ["/home/go-obscuro/integration/gethnetwork/main/main", "--numNodes=2", "--startPort=8000","--websocketStartPort=9000"]
