@@ -607,52 +607,24 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		return nil, fmt.Errorf("unable to decrypt params in GetLogs request. Cause: %w", err)
 	}
 
-	// We verify the params.
-	var paramsList []interface{}
-	err = json.Unmarshal(paramBytes, &paramsList)
+	// We extract the arguments from the param bytes.
+	filter, forAddress, err := extractGetLogsParams(paramBytes)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode GetLogs params - %w", err)
+		return nil, err
 	}
-	if len(paramsList) != 2 {
-		return nil, fmt.Errorf("expected 2 params in GetLogs request, but received %d", len(paramsList))
-	}
-
-	// We extract the first param, the filter for the logs.
-	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
-	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
-	// FilterCriteria.
-	filterJSON, err := json.Marshal(paramsList[0])
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
-	}
-	filter := filters.FilterCriteria{}
-	err = filter.UnmarshalJSON(filterJSON)
-	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
-	}
-
-	// We extract the second param, the address the logs are for.
-	forAddressHex, ok := paramsList[1].(string)
-	if !ok {
-		return nil, fmt.Errorf("expected second argument in GetLogs request to be of type string, but got %T", paramsList[0])
-	}
-	forAddress := gethcommon.HexToAddress(forAddressHex)
 
 	// We retrieve the relevant logs that match the filter.
-	headBlockHash := e.storage.FetchHeadBlock().Hash()
-	_, logs, found := e.storage.FetchBlockState(headBlockHash)
-	if !found {
-		log.Error("could not retrieve logs for head state. Something is wrong")
-		return nil, fmt.Errorf("could not retrieve logs for head state. Something is wrong")
+	filteredLogs, err := e.subscriptionManager.FilteredLogsHead(forAddress, filter)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 	}
-	filteredLogs := e.subscriptionManager.FilteredLogs(logs, e.storage.FetchHeadRollup().Hash(), &forAddress, &filter)
 
 	// We encode and encrypt the logs with the viewing key for the requester's address.
 	logBytes, err := json.Marshal(filteredLogs)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 	}
-	encryptedLogs, err := e.rpcEncryptionManager.EncryptWithViewingKey(forAddress, logBytes)
+	encryptedLogs, err := e.rpcEncryptionManager.EncryptWithViewingKey(*forAddress, logBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to GetLogs request. Cause: %w", err)
 	}
@@ -730,6 +702,41 @@ func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*
 		RequesterID: att.Owner,
 		HostAddress: att.HostAddress,
 	}, nil
+}
+
+// Returns the params extracted from an eth_getLogs request.
+func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcommon.Address, error) {
+	// We verify the params.
+	var paramsList []interface{}
+	err := json.Unmarshal(paramBytes, &paramsList)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to decode GetLogs params. Cause: %w", err)
+	}
+	if len(paramsList) != 2 {
+		return nil, nil, fmt.Errorf("expected 2 params in GetLogs request, but received %d", len(paramsList))
+	}
+
+	// We extract the first param, the filter for the logs.
+	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
+	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
+	// FilterCriteria.
+	filterJSON, err := json.Marshal(paramsList[0])
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+	}
+	filter := filters.FilterCriteria{}
+	err = filter.UnmarshalJSON(filterJSON)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
+	}
+
+	// We extract the second param, the address the logs are for.
+	forAddressHex, ok := paramsList[1].(string)
+	if !ok {
+		return nil, nil, fmt.Errorf("expected second argument in GetLogs request to be of type string, but got %T", paramsList[0])
+	}
+	forAddress := gethcommon.HexToAddress(forAddressHex)
+	return &filter, &forAddress, nil
 }
 
 // Todo - reinstate speculative execution after TN1
