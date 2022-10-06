@@ -428,7 +428,6 @@ out:
 	}
 
 	assertLogsValid(t, owner, logs)
-	assertNoDupeLogs(t, logs)
 	return len(logs)
 }
 
@@ -444,9 +443,6 @@ func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 
 	assertLogsValid(t, client.Address().Hex(), logs)
 
-	// TODO - #1016 - Prevent duplicate logs from being returned from the enclave, and re-enable this check.
-	// assertNoDupeLogs(t, logs)
-
 	return len(logs)
 }
 
@@ -460,6 +456,8 @@ func assertLogsValid(t *testing.T, owner string, logs []*types.Log) {
 			t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
 		}
 	}
+
+	assertNoDupeLogs(t, logs)
 }
 
 // Asserts that the log is relevant to the recipient (either a lifecycle event or a relevant user event).

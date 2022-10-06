@@ -158,11 +158,11 @@ func ReadAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
 }
 
 func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState) {
-	bytes, err := rlp.EncodeToBytes(bs)
+	blockStateBytes, err := rlp.EncodeToBytes(bs)
 	if err != nil {
 		log.Panic("could not encode block state. Cause: %s", err)
 	}
-	if err := db.Put(blockStateKey(bs.Block), bytes); err != nil {
+	if err := db.Put(blockStateKey(bs.Block), blockStateBytes); err != nil {
 		log.Panic("could not put block state in DB. Cause: %s", err)
 	}
 }
@@ -180,12 +180,19 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) *core.BlockSt
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) {
-	bytes, err := rlp.EncodeToBytes(logs)
+	// Geth serialises its logs in a reduced form to minimise storage space. For now, it is more straightforward for us
+	// to serialise all the fields by converting the logs to this type.
+	logsForStorage := make([]*logForStorage, len(logs))
+	for idx, fullFatLog := range logs {
+		logsForStorage[idx] = toLogForStorage(fullFatLog)
+	}
+
+	logBytes, err := rlp.EncodeToBytes(logsForStorage)
 	if err != nil {
 		log.Panic("could not encode logs. Cause: %s", err)
 	}
 
-	if err := db.Put(logsKey(blockHash), bytes); err != nil {
+	if err := db.Put(logsKey(blockHash), logBytes); err != nil {
 		log.Panic("could not put logs in DB. Cause: %s", err)
 	}
 }
@@ -196,12 +203,17 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) []*types.
 		return nil
 	}
 
-	logs := new([]*types.Log)
-	if err := rlp.Decode(bytes.NewReader(data), logs); err != nil {
+	logsForStorage := new([]*logForStorage)
+	if err := rlp.Decode(bytes.NewReader(data), logsForStorage); err != nil {
 		log.Panic("could not decode logs. Cause: %s", err)
 	}
 
-	return *logs
+	logs := make([]*types.Log, len(*logsForStorage))
+	for idx, logToStore := range *logsForStorage {
+		logs[idx] = logToStore.toLog()
+	}
+
+	return logs
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
