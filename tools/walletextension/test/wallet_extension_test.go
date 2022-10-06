@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"github.com/obscuronet/go-obscuro/go/common"
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -210,7 +210,8 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	_, viewingKeyBytes := registerPrivateKey(t, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	resp, conn := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filterCriteriaJSON{Topics: []interface{}{dummyHash}}})
+	filter := common.FilterCriteriaJSON{Topics: []interface{}{dummyHash}}
+	resp, conn := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filter})
 	validateSubscriptionResponse(t, resp)
 
 	// We set a timeout to kill the test, in case we never receive a log.
@@ -232,7 +233,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	}
 
 	// We extract the topic from the received logs. The API should have set this based on the filter we passed when subscribing.
-	logMap := logResp[common.JSONKeyParams].(map[string]interface{})[common.JSONKeyResult].(map[string]interface{})
+	logMap := logResp[wecommon.JSONKeyParams].(map[string]interface{})[wecommon.JSONKeyResult].(map[string]interface{})
 	logTopic := logMap[jsonKeyTopics].([]interface{})[0].(string)
 
 	if !strings.Contains(logTopic, dummyHash.Hex()) {
@@ -248,9 +249,9 @@ func validateSubscriptionResponse(t *testing.T, resp []byte) {
 		t.Fatalf("could not unmarshal subscription response to JSON")
 	}
 
-	id := respJSON[common.JSONKeyID]
-	jsonRPCVersion := respJSON[common.JSONKeyRPCVersion]
-	result := respJSON[common.JSONKeyResult]
+	id := respJSON[wecommon.JSONKeyID]
+	jsonRPCVersion := respJSON[wecommon.JSONKeyRPCVersion]
+	result := respJSON[wecommon.JSONKeyResult]
 
 	if id != jsonID {
 		t.Fatalf("subscription response did not contain expected ID. Expected 1, got %s", id)
@@ -263,13 +264,4 @@ func validateSubscriptionResponse(t *testing.T, resp []byte) {
 	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
 		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
 	}
-}
-
-// A structure that JSON-serialises to the expected format for subscription filter criteria.
-type filterCriteriaJSON struct {
-	BlockHash *gethcommon.Hash     `json:"blockHash"`
-	FromBlock *gethrpc.BlockNumber `json:"fromBlock"`
-	ToBlock   *gethrpc.BlockNumber `json:"toBlock"`
-	Addresses interface{}          `json:"address"`
-	Topics    []interface{}        `json:"topics"`
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -77,19 +79,30 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	delete(s.subscriptions, id)
 }
 
-// FilteredLogs filters out irrelevant logs.
-func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address) []*types.Log {
-	allLogs := []*types.Log{}
+// FilteredLogsHead retrieves the logs for the head of the chain and filters out irrelevant logs.
+func (s *SubscriptionManager) FilteredLogsHead(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
+	headBlockHash := s.storage.FetchHeadBlock().Hash()
+	_, logs, found := s.storage.FetchBlockState(headBlockHash)
+	if !found {
+		log.Error("could not retrieve logs for head state. Something is wrong")
+		return nil, fmt.Errorf("could not retrieve logs for head state. Something is wrong")
+	}
+	return s.FilteredLogs(logs, s.storage.FetchHeadRollup().Hash(), account, filter), nil
+}
+
+// FilteredLogs filters out irrelevant logs from the list provided.
+func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address, filter *filters.FilterCriteria) []*types.Log {
+	filteredLogs := []*types.Log{}
 	stateDB := s.storage.CreateStateDB(rollupHash)
 
 	for _, log := range logs {
 		userAddrs := getUserAddrs(log, stateDB)
-		if isRelevant(userAddrs, account) {
-			allLogs = append(allLogs, log)
+		if isRelevant(userAddrs, account) && !isFilteredOut(log, filter) {
+			filteredLogs = append(filteredLogs, log)
 		}
 	}
 
-	return allLogs
+	return filteredLogs
 }
 
 // FilteredSubscribedLogs filters out irrelevant logs and those that are not subscribed to, and organises them by their subscribing ID.

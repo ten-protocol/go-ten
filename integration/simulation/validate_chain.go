@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
@@ -382,35 +382,43 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
-	// In-memory clients cannot handle subscriptions for now.
-	if s.Params.IsInMem {
-		return
-	}
-
-	for _, sub := range s.Subscriptions {
-		sub.Unsubscribe()
-	}
-
-	logsReceived := 0
-	for owner, channels := range s.LogChannels {
-		for _, channel := range channels {
-			logsReceived += checkReceivedLogsClient(t, owner, channel)
+	logsFromSnapshots := 0
+	for _, clients := range s.RPCHandles.AuthObsClients {
+		for _, client := range clients {
+			logsFromSnapshots += checkSnapshotLogs(t, client)
 		}
 	}
-	if logsReceived < logsThreshold {
-		t.Errorf("no logs received during simulation")
+	if logsFromSnapshots < logsThreshold {
+		t.Errorf("only received %d logs from snapshots, expected at least %d", logsFromSnapshots, logsThreshold)
+	}
+
+	// In-memory clients cannot handle subscriptions for now.
+	if !s.Params.IsInMem {
+		for _, sub := range s.Subscriptions {
+			sub.Unsubscribe()
+		}
+
+		logsFromSubscriptions := 0
+		for owner, channels := range s.LogChannels {
+			for _, channel := range channels {
+				logsFromSubscriptions += checkSubscribedLogs(t, owner, channel)
+			}
+		}
+		if logsFromSubscriptions < logsThreshold {
+			t.Errorf("only received %d logs from subscriptions, expected at least %d", logsFromSubscriptions, logsThreshold)
+		}
 	}
 }
 
-// Checks that the client's subscription has only received relevant logs, with no duplicates, and only from the HOC contract.
-func checkReceivedLogsClient(t *testing.T, owner string, channel chan common.IDAndLog) int {
-	var logsReceived []*types.Log
+// Checks that a subscription has received the expected logs.
+func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+	var logs []*types.Log
 
 out:
 	for {
 		select {
 		case idAndLog := <-channel:
-			logsReceived = append(logsReceived, idAndLog.Log)
+			logs = append(logs, idAndLog.Log)
 
 		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
 		// However, if we use a `default` case, only the first one arrives. Some minimal wait is required.
@@ -419,9 +427,29 @@ out:
 		}
 	}
 
-	for _, receivedLog := range logsReceived {
+	assertLogsValid(t, owner, logs)
+	return len(logs)
+}
+
+func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
+	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
+	hocFilter := common.FilterCriteriaJSON{
+		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + bridge.HOCAddr)},
+	}
+	logs, err := client.GetLogs(context.Background(), hocFilter)
+	if err != nil {
+		t.Errorf("could not retrieve logs for client. Cause: %s", err)
+	}
+
+	assertLogsValid(t, client.Address().Hex(), logs)
+
+	return len(logs)
+}
+
+// Asserts that the logs meet various criteria.
+func assertLogsValid(t *testing.T, owner string, logs []*types.Log) {
+	for _, receivedLog := range logs {
 		assertRelevantLogsOnly(t, owner, *receivedLog)
-		assertNoDupeLogs(t, logsReceived)
 
 		logAddrHex := receivedLog.Address.Hex()
 		if logAddrHex != "0x"+bridge.HOCAddr {
@@ -429,7 +457,7 @@ out:
 		}
 	}
 
-	return len(logsReceived)
+	assertNoDupeLogs(t, logs)
 }
 
 // Asserts that the log is relevant to the recipient (either a lifecycle event or a relevant user event).
@@ -467,32 +495,24 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 	logCount := make(map[string]int)
 
 	for _, item := range logs {
-		logBytes, err := rlp.EncodeToBytes(item)
+		logJSON, err := item.MarshalJSON()
 		if err != nil {
-			t.Errorf("could not encode log to RLP to check for duplicate logs")
+			t.Errorf("could not marshal log to JSON to check for duplicate logs")
 			continue
 		}
-		logBytesHex := gethcommon.Bytes2Hex(logBytes)
 
 		// check if the item/element exist in the duplicate_frequency map
-		_, exist := logCount[logBytesHex]
+		_, exist := logCount[string(logJSON)]
 		if exist {
-			logCount[logBytesHex]++ // increase counter by 1 if already in the map
+			logCount[string(logJSON)]++ // increase counter by 1 if already in the map
 		} else {
-			logCount[logBytesHex] = 1 // else start counting from 1
+			logCount[string(logJSON)] = 1 // else start counting from 1
 		}
 	}
 
-	for logBytesHex, count := range logCount {
+	for logJSON, count := range logCount {
 		if count > 1 {
-			var item *types.Log
-			logBytes := gethcommon.Hex2Bytes(logBytesHex)
-			err := rlp.DecodeBytes(logBytes, &item)
-			if err != nil {
-				t.Errorf("could not decode log from RLP to check for duplicate logs")
-				continue
-			}
-			t.Errorf("received duplicate log")
+			t.Errorf("received duplicate log with body %s", logJSON)
 		}
 	}
 }

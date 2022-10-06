@@ -119,9 +119,9 @@ func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria
 	return ac.rpcClient.Subscribe(ctx, nil, rpc.RPCSubscribeNamespace, ch, rpc.RPCSubscriptionTypeLogs, filterCriteriaMap)
 }
 
-func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria filters.FilterCriteria) ([]*types.Log, error) {
+func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.FilterCriteriaJSON) ([]*types.Log, error) {
 	var logs []*types.Log
-	err := ac.rpcClient.CallContext(ctx, &logs, rpc.RPCGetLogs, filterCriteria)
+	err := ac.rpcClient.CallContext(ctx, &logs, rpc.RPCGetLogs, filterCriteria, ac.account)
 	return logs, err
 }
 
