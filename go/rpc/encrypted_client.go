@@ -27,6 +27,7 @@ import (
 const (
 	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
+	emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
 )
 
 // SensitiveMethods for which the RPC requests and responses should be encrypted
@@ -219,30 +220,32 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	// If there are less than two arguments, it means no filter criteria was passed.
 	if len(args) < 2 {
 		logSubscription.Filter = &filters.FilterCriteria{}
-	} else {
-		// TODO - Consider switching to using the common.FilterCriteriaJSON type. Should allow us to avoid RLP serialisation.
-		// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
-		// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
-		// FilterCriteria.
-		filterCriteriaJSON, err := json.Marshal(args[1])
-		if err != nil {
-			return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
-		}
-
-		filterCriteria := filters.FilterCriteria{}
-		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
-		if err != nil {
-			return nil, fmt.Errorf("could not unmarshal filter criteria from JSON. Cause: %w", err)
-		}
-
-		// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
-		if filterCriteria.BlockHash == nil {
-			filterCriteria.BlockHash = &gethcommon.Hash{}
-		}
-
-		logSubscription.Filter = &filterCriteria
+		return logSubscription, nil
 	}
 
+	// TODO - Consider switching to using the common.FilterCriteriaJSON type. Should allow us to avoid RLP serialisation.
+	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
+	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
+	// FilterCriteria.
+	filterCriteriaJSON, err := json.Marshal(args[1])
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+	}
+
+	filterCriteria := filters.FilterCriteria{}
+	if string(filterCriteriaJSON) != emptyFilterCriteria {
+		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
+		}
+	}
+
+	// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
+	if filterCriteria.BlockHash == nil {
+		filterCriteria.BlockHash = &gethcommon.Hash{}
+	}
+
+	logSubscription.Filter = &filterCriteria
 	return logSubscription, nil
 }
 

@@ -146,7 +146,7 @@ func (s *SubscriptionManager) EncryptLogs(logsByRollupByID common.LogsByRollupBy
 	for subID, logByRollupNum := range logsByRollupByID {
 		subscription, found := s.subscriptions[subID]
 		if !found {
-			return nil, fmt.Errorf("could not find subscription with ID %s", subID)
+			continue
 		}
 
 		encLogsByRollup := map[uint64][]byte{}
