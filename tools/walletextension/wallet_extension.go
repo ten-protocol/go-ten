@@ -224,14 +224,16 @@ func (we *WalletExtension) handleRequestWS(resp http.ResponseWriter, req *http.R
 	if err != nil {
 		return
 	}
-	fun(userConn)
+	// We handle requests in a loop until the connection is closed on the client side.
+	for !userConn.IsClosed() {
+		fun(userConn)
+	}
 }
 
 // Encrypts the Ethereum JSON-RPC request, forwards it to the Obscuro node over a websocket, and decrypts the response if needed.
 func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	body, err := userConn.ReadRequest()
 	if err != nil {
-		userConn.HandleError(err.Error())
 		return
 	}
 
@@ -277,7 +279,6 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 
 	err = userConn.WriteResponse(rpcRespToSend)
 	if err != nil {
-		userConn.HandleError(err.Error())
 		return
 	}
 }
@@ -357,7 +358,6 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 func (we *WalletExtension) handleGenerateViewingKey(userConn userconn.UserConn) {
 	body, err := userConn.ReadRequest()
 	if err != nil {
-		userConn.HandleError(err.Error())
 		return
 	}
 
@@ -388,7 +388,6 @@ func (we *WalletExtension) handleGenerateViewingKey(userConn userconn.UserConn) 
 	viewingKeyHex := hex.EncodeToString(viewingKeyBytes)
 	err = userConn.WriteResponse([]byte(viewingKeyHex))
 	if err != nil {
-		userConn.HandleError(fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
 		return
 	}
 }
@@ -397,7 +396,6 @@ func (we *WalletExtension) handleGenerateViewingKey(userConn userconn.UserConn) 
 func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	body, err := userConn.ReadRequest()
 	if err != nil {
-		userConn.HandleError(err.Error())
 		return
 	}
 
@@ -441,7 +439,6 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 
 	err = userConn.WriteResponse([]byte(successMsg))
 	if err != nil {
-		userConn.HandleError(fmt.Sprintf("could not return viewing key public key hex to client: %s", err))
 		return
 	}
 }

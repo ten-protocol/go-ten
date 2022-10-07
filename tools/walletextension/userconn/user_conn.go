@@ -61,7 +61,9 @@ func NewUserConnWS(resp http.ResponseWriter, req *http.Request) (UserConn, error
 func (h *userConnHTTP) ReadRequest() ([]byte, error) {
 	body, err := io.ReadAll(h.req.Body)
 	if err != nil {
-		return nil, fmt.Errorf("could not read request body: %w", err)
+		wrappedErr := fmt.Errorf("could not read request body: %w", err)
+		h.HandleError(wrappedErr.Error())
+		return nil, wrappedErr
 	}
 	return body, nil
 }
@@ -69,7 +71,9 @@ func (h *userConnHTTP) ReadRequest() ([]byte, error) {
 func (h *userConnHTTP) WriteResponse(msg []byte) error {
 	_, err := h.resp.Write(msg)
 	if err != nil {
-		return fmt.Errorf("could not write response: %w", err)
+		wrappedErr := fmt.Errorf("could not write response: %w", err)
+		h.HandleError(wrappedErr.Error())
+		return wrappedErr
 	}
 	return nil
 }
@@ -92,7 +96,9 @@ func (w *userConnWS) ReadRequest() ([]byte, error) {
 		if websocket.IsCloseError(err) {
 			w.isClosed = true
 		}
-		return nil, fmt.Errorf("could not read request: %w", err)
+		wrappedErr := fmt.Errorf("could not read request: %w", err)
+		w.HandleError(wrappedErr.Error())
+		return nil, wrappedErr
 	}
 	return msg, nil
 }
@@ -103,7 +109,9 @@ func (w *userConnWS) WriteResponse(msg []byte) error {
 		if websocket.IsCloseError(err) {
 			w.isClosed = true
 		}
-		return fmt.Errorf("could not write response: %w", err)
+		wrappedErr := fmt.Errorf("could not write response: %w", err)
+		w.HandleError(wrappedErr.Error())
+		return wrappedErr
 	}
 	return nil
 }
