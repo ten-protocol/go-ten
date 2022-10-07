@@ -8,18 +8,18 @@ import (
 
 // LogEventManager manages the routing of logs back to their subscribers.
 type LogEventManager struct {
-	subscriptions map[rpc.ID]subscription // The channels that logs are sent to, one per subscription
+	subscriptions map[rpc.ID]*subscription // The channels that logs are sent to, one per subscription
 }
 
 func NewLogEventManager() LogEventManager {
 	return LogEventManager{
-		subscriptions: map[rpc.ID]subscription{},
+		subscriptions: map[rpc.ID]*subscription{},
 	}
 }
 
 // AddSubscription adds a subscription to the set of managed subscriptions.
 func (l *LogEventManager) AddSubscription(id rpc.ID, matchedLogsCh chan []byte) {
-	l.subscriptions[id] = subscription{ch: matchedLogsCh}
+	l.subscriptions[id] = &subscription{ch: matchedLogsCh}
 }
 
 // RemoveSubscription removes a subscription from the set of managed subscriptions.
