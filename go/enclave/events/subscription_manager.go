@@ -120,6 +120,7 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 		userAddrs := getUserAddrs(log, stateDB)
 
 		// We check whether the log is relevant to each subscription.
+		// TODO - #1016 - This can blow up if a subscription is added while we are iterating over the subscriptions.
 		for subscriptionID, subscription := range s.subscriptions {
 			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(log, subscription.Filter) {
 				if relevantLogs[subscriptionID] == nil {
