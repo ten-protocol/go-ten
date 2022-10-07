@@ -121,7 +121,7 @@ type BlockSubmissionResponse struct {
 
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 
-	SubscribedLogs EncLogsByRollupByID // The logs produced by the block and all its ancestors for each subscription ID.
+	SubscribedLogs map[rpc.ID][]byte // The logs produced by the block and all its ancestors for each subscription ID.
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block

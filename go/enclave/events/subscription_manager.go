@@ -105,9 +105,10 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 	return filteredLogs
 }
 
-// FilteredSubscribedLogs filters out irrelevant logs and those that are not subscribed to, and organises them by their subscribing ID.
-func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) common.LogsByRollupByID {
-	relevantLogs := common.LogsByRollupByID{}
+// FilteredSubscribedLogs filters out irrelevant logs, those that are not subscribed to, and those a subscription has
+// seen before, and organises them by their subscribing ID.
+func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
+	relevantLogs := map[gethrpc.ID][]*types.Log{}
 
 	// If there are no subscriptions, we do not need to do any processing.
 	if len(s.subscriptions) == 0 {
@@ -127,14 +128,10 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 		for subscriptionID, subscription := range s.subscriptions {
 			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(logItem, subscription.Filter) && rollupNumber > subscription.LastSeenRollup {
 				if relevantLogs[subscriptionID] == nil {
-					relevantLogs[subscriptionID] = map[uint64][]*types.Log{}
+					relevantLogs[subscriptionID] = []*types.Log{}
 				}
 
-				if relevantLogs[subscriptionID][rollupNumber] == nil {
-					relevantLogs[subscriptionID][rollupNumber] = []*types.Log{}
-				}
-
-				relevantLogs[subscriptionID][rollupNumber] = append(relevantLogs[subscriptionID][rollupNumber], logItem)
+				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], logItem)
 
 				// We update the last rollup number for the subscription if this is the highest one we've seen so far.
 				currentLatestSeenRollup, exists := lastSeenRollupByID[subscriptionID]
@@ -158,34 +155,29 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 }
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) EncryptLogs(logsByRollupByID common.LogsByRollupByID) (common.EncLogsByRollupByID, error) {
-	result := common.EncLogsByRollupByID{}
+func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
+	encryptedLogsByID := map[gethrpc.ID][]byte{}
 
-	for subID, logByRollupNum := range logsByRollupByID {
+	for subID, logs := range logsByID {
 		subscription, found := s.subscriptions[subID]
 		if !found {
 			continue
 		}
 
-		encLogsByRollup := map[uint64][]byte{}
-		for rollupNum, logs := range logByRollupNum {
-			jsonLogs, err := json.Marshal(logs)
-			if err != nil {
-				return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
-			}
-
-			encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.Account, jsonLogs)
-			if err != nil {
-				return nil, err
-			}
-
-			encLogsByRollup[rollupNum] = encryptedLogs
+		jsonLogs, err := json.Marshal(logs)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 		}
 
-		result[subID] = encLogsByRollup
+		encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.Account, jsonLogs)
+		if err != nil {
+			return nil, err
+		}
+
+		encryptedLogsByID[subID] = encryptedLogs
 	}
 
-	return result, nil
+	return encryptedLogsByID, nil
 }
 
 // Extracts the (potential) user addresses from the topics. If there is no code associated with an address, it's a user
@@ -240,25 +232,25 @@ func isFilteredOut(log *types.Log, filterCriteria *filters.FilterCriteria) bool 
 func filterLogs(logs []*types.Log, fromBlock, toBlock *big.Int, addresses []gethcommon.Address, topics [][]gethcommon.Hash) []*types.Log { //nolint:gocognit
 	var ret []*types.Log
 Logs:
-	for _, log := range logs {
-		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Uint64() > log.BlockNumber {
+	for _, logItem := range logs {
+		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Uint64() > logItem.BlockNumber {
 			continue
 		}
-		if toBlock != nil && toBlock.Int64() >= 0 && toBlock.Uint64() < log.BlockNumber {
+		if toBlock != nil && toBlock.Int64() >= 0 && toBlock.Uint64() < logItem.BlockNumber {
 			continue
 		}
 
-		if len(addresses) > 0 && !includes(addresses, log.Address) {
+		if len(addresses) > 0 && !includes(addresses, logItem.Address) {
 			continue
 		}
 		// If the to filtered topics is greater than the amount of topics in logs, skip.
-		if len(topics) > len(log.Topics) {
+		if len(topics) > len(logItem.Topics) {
 			continue
 		}
 		for i, sub := range topics {
 			match := len(sub) == 0 // empty rule set == wildcard
 			for _, topic := range sub {
-				if log.Topics[i] == topic {
+				if logItem.Topics[i] == topic {
 					match = true
 					break
 				}
@@ -267,7 +259,7 @@ Logs:
 				continue Logs
 			}
 		}
-		ret = append(ret, log)
+		ret = append(ret, logItem)
 	}
 	return ret
 }

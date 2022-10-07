@@ -30,18 +30,15 @@ func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
 	}
 }
 
-// SendLogsToSubscribers distributes logs to subscribed clients. We only send logs for rollups the subscription hasn't seen before.
+// SendLogsToSubscribers distributes logs to subscribed clients.
 func (l *LogEventManager) SendLogsToSubscribers(result common.BlockSubmissionResponse) {
 	// todo - joel - stop sending over mapped by rollup number
-	for subscriptionID, encLogsByRollup := range result.SubscribedLogs {
+	for subscriptionID, encryptedLogs := range result.SubscribedLogs {
 		logSub, found := l.subscriptions[subscriptionID]
 		if !found {
 			continue
 		}
-
-		for _, encryptedLogs := range encLogsByRollup {
-			logSub.ch <- encryptedLogs
-		}
+		logSub.ch <- encryptedLogs
 	}
 }
 

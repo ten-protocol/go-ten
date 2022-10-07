@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -77,7 +79,7 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (common.BlockSubmissionResponse, error) {
-	var subscribedLogs common.EncLogsByRollupByID
+	var subscribedLogs map[rpc.ID][]byte
 	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
 		return common.BlockSubmissionResponse{}, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
 	}
