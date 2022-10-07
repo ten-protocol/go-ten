@@ -230,20 +230,20 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, resp *interface
 			select {
 			case idAndLog := <-ch:
 				if userConn.IsClosed() {
-					log.Info("received log but websocket was closed")
+					log.Info("received log but websocket was closed on subscription %s", idAndLog.SubID)
 					return
 				}
 
 				jsonResponse, err := prepareLogResponse(idAndLog)
 				if err != nil {
-					log.Error("could not marshal log response to JSON. Cause: %s", err)
+					log.Error("could not marshal log response to JSON on subscription %s. Cause: %s", idAndLog.SubID, err)
 					continue
 				}
 
-				log.Info("Forwarding log from Obscuro node: %s", jsonResponse)
+				log.Info("Forwarding log from Obscuro node on subscription %s: %s", idAndLog.SubID, jsonResponse)
 				err = userConn.WriteResponse(jsonResponse)
 				if err != nil {
-					log.Error("could not write the JSON log to the websocket. Cause: %s", err)
+					log.Error("could not write the JSON log to the websocket on subscription %s. Cause: %s", idAndLog.SubID, err)
 					continue
 				}
 
