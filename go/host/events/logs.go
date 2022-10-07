@@ -3,7 +3,6 @@ package events
 import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
 // LogEventManager manages the routing of logs back to their subscribers.
@@ -33,41 +32,20 @@ func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
 
 // SendLogsToSubscribers distributes logs to subscribed clients. We only send logs for rollups the subscription hasn't seen before.
 func (l *LogEventManager) SendLogsToSubscribers(result common.BlockSubmissionResponse) {
-	latestSeenRollupByID := map[rpc.ID]uint64{}
-
+	// todo - joel - stop sending over mapped by rollup number
 	for subscriptionID, encLogsByRollup := range result.SubscribedLogs {
 		logSub, found := l.subscriptions[subscriptionID]
 		if !found {
-			log.Error("received a log for subscription with ID %s, but no such subscription exists", subscriptionID)
 			continue
 		}
 
-		for rollupNumber, encryptedLogs := range encLogsByRollup {
-			// We have received a log from a rollup this subscription hasn't seen before.
-			if rollupNumber > logSub.latestSeenRollup {
-				l.subscriptions[subscriptionID].ch <- encryptedLogs
-			}
-
-			// We update the latest rollup number if this is the highest one we've seen so far.
-			currentLatestSeenRollup, exists := latestSeenRollupByID[subscriptionID]
-			if !exists || rollupNumber > currentLatestSeenRollup {
-				latestSeenRollupByID[subscriptionID] = rollupNumber
-			}
-		}
-	}
-
-	// We update the latest seen rollup for each subscription. We must do this in a separate loop, as if we update it
-	// as we go, we may miss a set of logs if we process the logs for rollup N before we process those for rollup N-1.
-	for subscriptionID, logSub := range l.subscriptions {
-		newLatestSeenRollup, exists := latestSeenRollupByID[subscriptionID]
-		if exists && newLatestSeenRollup > logSub.latestSeenRollup {
-			logSub.latestSeenRollup = newLatestSeenRollup
+		for _, encryptedLogs := range encLogsByRollup {
+			logSub.ch <- encryptedLogs
 		}
 	}
 }
 
 // Pairs the latest seen rollup for a log subscription with the channel on which new logs should be sent.
 type subscription struct {
-	latestSeenRollup uint64      // The latest rollup for which logs have been distributed to this subscription.
-	ch               chan []byte // The channel that logs for this subscription are sent to.
+	ch chan []byte // The channel that logs for this subscription are sent to.
 }

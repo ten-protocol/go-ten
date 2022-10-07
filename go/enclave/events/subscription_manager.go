@@ -95,10 +95,10 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 	filteredLogs := []*types.Log{}
 	stateDB := s.storage.CreateStateDB(rollupHash)
 
-	for _, log := range logs {
-		userAddrs := getUserAddrs(log, stateDB)
-		if isRelevant(userAddrs, account) && !isFilteredOut(log, filter) {
-			filteredLogs = append(filteredLogs, log)
+	for _, logItem := range logs {
+		userAddrs := getUserAddrs(logItem, stateDB)
+		if isRelevant(userAddrs, account) && !isFilteredOut(logItem, filter) {
+			filteredLogs = append(filteredLogs, logItem)
 		}
 	}
 
@@ -116,23 +116,41 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 
 	stateDB := s.storage.CreateStateDB(rollupHash)
 
-	for _, log := range logs {
-		userAddrs := getUserAddrs(log, stateDB)
+	lastSeenRollupByID := map[gethrpc.ID]uint64{}
+
+	for _, logItem := range logs {
+		userAddrs := getUserAddrs(logItem, stateDB)
+		rollupNumber := logItem.BlockNumber
 
 		// We check whether the log is relevant to each subscription.
 		// TODO - #1016 - This can blow up if a subscription is added while we are iterating over the subscriptions.
 		for subscriptionID, subscription := range s.subscriptions {
-			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(log, subscription.Filter) {
+			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(logItem, subscription.Filter) && rollupNumber > subscription.LastSeenRollup {
 				if relevantLogs[subscriptionID] == nil {
 					relevantLogs[subscriptionID] = map[uint64][]*types.Log{}
 				}
 
-				if relevantLogs[subscriptionID][log.BlockNumber] == nil {
-					relevantLogs[subscriptionID][log.BlockNumber] = []*types.Log{}
+				if relevantLogs[subscriptionID][rollupNumber] == nil {
+					relevantLogs[subscriptionID][rollupNumber] = []*types.Log{}
 				}
 
-				relevantLogs[subscriptionID][log.BlockNumber] = append(relevantLogs[subscriptionID][log.BlockNumber], log)
+				relevantLogs[subscriptionID][rollupNumber] = append(relevantLogs[subscriptionID][rollupNumber], logItem)
+
+				// We update the last rollup number for the subscription if this is the highest one we've seen so far.
+				currentLatestSeenRollup, exists := lastSeenRollupByID[subscriptionID]
+				if !exists || rollupNumber > currentLatestSeenRollup {
+					lastSeenRollupByID[subscriptionID] = rollupNumber
+				}
 			}
+		}
+	}
+
+	// We update the last seen rollup for each subscription. We must do this in a separate loop, as if we update it
+	// as we go, we may miss a set of logs if we process the logs for rollup N before we process those for rollup N-1.
+	for subscriptionID, subscription := range s.subscriptions {
+		newLatestSeenRollup, exists := lastSeenRollupByID[subscriptionID]
+		if exists && newLatestSeenRollup > subscription.LastSeenRollup {
+			subscription.LastSeenRollup = newLatestSeenRollup
 		}
 	}
 
