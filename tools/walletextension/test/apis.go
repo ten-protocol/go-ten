@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -98,26 +99,22 @@ func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.Encry
 }
 
 func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
+	// We decrypt and decode the params.
 	encodedParams, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
-
-	// We set the topic from the filter as a topic in the response logs, so that we can check in the tests that we are
-	// a) decrypting the params correctly, and b) returning the logs with the correct contents via the wallet extension.
 	var params common.LogSubscription
 	if err = rlp.DecodeBytes(encodedParams, &params); err != nil {
 		return nil, fmt.Errorf("could not decocde log subscription request from RLP. Cause: %w", err)
 	}
-	paramsTopic := params.Filter.Topics[0][0]
 
+	// We set up the subscription.
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return nil, fmt.Errorf("creation of subscriptions is not supported")
 	}
-
 	subscription := notifier.CreateSubscription()
-
 	err = notifier.Notify(subscription.ID, common.IDAndEncLog{
 		SubID: subscription.ID,
 	})
@@ -125,26 +122,37 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 		return nil, fmt.Errorf("could not send subscription ID to client on subscription %s", subscription.ID)
 	}
 
-	// We emit a log every hundred milliseconds.
+	// We emit a unique log every ten milliseconds.
 	go func() {
+		idx := big.NewInt(0)
 		for {
-			jsonLogs, err := json.Marshal([]*types.Log{{Topics: []gethcommon.Hash{paramsTopic}}})
+			// We create the logs
+			logs := []*types.Log{{Topics: []gethcommon.Hash{
+				// We set the topic from the filter as a topic in the response logs, so that we can check in the tests
+				// that we are a) decrypting the params correctly, and b) returning the logs with the correct contents
+				// via the wallet extension.
+				params.Filter.Topics[0][0],
+				// We also add an incrementing integer as a topic, so we can detect duplicate logs.
+				gethcommon.BigToHash(idx),
+			}}}
+			jsonLogs, err := json.Marshal(logs)
 			if err != nil {
 				panic("could not marshal log to JSON")
 			}
 
+			// We send the encrypted log via the subscription.
 			encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, jsonLogs, nil, nil)
 			if err != nil {
 				panic("could not encrypt logs with viewing key")
 			}
-
 			idAndEncLog := common.IDAndEncLog{
 				SubID:  subscription.ID,
 				EncLog: encryptedBytes,
 			}
 			notifier.Notify(subscription.ID, idAndEncLog) //nolint:errcheck
 
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
+			idx = idx.Add(idx, big.NewInt(1))
 		}
 	}()
 	return subscription, nil

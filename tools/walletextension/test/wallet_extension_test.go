@@ -5,15 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
-
-	"github.com/go-kit/kit/transport/http/jsonrpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -214,54 +211,30 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	resp, conn := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filter})
 	validateSubscriptionResponse(t, resp)
 
-	// We set a timeout to kill the test, in case we never receive a log.
-	timeout := time.AfterFunc(3*time.Second, func() {
-		t.Fatalf("timed out waiting to receive a log via the subscription")
-	})
-	defer timeout.Stop()
+	logsJSON := readMessagesForDuration(t, conn, time.Second)
 
-	// We watch the connection to receive a log...
-	_, logRespJSON, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatalf("could not read log from websocket. Cause: %s", err)
+	// We check we received enough logs.
+	if len(logsJSON) < 50 {
+		t.Errorf("expected to receive at least 50 logs, only received %d", len(logsJSON))
 	}
 
-	var logResp map[string]interface{}
-	err = json.Unmarshal(logRespJSON, &logResp)
-	if err != nil {
-		t.Fatalf("could not unmarshal received log from JSON")
-	}
+	// We check that none of the logs were duplicates (i.e. were sent twice).
+	assertNoDupeLogs(t, logsJSON)
 
-	// We extract the topic from the received logs. The API should have set this based on the filter we passed when subscribing.
-	logMap := logResp[wecommon.JSONKeyParams].(map[string]interface{})[wecommon.JSONKeyResult].(map[string]interface{})
-	logTopic := logMap[jsonKeyTopics].([]interface{})[0].(string)
+	// We validate that each log contains the correct topic.
+	for _, logJSON := range logsJSON {
+		var logResp map[string]interface{}
+		err := json.Unmarshal(logJSON, &logResp)
+		if err != nil {
+			t.Fatalf("could not unmarshal received log from JSON")
+		}
 
-	if !strings.Contains(logTopic, dummyHash.Hex()) {
-		t.Fatalf("expected response containing '%s', got '%s'", dummyHash.Hex(), logTopic)
-	}
-}
+		// We extract the topic from the received logs. The API should have set this based on the filter we passed when subscribing.
+		logMap := logResp[wecommon.JSONKeyParams].(map[string]interface{})[wecommon.JSONKeyResult].(map[string]interface{})
+		firstLogTopic := logMap[jsonKeyTopics].([]interface{})[0].(string)
 
-// Checks that the response to a subscription request is correctly-formatted.
-func validateSubscriptionResponse(t *testing.T, resp []byte) {
-	var respJSON map[string]interface{}
-	err := json.Unmarshal(resp, &respJSON)
-	if err != nil {
-		t.Fatalf("could not unmarshal subscription response to JSON")
-	}
-
-	id := respJSON[wecommon.JSONKeyID]
-	jsonRPCVersion := respJSON[wecommon.JSONKeyRPCVersion]
-	result := respJSON[wecommon.JSONKeyResult]
-
-	if id != jsonID {
-		t.Fatalf("subscription response did not contain expected ID. Expected 1, got %s", id)
-	}
-	if jsonRPCVersion != jsonrpc.Version {
-		t.Fatalf("subscription response did not contain expected RPC version. Expected 2.0, got %s", jsonRPCVersion)
-	}
-	pattern := "0x.*"
-	resultString, ok := result.(string)
-	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
-		t.Fatalf("subscription response did not contain expected result. Expected pattern matching %s, got %s", pattern, resultString)
+		if firstLogTopic != dummyHash.Hex() {
+			t.Errorf("expected first topic to be '%s', got '%s'", dummyHash.Hex(), firstLogTopic)
+		}
 	}
 }
