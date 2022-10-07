@@ -17,6 +17,8 @@ type LogSubscription struct {
 	Signature *[]byte
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria
+	// Used to track which rollups the subscription has already been sent logs for.
+	LastSeenRollup uint64
 }
 
 // IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.
@@ -30,12 +32,6 @@ type IDAndLog struct {
 	SubID rpc.ID
 	Log   *types.Log
 }
-
-// LogsByRollupByID is a double-map from subscription IDs to rollup numbers to logs generated in that rollup.
-type LogsByRollupByID = map[rpc.ID]map[uint64][]*types.Log
-
-// EncLogsByRollupByID is identical to LogsByRollupByID, but with the logs encrypted as bytes.
-type EncLogsByRollupByID = map[rpc.ID]map[uint64][]byte
 
 // FilterCriteriaJSON is a structure that JSON-serialises to a format that can be successfully deserialised into a
 // filters.FilterCriteria object (round-tripping a filters.FilterCriteria to JSON and back doesn't work, due to a
