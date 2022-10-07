@@ -29,6 +29,8 @@ const (
 	zeroBytesHex = "000000000000000000000000"
 )
 
+// TODO - Ensure chain reorgs are handled gracefully.
+
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
