@@ -35,6 +35,8 @@ pages:
         url: testnet/deploying-a-smart-contract-programmatically.html
       - title: ObscuroScan
         url: testnet/obscuroscan.html
+      - title: Token Faucet
+        url: testnet/faucet.html
       - title: Change Log
         url: testnet/changelog.html
       #- title: Troubleshooting
