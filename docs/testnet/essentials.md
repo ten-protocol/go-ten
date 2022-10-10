@@ -14,6 +14,9 @@ An easy-to-read list of essential parameters and configuration settings for Obsc
 ## ObscuroScan
 - **URL:** [http://testnet.obscuroscan.io/](http://testnet.obscuroscan.io/)
 
+## Token Faucet
+The token faucet is available on [Discord](https://discord.gg/5qyj3qraaH). Full guidance on using the faucet is available [here](../testnet/faucet.md).
+
 ## Rollup Encryption/Decryption Key
 The symmetric key used to encrypt and decrypt transaction blobs in rollups on the Obscuro Testnet:
 
