@@ -33,7 +33,7 @@ type netInfo struct {
 
 var testLogs = "../.build/noderunner/"
 
-func init() {
+func init() { //nolint:gochecknoinits
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "noderunner",

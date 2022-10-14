@@ -53,6 +53,7 @@ func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey, logger geth
 		prvKey:     pk,
 		pubKey:     publicKeyECDSA,
 		pubKeyAddr: crypto.PubkeyToAddress(*publicKeyECDSA),
+		logger:     logger,
 	}
 }
 

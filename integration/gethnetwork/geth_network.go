@@ -178,7 +178,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		panic(err)
 	}
 
-	logger := log.New(log.TestGethNetwComp, int(gethlog.LvlDebug), logPath, log.NetworkId, networkID.Int64())
+	logger := log.New(log.TestGethNetwCmp, int(gethlog.LvlDebug), logPath, log.NetworkIDKey, networkID.Int64())
 
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,

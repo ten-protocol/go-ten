@@ -62,7 +62,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 				}
 				err = notifier.Notify(subscription.ID, idAndEncLog)
 				if err != nil {
-					api.logger.Error("could not send encrypted log to client on subscription ", log.SubIdKey, subscription.ID)
+					api.logger.Error("could not send encrypted log to client on subscription ", log.SubIDKey, subscription.ID)
 				}
 
 			case <-subscription.Err(): // client sent an unsubscribe request

@@ -332,7 +332,7 @@ func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 func (a *Node) Unsubscribe(id rpc.ID) {
 	err := a.EnclaveClient().Unsubscribe(id)
 	if err != nil {
-		a.logger.Error("could not terminate subscription", log.SubIdKey, id, log.ErrKey, err)
+		a.logger.Error("could not terminate subscription", log.SubIDKey, id, log.ErrKey, err)
 	}
 	a.logEventManager.RemoveSubscription(id)
 }

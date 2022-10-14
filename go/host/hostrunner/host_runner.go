@@ -25,7 +25,7 @@ import (
 
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config config.HostConfig) {
-	logger := log.New(log.HostCmp, config.LogLevel, config.LogPath, log.NodeId, config.ID)
+	logger := log.New(log.HostCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.ID)
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress, logger)
 

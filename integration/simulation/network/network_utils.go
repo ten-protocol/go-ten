@@ -89,11 +89,11 @@ func createInMemObscuroNode(
 		ERC20ContractAddresses: wallets.AllEthAddresses(),
 		MinGasPrice:            big.NewInt(1),
 	}
-	enclaveLogger := testlog.Logger().New(log.NodeId, id, log.CmpKey, log.EnclaveCmp)
+	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, enclaveLogger)
 
 	// create an in memory obscuro node
-	hostLogger := testlog.Logger().New(log.NodeId, id, log.CmpKey, log.HostCmp)
+	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	inMemNode := node.NewHost(hostConfig, stats, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
@@ -131,9 +131,9 @@ func createSocketObscuroNode(
 	}
 
 	// create an enclave client
-	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeId, id))
+	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
 
-	hostLogger := testlog.Logger().New(log.NodeId, id, log.CmpKey, log.HostCmp)
+	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 
 	// create a socket P2P layer
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)

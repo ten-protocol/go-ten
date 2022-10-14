@@ -21,7 +21,7 @@ const hardcodedGenesisJSON = "TODO - REPLACE ME"
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config config.EnclaveConfig) {
 	// todo - is this the right wiring?
-	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeId, config.HostID)
+	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
 
 	contractAddr := config.ManagementContractAddress
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)

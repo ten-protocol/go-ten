@@ -50,7 +50,7 @@ var (
 	nodeAddress = fmt.Sprintf("ws://%s:%d", config.NodeHost, config.NodePort)
 )
 
-func init() {
+func init() { //nolint:gochecknoinits
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
 		TestType:    "noderunner",

@@ -186,7 +186,7 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams) {
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
 		}
-		enclaveLogger := testlog.Logger().New(log.NodeId, i, log.CmpKey, log.EnclaveCmp)
+		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
 		if err != nil {
 			panic(fmt.Sprintf("could not create enclave server: %v", err))
