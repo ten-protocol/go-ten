@@ -32,6 +32,10 @@ const (
 	logPathName    = "logPath"
 	logPathDefault = "wallet_extension_logs.txt"
 	logPathUsage   = "The path to use for the wallet extension's log file"
+
+	persistencePathName    = "persistencePath"
+	persistencePathDefault = ""
+	persistencePathUsage   = "The path for the wallet extension's persistence file. Default: ~/.obscuro/wallet_extension_persistence"
 )
 
 func parseCLIArgs() walletextension.Config {
@@ -41,6 +45,7 @@ func parseCLIArgs() walletextension.Config {
 	nodeHTTPPort := flag.Int(nodeHTTPPortName, nodeHTTPPortDefault, nodeHTTPPortUsage)
 	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
 	logPath := flag.String(logPathName, logPathDefault, logPathUsage)
+	persistencePath := flag.String(persistencePathName, persistencePathDefault, persistencePathUsage)
 	flag.Parse()
 
 	return walletextension.Config{
@@ -49,5 +54,6 @@ func parseCLIArgs() walletextension.Config {
 		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                 *logPath,
+		PersistencePathOverride: *persistencePath,
 	}
 }
