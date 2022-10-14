@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"sync"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -38,15 +40,17 @@ type SubscriptionManager struct {
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
 	subscriptionMutex *sync.RWMutex
+	logger               gethlog.Logger
 }
 
-func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage db.Storage) *SubscriptionManager {
+func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage db.Storage, logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
 		rpcEncryptionManager: rpcEncryptionManager,
 		storage:              storage,
 
 		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
 		subscriptionMutex: &sync.RWMutex{},
+		logger:               logger,
 	}
 }
 

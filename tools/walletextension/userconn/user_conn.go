@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -30,31 +32,35 @@ type UserConn interface {
 
 // Represents a user's connection over HTTP.
 type userConnHTTP struct {
-	resp http.ResponseWriter
-	req  *http.Request
+	resp   http.ResponseWriter
+	req    *http.Request
+	logger gethlog.Logger
 }
 
 // Represents a user's connection websockets.
 type userConnWS struct {
 	conn     *websocket.Conn
 	isClosed bool
+	logger   gethlog.Logger
 }
 
-func NewUserConnHTTP(resp http.ResponseWriter, req *http.Request) UserConn {
-	return &userConnHTTP{resp: resp, req: req}
+func NewUserConnHTTP(resp http.ResponseWriter, req *http.Request, logger gethlog.Logger) UserConn {
+	return &userConnHTTP{resp: resp, req: req, logger: logger}
 }
 
-func NewUserConnWS(resp http.ResponseWriter, req *http.Request) (UserConn, error) {
+func NewUserConnWS(resp http.ResponseWriter, req *http.Request, logger gethlog.Logger) (UserConn, error) {
 	// We search all the request's headers. If there's a websocket upgrade header, we upgrade to a websocket connection.
 	conn, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		err = fmt.Errorf("unable to upgrade to websocket connection")
+		logger.Error("unable to upgrade to websocket connection")
 		httpLogAndSendErr(resp, err.Error()) // TODO - Handle error properly for websockets.
 		return nil, err
 	}
 
 	return &userConnWS{
-		conn: conn,
+		conn:   conn,
+		logger: logger,
 	}, nil
 }
 
@@ -79,6 +85,7 @@ func (h *userConnHTTP) WriteResponse(msg []byte) error {
 }
 
 func (h *userConnHTTP) HandleError(msg string) {
+	h.logger.Error(msg)
 	httpLogAndSendErr(h.resp, msg)
 }
 
@@ -118,14 +125,13 @@ func (w *userConnWS) WriteResponse(msg []byte) error {
 
 // HandleError logs and prints the error, and writes it to the websocket as a JSON object with a single key, "error".
 func (w *userConnWS) HandleError(msg string) {
-	log.Error(msg)
-	fmt.Println(msg)
+	w.logger.Error(msg)
 
 	errMsg, err := json.Marshal(map[string]interface{}{
 		common.JSONKeyErr: msg,
 	})
 	if err != nil {
-		log.Error("could not marshal websocket error message to JSON")
+		w.logger.Error("could not marshal websocket error message to JSON", log.ErrKey, err)
 		return
 	}
 
@@ -134,7 +140,7 @@ func (w *userConnWS) HandleError(msg string) {
 		if websocket.IsCloseError(err) {
 			w.isClosed = true
 		}
-		log.Error("could not write error message to websocket")
+		w.logger.Error("could not write error message to websocket", log.ErrKey, err)
 		return
 	}
 }
@@ -149,7 +155,5 @@ func (w *userConnWS) IsClosed() bool {
 
 // Logs the error, prints it to the console, and returns the error over HTTP.
 func httpLogAndSendErr(resp http.ResponseWriter, msg string) {
-	log.Error(msg)
-	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
 }

@@ -22,7 +22,7 @@ services:
       ISGENESIS: some_bool
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_string
+      LOGLEVEL: some_int
     image: testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -35,6 +35,7 @@ services:
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
       "--logLevel=$LOGLEVEL",
+      "--logPath=sys_out",
       "--profilerEnabled=$PROFILERENABLED",
       "--p2pPublicAddress=$P2PPUBLICADDRESS"
     ]
@@ -55,7 +56,7 @@ services:
       OE_SIMULATION: 0
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_string
+      LOGLEVEL: some_int
     image: testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -69,6 +70,7 @@ services:
                  "--edgelessDBHost=edgelessdb",
                  "--profilerEnabled=$PROFILERENABLED",
                  "--hostAddress=$P2PPUBLICADDRESS",
+                 "--logPath=sys_out",
                  "--logLevel=$LOGLEVEL"
     ]
 

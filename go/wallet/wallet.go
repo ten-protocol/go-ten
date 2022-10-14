@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -37,12 +39,13 @@ type inMemoryWallet struct {
 	pubKeyAddr common.Address
 	nonce      uint64
 	chainID    *big.Int
+	logger     gethlog.Logger
 }
 
-func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
+func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey, logger gethlog.Logger) Wallet {
 	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
 	if !ok {
-		log.Panic("error casting public key to ECDSA")
+		logger.Crit("error casting public key to ECDSA")
 	}
 
 	return &inMemoryWallet{
@@ -53,12 +56,12 @@ func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey) Wallet {
 	}
 }
 
-func NewInMemoryWalletFromConfig(config config.HostConfig) Wallet {
+func NewInMemoryWalletFromConfig(config config.HostConfig, logger gethlog.Logger) Wallet {
 	privateKey, err := crypto.HexToECDSA(config.PrivateKeyString)
 	if err != nil {
-		log.Panic("could not recover private key from hex. Cause: %s", err)
+		logger.Crit("could not recover private key from hex. ", log.ErrKey, err)
 	}
-	return NewInMemoryWalletFromPK(big.NewInt(config.L1ChainID), privateKey)
+	return NewInMemoryWalletFromPK(big.NewInt(config.L1ChainID), privateKey, logger)
 }
 
 // SignTransaction returns a signed transaction

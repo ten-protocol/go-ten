@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -48,10 +50,11 @@ type EncRPCClient struct {
 	obscuroClient    Client
 	enclavePublicKey *ecies.PublicKey // Used to encrypt messages destined to the enclave.
 	viewingKey       *ViewingKey
+	logger           gethlog.Logger
 }
 
 // NewEncRPCClient sets up a client with a viewing key for encrypted communication (this submits the VK to the enclave)
-func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, error) {
+func NewEncRPCClient(client Client, viewingKey *ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
@@ -63,6 +66,7 @@ func NewEncRPCClient(client Client, viewingKey *ViewingKey) (*EncRPCClient, erro
 		obscuroClient:    client,
 		enclavePublicKey: enclavePublicKey,
 		viewingKey:       viewingKey,
+		logger:           logger,
 	}
 	err = encClient.registerViewingKey()
 	if err != nil {
@@ -107,7 +111,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	}
 
 	if rawResult == nil {
-		// note: some methods return nil for 'not found', caller can check for this Error type to verify
+		// note: some methods return nil for 'not found', caller can check for this ErrKey type to verify
 		return ErrNilResponse
 	}
 
@@ -179,15 +183,15 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 		case idAndEncLog := <-clientChannel:
 			jsonLogs, err := c.decryptResponse(idAndEncLog.EncLog)
 			if err != nil {
-				log.Error("could not decrypt logs received from subscription. Cause: %s", err)
+				c.logger.Error("could not decrypt logs received from subscription.", log.ErrKey, err)
 				continue
 			}
 
 			var logs []*types.Log
 			err = json.Unmarshal(jsonLogs, &logs)
 			if err != nil {
-				log.Error("could not unmarshal log from `data` field of log received from subscription. "+
-					"Data field contents: %s. Cause: %s", string(jsonLogs), err)
+				c.logger.Error(fmt.Sprintf("could not unmarshal log from `data` field of log received from subscription. "+
+					"Data field contents: %s.", string(jsonLogs)), log.ErrKey, err)
 				continue
 			}
 
@@ -200,7 +204,11 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 			}
 
 		case err := <-subscription.Err():
-			log.Error("subscription closed. Cause: %s", err)
+			if err != nil {
+				c.logger.Error("subscription closed", log.ErrKey, err)
+			} else {
+				c.logger.Trace("subscription closed")
+			}
 			return
 		}
 	}

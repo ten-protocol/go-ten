@@ -2,7 +2,10 @@ package bridge
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -76,11 +79,12 @@ type Bridge struct {
 	MgmtContractLib  mgmtcontractlib.MgmtContractLib
 	Erc20ContractLib erc20contractlib.ERC20ContractLib
 
-	NodeID                uint64
 	TransactionBlobCrypto crypto2.TransactionBlobCrypto
 
 	ObscuroChainID  int64
 	EthereumChainID int64
+
+	logger gethlog.Logger
 }
 
 func New(
@@ -88,24 +92,24 @@ func New(
 	pocAddress *gethcommon.Address,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	nodeID uint64,
 	transactionBlobCrypto crypto2.TransactionBlobCrypto,
 	obscuroChainID int64,
 	ethereumChainID int64,
+	logger gethlog.Logger,
 ) *Bridge {
 	tokens := make(map[ERC20]*ERC20Mapping, 0)
 
 	tokens[HOC] = &ERC20Mapping{
 		Name:      HOC,
 		L1Address: hocAddress,
-		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), HOCOwner),
+		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), HOCOwner, logger),
 		L2Address: &HOCContract,
 	}
 
 	tokens[POC] = &ERC20Mapping{
 		Name:      POC,
 		L1Address: pocAddress,
-		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), POCOwner),
+		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), POCOwner, logger),
 		L2Address: &POCContract,
 	}
 
@@ -114,10 +118,10 @@ func New(
 		BridgeAddress:         BridgeAddress,
 		MgmtContractLib:       mgmtContractLib,
 		Erc20ContractLib:      erc20ContractLib,
-		NodeID:                nodeID,
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,
 		EthereumChainID:       ethereumChainID,
+		logger:                logger,
 	}
 }
 
@@ -161,17 +165,17 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
 			r, err := common.DecodeRollup(rolTx.Rollup)
 			if err != nil {
-				log.Panic("could not decode rollup. Cause: %s", err)
+				bridge.logger.Crit("could not decode rollup.", log.ErrKey, err)
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 				rollups = append(rollups, obscurocore.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
-				common.TraceWithID(bridge.NodeID, "Extracted Rollup r_%d from block b_%d",
+				bridge.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
 					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),
-				)
+				))
 			}
 		}
 	}
@@ -204,7 +208,7 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 
 	newTx, err := types.SignTx(tx, signer, token.Owner.PrivateKey())
 	if err != nil {
-		log.Panic("could not sign synthetic deposit tx. Cause: %s", err)
+		bridge.logger.Crit("could not sign synthetic deposit tx.", log.ErrKey, err)
 	}
 	return newTx
 }
@@ -223,7 +227,7 @@ func (bridge *Bridge) ExtractDeposits(
 		from = fromBlock.Hash()
 		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
-			log.Panic("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+			bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
 	}
 
@@ -246,16 +250,16 @@ func (bridge *Bridge) ExtractDeposits(
 			}
 		}
 		if b.NumberU64() < height {
-			log.Panic("block height is less than genesis height")
+			bridge.logger.Crit("block height is less than genesis height")
 		}
 		p, f := blockResolver.ParentBlock(b)
 		if !f {
-			log.Panic("deposits can't be processed because the rollups are not on the same Ethereum fork")
+			bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
 		}
 		b = p
 	}
 
-	log.Trace("Extracted deposits %d ->%d: %v.", fromBlock.NumberU64(), toBlock.NumberU64(), allDeposits)
+	bridge.logger.Trace(fmt.Sprintf("Extracted deposits %d ->%d: %v.", fromBlock.NumberU64(), toBlock.NumberU64(), allDeposits))
 	return allDeposits
 }
 
@@ -264,7 +268,7 @@ func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for _, t := range newHeadRollup.Transactions {
-		found, address, amount := erc20contractlib.DecodeTransferTx(t)
+		found, address, amount := erc20contractlib.DecodeTransferTx(t, bridge.logger)
 
 		supportedTokenAddress := bridge.L1Address(t.To())
 		if found && supportedTokenAddress != nil && bridge.IsWithdrawal(*address) {

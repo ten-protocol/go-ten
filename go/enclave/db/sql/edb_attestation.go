@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/edgelesssys/ego/attestation"
 	"github.com/edgelesssys/ego/attestation/tcbstatus"
@@ -60,8 +60,8 @@ var defaultEDBConstraints = &EdgelessAttestationConstraints{
 }
 
 // performEDBRemoteAttestation perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
-func performEDBRemoteAttestation(edbHost string, constraints *EdgelessAttestationConstraints) (string, error) {
-	log.Info("Verifying attestation from edgeless DB...")
+func performEDBRemoteAttestation(edbHost string, constraints *EdgelessAttestationConstraints, logger gethlog.Logger) (string, error) {
+	logger.Info("Verifying attestation from edgeless DB...")
 	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
 	certs, tcbStatus, err := performRAAndFetchTLSCert(edbHTTPAddr, constraints)
 	if err != nil {
@@ -73,7 +73,7 @@ func performEDBRemoteAttestation(edbHost string, constraints *EdgelessAttestatio
 		return "", fmt.Errorf("no certificates found from edgeless db attestation process")
 	}
 
-	log.Info("Successfully verified edb attestation and retrieved certificate.")
+	logger.Info("Successfully verified edb attestation and retrieved certificate.")
 	// the last cert in the list is the CA
 	return string(pem.EncodeToMemory(certs[len(certs)-1])), nil
 }

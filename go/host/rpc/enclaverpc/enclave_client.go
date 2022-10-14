@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -32,16 +35,14 @@ type Client struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
 	config      config.HostConfig
-	nodeShortID uint64
+	logger      gethlog.Logger
 }
 
-func NewClient(config config.HostConfig) *Client {
-	nodeShortID := common.ShortAddress(config.ID)
-
+func NewClient(config config.HostConfig, logger gethlog.Logger) *Client {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
-		common.PanicWithID(nodeShortID, "Failed to connect to enclave RPC service. Cause: %s", err)
+		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
 	}
 
 	// We wait for the RPC connection to be ready.
@@ -58,14 +59,14 @@ func NewClient(config config.HostConfig) *Client {
 	}
 
 	if currentState != connectivity.Ready {
-		common.PanicWithID(nodeShortID, "RPC connection failed to establish. Current state is %s", currentState)
+		logger.Crit(fmt.Sprintf("RPC connection failed to establish. Current state is %s", currentState))
 	}
 
 	return &Client{
-		generated.NewEnclaveProtoClient(connection),
-		connection,
-		config,
-		nodeShortID,
+		protoClient: generated.NewEnclaveProtoClient(connection),
+		connection:  connection,
+		config:      config,
+		logger:      logger,
 	}
 }
 

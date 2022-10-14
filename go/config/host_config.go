@@ -3,6 +3,8 @@ package config
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -51,7 +53,7 @@ type HostConfig struct {
 	// The rollup contract address on the L1 network
 	RollupContractAddress common.Address
 	// LogLevel determines the verbosity of output logs
-	LogLevel string
+	LogLevel int
 	// The path that the node's logs are written to
 	LogPath string
 	// The stringified private key for the host's L1 wallet
@@ -85,7 +87,7 @@ func DefaultHostConfig() HostConfig {
 		L1RPCTimeout:           time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,
 		RollupContractAddress:  common.BytesToAddress([]byte("")),
-		LogLevel:               "info",
+		LogLevel:               int(log.LvlInfo),
 		LogPath:                "",
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:              1337,

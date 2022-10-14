@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -56,9 +58,10 @@ type RollupChain struct {
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
+	logger               gethlog.Logger
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig) *RollupChain {
+func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
 	return &RollupChain{
 		nodeID:                nodeID,
 		hostID:                hostID,
@@ -74,13 +77,14 @@ func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockch
 		ethereumChainID:       ethereumChainID,
 		chainConfig:           chainConfig,
 		blockProcessingMutex:  sync.Mutex{},
+		logger:                logger,
 	}
 }
 
 func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block) {
 	b, f := rc.storage.FetchBlock(blkHash)
 	if !f {
-		log.Panic("Could not find the block used as proof for the genesis rollup.")
+		rc.logger.Crit("Could not find the block used as proof for the genesis rollup.")
 	}
 
 	rolGenesis := obscurocore.NewRollup(
@@ -122,12 +126,12 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) c
 func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[gethrpc.ID][]byte) common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
-		log.Panic(msgNoRollup)
+		rc.logger.Crit(msgNoRollup)
 	}
 
 	headBlock, f := rc.storage.FetchBlock(bs.Block)
 	if !f {
-		log.Panic("could not fetch block")
+		rc.logger.Crit("could not fetch block")
 	}
 
 	var head *common.Header
@@ -180,13 +184,13 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 		// go back and calculate the Root of the Parent
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
 		if !found {
-			log.Panic("Could not find parent block when calculating block state. This should not happen.")
+			rc.logger.Crit("Could not find parent block when calculating block state. This should not happen.")
 		}
 		parentState = rc.updateState(parent)
 	}
 
 	if parentState == nil {
-		log.Panic(fmt.Sprintf("Could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d ",
+		rc.logger.Crit(fmt.Sprintf("Could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d  ",
 			b.Number(),
 			common.ShortHash(b.Hash()),
 			common.ShortHash(b.Header().ParentHash),
@@ -194,10 +198,10 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	}
 
 	blockState, head, receipts := rc.calculateBlockState(b, parentState, rollups)
-	common.TraceWithID(rc.nodeID, "Calc block state b_%d: Found: %t - r_%d, ",
+	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
 		blockState.FoundNewRollup,
-		common.ShortHash(blockState.HeadRollup))
+		common.ShortHash(blockState.HeadRollup)))
 
 	logs := []*types.Log{}
 	for _, receipt := range receipts {
@@ -213,7 +217,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
 	if genesisRollup == nil && len(rollups) == 1 {
-		common.LogWithID(rc.nodeID, "Found genesis rollup")
+		rc.logger.Info("Found genesis rollup")
 
 		genesis := rollups[0]
 		rc.storage.StoreGenesisRollup(genesis)
@@ -244,7 +248,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 func (rc *RollupChain) findRoundWinner(receivedRollups []*obscurocore.Rollup, parent *obscurocore.Rollup) *obscurocore.Rollup {
 	headRollup, found := FindWinner(parent, receivedRollups, rc.storage)
 	if !found {
-		log.Panic("could not find winner. This should not happen for gossip rounds")
+		rc.logger.Crit("could not find winner. This should not happen for gossip rounds")
 	}
 	rc.checkRollup(headRollup)
 	return headRollup
@@ -263,11 +267,11 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0)
+	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0, rc.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
-			log.Panic("There should be an entry for each transaction ")
+			rc.logger.Crit("There should be an entry for each transaction ")
 		}
 		rec, foundReceipt := result.(*types.Receipt)
 		if foundReceipt {
@@ -275,7 +279,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			common.LogWithID(common.ShortAddress(rc.hostID), "Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), result)
+			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), result))
 		}
 	}
 
@@ -288,17 +292,17 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		stateDB,
 	)
 
-	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions))
+	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	depositReceipts := make([]*types.Receipt, len(depositResponses))
 	if len(depositResponses) != len(depositTxs) {
-		log.Panic("Sanity check. Some deposit transactions failed.")
+		rc.logger.Crit("Sanity check. Some deposit transactions failed.")
 	}
 	i := 0
 	for _, resp := range depositResponses {
 		rec, ok := resp.(*types.Receipt)
 		if !ok {
 			// TODO - Handle the case of an error (e.g. insufficient funds).
-			log.Panic("Sanity check. Expected a receipt, got %v", resp)
+			rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
 		}
 		depositReceipts[i] = rec
 		i++
@@ -306,7 +310,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
-		log.Panic("could not commit to state DB. Cause: %s", err)
+		rc.logger.Crit("could not commit to state DB. ", log.ErrKey, err)
 	}
 
 	sort.Sort(sortByTxIndex(txReceipts))
@@ -320,8 +324,8 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
-		log.Error("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts)
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
+			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
 	}
 
@@ -330,7 +334,7 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	for i, w := range withdrawals {
 		hw := h.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			log.Error("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(rollup.Hash()))
+			rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(rollup.Hash())))
 			return false
 		}
 	}
@@ -338,13 +342,13 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	rec := allReceipts(txReceipts, depositReceipts)
 	rbloom := types.CreateBloom(rec)
 	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
-		log.Error("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(rollup.Hash()), h.Bloom, rbloom)
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(rollup.Hash()), h.Bloom, rbloom))
 		return false
 	}
 
 	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
 	if !bytes.Equal(receiptSha.Bytes(), h.ReceiptHash.Bytes()) {
-		log.Error("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(rollup.Hash()), h.ReceiptHash, receiptSha)
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(rollup.Hash()), h.ReceiptHash, receiptSha))
 		return false
 	}
 
@@ -355,7 +359,7 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscurocore.BlockState, rollups []*obscurocore.Rollup) (*obscurocore.BlockState, *obscurocore.Rollup, []*types.Receipt) {
 	currentHead, found := rc.storage.FetchRollup(parentState.HeadRollup)
 	if !found {
-		log.Panic("could not fetch parent rollup")
+		rc.logger.Crit("could not fetch parent rollup")
 	}
 	newHeadRollup, found := FindWinner(currentHead, rollups, rc.storage)
 	var rollupTxReceipts []*types.Receipt
@@ -385,7 +389,7 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
 	if !isValid {
-		log.Panic("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
+		rc.logger.Crit("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
 	}
 
 	// todo - check that the transactions hash to the header.txHash
@@ -393,7 +397,7 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 	// verify the signature
 	isValid = rc.verifySig(r)
 	if !isValid {
-		log.Panic("Should only happen once we start including malicious actors. Until then, a rollup with an invalid signature is a bug.")
+		rc.logger.Crit("Should only happen once we start including malicious actors. Until then, a rollup with an invalid signature is a bug.")
 	}
 
 	return txReceipts, depositReceipts
@@ -439,7 +443,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 		return common.BlockSubmissionResponse{IngestedBlock: false}
 	}
 
-	common.TraceWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
+	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	blockState := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
@@ -455,7 +459,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 
 	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
 	if err != nil {
-		log.Panic("Could not get subscribed logs in encrypted form. Cause: %s", err)
+		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
 	}
 
 	if !isLatest {
@@ -470,7 +474,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
 
-	common.TraceWithID(rc.nodeID, "Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash()))
+	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash())))
 
 	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs)
 }
@@ -478,7 +482,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
-		log.Panic(msgNoRollup)
+		rc.logger.Crit(msgNoRollup)
 	}
 
 	// These variables will be used to create the new rollup
@@ -547,9 +551,11 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 		r.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
 	}
 
-	// Uncomment this if you want to debug issues related to root state hashes not matching
-	dump := strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
-	log.Trace("Create rollup. State: %s", dump)
+	rc.logger.Trace("Create rollup.",
+		"State", gethlog.Lazy{Fn: func() string {
+			return strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
+		}},
+	)
 
 	return r
 }
@@ -572,14 +578,14 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 		return common.ExtRollup{}, false, nil
 	}
 
-	common.TraceWithID(rc.nodeID, "Round winner height: %d", head.Header.Number)
+	rc.logger.Trace(fmt.Sprintf("Round winner height: %d", head.Header.Number))
 	rollupsReceivedFromPeers := rc.storage.FetchRollups(head.NumberU64() + 1)
 	// filter out rollups with a different Parent
 	var usefulRollups []*obscurocore.Rollup
 	for _, rol := range rollupsReceivedFromPeers {
 		p := rc.storage.ParentRollup(rol)
 		if p == nil {
-			common.LogWithID(rc.nodeID, "Received rollup from peer but don't have parent rollup - discarding...")
+			rc.logger.Info("Received rollup from peer but don't have parent rollup - discarding...")
 			continue
 		}
 		if bytes.Equal(p.Hash().Bytes(), head.Hash().Bytes()) {
@@ -597,7 +603,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 	if bytes.Equal(winnerRollup.Header.Agg.Bytes(), rc.hostID.Bytes()) {
 		v := rc.storage.Proof(winnerRollup)
 		w := rc.storage.ParentRollup(winnerRollup)
-		common.TraceWithID(rc.nodeID, "Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
+		rc.logger.Trace(fmt.Sprintf("Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
 			common.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
 			common.ShortHash(w.Hash()),
 			common.ShortHash(v.Hash()),
@@ -605,7 +611,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 			len(winnerRollup.Transactions),
 			obscurocore.PrintTxs(winnerRollup.Transactions),
 			winnerRollup.Header.Root,
-		)
+		))
 		return winnerRollup.ToExtRollup(rc.transactionBlobCrypto), true, nil
 	}
 	return common.ExtRollup{}, false, nil
@@ -644,19 +650,19 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		panic("not found")
 	}
 
-	log.Trace("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To.Hex(), callMsg.From.Hex(), hexutils.BytesToHex(callMsg.Data), common.ShortHash(r.Hash()), r.Header.Root.Hex())
+	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To.Hex(), callMsg.From.Hex(), hexutils.BytesToHex(callMsg.Data), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(callMsg.From, callMsg.To, callMsg.Data, s, r.Header, rc.storage, rc.chainConfig)
+	result, err := evm.ExecuteOffChainCall(callMsg.From, callMsg.To, callMsg.Data, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	// todo - clarify this error handling
 	if err != nil {
 		return nil, err
 	}
 	if result.Failed() {
-		log.Error("!OffChain: Failed to execute contract %s: %s\n", callMsg.To.Hex(), result.Err)
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To.Hex()), log.ErrKey, result.Err)
 		return nil, result.Err
 	}
 
-	log.Trace("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData))
+	rc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
 
 	var encodedResult string
 	if len(result.ReturnData) != 0 {
@@ -741,7 +747,7 @@ func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
 	h := r.Hash()
 	r.Header.R, r.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
 	if err != nil {
-		log.Panic("Could not sign rollup. Cause: %s", err)
+		rc.logger.Crit("Could not sign rollup. ", log.ErrKey, err)
 	}
 }
 

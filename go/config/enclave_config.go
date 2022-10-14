@@ -3,6 +3,10 @@ package config
 import (
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -31,8 +35,8 @@ type EnclaveConfig struct {
 	// The addresses of ERC20 contracts to monitor on the L1 network
 	ERC20ContractAddresses []*common.Address
 	// LogLevel determines the verbosity of output logs
-	LogLevel string
-	// The path that the node's logs are written to
+	LogLevel int
+	// The path that the enclave's logs are written to
 	LogPath string
 	// Whether the enclave should use in-memory or persistent storage
 	UseInMemoryDB bool
@@ -61,8 +65,8 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		SpeculativeExecution:      false,
 		ManagementContractAddress: common.BytesToAddress([]byte("")),
 		ERC20ContractAddresses:    []*common.Address{},
-		LogLevel:                  "info",
-		LogPath:                   "",
+		LogLevel:                  int(gethlog.LvlInfo),
+		LogPath:                   log.SysOut,
 		UseInMemoryDB:             true, // todo: persistence should be on by default before production release
 		EdgelessDBHost:            "",
 		SqliteDBPath:              "",

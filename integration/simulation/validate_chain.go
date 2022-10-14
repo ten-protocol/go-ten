@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
@@ -172,7 +174,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 			case *ethadapter.L1RollupTx:
 				r, err := common.DecodeRollup(l1tx.Rollup)
 				if err != nil {
-					log.Panic("could not decode rollup. Cause: %s", err)
+					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
 				rollups = append(rollups, r.Hash())
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
@@ -351,7 +353,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
-			log.Info("Transaction %s failed.", tx.Hash().Hex())
+			testlog.Logger().Info("Transaction failed.", log.TxKey, tx.Hash().Hex())
 		}
 	}
 }

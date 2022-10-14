@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -24,36 +28,31 @@ import (
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
 type server struct {
 	generated.UnimplementedEnclaveProtoServer
-	enclave     common.Enclave
-	rpcServer   *grpc.Server
-	nodeShortID uint64
+	enclave   common.Enclave
+	rpcServer *grpc.Server
+	logger    gethlog.Logger
 }
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-func StartServer(
-	enclaveConfig config.EnclaveConfig,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	collector StatsCollector,
-) (func(), error) {
+func StartServer(enclaveConfig config.EnclaveConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, erc20ContractLib erc20contractlib.ERC20ContractLib, logger gethlog.Logger) (func(), error) {
 	lis, err := net.Listen("tcp", enclaveConfig.Address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(enclaveConfig, mgmtContractLib, erc20ContractLib, collector),
-		rpcServer:   grpc.NewServer(),
-		nodeShortID: common.ShortAddress(enclaveConfig.HostID),
+		enclave:   NewEnclave(enclaveConfig, mgmtContractLib, erc20ContractLib, logger),
+		rpcServer: grpc.NewServer(),
+		logger:    logger,
 	}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {
-		common.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", enclaveConfig.Address)
+		logger.Info(fmt.Sprintf("Enclave server listening on address %s.", enclaveConfig.Address))
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
-			common.LogWithID(enclaveServer.nodeShortID, "enclave RPC server could not serve: %s", err)
+			logger.Info("enclave RPC server could not serve", log.ErrKey, err)
 		}
 	}(lis)
 
@@ -271,7 +270,7 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
-		common.LogWithID(s.nodeShortID, "failed to decode block sent to enclave: %v", err)
+		s.logger.Info("failed to decode block sent to enclave", log.ErrKey, err)
 	}
 	return block
 }

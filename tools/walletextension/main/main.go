@@ -4,7 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
@@ -41,7 +45,17 @@ func main() {
 		time.Sleep(time.Second)
 	}
 
-	walletExtension := walletextension.NewWalletExtension(config)
+	// Sets up the log file.
+	if config.LogPath != log.SysOut {
+		_, err := os.Create(config.LogPath)
+		if err != nil {
+			panic(fmt.Sprintf("could not create log file. Cause: %s", err))
+		}
+	}
+
+	logger := log.New(log.WalletExtCmp, int(gethlog.LvlError), config.LogPath)
+
+	walletExtension := walletextension.NewWalletExtension(config, logger)
 	defer walletExtension.Shutdown()
 
 	go walletExtension.Serve(common.Localhost, config.WalletExtensionPort, config.WalletExtensionPortWS)

@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
@@ -24,16 +24,15 @@ import (
 func testSimulation(t *testing.T, netw network.Network, params *params.SimParams) {
 	defer func() {
 		// wait until clean up is complete before we log the lingering goroutine count
-		log.Info("goroutine leak monitor - simulation end - %d goroutines currently running", runtime.NumGoroutine())
+		testlog.Logger().Info(fmt.Sprintf("goroutine leak monitor - simulation end - %d goroutines currently running", runtime.NumGoroutine()))
 	}()
-	log.Info("goroutine leak monitor - simulation start - %d goroutines currently running", runtime.NumGoroutine())
+	testlog.Logger().Info(fmt.Sprintf("goroutine leak monitor - simulation start - %d goroutines currently running", runtime.NumGoroutine()))
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
 	stats := simstats.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
 
-	fmt.Printf("Creating network\n")
-	log.Info("Creating network")
+	testlog.Logger().Info("Creating network")
 	defer netw.TearDown()
 	networkClients, err := netw.Create(params, stats)
 	// Return early if the network was not created
@@ -65,19 +64,17 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	}
 
 	// execute the simulation
-	fmt.Printf("Starting simulation\n")
-	log.Info("Starting simulation")
+	testlog.Logger().Info("Starting simulation")
 	simulation.Start()
 
 	// run tests
-	fmt.Printf("Validating simulation results\n")
-	log.Info("Validating simulation results")
+	testlog.Logger().Info("Validating simulation results")
 	checkNetworkValidity(t, &simulation)
 
-	fmt.Printf("Stopping simulation\n")
-	log.Info("Stopping simulation")
+	testlog.Logger().Info("Stopping simulation")
 	simulation.Stop()
 
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
+	testlog.Logger().Info(fmt.Sprintf("Simulation results:%+v", NewOutputStats(&simulation)))
 }

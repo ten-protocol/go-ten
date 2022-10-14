@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -29,6 +31,16 @@ type netInfo struct {
 	gethNetwork *gethnetwork.GethNetwork
 }
 
+var testLogs = "../.build/noderunner/"
+
+func init() {
+	testlog.Setup(&testlog.Cfg{
+		LogDir:      testLogs,
+		TestType:    "noderunner",
+		TestSubtype: "test",
+	})
+}
+
 // runGethNetwork runs a geth network with one prefunded wallet
 func runGethNetwork(t *testing.T) *netInfo {
 	// make sure the geth network binaries exist
@@ -51,7 +63,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	)
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second, gethcommon.HexToAddress("0x0"))
+	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		return nil
 	}
@@ -94,7 +106,7 @@ func TestManagementContract(t *testing.T) {
 
 			// run the test using the new contract, but same wallet
 			test(t,
-				newDebugMgmtContractLib(*contractAddr, client.EthClient(), mgmtcontractlib.NewMgmtContractLib(contractAddr)),
+				newDebugMgmtContractLib(*contractAddr, client.EthClient(), mgmtcontractlib.NewMgmtContractLib(contractAddr, testlog.Logger())),
 				w,
 				client,
 			)

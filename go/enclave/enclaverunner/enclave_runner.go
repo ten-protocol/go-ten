@@ -6,10 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/rs/zerolog"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -24,40 +20,23 @@ const hardcodedGenesisJSON = "TODO - REPLACE ME"
 
 // RunEnclave runs an Obscuro enclave as a standalone process.
 func RunEnclave(config config.EnclaveConfig) {
+	// todo - is this the right wiring?
+	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeId, config.HostID)
+
 	contractAddr := config.ManagementContractAddress
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr)
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
 	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddresses...)
-
-	// todo temporary
-	// log.SetLogLevel(log.ParseLevel(config.LogLevel))
-	log.SetLogLevel(zerolog.TraceLevel)
-
-	if config.LogPath != "" {
-		setLogs(config.LogPath)
-	}
-	// hardcode geth log level to error only
-	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(gethlog.LvlError, gethlog.StreamHandler(os.Stderr, gethlog.TerminalFormat(true))))
 
 	if config.ValidateL1Blocks {
 		config.GenesisJSON = []byte(hardcodedGenesisJSON)
 	}
-	closeHandle, err := enclave.StartServer(config, mgmtContractLib, erc20ContractLib, nil)
+	closeHandle, err := enclave.StartServer(config, mgmtContractLib, erc20ContractLib, logger)
 	if err != nil {
-		log.Panic("could not start Obscuro enclave service. Cause: %s", err)
+		logger.Crit("could not start Obscuro enclave service.", log.ErrKey, err)
 	}
-	log.Info("Obscuro enclave service started.")
-	fmt.Println("Obscuro enclave service started.")
+	logger.Info("Obscuro enclave service started.")
 
 	handleInterrupt(closeHandle)
-}
-
-// setLogs sets the log file.
-func setLogs(logPath string) {
-	logFile, err := os.Create(logPath)
-	if err != nil {
-		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
-	}
-	log.OutputToFile(logFile)
 }
 
 // Shuts down the Obscuro enclave service when an interrupt is received.

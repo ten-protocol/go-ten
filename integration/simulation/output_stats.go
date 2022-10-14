@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -68,7 +69,7 @@ func (o *OutputStats) countBlockChain() {
 			case *ethadapter.L1RollupTx:
 				r, err := common.DecodeRollup(l1Tx.Rollup)
 				if err != nil {
-					log.Panic("could not decode rollup. Cause: %s", err)
+					testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
 				}
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++

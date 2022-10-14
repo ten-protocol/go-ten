@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/ethereum/go-ethereum"
@@ -17,8 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -51,7 +51,7 @@ type Simulation struct {
 
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
-	log.Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
+	testlog.Logger().Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
 	s.ctx = context.Background() // use injected context for graceful shutdowns
 
 	s.waitForObscuroGenesisOnL1()
@@ -65,23 +65,21 @@ func (s *Simulation) Start() {
 	s.prefundL1Accounts()      // Prefund every L1 wallet
 
 	timer := time.Now()
-	fmt.Printf("Starting injection\n")
-	log.Info("Starting injection")
+	testlog.Logger().Info("Starting injection")
 	go s.TxInjector.Start()
 
 	stoppingDelay := s.Params.AvgBlockDuration * 7
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - stoppingDelay)
-	fmt.Printf("Stopping injection\n")
-	log.Info("Stopping injection")
+	testlog.Logger().Info("Stopping injection")
 
 	s.TxInjector.Stop()
 
 	// Allow for some time after tx injection was stopped so that the network can process all transactions
 	time.Sleep(stoppingDelay)
 
-	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
+	testlog.Logger().Info(fmt.Sprintf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime))
 }
 
 func (s *Simulation) Stop() {
@@ -108,7 +106,7 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 			}
 		}
 		time.Sleep(s.Params.AvgBlockDuration)
-		log.Trace("Waiting for the Obscuro genesis rollup...")
+		testlog.Logger().Trace("Waiting for the Obscuro genesis rollup...")
 	}
 }
 

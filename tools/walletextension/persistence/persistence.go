@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -29,9 +31,10 @@ const (
 type Persistence struct {
 	filePath string // The path of the file used to store the submitted viewing keys
 	hostAddr string // The address of the host the keys are being persisted for
+	logger   gethlog.Logger
 }
 
-func NewPersistence(hostAddr string, persistenceFilePath string) *Persistence {
+func NewPersistence(hostAddr string, persistenceFilePath string, logger gethlog.Logger) *Persistence {
 	// Sets up the persistence file and returns its path. Defaults to the user's home directory if the path is empty.
 	if persistenceFilePath == "" {
 		homeDir, err := os.UserHomeDir()
@@ -49,12 +52,13 @@ func NewPersistence(hostAddr string, persistenceFilePath string) *Persistence {
 
 	_, err := os.OpenFile(persistenceFilePath, os.O_CREATE|os.O_RDONLY, 0o644)
 	if err != nil {
-		panic(fmt.Sprintf("could not create persistence file. Cause: %s", err))
+		logger.Crit("could not create persistence file. ", log.ErrKey, err)
 	}
 
 	return &Persistence{
 		filePath: persistenceFilePath,
 		hostAddr: hostAddr,
+		logger:   logger,
 	}
 }
 
@@ -73,14 +77,14 @@ func (p *Persistence) PersistViewingKey(viewingKey *rpc.ViewingKey) {
 	persistenceFile, err := os.OpenFile(p.filePath, os.O_APPEND|os.O_WRONLY, 0o644)
 	defer persistenceFile.Close() //nolint:staticcheck
 	if err != nil {
-		log.Error("could not open persistence file. Cause: %s", err)
+		p.logger.Error("could not open persistence file. ", log.ErrKey, err)
 	}
 
 	writer := csv.NewWriter(persistenceFile)
 	defer writer.Flush()
 	err = writer.Write(record)
 	if err != nil {
-		log.Error("failed to write viewing key to persistence file. Cause: %s", err)
+		p.logger.Error("failed to write viewing key to persistence file. ", log.ErrKey, err)
 	}
 }
 
@@ -91,25 +95,25 @@ func (p *Persistence) LoadViewingKeys() map[common.Address]*rpc.ViewingKey {
 	persistenceFile, err := os.OpenFile(p.filePath, os.O_RDONLY, 0o644)
 	defer persistenceFile.Close() //nolint:staticcheck
 	if err != nil {
-		log.Error("could not open persistence file. Cause: %s", err)
+		p.logger.Error("could not open persistence file. ", log.ErrKey, err)
 	}
 
 	reader := csv.NewReader(persistenceFile)
 	records, err := reader.ReadAll()
 	if err != nil {
-		log.Error("could not read records from persistence file. Cause: %s", err)
+		p.logger.Error("could not read records from persistence file. ", log.ErrKey, err)
 	}
 
 	for _, record := range records {
 		// TODO - Determine strategy for invalid persistence entries - delete? Warn? Shutdown? For now, we log a warning.
 		if len(record) != persistenceNumComponents {
-			log.Warn("persistence file entry did not have expected number of components: %s", record)
+			p.logger.Warn(fmt.Sprintf("persistence file entry did not have expected number of components: %s", record))
 			continue
 		}
 
 		persistedHostAddr := record[persistenceIdxHost]
 		if persistedHostAddr != p.hostAddr {
-			log.Info("skipping persistence file entry for another host. Current host is %s, entry was for %s", p.hostAddr, persistedHostAddr)
+			p.logger.Info(fmt.Sprintf("skipping persistence file entry for another host. Current host is %s, entry was for %s", p.hostAddr, persistedHostAddr))
 			continue
 		}
 
@@ -117,18 +121,18 @@ func (p *Persistence) LoadViewingKeys() map[common.Address]*rpc.ViewingKey {
 		viewingKeyPrivateHex := record[persistenceIdxViewingKey]
 		viewingKeyPrivateBytes, err := hex.DecodeString(viewingKeyPrivateHex)
 		if err != nil {
-			log.Warn("could not decode the following viewing private key from hex in the persistence file: %s", viewingKeyPrivateHex)
+			p.logger.Warn(fmt.Sprintf("could not decode the following viewing private key from hex in the persistence file: %s", viewingKeyPrivateHex))
 			continue
 		}
 		viewingKeyPrivate, err := crypto.ToECDSA(viewingKeyPrivateBytes)
 		if err != nil {
-			log.Warn("could not convert the following viewing private key bytes to ECDSA in the persistence file: %s", viewingKeyPrivateHex)
+			p.logger.Warn(fmt.Sprintf("could not convert the following viewing private key bytes to ECDSA in the persistence file: %s", viewingKeyPrivateHex))
 			continue
 		}
 		signedKeyHex := record[persistenceIdxSignedKey]
 		signedKey, err := hex.DecodeString(signedKeyHex)
 		if err != nil {
-			log.Warn("could not decode the following signed key from hex in the persistence file: %s", signedKeyHex)
+			p.logger.Warn(fmt.Sprintf("could not decode the following signed key from hex in the persistence file: %s", signedKeyHex))
 			continue
 		}
 
@@ -141,13 +145,13 @@ func (p *Persistence) LoadViewingKeys() map[common.Address]*rpc.ViewingKey {
 		viewingKeys[account] = &viewingKey
 	}
 
-	logReRegisteredViewingKeys(viewingKeys)
+	p.logReRegisteredViewingKeys(viewingKeys)
 
 	return viewingKeys
 }
 
 // Logs and prints the accounts for which we are re-registering viewing keys.
-func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) {
+func (p *Persistence) logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) {
 	if len(viewingKeys) == 0 {
 		return
 	}
@@ -159,6 +163,6 @@ func logReRegisteredViewingKeys(viewingKeys map[common.Address]*rpc.ViewingKey) 
 
 	msg := fmt.Sprintf("Re-registering persisted viewing keys for the following addresses: %s",
 		strings.Join(accounts, ", "))
-	log.Info(msg)
+	p.logger.Info(msg)
 	fmt.Println(msg)
 }
