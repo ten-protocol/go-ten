@@ -140,7 +140,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	buildDir := path.Join(basepath, buildDirBase, timestamp)
 	// We create a data directory for each node.
 	nodesDir, err := os.MkdirTemp("", timestamp)
-	fmt.Printf("Geth nodes created in: %s", nodesDir)
+	fmt.Printf("Geth nodes created in: %s\n", nodesDir)
 	if err != nil {
 		panic(err)
 	}

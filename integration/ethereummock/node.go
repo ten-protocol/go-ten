@@ -106,7 +106,11 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	for blk := m.Resolver.FetchHeadBlock(); !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()); {
+	blk := m.Resolver.FetchHeadBlock()
+	if blk == nil {
+		return nil, ethereum.NotFound
+	}
+	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
