@@ -17,8 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -142,7 +140,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	buildDir := path.Join(basepath, buildDirBase, timestamp)
 	// We create a data directory for each node.
 	nodesDir, err := os.MkdirTemp("", timestamp)
-	testlog.Logger().Info(fmt.Sprintf("Geth nodes created in: %s", nodesDir))
+	fmt.Printf("Geth nodes created in: %s", nodesDir)
 	if err != nil {
 		panic(err)
 	}
@@ -413,7 +411,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) error {
 
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
-	testlog.Logger().Info(fmt.Sprintf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort))
+	network.logger.Info(fmt.Sprintf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort))
 	return nil
 }
 
