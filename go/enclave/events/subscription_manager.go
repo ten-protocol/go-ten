@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -36,14 +37,18 @@ const (
 type SubscriptionManager struct {
 	rpcEncryptionManager *rpc.EncryptionManager
 	storage              db.Storage
-	subscriptions        map[gethrpc.ID]*common.LogSubscription
+
+	subscriptions     map[gethrpc.ID]*common.LogSubscription
+	subscriptionMutex *sync.RWMutex
 }
 
 func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage db.Storage) *SubscriptionManager {
 	return &SubscriptionManager{
 		rpcEncryptionManager: rpcEncryptionManager,
 		storage:              storage,
-		subscriptions:        map[gethrpc.ID]*common.LogSubscription{},
+
+		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
+		subscriptionMutex: &sync.RWMutex{},
 	}
 }
 
@@ -71,14 +76,18 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	// We set this to the current rollup height, so that historical logs aren't returned.
 	subscription.Filter.FromBlock = big.NewInt(0).Add(s.storage.FetchHeadRollup().Number(), big.NewInt(1))
 
+	s.subscriptionMutex.Lock()
 	s.subscriptions[id] = &subscription
+	s.subscriptionMutex.Unlock()
 	return nil
 }
 
 // RemoveSubscription removes the log subscription with the given ID from the enclave. If there is no subscription with
 // the given ID, nothing is deleted.
 func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
+	s.subscriptionMutex.Lock()
 	delete(s.subscriptions, id)
+	s.subscriptionMutex.Unlock()
 }
 
 // FilteredLogsHead retrieves the logs for the head of the chain and filters out irrelevant logs.
@@ -126,7 +135,7 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 		rollupNumber := logItem.BlockNumber
 
 		// We check whether the log is relevant to each subscription.
-		// TODO - #1016 - This can blow up if a subscription is added while we are iterating over the subscriptions.
+		s.subscriptionMutex.RLock()
 		for subscriptionID, subscription := range s.subscriptions {
 			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(logItem, subscription.Filter) && rollupNumber > subscription.LastSeenRollup {
 				if relevantLogs[subscriptionID] == nil {
@@ -142,16 +151,19 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 				}
 			}
 		}
+		s.subscriptionMutex.RUnlock()
 	}
 
 	// We update the last seen rollup for each subscription. We must do this in a separate loop, as if we update it
 	// as we go, we may miss a set of logs if we process the logs for rollup N before we process those for rollup N-1.
+	s.subscriptionMutex.RLock()
 	for subscriptionID, subscription := range s.subscriptions {
 		newLatestSeenRollup, exists := lastSeenRollupByID[subscriptionID]
 		if exists && newLatestSeenRollup > subscription.LastSeenRollup {
 			subscription.LastSeenRollup = newLatestSeenRollup
 		}
 	}
+	s.subscriptionMutex.RUnlock()
 
 	return relevantLogs
 }
@@ -163,7 +175,7 @@ func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 	for subID, logs := range logsByID {
 		subscription, found := s.subscriptions[subID]
 		if !found {
-			continue
+			continue // The subscription has been removed, so there's no need to return anything.
 		}
 
 		jsonLogs, err := json.Marshal(logs)
