@@ -40,7 +40,7 @@ type SubscriptionManager struct {
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
 	subscriptionMutex *sync.RWMutex
-	logger               gethlog.Logger
+	logger            gethlog.Logger
 }
 
 func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage db.Storage, logger gethlog.Logger) *SubscriptionManager {
@@ -50,7 +50,7 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 
 		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
 		subscriptionMutex: &sync.RWMutex{},
-		logger:               logger,
+		logger:            logger,
 	}
 }
 

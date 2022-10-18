@@ -35,6 +35,7 @@ func RunEnclave(config config.EnclaveConfig) {
 		logger.Crit("could not start Obscuro enclave service.", log.ErrKey, err)
 	}
 	logger.Info("Obscuro enclave service started.")
+	fmt.Println("Obscuro enclave service started.")
 
 	handleInterrupt(closeHandle)
 }

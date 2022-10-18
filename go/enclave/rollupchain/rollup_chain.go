@@ -43,7 +43,6 @@ const (
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
 	hostID          gethcommon.Address
-	nodeID          uint64
 	ethereumChainID int64
 	chainConfig     *params.ChainConfig
 
@@ -61,9 +60,8 @@ type RollupChain struct {
 	logger               gethlog.Logger
 }
 
-func New(nodeID uint64, hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
+func New(hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
 	return &RollupChain{
-		nodeID:                nodeID,
 		hostID:                hostID,
 		storage:               storage,
 		l1Blockchain:          l1Blockchain,

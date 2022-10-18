@@ -65,6 +65,7 @@ func (s *Simulation) Start() {
 	s.prefundL1Accounts()      // Prefund every L1 wallet
 
 	timer := time.Now()
+	fmt.Printf("Starting injection\n")
 	testlog.Logger().Info("Starting injection")
 	go s.TxInjector.Start()
 
@@ -72,6 +73,7 @@ func (s *Simulation) Start() {
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - stoppingDelay)
+	fmt.Printf("Stopping injection\n")
 	testlog.Logger().Info("Stopping injection")
 
 	s.TxInjector.Stop()
@@ -79,6 +81,7 @@ func (s *Simulation) Start() {
 	// Allow for some time after tx injection was stopped so that the network can process all transactions
 	time.Sleep(stoppingDelay)
 
+	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
 	testlog.Logger().Info(fmt.Sprintf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime))
 }
 

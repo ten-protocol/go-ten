@@ -47,6 +47,7 @@ func RunHost(config config.HostConfig) {
 	aggP2P := p2p.NewSocketP2PLayer(config, p2pLogger)
 	agg := node.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib, logger)
 
+	fmt.Println("Starting Obscuro host...")
 	logger.Info("Starting Obscuro host...")
 	agg.Start()
 

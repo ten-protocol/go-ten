@@ -7,7 +7,7 @@ import (
 )
 
 // These are the keys of the log entries
-var (
+const (
 	ErrKey       = "err"
 	SubIDKey     = "subId"
 	CfgKey       = "cfg"
@@ -18,7 +18,7 @@ var (
 )
 
 // Logging is grouped by the component where it was initialised
-var (
+const (
 	EnclaveCmp      = "enclave"
 	HostCmp         = "host"
 	HostRPCCmp      = "host_rpc"
@@ -34,7 +34,7 @@ var (
 )
 
 // Used when the logger has to write to Sys.out
-var (
+const (
 	SysOut = "sys_out"
 )
 

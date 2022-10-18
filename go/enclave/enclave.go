@@ -42,7 +42,6 @@ import (
 
 type enclaveImpl struct {
 	config               config.EnclaveConfig
-	nodeShortID          uint64
 	storage              db.Storage
 	blockResolver        db.BlockResolver
 	mempool              mempool.Manager
@@ -83,8 +82,6 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 	}
 
 	// todo - add the delay: N hashes
-
-	nodeShortID := common.ShortAddress(config.HostID)
 
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
@@ -169,13 +166,12 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 	memp := mempool.New(config.ObscuroChainID)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
+	chain := rollupchain.New(config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
 	return &enclaveImpl{
 		config:                config,
-		nodeShortID:           nodeShortID,
 		storage:               storage,
 		blockResolver:         storage,
 		mempool:               memp,
