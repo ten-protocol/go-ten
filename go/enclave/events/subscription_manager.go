@@ -77,8 +77,8 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.Filter.FromBlock = big.NewInt(0).Add(s.storage.FetchHeadRollup().Number(), big.NewInt(1))
 
 	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
 	s.subscriptions[id] = &subscription
-	s.subscriptionMutex.Unlock()
 	return nil
 }
 
@@ -86,8 +86,8 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 // the given ID, nothing is deleted.
 func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
 	delete(s.subscriptions, id)
-	s.subscriptionMutex.Unlock()
 }
 
 // FilteredLogsHead retrieves the logs for the head of the chain and filters out irrelevant logs.
@@ -107,8 +107,8 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 	stateDB := s.storage.CreateStateDB(rollupHash)
 
 	for _, logItem := range logs {
-		userAddrs := getUserAddrs(logItem, stateDB)
-		if isRelevant(userAddrs, account) && !isFilteredOut(logItem, filter) {
+		userAddrs := getUserAddrsFromLogTopics(logItem, stateDB)
+		if userAddrsContainAccount(account, userAddrs) && logMatchesFilter(logItem, filter) {
 			filteredLogs = append(filteredLogs, logItem)
 		}
 	}
@@ -119,53 +119,32 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 // FilteredSubscribedLogs filters out irrelevant logs, those that are not subscribed to, and those a subscription has
 // seen before, and organises them by their subscribing ID.
 func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
-	relevantLogs := map[gethrpc.ID][]*types.Log{}
+	relevantLogsByID := map[gethrpc.ID][]*types.Log{}
+	lastSeenRollupByID := map[gethrpc.ID]uint64{}
 
-	// If there are no subscriptions, we do not need to do any processing.
+	// If there are no subscriptions, we return early, to avoid the overhead of creating the state DB.
 	if len(s.subscriptions) == 0 {
-		return relevantLogs
+		return map[gethrpc.ID][]*types.Log{}
 	}
 
 	stateDB := s.storage.CreateStateDB(rollupHash)
-
-	lastSeenRollupByID := map[gethrpc.ID]uint64{}
-
 	for _, logItem := range logs {
-		userAddrs := getUserAddrs(logItem, stateDB)
-		rollupNumber := logItem.BlockNumber
-
-		// We check whether the log is relevant to each subscription.
-		s.subscriptionMutex.RLock()
-		for subscriptionID, subscription := range s.subscriptions {
-			if isRelevant(userAddrs, subscription.Account) && !isFilteredOut(logItem, subscription.Filter) && rollupNumber > subscription.LastSeenRollup {
-				if relevantLogs[subscriptionID] == nil {
-					relevantLogs[subscriptionID] = []*types.Log{}
-				}
-
-				relevantLogs[subscriptionID] = append(relevantLogs[subscriptionID], logItem)
-
-				// We update the last rollup number for the subscription if this is the highest one we've seen so far.
-				currentLatestSeenRollup, exists := lastSeenRollupByID[subscriptionID]
-				if !exists || rollupNumber > currentLatestSeenRollup {
-					lastSeenRollupByID[subscriptionID] = rollupNumber
-				}
-			}
-		}
-		s.subscriptionMutex.RUnlock()
+		userAddrs := getUserAddrsFromLogTopics(logItem, stateDB)
+		s.updateRelevantLogsAndLastSeen(logItem, userAddrs, relevantLogsByID, lastSeenRollupByID)
 	}
 
-	// We update the last seen rollup for each subscription. We must do this in a separate loop, as if we update it
-	// as we go, we may miss a set of logs if we process the logs for rollup N before we process those for rollup N-1.
+	// We update the last seen rollup for each subscription. We must do this in a separate loop - if we update it as we
+	// go, we may miss a set of logs if we process the logs for rollup N before we process those for rollup N-1.
 	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
 	for subscriptionID, subscription := range s.subscriptions {
 		newLatestSeenRollup, exists := lastSeenRollupByID[subscriptionID]
 		if exists && newLatestSeenRollup > subscription.LastSeenRollup {
 			subscription.LastSeenRollup = newLatestSeenRollup
 		}
 	}
-	s.subscriptionMutex.RUnlock()
 
-	return relevantLogs
+	return relevantLogsByID
 }
 
 // EncryptLogs encrypts each log with the appropriate viewing key.
@@ -196,7 +175,7 @@ func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 
 // Extracts the (potential) user addresses from the topics. If there is no code associated with an address, it's a user
 // address.
-func getUserAddrs(log *types.Log, db *state.StateDB) []string {
+func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	var userAddrs []string //nolint:prealloc
 
 	for _, topic := range log.Topics {
@@ -219,8 +198,38 @@ func getUserAddrs(log *types.Log, db *state.StateDB) []string {
 	return userAddrs
 }
 
+// For each subscription, updates the relevant logs and latest seen rollup.
+func (s *SubscriptionManager) updateRelevantLogsAndLastSeen(logItem *types.Log, userAddrs []string, relevantLogsByID map[gethrpc.ID][]*types.Log, lastSeenRollupByID map[gethrpc.ID]uint64) {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	for subscriptionID, subscription := range s.subscriptions {
+		// We ignore irrelevant logs.
+		if !isRelevant(logItem, userAddrs, subscription) {
+			continue
+		}
+
+		// We update the relevant logs for the subscription.
+		if relevantLogsByID[subscriptionID] == nil {
+			relevantLogsByID[subscriptionID] = []*types.Log{}
+		}
+		relevantLogsByID[subscriptionID] = append(relevantLogsByID[subscriptionID], logItem)
+
+		// We update the last rollup number for the subscription if this is the highest one we've seen so far.
+		currentLatestSeenRollup, exists := lastSeenRollupByID[subscriptionID]
+		if !exists || logItem.BlockNumber > currentLatestSeenRollup {
+			lastSeenRollupByID[subscriptionID] = logItem.BlockNumber
+		}
+	}
+}
+
 // Indicates whether the log is relevant for the subscription.
-func isRelevant(userAddrs []string, account *gethcommon.Address) bool {
+func isRelevant(logItem *types.Log, userAddrs []string, subscription *common.LogSubscription) bool {
+	return userAddrsContainAccount(subscription.Account, userAddrs) && logMatchesFilter(logItem, subscription.Filter) && logItem.BlockNumber > subscription.LastSeenRollup
+}
+
+// Indicates whether the account is contained in the user addresses.
+func userAddrsContainAccount(account *gethcommon.Address, userAddrs []string) bool {
 	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
 	if len(userAddrs) == 0 {
 		return true
@@ -236,9 +245,9 @@ func isRelevant(userAddrs []string, account *gethcommon.Address) bool {
 }
 
 // Applies `filterLogs`, below, to determine whether the log should be filtered out based on the user's subscription criteria.
-func isFilteredOut(log *types.Log, filterCriteria *filters.FilterCriteria) bool {
+func logMatchesFilter(log *types.Log, filterCriteria *filters.FilterCriteria) bool {
 	filteredLogs := filterLogs([]*types.Log{log}, filterCriteria.FromBlock, filterCriteria.ToBlock, filterCriteria.Addresses, filterCriteria.Topics)
-	return len(filteredLogs) == 0
+	return len(filteredLogs) != 0
 }
 
 // Lifted from eth/filters/filter.go in the go-ethereum repository.
