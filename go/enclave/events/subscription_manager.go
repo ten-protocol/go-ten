@@ -116,9 +116,16 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 	return filteredLogs
 }
 
-// FilteredSubscribedLogs filters out irrelevant logs, those that are not subscribed to, and those a subscription has
-// seen before, and organises them by their subscribing ID.
-func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
+// EncryptFilteredLogs filters the logs based on the current subscriptions, then encrypts them the appropriate viewing
+// keys.
+func (s *SubscriptionManager) EncryptFilteredLogs(logs []*types.Log, rollupHash common.L2RootHash) (map[gethrpc.ID][]byte, error) {
+	filteredLogs := s.getFilteredLogs(logs, rollupHash)
+	return s.encryptLogs(filteredLogs)
+}
+
+// Filters out irrelevant logs, those that are not subscribed to, and those a subscription has seen before, and
+// organises them by their subscribing ID.
+func (s *SubscriptionManager) getFilteredLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
 	relevantLogsByID := map[gethrpc.ID][]*types.Log{}
 	lastSeenRollupByID := map[gethrpc.ID]uint64{}
 
@@ -147,8 +154,8 @@ func (s *SubscriptionManager) FilteredSubscribedLogs(logs []*types.Log, rollupHa
 	return relevantLogsByID
 }
 
-// EncryptLogs encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
+// Encrypts each log with the appropriate viewing key.
+func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
 
 	for subID, logs := range logsByID {
